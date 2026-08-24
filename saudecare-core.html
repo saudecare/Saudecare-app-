@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaúdeCare</title>
+<style>
+  :root{
+    --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#ffffff;
+    --text:#1a2b26; --muted:#6b7d76; --danger:#b3413a; --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{background:var(--bg);color:var(--text);}
+  #app{display:flex;min-height:100vh;}
+  nav{width:220px;background:var(--primary-dark);color:#fff;padding:20px 12px;flex-shrink:0;}
+  nav h1{font-size:20px;margin-bottom:24px;padding:0 8px;}
+  nav button{display:block;width:100%;text-align:left;background:none;border:none;color:#e4ede9;
+    padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;margin-bottom:4px;}
+  nav button.active,nav button:hover{background:var(--primary);color:#fff;}
+  main{flex:1;padding:24px;max-width:900px;}
+  .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  h2{margin-bottom:14px;font-size:20px;}
+  input,select,textarea{width:100%;padding:10px;border:1px solid #d8e0dc;border-radius:8px;
+    margin-bottom:10px;font-size:14px;}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
+  button.primary{background:var(--primary);color:#fff;border:none;padding:10px 18px;
+    border-radius:8px;cursor:pointer;font-size:14px;}
+  button.danger{background:var(--danger);color:#fff;border:none;padding:8px 14px;
+    border-radius:8px;cursor:pointer;font-size:13px;}
+  button.ghost{background:none;border:1px solid #d8e0dc;padding:8px 14px;border-radius:8px;cursor:pointer;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;}
+  .appt-item,.patient-item{border-bottom:1px solid #eef2f0;padding:10px 0;}
+  .appt-item:last-child,.patient-item:last-child{border-bottom:none;}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:#e4ede9;color:var(--primary-dark);}
+  .badge.cancelled{background:#f6e2e0;color:var(--danger);}
+  .muted{color:var(--muted);font-size:13px;}
+  #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;}
+  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a2b26;
+    color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:999;}
+  .hidden{display:none !important;}
+  @media(max-width:640px){
+    #app{flex-direction:column;}
+    nav{width:100%;display:flex;overflow-x:auto;padding:10px;}
+    nav h1{display:none;}
+    nav button{flex-shrink:0;margin-right:6px;margin-bottom:0;}
+    main{padding:14px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="card" style="max-width:340px;">
+  <h2>SaúdeCare — Entrar</h2>
+  <label>Email</label>
+  <input id="loginEmail" type="email" autocomplete="username">
+  <label>Palavra-passe</label>
+  <input id="loginPass" type="password" autocomplete="current-password">
+  <button class="primary" style="width:100%" onclick="doLogin()">Entrar</button>
+  <p id="loginError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+</div>
+
+<div id="app" class="hidden">
+  <nav>
+    <h1>SaúdeCare</h1>
+    <button data-view="agenda" class="active">📅 Agenda</button>
+    <button data-view="patients">🗂️ Pacientes</button>
+    <button data-view="services">🩺 Serviços</button>
+    <button data-view="settings">⚙️ Configurações</button>
+    <button data-view="logout" style="margin-top:20px;color:#f2b8b8;">Sair</button>
+  </nav>
+  <main id="mainView"></main>
+</div>
+
+<div id="toast"></div>
+
+<!-- Firebase (SDK modular v9, via CDN) -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc,
+  deleteDoc, query, where, orderBy, serverTimestamp, Timestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ── CONFIGURAÇÃO — substituir pelos valores reais do projeto Firebase ──
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let tenantId = null;
+let tenantRole = null;
+let currentTenantDoc = null;
+
+// ── Helpers de UI ────────────────────────────────────────────────────
+function toast(msg, isError=false){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#b3413a' : '#1a2b26';
+  t.style.display = 'block';
+  setTimeout(()=> t.style.display='none', 3200);
+}
+
+function escapeHtml(str){
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────
+window.doLogin = async function(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  try{
+    await signInWithEmailAndPassword(auth, email, pass);
+  }catch(e){
+    errEl.textContent = 'Credenciais inválidas ou conta inexistente.';
+    console.error(e);
+  }
+};
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user){
+    currentUser = null; tenantId = null;
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    return;
+  }
+  currentUser = user;
+
+  // Força refresh do token para garantir que os custom claims (tenantId,
+  // role) mais recentes estão disponíveis — essencial logo após onboarding.
+  const tokenResult = await user.getIdTokenResult(true);
+  tenantId = tokenResult.claims.tenantId || null;
+  tenantRole = tokenResult.claims.role || null;
+
+  if (!tenantId){
+    toast('Esta conta ainda não está associada a nenhum subscritor.', true);
+    await signOut(auth);
+    return;
+  }
+
+  const tSnap = await getDoc(doc(db, 'tenants', tenantId));
+  if (!tSnap.exists()){
+    toast('Subscritor não encontrado.', true);
+    await signOut(auth);
+    return;
+  }
+  currentTenantDoc = tSnap.data();
+
+  if (currentTenantDoc.status === 'suspended' || currentTenantDoc.status === 'cancelled'){
+    toast('Esta conta está suspensa. Contacte o suporte.', true);
+    await signOut(auth);
+    return;
+  }
+
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  applyBranding();
+  renderView('agenda');
+});
+
+document.querySelectorAll('nav button[data-view]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if (btn.dataset.view === 'logout'){ signOut(auth); return; }
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderView(btn.dataset.view);
+  });
+});
+
+function applyBranding(){
+  if (currentTenantDoc?.branding?.primaryColor){
+    document.documentElement.style.setProperty('--primary', currentTenantDoc.branding.primaryColor);
+  }
+}
+
+// ── Audit log — escrito antes de qualquer operação sensível em pacientes ──
+async function logAudit(action, targetPatientId){
+  try{
+    await addDoc(collection(db, 'tenants', tenantId, 'auditLog'), {
+      action, targetPatientId: targetPatientId || null,
+      performedBy: currentUser.uid, timestamp: serverTimestamp()
+    });
+  }catch(e){
+    // Falha a registar auditoria não deve travar a operação principal,
+    // mas é sinalizada em consola para diagnóstico.
+    console.error('Falha ao gravar auditLog', e);
+  }
+}
+
+// ── Router simples ──────────────────────────────────────────────────
+function renderView(view){
+  const main = document.getElementById('mainView');
+  main.innerHTML = '<p class="muted">A carregar…</p>';
+  if (view === 'agenda') renderAgenda(main);
+  else if (view === 'patients') renderPatients(main);
+  else if (view === 'services') renderServices(main);
+  else if (view === 'settings') renderSettings(main);
+}
+
+// ── AGENDA ───────────────────────────────────────────────────────────
+async function renderAgenda(main){
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+
+  const q = query(
+    collection(db, 'tenants', tenantId, 'appointments'),
+    where('startsAt', '>=', Timestamp.fromDate(todayStart)),
+    where('startsAt', '<=', Timestamp.fromDate(todayEnd)),
+    orderBy('startsAt')
+  );
+  const snap = await getDocs(q);
+
+  let itemsHtml = '';
+  snap.forEach(d=>{
+    const a = d.data();
+    const time = a.startsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
+    const statusClass = a.status === 'cancelled' ? 'cancelled' : '';
+    itemsHtml += `<div class="appt-item row">
+      <div><strong>${time}</strong> — ${escapeHtml(a.patientName||'Paciente')}
+        <div class="muted">${escapeHtml(a.serviceName||'')}</div>
+      </div>
+      <span class="badge ${statusClass}">${escapeHtml(a.status)}</span>
+    </div>`;
+  });
+  if (!itemsHtml) itemsHtml = '<p class="muted">Sem marcações para hoje.</p>';
+
+  main.innerHTML = `
+    <div class="row"><h2>Agenda — Hoje</h2>
+      <button class="primary" onclick="openNewAppointment()">+ Nova marcação</button>
+    </div>
+    <div class="card">${itemsHtml}</div>
+    <div id="apptFormContainer"></div>
+  `;
+}
+
+window.openNewAppointment = async function(){
+  const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+  const servicesSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'services'), where('active','==', true)));
+
+  let patientOpts = '<option value="">Selecionar paciente…</option>';
+  patientsSnap.forEach(d => patientOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().fullName)}">${escapeHtml(d.data().fullName)}</option>`);
+
+  let serviceOpts = '<option value="">Selecionar serviço…</option>';
+  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}">${escapeHtml(d.data().name)}</option>`);
+
+  document.getElementById('apptFormContainer').innerHTML = `
+    <div class="card">
+      <h2>Nova marcação</h2>
+      <label>Paciente</label><select id="apptPatient">${patientOpts}</select>
+      <label>Serviço</label><select id="apptService">${serviceOpts}</select>
+      <label>Data e hora</label><input id="apptStart" type="datetime-local">
+      <button class="primary" onclick="saveAppointment()">Guardar</button>
+    </div>`;
+};
+
+window.saveAppointment = async function(){
+  const patientSel = document.getElementById('apptPatient');
+  const serviceSel = document.getElementById('apptService');
+  const startInput = document.getElementById('apptStart').value;
+  if (!patientSel.value || !serviceSel.value || !startInput){
+    toast('Preencha todos os campos.', true); return;
+  }
+  const duration = parseInt(serviceSel.selectedOptions[0].dataset.duration || '50', 10);
+  const start = new Date(startInput);
+  const end = new Date(start.getTime() + duration*60000);
+
+  await addDoc(collection(db, 'tenants', tenantId, 'appointments'), {
+    patientId: patientSel.value,
+    patientName: patientSel.selectedOptions[0].dataset.name,
+    serviceId: serviceSel.value,
+    serviceName: serviceSel.selectedOptions[0].dataset.name,
+    staffUid: currentUser.uid,
+    startsAt: Timestamp.fromDate(start),
+    endsAt: Timestamp.fromDate(end),
+    status: 'confirmed',
+    createdAt: serverTimestamp()
+  });
+  toast('Marcação criada.');
+  renderView('agenda');
+};
+
+// ── PACIENTES (dados de saúde — tratamento reforçado) ──────────────────
+async function renderPatients(main){
+  const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients'), orderBy('fullName')));
+  let rows = '';
+  snap.forEach(d=>{
+    const p = d.data();
+    rows += `<div class="patient-item row">
+      <div><strong>${escapeHtml(p.fullName)}</strong>
+        <div class="muted">${escapeHtml(p.phone||'')} ${p.consentGivenAt ? '· consentimento registado' : '· <span style=\"color:var(--danger)\">sem consentimento</span>'}</div>
+      </div>
+      <div>
+        <button class="ghost" onclick="viewPatient('${d.id}')">Ver ficha</button>
+        <button class="danger" onclick="deletePatient('${d.id}','${escapeHtml(p.fullName)}')">Apagar</button>
+      </div>
+    </div>`;
+  });
+  if (!rows) rows = '<p class="muted">Ainda sem pacientes.</p>';
+
+  main.innerHTML = `
+    <div class="row"><h2>Pacientes</h2>
+      <button class="primary" onclick="openNewPatient()">+ Novo paciente</button>
+    </div>
+    <div class="card">${rows}</div>
+    <div id="patientFormContainer"></div>
+  `;
+}
+
+window.openNewPatient = function(){
+  document.getElementById('patientFormContainer').innerHTML = `
+    <div class="card">
+      <h2>Novo paciente</h2>
+      <label>Nome completo</label><input id="pFullName">
+      <label>Telefone</label><input id="pPhone">
+      <label>Email</label><input id="pEmail" type="email">
+      <label>Notas clínicas iniciais</label><textarea id="pNotes" rows="3"></textarea>
+      <label style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="pConsent" style="width:auto;margin:0;">
+        Paciente deu consentimento explícito para tratamento de dados de saúde
+      </label>
+      <button class="primary" onclick="savePatient()">Guardar</button>
+    </div>`;
+};
+
+window.savePatient = async function(){
+  const fullName = document.getElementById('pFullName').value.trim();
+  const consent = document.getElementById('pConsent').checked;
+  if (!fullName){ toast('Nome é obrigatório.', true); return; }
+  if (!consent){ toast('Não é possível registar sem consentimento explícito.', true); return; }
+
+  await addDoc(collection(db, 'tenants', tenantId, 'patients'), {
+    fullName,
+    phone: document.getElementById('pPhone').value.trim(),
+    email: document.getElementById('pEmail').value.trim(),
+    clinicalNotes: document.getElementById('pNotes').value.trim(),
+    consentGivenAt: serverTimestamp(),
+    consentVersion: currentTenantDoc?.legalTexts?.consentVersion || 'v1',
+    createdBy: currentUser.uid
+  });
+  toast('Paciente registado.');
+  renderView('patients');
+};
+
+window.viewPatient = async function(patientId){
+  await logAudit('patient_viewed', patientId);
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
+  if (!snap.exists()){ toast('Paciente não encontrado.', true); return; }
+  const p = snap.data();
+  document.getElementById('patientFormContainer').innerHTML = `
+    <div class="card">
+      <h2>${escapeHtml(p.fullName)}</h2>
+      <p class="muted">${escapeHtml(p.phone||'')} · ${escapeHtml(p.email||'')}</p>
+      <label style="margin-top:10px;">Notas clínicas</label>
+      <textarea rows="5" readonly>${escapeHtml(p.clinicalNotes||'')}</textarea>
+      <p class="muted">Consentimento: ${p.consentGivenAt ? 'registado' : 'em falta'}</p>
+    </div>`;
+};
+
+window.deletePatient = async function(patientId, name){
+  if (!confirm(`Apagar definitivamente "${name}"? Esta ação cumpre o direito ao apagamento RGPD e não pode ser desfeita.`)) return;
+  await logAudit('patient_deleted', patientId);
+  await deleteDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
+  toast('Paciente apagado.');
+  renderView('patients');
+};
+
+// ── SERVIÇOS ─────────────────────────────────────────────────────────
+async function renderServices(main){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'services'));
+  let rows = '';
+  snap.forEach(d=>{
+    const s = d.data();
+    rows += `<div class="appt-item row">
+      <div><strong>${escapeHtml(s.name)}</strong> <span class="muted">${s.durationMinutes}min · ${s.price}€</span></div>
+      <button class="danger" onclick="deleteService('${d.id}')">Remover</button>
+    </div>`;
+  });
+  if (!rows) rows = '<p class="muted">Ainda sem serviços.</p>';
+
+  main.innerHTML = `
+    <div class="row"><h2>Serviços</h2></div>
+    <div class="card">${rows}</div>
+    <div class="card">
+      <h2>Novo serviço</h2>
+      <label>Nome</label><input id="sName">
+      <label>Duração (min)</label><input id="sDuration" type="number" value="50">
+      <label>Preço (€)</label><input id="sPrice" type="number" step="0.01">
+      <button class="primary" onclick="saveService()">Adicionar</button>
+    </div>`;
+}
+
+window.saveService = async function(){
+  const name = document.getElementById('sName').value.trim();
+  if (!name){ toast('Nome é obrigatório.', true); return; }
+  await addDoc(collection(db, 'tenants', tenantId, 'services'), {
+    name,
+    durationMinutes: parseInt(document.getElementById('sDuration').value || '50', 10),
+    price: parseFloat(document.getElementById('sPrice').value || '0'),
+    active: true
+  });
+  toast('Serviço adicionado.');
+  renderView('services');
+};
+
+window.deleteService = async function(serviceId){
+  if (!confirm('Remover este serviço?')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'services', serviceId));
+  renderView('services');
+};
+
+// ── CONFIGURAÇÕES ────────────────────────────────────────────────────
+function renderSettings(main){
+  const b = currentTenantDoc?.branding || {};
+  main.innerHTML = `
+    <h2>Configurações</h2>
+    <div class="card">
+      <label>Nome do negócio</label>
+      <input id="setName" value="${escapeHtml(currentTenantDoc?.businessName||'')}">
+      <label>Cor principal</label>
+      <input id="setColor" type="color" value="${b.primaryColor||'#2f6f5e'}">
+      <button class="primary" onclick="saveSettings()">Guardar</button>
+      <p class="muted" style="margin-top:10px;">
+        Plano atual: <strong>${escapeHtml(currentTenantDoc?.plan||'—')}</strong> ·
+        Estado: <strong>${escapeHtml(currentTenantDoc?.status||'—')}</strong>
+      </p>
+    </div>`;
+}
+
+window.saveSettings = async function(){
+  await updateDoc(doc(db, 'tenants', tenantId), {
+    businessName: document.getElementById('setName').value.trim(),
+    'branding.primaryColor': document.getElementById('setColor').value
+  });
+  toast('Configurações guardadas.');
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  currentTenantDoc = snap.data();
+  applyBranding();
+};
+
+</script>
+</body>
+</html>

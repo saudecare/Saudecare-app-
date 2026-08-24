@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marcar Consulta</title>
+<style>
+  :root{ --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#fff; --text:#1a2b26; --muted:#6b7d76; }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{background:var(--bg);color:var(--text);}
+  .hero{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:32px 20px;text-align:center;}
+  .hero h1{font-size:24px;margin-bottom:6px;}
+  .hero p{opacity:.9;font-size:14px;}
+  .wrap{max-width:520px;margin:0 auto;padding:16px;}
+  .campaign{background:#fff3cd;border:1px solid #ffe08a;border-radius:12px;padding:14px;margin:14px 0;text-align:center;}
+  .campaign strong{display:block;font-size:16px;margin-bottom:4px;}
+  #countdown{font-size:20px;font-weight:700;color:#8a5a00;margin-top:6px;letter-spacing:1px;}
+  .card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .service{border:1px solid #e4ede9;border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;transition:.15s;}
+  .service.selected{border-color:var(--primary);background:#eef6f2;}
+  .service .row{display:flex;justify-content:space-between;align-items:center;}
+  .price{font-weight:700;color:var(--primary-dark);}
+  .price-old{text-decoration:line-through;color:var(--muted);font-size:12px;margin-right:6px;}
+  input,select{width:100%;padding:10px;border:1px solid #d8e0dc;border-radius:8px;margin-bottom:10px;font-size:14px;}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
+  button.primary{background:var(--primary);color:#fff;border:none;width:100%;padding:13px;border-radius:10px;font-size:15px;cursor:pointer;}
+  .muted{color:var(--muted);font-size:12px;}
+  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a2b26;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:999;}
+  .step{display:none;}
+  .step.active{display:block;}
+  .confirm-box{text-align:center;padding:30px 16px;}
+  .confirm-box .check{font-size:44px;margin-bottom:10px;}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div id="heroLogo"></div>
+  <h1 id="bizName">A carregar…</h1>
+  <p id="bizTagline"></p>
+</div>
+
+<div class="wrap">
+  <div id="campaignBox"></div>
+
+  <!-- Passo 1: escolher serviço -->
+  <div class="step active" id="step1">
+    <div class="card">
+      <h2 style="margin-bottom:10px;">Escolha o serviço</h2>
+      <div id="servicesList"><p class="muted">A carregar serviços…</p></div>
+    </div>
+    <button class="primary" onclick="goStep2()">Continuar</button>
+  </div>
+
+  <!-- Passo 2: dados + data -->
+  <div class="step" id="step2">
+    <div class="card">
+      <h2 style="margin-bottom:10px;">Os seus dados</h2>
+      <label>Nome completo</label><input id="cName">
+      <label>Telefone</label><input id="cPhone" type="tel">
+      <label>Email</label><input id="cEmail" type="email">
+      <label>Data e hora preferida</label><input id="cDate" type="datetime-local">
+      <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+        <input type="checkbox" id="cConsent" style="width:auto;margin:0;">
+        Aceito a <a href="#" id="privacyLink" target="_blank">política de privacidade</a> e autorizo o tratamento dos meus dados para esta marcação
+      </label>
+    </div>
+    <button class="primary" onclick="submitBooking()">Confirmar pedido de marcação</button>
+    <p class="muted" style="text-align:center;margin-top:10px;">Voltar a <a href="#" onclick="goStep1()">escolher serviço</a></p>
+  </div>
+
+  <!-- Passo 3: confirmação -->
+  <div class="step" id="step3">
+    <div class="card confirm-box">
+      <div class="check">✅</div>
+      <h2>Pedido enviado!</h2>
+      <p class="muted" style="margin-top:8px;">Vamos confirmar a sua marcação em breve por telefone ou email.</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, collection, addDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// tenantId vem do URL: pagina.html?t=slug-do-subscritor
+const params = new URLSearchParams(window.location.search);
+const tenantSlug = params.get('t');
+let tenantId = null;
+let selectedService = null;
+let profile = null;
+let countdownInterval = null;
+
+function toast(msg, isError=false){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#b3413a' : '#1a2b26';
+  t.style.display = 'block';
+  setTimeout(()=> t.style.display='none', 3200);
+}
+function escapeHtml(str){
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+async function loadProfile(){
+  if (!tenantSlug){
+    document.getElementById('bizName').textContent = 'Ligação inválida';
+    document.getElementById('bizTagline').textContent = 'Falta o identificador do subscritor no URL (?t=slug).';
+    return;
+  }
+  // Perfil público lê-se diretamente por tenantId = slug (mantemos slug como
+  // id do documento em public_tenant_profiles para URLs amigáveis e leitura
+  // direta sem necessitar de query composta).
+  const snap = await getDoc(doc(db, 'public_tenant_profiles', tenantSlug));
+  if (!snap.exists()){
+    document.getElementById('bizName').textContent = 'Página não encontrada';
+    return;
+  }
+  profile = snap.data();
+  tenantId = profile.tenantId;
+
+  document.getElementById('bizName').textContent = profile.businessName || '';
+  document.getElementById('bizTagline').textContent = profile.tagline || '';
+  if (profile.branding?.primaryColor){
+    document.documentElement.style.setProperty('--primary', profile.branding.primaryColor);
+  }
+  if (profile.legalTexts?.privacyPolicyUrl){
+    document.getElementById('privacyLink').href = profile.legalTexts.privacyPolicyUrl;
+  }
+
+  renderCampaign();
+  renderServices();
+}
+
+function renderCampaign(){
+  const c = profile.activeCampaign;
+  if (!c || !c.active) return;
+  const endsAt = c.endsAt?.toDate ? c.endsAt.toDate() : new Date(c.endsAt);
+  document.getElementById('campaignBox').innerHTML = `
+    <div class="campaign">
+      <strong>${escapeHtml(c.title || 'Promoção especial')}</strong>
+      <span class="muted">${escapeHtml(c.description || '')}</span>
+      <div id="countdown"></div>
+    </div>`;
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(()=>{
+    const diff = endsAt.getTime() - Date.now();
+    const el = document.getElementById('countdown');
+    if (!el) { clearInterval(countdownInterval); return; }
+    if (diff <= 0){ el.textContent = 'Promoção terminada'; clearInterval(countdownInterval); return; }
+    const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
+    el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }, 1000);
+}
+
+function renderServices(){
+  const list = profile.publicServices || [];
+  const container = document.getElementById('servicesList');
+  if (!list.length){ container.innerHTML = '<p class="muted">Sem serviços disponíveis de momento.</p>'; return; }
+
+  const campaign = profile.activeCampaign;
+  container.innerHTML = list.map((s, idx)=>{
+    let priceHtml = `<span class="price">${s.price}€</span>`;
+    if (campaign?.active && campaign.discountPercent){
+      const discounted = (s.price * (1 - campaign.discountPercent/100)).toFixed(2);
+      priceHtml = `<span class="price-old">${s.price}€</span><span class="price">${discounted}€</span>`;
+    }
+    return `<div class="service" id="svc-${idx}" onclick="selectService(${idx})">
+      <div class="row">
+        <div><strong>${escapeHtml(s.name)}</strong><div class="muted">${s.durationMinutes}min</div></div>
+        ${priceHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.selectService = function(idx){
+  document.querySelectorAll('.service').forEach(el=>el.classList.remove('selected'));
+  document.getElementById(`svc-${idx}`).classList.add('selected');
+  selectedService = profile.publicServices[idx];
+};
+
+window.goStep2 = function(){
+  if (!selectedService){ toast('Escolha um serviço para continuar.', true); return; }
+  document.getElementById('step1').classList.remove('active');
+  document.getElementById('step2').classList.add('active');
+};
+window.goStep1 = function(){
+  document.getElementById('step2').classList.remove('active');
+  document.getElementById('step1').classList.add('active');
+};
+
+window.submitBooking = async function(){
+  const name = document.getElementById('cName').value.trim();
+  const phone = document.getElementById('cPhone').value.trim();
+  const email = document.getElementById('cEmail').value.trim();
+  const dateVal = document.getElementById('cDate').value;
+  const consent = document.getElementById('cConsent').checked;
+
+  if (!name || !phone || !dateVal){ toast('Preencha nome, telefone e data.', true); return; }
+  if (!consent){ toast('É necessário aceitar a política de privacidade para continuar.', true); return; }
+
+  try{
+    // Escreve numa coleção intermédia (public_booking_requests) — nunca
+    // diretamente em /tenants/{id}/appointments, porque quem preenche este
+    // formulário não está autenticado. Uma Cloud Function valida e promove
+    // o pedido para uma marcação real, evitando escrita anónima direta nos
+    // dados internos do subscritor.
+    await addDoc(collection(db, 'public_booking_requests'), {
+      tenantId,
+      status: 'pending_review',
+      clientName: name,
+      clientPhone: phone,
+      clientEmail: email,
+      requestedStart: dateVal,
+      serviceName: selectedService.name,
+      servicePrice: selectedService.price,
+      consentGivenAt: serverTimestamp(),
+      createdAt: serverTimestamp()
+    });
+    document.getElementById('step2').classList.remove('active');
+    document.getElementById('step3').classList.add('active');
+  }catch(e){
+    console.error(e);
+    toast('Não foi possível enviar o pedido. Tente novamente.', true);
+  }
+};
+
+loadProfile();
+</script>
+</body>
+</html>
