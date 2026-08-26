@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inscrição</title>
+<style>
+  :root{ --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#fff; --text:#1a2b26; --muted:#6b7d76; }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{background:var(--bg);color:var(--text);}
+  .hero{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:28px 20px;text-align:center;}
+  .hero h1{font-size:22px;margin-bottom:6px;}
+  .hero p{opacity:.9;font-size:14px;}
+  .wrap{max-width:520px;margin:0 auto;padding:16px;}
+  .card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px;}
+  input{width:100%;padding:10px;border:1px solid #d8e0dc;border-radius:8px;margin-bottom:14px;font-size:14px;}
+  button.primary{background:var(--primary);color:#fff;border:none;width:100%;padding:13px;border-radius:10px;font-size:15px;cursor:pointer;}
+  .muted{color:var(--muted);font-size:13px;}
+  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a2b26;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:999;}
+  .confirm-box{text-align:center;padding:30px 16px;}
+  .confirm-box .check{font-size:44px;margin-bottom:10px;}
+  .price{font-weight:700;color:var(--primary-dark);font-size:18px;}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1 id="trTitle">A carregar…</h1>
+  <p id="trDate"></p>
+</div>
+
+<div class="wrap">
+  <div id="content"></div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, collection, addDoc, getDocs, query, where, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const params = new URLSearchParams(window.location.search);
+const tenantSlug = params.get('t');
+const trainingId = params.get('tr');
+let tenantId = null;
+let trainingData = null;
+
+function toast(msg, isError=false){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#b3413a' : '#1a2b26';
+  t.style.display = 'block';
+  setTimeout(()=> t.style.display='none', 3200);
+}
+function escapeHtml(str){
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+async function loadTraining(){
+  if (!tenantSlug || !trainingId){
+    document.getElementById('trTitle').textContent = 'Ligação inválida';
+    return;
+  }
+  const profileSnap = await getDoc(doc(db, 'public_tenant_profiles', tenantSlug));
+  if (!profileSnap.exists()){
+    document.getElementById('trTitle').textContent = 'Página não encontrada';
+    return;
+  }
+  tenantId = profileSnap.data().tenantId;
+
+  const trSnap = await getDoc(doc(db, 'tenants', tenantId, 'trainings', trainingId));
+  if (!trSnap.exists()){
+    document.getElementById('trTitle').textContent = 'Formação não encontrada';
+    return;
+  }
+  trainingData = trSnap.data();
+  document.getElementById('trTitle').textContent = trainingData.title;
+  document.getElementById('trDate').textContent = trainingData.date || '';
+  renderForm();
+}
+
+function renderForm(){
+  const priceHtml = trainingData.price > 0
+    ? `<p class="price">${trainingData.price}€</p>`
+    : `<p class="price">Gratuito</p>`;
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px;">${escapeHtml(trainingData.description||'')}</p>
+      ${priceHtml}
+    </div>
+    <div class="card">
+      <label>Nome completo</label><input id="regName">
+      <label>Telefone ou email</label><input id="regContact">
+      <button class="primary" onclick="window.__submitSignup()">Inscrever</button>
+    </div>
+  `;
+}
+
+window.__submitSignup = async function(){
+  const name = document.getElementById('regName').value.trim();
+  const contact = document.getElementById('regContact').value.trim();
+  if (!name || !contact){ toast('Preencha nome e contacto.', true); return; }
+
+  try{
+    await addDoc(collection(db, 'public_training_signups'), {
+      tenantId,
+      trainingId,
+      trainingTitle: trainingData.title,
+      name,
+      contact,
+      status: 'confirmed',
+      submittedAt: serverTimestamp()
+    });
+    document.getElementById('content').innerHTML = `
+      <div class="card confirm-box">
+        <div class="check">✅</div>
+        <h2>Inscrição confirmada!</h2>
+        <p class="muted" style="margin-top:8px;">Vai receber mais informações em breve.</p>
+      </div>`;
+  }catch(e){
+    console.error(e);
+    toast('Não foi possível inscrever. Tente novamente.', true);
+  }
+};
+
+loadTraining();
+</script>
+</body>
+</html>

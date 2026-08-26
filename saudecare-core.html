@@ -68,6 +68,8 @@
     <button data-view="services">🩺 Serviços</button>
     <button data-view="protocols">📋 Protocolos</button>
     <button data-view="forms">📝 Fichas</button>
+    <button data-view="trainings">🎓 Formações</button>
+    <button data-view="profile">🏥 Perfil</button>
     <button data-view="settings">⚙️ Configurações</button>
     <button data-view="logout" style="margin-top:20px;color:#f2b8b8;">Sair</button>
   </nav>
@@ -213,6 +215,8 @@ function renderView(view){
   else if (view === 'services') renderServices(main);
   else if (view === 'protocols') renderProtocols(main);
   else if (view === 'forms') renderForms(main);
+  else if (view === 'trainings') renderTrainings(main);
+  else if (view === 'profile') renderProfile(main);
   else if (view === 'settings') renderSettings(main);
 }
 
@@ -234,11 +238,18 @@ async function renderAgenda(main){
     const a = d.data();
     const time = a.startsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
     const statusClass = a.status === 'cancelled' ? 'cancelled' : '';
-    itemsHtml += `<div class="appt-item row">
-      <div><strong>${time}</strong> — ${escapeHtml(a.patientName||'Paciente')}
-        <div class="muted">${escapeHtml(a.serviceName||'')}</div>
+    itemsHtml += `<div class="appt-item">
+      <div class="row">
+        <div><strong>${time}</strong> — ${escapeHtml(a.patientName||'Paciente')}
+          <div class="muted">${escapeHtml(a.serviceName||'')}</div>
+        </div>
+        <span class="badge ${statusClass}">${escapeHtml(a.status)}</span>
       </div>
-      <span class="badge ${statusClass}">${escapeHtml(a.status)}</span>
+      <div class="row" style="margin-top:6px;">
+        <button class="ghost" onclick="editAppointment('${d.id}')">Editar</button>
+        ${a.status !== 'cancelled' ? `<button class="ghost" onclick="cancelAppointment('${d.id}')">Cancelar</button>` : ''}
+        <button class="danger" onclick="deleteAppointment('${d.id}')">Apagar</button>
+      </div>
     </div>`;
   });
   if (!itemsHtml) itemsHtml = '<p class="muted">Sem marcações para hoje.</p>';
@@ -295,6 +306,69 @@ window.saveAppointment = async function(){
     createdAt: serverTimestamp()
   });
   toast('Marcação criada.');
+  renderView('agenda');
+};
+
+window.editAppointment = async function(appointmentId){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
+  if (!snap.exists()){ toast('Marcação não encontrada.', true); return; }
+  const a = snap.data();
+
+  const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+  const servicesSnap = await getDocs(collection(db, 'tenants', tenantId, 'services'));
+
+  let patientOpts = '';
+  patientsSnap.forEach(d => patientOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().fullName)}" ${d.id===a.patientId?'selected':''}>${escapeHtml(d.data().fullName)}</option>`);
+  let serviceOpts = '';
+  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" ${d.id===a.serviceId?'selected':''}>${escapeHtml(d.data().name)}</option>`);
+
+  const startLocal = new Date(a.startsAt.toDate().getTime() - a.startsAt.toDate().getTimezoneOffset()*60000)
+    .toISOString().slice(0,16);
+
+  document.getElementById('apptFormContainer').innerHTML = `
+    <div class="card">
+      <h2>Editar marcação</h2>
+      <label>Paciente</label><select id="apptPatient">${patientOpts}</select>
+      <label>Serviço</label><select id="apptService">${serviceOpts}</select>
+      <label>Data e hora</label><input id="apptStart" type="datetime-local" value="${startLocal}">
+      <button class="primary" onclick="updateAppointment('${appointmentId}')">Guardar alterações</button>
+    </div>`;
+};
+
+window.updateAppointment = async function(appointmentId){
+  const patientSel = document.getElementById('apptPatient');
+  const serviceSel = document.getElementById('apptService');
+  const startInput = document.getElementById('apptStart').value;
+  if (!patientSel.value || !serviceSel.value || !startInput){
+    toast('Preencha todos os campos.', true); return;
+  }
+  const duration = parseInt(serviceSel.selectedOptions[0].dataset.duration || '50', 10);
+  const start = new Date(startInput);
+  const end = new Date(start.getTime() + duration*60000);
+
+  await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), {
+    patientId: patientSel.value,
+    patientName: patientSel.selectedOptions[0].dataset.name,
+    serviceId: serviceSel.value,
+    serviceName: serviceSel.selectedOptions[0].dataset.name,
+    startsAt: Timestamp.fromDate(start),
+    endsAt: Timestamp.fromDate(end)
+  });
+  toast('Marcação atualizada.');
+  renderView('agenda');
+};
+
+window.cancelAppointment = async function(appointmentId){
+  if (!confirm('Cancelar esta marcação? Fica registada como cancelada, não é apagada.')) return;
+  await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { status: 'cancelled' });
+  toast('Marcação cancelada.');
+  renderView('agenda');
+};
+
+window.deleteAppointment = async function(appointmentId){
+  if (!confirm('Apagar esta marcação definitivamente? Não pode ser desfeito.')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
+  toast('Marcação apagada.');
   renderView('agenda');
 };
 
@@ -381,6 +455,23 @@ window.viewPatient = async function(patientId){
   });
   if (!reportsHtml) reportsHtml = '<p class="muted">Ainda sem relatórios para este paciente.</p>';
 
+  // Fichas/questionários já associados a este paciente (antes ficavam
+  // guardados mas nunca eram mostrados aqui — corrigido).
+  const formRespSnap = await getDocs(query(
+    collection(db, 'tenants', tenantId, 'patients', patientId, 'formResponses'),
+    orderBy('submittedAt', 'desc')
+  ));
+  let formRespHtml = '';
+  formRespSnap.forEach(fd => {
+    const f = fd.data();
+    const date = f.submittedAt?.toDate ? f.submittedAt.toDate().toLocaleDateString('pt-PT') : '';
+    formRespHtml += `<div class="appt-item row">
+      <div><strong>${escapeHtml(f.formTitle)}</strong><div class="muted">${date}</div></div>
+      <button class="ghost" onclick="viewSavedFormResponse('${patientId}','${fd.id}')">Ver respostas</button>
+    </div>`;
+  });
+  if (!formRespHtml) formRespHtml = '<p class="muted">Ainda sem fichas respondidas para este paciente.</p>';
+
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
       <h2>${escapeHtml(p.fullName)}</h2>
@@ -388,12 +479,71 @@ window.viewPatient = async function(patientId){
       <label style="margin-top:10px;">Notas clínicas</label>
       <textarea rows="5" readonly>${escapeHtml(p.clinicalNotes||'')}</textarea>
       <p class="muted">Consentimento: ${p.consentGivenAt ? 'registado' : 'em falta'}</p>
-      <button class="primary" style="margin-top:10px;" onclick="startGuidedConsultation('${patientId}', '${escapeHtml(p.fullName)}')">🧭 Iniciar consulta guiada</button>
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeHtml(p.fullName)}')">🧭 Iniciar consulta guiada</button>
+        <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeHtml(p.fullName)}')">📝 Enviar ficha a este paciente</button>
+      </div>
     </div>
+    <div id="sendFormContainer"></div>
     <div class="card">
       <h2>Relatórios anteriores</h2>
       ${reportsHtml}
+    </div>
+    <div class="card">
+      <h2>Fichas respondidas</h2>
+      ${formRespHtml}
     </div>`;
+};
+
+window.viewSavedFormResponse = async function(patientId, responseId){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'formResponses', responseId));
+  if (!snap.exists()){ toast('Resposta não encontrada.', true); return; }
+  const r = snap.data();
+  let answersHtml = (r.answers || []).map(a => `
+    <div class="appt-item"><strong>${escapeHtml(a.label)}</strong><div class="muted">${escapeHtml(String(a.value))}</div></div>
+  `).join('');
+  document.getElementById('sendFormContainer').innerHTML = `
+    <div class="card">
+      <h2>${escapeHtml(r.formTitle)}</h2>
+      ${answersHtml}
+    </div>`;
+};
+
+// ── Enviar ficha diretamente a um paciente já existente ─────────────────
+// O link inclui o patientId — quando o paciente responde, a resposta já
+// chega "etiquetada" e aparece pré-selecionada nas pendentes, reduzindo o
+// risco de associar ao paciente errado. A associação continua a exigir um
+// toque de confirmação (não é 100% automática) porque a resposta vem de
+// alguém sem conta — sem essa confirmação humana, dados de saúde podiam
+// entrar na ficha errada sem ninguém dar por isso.
+window.openSendFormToPatient = async function(patientId, patientName){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'forms'));
+  if (snap.empty){
+    toast('Crie uma ficha primeiro, em "Fichas".', true);
+    return;
+  }
+  let opts = '<option value="">Selecionar ficha...</option>';
+  snap.forEach(d => opts += `<option value="${d.id}">${escapeHtml(d.data().title)}</option>`);
+
+  document.getElementById('sendFormContainer').innerHTML = `
+    <div class="card">
+      <h2>Enviar ficha a ${escapeHtml(patientName)}</h2>
+      <label>Ficha</label>
+      <select id="sendFormSelect" onchange="renderSendFormLink('${patientId}')">${opts}</select>
+      <div id="sendFormLinkArea"></div>
+    </div>`;
+};
+
+window.renderSendFormLink = function(patientId){
+  const formId = document.getElementById('sendFormSelect').value;
+  const area = document.getElementById('sendFormLinkArea');
+  if (!formId){ area.innerHTML=''; return; }
+  const link = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-ficha-publica.html')}?t=${currentTenantDoc.slug}&f=${formId}&p=${patientId}`;
+  area.innerHTML = `
+    <label style="margin-top:10px;">Link personalizado (já identifica o paciente)</label>
+    <input readonly value="${link}" onclick="this.select()">
+    <button class="ghost" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado — confirme que colou tudo antes de enviar.'))">Copiar link</button>
+  `;
 };
 
 window.viewSavedReport = async function(patientId, reportId){
@@ -405,6 +555,9 @@ window.viewSavedReport = async function(patientId, reportId){
     <div class="card">
       <h2>${escapeHtml(r.protocolName)}</h2>
       <textarea rows="14" readonly>${escapeHtml(r.reportText)}</textarea>
+      <div class="row" style="margin-top:8px;">
+        <button class="ghost" onclick="downloadReportFile('${escapeHtml(r.protocolName)}', document.querySelector('#patientFormContainer textarea').value)">⬇️ Descarregar ficheiro</button>
+      </div>
     </div>`;
 };
 
@@ -423,7 +576,9 @@ async function renderServices(main){
   snap.forEach(d=>{
     const s = d.data();
     rows += `<div class="appt-item row">
-      <div><strong>${escapeHtml(s.name)}</strong> <span class="muted">${s.durationMinutes}min · ${s.price}€</span></div>
+      <div><strong>${escapeHtml(s.name)}</strong> <span class="muted">${s.durationMinutes}min · ${s.price}€${s.category ? ' · '+escapeHtml(s.category) : ''}</span>
+        ${s.description ? `<div class="muted">${escapeHtml(s.description)}</div>` : ''}
+      </div>
       <button class="danger" onclick="deleteService('${d.id}')">Remover</button>
     </div>`;
   });
@@ -435,6 +590,8 @@ async function renderServices(main){
     <div class="card">
       <h2>Novo serviço</h2>
       <label>Nome</label><input id="sName">
+      <label>Categoria (opcional, ex: "Fisioterapia", "Nutrição")</label><input id="sCategory">
+      <label>Descrição (o cliente vê isto na página pública)</label><textarea id="sDescription" rows="2"></textarea>
       <label>Duração (min)</label><input id="sDuration" type="number" value="50">
       <label>Preço (€)</label><input id="sPrice" type="number" step="0.01">
       <button class="primary" onclick="saveService()">Adicionar</button>
@@ -446,6 +603,8 @@ window.saveService = async function(){
   if (!name){ toast('Nome é obrigatório.', true); return; }
   await addDoc(collection(db, 'tenants', tenantId, 'services'), {
     name,
+    category: document.getElementById('sCategory').value.trim(),
+    description: document.getElementById('sDescription').value.trim(),
     durationMinutes: parseInt(document.getElementById('sDuration').value || '50', 10),
     price: parseFloat(document.getElementById('sPrice').value || '0'),
     active: true
@@ -496,13 +655,22 @@ async function renderForms(main){
   let pendingHtml = '';
   pendingSnap.forEach(d=>{
     const r = d.data();
+    const linkedBadge = r.patientId ? '<span class="badge">paciente identificado</span>' : '';
     pendingHtml += `<div class="appt-item row">
-      <div><strong>${escapeHtml(r.respondentName||'Sem nome')}</strong>
+      <div><strong>${escapeHtml(r.respondentName||'Sem nome')}</strong> ${linkedBadge}
         <div class="muted">${escapeHtml(r.formTitle||'')}</div></div>
       <button class="primary" onclick="openAttachResponse('${d.id}')">Associar a paciente</button>
     </div>`;
   });
   if (!pendingHtml) pendingHtml = '<p class="muted">Sem respostas pendentes.</p>';
+
+  // Alerta visível no menu quando há respostas por associar.
+  const pendingCountEl = document.querySelector('button[data-view="forms"]');
+  if (pendingCountEl){
+    pendingCountEl.innerHTML = pendingSnap.size > 0
+      ? `📝 Fichas <span class="badge" style="background:#f6e2e0;color:var(--danger);margin-left:4px;">${pendingSnap.size}</span>`
+      : `📝 Fichas`;
+  }
 
   main.innerHTML = `
     <div class="row"><h2>Fichas / Questionários</h2>
@@ -632,7 +800,12 @@ window.openAttachResponse = async function(responseId){
 
   const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
   let opts = '<option value="">Criar novo paciente com este nome...</option>';
-  patientsSnap.forEach(d => opts += `<option value="${d.id}">${escapeHtml(d.data().fullName)}</option>`);
+  let matchedName = '';
+  patientsSnap.forEach(d => {
+    const isMatch = r.patientId && d.id === r.patientId;
+    if (isMatch) matchedName = d.data().fullName;
+    opts += `<option value="${d.id}" ${isMatch ? 'selected' : ''}>${escapeHtml(d.data().fullName)}</option>`;
+  });
 
   let answersHtml = (r.answers || []).map(a => `
     <div class="appt-item"><strong>${escapeHtml(a.label)}</strong><div class="muted">${escapeHtml(String(a.value))}</div></div>
@@ -641,6 +814,7 @@ window.openAttachResponse = async function(responseId){
   document.getElementById('attachContainer').innerHTML = `
     <div class="card">
       <h2>Associar resposta — ${escapeHtml(r.respondentName||'Sem nome')}</h2>
+      ${matchedName ? `<p class="muted">Este link já identifica <strong>${escapeHtml(matchedName)}</strong> — confirme e associe.</p>` : ''}
       <div style="max-height:240px;overflow:auto;margin-bottom:10px;">${answersHtml}</div>
       <label>Associar ao paciente</label>
       <select id="attachPatientSelect">${opts}</select>
@@ -881,39 +1055,212 @@ window.generateReport = async function(patientId, patientName){
     <div class="card">
       <h2>Relatório gerado</h2>
       <textarea rows="14" readonly>${escapeHtml(reportText)}</textarea>
-      <p class="muted" style="margin-top:8px;">Guardado na ficha do paciente. Copie o texto acima para enviar por email/WhatsApp.</p>
+      <div class="row" style="margin-top:8px;">
+        <button class="ghost" onclick="downloadReportFile('${escapeHtml(proto.name)}', document.querySelector('#patientFormContainer textarea').value)">⬇️ Descarregar ficheiro</button>
+      </div>
+      <p class="muted" style="margin-top:8px;">Guardado na ficha do paciente. Copie o texto ou descarregue o ficheiro para enviar por email/WhatsApp.</p>
     </div>`;
   toast('Relatório gerado e guardado.');
 };
 
-// ── CONFIGURAÇÕES ────────────────────────────────────────────────────
-function renderSettings(main){
+// ── Descarregar relatório/prescrição como ficheiro de texto ────────────
+// Funciona 100% no browser, sem servidor — o subscritor pode depois
+// guardar esse ficheiro onde quiser (telemóvel, Drive, pen, etc.).
+window.downloadReportFile = function(title, content){
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.replace(/[^a-z0-9]+/gi,'_')}_${new Date().toISOString().slice(0,10)}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// ── PERFIL DA CLÍNICA/PROFISSIONAL (identidade, contacto, equipa) ──────
+// Tudo aqui alimenta a futura página pública (Fase B) — logótipo, cores,
+// sobre, contactos, redes sociais e a equipa que trabalha na conta.
+async function renderProfile(main){
+  const p = currentTenantDoc?.profile || {};
   const b = currentTenantDoc?.branding || {};
+  const social = p.social || {};
+
+  const teamSnap = await getDocs(collection(db, 'tenants', tenantId, 'teamMembers'));
+  let teamHtml = '';
+  teamSnap.forEach(d=>{
+    const m = d.data();
+    teamHtml += `<div class="appt-item row">
+      <div><strong>${escapeHtml(m.name)}</strong><div class="muted">${escapeHtml(m.role||'')}</div></div>
+      <button class="danger" onclick="deleteTeamMember('${d.id}')">Remover</button>
+    </div>`;
+  });
+  if (!teamHtml) teamHtml = '<p class="muted">Ainda sem membros de equipa.</p>';
+
   main.innerHTML = `
-    <h2>Configurações</h2>
+    <h2>Perfil do negócio</h2>
     <div class="card">
       <label>Nome do negócio</label>
-      <input id="setName" value="${escapeHtml(currentTenantDoc?.businessName||'')}">
+      <input id="pfBusinessName" value="${escapeHtml(currentTenantDoc?.businessName||'')}">
+      <label>Frase de apresentação (tagline curta)</label>
+      <input id="pfTagline" value="${escapeHtml(p.tagline||'')}" placeholder="ex: Cuidado que transforma">
+      <label>Sobre / apresentação</label>
+      <textarea id="pfAbout" rows="4">${escapeHtml(p.about||'')}</textarea>
+      <label>URL do logótipo</label>
+      <input id="pfLogoUrl" value="${escapeHtml(b.logoUrl||'')}" placeholder="https://...">
+      <p class="muted">Sem armazenamento próprio de imagens nesta versão — use um serviço como postimages.org e cole o link direto da imagem aqui.</p>
       <label>Cor principal</label>
-      <input id="setColor" type="color" value="${b.primaryColor||'#2f6f5e'}">
-      <button class="primary" onclick="saveSettings()">Guardar</button>
-      <p class="muted" style="margin-top:10px;">
-        Plano atual: <strong>${escapeHtml(currentTenantDoc?.plan||'—')}</strong> ·
-        Estado: <strong>${escapeHtml(currentTenantDoc?.status||'—')}</strong>
-      </p>
-    </div>`;
+      <input id="pfColor" type="color" value="${b.primaryColor||'#2f6f5e'}">
+    </div>
+
+    <div class="card">
+      <h2>Contactos</h2>
+      <label>Telefone</label><input id="pfPhone" value="${escapeHtml(p.phone||'')}">
+      <label>Email</label><input id="pfEmail" value="${escapeHtml(p.email||'')}">
+      <label>Morada (se atender presencialmente)</label><input id="pfAddress" value="${escapeHtml(p.address||'')}">
+    </div>
+
+    <div class="card">
+      <h2>Redes sociais</h2>
+      <label>Facebook</label><input id="pfFacebook" value="${escapeHtml(social.facebook||'')}" placeholder="https://facebook.com/...">
+      <label>Instagram</label><input id="pfInstagram" value="${escapeHtml(social.instagram||'')}" placeholder="https://instagram.com/...">
+      <label>WhatsApp</label><input id="pfWhatsapp" value="${escapeHtml(social.whatsapp||'')}" placeholder="https://wa.me/351...">
+      <label>Website</label><input id="pfWebsite" value="${escapeHtml(social.website||'')}" placeholder="https://...">
+      <button class="primary" onclick="saveProfile()">Guardar perfil</button>
+    </div>
+
+    <div class="card">
+      <h2>Equipa</h2>
+      <p class="muted" style="margin-bottom:10px;">Membros mostrados publicamente (não são contas de login — para isso use "Convidar colaborador" nas Configurações).</p>
+      ${teamHtml}
+      <div style="margin-top:12px;">
+        <label>Nome</label><input id="tmName">
+        <label>Função/especialidade</label><input id="tmRole" placeholder="ex: Fisioterapeuta, Nutricionista">
+        <label>URL da foto (opcional)</label><input id="tmPhotoUrl">
+        <label>Breve bio</label><textarea id="tmBio" rows="2"></textarea>
+        <button class="primary" onclick="addTeamMember()">Adicionar à equipa</button>
+      </div>
+    </div>
+  `;
 }
 
-window.saveSettings = async function(){
+window.saveProfile = async function(){
   await updateDoc(doc(db, 'tenants', tenantId), {
-    businessName: document.getElementById('setName').value.trim(),
-    'branding.primaryColor': document.getElementById('setColor').value
+    businessName: document.getElementById('pfBusinessName').value.trim(),
+    'branding.logoUrl': document.getElementById('pfLogoUrl').value.trim(),
+    'branding.primaryColor': document.getElementById('pfColor').value,
+    profile: {
+      tagline: document.getElementById('pfTagline').value.trim(),
+      about: document.getElementById('pfAbout').value.trim(),
+      phone: document.getElementById('pfPhone').value.trim(),
+      email: document.getElementById('pfEmail').value.trim(),
+      address: document.getElementById('pfAddress').value.trim(),
+      social: {
+        facebook: document.getElementById('pfFacebook').value.trim(),
+        instagram: document.getElementById('pfInstagram').value.trim(),
+        whatsapp: document.getElementById('pfWhatsapp').value.trim(),
+        website: document.getElementById('pfWebsite').value.trim()
+      }
+    }
   });
-  toast('Configurações guardadas.');
   const snap = await getDoc(doc(db, 'tenants', tenantId));
   currentTenantDoc = snap.data();
   applyBranding();
+  toast('Perfil guardado.');
 };
+
+window.addTeamMember = async function(){
+  const name = document.getElementById('tmName').value.trim();
+  if (!name){ toast('Nome é obrigatório.', true); return; }
+  await addDoc(collection(db, 'tenants', tenantId, 'teamMembers'), {
+    name,
+    role: document.getElementById('tmRole').value.trim(),
+    photoUrl: document.getElementById('tmPhotoUrl').value.trim(),
+    bio: document.getElementById('tmBio').value.trim(),
+    createdAt: serverTimestamp()
+  });
+  toast('Membro adicionado.');
+  renderView('profile');
+};
+
+window.deleteTeamMember = async function(id){
+  if (!confirm('Remover este membro da equipa?')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'teamMembers', id));
+  renderView('profile');
+};
+
+// ── FORMAÇÕES / EVENTOS (com inscrição) ─────────────────────────────────
+async function renderTrainings(main){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'trainings'));
+  let rows = '';
+  for (const d of snap.docs){
+    const t = d.data();
+    const signupsSnap = await getDocs(query(
+      collection(db, 'public_training_signups'),
+      where('trainingId', '==', d.id), where('status', '==', 'confirmed')
+    ));
+    const link = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-formacao-publica.html')}?t=${currentTenantDoc.slug}&tr=${d.id}`;
+    rows += `<div class="appt-item">
+      <div class="row">
+        <div><strong>${escapeHtml(t.title)}</strong>
+          <div class="muted">${escapeHtml(t.date||'')} · ${signupsSnap.size}/${t.capacity||'∞'} inscritos</div>
+        </div>
+        <button class="danger" onclick="deleteTraining('${d.id}')">Remover</button>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <input readonly value="${link}" style="font-size:11px;margin:0;">
+        <button class="ghost" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar</button>
+      </div>
+    </div>`;
+  }
+  if (!rows) rows = '<p class="muted">Ainda sem formações/eventos criados.</p>';
+
+  main.innerHTML = `
+    <div class="row"><h2>Formações / Eventos</h2></div>
+    <div class="card">${rows}</div>
+    <div class="card">
+      <h2>Nova formação/evento</h2>
+      <label>Título</label><input id="trTitle">
+      <label>Descrição</label><textarea id="trDescription" rows="3"></textarea>
+      <label>Data (texto livre, ex: "14 Set, 18h")</label><input id="trDate">
+      <label>Preço (€, deixe 0 se gratuito)</label><input id="trPrice" type="number" step="0.01" value="0">
+      <label>Capacidade (vagas, deixe vazio se ilimitado)</label><input id="trCapacity" type="number">
+      <button class="primary" onclick="saveTraining()">Criar</button>
+    </div>
+  `;
+}
+
+window.saveTraining = async function(){
+  const title = document.getElementById('trTitle').value.trim();
+  if (!title){ toast('Dê um título à formação.', true); return; }
+  await addDoc(collection(db, 'tenants', tenantId, 'trainings'), {
+    title,
+    description: document.getElementById('trDescription').value.trim(),
+    date: document.getElementById('trDate').value.trim(),
+    price: parseFloat(document.getElementById('trPrice').value || '0'),
+    capacity: document.getElementById('trCapacity').value ? parseInt(document.getElementById('trCapacity').value, 10) : null,
+    createdAt: serverTimestamp()
+  });
+  toast('Formação criada.');
+  renderView('trainings');
+};
+
+window.deleteTraining = async function(id){
+  if (!confirm('Remover esta formação? O link de inscrição deixa de funcionar.')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'trainings', id));
+  renderView('trainings');
+};
+
+// ── CONFIGURAÇÕES ────────────────────────────────────────────────────
+function renderSettings(main){
+  main.innerHTML = `
+    <h2>Configurações da conta</h2>
+    <div class="card">
+      <p class="muted">Plano atual: <strong>${escapeHtml(currentTenantDoc?.plan||'—')}</strong></p>
+      <p class="muted">Estado: <strong>${escapeHtml(currentTenantDoc?.status||'—')}</strong></p>
+      <p class="muted" style="margin-top:10px;">Para alterar nome, logótipo, cores, contactos e equipa, use a aba <strong>Perfil</strong>.</p>
+    </div>`;
+}
 
 </script>
 </body>

@@ -60,6 +60,7 @@ const db = getFirestore(app);
 const params = new URLSearchParams(window.location.search);
 const tenantSlug = params.get('t');
 const formId = params.get('f');
+const linkedPatientId = params.get('p'); // opcional — link personalizado enviado a um paciente já existente
 let tenantId = null;
 let formData = null;
 const answersState = {};
@@ -173,6 +174,7 @@ window.__submitForm = async function(){
       tenantId,
       formId,
       formTitle: formData.title,
+      patientId: linkedPatientId || null,
       respondentName: name,
       respondentContact: document.getElementById('respContact').value.trim(),
       answers,
@@ -183,7 +185,7 @@ window.__submitForm = async function(){
       <div class="card confirm-box">
         <div class="check">✅</div>
         <h2>Respostas enviadas!</h2>
-        <p class="muted" style="margin-top:8px;">Obrigado. O seu terapeuta vai analisar as suas respostas.</p>
+        <p class="muted" style="margin-top:8px;">Obrigado. O profissional responsável vai analisar as suas respostas.</p>
       </div>`;
   }catch(e){
     console.error(e);
