@@ -6,7 +6,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" id="dynamicManifest" href="manifest.json">
+<link rel="apple-touch-icon" id="appleTouchIcon" href="">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="SaúdeCare">
@@ -181,6 +182,7 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   applyBranding();
+  applyDynamicManifestAdmin();
   renderView('agenda');
 });
 
@@ -197,6 +199,37 @@ function applyBranding(){
   if (currentTenantDoc?.branding?.primaryColor){
     document.documentElement.style.setProperty('--primary', currentTenantDoc.branding.primaryColor);
   }
+}
+
+// ── "Adicionar ao ecrã principal" com identidade do subscritor ─────────
+// Mesmo mecanismo da página pública — gera um manifest à medida no
+// browser, para o subscritor poder instalar o SEU painel com o nome e
+// logótipo do seu próprio negócio, não com o nome genérico "SaúdeCare".
+function applyDynamicManifestAdmin(){
+  const businessName = currentTenantDoc?.businessName || 'SaúdeCare';
+  const logoUrl = currentTenantDoc?.branding?.logoUrl || '';
+  document.title = businessName;
+
+  if (logoUrl){
+    const appleIcon = document.getElementById('appleTouchIcon');
+    if (appleIcon) appleIcon.href = logoUrl;
+  }
+
+  const manifestObj = {
+    name: businessName + ' — Painel',
+    short_name: businessName.slice(0, 12),
+    start_url: window.location.href,
+    display: 'standalone',
+    background_color: '#f6f8f7',
+    theme_color: currentTenantDoc?.branding?.primaryColor || '#2f6f5e',
+    icons: logoUrl ? [
+      { src: logoUrl, sizes: '192x192', type: 'image/png' },
+      { src: logoUrl, sizes: '512x512', type: 'image/png' }
+    ] : []
+  };
+  const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
+  const manifestLink = document.getElementById('dynamicManifest');
+  if (manifestLink) manifestLink.href = URL.createObjectURL(blob);
 }
 
 // ── Audit log — escrito antes de qualquer operação sensível em pacientes ──
