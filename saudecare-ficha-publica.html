@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ficha de Avaliação</title>
+<style>
+  :root{ --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#fff; --text:#1a2b26; --muted:#6b7d76; }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{background:var(--bg);color:var(--text);}
+  .hero{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:28px 20px;text-align:center;}
+  .hero h1{font-size:22px;margin-bottom:6px;}
+  .hero p{opacity:.9;font-size:14px;}
+  .wrap{max-width:520px;margin:0 auto;padding:16px;}
+  .card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px;}
+  input,textarea{width:100%;padding:10px;border:1px solid #d8e0dc;border-radius:8px;margin-bottom:14px;font-size:14px;}
+  .scale{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+  .scale button{width:36px;height:36px;border-radius:8px;border:1px solid #d8e0dc;background:#fff;cursor:pointer;}
+  .scale button.selected{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .choice{display:block;border:1px solid #d8e0dc;border-radius:8px;padding:10px;margin-bottom:8px;cursor:pointer;}
+  .choice.selected{border-color:var(--primary);background:#eef6f2;}
+  button.primary{background:var(--primary);color:#fff;border:none;width:100%;padding:13px;border-radius:10px;font-size:15px;cursor:pointer;margin-top:6px;}
+  .muted{color:var(--muted);font-size:12px;}
+  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a2b26;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:999;}
+  .confirm-box{text-align:center;padding:30px 16px;}
+  .confirm-box .check{font-size:44px;margin-bottom:10px;}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1 id="formTitle">A carregar…</h1>
+  <p id="formDesc"></p>
+</div>
+
+<div class="wrap">
+  <div id="content"></div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, collection, addDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const params = new URLSearchParams(window.location.search);
+const tenantSlug = params.get('t');
+const formId = params.get('f');
+let tenantId = null;
+let formData = null;
+const answersState = {};
+
+function toast(msg, isError=false){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#b3413a' : '#1a2b26';
+  t.style.display = 'block';
+  setTimeout(()=> t.style.display='none', 3200);
+}
+function escapeHtml(str){
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+async function loadForm(){
+  if (!tenantSlug || !formId){
+    document.getElementById('formTitle').textContent = 'Ligação inválida';
+    document.getElementById('formDesc').textContent = 'Falta informação no link (?t=&f=).';
+    return;
+  }
+  const profileSnap = await getDoc(doc(db, 'public_tenant_profiles', tenantSlug));
+  if (!profileSnap.exists()){
+    document.getElementById('formTitle').textContent = 'Página não encontrada';
+    return;
+  }
+  tenantId = profileSnap.data().tenantId;
+
+  const formSnap = await getDoc(doc(db, 'tenants', tenantId, 'forms', formId));
+  if (!formSnap.exists()){
+    document.getElementById('formTitle').textContent = 'Ficha não encontrada';
+    return;
+  }
+  formData = formSnap.data();
+  document.getElementById('formTitle').textContent = formData.title;
+  document.getElementById('formDesc').textContent = formData.description || '';
+  renderForm();
+}
+
+function renderForm(){
+  const content = document.getElementById('content');
+  let questionsHtml = formData.questions.map(q => {
+    if (q.type === 'text'){
+      return `<div class="card">
+        <label>${escapeHtml(q.label)}</label>
+        <textarea rows="3" oninput="window.__setAnswer('${q.id}', this.value)"></textarea>
+      </div>`;
+    }
+    if (q.type === 'scale'){
+      let btns = '';
+      for (let i=0; i<=10; i++){
+        btns += `<button type="button" id="scale-${q.id}-${i}" onclick="window.__setScale('${q.id}', ${i})">${i}</button>`;
+      }
+      return `<div class="card">
+        <label>${escapeHtml(q.label)}</label>
+        <div class="scale">${btns}</div>
+      </div>`;
+    }
+    if (q.type === 'multiple_choice'){
+      let opts = (q.options||[]).map((o, idx) => `
+        <div class="choice" id="choice-${q.id}-${idx}" onclick="window.__setChoice('${q.id}', ${idx}, '${escapeHtml(o).replace(/'/g,"\\'")}')">${escapeHtml(o)}</div>
+      `).join('');
+      return `<div class="card"><label>${escapeHtml(q.label)}</label>${opts}</div>`;
+    }
+    return '';
+  }).join('');
+
+  content.innerHTML = `
+    <div class="card">
+      <label>O seu nome</label>
+      <input id="respName" placeholder="Nome completo">
+      <label>Telefone ou email (para vos ser possível identificar a resposta)</label>
+      <input id="respContact" placeholder="Telefone ou email">
+    </div>
+    ${questionsHtml}
+    <button class="primary" onclick="window.__submitForm()">Enviar respostas</button>
+  `;
+}
+
+window.__setAnswer = function(qId, value){ answersState[qId] = value; };
+
+window.__setScale = function(qId, value){
+  for (let i=0;i<=10;i++){
+    const el = document.getElementById(`scale-${qId}-${i}`);
+    if (el) el.classList.toggle('selected', i===value);
+  }
+  answersState[qId] = value;
+};
+
+window.__setChoice = function(qId, idx, label){
+  formData.questions.find(q=>q.id===qId).options.forEach((_, i) => {
+    const el = document.getElementById(`choice-${qId}-${i}`);
+    if (el) el.classList.toggle('selected', i===idx);
+  });
+  answersState[qId] = label;
+};
+
+window.__submitForm = async function(){
+  const name = document.getElementById('respName').value.trim();
+  if (!name){ toast('Indique o seu nome.', true); return; }
+
+  const answers = formData.questions.map(q => ({
+    questionId: q.id,
+    label: q.label,
+    value: answersState[q.id] ?? ''
+  }));
+
+  try{
+    await addDoc(collection(db, 'public_form_responses'), {
+      tenantId,
+      formId,
+      formTitle: formData.title,
+      respondentName: name,
+      respondentContact: document.getElementById('respContact').value.trim(),
+      answers,
+      status: 'pending_review',
+      submittedAt: serverTimestamp()
+    });
+    document.getElementById('content').innerHTML = `
+      <div class="card confirm-box">
+        <div class="check">✅</div>
+        <h2>Respostas enviadas!</h2>
+        <p class="muted" style="margin-top:8px;">Obrigado. O seu terapeuta vai analisar as suas respostas.</p>
+      </div>`;
+  }catch(e){
+    console.error(e);
+    toast('Não foi possível enviar. Tente novamente.', true);
+  }
+};
+
+loadForm();
+</script>
+</body>
+</html>

@@ -66,6 +66,8 @@
     <button data-view="agenda" class="active">📅 Agenda</button>
     <button data-view="patients">🗂️ Pacientes</button>
     <button data-view="services">🩺 Serviços</button>
+    <button data-view="protocols">📋 Protocolos</button>
+    <button data-view="forms">📝 Fichas</button>
     <button data-view="settings">⚙️ Configurações</button>
     <button data-view="logout" style="margin-top:20px;color:#f2b8b8;">Sair</button>
   </nav>
@@ -209,6 +211,8 @@ function renderView(view){
   if (view === 'agenda') renderAgenda(main);
   else if (view === 'patients') renderPatients(main);
   else if (view === 'services') renderServices(main);
+  else if (view === 'protocols') renderProtocols(main);
+  else if (view === 'forms') renderForms(main);
   else if (view === 'settings') renderSettings(main);
 }
 
@@ -361,6 +365,22 @@ window.viewPatient = async function(patientId){
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
   if (!snap.exists()){ toast('Paciente não encontrado.', true); return; }
   const p = snap.data();
+
+  const reportsSnap = await getDocs(query(
+    collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'),
+    orderBy('generatedAt', 'desc')
+  ));
+  let reportsHtml = '';
+  reportsSnap.forEach(rd => {
+    const r = rd.data();
+    const date = r.generatedAt?.toDate ? r.generatedAt.toDate().toLocaleDateString('pt-PT') : '';
+    reportsHtml += `<div class="appt-item row">
+      <div><strong>${escapeHtml(r.protocolName)}</strong><div class="muted">${date}</div></div>
+      <button class="ghost" onclick="viewSavedReport('${patientId}','${rd.id}')">Ver</button>
+    </div>`;
+  });
+  if (!reportsHtml) reportsHtml = '<p class="muted">Ainda sem relatórios para este paciente.</p>';
+
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
       <h2>${escapeHtml(p.fullName)}</h2>
@@ -368,6 +388,23 @@ window.viewPatient = async function(patientId){
       <label style="margin-top:10px;">Notas clínicas</label>
       <textarea rows="5" readonly>${escapeHtml(p.clinicalNotes||'')}</textarea>
       <p class="muted">Consentimento: ${p.consentGivenAt ? 'registado' : 'em falta'}</p>
+      <button class="primary" style="margin-top:10px;" onclick="startGuidedConsultation('${patientId}', '${escapeHtml(p.fullName)}')">🧭 Iniciar consulta guiada</button>
+    </div>
+    <div class="card">
+      <h2>Relatórios anteriores</h2>
+      ${reportsHtml}
+    </div>`;
+};
+
+window.viewSavedReport = async function(patientId, reportId){
+  await logAudit('report_viewed', patientId);
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'reports', reportId));
+  if (!snap.exists()){ toast('Relatório não encontrado.', true); return; }
+  const r = snap.data();
+  document.getElementById('patientFormContainer').innerHTML = `
+    <div class="card">
+      <h2>${escapeHtml(r.protocolName)}</h2>
+      <textarea rows="14" readonly>${escapeHtml(r.reportText)}</textarea>
     </div>`;
 };
 
@@ -421,6 +458,432 @@ window.deleteService = async function(serviceId){
   if (!confirm('Remover este serviço?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'services', serviceId));
   renderView('services');
+};
+
+// ── FICHAS / QUESTIONÁRIOS (tipo Google Forms) ──────────────────────────
+// O subscritor cria uma ficha com perguntas de vários tipos. Gera-se um
+// link único que envia ao paciente (sem precisar de conta). As respostas
+// entram numa fila de "pendentes" e o subscritor associa manualmente a
+// um paciente — evita escrita direta e não autenticada nos dados internos.
+let formQuestionsDraft = [];
+
+async function renderForms(main){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'forms'));
+  let rows = '';
+  snap.forEach(d=>{
+    const f = d.data();
+    const link = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-ficha-publica.html')}?t=${currentTenantDoc.slug}&f=${d.id}`;
+    rows += `<div class="appt-item">
+      <div class="row">
+        <div><strong>${escapeHtml(f.title)}</strong><div class="muted">${(f.questions||[]).length} perguntas</div></div>
+        <div>
+          <button class="ghost" onclick="editForm('${d.id}')">Editar</button>
+          <button class="danger" onclick="deleteForm('${d.id}')">Remover</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <input readonly value="${link}" style="font-size:11px;margin:0;" onclick="this.select()">
+        <button class="ghost" onclick="navigator.clipboard.writeText('${link}');toast('Link copiado.')">Copiar</button>
+      </div>
+    </div>`;
+  });
+  if (!rows) rows = '<p class="muted">Ainda sem fichas. Crie a sua primeira ficha de avaliação.</p>';
+
+  const pendingSnap = await getDocs(query(
+    collection(db, 'public_form_responses'),
+    where('tenantId', '==', tenantId), where('status', '==', 'pending_review')
+  ));
+  let pendingHtml = '';
+  pendingSnap.forEach(d=>{
+    const r = d.data();
+    pendingHtml += `<div class="appt-item row">
+      <div><strong>${escapeHtml(r.respondentName||'Sem nome')}</strong>
+        <div class="muted">${escapeHtml(r.formTitle||'')}</div></div>
+      <button class="primary" onclick="openAttachResponse('${d.id}')">Associar a paciente</button>
+    </div>`;
+  });
+  if (!pendingHtml) pendingHtml = '<p class="muted">Sem respostas pendentes.</p>';
+
+  main.innerHTML = `
+    <div class="row"><h2>Fichas / Questionários</h2>
+      <button class="primary" onclick="openNewForm()">+ Nova ficha</button>
+    </div>
+    <div class="card">${rows}</div>
+    <h2 style="margin:16px 0 10px;">Respostas pendentes de associar</h2>
+    <div class="card">${pendingHtml}</div>
+    <div id="formBuilderContainer"></div>
+    <div id="attachContainer"></div>
+  `;
+}
+
+window.openNewForm = function(){
+  formQuestionsDraft = [];
+  renderFormBuilder(null, '', '', []);
+};
+
+window.editForm = async function(id){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'forms', id));
+  if (!snap.exists()){ toast('Ficha não encontrada.', true); return; }
+  const f = snap.data();
+  formQuestionsDraft = (f.questions || []).map(q => ({...q}));
+  renderFormBuilder(id, f.title, f.description||'', formQuestionsDraft);
+};
+
+function renderFormBuilder(editId, title, description, questions){
+  formQuestionsDraft = questions;
+  const qTypeLabel = { text: 'Texto livre', multiple_choice: 'Escolha múltipla', scale: 'Escala (0-10)' };
+
+  let qHtml = formQuestionsDraft.map((q, idx) => `
+    <div class="card" style="margin-bottom:8px;">
+      <label>Pergunta</label>
+      <input value="${escapeHtml(q.label||'')}" onchange="updateFormQuestion(${idx},'label',this.value)">
+      <label>Tipo de resposta</label>
+      <select onchange="changeQuestionType(${idx}, this.value)">
+        <option value="text" ${q.type==='text'?'selected':''}>Texto livre</option>
+        <option value="multiple_choice" ${q.type==='multiple_choice'?'selected':''}>Escolha múltipla</option>
+        <option value="scale" ${q.type==='scale'?'selected':''}>Escala (0-10)</option>
+      </select>
+      ${q.type==='multiple_choice' ? `
+        <label>Opções (uma por linha)</label>
+        <textarea rows="3" onchange="updateFormQuestion(${idx},'optionsRaw',this.value)">${escapeHtml((q.options||[]).join('\n'))}</textarea>
+      ` : ''}
+      <button class="danger" onclick="removeFormQuestion(${idx})">Remover pergunta</button>
+    </div>
+  `).join('');
+
+  document.getElementById('formBuilderContainer').innerHTML = `
+    <div class="card">
+      <h2>${editId ? 'Editar ficha' : 'Nova ficha'}</h2>
+      <label>Título da ficha</label>
+      <input id="formTitle" value="${escapeHtml(title)}" placeholder="ex: Questionário Pré-Consulta">
+      <label>Descrição (opcional, o paciente vê isto)</label>
+      <textarea id="formDescription" rows="2">${escapeHtml(description)}</textarea>
+      <div id="formQuestionsList">${qHtml || '<p class="muted">Ainda sem perguntas.</p>'}</div>
+      <button class="ghost" onclick="addFormQuestion()">+ Adicionar pergunta</button>
+      <div style="margin-top:14px;">
+        <button class="primary" onclick="saveForm('${editId||''}')">Guardar ficha</button>
+      </div>
+    </div>`;
+}
+
+window.updateFormQuestion = function(idx, field, value){
+  if (field === 'optionsRaw'){
+    formQuestionsDraft[idx].options = value.split('\n').map(s=>s.trim()).filter(Boolean);
+  } else {
+    formQuestionsDraft[idx][field] = value;
+  }
+};
+
+window.changeQuestionType = function(idx, type){
+  formQuestionsDraft[idx].type = type;
+  if (type === 'multiple_choice' && !formQuestionsDraft[idx].options) formQuestionsDraft[idx].options = [];
+  renderFormBuilder(window.__editingFormId,
+    document.getElementById('formTitle')?.value || '',
+    document.getElementById('formDescription')?.value || '', formQuestionsDraft);
+};
+
+window.addFormQuestion = function(){
+  formQuestionsDraft.push({ id: 'q'+Date.now(), type: 'text', label: '' });
+  renderFormBuilder(window.__editingFormId,
+    document.getElementById('formTitle')?.value || '',
+    document.getElementById('formDescription')?.value || '', formQuestionsDraft);
+};
+
+window.removeFormQuestion = function(idx){
+  formQuestionsDraft.splice(idx, 1);
+  renderFormBuilder(window.__editingFormId,
+    document.getElementById('formTitle')?.value || '',
+    document.getElementById('formDescription')?.value || '', formQuestionsDraft);
+};
+
+window.saveForm = async function(editId){
+  const title = document.getElementById('formTitle').value.trim();
+  if (!title){ toast('Dê um título à ficha.', true); return; }
+  const validQuestions = formQuestionsDraft.filter(q => q.label && q.label.trim());
+  if (!validQuestions.length){ toast('Adicione pelo menos uma pergunta.', true); return; }
+
+  const data = {
+    title,
+    description: document.getElementById('formDescription').value.trim(),
+    questions: validQuestions,
+    updatedAt: serverTimestamp()
+  };
+  if (editId){
+    await updateDoc(doc(db, 'tenants', tenantId, 'forms', editId), data);
+  } else {
+    data.createdAt = serverTimestamp();
+    await addDoc(collection(db, 'tenants', tenantId, 'forms'), data);
+  }
+  toast('Ficha guardada.');
+  renderView('forms');
+};
+
+window.deleteForm = async function(id){
+  if (!confirm('Remover esta ficha? O link deixa de funcionar.')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'forms', id));
+  renderView('forms');
+};
+
+// ── Associar resposta pendente a um paciente ────────────────────────────
+window.openAttachResponse = async function(responseId){
+  const snap = await getDoc(doc(db, 'public_form_responses', responseId));
+  if (!snap.exists()){ toast('Resposta não encontrada.', true); return; }
+  const r = snap.data();
+
+  const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+  let opts = '<option value="">Criar novo paciente com este nome...</option>';
+  patientsSnap.forEach(d => opts += `<option value="${d.id}">${escapeHtml(d.data().fullName)}</option>`);
+
+  let answersHtml = (r.answers || []).map(a => `
+    <div class="appt-item"><strong>${escapeHtml(a.label)}</strong><div class="muted">${escapeHtml(String(a.value))}</div></div>
+  `).join('');
+
+  document.getElementById('attachContainer').innerHTML = `
+    <div class="card">
+      <h2>Associar resposta — ${escapeHtml(r.respondentName||'Sem nome')}</h2>
+      <div style="max-height:240px;overflow:auto;margin-bottom:10px;">${answersHtml}</div>
+      <label>Associar ao paciente</label>
+      <select id="attachPatientSelect">${opts}</select>
+      <button class="primary" onclick="confirmAttach('${responseId}')">Confirmar</button>
+    </div>`;
+  window.__pendingResponseData = r;
+};
+
+window.confirmAttach = async function(responseId){
+  const r = window.__pendingResponseData;
+  let patientId = document.getElementById('attachPatientSelect').value;
+
+  if (!patientId){
+    const newPatientRef = await addDoc(collection(db, 'tenants', tenantId, 'patients'), {
+      fullName: r.respondentName || 'Paciente sem nome',
+      phone: r.respondentPhone || '',
+      email: r.respondentEmail || '',
+      clinicalNotes: '',
+      consentGivenAt: serverTimestamp(),
+      consentVersion: 'form-v1',
+      createdBy: currentUser.uid
+    });
+    patientId = newPatientRef.id;
+  }
+
+  await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'formResponses'), {
+    formId: r.formId,
+    formTitle: r.formTitle,
+    answers: r.answers,
+    submittedAt: r.submittedAt || serverTimestamp()
+  });
+
+  await updateDoc(doc(db, 'public_form_responses', responseId), { status: 'processed' });
+  await logAudit('form_response_attached', patientId);
+
+  toast('Resposta associada ao paciente.');
+  renderView('forms');
+};
+
+// ── PROTOCOLOS (métodos de atendimento personalizados) ─────────────────
+// Um protocolo é uma lista de "pontos" definidos pelo próprio subscritor.
+// Cada ponto tem um nome e uma fonte de conhecimento (o que aquele ponto
+// significa quando é detetado/marcado). O relatório final é montado a
+// partir do conhecimento dos pontos marcados numa consulta — sem IA nesta
+// versão: 100% previsível, sem custo extra, sem dados a saírem da conta.
+async function renderProtocols(main){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'protocols'));
+  let rows = '';
+  snap.forEach(d=>{
+    const p = d.data();
+    rows += `<div class="appt-item row">
+      <div><strong>${escapeHtml(p.name)}</strong>
+        <div class="muted">${(p.points||[]).length} pontos definidos</div>
+      </div>
+      <div>
+        <button class="ghost" onclick="editProtocol('${d.id}')">Editar</button>
+        <button class="danger" onclick="deleteProtocol('${d.id}')">Remover</button>
+      </div>
+    </div>`;
+  });
+  if (!rows) rows = '<p class="muted">Ainda sem protocolos. Crie o seu primeiro método de atendimento.</p>';
+
+  main.innerHTML = `
+    <div class="row"><h2>Protocolos / Métodos de Atendimento</h2>
+      <button class="primary" onclick="openNewProtocol()">+ Novo protocolo</button>
+    </div>
+    <p class="muted" style="margin-bottom:10px;">
+      Um protocolo é o seu próprio método (ex: "7 Pontos Vitais"). Cada ponto
+      que definir tem um nome e o significado que só é usado para montar o
+      relatório quando esse ponto for marcado numa consulta.
+    </p>
+    <div class="card">${rows}</div>
+    <div id="protocolFormContainer"></div>
+  `;
+}
+
+let protocolPointsDraft = [];
+
+window.openNewProtocol = function(editId){
+  protocolPointsDraft = [];
+  renderProtocolForm(editId || null, '', []);
+};
+
+window.editProtocol = async function(id){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'protocols', id));
+  if (!snap.exists()){ toast('Protocolo não encontrado.', true); return; }
+  const p = snap.data();
+  protocolPointsDraft = (p.points || []).map(pt => ({...pt}));
+  renderProtocolForm(id, p.name, protocolPointsDraft);
+};
+
+function renderProtocolForm(editId, name, points){
+  protocolPointsDraft = points;
+  let pointsHtml = protocolPointsDraft.map((pt, idx) => `
+    <div class="card" style="margin-bottom:8px;">
+      <label>Nome do ponto</label>
+      <input value="${escapeHtml(pt.name||'')}" onchange="updateProtocolPoint(${idx}, 'name', this.value)">
+      <label>Fonte de conhecimento (o que significa quando detetado)</label>
+      <textarea rows="3" onchange="updateProtocolPoint(${idx}, 'knowledgeText', this.value)">${escapeHtml(pt.knowledgeText||'')}</textarea>
+      <button class="danger" onclick="removeProtocolPoint(${idx})">Remover ponto</button>
+    </div>
+  `).join('');
+
+  document.getElementById('protocolFormContainer').innerHTML = `
+    <div class="card">
+      <h2>${editId ? 'Editar protocolo' : 'Novo protocolo'}</h2>
+      <label>Nome do protocolo</label>
+      <input id="protoName" value="${escapeHtml(name)}" placeholder="ex: Deteção de 7 Pontos Vitais">
+      <div id="protoPointsList">${pointsHtml || '<p class="muted">Ainda sem pontos. Adicione o primeiro.</p>'}</div>
+      <button class="ghost" onclick="addProtocolPoint()">+ Adicionar ponto</button>
+      <div style="margin-top:14px;">
+        <button class="primary" onclick="saveProtocol('${editId||''}')">Guardar protocolo</button>
+      </div>
+    </div>`;
+}
+
+window.updateProtocolPoint = function(idx, field, value){
+  protocolPointsDraft[idx][field] = value;
+};
+
+window.addProtocolPoint = function(){
+  protocolPointsDraft.push({ name: '', knowledgeText: '' });
+  renderProtocolForm(document.getElementById('protoName') ? window.__editingProtocolId : null,
+    document.getElementById('protoName')?.value || '', protocolPointsDraft);
+};
+
+window.removeProtocolPoint = function(idx){
+  protocolPointsDraft.splice(idx, 1);
+  renderProtocolForm(window.__editingProtocolId,
+    document.getElementById('protoName')?.value || '', protocolPointsDraft);
+};
+
+window.saveProtocol = async function(editId){
+  const name = document.getElementById('protoName').value.trim();
+  if (!name){ toast('Dê um nome ao protocolo.', true); return; }
+  const validPoints = protocolPointsDraft.filter(p => p.name && p.name.trim());
+  if (!validPoints.length){ toast('Adicione pelo menos um ponto com nome.', true); return; }
+
+  const data = { name, points: validPoints, updatedAt: serverTimestamp() };
+  if (editId){
+    await updateDoc(doc(db, 'tenants', tenantId, 'protocols', editId), data);
+  } else {
+    data.createdAt = serverTimestamp();
+    await addDoc(collection(db, 'tenants', tenantId, 'protocols'), data);
+  }
+  toast('Protocolo guardado.');
+  renderView('protocols');
+};
+
+window.deleteProtocol = async function(id){
+  if (!confirm('Remover este protocolo? Relatórios já gerados com ele não são afetados.')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'protocols', id));
+  renderView('protocols');
+};
+
+// ── CONSULTA GUIADA — usar um protocolo com um paciente concreto ───────
+window.startGuidedConsultation = async function(patientId, patientName){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'protocols'));
+  let opts = '<option value="">Selecionar protocolo...</option>';
+  const protocols = {};
+  snap.forEach(d => { protocols[d.id] = d.data(); opts += `<option value="${d.id}">${escapeHtml(d.data().name)}</option>`; });
+
+  if (snap.empty){
+    toast('Crie um protocolo primeiro, em "Protocolos".', true);
+    return;
+  }
+
+  document.getElementById('patientFormContainer').innerHTML = `
+    <div class="card">
+      <h2>Consulta guiada — ${escapeHtml(patientName)}</h2>
+      <label>Protocolo</label>
+      <select id="guidedProtocolSelect" onchange="renderGuidedPoints('${patientId}', '${escapeHtml(patientName)}')">${opts}</select>
+      <div id="guidedPointsArea"></div>
+    </div>`;
+  window.__guidedProtocols = protocols;
+};
+
+window.renderGuidedPoints = function(patientId, patientName){
+  const protoId = document.getElementById('guidedProtocolSelect').value;
+  const area = document.getElementById('guidedPointsArea');
+  if (!protoId){ area.innerHTML=''; return; }
+  const proto = window.__guidedProtocols[protoId];
+  window.__currentGuidedProtoId = protoId;
+  window.__currentGuidedProtoName = proto.name;
+
+  area.innerHTML = proto.points.map((pt, idx) => `
+    <div class="card" style="margin:8px 0;">
+      <label style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="ptCheck${idx}" style="width:auto;margin:0;">
+        <strong>${escapeHtml(pt.name)}</strong>
+      </label>
+      <label style="margin-top:6px;">Nota desta sessão (opcional)</label>
+      <textarea id="ptNote${idx}" rows="2" placeholder="Observações específicas desta consulta..."></textarea>
+    </div>
+  `).join('') + `<button class="primary" onclick="generateReport('${patientId}', '${escapeHtml(patientName)}')">Gerar relatório</button>`;
+};
+
+window.generateReport = async function(patientId, patientName){
+  const protoId = window.__currentGuidedProtoId;
+  const proto = window.__guidedProtocols[protoId];
+  const detectedPoints = [];
+
+  proto.points.forEach((pt, idx) => {
+    const checked = document.getElementById(`ptCheck${idx}`)?.checked;
+    if (checked){
+      const note = document.getElementById(`ptNote${idx}`)?.value.trim() || '';
+      detectedPoints.push({ name: pt.name, knowledgeText: pt.knowledgeText, note });
+    }
+  });
+
+  if (!detectedPoints.length){
+    toast('Marque pelo menos um ponto para gerar o relatório.', true);
+    return;
+  }
+
+  // Montagem do relatório: texto legível, ponto a ponto, sem IA — usa
+  // exatamente a fonte de conhecimento que o subscritor definiu.
+  let reportText = `Relatório de Consulta — ${proto.name}\n`;
+  reportText += `Paciente: ${patientName}\n`;
+  reportText += `Data: ${new Date().toLocaleDateString('pt-PT')}\n\n`;
+  detectedPoints.forEach(p => {
+    reportText += `• ${p.name}\n${p.knowledgeText}\n`;
+    if (p.note) reportText += `Nota da sessão: ${p.note}\n`;
+    reportText += `\n`;
+  });
+
+  await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
+    protocolId: protoId,
+    protocolName: proto.name,
+    points: detectedPoints,
+    reportText,
+    generatedAt: serverTimestamp(),
+    generatedBy: currentUser.uid
+  });
+  await logAudit('report_generated', patientId);
+
+  document.getElementById('patientFormContainer').innerHTML = `
+    <div class="card">
+      <h2>Relatório gerado</h2>
+      <textarea rows="14" readonly>${escapeHtml(reportText)}</textarea>
+      <p class="muted" style="margin-top:8px;">Guardado na ficha do paciente. Copie o texto acima para enviar por email/WhatsApp.</p>
+    </div>`;
+  toast('Relatório gerado e guardado.');
 };
 
 // ── CONFIGURAÇÕES ────────────────────────────────────────────────────
