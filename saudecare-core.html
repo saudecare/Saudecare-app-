@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SaúdeCare">
 <title>SaúdeCare</title>
 <style>
   :root{
@@ -1128,7 +1135,10 @@ async function renderProfile(main){
     testimonialsHtml += `<div class="appt-item row">
       <div><strong>${escapeHtml(t.name)}</strong> <span class="muted">${'★'.repeat(t.rating||5)}</span>
         <div class="muted">${escapeHtml(t.text)}</div></div>
-      <button class="danger" onclick="deleteTestimonial('${d.id}')">Remover</button>
+      <div>
+        <button class="ghost" onclick="editTestimonial('${d.id}')">Editar</button>
+        <button class="danger" onclick="deleteTestimonial('${d.id}')">Remover</button>
+      </div>
     </div>`;
   });
   if (!testimonialsHtml) testimonialsHtml = '<p class="muted">Ainda sem testemunhos.</p>';

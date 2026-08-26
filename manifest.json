@@ -1,0 +1,9 @@
+{
+  "name": "SaúdeCare",
+  "short_name": "SaúdeCare",
+  "start_url": "./saudecare-core.html",
+  "display": "standalone",
+  "background_color": "#f6f8f7",
+  "theme_color": "#2f6f5e",
+  "description": "Plataforma para profissionais de saúde e terapeutas"
+}
