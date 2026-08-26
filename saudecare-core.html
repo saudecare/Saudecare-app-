@@ -86,7 +86,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc,
-  deleteDoc, query, where, orderBy, serverTimestamp, Timestamp
+  deleteDoc, setDoc, query, where, orderBy, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ── CONFIGURAÇÃO — substituir pelos valores reais do projeto Firebase ──
@@ -1097,6 +1097,18 @@ async function renderProfile(main){
   });
   if (!teamHtml) teamHtml = '<p class="muted">Ainda sem membros de equipa.</p>';
 
+  const testimonialsSnap = await getDocs(collection(db, 'tenants', tenantId, 'testimonials'));
+  let testimonialsHtml = '';
+  testimonialsSnap.forEach(d=>{
+    const t = d.data();
+    testimonialsHtml += `<div class="appt-item row">
+      <div><strong>${escapeHtml(t.name)}</strong> <span class="muted">${'★'.repeat(t.rating||5)}</span>
+        <div class="muted">${escapeHtml(t.text)}</div></div>
+      <button class="danger" onclick="deleteTestimonial('${d.id}')">Remover</button>
+    </div>`;
+  });
+  if (!testimonialsHtml) testimonialsHtml = '<p class="muted">Ainda sem testemunhos.</p>';
+
   main.innerHTML = `
     <h2>Perfil do negócio</h2>
     <div class="card">
@@ -1141,32 +1153,66 @@ async function renderProfile(main){
         <button class="primary" onclick="addTeamMember()">Adicionar à equipa</button>
       </div>
     </div>
+
+    <div class="card">
+      <h2>Testemunhos / Feedback</h2>
+      <p class="muted" style="margin-bottom:10px;">Escreva testemunhos que recebeu (por WhatsApp, redes sociais, etc.) — aparecem na página inicial.</p>
+      ${testimonialsHtml}
+      <div style="margin-top:12px;">
+        <label>Nome do cliente</label><input id="tsName">
+        <label>Testemunho</label><textarea id="tsText" rows="3"></textarea>
+        <label>Classificação (1-5)</label><input id="tsRating" type="number" min="1" max="5" value="5">
+        <button class="primary" onclick="addTestimonial()">Adicionar testemunho</button>
+      </div>
+    </div>
   `;
 }
 
 window.saveProfile = async function(){
-  await updateDoc(doc(db, 'tenants', tenantId), {
-    businessName: document.getElementById('pfBusinessName').value.trim(),
-    'branding.logoUrl': document.getElementById('pfLogoUrl').value.trim(),
-    'branding.primaryColor': document.getElementById('pfColor').value,
-    profile: {
-      tagline: document.getElementById('pfTagline').value.trim(),
-      about: document.getElementById('pfAbout').value.trim(),
-      phone: document.getElementById('pfPhone').value.trim(),
-      email: document.getElementById('pfEmail').value.trim(),
-      address: document.getElementById('pfAddress').value.trim(),
-      social: {
-        facebook: document.getElementById('pfFacebook').value.trim(),
-        instagram: document.getElementById('pfInstagram').value.trim(),
-        whatsapp: document.getElementById('pfWhatsapp').value.trim(),
-        website: document.getElementById('pfWebsite').value.trim()
-      }
+  const profileData = {
+    tagline: document.getElementById('pfTagline').value.trim(),
+    about: document.getElementById('pfAbout').value.trim(),
+    phone: document.getElementById('pfPhone').value.trim(),
+    email: document.getElementById('pfEmail').value.trim(),
+    address: document.getElementById('pfAddress').value.trim(),
+    social: {
+      facebook: document.getElementById('pfFacebook').value.trim(),
+      instagram: document.getElementById('pfInstagram').value.trim(),
+      whatsapp: document.getElementById('pfWhatsapp').value.trim(),
+      website: document.getElementById('pfWebsite').value.trim()
     }
+  };
+  const businessName = document.getElementById('pfBusinessName').value.trim();
+  const logoUrl = document.getElementById('pfLogoUrl').value.trim();
+  const primaryColor = document.getElementById('pfColor').value;
+
+  await updateDoc(doc(db, 'tenants', tenantId), {
+    businessName,
+    'branding.logoUrl': logoUrl,
+    'branding.primaryColor': primaryColor,
+    profile: profileData
   });
+
+  // Espelha os campos públicos para public_tenant_profiles, usado pela
+  // página inicial, funil de marcações e fichas — sem isto, nada do que
+  // o subscritor edita aqui chegaria a ser visto pelos clientes.
+  await setDoc(doc(db, 'public_tenant_profiles', currentTenantDoc.slug), {
+    tenantId,
+    businessName,
+    tagline: profileData.tagline,
+    about: profileData.about,
+    branding: { logoUrl, primaryColor },
+    phone: profileData.phone,
+    email: profileData.email,
+    address: profileData.address,
+    social: profileData.social,
+    legalTexts: currentTenantDoc?.legalTexts || {}
+  }, { merge: true });
+
   const snap = await getDoc(doc(db, 'tenants', tenantId));
   currentTenantDoc = snap.data();
   applyBranding();
-  toast('Perfil guardado.');
+  toast('Perfil guardado e publicado.');
 };
 
 window.addTeamMember = async function(){
@@ -1186,6 +1232,25 @@ window.addTeamMember = async function(){
 window.deleteTeamMember = async function(id){
   if (!confirm('Remover este membro da equipa?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'teamMembers', id));
+  renderView('profile');
+};
+
+window.addTestimonial = async function(){
+  const name = document.getElementById('tsName').value.trim();
+  const text = document.getElementById('tsText').value.trim();
+  if (!name || !text){ toast('Preencha nome e testemunho.', true); return; }
+  await addDoc(collection(db, 'tenants', tenantId, 'testimonials'), {
+    name, text,
+    rating: parseInt(document.getElementById('tsRating').value || '5', 10),
+    createdAt: serverTimestamp()
+  });
+  toast('Testemunho adicionado.');
+  renderView('profile');
+};
+
+window.deleteTestimonial = async function(id){
+  if (!confirm('Remover este testemunho?')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'testimonials', id));
   renderView('profile');
 };
 
