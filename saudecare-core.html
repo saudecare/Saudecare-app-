@@ -579,7 +579,10 @@ async function renderServices(main){
       <div><strong>${escapeHtml(s.name)}</strong> <span class="muted">${s.durationMinutes}min · ${s.price}€${s.category ? ' · '+escapeHtml(s.category) : ''}</span>
         ${s.description ? `<div class="muted">${escapeHtml(s.description)}</div>` : ''}
       </div>
-      <button class="danger" onclick="deleteService('${d.id}')">Remover</button>
+      <div>
+        <button class="ghost" onclick="editService('${d.id}')">Editar</button>
+        <button class="danger" onclick="deleteService('${d.id}')">Remover</button>
+      </div>
     </div>`;
   });
   if (!rows) rows = '<p class="muted">Ainda sem serviços.</p>';
@@ -587,29 +590,47 @@ async function renderServices(main){
   main.innerHTML = `
     <div class="row"><h2>Serviços</h2></div>
     <div class="card">${rows}</div>
+    <div id="serviceFormContainer"></div>
+  `;
+  renderServiceForm(null, {});
+}
+
+function renderServiceForm(editId, s){
+  document.getElementById('serviceFormContainer').innerHTML = `
     <div class="card">
-      <h2>Novo serviço</h2>
-      <label>Nome</label><input id="sName">
-      <label>Categoria (opcional, ex: "Fisioterapia", "Nutrição")</label><input id="sCategory">
-      <label>Descrição (o cliente vê isto na página pública)</label><textarea id="sDescription" rows="2"></textarea>
-      <label>Duração (min)</label><input id="sDuration" type="number" value="50">
-      <label>Preço (€)</label><input id="sPrice" type="number" step="0.01">
-      <button class="primary" onclick="saveService()">Adicionar</button>
+      <h2>${editId ? 'Editar serviço' : 'Novo serviço'}</h2>
+      <label>Nome</label><input id="sName" value="${escapeHtml(s.name||'')}">
+      <label>Categoria (opcional, ex: "Fisioterapia", "Nutrição")</label><input id="sCategory" value="${escapeHtml(s.category||'')}">
+      <label>Descrição (o cliente vê isto na página pública)</label><textarea id="sDescription" rows="2">${escapeHtml(s.description||'')}</textarea>
+      <label>Duração (min)</label><input id="sDuration" type="number" value="${s.durationMinutes||50}">
+      <label>Preço (€)</label><input id="sPrice" type="number" step="0.01" value="${s.price||''}">
+      <button class="primary" onclick="saveService('${editId||''}')">${editId?'Guardar alterações':'Adicionar'}</button>
     </div>`;
 }
 
-window.saveService = async function(){
+window.editService = async function(id){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'services', id));
+  if (!snap.exists()){ toast('Serviço não encontrado.', true); return; }
+  renderServiceForm(id, snap.data());
+};
+
+window.saveService = async function(editId){
   const name = document.getElementById('sName').value.trim();
   if (!name){ toast('Nome é obrigatório.', true); return; }
-  await addDoc(collection(db, 'tenants', tenantId, 'services'), {
+  const data = {
     name,
     category: document.getElementById('sCategory').value.trim(),
     description: document.getElementById('sDescription').value.trim(),
     durationMinutes: parseInt(document.getElementById('sDuration').value || '50', 10),
-    price: parseFloat(document.getElementById('sPrice').value || '0'),
-    active: true
-  });
-  toast('Serviço adicionado.');
+    price: parseFloat(document.getElementById('sPrice').value || '0')
+  };
+  if (editId){
+    await updateDoc(doc(db, 'tenants', tenantId, 'services', editId), data);
+  } else {
+    data.active = true;
+    await addDoc(collection(db, 'tenants', tenantId, 'services'), data);
+  }
+  toast('Serviço guardado.');
   renderView('services');
 };
 
@@ -1092,7 +1113,10 @@ async function renderProfile(main){
     const m = d.data();
     teamHtml += `<div class="appt-item row">
       <div><strong>${escapeHtml(m.name)}</strong><div class="muted">${escapeHtml(m.role||'')}</div></div>
-      <button class="danger" onclick="deleteTeamMember('${d.id}')">Remover</button>
+      <div>
+        <button class="ghost" onclick="editTeamMember('${d.id}')">Editar</button>
+        <button class="danger" onclick="deleteTeamMember('${d.id}')">Remover</button>
+      </div>
     </div>`;
   });
   if (!teamHtml) teamHtml = '<p class="muted">Ainda sem membros de equipa.</p>';
@@ -1146,11 +1170,12 @@ async function renderProfile(main){
       <p class="muted" style="margin-bottom:10px;">Membros mostrados publicamente (não são contas de login — para isso use "Convidar colaborador" nas Configurações).</p>
       ${teamHtml}
       <div style="margin-top:12px;">
-        <label>Nome</label><input id="tmName">
-        <label>Função/especialidade</label><input id="tmRole" placeholder="ex: Fisioterapeuta, Nutricionista">
-        <label>URL da foto (opcional)</label><input id="tmPhotoUrl">
-        <label>Breve bio</label><textarea id="tmBio" rows="2"></textarea>
-        <button class="primary" onclick="addTeamMember()">Adicionar à equipa</button>
+        <label>Nome</label><input id="tmName" value="${escapeHtml(window.__editingTeamMember?.name||'')}">
+        <label>Função/especialidade</label><input id="tmRole" placeholder="ex: Fisioterapeuta, Nutricionista" value="${escapeHtml(window.__editingTeamMember?.role||'')}">
+        <label>URL da foto (opcional)</label><input id="tmPhotoUrl" value="${escapeHtml(window.__editingTeamMember?.photoUrl||'')}">
+        <label>Breve bio</label><textarea id="tmBio" rows="2">${escapeHtml(window.__editingTeamMember?.bio||'')}</textarea>
+        <button class="primary" onclick="saveTeamMember('${window.__editingTeamMemberId||''}')">${window.__editingTeamMemberId?'Guardar alterações':'Adicionar à equipa'}</button>
+        ${window.__editingTeamMemberId ? `<button class="ghost" onclick="window.__editingTeamMemberId=null;window.__editingTeamMember=null;renderView('profile')">Cancelar edição</button>` : ''}
       </div>
     </div>
 
@@ -1159,10 +1184,11 @@ async function renderProfile(main){
       <p class="muted" style="margin-bottom:10px;">Escreva testemunhos que recebeu (por WhatsApp, redes sociais, etc.) — aparecem na página inicial.</p>
       ${testimonialsHtml}
       <div style="margin-top:12px;">
-        <label>Nome do cliente</label><input id="tsName">
-        <label>Testemunho</label><textarea id="tsText" rows="3"></textarea>
-        <label>Classificação (1-5)</label><input id="tsRating" type="number" min="1" max="5" value="5">
-        <button class="primary" onclick="addTestimonial()">Adicionar testemunho</button>
+        <label>Nome do cliente</label><input id="tsName" value="${escapeHtml(window.__editingTestimonial?.name||'')}">
+        <label>Testemunho</label><textarea id="tsText" rows="3">${escapeHtml(window.__editingTestimonial?.text||'')}</textarea>
+        <label>Classificação (1-5)</label><input id="tsRating" type="number" min="1" max="5" value="${window.__editingTestimonial?.rating||5}">
+        <button class="primary" onclick="saveTestimonial('${window.__editingTestimonialId||''}')">${window.__editingTestimonialId?'Guardar alterações':'Adicionar testemunho'}</button>
+        ${window.__editingTestimonialId ? `<button class="ghost" onclick="window.__editingTestimonialId=null;window.__editingTestimonial=null;renderView('profile')">Cancelar edição</button>` : ''}
       </div>
     </div>
   `;
@@ -1215,17 +1241,32 @@ window.saveProfile = async function(){
   toast('Perfil guardado e publicado.');
 };
 
-window.addTeamMember = async function(){
+window.editTeamMember = async function(id){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'teamMembers', id));
+  if (!snap.exists()){ toast('Membro não encontrado.', true); return; }
+  window.__editingTeamMemberId = id;
+  window.__editingTeamMember = snap.data();
+  renderView('profile');
+};
+
+window.saveTeamMember = async function(editId){
   const name = document.getElementById('tmName').value.trim();
   if (!name){ toast('Nome é obrigatório.', true); return; }
-  await addDoc(collection(db, 'tenants', tenantId, 'teamMembers'), {
+  const data = {
     name,
     role: document.getElementById('tmRole').value.trim(),
     photoUrl: document.getElementById('tmPhotoUrl').value.trim(),
-    bio: document.getElementById('tmBio').value.trim(),
-    createdAt: serverTimestamp()
-  });
-  toast('Membro adicionado.');
+    bio: document.getElementById('tmBio').value.trim()
+  };
+  if (editId){
+    await updateDoc(doc(db, 'tenants', tenantId, 'teamMembers', editId), data);
+  } else {
+    data.createdAt = serverTimestamp();
+    await addDoc(collection(db, 'tenants', tenantId, 'teamMembers'), data);
+  }
+  window.__editingTeamMemberId = null;
+  window.__editingTeamMember = null;
+  toast('Membro guardado.');
   renderView('profile');
 };
 
@@ -1235,16 +1276,28 @@ window.deleteTeamMember = async function(id){
   renderView('profile');
 };
 
-window.addTestimonial = async function(){
+window.editTestimonial = async function(id){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'testimonials', id));
+  if (!snap.exists()){ toast('Testemunho não encontrado.', true); return; }
+  window.__editingTestimonialId = id;
+  window.__editingTestimonial = snap.data();
+  renderView('profile');
+};
+
+window.saveTestimonial = async function(editId){
   const name = document.getElementById('tsName').value.trim();
   const text = document.getElementById('tsText').value.trim();
   if (!name || !text){ toast('Preencha nome e testemunho.', true); return; }
-  await addDoc(collection(db, 'tenants', tenantId, 'testimonials'), {
-    name, text,
-    rating: parseInt(document.getElementById('tsRating').value || '5', 10),
-    createdAt: serverTimestamp()
-  });
-  toast('Testemunho adicionado.');
+  const data = { name, text, rating: parseInt(document.getElementById('tsRating').value || '5', 10) };
+  if (editId){
+    await updateDoc(doc(db, 'tenants', tenantId, 'testimonials', editId), data);
+  } else {
+    data.createdAt = serverTimestamp();
+    await addDoc(collection(db, 'tenants', tenantId, 'testimonials'), data);
+  }
+  window.__editingTestimonialId = null;
+  window.__editingTestimonial = null;
+  toast('Testemunho guardado.');
   renderView('profile');
 };
 
@@ -1270,7 +1323,10 @@ async function renderTrainings(main){
         <div><strong>${escapeHtml(t.title)}</strong>
           <div class="muted">${escapeHtml(t.date||'')} · ${signupsSnap.size}/${t.capacity||'∞'} inscritos</div>
         </div>
-        <button class="danger" onclick="deleteTraining('${d.id}')">Remover</button>
+        <div>
+          <button class="ghost" onclick="editTraining('${d.id}')">Editar</button>
+          <button class="danger" onclick="deleteTraining('${d.id}')">Remover</button>
+        </div>
       </div>
       <div class="row" style="margin-top:8px;">
         <input readonly value="${link}" style="font-size:11px;margin:0;">
@@ -1283,30 +1339,47 @@ async function renderTrainings(main){
   main.innerHTML = `
     <div class="row"><h2>Formações / Eventos</h2></div>
     <div class="card">${rows}</div>
-    <div class="card">
-      <h2>Nova formação/evento</h2>
-      <label>Título</label><input id="trTitle">
-      <label>Descrição</label><textarea id="trDescription" rows="3"></textarea>
-      <label>Data (texto livre, ex: "14 Set, 18h")</label><input id="trDate">
-      <label>Preço (€, deixe 0 se gratuito)</label><input id="trPrice" type="number" step="0.01" value="0">
-      <label>Capacidade (vagas, deixe vazio se ilimitado)</label><input id="trCapacity" type="number">
-      <button class="primary" onclick="saveTraining()">Criar</button>
-    </div>
+    <div id="trainingFormContainer"></div>
   `;
+  renderTrainingForm(null, {});
 }
 
-window.saveTraining = async function(){
+function renderTrainingForm(editId, t){
+  document.getElementById('trainingFormContainer').innerHTML = `
+    <div class="card">
+      <h2>${editId ? 'Editar formação/evento' : 'Nova formação/evento'}</h2>
+      <label>Título</label><input id="trTitle" value="${escapeHtml(t.title||'')}">
+      <label>Descrição</label><textarea id="trDescription" rows="3">${escapeHtml(t.description||'')}</textarea>
+      <label>Data (texto livre, ex: "14 Set, 18h")</label><input id="trDate" value="${escapeHtml(t.date||'')}">
+      <label>Preço (€, deixe 0 se gratuito)</label><input id="trPrice" type="number" step="0.01" value="${t.price||0}">
+      <label>Capacidade (vagas, deixe vazio se ilimitado)</label><input id="trCapacity" type="number" value="${t.capacity||''}">
+      <button class="primary" onclick="saveTraining('${editId||''}')">${editId?'Guardar alterações':'Criar'}</button>
+    </div>`;
+}
+
+window.editTraining = async function(id){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'trainings', id));
+  if (!snap.exists()){ toast('Formação não encontrada.', true); return; }
+  renderTrainingForm(id, snap.data());
+};
+
+window.saveTraining = async function(editId){
   const title = document.getElementById('trTitle').value.trim();
   if (!title){ toast('Dê um título à formação.', true); return; }
-  await addDoc(collection(db, 'tenants', tenantId, 'trainings'), {
+  const data = {
     title,
     description: document.getElementById('trDescription').value.trim(),
     date: document.getElementById('trDate').value.trim(),
     price: parseFloat(document.getElementById('trPrice').value || '0'),
-    capacity: document.getElementById('trCapacity').value ? parseInt(document.getElementById('trCapacity').value, 10) : null,
-    createdAt: serverTimestamp()
-  });
-  toast('Formação criada.');
+    capacity: document.getElementById('trCapacity').value ? parseInt(document.getElementById('trCapacity').value, 10) : null
+  };
+  if (editId){
+    await updateDoc(doc(db, 'tenants', tenantId, 'trainings', editId), data);
+  } else {
+    data.createdAt = serverTimestamp();
+    await addDoc(collection(db, 'tenants', tenantId, 'trainings'), data);
+  }
+  toast('Formação guardada.');
   renderView('trainings');
 };
 

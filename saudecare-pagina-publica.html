@@ -158,20 +158,39 @@ function renderServices(snap, slug){
 function renderTeam(snap){
   if (snap.empty) return;
   let html = '<div class="team-grid">';
+  const teamData = {};
   snap.forEach(d=>{
+    teamData[d.id] = d.data();
     const m = d.data();
     const photo = m.photoUrl
       ? `<img src="${escapeHtml(m.photoUrl)}" alt="${escapeHtml(m.name)}">`
       : `<div style="width:64px;height:64px;border-radius:50%;background:#e4ede9;margin:0 auto 8px;"></div>`;
-    html += `<div class="card team-card">
+    html += `<div class="card team-card" style="cursor:pointer;" onclick="window.__showTeamDetail('${d.id}')">
       ${photo}
       <strong>${escapeHtml(m.name)}</strong>
       <div class="muted">${escapeHtml(m.role||'')}</div>
     </div>`;
   });
-  html += '</div>';
+  html += '</div><div id="teamDetailArea"></div>';
   document.getElementById('teamSection').innerHTML = `<h2 class="section-title">Equipa</h2>${html}`;
+  window.__teamData = teamData;
 }
+
+window.__showTeamDetail = function(memberId){
+  const m = window.__teamData[memberId];
+  const area = document.getElementById('teamDetailArea');
+  const photo = m.photoUrl
+    ? `<img src="${escapeHtml(m.photoUrl)}" alt="${escapeHtml(m.name)}" style="width:88px;height:88px;border-radius:50%;object-fit:cover;margin-bottom:10px;">`
+    : '';
+  area.innerHTML = `
+    <div class="card" style="text-align:center;">
+      ${photo}
+      <h3>${escapeHtml(m.name)}</h3>
+      <p class="muted">${escapeHtml(m.role||'')}</p>
+      ${m.bio ? `<p style="margin-top:10px;">${escapeHtml(m.bio)}</p>` : ''}
+    </div>`;
+  area.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
 
 function renderTrainings(snap, slug){
   if (snap.empty) return;
