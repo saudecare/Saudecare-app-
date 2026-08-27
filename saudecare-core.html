@@ -726,6 +726,7 @@ window.deleteService = async function(serviceId){
 let formQuestionsDraft = [];
 
 async function renderForms(main){
+  try{
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'forms'));
   let rows = '';
   snap.forEach(d=>{
@@ -781,6 +782,10 @@ async function renderForms(main){
     <div id="formBuilderContainer"></div>
     <div id="attachContainer"></div>
   `;
+  }catch(e){
+    console.error('Erro ao carregar fichas:', e);
+    main.innerHTML = `<p class="muted" style="color:var(--danger);">Não foi possível carregar as fichas. Erro: ${escapeHtml(e.message||'desconhecido')}</p>`;
+  }
 }
 
 window.openNewForm = function(){
@@ -1396,45 +1401,56 @@ window.deleteTestimonial = async function(id){
 
 // ── FORMAÇÕES / EVENTOS (com inscrição) ─────────────────────────────────
 async function renderTrainings(main){
-  const snap = await getDocs(collection(db, 'tenants', tenantId, 'trainings'));
-  let rows = '';
-  for (const d of snap.docs){
-    const t = d.data();
-    const signupsSnap = await getDocs(query(
-      collection(db, 'public_training_signups'),
-      where('trainingId', '==', d.id), where('status', '==', 'confirmed')
-    ));
-    let signupsListHtml = '';
-    signupsSnap.forEach(sd => {
-      const s = sd.data();
-      signupsListHtml += `<div class="muted" style="padding:4px 0;">• ${escapeHtml(s.name)} — ${escapeHtml(s.contact||'')}</div>`;
-    });
-    const link = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-formacao-publica.html')}?t=${currentTenantDoc.slug}&tr=${d.id}`;
-    rows += `<div class="appt-item">
-      <div class="row">
-        <div><strong>${escapeHtml(t.title)}</strong>
-          <div class="muted">${escapeHtml(t.date||'')} · ${signupsSnap.size}/${t.capacity||'∞'} inscritos</div>
+  try{
+    const snap = await getDocs(collection(db, 'tenants', tenantId, 'trainings'));
+    let rows = '';
+    for (const d of snap.docs){
+      const t = d.data();
+      // O filtro por tenantId é obrigatório aqui — as regras de segurança
+      // exigem-no explicitamente na própria consulta (não só nos dados),
+      // senão o Firestore recusa o pedido inteiro em vez de devolver
+      // resultados filtrados.
+      const signupsSnap = await getDocs(query(
+        collection(db, 'public_training_signups'),
+        where('tenantId', '==', tenantId),
+        where('trainingId', '==', d.id),
+        where('status', '==', 'confirmed')
+      ));
+      let signupsListHtml = '';
+      signupsSnap.forEach(sd => {
+        const s = sd.data();
+        signupsListHtml += `<div class="muted" style="padding:4px 0;">• ${escapeHtml(s.name)} — ${escapeHtml(s.contact||'')}</div>`;
+      });
+      const link = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-formacao-publica.html')}?t=${currentTenantDoc.slug}&tr=${d.id}`;
+      rows += `<div class="appt-item">
+        <div class="row">
+          <div><strong>${escapeHtml(t.title)}</strong>
+            <div class="muted">${escapeHtml(t.date||'')} · ${signupsSnap.size}/${t.capacity||'∞'} inscritos</div>
+          </div>
+          <div>
+            <button class="ghost" onclick="editTraining('${d.id}')">Editar</button>
+            <button class="danger" onclick="deleteTraining('${d.id}')">Remover</button>
+          </div>
         </div>
-        <div>
-          <button class="ghost" onclick="editTraining('${d.id}')">Editar</button>
-          <button class="danger" onclick="deleteTraining('${d.id}')">Remover</button>
+        ${signupsListHtml ? `<div style="margin-top:8px;border-top:1px solid #eef2f0;padding-top:8px;">${signupsListHtml}</div>` : '<p class="muted" style="margin-top:8px;">Ainda sem inscrições.</p>'}
+        <div class="row" style="margin-top:8px;">
+          <input readonly value="${link}" style="font-size:11px;margin:0;">
+          <button class="ghost" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar</button>
         </div>
-      </div>
-      ${signupsListHtml ? `<div style="margin-top:8px;border-top:1px solid #eef2f0;padding-top:8px;">${signupsListHtml}</div>` : '<p class="muted" style="margin-top:8px;">Ainda sem inscrições.</p>'}
-      <div class="row" style="margin-top:8px;">
-        <input readonly value="${link}" style="font-size:11px;margin:0;">
-        <button class="ghost" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar</button>
-      </div>
-    </div>`;
-  }
-  if (!rows) rows = '<p class="muted">Ainda sem formações/eventos criados.</p>';
+      </div>`;
+    }
+    if (!rows) rows = '<p class="muted">Ainda sem formações/eventos criados.</p>';
 
-  main.innerHTML = `
-    <div class="row"><h2>Formações / Eventos</h2></div>
-    <div class="card">${rows}</div>
-    <div id="trainingFormContainer"></div>
-  `;
-  renderTrainingForm(null, {});
+    main.innerHTML = `
+      <div class="row"><h2>Formações / Eventos</h2></div>
+      <div class="card">${rows}</div>
+      <div id="trainingFormContainer"></div>
+    `;
+    renderTrainingForm(null, {});
+  }catch(e){
+    console.error('Erro ao carregar formações:', e);
+    main.innerHTML = `<p class="muted" style="color:var(--danger);">Não foi possível carregar as formações. Erro: ${escapeHtml(e.message||'desconhecido')}</p>`;
+  }
 }
 
 function renderTrainingForm(editId, t){
