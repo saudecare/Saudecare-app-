@@ -633,18 +633,33 @@ window.deletePatient = async function(patientId, name){
 // ── SERVIÇOS ─────────────────────────────────────────────────────────
 async function renderServices(main){
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'services'));
+  const services = [];
+  snap.forEach(d => services.push({ id: d.id, ...d.data() }));
+
+  // Agrupa por categoria — cada categoria mostra o ícone escolhido pelo
+  // subscritor (ou um genérico se ainda não escolheu nenhum).
+  const groups = {};
+  services.forEach(s => {
+    const cat = s.category || 'Sem categoria';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(s);
+  });
+
   let rows = '';
-  snap.forEach(d=>{
-    const s = d.data();
-    rows += `<div class="appt-item row">
-      <div><strong>${escapeHtml(s.name)}</strong> <span class="muted">${s.durationMinutes}min · ${s.price}€${s.category ? ' · '+escapeHtml(s.category) : ''}</span>
-        ${s.description ? `<div class="muted">${escapeHtml(s.description)}</div>` : ''}
-      </div>
-      <div>
-        <button class="ghost" onclick="editService('${d.id}')">Editar</button>
-        <button class="danger" onclick="deleteService('${d.id}')">Remover</button>
-      </div>
-    </div>`;
+  Object.keys(groups).sort().forEach(cat => {
+    const icon = groups[cat][0]?.categoryIcon || '🩺';
+    rows += `<h3 style="margin:14px 0 8px;">${icon} ${escapeHtml(cat)}</h3>`;
+    groups[cat].forEach(s => {
+      rows += `<div class="appt-item row">
+        <div><strong>${escapeHtml(s.name)}</strong> <span class="muted">${s.durationMinutes}min · ${s.price}€</span>
+          ${s.description ? `<div class="muted">${escapeHtml(s.description)}</div>` : ''}
+        </div>
+        <div>
+          <button class="ghost" onclick="editService('${s.id}')">Editar</button>
+          <button class="danger" onclick="deleteService('${s.id}')">Remover</button>
+        </div>
+      </div>`;
+    });
   });
   if (!rows) rows = '<p class="muted">Ainda sem serviços.</p>';
 
@@ -661,7 +676,8 @@ function renderServiceForm(editId, s){
     <div class="card">
       <h2>${editId ? 'Editar serviço' : 'Novo serviço'}</h2>
       <label>Nome</label><input id="sName" value="${escapeHtml(s.name||'')}">
-      <label>Categoria (opcional, ex: "Fisioterapia", "Nutrição")</label><input id="sCategory" value="${escapeHtml(s.category||'')}">
+      <label>Categoria (ex: "Reiki", "Fisioterapia", "Nutrição")</label><input id="sCategory" value="${escapeHtml(s.category||'')}">
+      <label>Ícone da categoria (emoji, ex: 🌿 🧘 💆 🦴)</label><input id="sCategoryIcon" value="${escapeHtml(s.categoryIcon||'')}" placeholder="🩺" maxlength="4">
       <label>Descrição (o cliente vê isto na página pública)</label><textarea id="sDescription" rows="2">${escapeHtml(s.description||'')}</textarea>
       <label>Duração (min)</label><input id="sDuration" type="number" value="${s.durationMinutes||50}">
       <label>Preço (€)</label><input id="sPrice" type="number" step="0.01" value="${s.price||''}">
@@ -681,6 +697,7 @@ window.saveService = async function(editId){
   const data = {
     name,
     category: document.getElementById('sCategory').value.trim(),
+    categoryIcon: document.getElementById('sCategoryIcon').value.trim(),
     description: document.getElementById('sDescription').value.trim(),
     durationMinutes: parseInt(document.getElementById('sDuration').value || '50', 10),
     price: parseFloat(document.getElementById('sPrice').value || '0')

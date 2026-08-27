@@ -180,17 +180,28 @@ function renderAbout(profile){
 
 function renderServices(snap, slug){
   if (snap.empty) return;
+  const services = [];
+  snap.forEach(d => services.push(d.data()));
+  const groups = {};
+  services.forEach(s => {
+    const cat = s.category || 'Serviços';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(s);
+  });
+
   let html = '';
-  snap.forEach(d=>{
-    const s = d.data();
-    html += `<div class="card service-card">
-      <div>
-        <strong>${escapeHtml(s.name)}</strong>
-        ${s.category ? `<div class="muted">${escapeHtml(s.category)}</div>` : ''}
-        ${s.description ? `<div class="muted">${escapeHtml(s.description)}</div>` : ''}
-      </div>
-      <div class="price">${s.price}€</div>
-    </div>`;
+  Object.keys(groups).sort().forEach(cat => {
+    const icon = groups[cat][0]?.categoryIcon || '🩺';
+    html += `<h3 style="margin:16px 0 8px;color:var(--primary-dark);">${icon} ${escapeHtml(cat)}</h3>`;
+    groups[cat].forEach(s => {
+      html += `<div class="card service-card">
+        <div>
+          <strong>${escapeHtml(s.name)}</strong>
+          ${s.description ? `<div class="muted">${escapeHtml(s.description)}</div>` : ''}
+        </div>
+        <div class="price">${s.price}€</div>
+      </div>`;
+    });
   });
   document.getElementById('servicesSection').innerHTML = `
     <h2 class="section-title">Serviços</h2>${html}

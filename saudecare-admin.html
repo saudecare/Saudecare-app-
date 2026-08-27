@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>SaúdeCare — Administração</title>
+<style>
+  :root{
+    --primary:#1f2d5c; --primary-dark:#141d3f; --bg:#f6f7fb; --card:#ffffff;
+    --text:#1a1d2b; --muted:#6b7080; --danger:#b3413a; --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{background:var(--bg);color:var(--text);}
+  #app{display:flex;min-height:100vh;}
+  nav{width:220px;background:var(--primary-dark);color:#fff;padding:20px 12px;flex-shrink:0;}
+  nav h1{font-size:18px;margin-bottom:4px;padding:0 8px;}
+  nav p{font-size:11px;opacity:.7;padding:0 8px;margin-bottom:20px;}
+  nav button{display:block;width:100%;text-align:left;background:none;border:none;color:#e4e6f2;
+    padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;margin-bottom:4px;}
+  nav button.active,nav button:hover{background:var(--primary);color:#fff;}
+  main{flex:1;padding:24px;max-width:1000px;}
+  .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  h2{margin-bottom:14px;font-size:20px;}
+  input,select,textarea{width:100%;padding:10px;border:1px solid #dcdfe8;border-radius:8px;
+    margin-bottom:10px;font-size:14px;}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
+  button.primary{background:var(--primary);color:#fff;border:none;padding:10px 18px;
+    border-radius:8px;cursor:pointer;font-size:14px;}
+  button.danger{background:var(--danger);color:#fff;border:none;padding:8px 14px;
+    border-radius:8px;cursor:pointer;font-size:13px;}
+  button.ghost{background:none;border:1px solid #dcdfe8;padding:8px 14px;border-radius:8px;cursor:pointer;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;}
+  .tenant-item{border-bottom:1px solid #eef0f5;padding:12px 0;}
+  .tenant-item:last-child{border-bottom:none;}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:#e4e6f2;color:var(--primary-dark);}
+  .badge.active{background:#dcf0e4;color:#1f6d3f;}
+  .badge.trial{background:#fff3cd;color:#8a5a00;}
+  .badge.suspended,.badge.cancelled{background:#f6e2e0;color:var(--danger);}
+  .muted{color:var(--muted);font-size:13px;}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;}
+  .stat-card{background:var(--card);border-radius:12px;padding:14px;text-align:center;}
+  .stat-card .num{font-size:26px;font-weight:700;color:var(--primary);}
+  #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;}
+  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1d2b;
+    color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:999;}
+  .hidden{display:none !important;}
+  @media(max-width:640px){
+    #app{flex-direction:column;}
+    nav{width:100%;display:flex;overflow-x:auto;padding:10px;}
+    nav h1,nav p{display:none;}
+    nav button{flex-shrink:0;margin-right:6px;margin-bottom:0;}
+    main{padding:14px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="card" style="max-width:340px;">
+  <h2>Administração — Entrar</h2>
+  <p class="muted" style="margin-bottom:14px;">Acesso restrito à equipa da plataforma SaúdeCare.</p>
+  <label>Email</label>
+  <input id="loginEmail" type="email" autocomplete="username">
+  <label>Palavra-passe</label>
+  <input id="loginPass" type="password" autocomplete="current-password">
+  <button class="primary" style="width:100%" onclick="doLogin()">Entrar</button>
+  <p id="loginError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+</div>
+
+<div id="app" class="hidden">
+  <nav>
+    <h1>SaúdeCare</h1>
+    <p>Administração da plataforma</p>
+    <button data-view="overview" class="active">📊 Visão geral</button>
+    <button data-view="tenants">🏢 Subscritores</button>
+    <button data-view="newTenant">➕ Novo subscritor</button>
+    <button data-view="logout" style="margin-top:20px;color:#f2b8b8;">Sair</button>
+  </nav>
+  <main id="mainView"></main>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc,
+  query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let allTenants = [];
+
+function toast(msg, isError=false){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#b3413a' : '#1a1d2b';
+  t.style.display = 'block';
+  setTimeout(()=> t.style.display='none', 3200);
+}
+function escapeHtml(str){
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+window.doLogin = async function(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  try{
+    await signInWithEmailAndPassword(auth, email, pass);
+  }catch(e){
+    errEl.textContent = 'Credenciais inválidas.';
+    console.error(e);
+  }
+};
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user){
+    currentUser = null;
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    return;
+  }
+
+  // Confirma que esta conta está autorizada como administradora da
+  // plataforma — sem isto, qualquer conta Firebase válida (ex: de um
+  // subscritor) poderia tentar abrir este painel.
+  const adminSnap = await getDoc(doc(db, 'platform_admins', user.uid));
+  if (!adminSnap.exists()){
+    toast('Esta conta não tem acesso de administração.', true);
+    await signOut(auth);
+    return;
+  }
+
+  currentUser = user;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  renderView('overview');
+});
+
+document.querySelectorAll('nav button[data-view]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if (btn.dataset.view === 'logout'){ signOut(auth); return; }
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderView(btn.dataset.view);
+  });
+});
+
+function renderView(view){
+  const main = document.getElementById('mainView');
+  main.innerHTML = '<p class="muted">A carregar…</p>';
+  if (view === 'overview') renderOverview(main);
+  else if (view === 'tenants') renderTenants(main);
+  else if (view === 'newTenant') renderNewTenant(main);
+}
+
+async function loadAllTenants(){
+  const snap = await getDocs(query(collection(db, 'tenants'), orderBy('businessName')));
+  allTenants = [];
+  snap.forEach(d => allTenants.push({ id: d.id, ...d.data() }));
+  return allTenants;
+}
+
+// ── VISÃO GERAL ──────────────────────────────────────────────────────
+async function renderOverview(main){
+  await loadAllTenants();
+  const counts = { trial: 0, active: 0, suspended: 0, cancelled: 0 };
+  allTenants.forEach(t => { if (counts[t.status] !== undefined) counts[t.status]++; });
+
+  main.innerHTML = `
+    <h2>Visão geral</h2>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num">${allTenants.length}</div><div class="muted">Total subscritores</div></div>
+      <div class="stat-card"><div class="num">${counts.trial}</div><div class="muted">Em teste</div></div>
+      <div class="stat-card"><div class="num">${counts.active}</div><div class="muted">Ativos</div></div>
+      <div class="stat-card"><div class="num">${counts.suspended + counts.cancelled}</div><div class="muted">Suspensos/Cancelados</div></div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <h2>Mais recentes</h2>
+      ${allTenants.slice(0, 5).map(t => `
+        <div class="tenant-item row">
+          <div><strong>${escapeHtml(t.businessName||t.id)}</strong><div class="muted">${escapeHtml(t.slug||'')}</div></div>
+          <span class="badge ${t.status}">${escapeHtml(t.status||'')}</span>
+        </div>
+      `).join('') || '<p class="muted">Ainda sem subscritores.</p>'}
+    </div>
+  `;
+}
+
+// ── LISTA DE SUBSCRITORES ────────────────────────────────────────────
+async function renderTenants(main){
+  await loadAllTenants();
+  let rows = allTenants.map(t => `
+    <div class="tenant-item">
+      <div class="row">
+        <div><strong>${escapeHtml(t.businessName||t.id)}</strong>
+          <div class="muted">${escapeHtml(t.slug||'')} · plano ${escapeHtml(t.plan||'—')}</div>
+        </div>
+        <span class="badge ${t.status}">${escapeHtml(t.status||'')}</span>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <button class="ghost" onclick="openTenantDetail('${t.id}')">Gerir</button>
+      </div>
+    </div>
+  `).join('');
+  if (!rows) rows = '<p class="muted">Ainda sem subscritores.</p>';
+
+  main.innerHTML = `
+    <h2>Subscritores</h2>
+    <div class="card">${rows}</div>
+    <div id="tenantDetailContainer"></div>
+  `;
+}
+
+window.openTenantDetail = function(tenantId){
+  const t = allTenants.find(x => x.id === tenantId);
+  if (!t) return;
+  document.getElementById('tenantDetailContainer').innerHTML = `
+    <div class="card">
+      <h2>${escapeHtml(t.businessName||t.id)}</h2>
+      <p class="muted">ID: ${escapeHtml(t.id)} · Dono (uid): ${escapeHtml(t.ownerUid||'—')}</p>
+      <label>Estado</label>
+      <select id="tdStatus">
+        <option value="trial" ${t.status==='trial'?'selected':''}>Em teste</option>
+        <option value="active" ${t.status==='active'?'selected':''}>Ativo</option>
+        <option value="suspended" ${t.status==='suspended'?'selected':''}>Suspenso</option>
+        <option value="cancelled" ${t.status==='cancelled'?'selected':''}>Cancelado</option>
+      </select>
+      <label>Plano</label>
+      <select id="tdPlan">
+        <option value="start" ${t.plan==='start'?'selected':''}>Start</option>
+        <option value="grow" ${t.plan==='grow'?'selected':''}>Grow</option>
+        <option value="pro" ${t.plan==='pro'?'selected':''}>Pro</option>
+        <option value="enterprise" ${t.plan==='enterprise'?'selected':''}>Enterprise</option>
+      </select>
+      <button class="primary" onclick="saveTenantChanges('${tenantId}')">Guardar alterações</button>
+    </div>`;
+};
+
+window.saveTenantChanges = async function(tenantId){
+  const status = document.getElementById('tdStatus').value;
+  const plan = document.getElementById('tdPlan').value;
+  await updateDoc(doc(db, 'tenants', tenantId), { status, plan });
+  toast('Subscritor atualizado.');
+  renderView('tenants');
+};
+
+// ── NOVO SUBSCRITOR ──────────────────────────────────────────────────
+function renderNewTenant(main){
+  main.innerHTML = `
+    <h2>Criar novo subscritor</h2>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px;">
+        Isto cria o registo do subscritor na base de dados. A conta de login
+        (email/password) continua a ter de ser criada à parte, na consola
+        Firebase → Authentication, até termos as Cloud Functions ativas
+        para automatizar esse passo também.
+      </p>
+      <label>Nome do negócio</label><input id="ntBusinessName">
+      <label>Slug (identificador do link público, sem espaços/acentos)</label><input id="ntSlug" placeholder="ex: joana-silva-fisio">
+      <label>Plano inicial</label>
+      <select id="ntPlan">
+        <option value="start">Start</option>
+        <option value="grow">Grow</option>
+        <option value="pro">Pro</option>
+      </select>
+      <label>UID do dono (obtém-se depois de criares a conta em Authentication)</label>
+      <input id="ntOwnerUid" placeholder="cola aqui o UID, ou deixa vazio e edita depois">
+      <button class="primary" onclick="createTenant()">Criar subscritor</button>
+    </div>
+  `;
+}
+
+window.createTenant = async function(){
+  const businessName = document.getElementById('ntBusinessName').value.trim();
+  const slug = document.getElementById('ntSlug').value.trim();
+  if (!businessName || !slug){ toast('Nome e slug são obrigatórios.', true); return; }
+
+  await addDoc(collection(db, 'tenants'), {
+    businessName,
+    slug,
+    status: 'trial',
+    plan: document.getElementById('ntPlan').value,
+    ownerUid: document.getElementById('ntOwnerUid').value.trim() || null,
+    createdAt: serverTimestamp(),
+    branding: {},
+    legalTexts: {}
+  });
+  toast('Subscritor criado. Agora crie a conta de login e atribua o tenantId (via setclaim).');
+  renderView('tenants');
+};
+</script>
+</body>
+</html>
