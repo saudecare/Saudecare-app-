@@ -66,6 +66,9 @@
   <input id="loginPass" type="password" autocomplete="current-password">
   <button class="primary" style="width:100%" onclick="doLogin()">Entrar</button>
   <p id="loginError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+  <p class="muted" style="margin-top:10px;text-align:center;">
+    <a href="#" onclick="doPasswordReset();return false;" style="color:var(--primary);">Esqueci-me da password</a>
+  </p>
 </div>
 
 <div id="app" class="hidden">
@@ -90,7 +93,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc,
@@ -140,6 +143,24 @@ window.doLogin = async function(){
     await signInWithEmailAndPassword(auth, email, pass);
   }catch(e){
     errEl.textContent = 'Credenciais inválidas ou conta inexistente.';
+    console.error(e);
+  }
+};
+
+window.doPasswordReset = async function(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const errEl = document.getElementById('loginError');
+  if (!email){
+    errEl.textContent = 'Escreva o seu email na caixa acima primeiro, depois toque em "Esqueci-me da password".';
+    return;
+  }
+  try{
+    await sendPasswordResetEmail(auth, email);
+    errEl.style.color = 'var(--primary)';
+    errEl.textContent = 'Email de recuperação enviado — verifique a caixa de entrada (e spam).';
+  }catch(e){
+    errEl.style.color = 'var(--danger)';
+    errEl.textContent = 'Não foi possível enviar. Confirme que o email está correto.';
     console.error(e);
   }
 };
@@ -1146,6 +1167,7 @@ async function renderProfile(main){
   const p = currentTenantDoc?.profile || {};
   const b = currentTenantDoc?.branding || {};
   const social = p.social || {};
+  const publicLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-pagina-publica.html')}?t=${currentTenantDoc.slug}`;
 
   const teamSnap = await getDocs(collection(db, 'tenants', tenantId, 'teamMembers'));
   let teamHtml = '';
@@ -1178,6 +1200,11 @@ async function renderProfile(main){
 
   main.innerHTML = `
     <h2>Perfil do negócio</h2>
+    <div class="card" style="border:2px solid var(--primary);">
+      <label>🔗 O seu link público — partilhe nas redes sociais, WhatsApp, etc.</label>
+      <input readonly value="${publicLink}" onclick="this.select()">
+      <button class="primary" onclick="navigator.clipboard.writeText('${publicLink}').then(()=>toast('Link copiado.'))">Copiar link público</button>
+    </div>
     <div class="card">
       <label>Nome do negócio</label>
       <input id="pfBusinessName" value="${escapeHtml(currentTenantDoc?.businessName||'')}">
@@ -1360,6 +1387,11 @@ async function renderTrainings(main){
       collection(db, 'public_training_signups'),
       where('trainingId', '==', d.id), where('status', '==', 'confirmed')
     ));
+    let signupsListHtml = '';
+    signupsSnap.forEach(sd => {
+      const s = sd.data();
+      signupsListHtml += `<div class="muted" style="padding:4px 0;">• ${escapeHtml(s.name)} — ${escapeHtml(s.contact||'')}</div>`;
+    });
     const link = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-formacao-publica.html')}?t=${currentTenantDoc.slug}&tr=${d.id}`;
     rows += `<div class="appt-item">
       <div class="row">
@@ -1371,6 +1403,7 @@ async function renderTrainings(main){
           <button class="danger" onclick="deleteTraining('${d.id}')">Remover</button>
         </div>
       </div>
+      ${signupsListHtml ? `<div style="margin-top:8px;border-top:1px solid #eef2f0;padding-top:8px;">${signupsListHtml}</div>` : '<p class="muted" style="margin-top:8px;">Ainda sem inscrições.</p>'}
       <div class="row" style="margin-top:8px;">
         <input readonly value="${link}" style="font-size:11px;margin:0;">
         <button class="ghost" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar</button>
