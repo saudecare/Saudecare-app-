@@ -254,6 +254,7 @@ window.openTenantDetail = function(tenantId){
         <option value="grow" ${t.plan==='grow'?'selected':''}>Grow</option>
         <option value="pro" ${t.plan==='pro'?'selected':''}>Pro</option>
         <option value="enterprise" ${t.plan==='enterprise'?'selected':''}>Enterprise</option>
+        <option value="lifetime" ${t.plan==='lifetime'?'selected':''}>Vitalício (sem restrições)</option>
       </select>
       <button class="primary" onclick="saveTenantChanges('${tenantId}')">Guardar alterações</button>
     </div>`;
@@ -285,6 +286,7 @@ function renderNewTenant(main){
         <option value="start">Start</option>
         <option value="grow">Grow</option>
         <option value="pro">Pro</option>
+        <option value="lifetime">Vitalício (sem restrições)</option>
       </select>
       <label>UID do dono (obtém-se depois de criares a conta em Authentication)</label>
       <input id="ntOwnerUid" placeholder="cola aqui o UID, ou deixa vazio e edita depois">

@@ -959,19 +959,23 @@ window.confirmAttach = async function(responseId){
 };
 
 // ── PROTOCOLOS (métodos de atendimento personalizados) ─────────────────
-// Um protocolo é uma lista de "pontos" definidos pelo próprio subscritor.
-// Cada ponto tem um nome e uma fonte de conhecimento (o que aquele ponto
-// significa quando é detetado/marcado). O relatório final é montado a
-// partir do conhecimento dos pontos marcados numa consulta — sem IA nesta
-// versão: 100% previsível, sem custo extra, sem dados a saírem da conta.
+// Dois tipos: "simples" (lista plana de pontos, como já existia) e
+// "mapeamento" (grupos de pontos organizados por sistema, com zonas do
+// corpo escolhidas antes de mapear — frente/costas × esquerda/direita —
+// e textos que só precisam de ser escritos uma vez, com variações
+// opcionais quando o significado muda consoante a zona/lado).
 async function renderProtocols(main){
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'protocols'));
   let rows = '';
   snap.forEach(d=>{
     const p = d.data();
+    const isMapping = p.type === 'mapping';
+    const countInfo = isMapping
+      ? `${(p.groups||[]).length} grupos de pontos`
+      : `${(p.points||[]).length} pontos definidos`;
     rows += `<div class="appt-item row">
       <div><strong>${escapeHtml(p.name)}</strong>
-        <div class="muted">${(p.points||[]).length} pontos definidos</div>
+        <div class="muted">${isMapping ? '🗺️ Mapeamento por zonas' : '📋 Lista simples'} · ${countInfo}</div>
       </div>
       <div>
         <button class="ghost" onclick="editProtocol('${d.id}')">Editar</button>
@@ -986,9 +990,9 @@ async function renderProtocols(main){
       <button class="primary" onclick="openNewProtocol()">+ Novo protocolo</button>
     </div>
     <p class="muted" style="margin-bottom:10px;">
-      Um protocolo é o seu próprio método (ex: "7 Pontos Vitais"). Cada ponto
-      que definir tem um nome e o significado que só é usado para montar o
-      relatório quando esse ponto for marcado numa consulta.
+      Um protocolo é o seu próprio método. Pode ser uma lista simples de
+      pontos, ou um mapeamento por zonas do corpo (frente/costas ×
+      esquerda/direita), com grupos de pontos organizados por sistema.
     </p>
     <div class="card">${rows}</div>
     <div id="protocolFormContainer"></div>
@@ -996,22 +1000,63 @@ async function renderProtocols(main){
 }
 
 let protocolPointsDraft = [];
+let protocolGroupsDraft = [];
+let protocolClassificationsDraft = [];
 
-window.openNewProtocol = function(editId){
+window.openNewProtocol = function(){
   protocolPointsDraft = [];
-  renderProtocolForm(editId || null, '', []);
+  protocolGroupsDraft = [];
+  protocolClassificationsDraft = [];
+  window.__editingProtocolId = null;
+  renderProtocolForm(null, { type: 'simple' });
 };
 
 window.editProtocol = async function(id){
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'protocols', id));
   if (!snap.exists()){ toast('Protocolo não encontrado.', true); return; }
   const p = snap.data();
+  window.__editingProtocolId = id;
   protocolPointsDraft = (p.points || []).map(pt => ({...pt}));
-  renderProtocolForm(id, p.name, protocolPointsDraft);
+  protocolGroupsDraft = (p.groups || []).map(g => ({...g, points: (g.points||[]).map(pt=>({...pt}))}));
+  protocolClassificationsDraft = (p.finalClassifications || []).map(c => ({...c}));
+  renderProtocolForm(id, p);
 };
 
-function renderProtocolForm(editId, name, points){
-  protocolPointsDraft = points;
+window.changeProtocolType = function(newType){
+  const name = document.getElementById('protoName')?.value || '';
+  renderProtocolForm(window.__editingProtocolId, { name, type: newType });
+};
+
+function renderProtocolForm(editId, data){
+  const type = data.type || 'simple';
+  const name = data.name || '';
+
+  let bodyHtml = '';
+  if (type === 'simple'){
+    bodyHtml = renderSimplePointsBuilder();
+  } else {
+    bodyHtml = renderMappingGroupsBuilder() + renderClassificationsBuilder();
+  }
+
+  document.getElementById('protocolFormContainer').innerHTML = `
+    <div class="card">
+      <h2>${editId ? 'Editar protocolo' : 'Novo protocolo'}</h2>
+      <label>Nome do protocolo</label>
+      <input id="protoName" value="${escapeHtml(name)}" placeholder="ex: Avaliação de Ansiedade e Depressão">
+      <label>Tipo de protocolo</label>
+      <select id="protoType" onchange="changeProtocolType(this.value)">
+        <option value="simple" ${type==='simple'?'selected':''}>Lista simples de pontos</option>
+        <option value="mapping" ${type==='mapping'?'selected':''}>Mapeamento por zonas do corpo</option>
+      </select>
+      <div id="protoTypeBody">${bodyHtml}</div>
+      <div style="margin-top:14px;">
+        <button class="primary" onclick="saveProtocol('${editId||''}')">Guardar protocolo</button>
+      </div>
+    </div>`;
+}
+
+// ── Tipo "simples" (como já existia) ────────────────────────────────────
+function renderSimplePointsBuilder(){
   let pointsHtml = protocolPointsDraft.map((pt, idx) => `
     <div class="card" style="margin-bottom:8px;">
       <label>Nome do ponto</label>
@@ -1021,43 +1066,154 @@ function renderProtocolForm(editId, name, points){
       <button class="danger" onclick="removeProtocolPoint(${idx})">Remover ponto</button>
     </div>
   `).join('');
-
-  document.getElementById('protocolFormContainer').innerHTML = `
-    <div class="card">
-      <h2>${editId ? 'Editar protocolo' : 'Novo protocolo'}</h2>
-      <label>Nome do protocolo</label>
-      <input id="protoName" value="${escapeHtml(name)}" placeholder="ex: Deteção de 7 Pontos Vitais">
-      <div id="protoPointsList">${pointsHtml || '<p class="muted">Ainda sem pontos. Adicione o primeiro.</p>'}</div>
-      <button class="ghost" onclick="addProtocolPoint()">+ Adicionar ponto</button>
-      <div style="margin-top:14px;">
-        <button class="primary" onclick="saveProtocol('${editId||''}')">Guardar protocolo</button>
-      </div>
-    </div>`;
+  return `
+    <div id="protoPointsList">${pointsHtml || '<p class="muted">Ainda sem pontos. Adicione o primeiro.</p>'}</div>
+    <button class="ghost" onclick="addProtocolPoint()">+ Adicionar ponto</button>`;
 }
 
 window.updateProtocolPoint = function(idx, field, value){
   protocolPointsDraft[idx][field] = value;
 };
-
 window.addProtocolPoint = function(){
   protocolPointsDraft.push({ name: '', knowledgeText: '' });
-  renderProtocolForm(document.getElementById('protoName') ? window.__editingProtocolId : null,
-    document.getElementById('protoName')?.value || '', protocolPointsDraft);
+  refreshProtoTypeBody();
 };
-
 window.removeProtocolPoint = function(idx){
   protocolPointsDraft.splice(idx, 1);
-  renderProtocolForm(window.__editingProtocolId,
-    document.getElementById('protoName')?.value || '', protocolPointsDraft);
+  refreshProtoTypeBody();
 };
+
+// ── Tipo "mapeamento" — grupos de pontos com variações por zona/lado ───
+function renderMappingGroupsBuilder(){
+  let groupsHtml = protocolGroupsDraft.map((g, gIdx) => {
+    let pointsHtml = (g.points||[]).map((pt, pIdx) => `
+      <div class="card" style="margin:8px 0;background:#f6f8f7;">
+        <label>Nome do ponto</label>
+        <input value="${escapeHtml(pt.name||'')}" onchange="updateMappingPoint(${gIdx},${pIdx},'name',this.value)">
+        <label>Texto base (significado geral — usado se não houver variação abaixo)</label>
+        <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'baseText',this.value)">${escapeHtml(pt.baseText||'')}</textarea>
+        <p class="muted" style="margin:6px 0 4px;">Variações opcionais — deixe em branco se for igual ao texto base:</p>
+        <label>Diferença quando é na FRENTE</label>
+        <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'frontText',this.value)">${escapeHtml(pt.frontText||'')}</textarea>
+        <label>Diferença quando é nas COSTAS</label>
+        <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'backText',this.value)">${escapeHtml(pt.backText||'')}</textarea>
+        <label>Acrescento quando é do lado ESQUERDO</label>
+        <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'leftText',this.value)">${escapeHtml(pt.leftText||'')}</textarea>
+        <label>Acrescento quando é do lado DIREITO</label>
+        <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'rightText',this.value)">${escapeHtml(pt.rightText||'')}</textarea>
+        <button class="danger" onclick="removeMappingPoint(${gIdx},${pIdx})">Remover ponto</button>
+      </div>
+    `).join('');
+    return `
+      <div class="card" style="border:1px solid var(--primary);margin-bottom:10px;">
+        <label>Nome do grupo/sistema</label>
+        <input value="${escapeHtml(g.groupName||'')}" onchange="updateMappingGroupName(${gIdx}, this.value)" placeholder="ex: 7 Pontos Vitais, Sistema Superior...">
+        ${pointsHtml}
+        <button class="ghost" onclick="addMappingPoint(${gIdx})">+ Adicionar ponto a este grupo</button>
+        <button class="danger" style="margin-left:6px;" onclick="removeMappingGroup(${gIdx})">Remover grupo inteiro</button>
+      </div>`;
+  }).join('');
+
+  return `
+    <h3 style="margin:14px 0 8px;">Grupos de pontos</h3>
+    <div id="protoGroupsList">${groupsHtml || '<p class="muted">Ainda sem grupos. Adicione o primeiro (ex: "7 Pontos Vitais").</p>'}</div>
+    <button class="ghost" onclick="addMappingGroup()">+ Adicionar grupo</button>`;
+}
+
+window.updateMappingGroupName = function(gIdx, value){
+  protocolGroupsDraft[gIdx].groupName = value;
+};
+window.addMappingGroup = function(){
+  protocolGroupsDraft.push({ groupName: '', points: [] });
+  refreshProtoTypeBody();
+};
+window.removeMappingGroup = function(gIdx){
+  protocolGroupsDraft.splice(gIdx, 1);
+  refreshProtoTypeBody();
+};
+window.addMappingPoint = function(gIdx){
+  protocolGroupsDraft[gIdx].points.push({ name:'', baseText:'', frontText:'', backText:'', leftText:'', rightText:'' });
+  refreshProtoTypeBody();
+};
+window.removeMappingPoint = function(gIdx, pIdx){
+  protocolGroupsDraft[gIdx].points.splice(pIdx, 1);
+  refreshProtoTypeBody();
+};
+window.updateMappingPoint = function(gIdx, pIdx, field, value){
+  protocolGroupsDraft[gIdx].points[pIdx][field] = value;
+};
+
+// ── Classificações finais — genéricas, nomeadas pelo próprio subscritor
+// (ex: "Escudo emocional mais ativo", "Momento", "Idade/Geração"), para
+// que a app continue universal a qualquer terapia, não só a uma.
+function renderClassificationsBuilder(){
+  let html = protocolClassificationsDraft.map((c, idx) => `
+    <div class="card" style="margin-bottom:8px;">
+      <label>Nome desta classificação final</label>
+      <input value="${escapeHtml(c.label||'')}" onchange="updateClassification(${idx},'label',this.value)" placeholder="ex: Escudo emocional mais ativo">
+      <label>Tipo</label>
+      <select onchange="updateClassification(${idx},'type',this.value)">
+        <option value="select" ${c.type!=='text'?'selected':''}>Escolher uma opção</option>
+        <option value="text" ${c.type==='text'?'selected':''}>Texto livre</option>
+      </select>
+      ${c.type !== 'text' ? `
+        <label>Opções (separadas por vírgula)</label>
+        <input value="${escapeHtml((c.options||[]).join(', '))}" onchange="updateClassification(${idx},'optionsRaw',this.value)" placeholder="ex: Desproteção, Desvalorização, Impotência, Sobrevivência, Perda">
+      ` : ''}
+      <button class="danger" onclick="removeClassification(${idx})">Remover</button>
+    </div>
+  `).join('');
+  return `
+    <h3 style="margin:14px 0 8px;">Classificações finais (opcional)</h3>
+    <p class="muted" style="margin-bottom:8px;">Perguntas feitas no fim do mapeamento — ex: qual escudo emocional está mais ativo, em que momento, em que idade/geração.</p>
+    <div id="protoClassificationsList">${html}</div>
+    <button class="ghost" onclick="addClassification()">+ Adicionar classificação final</button>`;
+}
+
+window.updateClassification = function(idx, field, value){
+  if (field === 'optionsRaw'){
+    protocolClassificationsDraft[idx].options = value.split(',').map(s=>s.trim()).filter(Boolean);
+  } else {
+    protocolClassificationsDraft[idx][field] = value;
+  }
+  if (field === 'type') refreshProtoTypeBody();
+};
+window.addClassification = function(){
+  protocolClassificationsDraft.push({ label:'', type:'select', options:[] });
+  refreshProtoTypeBody();
+};
+window.removeClassification = function(idx){
+  protocolClassificationsDraft.splice(idx, 1);
+  refreshProtoTypeBody();
+};
+
+function refreshProtoTypeBody(){
+  const type = document.getElementById('protoType')?.value || 'simple';
+  const name = document.getElementById('protoName')?.value || '';
+  document.getElementById('protoTypeBody').innerHTML =
+    type === 'simple' ? renderSimplePointsBuilder() : (renderMappingGroupsBuilder() + renderClassificationsBuilder());
+}
 
 window.saveProtocol = async function(editId){
   const name = document.getElementById('protoName').value.trim();
   if (!name){ toast('Dê um nome ao protocolo.', true); return; }
-  const validPoints = protocolPointsDraft.filter(p => p.name && p.name.trim());
-  if (!validPoints.length){ toast('Adicione pelo menos um ponto com nome.', true); return; }
+  const type = document.getElementById('protoType').value;
 
-  const data = { name, points: validPoints, updatedAt: serverTimestamp() };
+  let data = { name, type, updatedAt: serverTimestamp() };
+  if (type === 'simple'){
+    const validPoints = protocolPointsDraft.filter(p => p.name && p.name.trim());
+    if (!validPoints.length){ toast('Adicione pelo menos um ponto com nome.', true); return; }
+    data.points = validPoints;
+  } else {
+    const validGroups = protocolGroupsDraft
+      .filter(g => g.groupName && g.groupName.trim())
+      .map(g => ({ groupName: g.groupName, points: (g.points||[]).filter(p => p.name && p.name.trim()) }))
+      .filter(g => g.points.length);
+    if (!validGroups.length){ toast('Adicione pelo menos um grupo com um ponto válido.', true); return; }
+    data.groups = validGroups;
+    data.finalClassifications = protocolClassificationsDraft.filter(c => c.label && c.label.trim());
+  }
+
   if (editId){
     await updateDoc(doc(db, 'tenants', tenantId, 'protocols', editId), data);
   } else {
@@ -1090,20 +1246,28 @@ window.startGuidedConsultation = async function(patientId, patientName){
     <div class="card">
       <h2>Consulta guiada — ${escapeHtml(patientName)}</h2>
       <label>Protocolo</label>
-      <select id="guidedProtocolSelect" onchange="renderGuidedPoints('${patientId}', '${escapeHtml(patientName)}')">${opts}</select>
+      <select id="guidedProtocolSelect" onchange="onGuidedProtocolChange('${patientId}', '${escapeHtml(patientName)}')">${opts}</select>
       <div id="guidedPointsArea"></div>
     </div>`;
   window.__guidedProtocols = protocols;
 };
 
-window.renderGuidedPoints = function(patientId, patientName){
+window.onGuidedProtocolChange = function(patientId, patientName){
   const protoId = document.getElementById('guidedProtocolSelect').value;
   const area = document.getElementById('guidedPointsArea');
   if (!protoId){ area.innerHTML=''; return; }
   const proto = window.__guidedProtocols[protoId];
   window.__currentGuidedProtoId = protoId;
-  window.__currentGuidedProtoName = proto.name;
 
+  if (proto.type === 'mapping'){
+    renderMappingZoneSelection(patientId, patientName, area);
+  } else {
+    renderGuidedPoints(patientId, patientName, area, proto);
+  }
+};
+
+// ── Fluxo tipo "simples" (como já existia) ──────────────────────────────
+function renderGuidedPoints(patientId, patientName, area, proto){
   area.innerHTML = proto.points.map((pt, idx) => `
     <div class="card" style="margin:8px 0;">
       <label style="display:flex;align-items:center;gap:8px;">
@@ -1114,7 +1278,7 @@ window.renderGuidedPoints = function(patientId, patientName){
       <textarea id="ptNote${idx}" rows="2" placeholder="Observações específicas desta consulta..."></textarea>
     </div>
   `).join('') + `<button class="primary" onclick="generateReport('${patientId}', '${escapeHtml(patientName)}')">Gerar relatório</button>`;
-};
+}
 
 window.generateReport = async function(patientId, patientName){
   const protoId = window.__currentGuidedProtoId;
@@ -1134,8 +1298,6 @@ window.generateReport = async function(patientId, patientName){
     return;
   }
 
-  // Montagem do relatório: texto legível, ponto a ponto, sem IA — usa
-  // exatamente a fonte de conhecimento que o subscritor definiu.
   let reportText = `Relatório de Consulta — ${proto.name}\n`;
   reportText += `Paciente: ${patientName}\n`;
   reportText += `Data: ${new Date().toLocaleDateString('pt-PT')}\n\n`;
@@ -1146,26 +1308,172 @@ window.generateReport = async function(patientId, patientName){
   });
 
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
-    protocolId: protoId,
-    protocolName: proto.name,
-    points: detectedPoints,
-    reportText,
-    generatedAt: serverTimestamp(),
-    generatedBy: currentUser.uid
+    protocolId: protoId, protocolName: proto.name, points: detectedPoints,
+    reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
   });
   await logAudit('report_generated', patientId);
+  renderGeneratedReportScreen(proto.name, reportText);
+};
 
+// ── Fluxo tipo "mapeamento" — escolher zonas, depois mapear pontos ─────
+window.renderMappingZoneSelection = function(patientId, patientName, area){
+  area.innerHTML = `
+    <div class="card">
+      <h3>O que vamos mapear?</h3>
+      <p class="muted" style="margin-bottom:8px;">Escolha zona(s) e lado(s). Pode escolher só um (ex: Frente + Direito) ou todos (mapeamento completo).</p>
+      <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="zonaFrente" style="width:auto;margin:0;" checked> Frente</label>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:6px;"><input type="checkbox" id="zonaCostas" style="width:auto;margin:0;"> Costas</label>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:12px;"><input type="checkbox" id="ladoEsquerdo" style="width:auto;margin:0;" checked> Lado esquerdo</label>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:6px;"><input type="checkbox" id="ladoDireito" style="width:auto;margin:0;"> Lado direito</label>
+      <button class="primary" style="margin-top:14px;" onclick="startMappingPoints('${patientId}','${escapeHtml(patientName)}')">Continuar para o mapeamento</button>
+    </div>`;
+};
+
+window.startMappingPoints = function(patientId, patientName){
+  const zonas = [];
+  if (document.getElementById('zonaFrente').checked) zonas.push('frente');
+  if (document.getElementById('zonaCostas').checked) zonas.push('costas');
+  const lados = [];
+  if (document.getElementById('ladoEsquerdo').checked) lados.push('esquerdo');
+  if (document.getElementById('ladoDireito').checked) lados.push('direito');
+
+  if (!zonas.length || !lados.length){
+    toast('Escolha pelo menos uma zona e um lado.', true); return;
+  }
+
+  const combos = [];
+  zonas.forEach(z => lados.forEach(l => combos.push({ zona: z, lado: l })));
+  window.__mappingCombos = combos;
+
+  const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
+  const zonaLabel = { frente:'Frente', costas:'Costas' };
+  const ladoLabel = { esquerdo:'Esquerdo', direito:'Direito' };
+
+  let html = '';
+  combos.forEach((combo, cIdx) => {
+    html += `<h3 style="margin:16px 0 8px;">${zonaLabel[combo.zona]} — Lado ${ladoLabel[combo.lado]}</h3>`;
+    proto.groups.forEach((g, gIdx) => {
+      html += `<div class="card" style="margin-bottom:8px;"><strong>${escapeHtml(g.groupName)}</strong>`;
+      g.points.forEach((pt, pIdx) => {
+        const id = `mp_${cIdx}_${gIdx}_${pIdx}`;
+        html += `
+          <div style="margin-top:8px;border-top:1px solid #eef2f0;padding-top:8px;">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="${id}_check" style="width:auto;margin:0;">
+              <strong>${escapeHtml(pt.name)}</strong>
+            </label>
+            <textarea id="${id}_note" rows="1" placeholder="Nota (opcional)" style="margin-top:4px;"></textarea>
+          </div>`;
+      });
+      html += `</div>`;
+    });
+  });
+  html += `<button class="primary" onclick="renderMappingClassifications('${patientId}','${escapeHtml(patientName)}')">Continuar</button>`;
+
+  document.getElementById('guidedPointsArea').innerHTML = html;
+};
+
+window.renderMappingClassifications = function(patientId, patientName){
+  const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
+  const classifications = proto.finalClassifications || [];
+
+  let html = '<h3 style="margin:16px 0 8px;">Classificação final</h3>';
+  classifications.forEach((c, idx) => {
+    if (c.type === 'text'){
+      html += `<div class="card"><label>${escapeHtml(c.label)}</label><input id="cls_${idx}"></div>`;
+    } else {
+      const opts = (c.options||[]).map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
+      html += `<div class="card"><label>${escapeHtml(c.label)}</label><select id="cls_${idx}"><option value="">—</option>${opts}</select></div>`;
+    }
+  });
+  html += `<button class="primary" onclick="generateMappingReport('${patientId}','${escapeHtml(patientName)}')">Gerar relatório</button>`;
+
+  document.getElementById('guidedPointsArea').innerHTML += html;
+  document.getElementById('guidedPointsArea').scrollIntoView({ behavior:'smooth', block:'end' });
+};
+
+function computeMappingPointText(pt, zona, lado){
+  let text = pt.baseText || '';
+  if (zona === 'frente' && pt.frontText) text = pt.frontText;
+  if (zona === 'costas' && pt.backText) text = pt.backText;
+  if (lado === 'esquerdo' && pt.leftText) text += (text ? '\n' : '') + pt.leftText;
+  if (lado === 'direito' && pt.rightText) text += (text ? '\n' : '') + pt.rightText;
+  return text;
+}
+
+window.generateMappingReport = async function(patientId, patientName){
+  const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
+  const combos = window.__mappingCombos;
+  const zonaLabel = { frente:'Frente', costas:'Costas' };
+  const ladoLabel = { esquerdo:'Esquerdo', direito:'Direito' };
+  const detected = [];
+
+  combos.forEach((combo, cIdx) => {
+    proto.groups.forEach((g, gIdx) => {
+      g.points.forEach((pt, pIdx) => {
+        const id = `mp_${cIdx}_${gIdx}_${pIdx}`;
+        const checkEl = document.getElementById(`${id}_check`);
+        if (checkEl && checkEl.checked){
+          const note = document.getElementById(`${id}_note`)?.value.trim() || '';
+          detected.push({
+            group: g.groupName, name: pt.name, zona: combo.zona, lado: combo.lado,
+            text: computeMappingPointText(pt, combo.zona, combo.lado), note
+          });
+        }
+      });
+    });
+  });
+
+  const classifications = proto.finalClassifications || [];
+  const classificationAnswers = classifications.map((c, idx) => ({
+    label: c.label, value: document.getElementById(`cls_${idx}`)?.value || ''
+  })).filter(a => a.value);
+
+  if (!detected.length){
+    toast('Marque pelo menos um ponto para gerar o relatório.', true);
+    return;
+  }
+
+  let reportText = `Relatório de Mapeamento — ${proto.name}\n`;
+  reportText += `Paciente: ${patientName}\n`;
+  reportText += `Data: ${new Date().toLocaleDateString('pt-PT')}\n\n`;
+
+  let currentGroup = null;
+  detected.forEach(d => {
+    if (d.group !== currentGroup){
+      reportText += `\n== ${d.group} ==\n`;
+      currentGroup = d.group;
+    }
+    reportText += `• ${d.name} (${zonaLabel[d.zona]}, Lado ${ladoLabel[d.lado]})\n${d.text}\n`;
+    if (d.note) reportText += `Nota da sessão: ${d.note}\n`;
+  });
+
+  if (classificationAnswers.length){
+    reportText += `\n== Classificação final ==\n`;
+    classificationAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
+  }
+
+  await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
+    protocolId: window.__currentGuidedProtoId, protocolName: proto.name,
+    mappingDetected: detected, classifications: classificationAnswers,
+    reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
+  });
+  await logAudit('report_generated', patientId);
+  renderGeneratedReportScreen(proto.name, reportText);
+};
+
+function renderGeneratedReportScreen(protocolName, reportText){
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
       <h2>Relatório gerado</h2>
       <textarea rows="14" readonly>${escapeHtml(reportText)}</textarea>
       <div class="row" style="margin-top:8px;">
-        <button class="ghost" onclick="downloadReportFile('${escapeHtml(proto.name)}', document.querySelector('#patientFormContainer textarea').value)">⬇️ Descarregar ficheiro</button>
+        <button class="ghost" onclick="downloadReportFile('${escapeHtml(protocolName)}', document.querySelector('#patientFormContainer textarea').value)">⬇️ Descarregar ficheiro</button>
       </div>
       <p class="muted" style="margin-top:8px;">Guardado na ficha do paciente. Copie o texto ou descarregue o ficheiro para enviar por email/WhatsApp.</p>
     </div>`;
   toast('Relatório gerado e guardado.');
-};
+}
 
 // ── Descarregar relatório/prescrição como ficheiro de texto ────────────
 // Funciona 100% no browser, sem servidor — o subscritor pode depois
