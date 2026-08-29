@@ -197,8 +197,16 @@ async function renderOverview(main){
   const counts = { trial: 0, active: 0, suspended: 0, cancelled: 0 };
   allTenants.forEach(t => { if (counts[t.status] !== undefined) counts[t.status]++; });
 
+  const pending = allTenants.filter(t => t.status === 'pending_activation');
+
   main.innerHTML = `
     <h2>Visão geral</h2>
+    ${pending.length ? `
+      <div class="card" style="border:1.5px solid #e0a020;background:#fff8ea;margin-bottom:14px;">
+        <strong style="color:#8a5a00;">⚠️ ${pending.length} conta${pending.length>1?'s':''} à espera de ativação</strong>
+        <p class="muted" style="margin:6px 0 10px;">Alguém já se registou sozinho mas ainda não consegue entrar.</p>
+        <button class="primary" onclick="document.querySelector('nav button[data-view=tenants]').click()">Ver e ativar →</button>
+      </div>` : ''}
     <div class="stat-grid">
       <div class="stat-card"><div class="num">${allTenants.length}</div><div class="muted">Total subscritores</div></div>
       <div class="stat-card"><div class="num">${counts.trial}</div><div class="muted">Em teste</div></div>
@@ -220,20 +228,31 @@ async function renderOverview(main){
 // ── LISTA DE SUBSCRITORES ────────────────────────────────────────────
 async function renderTenants(main){
   await loadAllTenants();
-  let rows = allTenants.map(t => `
-    <div class="tenant-item">
+  const sorted = [...allTenants].sort((a,b) => {
+    const pa = a.status === 'pending_activation' ? 0 : 1;
+    const pb = b.status === 'pending_activation' ? 0 : 1;
+    return pa - pb;
+  });
+  let rows = sorted.map(t => {
+    const isPending = t.status === 'pending_activation';
+    return `
+    <div class="tenant-item" ${isPending ? 'style="background:#fff8ea;border-radius:8px;padding:10px;"' : ''}>
       <div class="row">
         <div><strong>${escapeHtml(t.businessName||t.id)}</strong>
           <div class="muted">${escapeHtml(t.slug||'')} · plano ${escapeHtml(t.plan||'—')}</div>
         </div>
-        <span class="badge ${t.status}">${escapeHtml(t.status||'')}</span>
+        <span class="badge ${isPending ? '' : t.status}" style="${isPending ? 'background:#fff3cd;color:#8a5a00;' : ''}">${isPending ? 'por ativar' : escapeHtml(t.status||'')}</span>
       </div>
       <div class="row" style="margin-top:8px;">
-        <button class="ghost" onclick="openTenantDetail('${t.id}')">Gerir</button>
-        <button class="ghost" onclick="renderTenantSetupSteps('${t.id}','${escapeAttr(t.businessName)}')">Passos de ativação de login</button>
+        ${isPending
+          ? `<button class="primary" onclick="renderTenantSetupSteps('${t.id}','${escapeAttr(t.businessName)}','${escapeAttr(t.ownerUid||'')}')">Ativar acesso →</button>`
+          : `<button class="ghost" onclick="openTenantDetail('${t.id}')">Gerir</button>
+             <button class="ghost" onclick="renderTenantSetupSteps('${t.id}','${escapeAttr(t.businessName)}','${escapeAttr(t.ownerUid||'')}')">Passos de ativação de login</button>`
+        }
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
   if (!rows) rows = '<p class="muted">Ainda sem subscritores.</p>';
 
   main.innerHTML = `
@@ -317,34 +336,38 @@ window.createTenant = async function(){
     legalTexts: {}
   });
   toast('Subscritor criado.');
-  renderTenantSetupSteps(docRef.id, businessName);
+  renderTenantSetupSteps(docRef.id, businessName, '');
 };
 
 // ── PASSOS DE ATIVAÇÃO DE LOGIN (sem Cloud Functions, sem Blaze) ─────
-window.renderTenantSetupSteps = function(tenantId, businessName){
+window.renderTenantSetupSteps = function(tenantId, businessName, knownUid){
   window._setupTenantId = tenantId;
+  const hasUid = !!knownUid;
   const main = document.getElementById('mainView');
   main.innerHTML = `
     <h2>Ativar login — ${escapeHtml(businessName)}</h2>
     <div class="card">
       <p class="muted" style="margin-bottom:14px;">
-        Estes 2 passos não precisam do plano Blaze nem de Cloud Functions —
+        Estes passos não precisam do plano Blaze nem de Cloud Functions —
         usam o Cloud Shell, que é grátis e já usámos antes com sucesso.
       </p>
 
-      <div class="stepBlock">
+      <div class="stepBlock" ${hasUid ? 'style="opacity:.55;"' : ''}>
         <strong>Passo 1 — Criar (ou confirmar) a conta de login</strong>
-        <p class="muted">Se ainda não existir, cria o utilizador com o email/password que o subscritor vai usar para entrar em saudecare-core.html.</p>
-        <a href="https://console.firebase.google.com/project/saudecare-app/authentication/users" target="_blank" rel="noopener">
-          <button class="ghost" type="button">Abrir Authentication →</button>
-        </a>
-        <p class="muted" style="margin-top:6px;">Depois de criares, toca no utilizador na lista — o <strong>UID</strong> aparece no topo da página dele. Copia-o.</p>
+        ${hasUid
+          ? `<p class="muted">✓ Não é preciso — esta conta registou-se sozinha, o UID já é conhecido.</p>`
+          : `<p class="muted">Se ainda não existir, cria o utilizador com o email/password que o subscritor vai usar para entrar em saudecare-core.html.</p>
+             <a href="https://console.firebase.google.com/project/saudecare-app/authentication/users" target="_blank" rel="noopener">
+               <button class="ghost" type="button">Abrir Authentication →</button>
+             </a>
+             <p class="muted" style="margin-top:6px;">Depois de criares, toca no utilizador na lista — o <strong>UID</strong> aparece no topo da página dele. Copia-o.</p>`
+        }
       </div>
 
       <div class="stepBlock">
-        <strong>Passo 2 — Colar o UID e copiar o comando</strong>
-        <label style="margin-top:6px;">UID do utilizador (colado do passo 1)</label>
-        <input id="setupUid" placeholder="ex: lGivQcVpk5htm7ao71t2VYUHU6q1" oninput="updateSetupCommand()">
+        <strong>Passo 2 — Copiar o comando e correr no Cloud Shell</strong>
+        <label style="margin-top:6px;">UID do utilizador ${hasUid ? '(já preenchido)' : '(colado do passo 1)'}</label>
+        <input id="setupUid" value="${escapeAttr(knownUid||'')}" placeholder="ex: lGivQcVpk5htm7ao71t2VYUHU6q1" oninput="updateSetupCommand()">
         <label>Comando pronto — copia tudo e cola no Cloud Shell</label>
         <textarea id="setupCommand" rows="8" readonly style="font-family:monospace;font-size:12px;" onclick="this.select()"></textarea>
         <div class="row" style="margin-top:8px;">
@@ -354,14 +377,25 @@ window.renderTenantSetupSteps = function(tenantId, businessName){
           </a>
         </div>
         <p class="muted" style="margin-top:8px;">
-          No Cloud Shell: cola o comando (um único bloco) e prime Enter.
-          Quando aparecer <strong>"Claims atribuídas com sucesso"</strong>, está feito —
-          o subscritor já consegue entrar em saudecare-core.html com a conta dele.
+          Cola o comando (um único bloco) e prime Enter. Quando aparecer
+          <strong>"Claims atribuídas com sucesso"</strong>, o Passo 2 está feito.
         </p>
+      </div>
+
+      <div class="stepBlock" style="margin-bottom:0;">
+        <strong>Passo 3 — Marcar a conta como ativa</strong>
+        <p class="muted">Sem este passo, mesmo com o comando corrido, o subscritor continua bloqueado — as regras de segurança só permitem acesso a contas "Em teste" ou "Ativo".</p>
+        <button class="primary" type="button" onclick="markTenantActivated('${tenantId}')">✓ Marcar como "Em teste"</button>
       </div>
     </div>
   `;
   updateSetupCommand();
+};
+
+window.markTenantActivated = async function(tenantId){
+  await updateDoc(doc(db, 'tenants', tenantId), { status: 'trial' });
+  toast('Conta ativada — o subscritor já pode entrar.');
+  renderView('tenants');
 };
 
 window.updateSetupCommand = function(){
