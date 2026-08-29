@@ -25,8 +25,8 @@
   .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;
     box-shadow:0 1px 3px rgba(0,0,0,.06);}
   h2{margin-bottom:14px;font-size:20px;}
-  input,select,textarea{width:100%;padding:10px;border:1px solid #dcdfe8;border-radius:8px;font-size:16px;
-    margin-bottom:10px;font-size:14px;}
+  input,select,textarea{width:100%;padding:12px;border:1px solid #dcdfe8;border-radius:8px;
+    margin-bottom:10px;font-size:16px;}
   label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
   button.primary{background:var(--primary);color:#fff;border:none;padding:10px 18px;
     border-radius:8px;cursor:pointer;font-size:14px;}
@@ -49,6 +49,8 @@
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1d2b;
     color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:999;}
   .hidden{display:none !important;}
+  .stepBlock{margin-bottom:18px;}
+  .stepBlock strong{display:block;margin-bottom:4px;}
   @media(max-width:640px){
     #app{flex-direction:column;}
     nav{width:100%;display:flex;flex-wrap:wrap;padding:8px;gap:4px;justify-content:center;}
@@ -123,6 +125,9 @@ function toast(msg, isError=false){
 function escapeHtml(str){
   if (str == null) return '';
   return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+function escapeAttr(str){
+  return escapeHtml(str).replace(/`/g, '&#96;');
 }
 
 window.doLogin = async function(){
@@ -225,6 +230,7 @@ async function renderTenants(main){
       </div>
       <div class="row" style="margin-top:8px;">
         <button class="ghost" onclick="openTenantDetail('${t.id}')">Gerir</button>
+        <button class="ghost" onclick="renderTenantSetupSteps('${t.id}','${escapeAttr(t.businessName)}')">Passos de ativação de login</button>
       </div>
     </div>
   `).join('');
@@ -277,10 +283,9 @@ function renderNewTenant(main){
     <h2>Criar novo subscritor</h2>
     <div class="card">
       <p class="muted" style="margin-bottom:10px;">
-        Isto cria o registo do subscritor na base de dados. A conta de login
-        (email/password) continua a ter de ser criada à parte, na consola
-        Firebase → Authentication, até termos as Cloud Functions ativas
-        para automatizar esse passo também.
+        Isto cria o registo do subscritor na base de dados. Depois de criares,
+        vais ver os 2 passos seguintes para ativares o login dele — sem
+        precisares de escrever código, só colar um comando pronto.
       </p>
       <label>Nome do negócio</label><input id="ntBusinessName">
       <label>Slug (identificador do link público, sem espaços/acentos)</label><input id="ntSlug" placeholder="ex: joana-silva-fisio">
@@ -291,8 +296,6 @@ function renderNewTenant(main){
         <option value="pro">Pro</option>
         <option value="lifetime">Vitalício (sem restrições)</option>
       </select>
-      <label>UID do dono (obtém-se depois de criares a conta em Authentication)</label>
-      <input id="ntOwnerUid" placeholder="cola aqui o UID, ou deixa vazio e edita depois">
       <button class="primary" onclick="createTenant()">Criar subscritor</button>
     </div>
   `;
@@ -303,18 +306,88 @@ window.createTenant = async function(){
   const slug = document.getElementById('ntSlug').value.trim();
   if (!businessName || !slug){ toast('Nome e slug são obrigatórios.', true); return; }
 
-  await addDoc(collection(db, 'tenants'), {
+  const docRef = await addDoc(collection(db, 'tenants'), {
     businessName,
     slug,
     status: 'trial',
     plan: document.getElementById('ntPlan').value,
-    ownerUid: document.getElementById('ntOwnerUid').value.trim() || null,
+    ownerUid: null,
     createdAt: serverTimestamp(),
     branding: {},
     legalTexts: {}
   });
-  toast('Subscritor criado. Agora crie a conta de login e atribua o tenantId (via setclaim).');
-  renderView('tenants');
+  toast('Subscritor criado.');
+  renderTenantSetupSteps(docRef.id, businessName);
+};
+
+// ── PASSOS DE ATIVAÇÃO DE LOGIN (sem Cloud Functions, sem Blaze) ─────
+window.renderTenantSetupSteps = function(tenantId, businessName){
+  window._setupTenantId = tenantId;
+  const main = document.getElementById('mainView');
+  main.innerHTML = `
+    <h2>Ativar login — ${escapeHtml(businessName)}</h2>
+    <div class="card">
+      <p class="muted" style="margin-bottom:14px;">
+        Estes 2 passos não precisam do plano Blaze nem de Cloud Functions —
+        usam o Cloud Shell, que é grátis e já usámos antes com sucesso.
+      </p>
+
+      <div class="stepBlock">
+        <strong>Passo 1 — Criar (ou confirmar) a conta de login</strong>
+        <p class="muted">Se ainda não existir, cria o utilizador com o email/password que o subscritor vai usar para entrar em saudecare-core.html.</p>
+        <a href="https://console.firebase.google.com/project/saudecare-app/authentication/users" target="_blank" rel="noopener">
+          <button class="ghost" type="button">Abrir Authentication →</button>
+        </a>
+        <p class="muted" style="margin-top:6px;">Depois de criares, toca no utilizador na lista — o <strong>UID</strong> aparece no topo da página dele. Copia-o.</p>
+      </div>
+
+      <div class="stepBlock">
+        <strong>Passo 2 — Colar o UID e copiar o comando</strong>
+        <label style="margin-top:6px;">UID do utilizador (colado do passo 1)</label>
+        <input id="setupUid" placeholder="ex: lGivQcVpk5htm7ao71t2VYUHU6q1" oninput="updateSetupCommand()">
+        <label>Comando pronto — copia tudo e cola no Cloud Shell</label>
+        <textarea id="setupCommand" rows="8" readonly style="font-family:monospace;font-size:12px;" onclick="this.select()"></textarea>
+        <div class="row" style="margin-top:8px;">
+          <button class="ghost" type="button" onclick="copySetupCommand()">Copiar comando</button>
+          <a href="https://shell.cloud.google.com/?project=saudecare-app" target="_blank" rel="noopener">
+            <button class="primary" type="button">Abrir Cloud Shell →</button>
+          </a>
+        </div>
+        <p class="muted" style="margin-top:8px;">
+          No Cloud Shell: cola o comando (um único bloco) e prime Enter.
+          Quando aparecer <strong>"Claims atribuídas com sucesso"</strong>, está feito —
+          o subscritor já consegue entrar em saudecare-core.html com a conta dele.
+        </p>
+      </div>
+    </div>
+  `;
+  updateSetupCommand();
+};
+
+window.updateSetupCommand = function(){
+  const uidField = document.getElementById('setupUid');
+  const uid = (uidField && uidField.value.trim()) || 'COLA_AQUI_O_UID';
+  const tenantId = window._setupTenantId;
+  const script =
+`mkdir -p ~/saudecare-claims && cd ~/saudecare-claims && cat > setclaim.js << 'EOF'
+const admin = require('firebase-admin');
+admin.initializeApp({ projectId: 'saudecare-app' });
+admin.auth().setCustomUserClaims('${uid}', { tenantId: '${tenantId}', role: 'owner' })
+  .then(() => { console.log('Claims atribuídas com sucesso.'); process.exit(); })
+  .catch(err => { console.error(err); process.exit(1); });
+EOF
+npm init -y >/dev/null 2>&1 && npm install firebase-admin >/dev/null 2>&1 && node setclaim.js`;
+  const out = document.getElementById('setupCommand');
+  if (out) out.value = script;
+};
+
+window.copySetupCommand = function(){
+  const el = document.getElementById('setupCommand');
+  if (!el) return;
+  el.select();
+  navigator.clipboard.writeText(el.value)
+    .then(()=> toast('Comando copiado — cola-o no Cloud Shell.'))
+    .catch(()=> toast('Não copiou automaticamente — toca no texto, seleciona tudo e copia manualmente.', true));
 };
 </script>
 </body>
