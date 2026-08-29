@@ -1202,7 +1202,7 @@ function renderMappingGroupsBuilder(){
         <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'leftText',this.value)">${escapeHtml(pt.leftText||'')}</textarea>
         <label>Acrescento quando é do lado DIREITO</label>
         <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'rightText',this.value)">${escapeHtml(pt.rightText||'')}</textarea>
-        <button class="ghost" onclick="openMapPositionPicker(${gIdx},${pIdx})">${pt.mapX!=null ? '📍 Posição definida ('+(pt.mapSide==='costas'?'Costas':'Frente')+') — editar' : '📍 Definir posição no mapa do corpo'}</button>
+        <button onclick="openMapPositionPicker(${gIdx},${pIdx})" style="width:100%;background:${pt.mapX!=null?'var(--primary)':'#fff3cd'};color:${pt.mapX!=null?'#fff':'#8a5a00'};border:2px solid ${pt.mapX!=null?'var(--primary)':'#e0a83c'};padding:10px;border-radius:8px;font-weight:600;cursor:pointer;margin-bottom:8px;">${pt.mapX!=null ? '📍 Posição definida ('+(pt.mapSide==='costas'?'Costas':'Frente')+') — toque para editar' : '📍 Toque para colocar este ponto no boneco'}</button>
         <button class="danger" onclick="removeMappingPoint(${gIdx},${pIdx})">Remover ponto</button>
       </div>
     `).join('');
@@ -1555,32 +1555,60 @@ window.generateReport = async function(patientId, patientName){
 
 // ── Fluxo tipo "mapeamento" — escolher zonas, depois mapear pontos ─────
 window.renderMappingZoneSelection = function(patientId, patientName, area){
+  window.__zoneSelection = { frente:false, costas:false, esquerdo:false, direito:false };
   area.innerHTML = `
     <div class="card">
       <h3>O que vamos mapear?</h3>
-      <p class="muted" style="margin-bottom:8px;">Escolha zona(s) e lado(s). Pode escolher só um (ex: Frente + Direito) ou todos (mapeamento completo).</p>
-      <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="zonaFrente" style="width:auto;margin:0;" checked> Frente</label>
-      <label style="display:flex;align-items:center;gap:8px;margin-top:6px;"><input type="checkbox" id="zonaCostas" style="width:auto;margin:0;"> Costas</label>
-      <label style="display:flex;align-items:center;gap:8px;margin-top:12px;"><input type="checkbox" id="ladoEsquerdo" style="width:auto;margin:0;" checked> Lado esquerdo</label>
-      <label style="display:flex;align-items:center;gap:8px;margin-top:6px;"><input type="checkbox" id="ladoDireito" style="width:auto;margin:0;"> Lado direito</label>
+      <p class="muted" style="margin-bottom:10px;">Escolha um ou mais lados. Pode mapear um lado de cada vez (em consultas separadas) ou vários juntos — o relatório indica sempre a que lado pertence cada ponto.</p>
+      <div id="zoneButtonsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+      <div class="row" style="margin-top:10px;">
+        <button class="ghost" onclick="quickSelectZone('frenteCompleta')">Frente completa</button>
+        <button class="ghost" onclick="quickSelectZone('costasCompleta')">Costas completa</button>
+        <button class="ghost" onclick="quickSelectZone('tudo')">Mapeamento completo</button>
+      </div>
       <button class="primary" style="margin-top:14px;" onclick="startMappingPoints('${patientId}','${escapeHtml(patientName)}')">Continuar para o mapeamento</button>
     </div>`;
+  renderZoneButtons();
+};
+
+const ZONE_BUTTON_DEFS = [
+  { key:'frente-esquerdo', zona:'frente', lado:'esquerdo', label:'Frente — Lado Esquerdo' },
+  { key:'frente-direito', zona:'frente', lado:'direito', label:'Frente — Lado Direito' },
+  { key:'costas-esquerdo', zona:'costas', lado:'esquerdo', label:'Costas — Lado Esquerdo' },
+  { key:'costas-direito', zona:'costas', lado:'direito', label:'Costas — Lado Direito' }
+];
+
+function renderZoneButtons(){
+  const grid = document.getElementById('zoneButtonsGrid');
+  if (!grid) return;
+  grid.innerHTML = ZONE_BUTTON_DEFS.map(def => {
+    const on = !!window.__zoneCombos?.[def.key];
+    return `<button onclick="toggleZoneCombo('${def.key}')" style="padding:14px 8px;border-radius:10px;border:2px solid ${on?'var(--primary)':'#d8e0dc'};background:${on?'var(--primary)':'#fff'};color:${on?'#fff':'var(--text)'};font-size:13px;font-weight:600;cursor:pointer;">${def.label}</button>`;
+  }).join('');
+}
+
+window.toggleZoneCombo = function(key){
+  window.__zoneCombos = window.__zoneCombos || {};
+  window.__zoneCombos[key] = !window.__zoneCombos[key];
+  renderZoneButtons();
+};
+
+window.quickSelectZone = function(preset){
+  window.__zoneCombos = {};
+  if (preset === 'frenteCompleta'){ window.__zoneCombos['frente-esquerdo']=true; window.__zoneCombos['frente-direito']=true; }
+  if (preset === 'costasCompleta'){ window.__zoneCombos['costas-esquerdo']=true; window.__zoneCombos['costas-direito']=true; }
+  if (preset === 'tudo'){ ZONE_BUTTON_DEFS.forEach(d => window.__zoneCombos[d.key]=true); }
+  renderZoneButtons();
 };
 
 window.startMappingPoints = function(patientId, patientName){
-  const zonas = [];
-  if (document.getElementById('zonaFrente').checked) zonas.push('frente');
-  if (document.getElementById('zonaCostas').checked) zonas.push('costas');
-  const lados = [];
-  if (document.getElementById('ladoEsquerdo').checked) lados.push('esquerdo');
-  if (document.getElementById('ladoDireito').checked) lados.push('direito');
+  const combos = ZONE_BUTTON_DEFS
+    .filter(def => window.__zoneCombos?.[def.key])
+    .map(def => ({ zona: def.zona, lado: def.lado }));
 
-  if (!zonas.length || !lados.length){
-    toast('Escolha pelo menos uma zona e um lado.', true); return;
+  if (!combos.length){
+    toast('Escolha pelo menos um lado para mapear.', true); return;
   }
-
-  const combos = [];
-  zonas.forEach(z => lados.forEach(l => combos.push({ zona: z, lado: l })));
   window.__mappingCombos = combos;
 
   const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
@@ -1638,7 +1666,17 @@ function renderMappingDiagram(cIdx, combo, proto){
       dots += `<circle data-target="${id}_check" cx="${pt.mapX*2}" cy="${pt.mapY*4}" r="8" style="fill:#fff;stroke:var(--primary);stroke-width:2;cursor:pointer;" onclick="toggleMapDot(this)"/>`;
     });
   });
-  if (!hasAny) return '';
+  if (!hasAny){
+    return `<div class="card" style="background:#fff3cd;border:1px solid #e0a83c;">
+      <p style="color:#8a5a00;font-size:13px;">
+        🗺️ Ainda não há mapa visual para esta zona porque nenhum ponto tem
+        posição definida. Vá a <strong>Protocolos → Editar este protocolo</strong>,
+        e em cada ponto toque em <strong>"📍 Definir posição no mapa do corpo"</strong>
+        para o colocar no boneco. Enquanto isso, pode continuar a marcar os
+        pontos pela lista de caixas abaixo — funciona na mesma.
+      </p>
+    </div>`;
+  }
   return `<div class="card" style="background:#f6f8f7;text-align:center;">
     <p class="muted" style="margin-bottom:8px;">Toque no ponto no boneco — equivale a marcar a caixa abaixo</p>
     ${bodySilhouetteSVG(combo.zona, dots)}
