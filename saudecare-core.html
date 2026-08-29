@@ -383,24 +383,67 @@ function renderView(view){
 }
 
 // ── AGENDA ───────────────────────────────────────────────────────────
+window.__agendaMonth = null; // Date (dia 1 do mês visível)
+window.__agendaSelectedDay = null; // 'YYYY-MM-DD'
+
 async function renderAgenda(main){
-  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+  if (!window.__agendaMonth) window.__agendaMonth = new Date();
+  const monthDate = window.__agendaMonth;
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+
+  const todayKey = dateKey(new Date());
+  if (!window.__agendaSelectedDay) window.__agendaSelectedDay = todayKey;
+
+  const firstOfMonth = new Date(year, month, 1);
+  const lastOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
 
   const q = query(
     collection(db, 'tenants', tenantId, 'appointments'),
-    where('startsAt', '>=', Timestamp.fromDate(todayStart)),
-    where('startsAt', '<=', Timestamp.fromDate(todayEnd)),
+    where('startsAt', '>=', Timestamp.fromDate(firstOfMonth)),
+    where('startsAt', '<=', Timestamp.fromDate(lastOfMonth)),
     orderBy('startsAt')
   );
   const snap = await getDocs(q);
 
-  let itemsHtml = '';
-  snap.forEach(d=>{
+  const byDay = {};
+  const apptsById = {};
+  snap.forEach(d => {
     const a = d.data();
+    apptsById[d.id] = a;
+    const key = dateKey(a.startsAt.toDate());
+    (byDay[key] = byDay[key] || []).push({ id: d.id, ...a });
+  });
+
+  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const weekdayLabels = ['D','S','T','Q','Q','S','S'];
+
+  const firstWeekday = firstOfMonth.getDay(); // 0=domingo
+  const daysInMonth = lastOfMonth.getDate();
+
+  let cells = '';
+  for (let i = 0; i < firstWeekday; i++) cells += `<div></div>`;
+  for (let day = 1; day <= daysInMonth; day++){
+    const cellDate = new Date(year, month, day);
+    const key = dateKey(cellDate);
+    const count = (byDay[key] || []).length;
+    const isToday = key === todayKey;
+    const isSelected = key === window.__agendaSelectedDay;
+    cells += `
+      <button onclick="selectAgendaDay('${key}')" style="
+        aspect-ratio:1;border-radius:10px;border:2px solid ${isSelected?'var(--primary)':(isToday?'#cfe0d8':'transparent')};
+        background:${isSelected?'var(--primary)':'#fff'};color:${isSelected?'#fff':'var(--text)'};
+        display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;padding:2px;">
+        <span style="font-size:13px;font-weight:${isToday?'700':'400'};">${day}</span>
+        ${count ? `<span style="font-size:9px;margin-top:2px;background:${isSelected?'#fff':'var(--primary)'};color:${isSelected?'var(--primary)':'#fff'};border-radius:8px;padding:0 5px;">${count}</span>` : ''}
+      </button>`;
+  }
+
+  const dayAppts = (byDay[window.__agendaSelectedDay] || []).sort((a,b) => a.startsAt.toDate() - b.startsAt.toDate());
+  let itemsHtml = dayAppts.map(a => {
     const time = a.startsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
     const statusClass = a.status === 'cancelled' ? 'cancelled' : '';
-    itemsHtml += `<div class="appt-item">
+    return `<div class="appt-item">
       <div class="row">
         <div><strong>${time}</strong> — ${escapeHtml(a.patientName||'Paciente')}
           <div class="muted">${escapeHtml(a.serviceName||'')}</div>
@@ -408,22 +451,58 @@ async function renderAgenda(main){
         <span class="badge ${statusClass}">${escapeHtml(a.status)}</span>
       </div>
       <div class="row" style="margin-top:6px;">
-        <button class="ghost" onclick="editAppointment('${d.id}')">Editar</button>
-        ${a.status !== 'cancelled' ? `<button class="ghost" onclick="cancelAppointment('${d.id}')">Cancelar</button>` : ''}
-        <button class="danger" onclick="deleteAppointment('${d.id}')">Apagar</button>
+        <button class="ghost" onclick="editAppointment('${a.id}')">Editar</button>
+        ${a.status !== 'cancelled' ? `<button class="ghost" onclick="cancelAppointment('${a.id}')">Cancelar</button>` : ''}
+        <button class="danger" onclick="deleteAppointment('${a.id}')">Apagar</button>
       </div>
     </div>`;
-  });
-  if (!itemsHtml) itemsHtml = '<p class="muted">Sem marcações para hoje.</p>';
+  }).join('');
+  if (!itemsHtml) itemsHtml = '<p class="muted">Sem marcações neste dia.</p>';
+
+  const selectedLabel = new Date(window.__agendaSelectedDay + 'T00:00:00').toLocaleDateString('pt-PT', { weekday:'long', day:'numeric', month:'long' });
 
   main.innerHTML = `
-    <div class="row"><h2>Agenda — Hoje</h2>
+    <div class="row"><h2>Agenda</h2>
       <button class="primary" onclick="openNewAppointment()">+ Nova marcação</button>
     </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:10px;">
+        <button class="ghost" onclick="changeAgendaMonth(-1)">‹</button>
+        <strong style="text-transform:capitalize;">${monthNames[month]} ${year}</strong>
+        <button class="ghost" onclick="changeAgendaMonth(1)">›</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">
+        ${weekdayLabels.map(w => `<div style="text-align:center;font-size:11px;color:var(--muted);font-weight:600;">${w}</div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">${cells}</div>
+      <button class="ghost" style="margin-top:10px;width:100%;" onclick="goToAgendaToday()">Hoje</button>
+    </div>
+    <div class="row" style="margin:14px 0 8px;"><h3 style="text-transform:capitalize;">${selectedLabel}</h3></div>
     <div class="card">${itemsHtml}</div>
     <div id="apptFormContainer"></div>
   `;
 }
+
+function dateKey(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+window.changeAgendaMonth = function(delta){
+  const m = window.__agendaMonth;
+  window.__agendaMonth = new Date(m.getFullYear(), m.getMonth() + delta, 1);
+  renderView('agenda');
+};
+
+window.selectAgendaDay = function(key){
+  window.__agendaSelectedDay = key;
+  renderView('agenda');
+};
+
+window.goToAgendaToday = function(){
+  window.__agendaMonth = new Date();
+  window.__agendaSelectedDay = dateKey(new Date());
+  renderView('agenda');
+};
 
 window.openNewAppointment = async function(){
   const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
@@ -440,7 +519,7 @@ window.openNewAppointment = async function(){
       <h2>Nova marcação</h2>
       <label>Paciente</label><select id="apptPatient">${patientOpts}</select>
       <label>Serviço</label><select id="apptService">${serviceOpts}</select>
-      <label>Data e hora</label><input id="apptStart" type="datetime-local">
+      <label>Data e hora</label><input id="apptStart" type="datetime-local" value="${window.__agendaSelectedDay ? window.__agendaSelectedDay + 'T09:00' : ''}">
       <button class="primary" onclick="saveAppointment()">Guardar</button>
     </div>`;
 };
@@ -562,6 +641,39 @@ async function renderPatients(main){
 }
 
 let patientCustomFieldsDraft = [];
+let patientAttachmentsDraft = [];
+
+function renderPatientAttachmentsBuilder(){
+  return `
+    <h3 style="margin:14px 0 8px;">Ficheiros/fotos anexados (opcional)</h3>
+    <p class="muted" style="margin-bottom:8px;">Cole o link de cada ficheiro (ex: Google Drive partilhado, imagem online). Upload direto ainda não está disponível.</p>
+    <div id="patientAttachmentsList"></div>
+    <button class="ghost" onclick="addPatientAttachment()">+ Adicionar link</button>`;
+}
+
+function refreshPatientAttachmentsList(){
+  const rows = patientAttachmentsDraft.map((f, idx) => `
+    <div class="row" style="gap:8px;margin-bottom:8px;">
+      <input value="${escapeHtml(f.label||'')}" onchange="updatePatientAttachment(${idx},'label',this.value)" placeholder="Nome (ex: Raio-X, Consentimento assinado)" style="flex:1;margin-bottom:0;">
+      <input value="${escapeHtml(f.url||'')}" onchange="updatePatientAttachment(${idx},'url',this.value)" placeholder="https://..." style="flex:1;margin-bottom:0;">
+      <button class="danger" onclick="removePatientAttachment(${idx})" style="flex-shrink:0;">Remover</button>
+    </div>
+  `).join('');
+  const list = document.getElementById('patientAttachmentsList');
+  if (list) list.innerHTML = rows;
+}
+
+window.addPatientAttachment = function(){
+  patientAttachmentsDraft.push({ label:'', url:'' });
+  refreshPatientAttachmentsList();
+};
+window.updatePatientAttachment = function(idx, field, value){
+  patientAttachmentsDraft[idx][field] = value;
+};
+window.removePatientAttachment = function(idx){
+  patientAttachmentsDraft.splice(idx, 1);
+  refreshPatientAttachmentsList();
+};
 
 function renderPatientCustomFieldsBuilder(){
   const rows = patientCustomFieldsDraft.map((f, idx) => `
@@ -605,6 +717,7 @@ window.removePatientCustomField = function(idx){
 
 window.openNewPatient = function(){
   patientCustomFieldsDraft = [];
+  patientAttachmentsDraft = [];
   window.__editingPatientId = null;
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
@@ -612,14 +725,17 @@ window.openNewPatient = function(){
       <label>Nome completo</label><input id="pFullName">
       <label>Telefone</label><input id="pPhone">
       <label>Email</label><input id="pEmail" type="email">
+      <label>URL da foto do paciente (opcional)</label><input id="pPhotoUrl" placeholder="https://...">
       <label>Notas clínicas iniciais</label><textarea id="pNotes" rows="3"></textarea>
       ${renderPatientCustomFieldsBuilder()}
+      ${renderPatientAttachmentsBuilder()}
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
         <input type="checkbox" id="pConsent" style="width:auto;margin:0;">
         Paciente deu consentimento explícito para tratamento de dados de saúde
       </label>
       <button class="primary" onclick="savePatient()">Guardar</button>
     </div>`;
+  refreshPatientAttachmentsList();
 };
 
 window.editPatient = async function(patientId){
@@ -627,6 +743,7 @@ window.editPatient = async function(patientId){
   if (!snap.exists()){ toast('Paciente não encontrado.', true); return; }
   const p = snap.data();
   patientCustomFieldsDraft = (p.customFields || []).map(f => ({...f}));
+  patientAttachmentsDraft = (p.attachments || []).map(f => ({...f}));
   window.__editingPatientId = patientId;
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
@@ -634,13 +751,16 @@ window.editPatient = async function(patientId){
       <label>Nome completo</label><input id="pFullName" value="${escapeHtml(p.fullName||'')}">
       <label>Telefone</label><input id="pPhone" value="${escapeHtml(p.phone||'')}">
       <label>Email</label><input id="pEmail" type="email" value="${escapeHtml(p.email||'')}">
+      <label>URL da foto do paciente (opcional)</label><input id="pPhotoUrl" value="${escapeHtml(p.photoUrl||'')}" placeholder="https://...">
       <label>Notas clínicas</label><textarea id="pNotes" rows="3">${escapeHtml(p.clinicalNotes||'')}</textarea>
       ${renderPatientCustomFieldsBuilder()}
+      ${renderPatientAttachmentsBuilder()}
       <div class="row" style="margin-top:14px;">
         <button class="primary" onclick="updatePatient('${patientId}')">Guardar alterações</button>
         <button class="ghost" onclick="viewPatient('${patientId}')">Cancelar</button>
       </div>
     </div>`;
+  refreshPatientAttachmentsList();
 };
 
 window.updatePatient = async function(patientId){
@@ -650,8 +770,10 @@ window.updatePatient = async function(patientId){
     fullName,
     phone: document.getElementById('pPhone').value.trim(),
     email: document.getElementById('pEmail').value.trim(),
+    photoUrl: document.getElementById('pPhotoUrl').value.trim(),
     clinicalNotes: document.getElementById('pNotes').value.trim(),
-    customFields: patientCustomFieldsDraft.filter(f => f.label && f.label.trim())
+    customFields: patientCustomFieldsDraft.filter(f => f.label && f.label.trim()),
+    attachments: patientAttachmentsDraft.filter(f => f.label && f.label.trim() && f.url && f.url.trim())
   });
   toast('Paciente atualizado.');
   viewPatient(patientId);
@@ -667,8 +789,10 @@ window.savePatient = async function(){
     fullName,
     phone: document.getElementById('pPhone').value.trim(),
     email: document.getElementById('pEmail').value.trim(),
+    photoUrl: document.getElementById('pPhotoUrl').value.trim(),
     clinicalNotes: document.getElementById('pNotes').value.trim(),
     customFields: patientCustomFieldsDraft.filter(f => f.label && f.label.trim()),
+    attachments: patientAttachmentsDraft.filter(f => f.label && f.label.trim() && f.url && f.url.trim()),
     consentGivenAt: serverTimestamp(),
     consentVersion: currentTenantDoc?.legalTexts?.consentVersion || 'v1',
     createdBy: currentUser.uid
@@ -719,10 +843,17 @@ window.viewPatient = async function(patientId){
     ? (p.customFields||[]).map(f => `<p class="muted"><strong>${escapeHtml(f.label)}:</strong> ${escapeHtml(f.value)}</p>`).join('')
     : '';
 
+  const attachmentsHtml = (p.attachments||[]).length
+    ? (p.attachments||[]).map(f => `<div class="appt-item row"><span>${escapeHtml(f.label)}</span><a href="${escapeHtml(f.url)}" target="_blank" rel="noopener"><button class="ghost">Abrir</button></a></div>`).join('')
+    : '<p class="muted">Sem ficheiros anexados.</p>';
+
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
       <div class="row">
-        <h2>${escapeHtml(p.fullName)}</h2>
+        <div class="row" style="gap:12px;">
+          ${p.photoUrl ? `<img src="${escapeHtml(p.photoUrl)}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none';">` : ''}
+          <h2>${escapeHtml(p.fullName)}</h2>
+        </div>
         <button class="ghost" onclick="editPatient('${patientId}')">✏️ Editar</button>
       </div>
       <p class="muted">${escapeHtml(p.phone||'')} · ${escapeHtml(p.email||'')}</p>
@@ -736,6 +867,10 @@ window.viewPatient = async function(patientId){
       </div>
     </div>
     <div id="sendFormContainer"></div>
+    <div class="card">
+      <h2>Ficheiros e fotos</h2>
+      ${attachmentsHtml}
+    </div>
     <div class="card">
       <h2>Relatórios anteriores</h2>
       ${reportsHtml}
@@ -1459,8 +1594,9 @@ function renderClassificationsBuilder(){
       <input value="${escapeHtml(c.label||'')}" onchange="updateClassification(${idx},'label',this.value)" placeholder="ex: Escudo emocional mais ativo">
       <label>Quando perguntar</label>
       <select onchange="updateClassification(${idx},'when',this.value)">
-        <option value="before" ${c.when==='before'?'selected':''}>No início (antes do mapeamento) — ex: dados do paciente, perguntas de recolha</option>
-        <option value="after" ${(!c.when||c.when==='after')?'selected':''}>No fim (classificação final) — ex: escudo ativo, idade/geração</option>
+        <option value="before" ${c.when==='before'?'selected':''}>No início — antes de começar (ex: dados do paciente, perguntas de recolha)</option>
+        <option value="during" ${c.when==='during'?'selected':''}>A meio — depois de escolher os lados, antes de marcar os pontos (ex: lateralidade)</option>
+        <option value="after" ${(!c.when||c.when==='after')?'selected':''}>No fim — classificação final (ex: escudo ativo, idade/geração)</option>
       </select>
       <label>Tipo de resposta</label>
       <select onchange="updateClassification(${idx},'type',this.value)">
@@ -1573,6 +1709,7 @@ window.onGuidedProtocolChange = function(patientId, patientName){
   const proto = window.__guidedProtocols[protoId];
   window.__currentGuidedProtoId = protoId;
   window.__mappingBeforeAnswers = [];
+  window.__mappingDuringAnswers = [];
   window.__mappingAfterAnswers = [];
   area.innerHTML = '';
 
@@ -1590,50 +1727,59 @@ window.onGuidedProtocolChange = function(patientId, patientName){
 };
 
 // ── Ecrã genérico de perguntas (usado no início e no fim do mapeamento) ─
-function renderQuestionsScreen(area, questions, phase, onContinue){
-  let html = `<h3 style="margin:8px 0;">${phase==='before' ? 'Antes de começar' : 'Classificação final'}</h3>`;
-  questions.forEach((c, idx) => {
+function questionsFieldsHTML(questions, phase){
+  return questions.map((c, idx) => {
     const inputId = `${phase}q_${idx}`;
     if (c.type === 'text'){
-      html += `<div class="card"><label>${escapeHtml(c.label)}</label><input id="${inputId}"></div>`;
+      return `<div class="card"><label>${escapeHtml(c.label)}</label><input id="${inputId}"></div>`;
     } else if (c.type === 'checkbox'){
       const opts = (c.options||[]).map((o, oIdx) => `
         <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
           <input type="checkbox" id="${inputId}_opt_${oIdx}" value="${escapeHtml(o)}" style="width:auto;margin:0;">
           ${escapeHtml(o)}
         </label>`).join('');
-      html += `<div class="card"><label>${escapeHtml(c.label)}</label>${opts}</div>`;
+      return `<div class="card"><label>${escapeHtml(c.label)}</label>${opts}</div>`;
     } else {
       const opts = (c.options||[]).map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
-      html += `<div class="card"><label>${escapeHtml(c.label)}</label><select id="${inputId}"><option value="">—</option>${opts}</select></div>`;
+      return `<div class="card"><label>${escapeHtml(c.label)}</label><select id="${inputId}"><option value="">—</option>${opts}</select></div>`;
     }
-  });
+  }).join('');
+}
+
+function readQuestionsAnswers(questions, phase){
+  return questions.map((c, idx) => {
+    const inputId = `${phase}q_${idx}`;
+    if (c.type === 'checkbox'){
+      const chosen = (c.options||[])
+        .map((o, oIdx) => document.getElementById(`${inputId}_opt_${oIdx}`)?.checked ? o : null)
+        .filter(Boolean);
+      return { label: c.label, value: chosen.join(', ') };
+    }
+    return { label: c.label, value: document.getElementById(inputId)?.value || '' };
+  }).filter(a => a.value);
+}
+
+function renderQuestionsScreen(area, questions, phase, onContinue){
+  const titles = { before:'Antes de começar', during:'Durante a consulta', after:'Classificação final' };
+  let html = `<h3 style="margin:8px 0;">${titles[phase] || ''}</h3>`;
+  html += questionsFieldsHTML(questions, phase);
   html += `<button class="primary" onclick="window.__questionsScreenContinue()">Continuar</button>`;
   area.innerHTML += html;
   area.scrollIntoView({ behavior:'smooth', block:'end' });
 
   window.__questionsScreenContinue = function(){
-    const answers = questions.map((c, idx) => {
-      const inputId = `${phase}q_${idx}`;
-      if (c.type === 'checkbox'){
-        const chosen = (c.options||[])
-          .map((o, oIdx) => document.getElementById(`${inputId}_opt_${oIdx}`)?.checked ? o : null)
-          .filter(Boolean);
-        return { label: c.label, value: chosen.join(', ') };
-      }
-      return { label: c.label, value: document.getElementById(inputId)?.value || '' };
-    }).filter(a => a.value);
-
+    const answers = readQuestionsAnswers(questions, phase);
     if (phase === 'before') window.__mappingBeforeAnswers = answers;
+    else if (phase === 'during') window.__mappingDuringAnswers = answers;
     else window.__mappingAfterAnswers = answers;
-
     onContinue();
   };
 }
 
 // ── Fluxo tipo "simples" (como já existia) ──────────────────────────────
 function renderGuidedPoints(patientId, patientName, area, proto){
-  area.innerHTML = proto.points.map((pt, idx) => `
+  const duringQuestions = (proto.finalClassifications || []).filter(c => c.when === 'during');
+  let html = proto.points.map((pt, idx) => `
     <div class="card" style="margin:8px 0;">
       <label style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="ptCheck${idx}" style="width:auto;margin:0;">
@@ -1642,13 +1788,21 @@ function renderGuidedPoints(patientId, patientName, area, proto){
       <label style="margin-top:6px;">Nota desta sessão (opcional)</label>
       <textarea id="ptNote${idx}" rows="2" placeholder="Observações específicas desta consulta..."></textarea>
     </div>
-  `).join('') + `<button class="primary" onclick="startSimpleClassificationsPhase('${patientId}', '${escapeHtml(patientName)}')">Continuar</button>`;
+  `).join('');
+  if (duringQuestions.length){
+    html += `<h3 style="margin:16px 0 8px;">Durante a consulta</h3>` + questionsFieldsHTML(duringQuestions, 'during');
+  }
+  html += `<button class="primary" onclick="startSimpleClassificationsPhase('${patientId}', '${escapeHtml(patientName)}')">Continuar</button>`;
+  area.innerHTML = html;
 }
 
 window.startSimpleClassificationsPhase = function(patientId, patientName){
   const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
   const hasChecked = proto.points.some((pt, idx) => document.getElementById(`ptCheck${idx}`)?.checked);
   if (!hasChecked){ toast('Marque pelo menos um ponto para continuar.', true); return; }
+
+  const duringQuestions = (proto.finalClassifications || []).filter(c => c.when === 'during');
+  window.__mappingDuringAnswers = duringQuestions.length ? readQuestionsAnswers(duringQuestions, 'during') : [];
 
   const afterQuestions = (proto.finalClassifications || []).filter(c => !c.when || c.when === 'after');
   if (!afterQuestions.length){
@@ -1683,6 +1837,7 @@ window.generateReport = async function(patientId, patientName){
   }
 
   const beforeAnswers = window.__mappingBeforeAnswers || [];
+  const duringAnswers = window.__mappingDuringAnswers || [];
   const afterAnswers = window.__mappingAfterAnswers || [];
 
   let reportText = `Relatório de Consulta — ${proto.name}\n`;
@@ -1692,6 +1847,12 @@ window.generateReport = async function(patientId, patientName){
   if (beforeAnswers.length){
     reportText += `== Dados iniciais ==\n`;
     beforeAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
+    reportText += `\n`;
+  }
+
+  if (duringAnswers.length){
+    reportText += `== Durante a consulta ==\n`;
+    duringAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
     reportText += `\n`;
   }
 
@@ -1708,7 +1869,7 @@ window.generateReport = async function(patientId, patientName){
 
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
     protocolId: protoId, protocolName: proto.name, points: detectedPoints,
-    beforeAnswers, classifications: afterAnswers,
+    beforeAnswers, duringAnswers, classifications: afterAnswers,
     reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
   });
   await logAudit('report_generated', patientId);
@@ -1774,6 +1935,20 @@ window.startMappingPoints = function(patientId, patientName){
   window.__mappingCombos = combos;
 
   const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
+  const area = document.getElementById('guidedPointsArea');
+  area.innerHTML = '';
+
+  const showPoints = () => renderMappingPointsList(patientId, patientName, area, proto, combos);
+
+  const duringQuestions = (proto.finalClassifications || []).filter(c => c.when === 'during');
+  if (duringQuestions.length){
+    renderQuestionsScreen(area, duringQuestions, 'during', showPoints);
+  } else {
+    showPoints();
+  }
+};
+
+function renderMappingPointsList(patientId, patientName, area, proto, combos){
   const zonaLabel = { frente:'Frente', costas:'Costas' };
   const ladoLabel = { esquerdo:'Esquerdo', direito:'Direito' };
 
@@ -1799,8 +1974,8 @@ window.startMappingPoints = function(patientId, patientName){
   });
   html += `<button class="primary" onclick="startMappingClassificationsPhase('${patientId}','${escapeHtml(patientName)}')">Continuar</button>`;
 
-  document.getElementById('guidedPointsArea').innerHTML = html;
-};
+  area.innerHTML = html;
+}
 
 // ── Mapa do corpo na execução — dots absolutos sobre a imagem própria ──
 function renderMappingDiagram(cIdx, combo, proto){
@@ -1887,6 +2062,7 @@ window.generateMappingReport = async function(patientId, patientName){
   });
 
   const beforeAnswers = window.__mappingBeforeAnswers || [];
+  const duringAnswers = window.__mappingDuringAnswers || [];
   const classificationAnswers = window.__mappingAfterAnswers || [];
 
   if (!detected.length){
@@ -1901,6 +2077,12 @@ window.generateMappingReport = async function(patientId, patientName){
   if (beforeAnswers.length){
     reportText += `== Dados iniciais ==\n`;
     beforeAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
+    reportText += `\n`;
+  }
+
+  if (duringAnswers.length){
+    reportText += `== Observações a meio da consulta ==\n`;
+    duringAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
     reportText += `\n`;
   }
 
@@ -1921,7 +2103,7 @@ window.generateMappingReport = async function(patientId, patientName){
 
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
     protocolId: window.__currentGuidedProtoId, protocolName: proto.name,
-    mappingDetected: detected, beforeAnswers, classifications: classificationAnswers,
+    mappingDetected: detected, beforeAnswers, duringAnswers, classifications: classificationAnswers,
     reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
   });
   await logAudit('report_generated', patientId);
