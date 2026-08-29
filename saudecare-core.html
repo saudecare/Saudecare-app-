@@ -57,6 +57,15 @@
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a2b26;
     color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:999;}
   .hidden{display:none !important;}
+  .hintBox{background:#eef6f2;border:1px solid #d7ebe2;border-radius:10px;padding:10px 12px;
+    font-size:12.5px;color:var(--primary-dark);margin-bottom:14px;line-height:1.4;}
+  .mapFullscreenOverlay{position:fixed;inset:0;background:#0b1310;z-index:2000;display:flex;flex-direction:column;}
+  .mapFullscreenHeader{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;color:#fff;flex-shrink:0;}
+  .mapFullscreenHeader button{background:rgba(255,255,255,.15);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;}
+  .mapFullscreenBody{flex:1;display:flex;align-items:center;justify-content:center;padding:6px;overflow:auto;min-height:0;}
+  .mapFullscreenBody .mapDiagramWrap{max-width:100% !important;max-height:100%;width:auto;height:auto;margin:0;}
+  .mapFullscreenBody .mapDiagramWrap img,
+  .mapFullscreenBody .mapDiagramWrap svg{max-height:calc(100vh - 90px);width:auto;margin:0 auto;display:block;}
   @media(max-width:640px){
     #app{flex-direction:column;}
     nav{width:100%;display:flex;overflow-x:auto;padding:8px;gap:4px;}
@@ -135,6 +144,9 @@ import {
   getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc,
   deleteDoc, setDoc, query, where, orderBy, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getStorage, ref, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 // ── CONFIGURAÇÃO — substituir pelos valores reais do projeto Firebase ──
 const firebaseConfig = {
@@ -149,6 +161,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 let currentUser = null;
 let tenantId = null;
@@ -168,6 +181,58 @@ function escapeHtml(str){
   if (str == null) return '';
   return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
 }
+
+// Pequena caixa de ajuda contextual — usada no topo de cada secção
+// principal para orientar qualquer subscritor, seja qual for a sua área
+// (fisioterapia, psicologia, terapias alternativas, nutrição, etc.).
+function hintBox(text){
+  return `<div class="hintBox">💡 ${text}</div>`;
+}
+
+// ── Upload de imagens (Firebase Storage) ────────────────────────────────
+// Sobe um ficheiro para uma pasta do próprio subscritor e devolve o link
+// público, para usar exatamente como se fosse um link colado à mão.
+async function uploadImageFile(file, pathPrefix){
+  const safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+  const path = `${pathPrefix}/${Date.now()}_${safeName}`;
+  const fileRef = ref(storage, path);
+  await uploadBytes(fileRef, file);
+  return await getDownloadURL(fileRef);
+}
+
+// Gera o HTML de um campo de imagem "duas vias": link colado à mão OU
+// escolher/tirar uma foto do telemóvel, PC, ou nuvem/Drive (o seletor de
+// ficheiros do sistema operativo já mostra essas origens sozinho).
+// targetInputId: id do <input> de texto que guarda o link final.
+function imageUploadFieldHTML(targetInputId, pathPrefix){
+  return `<div class="row" style="margin:-4px 0 10px;gap:8px;">
+    <label for="${targetInputId}_file" class="ghost" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;display:block;">
+      📷 Escolher foto (telemóvel, PC ou nuvem)
+    </label>
+    <input type="file" id="${targetInputId}_file" accept="image/*" style="display:none;"
+      onchange="handleImageUpload(this,'${targetInputId}','${pathPrefix}')">
+  </div>`;
+}
+
+window.handleImageUpload = async function(fileInputEl, targetInputId, pathPrefix){
+  const file = fileInputEl.files[0];
+  if (!file) return;
+  if (file.size > 8 * 1024 * 1024){ toast('Imagem demasiado grande — escolha um ficheiro até 8MB.', true); return; }
+  toast('A enviar imagem…');
+  try{
+    const url = await uploadImageFile(file, pathPrefix);
+    const targetInput = document.getElementById(targetInputId);
+    if (targetInput){
+      targetInput.value = url;
+      targetInput.dispatchEvent(new Event('change'));
+    }
+    toast('Imagem enviada com sucesso.');
+  }catch(e){
+    console.error(e);
+    toast('Não foi possível enviar a imagem. Tente novamente.', true);
+  }
+  fileInputEl.value = '';
+};
 
 // ── Auth ─────────────────────────────────────────────────────────────
 window.doLogin = async function(){
@@ -258,7 +323,7 @@ window.doRegister = async function(){
     });
 
     errEl.style.color = 'var(--primary)';
-    errEl.textContent = 'Conta criada com sucesso! Estamos a preparar o seu acesso — vai poder entrar em breve.';
+    errEl.textContent = 'Registo efetuado com sucesso! O seu pedido está a aguardar aprovação — normalmente fica ativo em até 24 horas.';
   }catch(e){
     window.__justRegistered = false;
     errEl.style.color = 'var(--danger)';
@@ -311,7 +376,7 @@ onAuthStateChanged(auth, async (user) => {
       switchAuthTab('login');
       const errEl = document.getElementById('loginError');
       errEl.style.color = 'var(--primary)';
-      errEl.textContent = 'Conta criada! Assim que o acesso for ativado, poderá entrar aqui com o mesmo email e password.';
+      errEl.textContent = 'O seu registo está a aguardar aprovação — normalmente fica ativo em até 24 horas. Volte a tentar entrar depois desse prazo.';
       return;
     }
     toast('Esta conta ainda não está associada a nenhum subscritor.', true);
@@ -497,6 +562,7 @@ async function renderAgenda(main){
     <div class="row"><h2>Agenda</h2>
       <button class="primary" onclick="openNewAppointment()">+ Nova marcação</button>
     </div>
+    ${hintBox('Aqui vê e cria as suas marcações — consultas, sessões, aulas ou qualquer tipo de atendimento que faça. Toque num dia para ver os detalhes.')}
     <div class="card">
       <div class="row" style="margin-bottom:10px;">
         <button class="ghost" onclick="changeAgendaMonth(-1)">‹</button>
@@ -667,6 +733,7 @@ async function renderPatients(main){
     <div class="row"><h2>Pacientes</h2>
       <button class="primary" onclick="openNewPatient()">+ Novo paciente</button>
     </div>
+    ${hintBox('A sua lista de clientes/pacientes. Guarde o consentimento RGPD de cada um antes de registar dados sensíveis — é obrigatório por lei.')}
     <div class="card">${rows}</div>
     <div id="patientFormContainer"></div>
   `;
@@ -678,17 +745,18 @@ let patientAttachmentsDraft = [];
 function renderPatientAttachmentsBuilder(){
   return `
     <h3 style="margin:14px 0 8px;">Ficheiros/fotos anexados (opcional)</h3>
-    <p class="muted" style="margin-bottom:8px;">Cole o link de cada ficheiro (ex: Google Drive partilhado, imagem online). Upload direto ainda não está disponível.</p>
+    <p class="muted" style="margin-bottom:8px;">Escolha uma foto do telemóvel, PC ou nuvem, ou cole um link (ex: Google Drive partilhado).</p>
     <div id="patientAttachmentsList"></div>
-    <button class="ghost" onclick="addPatientAttachment()">+ Adicionar link</button>`;
+    <button class="ghost" onclick="addPatientAttachment()">+ Adicionar ficheiro</button>`;
 }
 
 function refreshPatientAttachmentsList(){
   const rows = patientAttachmentsDraft.map((f, idx) => `
-    <div class="row" style="gap:8px;margin-bottom:8px;">
-      <input value="${escapeHtml(f.label||'')}" onchange="updatePatientAttachment(${idx},'label',this.value)" placeholder="Nome (ex: Raio-X, Consentimento assinado)" style="flex:1;margin-bottom:0;">
-      <input value="${escapeHtml(f.url||'')}" onchange="updatePatientAttachment(${idx},'url',this.value)" placeholder="https://..." style="flex:1;margin-bottom:0;">
-      <button class="danger" onclick="removePatientAttachment(${idx})" style="flex-shrink:0;">Remover</button>
+    <div class="card" style="margin-bottom:8px;background:#f6f8f7;">
+      <input value="${escapeHtml(f.label||'')}" onchange="updatePatientAttachment(${idx},'label',this.value)" placeholder="Nome (ex: Raio-X, Consentimento assinado)">
+      <input id="patAttach_${idx}" value="${escapeHtml(f.url||'')}" onchange="updatePatientAttachment(${idx},'url',this.value)" placeholder="https://... (ou escolha um ficheiro abaixo)">
+      ${imageUploadFieldHTML(`patAttach_${idx}`, `tenants/${tenantId}/patients`)}
+      <button class="danger" onclick="removePatientAttachment(${idx})">Remover</button>
     </div>
   `).join('');
   const list = document.getElementById('patientAttachmentsList');
@@ -757,7 +825,8 @@ window.openNewPatient = function(){
       <label>Nome completo</label><input id="pFullName">
       <label>Telefone</label><input id="pPhone">
       <label>Email</label><input id="pEmail" type="email">
-      <label>URL da foto do paciente (opcional)</label><input id="pPhotoUrl" placeholder="https://...">
+      <label>Foto do paciente (opcional)</label><input id="pPhotoUrl" placeholder="https://... (ou escolha uma foto abaixo)">
+      ${imageUploadFieldHTML('pPhotoUrl', `tenants/${tenantId}/patients`)}
       <label>Notas clínicas iniciais</label><textarea id="pNotes" rows="3"></textarea>
       ${renderPatientCustomFieldsBuilder()}
       ${renderPatientAttachmentsBuilder()}
@@ -783,7 +852,8 @@ window.editPatient = async function(patientId){
       <label>Nome completo</label><input id="pFullName" value="${escapeHtml(p.fullName||'')}">
       <label>Telefone</label><input id="pPhone" value="${escapeHtml(p.phone||'')}">
       <label>Email</label><input id="pEmail" type="email" value="${escapeHtml(p.email||'')}">
-      <label>URL da foto do paciente (opcional)</label><input id="pPhotoUrl" value="${escapeHtml(p.photoUrl||'')}" placeholder="https://...">
+      <label>Foto do paciente (opcional)</label><input id="pPhotoUrl" value="${escapeHtml(p.photoUrl||'')}" placeholder="https://... (ou escolha uma foto abaixo)">
+      ${imageUploadFieldHTML('pPhotoUrl', `tenants/${tenantId}/patients`)}
       <label>Notas clínicas</label><textarea id="pNotes" rows="3">${escapeHtml(p.clinicalNotes||'')}</textarea>
       ${renderPatientCustomFieldsBuilder()}
       ${renderPatientAttachmentsBuilder()}
@@ -1022,6 +1092,7 @@ async function renderServices(main){
 
   main.innerHTML = `
     <div class="row"><h2>Serviços</h2></div>
+    ${hintBox('O que oferece aos seus clientes — cada serviço aparece na sua página pública e no funil de marcação, com nome, preço e duração.')}
     <div class="card">${rows}</div>
     <div id="serviceFormContainer"></div>
   `;
@@ -1133,6 +1204,7 @@ async function renderForms(main){
     <div class="row"><h2>Fichas / Questionários</h2>
       <button class="primary" onclick="openNewForm()">+ Nova ficha</button>
     </div>
+    ${hintBox('Crie questionários para os seus clientes preencherem antes ou depois de um atendimento — avaliação inicial, satisfação, o que for útil à sua prática.')}
     <div class="card">${rows}</div>
     <h2 style="margin:16px 0 10px;">Respostas pendentes de associar</h2>
     <div class="card">${pendingHtml}</div>
@@ -1343,6 +1415,7 @@ async function renderProtocols(main){
       </div>
       <div>
         <button class="ghost" onclick="editProtocol('${d.id}')">Editar</button>
+        <button class="ghost" onclick="duplicateProtocol('${d.id}')">Duplicar</button>
         <button class="danger" onclick="deleteProtocol('${d.id}')">Remover</button>
       </div>
     </div>`;
@@ -1353,11 +1426,10 @@ async function renderProtocols(main){
     <div class="row"><h2>Protocolos / Métodos de Atendimento</h2>
       <button class="primary" onclick="openNewProtocol()">+ Novo protocolo</button>
     </div>
-    <p class="muted" style="margin-bottom:10px;">
-      Um protocolo é o seu próprio método. Pode ser uma lista simples de
-      pontos, ou um mapeamento por zonas do corpo (frente/costas ×
-      esquerda/direita), com grupos de pontos organizados por sistema.
-    </p>
+    ${hintBox(`Um protocolo é o seu próprio método de trabalho — serve para qualquer área.
+      <strong>Lista simples</strong>: uma checklist de pontos a observar (ex: sintomas, temas de sessão, exercícios).
+      <strong>Mapeamento por zonas</strong>: pontos marcados sobre uma imagem do corpo, organizados em grupos (ex: "Pontos principais", "Sistema X"), com zonas frente/costas e esquerdo/direito — útil para terapias manuais, corporais ou energéticas.
+      Em ambos, pode acrescentar perguntas antes, durante ou depois do atendimento, e a app gera um relatório automático no fim.`)}
     <div class="card">${rows}</div>
     <div id="protocolFormContainer"></div>
   `;
@@ -1485,10 +1557,12 @@ function renderMappingGroupsBuilder(){
   return `
     <h3 style="margin:14px 0 8px;">Imagem do corpo para o mapa (opcional)</h3>
     <p class="muted" style="margin-bottom:8px;">Cole o link de uma imagem sua (frente e/ou costas). Se deixar em branco, é usado um boneco genérico.</p>
-    <label>URL da imagem — Frente</label>
-    <input value="${escapeHtml(protocolBodyImages.front||'')}" onchange="updateProtocolBodyImage('front', this.value)" placeholder="https://...">
-    <label>URL da imagem — Costas</label>
-    <input value="${escapeHtml(protocolBodyImages.back||'')}" onchange="updateProtocolBodyImage('back', this.value)" placeholder="https://...">
+    <label>Imagem — Frente</label>
+    <input id="protoImgFront" value="${escapeHtml(protocolBodyImages.front||'')}" onchange="updateProtocolBodyImage('front', this.value)" placeholder="https://... (ou escolha uma foto abaixo)">
+    ${imageUploadFieldHTML('protoImgFront', `tenants/${tenantId}/protocols`)}
+    <label>Imagem — Costas</label>
+    <input id="protoImgBack" value="${escapeHtml(protocolBodyImages.back||'')}" onchange="updateProtocolBodyImage('back', this.value)" placeholder="https://... (ou escolha uma foto abaixo)">
+    ${imageUploadFieldHTML('protoImgBack', `tenants/${tenantId}/protocols`)}
     <h3 style="margin:14px 0 8px;">Grupos de pontos</h3>
     <div id="mapPickerContainer"></div>
     <div id="protoGroupsList">${groupsHtml || '<p class="muted">Ainda sem grupos. Adicione o primeiro (ex: "7 Pontos Vitais").</p>'}</div>
@@ -1514,12 +1588,37 @@ function bodyDiagramHTML(bodyImages, side, overlayHtml){
         <rect x="70" y="168" width="28" height="160" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
         <rect x="102" y="168" width="28" height="160" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
        </svg>`;
-  return `<div class="mapDiagramWrap" style="position:relative;width:100%;max-width:260px;margin:0 auto;">
+  return `<div class="mapDiagramWrap" style="position:relative;width:100%;max-width:380px;margin:0 auto;">
     ${inner}
     <div style="position:absolute;top:4px;left:8px;font-size:11px;background:rgba(0,0,0,.45);color:#fff;padding:2px 8px;border-radius:10px;">${side==='costas'?'Costas':'Frente'}</div>
     ${overlayHtml}
   </div>`;
 }
+
+// ── Ecrã inteiro reutilizável para qualquer mapa do corpo ───────────────
+// Recebe o nome de uma função global que sabe (re)desenhar o diagrama —
+// assim o mesmo ecrã inteiro serve tanto o construtor de protocolos como
+// a consulta guiada, sem duplicar lógica de toques/pontos.
+window.openMapFullscreen = function(renderFnName, title){
+  closeMapFullscreen();
+  const overlay = document.createElement('div');
+  overlay.className = 'mapFullscreenOverlay';
+  overlay.id = 'mapFullscreenOverlay';
+  overlay.innerHTML = `
+    <div class="mapFullscreenHeader">
+      <strong>${escapeHtml(title||'Mapa do corpo')}</strong>
+      <button onclick="closeMapFullscreen()">✕ Fechar</button>
+    </div>
+    <div class="mapFullscreenBody" id="mapFullscreenBody"></div>`;
+  document.body.appendChild(overlay);
+  window.__mapFullscreenRenderFn = renderFnName;
+  window[renderFnName](document.getElementById('mapFullscreenBody'));
+};
+
+window.closeMapFullscreen = function(){
+  window.__mapFullscreenRenderFn = null;
+  document.getElementById('mapFullscreenOverlay')?.remove();
+};
 
 // ── Seletor de posição no mapa do corpo (usado ao construir o protocolo) ─
 window.openMapPositionPicker = function(gIdx, pIdx){
@@ -1550,6 +1649,7 @@ function renderMapPositionPicker(){
         <button onclick="setMapPickerSide('costas')" style="flex:1;background:${side==='costas'?'var(--primary)':'none'};color:${side==='costas'?'#fff':'var(--text)'};border:1px solid #d8e0dc;border-left:none;padding:8px;border-radius:0 8px 8px 0;cursor:pointer;">Costas</button>
       </div>
       <p class="muted" style="margin-bottom:8px;text-align:center;">Toque na imagem no local exato deste ponto.</p>
+      <button class="ghost" style="width:100%;margin-bottom:8px;" onclick="openMapFullscreen('renderMapPickerFullscreenBody','Posição — ${escapeAttrJs(pt.name||'')}')">⛶ Ver em ecrã inteiro (mais precisão)</button>
       <div onclick="handleMapPickerClick(event)" style="cursor:crosshair;">${bodyDiagramHTML(protocolBodyImages, side, dot)}</div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <button class="primary" onclick="saveMapPosition()">Guardar posição</button>
@@ -1557,6 +1657,47 @@ function renderMapPositionPicker(){
       </div>
     </div>`;
 }
+
+// Escapa aspas simples para uso seguro dentro de atributos onclick="..."
+function escapeAttrJs(str){
+  return escapeHtml(str).replace(/'/g, "\\'");
+}
+
+// Mesmo conteúdo do seletor de posição, mas desenhado dentro do overlay
+// de ecrã inteiro — usa exatamente o mesmo estado e as mesmas funções de
+// toque, por isso marcar o ponto aqui atualiza tudo normalmente.
+window.renderMapPickerFullscreenBody = function(container){
+  const { gIdx, pIdx } = window.__mapPickerTarget;
+  const pt = protocolGroupsDraft[gIdx].points[pIdx];
+  const side = window.__mapPickerSide;
+  const dot = (window.__mapPickerX != null)
+    ? `<div style="position:absolute;left:${window.__mapPickerX}%;top:${window.__mapPickerY}%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);pointer-events:none;"></div>`
+    : '';
+  container.innerHTML = `
+    <div style="width:100%;">
+      <div style="display:flex;margin-bottom:10px;max-width:380px;margin-left:auto;margin-right:auto;">
+        <button onclick="setMapPickerSideFullscreen('frente')" style="flex:1;background:${side==='frente'?'var(--primary)':'rgba(255,255,255,.15)'};color:#fff;border:none;padding:10px;border-radius:8px 0 0 8px;cursor:pointer;">Frente</button>
+        <button onclick="setMapPickerSideFullscreen('costas')" style="flex:1;background:${side==='costas'?'var(--primary)':'rgba(255,255,255,.15)'};color:#fff;border:none;padding:10px;border-radius:0 8px 8px 0;cursor:pointer;">Costas</button>
+      </div>
+      <div onclick="handleMapPickerClickFullscreen(event)" style="cursor:crosshair;">${bodyDiagramHTML(protocolBodyImages, side, dot)}</div>
+    </div>`;
+};
+
+window.setMapPickerSideFullscreen = function(side){
+  window.__mapPickerSide = side;
+  window.renderMapPickerFullscreenBody(document.getElementById('mapFullscreenBody'));
+};
+
+window.handleMapPickerClickFullscreen = function(evt){
+  const wrap = evt.currentTarget.querySelector('.mapDiagramWrap');
+  const rect = wrap.getBoundingClientRect();
+  const x = ((evt.clientX - rect.left) / rect.width) * 100;
+  const y = ((evt.clientY - rect.top) / rect.height) * 100;
+  window.__mapPickerX = Math.max(0, Math.min(100, x));
+  window.__mapPickerY = Math.max(0, Math.min(100, y));
+  window.renderMapPickerFullscreenBody(document.getElementById('mapFullscreenBody'));
+  renderMapPositionPicker();
+};
 
 window.setMapPickerSide = function(side){
   window.__mapPickerSide = side;
@@ -1716,6 +1857,22 @@ window.saveProtocol = async function(editId){
 window.deleteProtocol = async function(id){
   if (!confirm('Remover este protocolo? Relatórios já gerados com ele não são afetados.')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'protocols', id));
+  renderView('protocols');
+};
+
+// Duplica um protocolo já existente — útil para partir de um método já
+// escrito em vez de começar do zero, ou para adaptar um protocolo para
+// um paciente/situação diferente sem perder o original.
+window.duplicateProtocol = async function(id){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'protocols', id));
+  if (!snap.exists()){ toast('Protocolo não encontrado.', true); return; }
+  const p = snap.data();
+  await addDoc(collection(db, 'tenants', tenantId, 'protocols'), {
+    ...p,
+    name: (p.name || 'Protocolo') + ' (cópia)',
+    createdAt: serverTimestamp()
+  });
+  toast('Protocolo duplicado — já pode editar a cópia.');
   renderView('protocols');
 };
 
@@ -1994,7 +2151,11 @@ function renderMappingPointsList(patientId, patientName, area, proto, combos){
   let html = '';
   combos.forEach((combo, cIdx) => {
     html += `<h3 style="margin:16px 0 8px;">${zonaLabel[combo.zona]} — Lado ${ladoLabel[combo.lado]}</h3>`;
-    html += renderMappingDiagram(cIdx, combo, proto);
+    html += renderMappingDiagram(cIdx, combo, proto, false);
+    // Regista a função de ecrã inteiro para este combo específico.
+    window[`renderMappingDiagramFullscreen_${cIdx}`] = function(container){
+      container.innerHTML = renderMappingDiagram(cIdx, combo, proto, true);
+    };
     proto.groups.forEach((g, gIdx) => {
       html += `<div class="card" style="margin-bottom:8px;"><strong>${escapeHtml(g.groupName)}</strong>`;
       g.points.forEach((pt, pIdx) => {
@@ -2017,7 +2178,7 @@ function renderMappingPointsList(patientId, patientName, area, proto, combos){
 }
 
 // ── Mapa do corpo na execução — dots absolutos sobre a imagem própria ──
-function renderMappingDiagram(cIdx, combo, proto){
+function renderMappingDiagram(cIdx, combo, proto, fullscreen){
   let dots = '';
   let hasAny = false;
   proto.groups.forEach((g, gIdx) => {
@@ -2025,19 +2186,34 @@ function renderMappingDiagram(cIdx, combo, proto){
       if (pt.mapX == null || pt.mapSide !== combo.zona) return;
       hasAny = true;
       const id = `mp_${cIdx}_${gIdx}_${pIdx}`;
+      const check = document.getElementById(`${id}_check`);
+      const isOn = check?.checked;
+      const size = fullscreen ? 30 : 22;
       dots += `<div data-target="${id}_check" onclick="toggleMapDot(this)"
-        style="position:absolute;left:${pt.mapX}%;top:${pt.mapY}%;width:22px;height:22px;margin:-11px 0 0 -11px;
-        border-radius:50%;background:#fff;border:3px solid var(--primary);cursor:pointer;
+        style="position:absolute;left:${pt.mapX}%;top:${pt.mapY}%;width:${size}px;height:${size}px;margin:-${size/2}px 0 0 -${size/2}px;
+        border-radius:50%;background:${isOn?'var(--primary)':'#fff'};border:3px solid var(--primary);cursor:pointer;
         box-shadow:0 1px 4px rgba(0,0,0,.3);"></div>`;
     });
   });
   const hasImage = combo.zona === 'costas' ? !!proto.bodyBackImageUrl : !!proto.bodyFrontImageUrl;
   if (!hasAny && !hasImage) return '';
+  const expandBtn = fullscreen ? '' : `<button class="ghost" style="width:100%;margin-bottom:8px;" onclick="openMapFullscreen('renderMappingDiagramFullscreen_${cIdx}','${zonaLabelJs(combo)}')">⛶ Ver em ecrã inteiro</button>`;
   return `<div class="card" style="background:#f6f8f7;text-align:center;">
+    ${expandBtn}
     <p class="muted" style="margin-bottom:8px;">${hasAny ? 'Toque no ponto na imagem — equivale a marcar a caixa abaixo' : 'Ainda sem pontos posicionados nesta zona (marque pela lista abaixo)'}</p>
     ${bodyDiagramHTML({front: proto.bodyFrontImageUrl, back: proto.bodyBackImageUrl}, combo.zona, dots)}
   </div>`;
 }
+
+function zonaLabelJs(combo){
+  const zonaLabel = { frente:'Frente', costas:'Costas' };
+  const ladoLabel = { esquerdo:'Esquerdo', direito:'Direito' };
+  return `${zonaLabel[combo.zona]} — ${ladoLabel[combo.lado]}`;
+}
+
+// Regista uma função de desenho por combo (frente/costas × lado), para
+// o ecrã inteiro poder redesenhar exatamente aquele diagrama sozinho.
+window.__mappingDiagramFns = window.__mappingDiagramFns || {};
 
 window.toggleMapDot = function(circle){
   const check = document.getElementById(circle.dataset.target);
@@ -2048,8 +2224,13 @@ window.toggleMapDot = function(circle){
 
 window.syncMapDot = function(id){
   const check = document.getElementById(`${id}_check`);
-  const dotEl = document.querySelector(`div[data-target="${id}_check"]`);
-  if (dotEl && check) dotEl.style.background = check.checked ? 'var(--primary)' : '#fff';
+  if (!check) return;
+  // querySelectorAll (não querySelector): pode haver duas cópias do
+  // mesmo ponto no ecrã — a pequena e a de ecrã inteiro — e as duas
+  // têm de ficar sincronizadas.
+  document.querySelectorAll(`div[data-target="${id}_check"]`).forEach(dotEl => {
+    dotEl.style.background = check.checked ? 'var(--primary)' : '#fff';
+  });
 };
 
 window.startMappingClassificationsPhase = function(patientId, patientName){
@@ -2217,6 +2398,7 @@ async function renderProfile(main){
 
   main.innerHTML = `
     <h2>Perfil do negócio</h2>
+    ${hintBox('Tudo o que aparece na sua página pública: identidade, contactos, equipa e testemunhos. Preencha o que fizer sentido para a sua prática — nada aqui é obrigatório.')}
     <div class="card" style="border:2px solid var(--primary);">
       <label>🔗 O seu link público — partilhe nas redes sociais, WhatsApp, etc.</label>
       <input readonly value="${publicLink}" onclick="this.select()">
@@ -2229,9 +2411,9 @@ async function renderProfile(main){
       <input id="pfTagline" value="${escapeHtml(p.tagline||'')}" placeholder="ex: Cuidado que transforma">
       <label>Sobre / apresentação</label>
       <textarea id="pfAbout" rows="4">${escapeHtml(p.about||'')}</textarea>
-      <label>URL do logótipo</label>
-      <input id="pfLogoUrl" value="${escapeHtml(b.logoUrl||'')}" placeholder="https://...">
-      <p class="muted">Sem armazenamento próprio de imagens nesta versão — use um serviço como postimages.org e cole o link direto da imagem aqui.</p>
+      <label>Logótipo</label>
+      <input id="pfLogoUrl" value="${escapeHtml(b.logoUrl||'')}" placeholder="https://... (ou escolha uma foto abaixo)">
+      ${imageUploadFieldHTML('pfLogoUrl', `tenants/${tenantId}/branding`)}
       <label>Cor principal</label>
       <input id="pfColor" type="color" value="${b.primaryColor||'#2f6f5e'}">
     </div>
@@ -2259,7 +2441,8 @@ async function renderProfile(main){
       <div style="margin-top:12px;">
         <label>Nome</label><input id="tmName" value="${escapeHtml(window.__editingTeamMember?.name||'')}">
         <label>Função/especialidade</label><input id="tmRole" placeholder="ex: Fisioterapeuta, Nutricionista" value="${escapeHtml(window.__editingTeamMember?.role||'')}">
-        <label>URL da foto (opcional)</label><input id="tmPhotoUrl" value="${escapeHtml(window.__editingTeamMember?.photoUrl||'')}">
+        <label>Foto (opcional)</label><input id="tmPhotoUrl" value="${escapeHtml(window.__editingTeamMember?.photoUrl||'')}" placeholder="https://... (ou escolha uma foto abaixo)">
+        ${imageUploadFieldHTML('tmPhotoUrl', `tenants/${tenantId}/team`)}
         <label>Breve bio</label><textarea id="tmBio" rows="2">${escapeHtml(window.__editingTeamMember?.bio||'')}</textarea>
         <button class="primary" onclick="saveTeamMember('${window.__editingTeamMemberId||''}')">${window.__editingTeamMemberId?'Guardar alterações':'Adicionar à equipa'}</button>
         ${window.__editingTeamMemberId ? `<button class="ghost" onclick="window.__editingTeamMemberId=null;window.__editingTeamMember=null;renderView('profile')">Cancelar edição</button>` : ''}
@@ -2438,6 +2621,7 @@ async function renderTrainings(main){
 
     main.innerHTML = `
       <div class="row"><h2>Formações / Eventos</h2></div>
+      ${hintBox('Cursos, workshops, eventos ou aulas em grupo que ofereça. Ficam visíveis na sua página pública, com inscrição direta.')}
       <div class="card">${rows}</div>
       <div id="trainingFormContainer"></div>
     `;
