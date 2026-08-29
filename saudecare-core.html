@@ -237,13 +237,11 @@ window.doRegister = async function(){
   }
 
   try{
-    const existing = await getDoc(doc(db, 'tenants', uid));
-    if (existing.exists()){
-      errEl.style.color = 'var(--primary)';
-      errEl.textContent = 'Esta conta já tem um registo de subscritor. Assim que for ativada, vai poder entrar normalmente.';
-      return;
-    }
-
+    // Sem pré-verificação: um utilizador ainda sem claims não tem
+    // permissão de leitura sobre o seu próprio (futuro) documento de
+    // tenant — só de escrita, uma única vez, via a regra de "create".
+    // Se o documento já existir, a escrita cai na regra de "update" (que
+    // exige claims) e falha em segurança, sem apagar nada.
     const slug = businessName.toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-').replace(/(^-+|-+$)/g, '') || 'novo-subscritor';
@@ -264,7 +262,11 @@ window.doRegister = async function(){
   }catch(e){
     window.__justRegistered = false;
     errEl.style.color = 'var(--danger)';
-    errEl.textContent = 'Não foi possível concluir o registo. Tente novamente.';
+    if (e.code === 'permission-denied'){
+      errEl.textContent = 'Esta conta já tem um registo de subscritor associado. Assim que for ativada, vai poder entrar normalmente.';
+    } else {
+      errEl.textContent = 'Não foi possível concluir o registo. Tente novamente.';
+    }
     console.error(e);
   }
 };
