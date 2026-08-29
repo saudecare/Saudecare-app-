@@ -29,8 +29,8 @@
   .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;
     box-shadow:0 1px 3px rgba(0,0,0,.06);}
   h2{margin-bottom:14px;font-size:20px;}
-  input,select,textarea{width:100%;padding:10px;border:1px solid #d8e0dc;border-radius:8px;font-size:16px;
-    margin-bottom:10px;font-size:14px;}
+  input,select,textarea{width:100%;padding:12px;border:1px solid #d8e0dc;border-radius:8px;
+    margin-bottom:10px;font-size:16px;}
   label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
   button.primary{background:var(--primary);color:#fff;border:none;padding:10px 18px;
     border-radius:8px;cursor:pointer;font-size:14px;}
@@ -193,10 +193,9 @@ window.switchAuthTab = function(tab){
 
 // Regista um novo subscritor com período de teste de 14 dias.
 // NOTA: cria a conta e o documento do tenant com status "pending_activation".
-// Enquanto as Cloud Functions não estiverem ativas (Blaze pendente — ver
-// documento de continuidade), a atribuição do custom claim (tenantId, role)
-// que dá acesso real à app continua a ser feita manualmente via Cloud Shell
-// (setclaim.js). Este fluxo deixa a conta pronta para essa ativação.
+// Se o email já tiver uma conta Auth criada mas sem tenant associado (ficou
+// "presa" numa tentativa anterior a esta correção), tentamos entrar nela
+// com a password introduzida e completar o registo em vez de bloquear.
 window.doRegister = async function(){
   const businessName = document.getElementById('regBusinessName').value.trim();
   const email = document.getElementById('regEmail').value.trim();
@@ -210,17 +209,50 @@ window.doRegister = async function(){
   if (pass.length < 6){ errEl.textContent = 'A palavra-passe precisa de ter pelo menos 6 caracteres.'; return; }
 
   window.__justRegistered = true;
+  let uid;
   try{
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    uid = cred.user.uid;
+  }catch(e){
+    if (e.code === 'auth/email-already-in-use'){
+      // A conta de login já existe (possivelmente presa de uma tentativa
+      // anterior). Tenta entrar com a password agora indicada para
+      // recuperar e completar o registo, em vez de bloquear a pessoa.
+      try{
+        const cred = await signInWithEmailAndPassword(auth, email, pass);
+        uid = cred.user.uid;
+      }catch(e2){
+        window.__justRegistered = false;
+        errEl.textContent = 'Já existe uma conta com este email, mas esta password não corresponde. Use "Esqueci-me da password" no ecrã de Entrar.';
+        console.error(e2);
+        return;
+      }
+    } else {
+      window.__justRegistered = false;
+      if (e.code === 'auth/invalid-email') errEl.textContent = 'Email inválido.';
+      else errEl.textContent = 'Não foi possível criar a conta. Tente novamente.';
+      console.error(e);
+      return;
+    }
+  }
+
+  try{
+    const existing = await getDoc(doc(db, 'tenants', uid));
+    if (existing.exists()){
+      errEl.style.color = 'var(--primary)';
+      errEl.textContent = 'Esta conta já tem um registo de subscritor. Assim que for ativada, vai poder entrar normalmente.';
+      return;
+    }
+
     const slug = businessName.toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-').replace(/(^-+|-+$)/g, '') || 'novo-subscritor';
 
-    await setDoc(doc(db, 'tenants', cred.user.uid), {
+    await setDoc(doc(db, 'tenants', uid), {
       businessName, slug,
       status: 'pending_activation',
       plan: 'start',
-      ownerUid: cred.user.uid,
+      ownerUid: uid,
       ownerEmail: email,
       trialDays: 14,
       profile: { email },
@@ -232,9 +264,7 @@ window.doRegister = async function(){
   }catch(e){
     window.__justRegistered = false;
     errEl.style.color = 'var(--danger)';
-    if (e.code === 'auth/email-already-in-use') errEl.textContent = 'Já existe uma conta com este email.';
-    else if (e.code === 'auth/invalid-email') errEl.textContent = 'Email inválido.';
-    else errEl.textContent = 'Não foi possível criar a conta. Tente novamente.';
+    errEl.textContent = 'Não foi possível concluir o registo. Tente novamente.';
     console.error(e);
   }
 };
