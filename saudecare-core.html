@@ -144,9 +144,6 @@ import {
   getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc,
   deleteDoc, setDoc, query, where, orderBy, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {
-  getStorage, ref, uploadBytes, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 // ── CONFIGURAÇÃO — substituir pelos valores reais do projeto Firebase ──
 const firebaseConfig = {
@@ -161,7 +158,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 let currentUser = null;
 let tenantId = null;
@@ -189,15 +185,26 @@ function hintBox(text){
   return `<div class="hintBox">💡 ${text}</div>`;
 }
 
-// ── Upload de imagens (Firebase Storage) ────────────────────────────────
+// ── Upload de imagens (Cloudinary — grátis, sem precisar do plano Blaze) ─
+// Substituir estes dois valores pelos da tua conta Cloudinary (Dashboard
+// → Cloud name; Settings → Upload → Upload presets → o preset "Unsigned").
+const CLOUDINARY_CLOUD_NAME = 'geoipsfn';
+const CLOUDINARY_UPLOAD_PRESET = 'ml_default';
+
 // Sobe um ficheiro para uma pasta do próprio subscritor e devolve o link
 // público, para usar exatamente como se fosse um link colado à mão.
 async function uploadImageFile(file, pathPrefix){
-  const safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
-  const path = `${pathPrefix}/${Date.now()}_${safeName}`;
-  const fileRef = ref(storage, path);
-  await uploadBytes(fileRef, file);
-  return await getDownloadURL(fileRef);
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  formData.append('folder', pathPrefix);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+    method: 'POST',
+    body: formData
+  });
+  if (!res.ok) throw new Error('Falha no upload da imagem.');
+  const data = await res.json();
+  return data.secure_url;
 }
 
 // Gera o HTML de um campo de imagem "duas vias": link colado à mão OU
