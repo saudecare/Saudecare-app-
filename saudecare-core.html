@@ -59,9 +59,9 @@
   .hidden{display:none !important;}
   @media(max-width:640px){
     #app{flex-direction:column;}
-    nav{width:100%;display:flex;overflow-x:auto;padding:10px;}
+    nav{width:100%;display:flex;overflow-x:auto;padding:8px;gap:4px;}
     nav h1{display:none;}
-    nav button{flex-shrink:0;margin-right:6px;margin-bottom:0;}
+    nav button{flex-shrink:0;width:auto;margin-right:0;margin-bottom:0;padding:8px 10px;font-size:12.5px;white-space:nowrap;}
     main{padding:14px;}
   }
 </style>
@@ -561,7 +561,51 @@ async function renderPatients(main){
   `;
 }
 
+let patientCustomFieldsDraft = [];
+
+function renderPatientCustomFieldsBuilder(){
+  const rows = patientCustomFieldsDraft.map((f, idx) => `
+    <div class="row" style="gap:8px;margin-bottom:8px;">
+      <input value="${escapeHtml(f.label||'')}" onchange="updatePatientCustomField(${idx},'label',this.value)" placeholder="Nome do campo (ex: Profissão)" style="flex:1;margin-bottom:0;">
+      <input value="${escapeHtml(f.value||'')}" onchange="updatePatientCustomField(${idx},'value',this.value)" placeholder="Valor" style="flex:1;margin-bottom:0;">
+      <button class="danger" onclick="removePatientCustomField(${idx})" style="flex-shrink:0;">Remover</button>
+    </div>
+  `).join('');
+  return `
+    <h3 style="margin:14px 0 8px;">Campos personalizados (opcional)</h3>
+    <div id="patientCustomFieldsList">${rows}</div>
+    <button class="ghost" onclick="addPatientCustomField()">+ Adicionar campo</button>`;
+}
+
+window.addPatientCustomField = function(){
+  patientCustomFieldsDraft.push({ label:'', value:'' });
+  refreshPatientCustomFieldsList();
+};
+
+function refreshPatientCustomFieldsList(){
+  const rows = patientCustomFieldsDraft.map((f, idx) => `
+    <div class="row" style="gap:8px;margin-bottom:8px;">
+      <input value="${escapeHtml(f.label||'')}" onchange="updatePatientCustomField(${idx},'label',this.value)" placeholder="Nome do campo (ex: Profissão)" style="flex:1;margin-bottom:0;">
+      <input value="${escapeHtml(f.value||'')}" onchange="updatePatientCustomField(${idx},'value',this.value)" placeholder="Valor" style="flex:1;margin-bottom:0;">
+      <button class="danger" onclick="removePatientCustomField(${idx})" style="flex-shrink:0;">Remover</button>
+    </div>
+  `).join('');
+  const list = document.getElementById('patientCustomFieldsList');
+  if (list) list.innerHTML = rows;
+}
+
+window.updatePatientCustomField = function(idx, field, value){
+  patientCustomFieldsDraft[idx][field] = value;
+};
+
+window.removePatientCustomField = function(idx){
+  patientCustomFieldsDraft.splice(idx, 1);
+  refreshPatientCustomFieldsList();
+};
+
 window.openNewPatient = function(){
+  patientCustomFieldsDraft = [];
+  window.__editingPatientId = null;
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
       <h2>Novo paciente</h2>
@@ -569,12 +613,48 @@ window.openNewPatient = function(){
       <label>Telefone</label><input id="pPhone">
       <label>Email</label><input id="pEmail" type="email">
       <label>Notas clínicas iniciais</label><textarea id="pNotes" rows="3"></textarea>
-      <label style="display:flex;align-items:center;gap:8px;">
+      ${renderPatientCustomFieldsBuilder()}
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
         <input type="checkbox" id="pConsent" style="width:auto;margin:0;">
         Paciente deu consentimento explícito para tratamento de dados de saúde
       </label>
       <button class="primary" onclick="savePatient()">Guardar</button>
     </div>`;
+};
+
+window.editPatient = async function(patientId){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
+  if (!snap.exists()){ toast('Paciente não encontrado.', true); return; }
+  const p = snap.data();
+  patientCustomFieldsDraft = (p.customFields || []).map(f => ({...f}));
+  window.__editingPatientId = patientId;
+  document.getElementById('patientFormContainer').innerHTML = `
+    <div class="card">
+      <h2>Editar paciente</h2>
+      <label>Nome completo</label><input id="pFullName" value="${escapeHtml(p.fullName||'')}">
+      <label>Telefone</label><input id="pPhone" value="${escapeHtml(p.phone||'')}">
+      <label>Email</label><input id="pEmail" type="email" value="${escapeHtml(p.email||'')}">
+      <label>Notas clínicas</label><textarea id="pNotes" rows="3">${escapeHtml(p.clinicalNotes||'')}</textarea>
+      ${renderPatientCustomFieldsBuilder()}
+      <div class="row" style="margin-top:14px;">
+        <button class="primary" onclick="updatePatient('${patientId}')">Guardar alterações</button>
+        <button class="ghost" onclick="viewPatient('${patientId}')">Cancelar</button>
+      </div>
+    </div>`;
+};
+
+window.updatePatient = async function(patientId){
+  const fullName = document.getElementById('pFullName').value.trim();
+  if (!fullName){ toast('Nome é obrigatório.', true); return; }
+  await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), {
+    fullName,
+    phone: document.getElementById('pPhone').value.trim(),
+    email: document.getElementById('pEmail').value.trim(),
+    clinicalNotes: document.getElementById('pNotes').value.trim(),
+    customFields: patientCustomFieldsDraft.filter(f => f.label && f.label.trim())
+  });
+  toast('Paciente atualizado.');
+  viewPatient(patientId);
 };
 
 window.savePatient = async function(){
@@ -588,6 +668,7 @@ window.savePatient = async function(){
     phone: document.getElementById('pPhone').value.trim(),
     email: document.getElementById('pEmail').value.trim(),
     clinicalNotes: document.getElementById('pNotes').value.trim(),
+    customFields: patientCustomFieldsDraft.filter(f => f.label && f.label.trim()),
     consentGivenAt: serverTimestamp(),
     consentVersion: currentTenantDoc?.legalTexts?.consentVersion || 'v1',
     createdBy: currentUser.uid
@@ -634,10 +715,18 @@ window.viewPatient = async function(patientId){
   });
   if (!formRespHtml) formRespHtml = '<p class="muted">Ainda sem fichas respondidas para este paciente.</p>';
 
+  const customFieldsHtml = (p.customFields||[]).length
+    ? (p.customFields||[]).map(f => `<p class="muted"><strong>${escapeHtml(f.label)}:</strong> ${escapeHtml(f.value)}</p>`).join('')
+    : '';
+
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
-      <h2>${escapeHtml(p.fullName)}</h2>
+      <div class="row">
+        <h2>${escapeHtml(p.fullName)}</h2>
+        <button class="ghost" onclick="editPatient('${patientId}')">✏️ Editar</button>
+      </div>
       <p class="muted">${escapeHtml(p.phone||'')} · ${escapeHtml(p.email||'')}</p>
+      ${customFieldsHtml}
       <label style="margin-top:10px;">Notas clínicas</label>
       <textarea rows="5" readonly>${escapeHtml(p.clinicalNotes||'')}</textarea>
       <p class="muted">Consentimento: ${p.consentGivenAt ? 'registado' : 'em falta'}</p>
@@ -1103,11 +1192,13 @@ async function renderProtocols(main){
 let protocolPointsDraft = [];
 let protocolGroupsDraft = [];
 let protocolClassificationsDraft = [];
+let protocolBodyImages = { front: '', back: '' };
 
 window.openNewProtocol = function(){
   protocolPointsDraft = [];
   protocolGroupsDraft = [];
   protocolClassificationsDraft = [];
+  protocolBodyImages = { front: '', back: '' };
   window.__editingProtocolId = null;
   renderProtocolForm(null, { type: 'simple' });
 };
@@ -1120,6 +1211,7 @@ window.editProtocol = async function(id){
   protocolPointsDraft = (p.points || []).map(pt => ({...pt}));
   protocolGroupsDraft = (p.groups || []).map(g => ({...g, points: (g.points||[]).map(pt=>({...pt}))}));
   protocolClassificationsDraft = (p.finalClassifications || []).map(c => ({...c}));
+  protocolBodyImages = { front: p.bodyFrontImageUrl || '', back: p.bodyBackImageUrl || '' };
   renderProtocolForm(id, p);
 };
 
@@ -1134,7 +1226,7 @@ function renderProtocolForm(editId, data){
 
   let bodyHtml = '';
   if (type === 'simple'){
-    bodyHtml = renderSimplePointsBuilder();
+    bodyHtml = renderSimplePointsBuilder() + renderClassificationsBuilder();
   } else {
     bodyHtml = renderMappingGroupsBuilder() + renderClassificationsBuilder();
   }
@@ -1217,10 +1309,42 @@ function renderMappingGroupsBuilder(){
   }).join('');
 
   return `
+    <h3 style="margin:14px 0 8px;">Imagem do corpo para o mapa (opcional)</h3>
+    <p class="muted" style="margin-bottom:8px;">Cole o link de uma imagem sua (frente e/ou costas). Se deixar em branco, é usado um boneco genérico.</p>
+    <label>URL da imagem — Frente</label>
+    <input value="${escapeHtml(protocolBodyImages.front||'')}" onchange="updateProtocolBodyImage('front', this.value)" placeholder="https://...">
+    <label>URL da imagem — Costas</label>
+    <input value="${escapeHtml(protocolBodyImages.back||'')}" onchange="updateProtocolBodyImage('back', this.value)" placeholder="https://...">
     <h3 style="margin:14px 0 8px;">Grupos de pontos</h3>
     <div id="mapPickerContainer"></div>
     <div id="protoGroupsList">${groupsHtml || '<p class="muted">Ainda sem grupos. Adicione o primeiro (ex: "7 Pontos Vitais").</p>'}</div>
     <button class="ghost" onclick="addMappingGroup()">+ Adicionar grupo</button>`;
+}
+
+window.updateProtocolBodyImage = function(side, value){
+  protocolBodyImages[side] = value.trim();
+};
+
+// ── Desenho do mapa do corpo — usa imagem própria se definida, senão um boneco genérico ─
+function bodyDiagramHTML(bodyImages, side, overlayHtml){
+  overlayHtml = overlayHtml || '';
+  const imgUrl = side === 'costas' ? bodyImages?.back : bodyImages?.front;
+  const inner = imgUrl
+    ? `<img src="${escapeHtml(imgUrl)}" style="width:100%;display:block;border-radius:8px;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+       <p class="muted" style="display:none;padding:30px 10px;text-align:center;">Não foi possível carregar esta imagem — verifique o link.</p>`
+    : `<svg viewBox="0 0 200 400" style="width:100%;display:block;" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="100" cy="42" rx="30" ry="34" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+        <rect x="68" y="76" width="64" height="94" rx="20" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+        <rect x="34" y="82" width="30" height="128" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+        <rect x="136" y="82" width="30" height="128" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+        <rect x="70" y="168" width="28" height="160" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+        <rect x="102" y="168" width="28" height="160" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+       </svg>`;
+  return `<div class="mapDiagramWrap" style="position:relative;width:100%;max-width:260px;margin:0 auto;">
+    ${inner}
+    <div style="position:absolute;top:4px;left:8px;font-size:11px;background:rgba(0,0,0,.45);color:#fff;padding:2px 8px;border-radius:10px;">${side==='costas'?'Costas':'Frente'}</div>
+    ${overlayHtml}
+  </div>`;
 }
 
 // ── Seletor de posição no mapa do corpo (usado ao construir o protocolo) ─
@@ -1239,7 +1363,7 @@ function renderMapPositionPicker(){
   const pt = protocolGroupsDraft[gIdx].points[pIdx];
   const side = window.__mapPickerSide;
   const dot = (window.__mapPickerX != null)
-    ? `<circle cx="${window.__mapPickerX*2}" cy="${window.__mapPickerY*4}" r="8" style="fill:var(--primary);stroke:#fff;stroke-width:2;"/>`
+    ? `<div style="position:absolute;left:${window.__mapPickerX}%;top:${window.__mapPickerY}%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);pointer-events:none;"></div>`
     : '';
   document.getElementById('mapPickerContainer').innerHTML = `
     <div class="card" style="background:#f6f8f7;">
@@ -1251,8 +1375,8 @@ function renderMapPositionPicker(){
         <button onclick="setMapPickerSide('frente')" style="flex:1;background:${side==='frente'?'var(--primary)':'none'};color:${side==='frente'?'#fff':'var(--text)'};border:1px solid #d8e0dc;padding:8px;border-radius:8px 0 0 8px;cursor:pointer;">Frente</button>
         <button onclick="setMapPickerSide('costas')" style="flex:1;background:${side==='costas'?'var(--primary)':'none'};color:${side==='costas'?'#fff':'var(--text)'};border:1px solid #d8e0dc;border-left:none;padding:8px;border-radius:0 8px 8px 0;cursor:pointer;">Costas</button>
       </div>
-      <p class="muted" style="margin-bottom:8px;text-align:center;">Toque no boneco no local exato deste ponto.</p>
-      <div onclick="handleMapPickerClick(event)">${bodySilhouetteSVG(side, dot)}</div>
+      <p class="muted" style="margin-bottom:8px;text-align:center;">Toque na imagem no local exato deste ponto.</p>
+      <div onclick="handleMapPickerClick(event)" style="cursor:crosshair;">${bodyDiagramHTML(protocolBodyImages, side, dot)}</div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <button class="primary" onclick="saveMapPosition()">Guardar posição</button>
         ${pt.mapX!=null ? `<button class="danger" onclick="removeMapPosition()">Remover</button>` : ''}
@@ -1266,8 +1390,8 @@ window.setMapPickerSide = function(side){
 };
 
 window.handleMapPickerClick = function(evt){
-  const svg = evt.currentTarget.querySelector('svg');
-  const rect = svg.getBoundingClientRect();
+  const wrap = evt.currentTarget.querySelector('.mapDiagramWrap');
+  const rect = wrap.getBoundingClientRect();
   const x = ((evt.clientX - rect.left) / rect.width) * 100;
   const y = ((evt.clientY - rect.top) / rect.height) * 100;
   window.__mapPickerX = Math.max(0, Math.min(100, x));
@@ -1379,7 +1503,7 @@ function refreshProtoTypeBody(){
   const type = document.getElementById('protoType')?.value || 'simple';
   const name = document.getElementById('protoName')?.value || '';
   document.getElementById('protoTypeBody').innerHTML =
-    type === 'simple' ? renderSimplePointsBuilder() : (renderMappingGroupsBuilder() + renderClassificationsBuilder());
+    type === 'simple' ? (renderSimplePointsBuilder() + renderClassificationsBuilder()) : (renderMappingGroupsBuilder() + renderClassificationsBuilder());
 }
 
 window.saveProtocol = async function(editId){
@@ -1388,6 +1512,7 @@ window.saveProtocol = async function(editId){
   const type = document.getElementById('protoType').value;
 
   let data = { name, type, updatedAt: serverTimestamp() };
+  data.finalClassifications = protocolClassificationsDraft.filter(c => c.label && c.label.trim());
   if (type === 'simple'){
     const validPoints = protocolPointsDraft.filter(p => p.name && p.name.trim());
     if (!validPoints.length){ toast('Adicione pelo menos um ponto com nome.', true); return; }
@@ -1399,7 +1524,8 @@ window.saveProtocol = async function(editId){
       .filter(g => g.points.length);
     if (!validGroups.length){ toast('Adicione pelo menos um grupo com um ponto válido.', true); return; }
     data.groups = validGroups;
-    data.finalClassifications = protocolClassificationsDraft.filter(c => c.label && c.label.trim());
+    data.bodyFrontImageUrl = protocolBodyImages.front || '';
+    data.bodyBackImageUrl = protocolBodyImages.back || '';
   }
 
   if (editId){
@@ -1448,17 +1574,18 @@ window.onGuidedProtocolChange = function(patientId, patientName){
   window.__currentGuidedProtoId = protoId;
   window.__mappingBeforeAnswers = [];
   window.__mappingAfterAnswers = [];
+  area.innerHTML = '';
 
-  if (proto.type === 'mapping'){
-    const beforeQuestions = (proto.finalClassifications || []).filter(c => c.when === 'before');
-    area.innerHTML = '';
-    if (beforeQuestions.length){
-      renderQuestionsScreen(area, beforeQuestions, 'before', () => renderMappingZoneSelection(patientId, patientName, area));
-    } else {
-      renderMappingZoneSelection(patientId, patientName, area);
-    }
+  const nextStep = () => {
+    if (proto.type === 'mapping') renderMappingZoneSelection(patientId, patientName, area);
+    else renderGuidedPoints(patientId, patientName, area, proto);
+  };
+
+  const beforeQuestions = (proto.finalClassifications || []).filter(c => c.when === 'before');
+  if (beforeQuestions.length){
+    renderQuestionsScreen(area, beforeQuestions, 'before', nextStep);
   } else {
-    renderGuidedPoints(patientId, patientName, area, proto);
+    nextStep();
   }
 };
 
@@ -1515,8 +1642,27 @@ function renderGuidedPoints(patientId, patientName, area, proto){
       <label style="margin-top:6px;">Nota desta sessão (opcional)</label>
       <textarea id="ptNote${idx}" rows="2" placeholder="Observações específicas desta consulta..."></textarea>
     </div>
-  `).join('') + `<button class="primary" onclick="generateReport('${patientId}', '${escapeHtml(patientName)}')">Gerar relatório</button>`;
+  `).join('') + `<button class="primary" onclick="startSimpleClassificationsPhase('${patientId}', '${escapeHtml(patientName)}')">Continuar</button>`;
 }
+
+window.startSimpleClassificationsPhase = function(patientId, patientName){
+  const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
+  const hasChecked = proto.points.some((pt, idx) => document.getElementById(`ptCheck${idx}`)?.checked);
+  if (!hasChecked){ toast('Marque pelo menos um ponto para continuar.', true); return; }
+
+  const afterQuestions = (proto.finalClassifications || []).filter(c => !c.when || c.when === 'after');
+  if (!afterQuestions.length){
+    window.__mappingAfterAnswers = [];
+    generateReport(patientId, patientName);
+    return;
+  }
+  renderQuestionsScreen(
+    document.getElementById('guidedPointsArea'),
+    afterQuestions,
+    'after',
+    () => generateReport(patientId, patientName)
+  );
+};
 
 window.generateReport = async function(patientId, patientName){
   const protoId = window.__currentGuidedProtoId;
@@ -1536,17 +1682,33 @@ window.generateReport = async function(patientId, patientName){
     return;
   }
 
+  const beforeAnswers = window.__mappingBeforeAnswers || [];
+  const afterAnswers = window.__mappingAfterAnswers || [];
+
   let reportText = `Relatório de Consulta — ${proto.name}\n`;
   reportText += `Paciente: ${patientName}\n`;
   reportText += `Data: ${new Date().toLocaleDateString('pt-PT')}\n\n`;
+
+  if (beforeAnswers.length){
+    reportText += `== Dados iniciais ==\n`;
+    beforeAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
+    reportText += `\n`;
+  }
+
   detectedPoints.forEach(p => {
     reportText += `• ${p.name}\n${p.knowledgeText}\n`;
     if (p.note) reportText += `Nota da sessão: ${p.note}\n`;
     reportText += `\n`;
   });
 
+  if (afterAnswers.length){
+    reportText += `== Classificação final ==\n`;
+    afterAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
+  }
+
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
     protocolId: protoId, protocolName: proto.name, points: detectedPoints,
+    beforeAnswers, classifications: afterAnswers,
     reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
   });
   await logAudit('report_generated', patientId);
@@ -1640,21 +1802,7 @@ window.startMappingPoints = function(patientId, patientName){
   document.getElementById('guidedPointsArea').innerHTML = html;
 };
 
-// ── Mapa do corpo — desenho genérico + pontos clicáveis ─────────────────
-function bodySilhouetteSVG(side, overlaySvg){
-  overlaySvg = overlaySvg || '';
-  return `<svg viewBox="0 0 200 400" style="width:100%;max-width:220px;display:block;margin:0 auto;touch-action:manipulation;" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="100" cy="42" rx="30" ry="34" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-    <rect x="68" y="76" width="64" height="94" rx="20" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-    <rect x="34" y="82" width="30" height="128" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-    <rect x="136" y="82" width="30" height="128" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-    <rect x="70" y="168" width="28" height="160" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-    <rect x="102" y="168" width="28" height="160" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-    <text x="100" y="393" text-anchor="middle" font-size="12" fill="#6b7d76">${side==='costas'?'Costas':'Frente'}</text>
-    ${overlaySvg}
-  </svg>`;
-}
-
+// ── Mapa do corpo na execução — dots absolutos sobre a imagem própria ──
 function renderMappingDiagram(cIdx, combo, proto){
   let dots = '';
   let hasAny = false;
@@ -1663,23 +1811,17 @@ function renderMappingDiagram(cIdx, combo, proto){
       if (pt.mapX == null || pt.mapSide !== combo.zona) return;
       hasAny = true;
       const id = `mp_${cIdx}_${gIdx}_${pIdx}`;
-      dots += `<circle data-target="${id}_check" cx="${pt.mapX*2}" cy="${pt.mapY*4}" r="8" style="fill:#fff;stroke:var(--primary);stroke-width:2;cursor:pointer;" onclick="toggleMapDot(this)"/>`;
+      dots += `<div data-target="${id}_check" onclick="toggleMapDot(this)"
+        style="position:absolute;left:${pt.mapX}%;top:${pt.mapY}%;width:22px;height:22px;margin:-11px 0 0 -11px;
+        border-radius:50%;background:#fff;border:3px solid var(--primary);cursor:pointer;
+        box-shadow:0 1px 4px rgba(0,0,0,.3);"></div>`;
     });
   });
-  if (!hasAny){
-    return `<div class="card" style="background:#fff3cd;border:1px solid #e0a83c;">
-      <p style="color:#8a5a00;font-size:13px;">
-        🗺️ Ainda não há mapa visual para esta zona porque nenhum ponto tem
-        posição definida. Vá a <strong>Protocolos → Editar este protocolo</strong>,
-        e em cada ponto toque em <strong>"📍 Definir posição no mapa do corpo"</strong>
-        para o colocar no boneco. Enquanto isso, pode continuar a marcar os
-        pontos pela lista de caixas abaixo — funciona na mesma.
-      </p>
-    </div>`;
-  }
+  const hasImage = combo.zona === 'costas' ? !!proto.bodyBackImageUrl : !!proto.bodyFrontImageUrl;
+  if (!hasAny && !hasImage) return '';
   return `<div class="card" style="background:#f6f8f7;text-align:center;">
-    <p class="muted" style="margin-bottom:8px;">Toque no ponto no boneco — equivale a marcar a caixa abaixo</p>
-    ${bodySilhouetteSVG(combo.zona, dots)}
+    <p class="muted" style="margin-bottom:8px;">${hasAny ? 'Toque no ponto na imagem — equivale a marcar a caixa abaixo' : 'Ainda sem pontos posicionados nesta zona (marque pela lista abaixo)'}</p>
+    ${bodyDiagramHTML({front: proto.bodyFrontImageUrl, back: proto.bodyBackImageUrl}, combo.zona, dots)}
   </div>`;
 }
 
@@ -1692,8 +1834,8 @@ window.toggleMapDot = function(circle){
 
 window.syncMapDot = function(id){
   const check = document.getElementById(`${id}_check`);
-  const dotEl = document.querySelector(`circle[data-target="${id}_check"]`);
-  if (dotEl && check) dotEl.style.fill = check.checked ? 'var(--primary)' : '#fff';
+  const dotEl = document.querySelector(`div[data-target="${id}_check"]`);
+  if (dotEl && check) dotEl.style.background = check.checked ? 'var(--primary)' : '#fff';
 };
 
 window.startMappingClassificationsPhase = function(patientId, patientName){
