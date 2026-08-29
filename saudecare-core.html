@@ -1642,26 +1642,44 @@ function renderMapPositionPicker(){
   const { gIdx, pIdx } = window.__mapPickerTarget;
   const pt = protocolGroupsDraft[gIdx].points[pIdx];
   const side = window.__mapPickerSide;
+  const dotColor = pt.color || '#2f6f5e';
   const dot = (window.__mapPickerX != null)
-    ? `<div style="position:absolute;left:${window.__mapPickerX}%;top:${window.__mapPickerY}%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);pointer-events:none;"></div>`
+    ? `<div style="position:absolute;left:${window.__mapPickerX}%;top:${window.__mapPickerY}%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:${dotColor};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);pointer-events:none;"></div>`
     : '';
   document.getElementById('mapPickerContainer').innerHTML = `
     <div class="card" style="background:#f6f8f7;">
       <div class="row" style="margin-bottom:8px;">
-        <strong>Posição no mapa — ${escapeHtml(pt.name||'(sem nome)')}</strong>
+        <strong>${escapeHtml(pt.name||'(sem nome)')}</strong>
         <button class="ghost" onclick="closeMapPositionPicker()">Fechar</button>
       </div>
+
+      <label>Cor deste ponto</label>
+      <input type="color" value="${pt.color||'#2f6f5e'}" style="height:42px;padding:4px;"
+        onchange="updateMappingPoint(${gIdx},${pIdx},'color',this.value); renderMapPositionPicker();">
+
+      <p class="muted" style="margin:10px 0 4px;">Posição — toque em Frente ou Costas e depois no local exato na imagem. A esquerda/direita fica definida sozinha, conforme tocar no lado esquerdo ou direito do corpo.</p>
       <div style="display:flex;margin-bottom:10px;">
         <button onclick="setMapPickerSide('frente')" style="flex:1;background:${side==='frente'?'var(--primary)':'none'};color:${side==='frente'?'#fff':'var(--text)'};border:1px solid #d8e0dc;padding:8px;border-radius:8px 0 0 8px;cursor:pointer;">Frente</button>
         <button onclick="setMapPickerSide('costas')" style="flex:1;background:${side==='costas'?'var(--primary)':'none'};color:${side==='costas'?'#fff':'var(--text)'};border:1px solid #d8e0dc;border-left:none;padding:8px;border-radius:0 8px 8px 0;cursor:pointer;">Costas</button>
       </div>
-      <p class="muted" style="margin-bottom:8px;text-align:center;">Toque na imagem no local exato deste ponto.</p>
       <button class="ghost" style="width:100%;margin-bottom:8px;" onclick="openMapFullscreen('renderMapPickerFullscreenBody','Posição — ${escapeAttrJs(pt.name||'')}')">⛶ Ver em ecrã inteiro (mais precisão)</button>
       <div onclick="handleMapPickerClick(event)" style="cursor:crosshair;">${bodyDiagramHTML(protocolBodyImages, side, dot)}</div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <button class="primary" onclick="saveMapPosition()">Guardar posição</button>
         ${pt.mapX!=null ? `<button class="danger" onclick="removeMapPosition()">Remover</button>` : ''}
       </div>
+
+      <p class="muted" style="margin:16px 0 4px;">Significado deste ponto — escreva uma vez; as variações abaixo só são precisas se o texto mudar consoante a zona.</p>
+      <label>Texto base (usado sempre que não houver variação abaixo)</label>
+      <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'baseText',this.value)">${escapeHtml(pt.baseText||'')}</textarea>
+      <label>Diferença quando é na FRENTE</label>
+      <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'frontText',this.value)">${escapeHtml(pt.frontText||'')}</textarea>
+      <label>Diferença quando é nas COSTAS</label>
+      <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'backText',this.value)">${escapeHtml(pt.backText||'')}</textarea>
+      <label>Acrescento quando é do lado ESQUERDO</label>
+      <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'leftText',this.value)">${escapeHtml(pt.leftText||'')}</textarea>
+      <label>Acrescento quando é do lado DIREITO</label>
+      <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'rightText',this.value)">${escapeHtml(pt.rightText||'')}</textarea>
     </div>`;
 }
 
@@ -1677,8 +1695,9 @@ window.renderMapPickerFullscreenBody = function(container){
   const { gIdx, pIdx } = window.__mapPickerTarget;
   const pt = protocolGroupsDraft[gIdx].points[pIdx];
   const side = window.__mapPickerSide;
+  const dotColor = pt.color || '#2f6f5e';
   const dot = (window.__mapPickerX != null)
-    ? `<div style="position:absolute;left:${window.__mapPickerX}%;top:${window.__mapPickerY}%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);pointer-events:none;"></div>`
+    ? `<div style="position:absolute;left:${window.__mapPickerX}%;top:${window.__mapPickerY}%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:${dotColor};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);pointer-events:none;"></div>`
     : '';
   container.innerHTML = `
     <div style="width:100%;">
@@ -2136,6 +2155,7 @@ window.startMappingPoints = function(patientId, patientName){
     toast('Escolha pelo menos um lado para mapear.', true); return;
   }
   window.__mappingCombos = combos;
+  window.__freePoints = {};
 
   const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
   const area = document.getElementById('guidedPointsArea');
@@ -2163,6 +2183,15 @@ function renderMappingPointsList(patientId, patientName, area, proto, combos){
     window[`renderMappingDiagramFullscreen_${cIdx}`] = function(container){
       container.innerHTML = renderMappingDiagram(cIdx, combo, proto, true);
     };
+    window[`renderFreePointPickerFullscreen_${cIdx}`] = function(container){
+      renderFreePointPickerBody(container, cIdx, combo, proto);
+    };
+    html += `<div class="card" style="margin-bottom:8px;background:#fff8ea;">
+      <strong>Zona livre / lateralidade (opcional)</strong>
+      <p class="muted" style="margin:4px 0 8px;">Para um local que não está pré-definido acima (ex: um ponto específico de dor). Toque em "Marcar zona", depois no local exato na imagem, e escreva o nome.</p>
+      <div id="freePointsList_${cIdx}"></div>
+      <button class="ghost" style="width:100%;margin-top:6px;" onclick="startFreePointPick(${cIdx})">+ Marcar zona</button>
+    </div>`;
     proto.groups.forEach((g, gIdx) => {
       html += `<div class="card" style="margin-bottom:8px;"><strong>${escapeHtml(g.groupName)}</strong>`;
       g.points.forEach((pt, pIdx) => {
@@ -2182,7 +2211,68 @@ function renderMappingPointsList(patientId, patientName, area, proto, combos){
   html += `<button class="primary" onclick="startMappingClassificationsPhase('${patientId}','${escapeHtml(patientName)}')">Continuar</button>`;
 
   area.innerHTML = html;
+  combos.forEach((combo, cIdx) => refreshFreePointsList(cIdx));
 }
+
+// ── Zona livre / lateralidade — marcar um local à mão durante a consulta ─
+window.startFreePointPick = function(cIdx){
+  window.__freePointPending = { cIdx, x: null, y: null };
+  openMapFullscreen(`renderFreePointPickerFullscreen_${cIdx}`, 'Marcar zona livre');
+};
+
+function renderFreePointPickerBody(container, cIdx, combo, proto){
+  const pending = window.__freePointPending;
+  const dot = (pending && pending.x != null)
+    ? `<div style="position:absolute;left:${pending.x}%;top:${pending.y}%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:#b3413a;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);"></div>`
+    : '';
+  container.innerHTML = `
+    <div style="width:100%;max-width:420px;">
+      <p style="color:#fff;text-align:center;margin-bottom:8px;">Toque no local exato na imagem</p>
+      <div onclick="handleFreePointClick(event, ${cIdx})" style="cursor:crosshair;">${bodyDiagramHTML({front:proto.bodyFrontImageUrl, back:proto.bodyBackImageUrl}, combo.zona, dot)}</div>
+      <div style="margin-top:10px;">
+        <input id="freePointLabelInput" placeholder="Nome do local (ex: Joelho direito)" style="margin-bottom:8px;">
+        <button class="primary" style="width:100%;" onclick="saveFreePoint(${cIdx})" ${(!pending||pending.x==null)?'disabled':''}>Guardar zona</button>
+      </div>
+    </div>`;
+}
+
+window.handleFreePointClick = function(evt, cIdx){
+  const wrap = evt.currentTarget.querySelector('.mapDiagramWrap');
+  const rect = wrap.getBoundingClientRect();
+  const x = ((evt.clientX - rect.left) / rect.width) * 100;
+  const y = ((evt.clientY - rect.top) / rect.height) * 100;
+  window.__freePointPending.x = Math.max(0, Math.min(100, x));
+  window.__freePointPending.y = Math.max(0, Math.min(100, y));
+  window[`renderFreePointPickerFullscreen_${cIdx}`](document.getElementById('mapFullscreenBody'));
+};
+
+window.saveFreePoint = function(cIdx){
+  const input = document.getElementById('freePointLabelInput');
+  const label = input.value.trim();
+  if (!label){ toast('Escreva o nome do local.', true); return; }
+  const pending = window.__freePointPending;
+  window.__freePoints[cIdx] = window.__freePoints[cIdx] || [];
+  window.__freePoints[cIdx].push({ x: pending.x, y: pending.y, label });
+  closeMapFullscreen();
+  refreshFreePointsList(cIdx);
+  toast('Zona marcada.');
+};
+
+function refreshFreePointsList(cIdx){
+  const list = window.__freePoints?.[cIdx] || [];
+  const el = document.getElementById(`freePointsList_${cIdx}`);
+  if (!el) return;
+  el.innerHTML = list.length ? list.map((fp, idx) => `
+    <div class="row" style="padding:6px 0;border-bottom:1px solid #f0e2c0;">
+      <span>📍 ${escapeHtml(fp.label)}</span>
+      <button class="danger" onclick="removeFreePoint(${cIdx},${idx})" style="padding:4px 10px;font-size:12px;">Remover</button>
+    </div>`).join('') : '<p class="muted">Nenhuma zona livre marcada ainda.</p>';
+}
+
+window.removeFreePoint = function(cIdx, idx){
+  window.__freePoints[cIdx].splice(idx, 1);
+  refreshFreePointsList(cIdx);
+};
 
 // ── Mapa do corpo na execução — dots absolutos sobre a imagem própria ──
 function renderMappingDiagram(cIdx, combo, proto, fullscreen){
@@ -2196,9 +2286,10 @@ function renderMappingDiagram(cIdx, combo, proto, fullscreen){
       const check = document.getElementById(`${id}_check`);
       const isOn = check?.checked;
       const size = fullscreen ? 30 : 22;
+      const c = pt.color || '#2f6f5e';
       dots += `<div data-target="${id}_check" onclick="toggleMapDot(this)"
         style="position:absolute;left:${pt.mapX}%;top:${pt.mapY}%;width:${size}px;height:${size}px;margin:-${size/2}px 0 0 -${size/2}px;
-        border-radius:50%;background:${isOn?'var(--primary)':'#fff'};border:3px solid var(--primary);cursor:pointer;
+        border-radius:50%;background:${isOn?c:'#fff'};border:3px solid ${c};cursor:pointer;
         box-shadow:0 1px 4px rgba(0,0,0,.3);"></div>`;
     });
   });
@@ -2236,7 +2327,8 @@ window.syncMapDot = function(id){
   // mesmo ponto no ecrã — a pequena e a de ecrã inteiro — e as duas
   // têm de ficar sincronizadas.
   document.querySelectorAll(`div[data-target="${id}_check"]`).forEach(dotEl => {
-    dotEl.style.background = check.checked ? 'var(--primary)' : '#fff';
+    const borderColor = dotEl.style.borderColor || '#2f6f5e';
+    dotEl.style.background = check.checked ? borderColor : '#fff';
   });
 };
 
@@ -2292,7 +2384,8 @@ window.generateMappingReport = async function(patientId, patientName){
   const duringAnswers = window.__mappingDuringAnswers || [];
   const classificationAnswers = window.__mappingAfterAnswers || [];
 
-  if (!detected.length){
+  const hasAnyFreePoint = combos.some((c, cIdx) => (window.__freePoints?.[cIdx]||[]).length);
+  if (!detected.length && !hasAnyFreePoint){
     toast('Marque pelo menos um ponto para gerar o relatório.', true);
     return;
   }
@@ -2323,6 +2416,19 @@ window.generateMappingReport = async function(patientId, patientName){
     if (d.note) reportText += `Nota da sessão: ${d.note}\n`;
   });
 
+  const freePointsFlat = [];
+  combos.forEach((combo, cIdx) => {
+    (window.__freePoints?.[cIdx] || []).forEach(fp => {
+      freePointsFlat.push({ ...fp, zona: combo.zona, lado: combo.lado });
+    });
+  });
+  if (freePointsFlat.length){
+    reportText += `\n== Zonas livres / lateralidade marcadas na sessão ==\n`;
+    freePointsFlat.forEach(fp => {
+      reportText += `• ${fp.label} (${zonaLabel[fp.zona]}, Lado ${ladoLabel[fp.lado]})\n`;
+    });
+  }
+
   if (classificationAnswers.length){
     reportText += `\n== Classificação final ==\n`;
     classificationAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
@@ -2330,7 +2436,8 @@ window.generateMappingReport = async function(patientId, patientName){
 
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
     protocolId: window.__currentGuidedProtoId, protocolName: proto.name,
-    mappingDetected: detected, beforeAnswers, duringAnswers, classifications: classificationAnswers,
+    mappingDetected: detected, freePoints: freePointsFlat,
+    beforeAnswers, duringAnswers, classifications: classificationAnswers,
     reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
   });
   await logAudit('report_generated', patientId);
