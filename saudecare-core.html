@@ -43,7 +43,17 @@
   .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:#e4ede9;color:var(--primary-dark);}
   .badge.cancelled{background:#f6e2e0;color:var(--danger);}
   .muted{color:var(--muted);font-size:13px;}
-  #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;}
+  #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;padding:20px;}
+  .authTabs{display:flex;border-bottom:1px solid #eef2f0;margin-bottom:18px;}
+  .authTabs button{flex:1;background:none;border:none;padding:12px 8px;font-size:14px;cursor:pointer;
+    color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;}
+  .authTabs button.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600;}
+  .authBrand{text-align:center;margin-bottom:20px;}
+  .authBrand .authLogo{width:52px;height:52px;border-radius:14px;background:var(--primary);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;margin:0 auto 10px;}
+  .authBrand h2{margin-bottom:4px;}
+  .trialNote{background:#eef6f2;border:1px solid #d7ebe2;border-radius:10px;padding:10px 12px;
+    font-size:12.5px;color:var(--primary-dark);margin-bottom:14px;}
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a2b26;
     color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:999;}
   .hidden{display:none !important;}
@@ -58,17 +68,43 @@
 </head>
 <body>
 
-<div id="loginScreen" class="card" style="max-width:340px;">
-  <h2>SaúdeCare — Entrar</h2>
-  <label>Email</label>
-  <input id="loginEmail" type="email" autocomplete="username">
-  <label>Palavra-passe</label>
-  <input id="loginPass" type="password" autocomplete="current-password">
-  <button class="primary" style="width:100%" onclick="doLogin()">Entrar</button>
-  <p id="loginError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
-  <p class="muted" style="margin-top:10px;text-align:center;">
-    <a href="#" onclick="doPasswordReset();return false;" style="color:var(--primary);">Esqueci-me da password</a>
-  </p>
+<div id="loginScreen">
+  <div class="card" style="max-width:380px;width:100%;">
+    <div class="authBrand">
+      <div class="authLogo">SC</div>
+      <h2>SaúdeCare</h2>
+      <p class="muted">Gestão de consultas, pacientes e protocolos para profissionais de saúde e terapeutas em Portugal</p>
+    </div>
+
+    <div class="authTabs">
+      <button id="authTabLoginBtn" class="active" onclick="switchAuthTab('login')">Entrar</button>
+      <button id="authTabRegisterBtn" onclick="switchAuthTab('register')">Criar conta</button>
+    </div>
+
+    <div id="authPanelLogin">
+      <label>Email</label>
+      <input id="loginEmail" type="email" autocomplete="username">
+      <label>Palavra-passe</label>
+      <input id="loginPass" type="password" autocomplete="current-password">
+      <button class="primary" style="width:100%" onclick="doLogin()">Entrar</button>
+      <p id="loginError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+      <p class="muted" style="margin-top:10px;text-align:center;">
+        <a href="#" onclick="doPasswordReset();return false;" style="color:var(--primary);">Esqueci-me da password</a>
+      </p>
+    </div>
+
+    <div id="authPanelRegister" class="hidden">
+      <div class="trialNote">✨ 14 dias grátis, sem cartão de crédito. Sem compromisso.</div>
+      <label>Nome do consultório / prática</label>
+      <input id="regBusinessName" placeholder="ex: Clínica Bem-Estar">
+      <label>O seu email</label>
+      <input id="regEmail" type="email" autocomplete="username">
+      <label>Palavra-passe</label>
+      <input id="regPass" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres">
+      <button class="primary" style="width:100%" onclick="doRegister()">Criar conta e começar período de teste</button>
+      <p id="registerError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+    </div>
+  </div>
 </div>
 
 <div id="app" class="hidden">
@@ -93,7 +129,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
+  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc,
@@ -147,6 +183,62 @@ window.doLogin = async function(){
   }
 };
 
+window.switchAuthTab = function(tab){
+  const isLogin = tab === 'login';
+  document.getElementById('authTabLoginBtn').classList.toggle('active', isLogin);
+  document.getElementById('authTabRegisterBtn').classList.toggle('active', !isLogin);
+  document.getElementById('authPanelLogin').classList.toggle('hidden', !isLogin);
+  document.getElementById('authPanelRegister').classList.toggle('hidden', isLogin);
+};
+
+// Regista um novo subscritor com período de teste de 14 dias.
+// NOTA: cria a conta e o documento do tenant com status "pending_activation".
+// Enquanto as Cloud Functions não estiverem ativas (Blaze pendente — ver
+// documento de continuidade), a atribuição do custom claim (tenantId, role)
+// que dá acesso real à app continua a ser feita manualmente via Cloud Shell
+// (setclaim.js). Este fluxo deixa a conta pronta para essa ativação.
+window.doRegister = async function(){
+  const businessName = document.getElementById('regBusinessName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass = document.getElementById('regPass').value;
+  const errEl = document.getElementById('registerError');
+  errEl.style.color = 'var(--danger)';
+  errEl.textContent = '';
+
+  if (!businessName){ errEl.textContent = 'Indique o nome do consultório/prática.'; return; }
+  if (!email){ errEl.textContent = 'Indique o seu email.'; return; }
+  if (pass.length < 6){ errEl.textContent = 'A palavra-passe precisa de ter pelo menos 6 caracteres.'; return; }
+
+  window.__justRegistered = true;
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    const slug = businessName.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/(^-+|-+$)/g, '') || 'novo-subscritor';
+
+    await setDoc(doc(db, 'tenants', cred.user.uid), {
+      businessName, slug,
+      status: 'pending_activation',
+      plan: 'start',
+      ownerUid: cred.user.uid,
+      ownerEmail: email,
+      trialDays: 14,
+      profile: { email },
+      createdAt: serverTimestamp()
+    });
+
+    errEl.style.color = 'var(--primary)';
+    errEl.textContent = 'Conta criada com sucesso! Estamos a preparar o seu acesso — vai poder entrar em breve.';
+  }catch(e){
+    window.__justRegistered = false;
+    errEl.style.color = 'var(--danger)';
+    if (e.code === 'auth/email-already-in-use') errEl.textContent = 'Já existe uma conta com este email.';
+    else if (e.code === 'auth/invalid-email') errEl.textContent = 'Email inválido.';
+    else errEl.textContent = 'Não foi possível criar a conta. Tente novamente.';
+    console.error(e);
+  }
+};
+
 window.doPasswordReset = async function(){
   const email = document.getElementById('loginEmail').value.trim();
   const errEl = document.getElementById('loginError');
@@ -181,6 +273,15 @@ onAuthStateChanged(auth, async (user) => {
   tenantRole = tokenResult.claims.role || null;
 
   if (!tenantId){
+    if (window.__justRegistered){
+      window.__justRegistered = false;
+      await signOut(auth);
+      switchAuthTab('login');
+      const errEl = document.getElementById('loginError');
+      errEl.style.color = 'var(--primary)';
+      errEl.textContent = 'Conta criada! Assim que o acesso for ativado, poderá entrar aqui com o mesmo email e password.';
+      return;
+    }
     toast('Esta conta ainda não está associada a nenhum subscritor.', true);
     await signOut(auth);
     return;
@@ -1101,6 +1202,7 @@ function renderMappingGroupsBuilder(){
         <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'leftText',this.value)">${escapeHtml(pt.leftText||'')}</textarea>
         <label>Acrescento quando é do lado DIREITO</label>
         <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'rightText',this.value)">${escapeHtml(pt.rightText||'')}</textarea>
+        <button class="ghost" onclick="openMapPositionPicker(${gIdx},${pIdx})">${pt.mapX!=null ? '📍 Posição definida ('+(pt.mapSide==='costas'?'Costas':'Frente')+') — editar' : '📍 Definir posição no mapa do corpo'}</button>
         <button class="danger" onclick="removeMappingPoint(${gIdx},${pIdx})">Remover ponto</button>
       </div>
     `).join('');
@@ -1116,8 +1218,88 @@ function renderMappingGroupsBuilder(){
 
   return `
     <h3 style="margin:14px 0 8px;">Grupos de pontos</h3>
+    <div id="mapPickerContainer"></div>
     <div id="protoGroupsList">${groupsHtml || '<p class="muted">Ainda sem grupos. Adicione o primeiro (ex: "7 Pontos Vitais").</p>'}</div>
     <button class="ghost" onclick="addMappingGroup()">+ Adicionar grupo</button>`;
+}
+
+// ── Seletor de posição no mapa do corpo (usado ao construir o protocolo) ─
+window.openMapPositionPicker = function(gIdx, pIdx){
+  window.__mapPickerTarget = { gIdx, pIdx };
+  const pt = protocolGroupsDraft[gIdx].points[pIdx];
+  window.__mapPickerSide = pt.mapSide || 'frente';
+  window.__mapPickerX = pt.mapX ?? null;
+  window.__mapPickerY = pt.mapY ?? null;
+  renderMapPositionPicker();
+  document.getElementById('mapPickerContainer').scrollIntoView({ behavior:'smooth', block:'center' });
+};
+
+function renderMapPositionPicker(){
+  const { gIdx, pIdx } = window.__mapPickerTarget;
+  const pt = protocolGroupsDraft[gIdx].points[pIdx];
+  const side = window.__mapPickerSide;
+  const dot = (window.__mapPickerX != null)
+    ? `<circle cx="${window.__mapPickerX*2}" cy="${window.__mapPickerY*4}" r="8" style="fill:var(--primary);stroke:#fff;stroke-width:2;"/>`
+    : '';
+  document.getElementById('mapPickerContainer').innerHTML = `
+    <div class="card" style="background:#f6f8f7;">
+      <div class="row" style="margin-bottom:8px;">
+        <strong>Posição no mapa — ${escapeHtml(pt.name||'(sem nome)')}</strong>
+        <button class="ghost" onclick="closeMapPositionPicker()">Fechar</button>
+      </div>
+      <div style="display:flex;margin-bottom:10px;">
+        <button onclick="setMapPickerSide('frente')" style="flex:1;background:${side==='frente'?'var(--primary)':'none'};color:${side==='frente'?'#fff':'var(--text)'};border:1px solid #d8e0dc;padding:8px;border-radius:8px 0 0 8px;cursor:pointer;">Frente</button>
+        <button onclick="setMapPickerSide('costas')" style="flex:1;background:${side==='costas'?'var(--primary)':'none'};color:${side==='costas'?'#fff':'var(--text)'};border:1px solid #d8e0dc;border-left:none;padding:8px;border-radius:0 8px 8px 0;cursor:pointer;">Costas</button>
+      </div>
+      <p class="muted" style="margin-bottom:8px;text-align:center;">Toque no boneco no local exato deste ponto.</p>
+      <div onclick="handleMapPickerClick(event)">${bodySilhouetteSVG(side, dot)}</div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="primary" onclick="saveMapPosition()">Guardar posição</button>
+        ${pt.mapX!=null ? `<button class="danger" onclick="removeMapPosition()">Remover</button>` : ''}
+      </div>
+    </div>`;
+}
+
+window.setMapPickerSide = function(side){
+  window.__mapPickerSide = side;
+  renderMapPositionPicker();
+};
+
+window.handleMapPickerClick = function(evt){
+  const svg = evt.currentTarget.querySelector('svg');
+  const rect = svg.getBoundingClientRect();
+  const x = ((evt.clientX - rect.left) / rect.width) * 100;
+  const y = ((evt.clientY - rect.top) / rect.height) * 100;
+  window.__mapPickerX = Math.max(0, Math.min(100, x));
+  window.__mapPickerY = Math.max(0, Math.min(100, y));
+  renderMapPositionPicker();
+};
+
+window.saveMapPosition = function(){
+  const { gIdx, pIdx } = window.__mapPickerTarget;
+  if (window.__mapPickerX == null){ toast('Toque no boneco para marcar a posição.', true); return; }
+  protocolGroupsDraft[gIdx].points[pIdx].mapX = window.__mapPickerX;
+  protocolGroupsDraft[gIdx].points[pIdx].mapY = window.__mapPickerY;
+  protocolGroupsDraft[gIdx].points[pIdx].mapSide = window.__mapPickerSide;
+  closeMapPositionPicker();
+  refreshProtoTypeBody();
+  toast('Posição guardada.');
+};
+
+window.removeMapPosition = function(){
+  const { gIdx, pIdx } = window.__mapPickerTarget;
+  delete protocolGroupsDraft[gIdx].points[pIdx].mapX;
+  delete protocolGroupsDraft[gIdx].points[pIdx].mapY;
+  delete protocolGroupsDraft[gIdx].points[pIdx].mapSide;
+  closeMapPositionPicker();
+  refreshProtoTypeBody();
+  toast('Posição removida.');
+};
+
+window.closeMapPositionPicker = function(){
+  window.__mapPickerTarget = null;
+  const el = document.getElementById('mapPickerContainer');
+  if (el) el.innerHTML = '';
 }
 
 window.updateMappingGroupName = function(gIdx, value){
@@ -1149,9 +1331,14 @@ window.updateMappingPoint = function(gIdx, pIdx, field, value){
 function renderClassificationsBuilder(){
   let html = protocolClassificationsDraft.map((c, idx) => `
     <div class="card" style="margin-bottom:8px;">
-      <label>Nome desta classificação final</label>
+      <label>Pergunta / dado a recolher</label>
       <input value="${escapeHtml(c.label||'')}" onchange="updateClassification(${idx},'label',this.value)" placeholder="ex: Escudo emocional mais ativo">
-      <label>Tipo</label>
+      <label>Quando perguntar</label>
+      <select onchange="updateClassification(${idx},'when',this.value)">
+        <option value="before" ${c.when==='before'?'selected':''}>No início (antes do mapeamento) — ex: dados do paciente, perguntas de recolha</option>
+        <option value="after" ${(!c.when||c.when==='after')?'selected':''}>No fim (classificação final) — ex: escudo ativo, idade/geração</option>
+      </select>
+      <label>Tipo de resposta</label>
       <select onchange="updateClassification(${idx},'type',this.value)">
         <option value="select" ${(!c.type||c.type==='select')?'selected':''}>Escolher uma opção</option>
         <option value="checkbox" ${c.type==='checkbox'?'selected':''}>Marcar vários (múltipla escolha)</option>
@@ -1165,10 +1352,10 @@ function renderClassificationsBuilder(){
     </div>
   `).join('');
   return `
-    <h3 style="margin:14px 0 8px;">Classificações finais (opcional)</h3>
-    <p class="muted" style="margin-bottom:8px;">Perguntas feitas no fim do mapeamento — ex: qual escudo emocional está mais ativo, em que momento, em que idade/geração.</p>
+    <h3 style="margin:14px 0 8px;">Perguntas do protocolo (opcional)</h3>
+    <p class="muted" style="margin-bottom:8px;">Dados ou perguntas feitas antes de começar (ex: nome, medicação, as 6 perguntas do poder) ou no fim (ex: qual escudo está mais ativo, em que momento/idade).</p>
     <div id="protoClassificationsList">${html}</div>
-    <button class="ghost" onclick="addClassification()">+ Adicionar classificação final</button>`;
+    <button class="ghost" onclick="addClassification()">+ Adicionar pergunta</button>`;
 }
 
 window.updateClassification = function(idx, field, value){
@@ -1180,7 +1367,7 @@ window.updateClassification = function(idx, field, value){
   if (field === 'type') refreshProtoTypeBody();
 };
 window.addClassification = function(){
-  protocolClassificationsDraft.push({ label:'', type:'select', options:[] });
+  protocolClassificationsDraft.push({ label:'', type:'select', when:'after', options:[] });
   refreshProtoTypeBody();
 };
 window.removeClassification = function(idx){
@@ -1259,13 +1446,63 @@ window.onGuidedProtocolChange = function(patientId, patientName){
   if (!protoId){ area.innerHTML=''; return; }
   const proto = window.__guidedProtocols[protoId];
   window.__currentGuidedProtoId = protoId;
+  window.__mappingBeforeAnswers = [];
+  window.__mappingAfterAnswers = [];
 
   if (proto.type === 'mapping'){
-    renderMappingZoneSelection(patientId, patientName, area);
+    const beforeQuestions = (proto.finalClassifications || []).filter(c => c.when === 'before');
+    area.innerHTML = '';
+    if (beforeQuestions.length){
+      renderQuestionsScreen(area, beforeQuestions, 'before', () => renderMappingZoneSelection(patientId, patientName, area));
+    } else {
+      renderMappingZoneSelection(patientId, patientName, area);
+    }
   } else {
     renderGuidedPoints(patientId, patientName, area, proto);
   }
 };
+
+// ── Ecrã genérico de perguntas (usado no início e no fim do mapeamento) ─
+function renderQuestionsScreen(area, questions, phase, onContinue){
+  let html = `<h3 style="margin:8px 0;">${phase==='before' ? 'Antes de começar' : 'Classificação final'}</h3>`;
+  questions.forEach((c, idx) => {
+    const inputId = `${phase}q_${idx}`;
+    if (c.type === 'text'){
+      html += `<div class="card"><label>${escapeHtml(c.label)}</label><input id="${inputId}"></div>`;
+    } else if (c.type === 'checkbox'){
+      const opts = (c.options||[]).map((o, oIdx) => `
+        <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+          <input type="checkbox" id="${inputId}_opt_${oIdx}" value="${escapeHtml(o)}" style="width:auto;margin:0;">
+          ${escapeHtml(o)}
+        </label>`).join('');
+      html += `<div class="card"><label>${escapeHtml(c.label)}</label>${opts}</div>`;
+    } else {
+      const opts = (c.options||[]).map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
+      html += `<div class="card"><label>${escapeHtml(c.label)}</label><select id="${inputId}"><option value="">—</option>${opts}</select></div>`;
+    }
+  });
+  html += `<button class="primary" onclick="window.__questionsScreenContinue()">Continuar</button>`;
+  area.innerHTML += html;
+  area.scrollIntoView({ behavior:'smooth', block:'end' });
+
+  window.__questionsScreenContinue = function(){
+    const answers = questions.map((c, idx) => {
+      const inputId = `${phase}q_${idx}`;
+      if (c.type === 'checkbox'){
+        const chosen = (c.options||[])
+          .map((o, oIdx) => document.getElementById(`${inputId}_opt_${oIdx}`)?.checked ? o : null)
+          .filter(Boolean);
+        return { label: c.label, value: chosen.join(', ') };
+      }
+      return { label: c.label, value: document.getElementById(inputId)?.value || '' };
+    }).filter(a => a.value);
+
+    if (phase === 'before') window.__mappingBeforeAnswers = answers;
+    else window.__mappingAfterAnswers = answers;
+
+    onContinue();
+  };
+}
 
 // ── Fluxo tipo "simples" (como já existia) ──────────────────────────────
 function renderGuidedPoints(patientId, patientName, area, proto){
@@ -1353,6 +1590,7 @@ window.startMappingPoints = function(patientId, patientName){
   let html = '';
   combos.forEach((combo, cIdx) => {
     html += `<h3 style="margin:16px 0 8px;">${zonaLabel[combo.zona]} — Lado ${ladoLabel[combo.lado]}</h3>`;
+    html += renderMappingDiagram(cIdx, combo, proto);
     proto.groups.forEach((g, gIdx) => {
       html += `<div class="card" style="margin-bottom:8px;"><strong>${escapeHtml(g.groupName)}</strong>`;
       g.points.forEach((pt, pIdx) => {
@@ -1360,7 +1598,7 @@ window.startMappingPoints = function(patientId, patientName){
         html += `
           <div style="margin-top:8px;border-top:1px solid #eef2f0;padding-top:8px;">
             <label style="display:flex;align-items:center;gap:8px;">
-              <input type="checkbox" id="${id}_check" style="width:auto;margin:0;">
+              <input type="checkbox" id="${id}_check" onchange="syncMapDot('${id}')" style="width:auto;margin:0;">
               <strong>${escapeHtml(pt.name)}</strong>
             </label>
             <textarea id="${id}_note" rows="1" placeholder="Nota (opcional)" style="margin-top:4px;"></textarea>
@@ -1369,35 +1607,71 @@ window.startMappingPoints = function(patientId, patientName){
       html += `</div>`;
     });
   });
-  html += `<button class="primary" onclick="renderMappingClassifications('${patientId}','${escapeHtml(patientName)}')">Continuar</button>`;
+  html += `<button class="primary" onclick="startMappingClassificationsPhase('${patientId}','${escapeHtml(patientName)}')">Continuar</button>`;
 
   document.getElementById('guidedPointsArea').innerHTML = html;
 };
 
-window.renderMappingClassifications = function(patientId, patientName){
-  const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
-  const classifications = proto.finalClassifications || [];
+// ── Mapa do corpo — desenho genérico + pontos clicáveis ─────────────────
+function bodySilhouetteSVG(side, overlaySvg){
+  overlaySvg = overlaySvg || '';
+  return `<svg viewBox="0 0 200 400" style="width:100%;max-width:220px;display:block;margin:0 auto;touch-action:manipulation;" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="100" cy="42" rx="30" ry="34" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+    <rect x="68" y="76" width="64" height="94" rx="20" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+    <rect x="34" y="82" width="30" height="128" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+    <rect x="136" y="82" width="30" height="128" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+    <rect x="70" y="168" width="28" height="160" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+    <rect x="102" y="168" width="28" height="160" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
+    <text x="100" y="393" text-anchor="middle" font-size="12" fill="#6b7d76">${side==='costas'?'Costas':'Frente'}</text>
+    ${overlaySvg}
+  </svg>`;
+}
 
-  let html = '<h3 style="margin:16px 0 8px;">Classificação final</h3>';
-  classifications.forEach((c, idx) => {
-    if (c.type === 'text'){
-      html += `<div class="card"><label>${escapeHtml(c.label)}</label><input id="cls_${idx}"></div>`;
-    } else if (c.type === 'checkbox'){
-      const opts = (c.options||[]).map((o, oIdx) => `
-        <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-          <input type="checkbox" id="cls_${idx}_opt_${oIdx}" value="${escapeHtml(o)}" style="width:auto;margin:0;">
-          ${escapeHtml(o)}
-        </label>`).join('');
-      html += `<div class="card"><label>${escapeHtml(c.label)}</label>${opts}</div>`;
-    } else {
-      const opts = (c.options||[]).map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
-      html += `<div class="card"><label>${escapeHtml(c.label)}</label><select id="cls_${idx}"><option value="">—</option>${opts}</select></div>`;
-    }
+function renderMappingDiagram(cIdx, combo, proto){
+  let dots = '';
+  let hasAny = false;
+  proto.groups.forEach((g, gIdx) => {
+    g.points.forEach((pt, pIdx) => {
+      if (pt.mapX == null || pt.mapSide !== combo.zona) return;
+      hasAny = true;
+      const id = `mp_${cIdx}_${gIdx}_${pIdx}`;
+      dots += `<circle data-target="${id}_check" cx="${pt.mapX*2}" cy="${pt.mapY*4}" r="8" style="fill:#fff;stroke:var(--primary);stroke-width:2;cursor:pointer;" onclick="toggleMapDot(this)"/>`;
+    });
   });
-  html += `<button class="primary" onclick="generateMappingReport('${patientId}','${escapeHtml(patientName)}')">Gerar relatório</button>`;
+  if (!hasAny) return '';
+  return `<div class="card" style="background:#f6f8f7;text-align:center;">
+    <p class="muted" style="margin-bottom:8px;">Toque no ponto no boneco — equivale a marcar a caixa abaixo</p>
+    ${bodySilhouetteSVG(combo.zona, dots)}
+  </div>`;
+}
 
-  document.getElementById('guidedPointsArea').innerHTML += html;
-  document.getElementById('guidedPointsArea').scrollIntoView({ behavior:'smooth', block:'end' });
+window.toggleMapDot = function(circle){
+  const check = document.getElementById(circle.dataset.target);
+  if (!check) return;
+  check.checked = !check.checked;
+  check.dispatchEvent(new Event('change'));
+};
+
+window.syncMapDot = function(id){
+  const check = document.getElementById(`${id}_check`);
+  const dotEl = document.querySelector(`circle[data-target="${id}_check"]`);
+  if (dotEl && check) dotEl.style.fill = check.checked ? 'var(--primary)' : '#fff';
+};
+
+window.startMappingClassificationsPhase = function(patientId, patientName){
+  const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
+  const afterQuestions = (proto.finalClassifications || []).filter(c => !c.when || c.when === 'after');
+  if (!afterQuestions.length){
+    window.__mappingAfterAnswers = [];
+    generateMappingReport(patientId, patientName);
+    return;
+  }
+  renderQuestionsScreen(
+    document.getElementById('guidedPointsArea'),
+    afterQuestions,
+    'after',
+    () => generateMappingReport(patientId, patientName)
+  );
 };
 
 function computeMappingPointText(pt, zona, lado){
@@ -1432,16 +1706,8 @@ window.generateMappingReport = async function(patientId, patientName){
     });
   });
 
-  const classifications = proto.finalClassifications || [];
-  const classificationAnswers = classifications.map((c, idx) => {
-    if (c.type === 'checkbox'){
-      const chosen = (c.options||[])
-        .map((o, oIdx) => document.getElementById(`cls_${idx}_opt_${oIdx}`)?.checked ? o : null)
-        .filter(Boolean);
-      return { label: c.label, value: chosen.join(', ') };
-    }
-    return { label: c.label, value: document.getElementById(`cls_${idx}`)?.value || '' };
-  }).filter(a => a.value);
+  const beforeAnswers = window.__mappingBeforeAnswers || [];
+  const classificationAnswers = window.__mappingAfterAnswers || [];
 
   if (!detected.length){
     toast('Marque pelo menos um ponto para gerar o relatório.', true);
@@ -1451,6 +1717,12 @@ window.generateMappingReport = async function(patientId, patientName){
   let reportText = `Relatório de Mapeamento — ${proto.name}\n`;
   reportText += `Paciente: ${patientName}\n`;
   reportText += `Data: ${new Date().toLocaleDateString('pt-PT')}\n\n`;
+
+  if (beforeAnswers.length){
+    reportText += `== Dados iniciais ==\n`;
+    beforeAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
+    reportText += `\n`;
+  }
 
   let currentGroup = null;
   detected.forEach(d => {
@@ -1469,7 +1741,7 @@ window.generateMappingReport = async function(patientId, patientName){
 
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
     protocolId: window.__currentGuidedProtoId, protocolName: proto.name,
-    mappingDetected: detected, classifications: classificationAnswers,
+    mappingDetected: detected, beforeAnswers, classifications: classificationAnswers,
     reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
   });
   await logAudit('report_generated', patientId);
