@@ -96,7 +96,7 @@ import {
   createUserWithEmailAndPassword, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc,
+  getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
   query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -285,10 +285,17 @@ window.openTenantDetail = function(tenantId){
   if (!t) return;
   document.getElementById('tenantDetailContainer').innerHTML = `
     <div class="card">
-      <h2>${escapeHtml(t.businessName||t.id)}</h2>
+      <h2>Editar subscritor</h2>
       <p class="muted">ID: ${escapeHtml(t.id)} · Dono (uid): ${escapeHtml(t.ownerUid||'—')}</p>
+      <label>Nome do negócio</label>
+      <input id="tdBusinessName" value="${escapeAttr(t.businessName||'')}">
+      <label>Slug (link público)</label>
+      <input id="tdSlug" value="${escapeAttr(t.slug||'')}">
+      <label>Email do dono</label>
+      <input id="tdOwnerEmail" value="${escapeAttr(t.ownerEmail||'')}">
       <label>Estado</label>
       <select id="tdStatus">
+        <option value="pending_activation" ${t.status==='pending_activation'?'selected':''}>Por ativar</option>
         <option value="trial" ${t.status==='trial'?'selected':''}>Em teste</option>
         <option value="active" ${t.status==='active'?'selected':''}>Ativo</option>
         <option value="suspended" ${t.status==='suspended'?'selected':''}>Suspenso</option>
@@ -302,15 +309,39 @@ window.openTenantDetail = function(tenantId){
         <option value="enterprise" ${t.plan==='enterprise'?'selected':''}>Enterprise</option>
         <option value="lifetime" ${t.plan==='lifetime'?'selected':''}>Vitalício (sem restrições)</option>
       </select>
-      <button class="primary" onclick="saveTenantChanges('${tenantId}')">Guardar alterações</button>
+      <div class="row">
+        <button class="primary" onclick="saveTenantChanges('${tenantId}')">Guardar alterações</button>
+        <button class="danger" onclick="confirmDeleteTenant('${tenantId}','${escapeAttr(t.businessName||t.id)}')">Apagar subscritor</button>
+      </div>
     </div>`;
 };
 
 window.saveTenantChanges = async function(tenantId){
+  const businessName = document.getElementById('tdBusinessName').value.trim();
+  const slug = document.getElementById('tdSlug').value.trim();
+  const ownerEmail = document.getElementById('tdOwnerEmail').value.trim();
   const status = document.getElementById('tdStatus').value;
   const plan = document.getElementById('tdPlan').value;
-  await updateDoc(doc(db, 'tenants', tenantId), { status, plan });
+  await updateDoc(doc(db, 'tenants', tenantId), { businessName, slug, ownerEmail, status, plan });
   toast('Subscritor atualizado.');
+  renderView('tenants');
+};
+
+window.confirmDeleteTenant = function(tenantId, businessName){
+  document.getElementById('tenantDetailContainer').insertAdjacentHTML('beforeend', `
+    <div class="card" style="border:1.5px solid var(--danger);">
+      <strong style="color:var(--danger);">Apagar "${escapeHtml(businessName)}"?</strong>
+      <p class="muted" style="margin:6px 0 10px;">Isto apaga só o registo do subscritor — não apaga a conta de login associada nem os dados internos dele (pacientes, agenda, etc.), que ficam órfãos. Usa isto sobretudo para limpar registos de teste.</p>
+      <div class="row">
+        <button class="danger" onclick="deleteTenant('${tenantId}')">Sim, apagar</button>
+        <button class="ghost" onclick="openTenantDetail('${tenantId}')">Cancelar</button>
+      </div>
+    </div>`);
+};
+
+window.deleteTenant = async function(tenantId){
+  await deleteDoc(doc(db, 'tenants', tenantId));
+  toast('Subscritor apagado.');
   renderView('tenants');
 };
 
