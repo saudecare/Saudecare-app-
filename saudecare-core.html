@@ -1153,7 +1153,8 @@ function renderClassificationsBuilder(){
       <input value="${escapeHtml(c.label||'')}" onchange="updateClassification(${idx},'label',this.value)" placeholder="ex: Escudo emocional mais ativo">
       <label>Tipo</label>
       <select onchange="updateClassification(${idx},'type',this.value)">
-        <option value="select" ${c.type!=='text'?'selected':''}>Escolher uma opção</option>
+        <option value="select" ${(!c.type||c.type==='select')?'selected':''}>Escolher uma opção</option>
+        <option value="checkbox" ${c.type==='checkbox'?'selected':''}>Marcar vários (múltipla escolha)</option>
         <option value="text" ${c.type==='text'?'selected':''}>Texto livre</option>
       </select>
       ${c.type !== 'text' ? `
@@ -1381,6 +1382,13 @@ window.renderMappingClassifications = function(patientId, patientName){
   classifications.forEach((c, idx) => {
     if (c.type === 'text'){
       html += `<div class="card"><label>${escapeHtml(c.label)}</label><input id="cls_${idx}"></div>`;
+    } else if (c.type === 'checkbox'){
+      const opts = (c.options||[]).map((o, oIdx) => `
+        <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+          <input type="checkbox" id="cls_${idx}_opt_${oIdx}" value="${escapeHtml(o)}" style="width:auto;margin:0;">
+          ${escapeHtml(o)}
+        </label>`).join('');
+      html += `<div class="card"><label>${escapeHtml(c.label)}</label>${opts}</div>`;
     } else {
       const opts = (c.options||[]).map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
       html += `<div class="card"><label>${escapeHtml(c.label)}</label><select id="cls_${idx}"><option value="">—</option>${opts}</select></div>`;
@@ -1425,9 +1433,15 @@ window.generateMappingReport = async function(patientId, patientName){
   });
 
   const classifications = proto.finalClassifications || [];
-  const classificationAnswers = classifications.map((c, idx) => ({
-    label: c.label, value: document.getElementById(`cls_${idx}`)?.value || ''
-  })).filter(a => a.value);
+  const classificationAnswers = classifications.map((c, idx) => {
+    if (c.type === 'checkbox'){
+      const chosen = (c.options||[])
+        .map((o, oIdx) => document.getElementById(`cls_${idx}_opt_${oIdx}`)?.checked ? o : null)
+        .filter(Boolean);
+      return { label: c.label, value: chosen.join(', ') };
+    }
+    return { label: c.label, value: document.getElementById(`cls_${idx}`)?.value || '' };
+  }).filter(a => a.value);
 
   if (!detected.length){
     toast('Marque pelo menos um ponto para gerar o relatório.', true);
