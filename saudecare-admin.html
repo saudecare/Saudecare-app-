@@ -92,7 +92,8 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut,
+  createUserWithEmailAndPassword, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc,
@@ -111,6 +112,19 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// App Firebase secundária, só para criar contas de subscritores sem
+// desligar a sessão de admin em curso (createUserWithEmailAndPassword
+// muda automaticamente a sessão ativa para o utilizador recém-criado
+// se usarmos a mesma instância de auth — por isso usamos uma separada).
+const secondaryApp = initializeApp(firebaseConfig, 'subscriberCreation');
+const secondaryAuth = getAuth(secondaryApp);
+
+function generateRandomPassword(){
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(36)).join('').slice(0, 24);
+}
 
 let currentUser = null;
 let allTenants = [];
@@ -302,12 +316,13 @@ function renderNewTenant(main){
     <h2>Criar novo subscritor</h2>
     <div class="card">
       <p class="muted" style="margin-bottom:10px;">
-        Isto cria o registo do subscritor na base de dados. Depois de criares,
-        vais ver os 2 passos seguintes para ativares o login dele — sem
-        precisares de escrever código, só colar um comando pronto.
+        A conta de login é criada automaticamente com uma password aleatória
+        que nem tu vês — o subscritor recebe logo um email para definir a
+        própria password. Tu nunca sabes nem defines a password dele.
       </p>
       <label>Nome do negócio</label><input id="ntBusinessName">
       <label>Slug (identificador do link público, sem espaços/acentos)</label><input id="ntSlug" placeholder="ex: joana-silva-fisio">
+      <label>Email do subscritor</label><input id="ntEmail" type="email" placeholder="email real do subscritor">
       <label>Plano inicial</label>
       <select id="ntPlan">
         <option value="start">Start</option>
@@ -315,7 +330,7 @@ function renderNewTenant(main){
         <option value="pro">Pro</option>
         <option value="lifetime">Vitalício (sem restrições)</option>
       </select>
-      <button class="primary" onclick="createTenant()">Criar subscritor</button>
+      <button class="primary" id="ntCreateBtn" onclick="createTenant()">Criar subscritor e enviar email</button>
     </div>
   `;
 }
@@ -323,20 +338,44 @@ function renderNewTenant(main){
 window.createTenant = async function(){
   const businessName = document.getElementById('ntBusinessName').value.trim();
   const slug = document.getElementById('ntSlug').value.trim();
+  const email = document.getElementById('ntEmail').value.trim();
   if (!businessName || !slug){ toast('Nome e slug são obrigatórios.', true); return; }
+  if (!email){ toast('O email do subscritor é obrigatório.', true); return; }
 
-  const docRef = await addDoc(collection(db, 'tenants'), {
-    businessName,
-    slug,
-    status: 'trial',
-    plan: document.getElementById('ntPlan').value,
-    ownerUid: null,
-    createdAt: serverTimestamp(),
-    branding: {},
-    legalTexts: {}
-  });
-  toast('Subscritor criado.');
-  renderTenantSetupSteps(docRef.id, businessName, '');
+  const btn = document.getElementById('ntCreateBtn');
+  btn.disabled = true; btn.textContent = 'A criar…';
+
+  try{
+    // Cria a conta na app secundária (não afeta a sessão de admin atual)
+    // com uma password aleatória que ninguém escreve nem vê.
+    const randomPass = generateRandomPassword();
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, randomPass);
+    const newUid = cred.user.uid;
+    await signOut(secondaryAuth);
+
+    // Envia o email de "definir password" para o subscritor escolher a sua própria.
+    await sendPasswordResetEmail(auth, email);
+
+    const docRef = await addDoc(collection(db, 'tenants'), {
+      businessName,
+      slug,
+      status: 'pending_activation',
+      plan: document.getElementById('ntPlan').value,
+      ownerUid: newUid,
+      ownerEmail: email,
+      createdAt: serverTimestamp(),
+      branding: {},
+      legalTexts: {}
+    });
+
+    toast('Subscritor criado. Email enviado para ele definir a password.');
+    renderTenantSetupSteps(docRef.id, businessName, newUid);
+  }catch(e){
+    console.error(e);
+    if (e.code === 'auth/email-already-in-use') toast('Já existe uma conta com este email.', true);
+    else toast('Não foi possível criar o subscritor. Tenta novamente.', true);
+    btn.disabled = false; btn.textContent = 'Criar subscritor e enviar email';
+  }
 };
 
 // ── PASSOS DE ATIVAÇÃO DE LOGIN (sem Cloud Functions, sem Blaze) ─────
@@ -355,7 +394,7 @@ window.renderTenantSetupSteps = function(tenantId, businessName, knownUid){
       <div class="stepBlock" ${hasUid ? 'style="opacity:.55;"' : ''}>
         <strong>Passo 1 — Criar (ou confirmar) a conta de login</strong>
         ${hasUid
-          ? `<p class="muted">✓ Não é preciso — esta conta registou-se sozinha, o UID já é conhecido.</p>`
+          ? `<p class="muted">✓ Não é preciso — a conta já foi criada e o UID já é conhecido.</p>`
           : `<p class="muted">Se ainda não existir, cria o utilizador com o email/password que o subscritor vai usar para entrar em saudecare-core.html.</p>
              <a href="https://console.firebase.google.com/project/saudecare-app/authentication/users" target="_blank" rel="noopener">
                <button class="ghost" type="button">Abrir Authentication →</button>
