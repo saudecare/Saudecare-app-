@@ -203,9 +203,13 @@ function renderView(view){
 }
 
 async function loadAllTenants(){
-  const snap = await getDocs(query(collection(db, 'tenants'), orderBy('businessName')));
+  // Sem orderBy: o Firestore descarta silenciosamente documentos a que
+  // falte o campo usado na ordenação, o que fazia subscritores
+  // desaparecerem da lista. Ordenamos em JavaScript, que é tolerante.
+  const snap = await getDocs(collection(db, 'tenants'));
   allTenants = [];
   snap.forEach(d => allTenants.push({ id: d.id, ...d.data() }));
+  allTenants.sort((a,b) => (a.businessName||a.id).localeCompare(b.businessName||b.id));
   return allTenants;
 }
 
@@ -259,13 +263,13 @@ async function renderTenants(main){
         <div><strong>${escapeHtml(t.businessName||t.id)}</strong>
           <div class="muted">${escapeHtml(t.slug||'')} · plano ${escapeHtml(t.plan||'—')}</div>
         </div>
-        <span class="badge ${isPending ? '' : t.status}" style="${isPending ? 'background:#fff3cd;color:#8a5a00;' : ''}">${isPending ? 'por ativar' : escapeHtml(t.status||'')}</span>
+        <span class="badge ${isPending ? '' : escapeHtml(t.status||'')}" style="${isPending ? 'background:#fff3cd;color:#8a5a00;' : ''}">${isPending ? 'por ativar' : escapeHtml(t.status||'')}</span>
       </div>
       <div class="row" style="margin-top:8px;">
         ${isPending
-          ? `<button class="primary" onclick="renderTenantSetupSteps('${t.id}','${escapeAttr(t.businessName)}','${escapeAttr(t.ownerUid||'')}')">Ativar acesso →</button>`
-          : `<button class="ghost" onclick="openTenantDetail('${t.id}')">Gerir</button>
-             <button class="ghost" onclick="renderTenantSetupSteps('${t.id}','${escapeAttr(t.businessName)}','${escapeAttr(t.ownerUid||'')}')">Passos de ativação de login</button>`
+          ? `<button class="primary" data-action="setup" data-id="${escapeAttr(t.id)}">Ativar acesso →</button>`
+          : `<button class="ghost" data-action="manage" data-id="${escapeAttr(t.id)}">Gerir</button>
+             <button class="ghost" data-action="setup" data-id="${escapeAttr(t.id)}">Passos de ativação de login</button>`
         }
       </div>
     </div>
@@ -274,10 +278,21 @@ async function renderTenants(main){
   if (!rows) rows = '<p class="muted">Ainda sem subscritores.</p>';
 
   main.innerHTML = `
-    <h2>Subscritores</h2>
+    <h2>Subscritores <span class="muted" style="font-size:13px;">(${sorted.length})</span></h2>
     <div class="card">${rows}</div>
     <div id="tenantDetailContainer"></div>
   `;
+
+  // Ligações por evento em vez de onclick inline — evita que nomes com
+  // apóstrofos ou campos em falta partam o HTML e façam a linha desaparecer.
+  main.querySelectorAll('button[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = allTenants.find(x => x.id === btn.dataset.id);
+      if (!t) return;
+      if (btn.dataset.action === 'manage') openTenantDetail(t.id);
+      else renderTenantSetupSteps(t.id, t.businessName || t.id, t.ownerUid || '');
+    });
+  });
 }
 
 window.openTenantDetail = function(tenantId){
