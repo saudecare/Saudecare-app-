@@ -1113,9 +1113,16 @@ async function renderForms(main){
   }
 }
 
+const DEFAULT_FORM_QUESTIONS = [
+  { type: 'text', label: 'Nome completo do paciente' },
+  { type: 'text', label: 'Data de nascimento' },
+  { type: 'text', label: 'Data desta avaliação' },
+  { type: 'text', label: 'Está a tomar alguma medicação? (qual, dose, quantas vezes ao dia)' }
+];
+
 window.openNewForm = function(){
-  formQuestionsDraft = [];
-  renderFormBuilder(null, '', '', []);
+  formQuestionsDraft = DEFAULT_FORM_QUESTIONS.map(q => ({ id: 'q'+Date.now()+Math.random().toString(36).slice(2,7), ...q }));
+  renderFormBuilder(null, '', '', formQuestionsDraft);
 };
 
 window.editForm = async function(id){
