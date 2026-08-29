@@ -120,6 +120,10 @@ const db = getFirestore(app);
 const secondaryApp = initializeApp(firebaseConfig, 'subscriberCreation');
 const secondaryAuth = getAuth(secondaryApp);
 
+// Função privilegiada (Netlify) que atribui as claims e ativa o
+// subscritor num único pedido — substitui o comando manual do Cloud Shell.
+const CLAIMS_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/activateTenant';
+
 function generateRandomPassword(){
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
@@ -385,50 +389,83 @@ window.renderTenantSetupSteps = function(tenantId, businessName, knownUid){
   const main = document.getElementById('mainView');
   main.innerHTML = `
     <h2>Ativar login — ${escapeHtml(businessName)}</h2>
+
     <div class="card">
-      <p class="muted" style="margin-bottom:14px;">
-        Estes passos não precisam do plano Blaze nem de Cloud Functions —
-        usam o Cloud Shell, que é grátis e já usámos antes com sucesso.
-      </p>
-
-      <div class="stepBlock" ${hasUid ? 'style="opacity:.55;"' : ''}>
-        <strong>Passo 1 — Criar (ou confirmar) a conta de login</strong>
-        ${hasUid
-          ? `<p class="muted">✓ Não é preciso — a conta já foi criada e o UID já é conhecido.</p>`
-          : `<p class="muted">Se ainda não existir, cria o utilizador com o email/password que o subscritor vai usar para entrar em saudecare-core.html.</p>
-             <a href="https://console.firebase.google.com/project/saudecare-app/authentication/users" target="_blank" rel="noopener">
-               <button class="ghost" type="button">Abrir Authentication →</button>
-             </a>
-             <p class="muted" style="margin-top:6px;">Depois de criares, toca no utilizador na lista — o <strong>UID</strong> aparece no topo da página dele. Copia-o.</p>`
-        }
-      </div>
-
-      <div class="stepBlock">
-        <strong>Passo 2 — Copiar o comando e correr no Cloud Shell</strong>
-        <label style="margin-top:6px;">UID do utilizador ${hasUid ? '(já preenchido)' : '(colado do passo 1)'}</label>
-        <input id="setupUid" value="${escapeAttr(knownUid||'')}" placeholder="ex: lGivQcVpk5htm7ao71t2VYUHU6q1" oninput="updateSetupCommand()">
-        <label>Comando pronto — copia tudo e cola no Cloud Shell</label>
-        <textarea id="setupCommand" rows="8" readonly style="font-family:monospace;font-size:12px;" onclick="this.select()"></textarea>
-        <div class="row" style="margin-top:8px;">
-          <button class="ghost" type="button" onclick="copySetupCommand()">Copiar comando</button>
-          <a href="https://shell.cloud.google.com/?project=saudecare-app" target="_blank" rel="noopener">
-            <button class="primary" type="button">Abrir Cloud Shell →</button>
-          </a>
-        </div>
-        <p class="muted" style="margin-top:8px;">
-          Cola o comando (um único bloco) e prime Enter. Quando aparecer
-          <strong>"Claims atribuídas com sucesso"</strong>, o Passo 2 está feito.
-        </p>
-      </div>
-
-      <div class="stepBlock" style="margin-bottom:0;">
-        <strong>Passo 3 — Marcar a conta como ativa</strong>
-        <p class="muted">Sem este passo, mesmo com o comando corrido, o subscritor continua bloqueado — as regras de segurança só permitem acesso a contas "Em teste" ou "Ativo".</p>
-        <button class="primary" type="button" onclick="markTenantActivated('${tenantId}')">✓ Marcar como "Em teste"</button>
-      </div>
+      <strong>Ativação em 1 clique</strong>
+      ${hasUid
+        ? `<p class="muted" style="margin:6px 0 14px;">O UID já é conhecido — basta confirmar.</p>
+           <button class="primary" type="button" id="oneClickBtn" onclick="oneClickActivate('${tenantId}','${escapeAttr(knownUid)}')">✓ Ativar acesso agora</button>
+           <p id="oneClickStatus" class="muted" style="margin-top:8px;"></p>`
+        : `<p class="muted" style="margin:6px 0 14px;">Falta o UID do utilizador — usa os passos manuais abaixo desta vez.</p>`
+      }
     </div>
+
+    <details style="margin-bottom:14px;">
+      <summary class="muted" style="cursor:pointer;">Método manual (Cloud Shell) — só se o botão acima falhar</summary>
+      <div class="card" style="margin-top:10px;">
+        <div class="stepBlock" ${hasUid ? 'style="opacity:.55;"' : ''}>
+          <strong>Passo 1 — Criar (ou confirmar) a conta de login</strong>
+          ${hasUid
+            ? `<p class="muted">✓ Não é preciso — a conta já foi criada e o UID já é conhecido.</p>`
+            : `<p class="muted">Se ainda não existir, cria o utilizador com o email/password que o subscritor vai usar para entrar em saudecare-core.html.</p>
+               <a href="https://console.firebase.google.com/project/saudecare-app/authentication/users" target="_blank" rel="noopener">
+                 <button class="ghost" type="button">Abrir Authentication →</button>
+               </a>
+               <p class="muted" style="margin-top:6px;">Depois de criares, toca no utilizador na lista — o <strong>UID</strong> aparece no topo da página dele. Copia-o.</p>`
+          }
+        </div>
+
+        <div class="stepBlock">
+          <strong>Passo 2 — Copiar o comando e correr no Cloud Shell</strong>
+          <label style="margin-top:6px;">UID do utilizador ${hasUid ? '(já preenchido)' : '(colado do passo 1)'}</label>
+          <input id="setupUid" value="${escapeAttr(knownUid||'')}" placeholder="ex: lGivQcVpk5htm7ao71t2VYUHU6q1" oninput="updateSetupCommand()">
+          <label>Comando pronto — copia tudo e cola no Cloud Shell</label>
+          <textarea id="setupCommand" rows="8" readonly style="font-family:monospace;font-size:12px;" onclick="this.select()"></textarea>
+          <div class="row" style="margin-top:8px;">
+            <button class="ghost" type="button" onclick="copySetupCommand()">Copiar comando</button>
+            <a href="https://shell.cloud.google.com/?project=saudecare-app" target="_blank" rel="noopener">
+              <button class="primary" type="button">Abrir Cloud Shell →</button>
+            </a>
+          </div>
+          <p class="muted" style="margin-top:8px;">
+            Cola o comando (um único bloco) e prime Enter. Quando aparecer
+            <strong>"Claims atribuídas com sucesso"</strong>, o Passo 2 está feito.
+          </p>
+        </div>
+
+        <div class="stepBlock" style="margin-bottom:0;">
+          <strong>Passo 3 — Marcar a conta como ativa</strong>
+          <p class="muted">Sem este passo, mesmo com o comando corrido, o subscritor continua bloqueado — as regras de segurança só permitem acesso a contas "Em teste" ou "Ativo".</p>
+          <button class="primary" type="button" onclick="markTenantActivated('${tenantId}')">✓ Marcar como "Em teste"</button>
+        </div>
+      </div>
+    </details>
   `;
   updateSetupCommand();
+};
+
+window.oneClickActivate = async function(tenantId, uid){
+  const btn = document.getElementById('oneClickBtn');
+  const status = document.getElementById('oneClickStatus');
+  btn.disabled = true; btn.textContent = 'A ativar…';
+  status.textContent = '';
+  try{
+    const idToken = await currentUser.getIdToken();
+    const res = await fetch(CLAIMS_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+      body: JSON.stringify({ uid, tenantId })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Falha desconhecida');
+    toast('Subscritor ativado com sucesso.');
+    renderView('tenants');
+  }catch(e){
+    console.error(e);
+    status.style.color = 'var(--danger)';
+    status.textContent = 'Não foi possível ativar automaticamente. Usa o método manual abaixo.';
+    btn.disabled = false; btn.textContent = '✓ Ativar acesso agora';
+  }
 };
 
 window.markTenantActivated = async function(tenantId){
