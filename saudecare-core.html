@@ -166,7 +166,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-30-3';
+const APP_VERSION = '2026-08-30-4';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -341,7 +341,11 @@ window.doStaffJoin = async function(){
   }
   const role = inviteSnap.data().role;
 
-  window.__justRegistered = true;
+  // Flag própria (diferente de __justRegistered, usada no registo normal
+  // de subscritores) — enquanto estiver ativa, o listener de login geral
+  // (onAuthStateChanged) ignora por completo esta sessão temporária, para
+  // não a desligar a meio do registo do terapeuta.
+  window.__justRegisteredViaStaffJoin = true;
   let uid;
   try{
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
@@ -352,12 +356,12 @@ window.doStaffJoin = async function(){
         const cred = await signInWithEmailAndPassword(auth, email, pass);
         uid = cred.user.uid;
       }catch(e2){
-        window.__justRegistered = false;
+        window.__justRegisteredViaStaffJoin = false;
         errEl.textContent = 'Já existe uma conta com este email, mas esta password não corresponde. Use "Esqueci-me da password" no ecrã de Entrar.';
         return;
       }
     } else {
-      window.__justRegistered = false;
+      window.__justRegisteredViaStaffJoin = false;
       errEl.textContent = 'Não foi possível criar a conta. Tente novamente.';
       console.error(e);
       return;
@@ -372,10 +376,12 @@ window.doStaffJoin = async function(){
     await updateDoc(doc(db, 'tenants', invite.tenantId, 'staffInvites', invite.inviteId), {
       used: true, usedByUid: uid, role
     });
+    await signOut(auth);
+    window.__justRegisteredViaStaffJoin = false;
     errEl.style.color = 'var(--primary)';
     errEl.textContent = 'Pedido enviado! Assim que o dono do consultório ativar o seu acesso, já pode entrar com este email e password.';
   }catch(e){
-    window.__justRegistered = false;
+    window.__justRegisteredViaStaffJoin = false;
     errEl.textContent = 'Não foi possível concluir o pedido. Tente novamente ou peça um novo link.';
     console.error(e);
   }
@@ -480,6 +486,12 @@ window.doPasswordReset = async function(){
 };
 
 onAuthStateChanged(auth, async (user) => {
+  // Enquanto um terapeuta está a aceitar um convite de equipa, esta
+  // sessão temporária é gerida inteiramente pelo doStaffJoin — ignoramos
+  // aqui para não a desligarmos a meio do processo (era a causa de
+  // "convidar profissional" às vezes não funcionar).
+  if (window.__justRegisteredViaStaffJoin) return;
+
   if (!user){
     currentUser = null; tenantId = null;
     document.getElementById('app').classList.add('hidden');
