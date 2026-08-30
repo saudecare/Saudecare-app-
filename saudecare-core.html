@@ -184,6 +184,7 @@
     <button data-view="finances">💶 Finanças</button>
     <button data-view="team" id="navTeamBtn">👥 Equipa</button>
     <button data-view="patients">🗂️ Pacientes</button>
+    <button data-view="waitlist">⏳ Lista de espera</button>
     <button data-view="services">🩺 Serviços</button>
     <button data-view="protocols">📋 Protocolos</button>
     <button data-view="forms">📝 Fichas</button>
@@ -215,7 +216,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-30-11';
+const APP_VERSION = '2026-08-30-12';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -733,6 +734,7 @@ function renderView(view){
   else if (view === 'finances') renderFinances(main);
   else if (view === 'team') renderTeam(main);
   else if (view === 'patients') renderPatients(main);
+  else if (view === 'waitlist') renderWaitlist(main);
   else if (view === 'services') renderServices(main);
   else if (view === 'protocols') renderProtocols(main);
   else if (view === 'forms') renderForms(main);
@@ -1033,6 +1035,104 @@ async function renderAgenda(main){
 function dateKey(d){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+
+// ── Lista de espera ──────────────────────────────────────────────────
+// Quando não há horário disponível, o paciente entra nesta lista. Quando
+// aparece uma vaga (ex: alguém cancela), o profissional avisa manualmente
+// por WhatsApp com um toque — sem envio automático, sem custos.
+function phoneToWaLink(phone){
+  let digits = (phone||'').replace(/\D/g, '');
+  if (digits.length === 9) digits = '351' + digits; // assume Portugal se não tiver indicativo
+  return `https://wa.me/${digits}`;
+}
+
+async function renderWaitlist(main){
+  const [waitlistSnap, patientsSnap, servicesSnap] = await Promise.all([
+    getDocs(query(collection(db, 'tenants', tenantId, 'waitlist'), orderBy('createdAt', 'desc'))),
+    getDocs(collection(db, 'tenants', tenantId, 'patients')),
+    getDocs(collection(db, 'tenants', tenantId, 'services'))
+  ]);
+
+  window.__waitlistPatientsCache = {};
+  patientsSnap.forEach(d => window.__waitlistPatientsCache[d.id] = d.data());
+  window.__waitlistServicesCache = {};
+  servicesSnap.forEach(d => window.__waitlistServicesCache[d.id] = d.data());
+
+  let rows = '';
+  waitlistSnap.forEach(d => {
+    const w = d.data();
+    const created = w.createdAt?.toDate ? w.createdAt.toDate().toLocaleDateString('pt-PT') : '';
+    rows += `<div class="appt-item">
+      <div class="row">
+        <div><strong>${escapeHtml(w.patientName||'?')}</strong>
+          <div class="muted">${escapeHtml(w.serviceName||'Qualquer serviço')} · desde ${created}</div>
+          ${w.note ? `<div class="muted">📝 ${escapeHtml(w.note)}</div>` : ''}
+        </div>
+      </div>
+      <div class="row" style="margin-top:6px;">
+        ${w.patientPhone ? `<a class="ghost" style="text-decoration:none;text-align:center;" target="_blank" href="${phoneToWaLink(w.patientPhone)}?text=${encodeURIComponent('Olá ' + (w.patientName||'') + '! Surgiu uma vaga para ' + (w.serviceName||'a consulta') + ' — quer marcar?')}">📲 Notificar por WhatsApp</a>` : ''}
+        <button class="danger" onclick="removeWaitlistEntry('${d.id}')">Remover</button>
+      </div>
+    </div>`;
+  });
+  if (!rows) rows = '<p class="muted">Ninguém em lista de espera.</p>';
+
+  main.innerHTML = `
+    <div class="row"><h2>Lista de espera</h2>
+      <button class="primary" onclick="openNewWaitlistEntry()">+ Adicionar à lista</button>
+    </div>
+    ${hintBox('Quando não há horário disponível para alguém, adicione aqui. Assim que tiver uma vaga (ex: uma marcação cancelada), toque em "Notificar por WhatsApp" para avisar rapidamente, com a mensagem já pronta.')}
+    <div class="card">${rows}</div>
+    <div id="waitlistFormContainer"></div>
+  `;
+}
+
+window.openNewWaitlistEntry = function(){
+  let patientOpts = '<option value="">Selecionar paciente…</option>';
+  Object.entries(window.__waitlistPatientsCache||{}).forEach(([id, p]) => {
+    patientOpts += `<option value="${id}">${escapeHtml(p.fullName)}</option>`;
+  });
+  let serviceOpts = '<option value="">Qualquer serviço</option>';
+  Object.entries(window.__waitlistServicesCache||{}).forEach(([id, s]) => {
+    serviceOpts += `<option value="${id}">${escapeHtml(s.name)}</option>`;
+  });
+  document.getElementById('waitlistFormContainer').innerHTML = `
+    <div class="card" style="margin-top:10px;">
+      <h3 style="margin-bottom:8px;">Adicionar à lista de espera</h3>
+      <label>Paciente</label>
+      <select id="wlPatient">${patientOpts}</select>
+      <label>Serviço pretendido</label>
+      <select id="wlService">${serviceOpts}</select>
+      <label>Preferência (opcional)</label>
+      <textarea id="wlNote" rows="2" placeholder="ex: prefere de manhã, só terças-feiras…"></textarea>
+      <button class="primary" onclick="saveWaitlistEntry()">Guardar</button>
+    </div>`;
+};
+
+window.saveWaitlistEntry = async function(){
+  const patientId = document.getElementById('wlPatient').value;
+  if (!patientId){ toast('Selecione um paciente.', true); return; }
+  const patient = window.__waitlistPatientsCache[patientId];
+  const serviceId = document.getElementById('wlService').value;
+  const service = serviceId ? window.__waitlistServicesCache[serviceId] : null;
+
+  await addDoc(collection(db, 'tenants', tenantId, 'waitlist'), {
+    patientId, patientName: patient?.fullName || '',
+    patientPhone: patient?.phone || '', patientEmail: patient?.email || '',
+    serviceId: serviceId || null, serviceName: service?.name || '',
+    note: document.getElementById('wlNote').value.trim(),
+    createdAt: serverTimestamp()
+  });
+  toast('Adicionado à lista de espera.');
+  renderView('waitlist');
+};
+
+window.removeWaitlistEntry = async function(id){
+  if (!confirm('Remover da lista de espera?')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'waitlist', id));
+  toast('Removido da lista de espera.');
+  renderView('waitlist');
+};
 
 window.changeAgendaMonth = function(delta){
   const m = window.__agendaMonth;
@@ -1393,8 +1493,20 @@ window.markAppointmentPaid = async function(appointmentId){
 window.cancelAppointment = async function(appointmentId){
   if (!confirm('Cancelar esta marcação? Fica registada como cancelada, não é apagada.')) return;
   const existingSnap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
+  const existing = existingSnap.data();
   await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { status: 'cancelled' });
-  syncAppointmentToGoogle('delete', {}, appointmentId, existingSnap.data()?.googleEventId);
+  syncAppointmentToGoogle('delete', {}, appointmentId, existing?.googleEventId);
+
+  // Avisa se há alguém em lista de espera para este serviço — não envia
+  // nada sozinho, só lembra o profissional de ir lá avisar.
+  if (existing?.serviceId){
+    const wlSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'waitlist'), where('serviceId','==', existing.serviceId)));
+    if (!wlSnap.empty){
+      toast(`Marcação cancelada — há ${wlSnap.size} pessoa(s) em lista de espera para "${existing.serviceName}". Vá a "Lista de espera" para avisar.`);
+      renderView('agenda');
+      return;
+    }
+  }
   toast('Marcação cancelada.');
   renderView('agenda');
 };
@@ -4246,6 +4358,8 @@ const CHATBOT_KB = [
     answer: 'Em "Serviços" define os serviços que presta, com duração e preço. Há modelos prontos por área (Reiki, Radiestesia, Psicologia, avaliação inicial) para começar mais depressa.' },
   { keywords: ['pacote','pack de sessoes','5 sessoes','10 sessoes'],
     answer: 'Nos "Pacotes de sessões" (dentro da ficha de um paciente) pode vender um conjunto de sessões, que vão sendo consumidas uma por marcação. Há atalhos rápidos para 5 ou 10 sessões.' },
+  { keywords: ['lista de espera','espera','vaga'],
+    answer: 'Em "Lista de espera" pode adicionar pacientes que não encontraram horário. Quando cancela uma marcação, se houver alguém à espera desse serviço, a app avisa-o — e há um botão para notificar por WhatsApp com a mensagem já pronta.' },
   { keywords: ['equipa','convidar','terapeuta','profissional','staff'],
     answer: 'Em "Equipa" pode convidar outros profissionais para a mesma app: "Acesso total" vê tudo, "Acesso restrito" só vê a própria agenda — útil para terapeutas externos numa clínica partilhada.' },
   { keywords: ['backup','descarregar dados','exportar'],
