@@ -74,9 +74,57 @@
     nav button{flex-shrink:0;width:auto;margin-right:0;margin-bottom:0;padding:8px 10px;font-size:12.5px;white-space:nowrap;}
     main{padding:14px;}
   }
+/* ── Assistente virtual (botão flutuante + janela de chat) ────────────── */
+#chatbotToggle{
+  position:fixed; bottom:20px; right:20px; z-index:9999;
+  width:56px; height:56px; border-radius:50%; border:none;
+  background:var(--primary, #1a2b26); color:#fff; font-size:26px;
+  box-shadow:0 4px 14px rgba(0,0,0,.25); cursor:pointer;
+}
+#chatbotWindow{
+  position:fixed; bottom:86px; right:20px; z-index:9999;
+  width:min(340px, calc(100vw - 32px)); height:min(460px, calc(100vh - 140px));
+  background:#fff; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,.3);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+#chatbotWindow.hidden{ display:none; }
+#chatbotHeader{
+  background:var(--primary, #1a2b26); color:#fff; padding:12px 14px;
+  display:flex; justify-content:space-between; align-items:center; font-weight:600;
+}
+#chatbotHeader button{ background:none; border:none; color:#fff; font-size:18px; cursor:pointer; }
+#chatbotMessages{ flex:1; overflow-y:auto; padding:12px; background:#f6f8f7; }
+.chatbotMsg{ margin-bottom:10px; max-width:85%; padding:8px 12px; border-radius:12px; font-size:14px; line-height:1.4; white-space:pre-wrap; }
+.chatbotMsg.bot{ background:#e9f0ee; color:#1a2b26; border-bottom-left-radius:2px; }
+.chatbotMsg.user{ background:var(--primary, #1a2b26); color:#fff; margin-left:auto; border-bottom-right-radius:2px; }
+#chatbotSuggestions{ padding:8px 12px 0; display:flex; flex-wrap:wrap; gap:6px; }
+#chatbotSuggestions button{ font-size:12px; padding:5px 10px; border-radius:14px; border:1px solid #ccd8d4; background:#fff; cursor:pointer; }
+#chatbotInputRow{ display:flex; gap:6px; padding:10px; border-top:1px solid #e5e5e5; }
+#chatbotInputRow input{ flex:1; padding:8px 10px; border:1px solid #ccc; border-radius:8px; font-size:14px; }
+#chatbotInputRow button{ background:var(--primary, #1a2b26); color:#fff; border:none; border-radius:8px; padding:0 14px; cursor:pointer; }
 </style>
 </head>
 <body>
+
+<!-- Assistente virtual — visível sempre, antes e depois do login -->
+<button id="chatbotToggle" onclick="toggleChatbot()" title="Assistente SaúdeCare">💬</button>
+<div id="chatbotWindow" class="hidden">
+  <div id="chatbotHeader">
+    <span>🤖 Assistente SaúdeCare</span>
+    <span>
+      <button id="chatbotVoiceOutBtn" onclick="toggleChatbotVoiceOut()" title="Ler respostas em voz alta">🔇</button>
+      <button onclick="openTeachBotForm()" title="Ensinar o assistente">🎓</button>
+      <button onclick="toggleChatbot()">✕</button>
+    </span>
+  </div>
+  <div id="chatbotMessages"></div>
+  <div id="chatbotSuggestions"></div>
+  <div id="chatbotInputRow">
+    <input id="chatbotInput" placeholder="Escreva ou fale…" onkeydown="if(event.key==='Enter')sendChatbotMessage()">
+    <button id="chatbotMicBtn" onclick="startChatbotVoiceInput()" title="Falar">🎤</button>
+    <button onclick="sendChatbotMessage()">➤</button>
+  </div>
+</div>
 
 <div id="loginScreen">
   <div class="card" style="max-width:380px;width:100%;">
@@ -157,7 +205,8 @@ import {
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc,
+  getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager,
+  collection, doc, getDoc, getDocs, addDoc, updateDoc,
   deleteDoc, setDoc, query, where, orderBy, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -166,7 +215,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-30-4';
+const APP_VERSION = '2026-08-30-7';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -193,7 +242,38 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+// Cache local persistente: a app continua a funcionar sem internet (lê os
+// últimos dados guardados) e qualquer alteração feita offline é enviada
+// sozinha para o servidor assim que a ligação voltar — sem o subscritor
+// ter de fazer nada.
+let db;
+try{
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() })
+  });
+}catch(e){
+  // Se a persistência já tiver sido inicializada (ex: recarregar a página
+  // muito depressa) ou não for suportada neste navegador, usa a versão
+  // normal em vez de partir a app.
+  console.warn('Persistência offline indisponível, a usar modo normal:', e);
+  db = getFirestore(app);
+}
+
+// ── Aviso visual de estado da ligação ───────────────────────────────────
+function updateOnlineBanner(){
+  let el = document.getElementById('offlineBanner');
+  if (!el){
+    el = document.createElement('div');
+    el.id = 'offlineBanner';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10001;background:#b3413a;color:#fff;text-align:center;padding:7px 10px;font-size:13px;display:none;';
+    document.body.prepend(el);
+  }
+  el.style.display = navigator.onLine ? 'none' : 'block';
+  el.textContent = '📴 Sem internet — pode continuar a usar a app normalmente. As alterações guardam-se sozinhas assim que a ligação voltar.';
+}
+window.addEventListener('online', updateOnlineBanner);
+window.addEventListener('offline', updateOnlineBanner);
+updateOnlineBanner();
 
 let currentUser = null;
 let tenantId = null;
@@ -541,6 +621,7 @@ onAuthStateChanged(auth, async (user) => {
   applyBranding();
   applyDynamicManifestAdmin();
   renderView('agenda');
+  checkBackupReminder();
 
   const calendarParam = new URLSearchParams(window.location.search).get('calendarConnected');
   if (calendarParam === '1'){
@@ -3949,6 +4030,101 @@ window.deleteTraining = async function(id){
   renderView('trainings');
 };
 
+// ── Backup dos dados do subscritor ──────────────────────────────────────
+async function dumpCollection(colName){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, colName));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function dumpPatientsWithSubcollections(){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+  const arr = [];
+  for (const d of snap.docs){
+    const patient = { id: d.id, ...d.data() };
+    const reportsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients', d.id, 'reports'));
+    patient.reports = reportsSnap.docs.map(rd => ({ id: rd.id, ...rd.data() }));
+    const respSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients', d.id, 'formResponses'));
+    patient.formResponses = respSnap.docs.map(fd => ({ id: fd.id, ...fd.data() }));
+    arr.push(patient);
+  }
+  return arr;
+}
+
+// ── Lembretes de backup / backup automático opcional ────────────────────
+// Tudo controlado pelo próprio subscritor em Configurações. Sem nada do
+// lado do servidor: ao entrar na app, verifica há quantos dias foi o
+// último backup e, se estiver ativado, descarrega um novo sozinho.
+async function checkBackupReminder(){
+  try{
+    const settings = currentTenantDoc?.backupSettings || {};
+    if (!settings.remindersEnabled && !settings.autoBackup) return;
+    const freqDays = settings.frequencyDays || 30;
+    const last = settings.lastBackupAt?.toDate ? settings.lastBackupAt.toDate() : null;
+    const daysSince = last ? (Date.now() - last.getTime()) / 86400000 : Infinity;
+    if (daysSince < freqDays) return;
+
+    if (settings.autoBackup){
+      await downloadBackup(true);
+    } else if (settings.remindersEnabled){
+      toast(`💾 Já lá vão ${last ? Math.floor(daysSince) : 'muitos'} dias desde o último backup — sugerimos fazer um em Configurações.`);
+    }
+  }catch(e){
+    console.warn('Não foi possível verificar o lembrete de backup:', e);
+  }
+}
+
+window.saveBackupSettings = async function(){
+  const remindersEnabled = document.getElementById('bkRemind').checked;
+  const autoBackup = document.getElementById('bkAuto').checked;
+  const frequencyDays = parseInt(document.getElementById('bkFreq').value, 10);
+  const current = currentTenantDoc?.backupSettings || {};
+  const backupSettings = { ...current, remindersEnabled, autoBackup, frequencyDays };
+  await updateDoc(doc(db, 'tenants', tenantId), { backupSettings });
+  currentTenantDoc.backupSettings = backupSettings;
+  toast('Preferências de backup guardadas.');
+};
+
+window.downloadBackup = async function(silent){
+  if (!silent) toast('A preparar o backup, aguarde…');
+  try{
+    const tenantSnap = await getDoc(doc(db, 'tenants', tenantId));
+    const backup = {
+      exportedAt: new Date().toISOString(),
+      tenant: tenantSnap.data(),
+      patients: await dumpPatientsWithSubcollections(),
+      appointments: await dumpCollection('appointments'),
+      services: await dumpCollection('services'),
+      protocols: await dumpCollection('protocols'),
+      forms: await dumpCollection('forms')
+    };
+    const json = JSON.stringify(backup, (key, value) => {
+      if (value && typeof value === 'object' && typeof value.toDate === 'function'){
+        return value.toDate().toISOString();
+      }
+      return value;
+    }, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup-saudecare-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    const backupSettings = { ...(currentTenantDoc?.backupSettings||{}), lastBackupAt: serverTimestamp() };
+    await updateDoc(doc(db, 'tenants', tenantId), { backupSettings });
+    currentTenantDoc.backupSettings = { ...backupSettings, lastBackupAt: new Date() };
+
+    if (!silent) toast('Backup descarregado — guarde o ficheiro onde preferir.');
+    else toast('💾 Backup automático feito — verifique a pasta de transferências.');
+  }catch(e){
+    console.error('Erro ao gerar backup:', e);
+    if (!silent) toast('Não foi possível gerar o backup: ' + (e.message||'erro desconhecido'), true);
+  }
+};
+
 // ── CONFIGURAÇÕES ────────────────────────────────────────────────────
 function renderSettings(main){
   main.innerHTML = `
@@ -3957,8 +4133,301 @@ function renderSettings(main){
       <p class="muted">Plano atual: <strong>${escapeHtml(currentTenantDoc?.plan||'—')}</strong></p>
       <p class="muted">Estado: <strong>${escapeHtml(currentTenantDoc?.status||'—')}</strong></p>
       <p class="muted" style="margin-top:10px;">Para alterar nome, logótipo, cores, contactos e equipa, use a aba <strong>Perfil</strong>.</p>
+    </div>
+    <div class="card">
+      <h2>Backup dos meus dados</h2>
+      ${hintBox('Descarrega um ficheiro com todos os seus dados (pacientes, relatórios, marcações, serviços, protocolos e fichas), para guardar onde preferir — telemóvel, computador ou a sua cloud pessoal.')}
+      <button class="primary" onclick="downloadBackup()">💾 Descarregar backup completo</button>
+      <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
+      <p class="muted" style="margin-bottom:8px;">${currentTenantDoc?.backupSettings?.lastBackupAt ? 'Último backup: ' + (currentTenantDoc.backupSettings.lastBackupAt.toDate ? currentTenantDoc.backupSettings.lastBackupAt.toDate() : new Date(currentTenantDoc.backupSettings.lastBackupAt)).toLocaleDateString('pt-PT') : 'Ainda não fez nenhum backup.'}</p>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;">
+        <input type="checkbox" id="bkRemind" style="width:auto;" ${currentTenantDoc?.backupSettings?.remindersEnabled ? 'checked' : ''}> Lembrar-me de fazer backup periodicamente
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:6px;">
+        <input type="checkbox" id="bkAuto" style="width:auto;" ${currentTenantDoc?.backupSettings?.autoBackup ? 'checked' : ''}> Fazer backup automaticamente (descarrega sozinho ao abrir a app)
+      </label>
+      <label style="margin-top:10px;">Frequência</label>
+      <select id="bkFreq">
+        <option value="7" ${currentTenantDoc?.backupSettings?.frequencyDays===7?'selected':''}>Toda a semana</option>
+        <option value="15" ${currentTenantDoc?.backupSettings?.frequencyDays===15?'selected':''}>De 15 em 15 dias</option>
+        <option value="30" ${(!currentTenantDoc?.backupSettings?.frequencyDays || currentTenantDoc?.backupSettings?.frequencyDays===30)?'selected':''}>Todo o mês</option>
+      </select>
+      <button class="ghost" style="margin-top:8px;" onclick="saveBackupSettings()">Guardar preferências</button>
     </div>`;
 }
+
+// ── Assistente virtual — baseado em regras, sem custos de API ──────────
+// Responde com base numa lista de perguntas/palavras-chave conhecidas.
+// Cobre 1) como usar a app e 2) informação geral sobre as áreas
+// terapêuticas que a app suporta. Funciona tanto na página de login
+// (para visitantes) como já autenticado (para subscritores).
+function stripAccents(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+const CHATBOT_KB = [
+  { keywords: ['ola','oi','bom dia','boa tarde','boa noite'],
+    answer: 'Olá! 👋 Sou o assistente do SaúdeCare. Posso ajudar a perceber como usar a app, ou dar-lhe informação geral sobre as áreas terapêuticas que apoiamos. O que gostaria de saber?' },
+  { keywords: ['marcacao','marcar','agenda','calendario','sobrepos','sala ocupada'],
+    answer: 'Para criar uma marcação: vá a "Agenda" → escolha o dia → "Nova marcação" → selecione paciente e serviço. A app impede automaticamente sobreposições: uma marcação "Presencial" bloqueia a sala para qualquer profissional nesse horário; "Online" só bloqueia a agenda de quem a faz.' },
+  { keywords: ['google calendar','sincroniz'],
+    answer: 'Pode ligar a sua conta Google em Perfil → "Ligar ao Google Calendar". Depois disso, as marcações passam a aparecer automaticamente no seu Google Calendar.' },
+  { keywords: ['paciente','cliente','ficha do paciente','anamnese'],
+    answer: 'Em "Pacientes" pode criar a ficha de cada pessoa, ver o histórico de marcações, protocolos aplicados, pacotes de sessões e relatórios anteriores.' },
+  { keywords: ['protocolo','ponto','mapeamento','zonas'],
+    answer: 'Os "Protocolos" são o seu método de trabalho: uma checklist de pontos a observar, ou um mapeamento sobre uma imagem do corpo. Em "Protocolos" há modelos prontos (Reiki, Radiestesia, Psicologia) que pode usar tal e qual ou editar.' },
+  { keywords: ['ficha','questionario','formulario'],
+    answer: 'Em "Fichas" pode criar questionários para os seus pacientes preencherem (anamnese, check-ins, satisfação). Há 3 modelos universais prontos a usar.' },
+  { keywords: ['servico','preco','tabela de precos'],
+    answer: 'Em "Serviços" define os serviços que presta, com duração e preço. Há modelos prontos por área (Reiki, Radiestesia, Psicologia, avaliação inicial) para começar mais depressa.' },
+  { keywords: ['pacote','pack de sessoes','5 sessoes','10 sessoes'],
+    answer: 'Nos "Pacotes de sessões" (dentro da ficha de um paciente) pode vender um conjunto de sessões, que vão sendo consumidas uma por marcação. Há atalhos rápidos para 5 ou 10 sessões.' },
+  { keywords: ['equipa','convidar','terapeuta','profissional','staff'],
+    answer: 'Em "Equipa" pode convidar outros profissionais para a mesma app: "Acesso total" vê tudo, "Acesso restrito" só vê a própria agenda — útil para terapeutas externos numa clínica partilhada.' },
+  { keywords: ['backup','descarregar dados','exportar'],
+    answer: 'Em Configurações → "Descarregar backup completo" pode guardar um ficheiro com todos os seus dados (pacientes, marcações, protocolos, fichas), para o guardar onde preferir.' },
+  { keywords: ['instalar','ecra principal','download','app store'],
+    answer: 'Toque em "📲 Instalar app no dispositivo" no menu — no Android/Chrome instala diretamente; no iPhone, use o botão Partilhar do Safari → "Adicionar ao ecrã principal".' },
+  { keywords: ['consentimento','rgpd','dados pessoais','privacidade'],
+    answer: 'Em Perfil pode editar o texto de consentimento informado que os seus pacientes veem — já vem com um modelo base, mas deve ajustá-lo à sua área e obrigações legais específicas.' },
+  { keywords: ['mensagem','whatsapp','lembrete','confirmacao'],
+    answer: 'Em Perfil → "Modelos de mensagens" pode editar os textos de confirmação, lembrete e cancelamento, com marcadores como {{nome}} e {{data}}, para copiar e enviar manualmente.' },
+  { keywords: ['teste','trial','experimentar','quanto custa','preco do saudecare','subscricao','plano'],
+    answer: 'O SaúdeCare tem um período de teste gratuito de 14 dias. Para saber mais sobre os planos disponíveis, contacte-nos através da página pública ou do email de suporte.' },
+  { keywords: ['reiki'],
+    answer: 'Reiki é uma prática complementar de origem japonesa, baseada na imposição de mãos, associada por quem a pratica à harmonização energética. Não substitui acompanhamento médico. Cada profissional na app define os seus próprios serviços e preços de Reiki.' },
+  { keywords: ['radiestesia','pendulo'],
+    answer: 'Radiestesia é uma prática que usa um pêndulo ou outros instrumentos para, segundo os seus praticantes, detetar informação energética. É considerada uma prática complementar, sem validação científica estabelecida, e não substitui diagnóstico médico.' },
+  { keywords: ['psicologia','psicologo','ansiedade','terapia'],
+    answer: 'A Psicologia é uma área profissional regulamentada, focada no acompanhamento da saúde mental e do comportamento. Na app, cada psicólogo(a) gere as suas próprias consultas, fichas e protocolos de acompanhamento.' },
+  { keywords: ['fisioterapia','fisioterapeuta'],
+    answer: 'A Fisioterapia é uma área da saúde regulamentada, focada na reabilitação e prevenção de disfunções do movimento. Na app, cada fisioterapeuta pode gerir os seus próprios protocolos de tratamento e evolução dos pacientes.' },
+  { keywords: ['nutricao','nutricionista'],
+    answer: 'A Nutrição é uma área da saúde regulamentada, focada na alimentação e no bem-estar. Cada nutricionista na app gere os seus próprios planos, fichas e acompanhamento de pacientes.' },
+  { keywords: ['coach','coaching'],
+    answer: 'Coaching é um processo de acompanhamento orientado para objetivos pessoais ou profissionais. Cada coach na app define os seus próprios serviços, protocolos e fichas de acompanhamento.' }
+];
+
+const CHATBOT_FALLBACK = 'Não tenho uma resposta pronta para isso. Pode reformular a pergunta, ou contactar diretamente o profissional/suporte para mais detalhes.';
+const CHATBOT_SUGGESTIONS = ['Como criar uma marcação?', 'O que é Reiki?', 'Como convidar a equipa?', 'Como fazer backup?'];
+
+function matchChatbotAnswer(userText){
+  const text = stripAccents(userText);
+  // As respostas ensinadas pelo subscritor têm prioridade sobre as
+  // respostas padrão da app, para poderem substituir/complementar o que
+  // já existe.
+  const customEntries = currentTenantDoc?.customChatbotEntries || [];
+  let best = null, bestScore = 0, bestIsCustom = false;
+  for (const entry of [...customEntries, ...CHATBOT_KB]){
+    const isCustom = customEntries.includes(entry);
+    let score = 0;
+    for (const kw of entry.keywords){
+      if (text.includes(stripAccents(kw))) score++;
+    }
+    if (isCustom) score += 0.5; // pequeno bónus para desempatar a favor do que foi ensinado
+    if (score > bestScore){ bestScore = score; best = entry; bestIsCustom = isCustom; }
+  }
+  if (!best) return CHATBOT_FALLBACK;
+  return bestIsCustom ? `${best.answer}\n\n(resposta ensinada pelo profissional)` : best.answer;
+}
+
+function chatbotAppendMessage(text, who){
+  const box = document.getElementById('chatbotMessages');
+  const div = document.createElement('div');
+  div.className = 'chatbotMsg ' + who;
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+window.toggleChatbot = function(){
+  const win = document.getElementById('chatbotWindow');
+  const opening = win.classList.contains('hidden');
+  win.classList.toggle('hidden');
+  const voiceBtn = document.getElementById('chatbotVoiceOutBtn');
+  if (voiceBtn) voiceBtn.textContent = window.__chatbotVoiceOut ? '🔊' : '🔇';
+  if (opening && !window.__chatbotStarted){
+    window.__chatbotStarted = true;
+    chatbotAppendMessage('Olá! 👋 Sou o assistente do SaúdeCare. Posso ajudar a perceber como usar a app, ou dar-lhe informação geral sobre as áreas terapêuticas que apoiamos. O que gostaria de saber?', 'bot');
+    const sugg = document.getElementById('chatbotSuggestions');
+    sugg.innerHTML = CHATBOT_SUGGESTIONS.map(s => `<button onclick="sendChatbotSuggestion('${escapeAttrJs(s)}')">${escapeHtml(s)}</button>`).join('');
+  }
+};
+
+window.sendChatbotSuggestion = function(text){
+  document.getElementById('chatbotInput').value = text;
+  sendChatbotMessage();
+};
+
+// ── Ensinar o assistente (só disponível com sessão iniciada) ────────────
+window.openTeachBotForm = function(){
+  if (!tenantId){
+    chatbotAppendMessage('Só é possível ensinar o assistente com uma sessão iniciada — entre na sua conta primeiro.', 'bot');
+    return;
+  }
+  const box = document.getElementById('chatbotMessages');
+  const div = document.createElement('div');
+  div.className = 'chatbotMsg bot';
+  div.innerHTML = `
+    <p style="margin:0 0 6px;">Vamos ensinar algo novo! Escreva palavras-chave que os seus clientes possam usar (separadas por vírgula) e a resposta que o assistente deve dar a partir de agora:</p>
+    <input id="teachKeywords" placeholder="ex: horário, quando abrem" style="width:100%;margin-bottom:6px;padding:6px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+    <textarea id="teachAnswer" placeholder="Resposta do assistente…" rows="3" style="width:100%;margin-bottom:6px;padding:6px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></textarea>
+    <button onclick="saveTeachEntry(this)" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;">Guardar</button>
+  `;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+};
+
+window.saveTeachEntry = async function(btn){
+  const wrap = btn.closest('.chatbotMsg');
+  const kwRaw = wrap.querySelector('#teachKeywords').value.trim();
+  const answer = wrap.querySelector('#teachAnswer').value.trim();
+  if (!kwRaw || !answer){ toast('Preencha as palavras-chave e a resposta.', true); return; }
+  const keywords = kwRaw.split(',').map(k => k.trim()).filter(Boolean);
+  const current = currentTenantDoc?.customChatbotEntries || [];
+  const updated = [...current, { keywords, answer }];
+  await updateDoc(doc(db, 'tenants', tenantId), { customChatbotEntries: updated });
+  currentTenantDoc.customChatbotEntries = updated;
+  wrap.innerHTML = '✅ Obrigado! Já aprendi isso — a próxima pergunta parecida já recebe esta resposta.';
+};
+
+// ── Consultas dinâmicas do assistente (dados reais, só leitura) ────────
+// Nada disto interpreta ou avalia clinicamente os dados — apenas mostra
+// o que já está registado, tal como está, para o profissional decidir.
+async function tryChatbotWeeklyAgenda(text){
+  const t = stripAccents(text);
+  if (!tenantId) return null;
+  if (!(t.includes('agenda') && (t.includes('semana') || t.includes('esta semana') || t.includes('hoje')))) return null;
+
+  const now = new Date();
+  const end = new Date(now.getTime() + 7*86400000);
+  const q = query(
+    collection(db, 'tenants', tenantId, 'appointments'),
+    where('startsAt', '>=', Timestamp.fromDate(now)),
+    where('startsAt', '<=', Timestamp.fromDate(end))
+  );
+  const snap = await getDocs(q);
+  const list = [];
+  snap.forEach(d => { const a = d.data(); if (a.status !== 'cancelled') list.push(a); });
+  list.sort((a,b) => a.startsAt.toDate() - b.startsAt.toDate());
+
+  if (!list.length) return '📅 Não tem marcações nos próximos 7 dias.';
+  let out = `📅 Tem ${list.length} marcação(ões) nos próximos 7 dias:\n\n`;
+  list.slice(0, 15).forEach(a => {
+    const d = a.startsAt.toDate();
+    out += `• ${d.toLocaleDateString('pt-PT', {weekday:'short', day:'2-digit', month:'2-digit'})} às ${d.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})} — ${a.patientName||'?'} (${a.serviceName||'?'})\n`;
+  });
+  if (list.length > 15) out += `\n…e mais ${list.length - 15}.`;
+  return out;
+}
+
+async function tryChatbotPatientLookup(text){
+  if (!tenantId) return null;
+  const t = stripAccents(text);
+  if (!window.__chatbotPatientsCache){
+    const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+    window.__chatbotPatientsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+  const match = window.__chatbotPatientsCache.find(p => p.fullName && t.includes(stripAccents(p.fullName.split(' ')[0])) && p.fullName.split(' ')[0].length > 2);
+  if (!match) return null;
+
+  const reportsSnap = await getDocs(query(
+    collection(db, 'tenants', tenantId, 'patients', match.id, 'reports'),
+    orderBy('generatedAt', 'desc')
+  ));
+  const reports = reportsSnap.docs.map(d => d.data());
+
+  let out = `🗂️ ${match.fullName}\n`;
+  if (match.clinicalNotes) out += `\nNotas/observações registadas:\n${match.clinicalNotes}\n`;
+
+  if (!reports.length){
+    out += `\nAinda não há relatórios de consulta guardados para este paciente.`;
+  } else if (t.includes('evolu') || t.includes('compar')){
+    out += `\nÚltimos registos (para comparar):\n`;
+    reports.slice(0, 3).forEach(r => {
+      const d = r.generatedAt?.toDate ? r.generatedAt.toDate().toLocaleDateString('pt-PT') : '';
+      out += `\n— ${d} (${r.protocolName})\n`;
+      (r.classifications||[]).forEach(c => out += `  ${c.label}: ${c.value}\n`);
+    });
+  } else {
+    const last = reports[0];
+    const d = last.generatedAt?.toDate ? last.generatedAt.toDate().toLocaleDateString('pt-PT') : '';
+    out += `\nÚltima consulta (${d}, ${last.protocolName}):\n${last.reportText || ''}`;
+  }
+
+  if (/medica|suplement|natural/.test(t)){
+    out += `\n\n💡 Lembrete: para verificar interações entre medicação e suplementos/produtos naturais, consulte sempre um farmacêutico ou médico — o assistente só mostra o que está registado, não faz avaliação clínica.`;
+  }
+  return out;
+}
+
+async function resolveChatbotAnswer(text){
+  const agenda = await tryChatbotWeeklyAgenda(text);
+  if (agenda) return agenda;
+  const patient = await tryChatbotPatientLookup(text);
+  if (patient) return patient;
+  return matchChatbotAnswer(text);
+}
+
+// ── Voz — entrada e saída, usando o que já vem no navegador (grátis) ────
+let __chatbotRecognition = null;
+const __SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (__SR){
+  __chatbotRecognition = new __SR();
+  __chatbotRecognition.lang = 'pt-PT';
+  __chatbotRecognition.interimResults = false;
+  __chatbotRecognition.maxAlternatives = 1;
+}
+
+window.startChatbotVoiceInput = function(){
+  if (!__chatbotRecognition){
+    toast('O seu navegador não suporta entrada por voz.', true);
+    return;
+  }
+  const micBtn = document.getElementById('chatbotMicBtn');
+  if (micBtn) micBtn.textContent = '🔴';
+  __chatbotRecognition.onresult = (e) => {
+    document.getElementById('chatbotInput').value = e.results[0][0].transcript;
+    sendChatbotMessage();
+  };
+  __chatbotRecognition.onerror = () => { if (micBtn) micBtn.textContent = '🎤'; };
+  __chatbotRecognition.onend = () => { if (micBtn) micBtn.textContent = '🎤'; };
+  __chatbotRecognition.start();
+};
+
+window.toggleChatbotVoiceOut = function(){
+  window.__chatbotVoiceOut = !window.__chatbotVoiceOut;
+  localStorage.setItem('chatbotVoiceOut', window.__chatbotVoiceOut ? '1' : '0');
+  const btn = document.getElementById('chatbotVoiceOutBtn');
+  if (btn) btn.textContent = window.__chatbotVoiceOut ? '🔊' : '🔇';
+  if (!window.__chatbotVoiceOut) window.speechSynthesis?.cancel();
+};
+window.__chatbotVoiceOut = localStorage.getItem('chatbotVoiceOut') === '1';
+
+function speakChatbotText(text){
+  if (!window.__chatbotVoiceOut || !('speechSynthesis' in window)) return;
+  const utter = new SpeechSynthesisUtterance(text.replace(/[#*_`•]/g, ''));
+  utter.lang = 'pt-PT';
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utter);
+}
+
+window.sendChatbotMessage = async function(){
+  const input = document.getElementById('chatbotInput');
+  const text = input.value.trim();
+  if (!text) return;
+  chatbotAppendMessage(text, 'user');
+  input.value = '';
+  document.getElementById('chatbotSuggestions').innerHTML = '';
+  const thinking = document.createElement('div');
+  thinking.className = 'chatbotMsg bot';
+  thinking.textContent = '…';
+  document.getElementById('chatbotMessages').appendChild(thinking);
+  const answer = await resolveChatbotAnswer(text);
+  thinking.remove();
+  chatbotAppendMessage(answer, 'bot');
+  speakChatbotText(answer);
+};
 
 </script>
 </body>
