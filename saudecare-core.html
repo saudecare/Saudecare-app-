@@ -891,8 +891,12 @@ window.openNewAppointment = async function(){
   const servicesSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'services'), where('active','==', true)));
   const staffOpts = await getStaffOptionsHTML(currentUser.uid);
 
+  window.__apptPatientsCache = {};
   let patientOpts = '<option value="">Selecionar paciente…</option>';
-  patientsSnap.forEach(d => patientOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().fullName)}">${escapeHtml(d.data().fullName)}</option>`);
+  patientsSnap.forEach(d => {
+    window.__apptPatientsCache[d.id] = d.data();
+    patientOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().fullName)}">${escapeHtml(d.data().fullName)}</option>`;
+  });
 
   let serviceOpts = '<option value="">Selecionar serviço…</option>';
   servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" data-price="${d.data().price||0}" data-buffer="${d.data().bufferMinutes||0}">${escapeHtml(d.data().name)}</option>`);
@@ -900,7 +904,7 @@ window.openNewAppointment = async function(){
   document.getElementById('apptFormContainer').innerHTML = `
     <div class="card">
       <h2>Nova marcação</h2>
-      <label>Paciente</label><select id="apptPatient">${patientOpts}</select>
+      <label>Paciente</label><select id="apptPatient" onchange="updateApptPackageOptions()">${patientOpts}</select>
       <label>Serviço</label><select id="apptService" onchange="document.getElementById('apptPrice').value = this.selectedOptions[0].dataset.price || 0">${serviceOpts}</select>
       <label>Profissional</label><select id="apptStaff">${staffOpts}</select>
       <label>Local</label>
@@ -909,10 +913,28 @@ window.openNewAppointment = async function(){
         <option value="online">Online (só ocupa a agenda deste profissional)</option>
       </select>
       <label>Data e hora</label><input id="apptStart" type="datetime-local" value="${window.__agendaSelectedDay ? window.__agendaSelectedDay + 'T09:00' : ''}">
+      <label>Pagamento desta marcação</label>
+      <select id="apptPackage"><option value="">Pagamento normal (ver campos abaixo)</option></select>
       ${paymentFieldsHTML(null)}
       <p id="apptConflictWarning" class="muted" style="color:var(--danger);"></p>
       <button class="primary" onclick="saveAppointment()">Guardar</button>
     </div>`;
+};
+
+// Atualiza o menu de "Pagamento" consoante os pacotes ativos do paciente
+// selecionado — permite consumir 1 sessão de um pacote já comprado.
+window.updateApptPackageOptions = function(selectedPackageIdx){
+  const patientSel = document.getElementById('apptPatient');
+  const pkgSel = document.getElementById('apptPackage');
+  if (!pkgSel) return;
+  const patient = window.__apptPatientsCache?.[patientSel.value];
+  const packages = patient?.packages || [];
+  let opts = '<option value="">Pagamento normal (ver campos abaixo)</option>';
+  packages.forEach((pkg, idx) => {
+    if (pkg.usedSessions >= pkg.totalSessions) return;
+    opts += `<option value="${idx}" ${selectedPackageIdx===idx?'selected':''}>${escapeHtml(pkg.name)} (${pkg.usedSessions}/${pkg.totalSessions} usadas)</option>`;
+  });
+  pkgSel.innerHTML = opts;
 };
 
 // Lista de profissionais elegíveis para receber uma marcação — o dono
@@ -997,6 +1019,7 @@ window.saveAppointment = async function(){
   const serviceSel = document.getElementById('apptService');
   const staffSel = document.getElementById('apptStaff');
   const localSel = document.getElementById('apptLocal');
+  const packageSel = document.getElementById('apptPackage');
   const startInput = document.getElementById('apptStart').value;
   if (!patientSel.value || !serviceSel.value || !startInput){
     toast('Preencha todos os campos.', true); return;
@@ -1016,7 +1039,8 @@ window.saveAppointment = async function(){
     return;
   }
 
-  await addDoc(collection(db, 'tenants', tenantId, 'appointments'), {
+  const usePackageIdx = packageSel.value !== '' ? parseInt(packageSel.value, 10) : null;
+  const data = {
     patientId: patientSel.value,
     patientName: patientSel.selectedOptions[0].dataset.name,
     serviceId: serviceSel.value,
@@ -1032,10 +1056,29 @@ window.saveAppointment = async function(){
     paymentStatus: document.getElementById('apptPaymentStatus').value,
     paymentMethod: document.getElementById('apptPaymentMethod').value,
     createdAt: serverTimestamp()
-  });
+  };
+  if (usePackageIdx != null){
+    data.paymentStatus = 'paid';
+    data.paymentMethod = 'pacote';
+    data.packagePatientIdx = usePackageIdx;
+    await consumePackageSession(patientSel.value, usePackageIdx);
+  }
+  await addDoc(collection(db, 'tenants', tenantId, 'appointments'), data);
   toast('Marcação criada.');
   renderView('agenda');
 };
+
+// Regista o uso de 1 sessão de um pacote do paciente (partilhado com o
+// botão manual "Marcar 1 sessão usada" na ficha do paciente).
+async function consumePackageSession(patientId, idx){
+  const ref = doc(db, 'tenants', tenantId, 'patients', patientId);
+  const snap = await getDoc(ref);
+  const p = snap.data();
+  const packages = p.packages || [];
+  if (!packages[idx]) return;
+  packages[idx].usedSessions = Math.min(packages[idx].totalSessions, (packages[idx].usedSessions||0) + 1);
+  await updateDoc(ref, { packages });
+}
 
 window.editAppointment = async function(appointmentId){
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
@@ -1390,9 +1433,17 @@ window.viewPatient = async function(patientId){
       <div class="row" style="margin-top:10px;">
         <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeHtml(p.fullName)}')">🧭 Iniciar consulta guiada</button>
         <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeHtml(p.fullName)}')">📝 Enviar ficha a este paciente</button>
+        <button class="ghost" onclick="viewPatientEvolution('${patientId}','${escapeHtml(p.fullName)}')">📈 Ver evolução</button>
       </div>
     </div>
     <div id="sendFormContainer"></div>
+    <div class="card">
+      <h2>Pacotes de sessões</h2>
+      ${hintBox('Para vender um conjunto de sessões de uma vez (ex: "5 sessões por 200€"). Ao marcar uma consulta, pode escolher consumir uma sessão de um pacote em vez de cobrar à parte.')}
+      <div id="packagesList">${renderPackagesList(patientId, p)}</div>
+      <button class="ghost" style="width:100%;margin-top:8px;" onclick="showAddPackageForm('${patientId}')">+ Adicionar pacote</button>
+      <div id="addPackageFormContainer"></div>
+    </div>
     <div class="card">
       <h2>Ficheiros e fotos</h2>
       ${attachmentsHtml}
@@ -1405,6 +1456,142 @@ window.viewPatient = async function(patientId){
       <h2>Fichas respondidas</h2>
       ${formRespHtml}
     </div>`;
+};
+
+// ── Evolução do paciente — linha do tempo de relatórios ─────────────────
+// Mostra os relatórios por ordem cronológica e destaca os pontos que se
+// repetem entre sessões, para se perceber padrões ao longo do tempo.
+window.viewPatientEvolution = async function(patientId, patientName){
+  const reportsSnap = await getDocs(query(
+    collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'),
+    orderBy('generatedAt', 'asc')
+  ));
+
+  const reports = [];
+  reportsSnap.forEach(rd => {
+    const r = rd.data();
+    const pointNames = [
+      ...(r.mappingDetected || []).map(d => d.name),
+      ...(r.points || []).map(p => p.name)
+    ];
+    reports.push({ id: rd.id, protocolName: r.protocolName, date: r.generatedAt, pointNames });
+  });
+
+  if (!reports.length){
+    document.getElementById('patientFormContainer').innerHTML = `
+      <div class="card">
+        <div class="row"><h2>Evolução — ${escapeHtml(patientName)}</h2><button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button></div>
+        <p class="muted" style="margin-top:10px;">Ainda não há relatórios suficientes para mostrar evolução.</p>
+      </div>`;
+    return;
+  }
+
+  // Frequência de cada ponto ao longo de todas as sessões.
+  const freq = {};
+  reports.forEach(r => r.pointNames.forEach(n => { freq[n] = (freq[n]||0) + 1; }));
+  const recurring = Object.entries(freq)
+    .filter(([,count]) => count >= 2)
+    .sort((a,b) => b[1]-a[1]);
+
+  const recurringHtml = recurring.length
+    ? recurring.map(([name,count]) => `<div class="appt-item row"><span>${escapeHtml(name)}</span><span class="badge trial">apareceu em ${count} sessões</span></div>`).join('')
+    : '<p class="muted">Ainda sem pontos repetidos entre sessões.</p>';
+
+  const timelineHtml = reports.map((r, idx) => {
+    const dateStr = r.date?.toDate ? r.date.toDate().toLocaleDateString('pt-PT') : '';
+    const pointsHtml = r.pointNames.length
+      ? r.pointNames.map(n => `<span class="badge ${freq[n]>=2?'active':''}" style="margin:2px;display:inline-block;">${escapeHtml(n)}${freq[n]>=2?' 🔁':''}</span>`).join('')
+      : '<span class="muted">Sem pontos registados.</span>';
+    return `<div class="card" style="margin-bottom:8px;">
+      <div class="row"><strong>Sessão ${idx+1} — ${dateStr}</strong><button class="ghost" onclick="viewSavedReport('${patientId}','${r.id}')">Ver relatório</button></div>
+      <div style="margin-top:6px;">${pointsHtml}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('patientFormContainer').innerHTML = `
+    <div class="card">
+      <div class="row"><h2>Evolução — ${escapeHtml(patientName)}</h2><button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button></div>
+      ${hintBox('🔁 assinala pontos que já apareceram em mais do que uma sessão — útil para ver o que se repete ao longo do tempo.')}
+    </div>
+    <div class="card">
+      <h2>Pontos que mais se repetem</h2>
+      ${recurringHtml}
+    </div>
+    <h2 style="margin:16px 0 8px;">Sessões, por ordem</h2>
+    ${timelineHtml}
+  `;
+};
+
+// ── Pacotes de sessões ───────────────────────────────────────────────────
+function renderPackagesList(patientId, p){
+  const packages = p.packages || [];
+  if (!packages.length) return '<p class="muted">Ainda sem pacotes.</p>';
+  return packages.map((pkg, idx) => {
+    const done = pkg.usedSessions >= pkg.totalSessions;
+    return `<div class="appt-item">
+      <div class="row">
+        <div><strong>${escapeHtml(pkg.name)}</strong><div class="muted">${pkg.price}€ · ${pkg.usedSessions}/${pkg.totalSessions} sessões usadas</div></div>
+        <span class="badge ${done?'':'active'}">${done?'Concluído':'Ativo'}</span>
+      </div>
+      <div class="row" style="margin-top:6px;">
+        ${!done ? `<button class="ghost" onclick="usePackageSession('${patientId}',${idx})">Marcar 1 sessão usada</button>` : ''}
+        <button class="danger" onclick="removePackage('${patientId}',${idx})">Remover</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.showAddPackageForm = function(patientId){
+  document.getElementById('addPackageFormContainer').innerHTML = `
+    <div class="card" style="background:#f6f8f7;margin-top:8px;">
+      <label>Nome do pacote (ex: "Pack 5 sessões")</label>
+      <input id="pkgName" placeholder="Pack 5 sessões">
+      <label>Número de sessões</label>
+      <input id="pkgTotal" type="number" value="5">
+      <label>Preço total (€)</label>
+      <input id="pkgPrice" type="number" step="0.01">
+      <button class="primary" onclick="savePackage('${patientId}')">Guardar pacote</button>
+    </div>`;
+};
+
+window.savePackage = async function(patientId){
+  const name = document.getElementById('pkgName').value.trim();
+  const total = parseInt(document.getElementById('pkgTotal').value || '0', 10);
+  const price = parseFloat(document.getElementById('pkgPrice').value || '0') || 0;
+  if (!name || total < 1){ toast('Indique o nome e o número de sessões.', true); return; }
+
+  const ref = doc(db, 'tenants', tenantId, 'patients', patientId);
+  const snap = await getDoc(ref);
+  const p = snap.data();
+  const packages = p.packages || [];
+  packages.push({ name, totalSessions: total, usedSessions: 0, price, purchasedAt: new Date().toISOString() });
+  await updateDoc(ref, { packages });
+  toast('Pacote adicionado.');
+  viewPatient(patientId);
+};
+
+window.usePackageSession = async function(patientId, idx){
+  const ref = doc(db, 'tenants', tenantId, 'patients', patientId);
+  const snap = await getDoc(ref);
+  const p = snap.data();
+  const packages = p.packages || [];
+  if (!packages[idx]) return;
+  packages[idx].usedSessions = Math.min(packages[idx].totalSessions, (packages[idx].usedSessions||0) + 1);
+  await updateDoc(ref, { packages });
+  toast('Sessão registada.');
+  viewPatient(patientId);
+};
+
+window.removePackage = async function(patientId, idx){
+  if (!confirm('Remover este pacote?')) return;
+  const ref = doc(db, 'tenants', tenantId, 'patients', patientId);
+  const snap = await getDoc(ref);
+  const p = snap.data();
+  const packages = p.packages || [];
+  packages.splice(idx, 1);
+  await updateDoc(ref, { packages });
+  toast('Pacote removido.');
+  viewPatient(patientId);
 };
 
 window.viewSavedFormResponse = async function(patientId, responseId){
