@@ -215,7 +215,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-30-10';
+const APP_VERSION = '2026-08-30-11';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -1528,13 +1528,15 @@ window.openNewPatient = function(){
       <label>Notas clínicas iniciais</label><textarea id="pNotes" rows="3"></textarea>
       ${renderPatientCustomFieldsBuilder()}
       ${renderPatientAttachmentsBuilder()}
-      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
-        <input type="checkbox" id="pConsent" style="width:auto;margin:0;">
-        Paciente deu consentimento explícito para tratamento de dados de saúde
-      </label>
-      <button class="primary" onclick="savePatient()">Guardar</button>
+      <label style="margin-top:14px;">Termo de consentimento (peça ao paciente para ler)</label>
+      <div style="max-height:140px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:13px;white-space:pre-wrap;margin-bottom:8px;">${escapeHtml(currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT)}</div>
+      <label>Assinatura do paciente (desenhe aqui, no ecrã)</label>
+      <canvas id="consentSignaturePad" width="500" height="160" style="border:1px solid #ccc;border-radius:8px;width:100%;touch-action:none;background:#fff;display:block;"></canvas>
+      <button type="button" class="ghost" style="margin-top:6px;" onclick="clearSignaturePad()">Limpar assinatura</button>
+      <button class="primary" style="margin-top:10px;" onclick="savePatient()">Guardar</button>
     </div>`;
   refreshPatientAttachmentsList();
+  initSignaturePad();
 };
 
 window.editPatient = async function(patientId){
@@ -1579,11 +1581,50 @@ window.updatePatient = async function(patientId){
   viewPatient(patientId);
 };
 
+// ── Assinatura digital do consentimento ──────────────────────────────────
+// Um quadro simples de desenho (dedo/rato) sobre um <canvas>. Guardamos a
+// imagem da assinatura tal como foi desenhada, junto com o texto exato de
+// consentimento que estava em vigor nesse momento — para haver prova do
+// que foi realmente assinado, mesmo que o texto seja editado mais tarde.
+let __sigPadDrawing = false;
+let __sigPadHasStroke = false;
+
+function initSignaturePad(){
+  const canvas = document.getElementById('consentSignaturePad');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#1a2b26';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  __sigPadHasStroke = false;
+
+  function pos(e){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const p = e.touches ? e.touches[0] : e;
+    return { x: (p.clientX - rect.left) * scaleX, y: (p.clientY - rect.top) * scaleY };
+  }
+  function start(e){ __sigPadDrawing = true; __sigPadHasStroke = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }
+  function move(e){ if (!__sigPadDrawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }
+  function end(){ __sigPadDrawing = false; }
+
+  canvas.onmousedown = start; canvas.onmousemove = move; window.onmouseup = end;
+  canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+
+window.clearSignaturePad = function(){
+  const canvas = document.getElementById('consentSignaturePad');
+  if (!canvas) return;
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  __sigPadHasStroke = false;
+};
+
 window.savePatient = async function(){
   const fullName = document.getElementById('pFullName').value.trim();
-  const consent = document.getElementById('pConsent').checked;
   if (!fullName){ toast('Nome é obrigatório.', true); return; }
-  if (!consent){ toast('Não é possível registar sem consentimento explícito.', true); return; }
+  if (!__sigPadHasStroke){ toast('Peça ao paciente para assinar no quadro antes de guardar.', true); return; }
+  const signatureDataUrl = document.getElementById('consentSignaturePad').toDataURL('image/png');
 
   await addDoc(collection(db, 'tenants', tenantId, 'patients'), {
     fullName,
@@ -1595,9 +1636,11 @@ window.savePatient = async function(){
     attachments: patientAttachmentsDraft.filter(f => f.label && f.label.trim() && f.url && f.url.trim()),
     consentGivenAt: serverTimestamp(),
     consentVersion: currentTenantDoc?.legalTexts?.consentVersion || 'v1',
+    consentSignedText: currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT,
+    consentSignatureDataUrl: signatureDataUrl,
     createdBy: currentUser.uid
   });
-  toast('Paciente registado.');
+  toast('Paciente registado, com assinatura de consentimento guardada.');
   renderView('patients');
 };
 
@@ -1661,6 +1704,10 @@ window.viewPatient = async function(patientId){
       <label style="margin-top:10px;">Notas clínicas</label>
       <textarea rows="5" readonly>${escapeHtml(p.clinicalNotes||'')}</textarea>
       <p class="muted">Consentimento: ${p.consentGivenAt ? 'registado' : 'em falta'}</p>
+      ${p.consentSignatureDataUrl ? `
+        <label style="margin-top:6px;">Assinatura recolhida</label>
+        <img src="${p.consentSignatureDataUrl}" style="border:1px solid #e5e5e5;border-radius:8px;background:#fff;max-width:260px;display:block;">
+      ` : ''}
       <div class="row" style="margin-top:10px;">
         <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeHtml(p.fullName)}')">🧭 Iniciar consulta guiada</button>
         <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeHtml(p.fullName)}')">📝 Enviar ficha a este paciente</button>
@@ -4205,8 +4252,8 @@ const CHATBOT_KB = [
     answer: 'Em Configurações → "Descarregar backup completo" pode guardar um ficheiro com todos os seus dados (pacientes, marcações, protocolos, fichas), para o guardar onde preferir.' },
   { keywords: ['instalar','ecra principal','download','app store'],
     answer: 'Toque em "📲 Instalar app no dispositivo" no menu — no Android/Chrome instala diretamente; no iPhone, use o botão Partilhar do Safari → "Adicionar ao ecrã principal".' },
-  { keywords: ['consentimento','rgpd','dados pessoais','privacidade'],
-    answer: 'Em Perfil pode editar o texto de consentimento informado que os seus pacientes veem — já vem com um modelo base, mas deve ajustá-lo à sua área e obrigações legais específicas.' },
+  { keywords: ['consentimento','rgpd','dados pessoais','privacidade','assinatura','assinar'],
+    answer: 'Em Perfil pode editar o texto de consentimento informado. Ao registar um novo paciente, o próprio paciente lê esse texto e assina no ecrã, num quadro de assinatura — fica guardada a assinatura, a data e o texto exato que foi assinado.' },
   { keywords: ['mensagem','whatsapp','lembrete','confirmacao','lembrete automatico','envio automatico'],
     answer: 'Em Perfil → "Modelos de mensagens" pode editar os textos de confirmação, lembrete e cancelamento, com marcadores como {{nome}} e {{data}}. O WhatsApp continua manual (copiar e enviar); o lembrete por email pode ser enviado automaticamente 24h antes da consulta, ativando a opção no mesmo sítio — funciona para pacientes com email registado.' },
   { keywords: ['teste','trial','experimentar','quanto custa','preco do saudecare','subscricao','plano'],
