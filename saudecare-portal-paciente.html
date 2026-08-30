@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal do Paciente</title>
+<style>
+  :root{ --primary:#1a2b26; }
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f6f8f7;color:#1a2b26;margin:0;padding:0 0 40px;}
+  header{background:var(--primary);color:#fff;padding:20px;text-align:center;}
+  header h1{margin:0 0 4px;font-size:1.3rem;}
+  header p{margin:0;opacity:.85;font-size:.9rem;}
+  main{max-width:520px;margin:0 auto;padding:16px;}
+  .card{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  .card h2{margin:0 0 10px;font-size:1.05rem;color:var(--primary);}
+  .muted{color:#6b7a75;font-size:.85rem;}
+  .appt{background:#f6f8f7;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+  .appt strong{display:block;}
+  .btn{display:inline-block;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:.95rem;cursor:pointer;text-decoration:none;text-align:center;}
+  .btn-block{display:block;width:100%;margin-top:8px;}
+  .crisis{background:#fdecea;border:1px solid #f3c1bc;border-radius:10px;padding:12px 14px;font-size:.85rem;line-height:1.5;color:#7a2b23;}
+  .crisis strong{display:block;margin-bottom:4px;}
+  #msgs{max-height:280px;overflow-y:auto;background:#f6f8f7;border-radius:10px;padding:10px;margin-bottom:8px;}
+  .msg{margin-bottom:8px;max-width:80%;padding:8px 12px;border-radius:12px;font-size:.9rem;line-height:1.4;}
+  .msg.me{background:var(--primary);color:#fff;margin-left:auto;border-bottom-right-radius:2px;}
+  .msg.them{background:#e9f0ee;border-bottom-left-radius:2px;}
+  .msgtime{font-size:.7rem;opacity:.6;margin-top:2px;}
+  .inputrow{display:flex;gap:6px;}
+  .inputrow input{flex:1;padding:9px 10px;border:1px solid #ccc;border-radius:8px;font-size:.9rem;}
+  .loading, .errorbox{text-align:center;padding:40px 20px;color:#6b7a75;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="hBusiness">Portal do Paciente</h1>
+  <p id="hPatient"></p>
+</header>
+
+<main id="mainContent">
+  <div class="loading">A carregar…</div>
+</main>
+
+<script>
+const FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/patientPortal';
+const params = new URLSearchParams(window.location.search);
+const tenantId = params.get('t');
+const patientId = params.get('p');
+const token = params.get('k');
+
+function escapeHtml(s){
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function callPortal(action, extra){
+  const res = await fetch(FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tenantId, patientId, token, action, ...extra })
+  });
+  const data = await res.json();
+  if (!res.ok || !data.ok) throw new Error(data.error || 'Erro desconhecido');
+  return data;
+}
+
+function formatDateTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-PT', { weekday:'short', day:'2-digit', month:'2-digit' }) + ' às ' +
+    d.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
+}
+
+function renderMessages(messages){
+  const box = document.getElementById('msgs');
+  if (!box) return;
+  box.innerHTML = messages.length ? messages.map(m => `
+    <div class="msg ${m.sender === 'patient' ? 'me' : 'them'}">
+      ${escapeHtml(m.text)}
+      <div class="msgtime">${formatDateTime(m.createdAt)}</div>
+    </div>`).join('') : '<p class="muted" style="text-align:center;">Ainda sem mensagens.</p>';
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendMessage(){
+  const input = document.getElementById('msgInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.disabled = true;
+  try{
+    await callPortal('sendMessage', { text });
+    input.value = '';
+    const data = await callPortal('get');
+    renderMessages(data.messages);
+  }catch(e){
+    alert('Não foi possível enviar a mensagem. Tente novamente.');
+  }
+  input.disabled = false;
+  input.focus();
+}
+
+async function load(){
+  const main = document.getElementById('mainContent');
+  if (!tenantId || !patientId || !token){
+    main.innerHTML = '<div class="errorbox">Link incompleto. Peça ao seu terapeuta um novo link.</div>';
+    return;
+  }
+  try{
+    const data = await callPortal('get');
+    document.documentElement.style.setProperty('--primary', data.primaryColor || '#1a2b26');
+    document.getElementById('hBusiness').textContent = data.businessName;
+    document.getElementById('hPatient').textContent = 'Olá, ' + data.patientName + '!';
+    document.title = data.businessName + ' — Portal do Paciente';
+
+    const upcomingHtml = data.upcoming.length
+      ? data.upcoming.map(a => `
+        <div class="appt">
+          <strong>${formatDateTime(a.startsAt)}</strong>
+          <span class="muted">${escapeHtml(a.serviceName||'')} ${a.local==='online' ? '· 💻 Online' : ''}</span>
+        </div>`).join('')
+      : '<p class="muted">Sem marcações agendadas.</p>';
+
+    const pastHtml = data.past.length
+      ? data.past.map(a => `
+        <div class="appt">
+          <strong>${formatDateTime(a.startsAt)}</strong>
+          <span class="muted">${escapeHtml(a.serviceName||'')}</span>
+        </div>`).join('')
+      : '<p class="muted">Ainda sem consultas anteriores.</p>';
+
+    const reportsHtml = data.reports.length
+      ? data.reports.map(r => `
+        <div class="appt">
+          <strong>${escapeHtml(r.protocolName||'Relatório')}</strong>
+          <span class="muted">${r.generatedAt ? formatDateTime(r.generatedAt) : ''}</span>
+        </div>`).join('')
+      : '<p class="muted">Ainda sem relatórios partilhados.</p>';
+
+    const hasOnlineUpcoming = data.upcoming.some(a => a.local === 'online');
+    const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
+
+    main.innerHTML = `
+      <div class="card crisis">
+        <strong>⚠️ Este espaço não é monitorizado 24 horas.</strong>
+        Se estiver numa situação de crise ou emergência, não espere por uma resposta aqui — contacte a Linha SNS24 (808 24 24 24) ou o 112 imediatamente.
+      </div>
+
+      ${hasOnlineUpcoming ? `
+      <div class="card">
+        <h2>💻 Consulta online</h2>
+        <p class="muted">Tem uma consulta online agendada. Toque no botão à hora combinada para entrar na sala de videochamada.</p>
+        <a class="btn btn-block" target="_blank" href="https://meet.jit.si/${jitsiRoom}">Entrar na videochamada</a>
+      </div>` : ''}
+
+      <div class="card">
+        <h2>📅 Próximas marcações</h2>
+        ${upcomingHtml}
+      </div>
+
+      <div class="card">
+        <h2>💬 Mensagens</h2>
+        <p class="muted" style="margin-bottom:8px;">Fale com o seu terapeuta entre sessões.</p>
+        <div id="msgs"></div>
+        <div class="inputrow">
+          <input id="msgInput" placeholder="Escrever mensagem…" onkeydown="if(event.key==='Enter')sendMessage()">
+          <button class="btn" onclick="sendMessage()">Enviar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📖 Relatórios de consultas anteriores</h2>
+        ${reportsHtml}
+      </div>
+
+      <div class="card">
+        <h2>🗓️ Histórico de consultas</h2>
+        ${pastHtml}
+      </div>
+    `;
+    renderMessages(data.messages);
+  }catch(e){
+    console.error(e);
+    main.innerHTML = '<div class="errorbox">Não foi possível abrir o seu portal. Verifique o link ou peça um novo ao seu terapeuta.</div>';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

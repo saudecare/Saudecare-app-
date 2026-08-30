@@ -216,7 +216,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-30-12';
+const APP_VERSION = '2026-08-30-13';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -1737,6 +1737,7 @@ window.savePatient = async function(){
   if (!fullName){ toast('Nome é obrigatório.', true); return; }
   if (!__sigPadHasStroke){ toast('Peça ao paciente para assinar no quadro antes de guardar.', true); return; }
   const signatureDataUrl = document.getElementById('consentSignaturePad').toDataURL('image/png');
+  const portalToken = crypto.randomUUID().replace(/-/g, '');
 
   await addDoc(collection(db, 'tenants', tenantId, 'patients'), {
     fullName,
@@ -1750,6 +1751,7 @@ window.savePatient = async function(){
     consentVersion: currentTenantDoc?.legalTexts?.consentVersion || 'v1',
     consentSignedText: currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT,
     consentSignatureDataUrl: signatureDataUrl,
+    portalToken,
     createdBy: currentUser.uid
   });
   toast('Paciente registado, com assinatura de consentimento guardada.');
@@ -1825,6 +1827,11 @@ window.viewPatient = async function(patientId){
         <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeHtml(p.fullName)}')">📝 Enviar ficha a este paciente</button>
         <button class="ghost" onclick="viewPatientEvolution('${patientId}','${escapeHtml(p.fullName)}')">📈 Ver evolução</button>
       </div>
+      <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
+      <h3 style="margin-bottom:6px;">💚 Portal do paciente</h3>
+      <p class="muted" style="margin-bottom:8px;">Espaço próprio do paciente para ver marcações, relatórios, falar consigo entre sessões e entrar na videochamada. Envie-lhe este link uma vez (por WhatsApp/email) — não precisa de criar conta nem password.</p>
+      <div id="patientPortalLinkBox"></div>
+      <div id="patientMessagesBox" style="margin-top:12px;"></div>
     </div>
     <div id="sendFormContainer"></div>
     <div class="card">
@@ -1846,6 +1853,68 @@ window.viewPatient = async function(patientId){
       <h2>Fichas respondidas</h2>
       ${formRespHtml}
     </div>`;
+  renderPatientPortalLink(patientId, p);
+  renderPatientMessages(patientId);
+};
+
+// ── Portal do paciente — link privado e mensagens ────────────────────
+function renderPatientPortalLink(patientId, p){
+  const box = document.getElementById('patientPortalLinkBox');
+  if (!box) return;
+  if (!p.portalToken){
+    box.innerHTML = `<button class="ghost" onclick="generatePatientPortalLink('${patientId}')">Gerar link do portal</button>`;
+    return;
+  }
+  const link = `https://saudecare.github.io/Saudecare-app-/saudecare-portal-paciente.html?t=${tenantId}&p=${patientId}&k=${p.portalToken}`;
+  box.innerHTML = `
+    <input readonly value="${link}" onclick="this.select()">
+    <button class="ghost" style="margin-top:6px;" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar link do portal</button>`;
+}
+
+window.generatePatientPortalLink = async function(patientId){
+  const portalToken = crypto.randomUUID().replace(/-/g, '');
+  await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), { portalToken });
+  toast('Link do portal criado.');
+  viewPatient(patientId);
+};
+
+async function renderPatientMessages(patientId){
+  const box = document.getElementById('patientMessagesBox');
+  if (!box) return;
+  box.innerHTML = '<p class="muted">A carregar mensagens…</p>';
+  const snap = await getDocs(query(
+    collection(db, 'tenants', tenantId, 'patients', patientId, 'messages'),
+    orderBy('createdAt', 'asc')
+  ));
+  let msgsHtml = '';
+  snap.forEach(d => {
+    const m = d.data();
+    const isPatient = m.sender === 'patient';
+    const time = m.createdAt?.toDate ? m.createdAt.toDate().toLocaleString('pt-PT', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    msgsHtml += `<div style="text-align:${isPatient?'left':'right'};margin-bottom:6px;">
+      <span style="display:inline-block;max-width:80%;padding:6px 10px;border-radius:10px;background:${isPatient?'#e9f0ee':'var(--primary)'};color:${isPatient?'var(--text)':'#fff'};font-size:13px;">${escapeHtml(m.text)}</span>
+      <div class="muted" style="font-size:11px;">${time}</div>
+    </div>`;
+  });
+  if (!msgsHtml) msgsHtml = '<p class="muted">Ainda sem mensagens trocadas.</p>';
+  box.innerHTML = `
+    <h3 style="margin-bottom:6px;">💬 Mensagens</h3>
+    <div style="max-height:220px;overflow-y:auto;background:#fafafa;border-radius:8px;padding:10px;">${msgsHtml}</div>
+    <div class="row" style="margin-top:6px;">
+      <input id="patientMsgInput" placeholder="Escrever mensagem…" onkeydown="if(event.key==='Enter')sendPatientMessage('${patientId}')">
+      <button class="primary" onclick="sendPatientMessage('${patientId}')">Enviar</button>
+    </div>`;
+}
+
+window.sendPatientMessage = async function(patientId){
+  const input = document.getElementById('patientMsgInput');
+  const text = input.value.trim();
+  if (!text) return;
+  await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'messages'), {
+    sender: 'professional', text, createdAt: serverTimestamp()
+  });
+  input.value = '';
+  renderPatientMessages(patientId);
 };
 
 // ── Evolução do paciente — linha do tempo de relatórios ─────────────────
@@ -4360,6 +4429,8 @@ const CHATBOT_KB = [
     answer: 'Nos "Pacotes de sessões" (dentro da ficha de um paciente) pode vender um conjunto de sessões, que vão sendo consumidas uma por marcação. Há atalhos rápidos para 5 ou 10 sessões.' },
   { keywords: ['lista de espera','espera','vaga'],
     answer: 'Em "Lista de espera" pode adicionar pacientes que não encontraram horário. Quando cancela uma marcação, se houver alguém à espera desse serviço, a app avisa-o — e há um botão para notificar por WhatsApp com a mensagem já pronta.' },
+  { keywords: ['portal do paciente','portal','videochamada','video chamada','mensagens com paciente'],
+    answer: 'Em cada ficha de paciente, na secção "Portal do paciente", pode gerar um link privado (sem conta nem password) para lhe enviar. Lá, o paciente vê as marcações, relatórios, pode falar consigo por mensagem entre sessões, e entrar numa videochamada gratuita se a consulta for online.' },
   { keywords: ['equipa','convidar','terapeuta','profissional','staff'],
     answer: 'Em "Equipa" pode convidar outros profissionais para a mesma app: "Acesso total" vê tudo, "Acesso restrito" só vê a própria agenda — útil para terapeutas externos numa clínica partilhada.' },
   { keywords: ['backup','descarregar dados','exportar'],
