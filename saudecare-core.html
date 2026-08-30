@@ -161,6 +161,26 @@ import {
   deleteDoc, setDoc, query, where, orderBy, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+// ── Verificação automática de versão ────────────────────────────────────
+// Evita o problema de o telemóvel mostrar uma versão antiga em cache: ao
+// abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
+// qualquer cache) e compara a versão. Se houver uma mais recente,
+// recarrega-se sozinha uma vez, silenciosamente.
+const APP_VERSION = '2026-08-30-3';
+(async function checkForAppUpdate(){
+  try {
+    const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
+    const html = await res.text();
+    const match = html.match(/const APP_VERSION = '([^']+)'/);
+    if (match && match[1] !== APP_VERSION && !sessionStorage.getItem('__reloadedForUpdate')){
+      sessionStorage.setItem('__reloadedForUpdate', '1');
+      window.location.reload();
+    }
+  } catch(e){
+    // Falha de rede ao verificar não deve travar o arranque da app.
+  }
+})();
+
 // ── CONFIGURAÇÃO — substituir pelos valores reais do projeto Firebase ──
 const firebaseConfig = {
   apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
