@@ -114,6 +114,18 @@
       <button class="primary" style="width:100%" onclick="doRegister()">Criar conta e começar período de teste</button>
       <p id="registerError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
     </div>
+
+    <div id="authPanelStaffJoin" class="hidden">
+      <div class="trialNote">👋 Foi convidado para se juntar a uma equipa.</div>
+      <label>O seu nome</label>
+      <input id="staffJoinName">
+      <label>O seu email</label>
+      <input id="staffJoinEmail" type="email" autocomplete="username">
+      <label>Palavra-passe</label>
+      <input id="staffJoinPass" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres">
+      <button class="primary" style="width:100%" onclick="doStaffJoin()">Juntar-me à equipa</button>
+      <p id="staffJoinError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+    </div>
   </div>
 </div>
 
@@ -122,6 +134,7 @@
     <h1>SaúdeCare</h1>
     <button data-view="agenda" class="active">📅 Agenda</button>
     <button data-view="finances">💶 Finanças</button>
+    <button data-view="team" id="navTeamBtn">👥 Equipa</button>
     <button data-view="patients">🗂️ Pacientes</button>
     <button data-view="services">🩺 Serviços</button>
     <button data-view="protocols">📋 Protocolos</button>
@@ -192,6 +205,9 @@ function hintBox(text){
 // → Cloud name; Settings → Upload → Upload presets → o preset "Unsigned").
 const CLOUDINARY_CLOUD_NAME = 'geoipsfn';
 const CLOUDINARY_UPLOAD_PRESET = 'ml_default';
+// Mesma função privilegiada usada no painel de admin, para ativar
+// membros de equipa sem precisar de Cloud Shell.
+const STAFF_CLAIMS_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/activateStaff';
 
 // Sobe um ficheiro para uma pasta do próprio subscritor e devolve o link
 // público, para usar exatamente como se fosse um link colado à mão.
@@ -263,6 +279,81 @@ window.switchAuthTab = function(tab){
   document.getElementById('authTabRegisterBtn').classList.toggle('active', !isLogin);
   document.getElementById('authPanelLogin').classList.toggle('hidden', !isLogin);
   document.getElementById('authPanelRegister').classList.toggle('hidden', isLogin);
+};
+
+// Se o link tiver ?staffJoin=<inviteId>&tenant=<tenantId>, mostra o ecrã
+// de juntar-se à equipa em vez do Entrar/Criar conta normal.
+(function checkStaffJoinLink(){
+  const params = new URLSearchParams(window.location.search);
+  const inviteId = params.get('staffJoin');
+  const inviteTenant = params.get('tenant');
+  if (!inviteId || !inviteTenant) return;
+  window.__staffJoinInvite = { inviteId, tenantId: inviteTenant };
+  document.getElementById('authTabLoginBtn').classList.add('hidden');
+  document.getElementById('authTabRegisterBtn').classList.add('hidden');
+  document.getElementById('authPanelLogin').classList.add('hidden');
+  document.getElementById('authPanelRegister').classList.add('hidden');
+  document.getElementById('authPanelStaffJoin').classList.remove('hidden');
+})();
+
+window.doStaffJoin = async function(){
+  const invite = window.__staffJoinInvite;
+  const name = document.getElementById('staffJoinName').value.trim();
+  const email = document.getElementById('staffJoinEmail').value.trim();
+  const pass = document.getElementById('staffJoinPass').value;
+  const errEl = document.getElementById('staffJoinError');
+  errEl.style.color = 'var(--danger)';
+  errEl.textContent = '';
+
+  if (!name){ errEl.textContent = 'Indique o seu nome.'; return; }
+  if (!email){ errEl.textContent = 'Indique o seu email.'; return; }
+  if (pass.length < 6){ errEl.textContent = 'A palavra-passe precisa de pelo menos 6 caracteres.'; return; }
+
+  const inviteSnap = await getDoc(doc(db, 'tenants', invite.tenantId, 'staffInvites', invite.inviteId));
+  if (!inviteSnap.exists() || inviteSnap.data().used){
+    errEl.textContent = 'Este convite já não é válido. Peça um novo link.';
+    return;
+  }
+  const role = inviteSnap.data().role;
+
+  window.__justRegistered = true;
+  let uid;
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    uid = cred.user.uid;
+  }catch(e){
+    if (e.code === 'auth/email-already-in-use'){
+      try{
+        const cred = await signInWithEmailAndPassword(auth, email, pass);
+        uid = cred.user.uid;
+      }catch(e2){
+        window.__justRegistered = false;
+        errEl.textContent = 'Já existe uma conta com este email, mas esta password não corresponde. Use "Esqueci-me da password" no ecrã de Entrar.';
+        return;
+      }
+    } else {
+      window.__justRegistered = false;
+      errEl.textContent = 'Não foi possível criar a conta. Tente novamente.';
+      console.error(e);
+      return;
+    }
+  }
+
+  try{
+    await setDoc(doc(db, 'tenants', invite.tenantId, 'staff', uid), {
+      name, email, role, status: 'pending_activation',
+      viaInviteId: invite.inviteId, createdAt: serverTimestamp()
+    });
+    await updateDoc(doc(db, 'tenants', invite.tenantId, 'staffInvites', invite.inviteId), {
+      used: true, usedByUid: uid, role
+    });
+    errEl.style.color = 'var(--primary)';
+    errEl.textContent = 'Pedido enviado! Assim que o dono do consultório ativar o seu acesso, já pode entrar com este email e password.';
+  }catch(e){
+    window.__justRegistered = false;
+    errEl.textContent = 'Não foi possível concluir o pedido. Tente novamente ou peça um novo link.';
+    console.error(e);
+  }
 };
 
 // Regista um novo subscritor com período de teste de 14 dias.
@@ -409,6 +500,7 @@ onAuthStateChanged(auth, async (user) => {
 
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
+  document.getElementById('navTeamBtn').classList.toggle('hidden', tenantRole === 'staff_restricted');
   applyBranding();
   applyDynamicManifestAdmin();
   renderView('agenda');
@@ -480,6 +572,7 @@ function renderView(view){
   main.innerHTML = '<p class="muted">A carregar…</p>';
   if (view === 'agenda') renderAgenda(main);
   else if (view === 'finances') renderFinances(main);
+  else if (view === 'team') renderTeam(main);
   else if (view === 'patients') renderPatients(main);
   else if (view === 'services') renderServices(main);
   else if (view === 'protocols') renderProtocols(main);
@@ -492,6 +585,103 @@ function renderView(view){
 // ── AGENDA ───────────────────────────────────────────────────────────
 window.__agendaMonth = null; // Date (dia 1 do mês visível)
 window.__agendaSelectedDay = null; // 'YYYY-MM-DD'
+
+// ── Equipa — convites e permissões de vários profissionais ─────────────
+async function renderTeam(main){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'staff'));
+  const invitesSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'staffInvites'), where('used','==', false)));
+
+  const roleLabel = { owner:'Acesso total (dono)', staff_full:'Acesso total', staff_restricted:'Acesso restrito (só a sua agenda)' };
+
+  let staffRows = `<div class="tenant-item row"><div><strong>${escapeHtml(currentTenantDoc?.ownerEmail || currentUser.email)}</strong><div class="muted">Dono do consultório</div></div><span class="badge active">Acesso total</span></div>`;
+  snap.forEach(d => {
+    const s = d.data();
+    const isPending = s.status === 'pending_activation';
+    staffRows += `<div class="tenant-item">
+      <div class="row">
+        <div><strong>${escapeHtml(s.name||s.email)}</strong><div class="muted">${escapeHtml(s.email||'')} · ${roleLabel[s.role]||s.role}</div></div>
+        <span class="badge ${isPending?'trial':'active'}">${isPending?'Por ativar':'Ativo'}</span>
+      </div>
+      ${tenantRole === 'owner' ? `<div class="row" style="margin-top:6px;">
+        ${isPending ? `<button class="primary" onclick="activateStaffMember('${d.id}','${s.role}')">✓ Ativar acesso</button>` : ''}
+        <button class="danger" onclick="removeStaffMember('${d.id}','${escapeAttrJs(s.name||s.email)}')">Remover</button>
+      </div>` : ''}
+    </div>`;
+  });
+
+  let invitesHtml = '';
+  invitesSnap.forEach(d => {
+    const inv = d.data();
+    const link = `${window.location.origin}${window.location.pathname}?staffJoin=${d.id}&tenant=${tenantId}`;
+    invitesHtml += `<div class="tenant-item">
+      <div class="row"><strong>Convite por usar</strong><span class="badge trial">${roleLabel[inv.role]||inv.role}</span></div>
+      <input readonly value="${link}" onclick="this.select()" style="margin-top:6px;">
+      <div class="row" style="margin-top:6px;">
+        <button class="ghost" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar link</button>
+        <button class="danger" onclick="cancelStaffInvite('${d.id}')">Cancelar convite</button>
+      </div>
+    </div>`;
+  });
+
+  main.innerHTML = `
+    <h2>Equipa</h2>
+    ${hintBox('Convide outros profissionais para trabalharem na mesma app. "Acesso total" vê tudo (agenda, pacientes de todos) — use para família ou sócios de confiança. "Acesso restrito" só vê a própria agenda — use para terapeutas externos numa clínica.')}
+    ${tenantRole === 'owner' ? `
+      <div class="card">
+        <h3 style="margin-bottom:8px;">Convidar profissional</h3>
+        <label>Tipo de acesso</label>
+        <select id="newInviteRole">
+          <option value="staff_full">Acesso total (vê tudo — ex: família, sócios)</option>
+          <option value="staff_restricted">Acesso restrito (só a sua própria agenda — ex: terapeuta externo)</option>
+        </select>
+        <button class="primary" style="width:100%" onclick="createStaffInvite()">Gerar link de convite</button>
+      </div>
+      ${invitesHtml ? `<h3 style="margin:16px 0 8px;">Convites por aceitar</h3>${invitesHtml}` : ''}
+    ` : ''}
+    <h3 style="margin:16px 0 8px;">Membros</h3>
+    <div class="card">${staffRows}</div>
+  `;
+}
+
+window.createStaffInvite = async function(){
+  const role = document.getElementById('newInviteRole').value;
+  const ref = await addDoc(collection(db, 'tenants', tenantId, 'staffInvites'), {
+    role, used: false, usedByUid: null, createdAt: serverTimestamp()
+  });
+  toast('Convite criado.');
+  renderView('team');
+};
+
+window.cancelStaffInvite = async function(inviteId){
+  await deleteDoc(doc(db, 'tenants', tenantId, 'staffInvites', inviteId));
+  toast('Convite cancelado.');
+  renderView('team');
+};
+
+window.activateStaffMember = async function(staffUid, role){
+  try{
+    const idToken = await currentUser.getIdToken();
+    const res = await fetch(STAFF_CLAIMS_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+      body: JSON.stringify({ staffUid, tenantId, role })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Falha desconhecida');
+    toast('Membro ativado com sucesso.');
+    renderView('team');
+  }catch(e){
+    console.error(e);
+    toast('Não foi possível ativar. Tente novamente.', true);
+  }
+};
+
+window.removeStaffMember = async function(staffUid, name){
+  if (!confirm(`Remover "${name}" da equipa? Isto apaga o registo, mas para revogar totalmente o acesso é preciso também eliminar a conta em Firebase Authentication.`)) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'staff', staffUid));
+  toast('Removido da lista de equipa.');
+  renderView('team');
+};
 
 // ── Finanças — resumo mensal de pagamentos das marcações ────────────────
 async function renderFinances(main){
@@ -632,7 +822,7 @@ async function renderAgenda(main){
     return `<div class="appt-item">
       <div class="row">
         <div><strong>${time}</strong> — ${escapeHtml(a.patientName||'Paciente')}
-          <div class="muted">${escapeHtml(a.serviceName||'')}</div>
+          <div class="muted">${escapeHtml(a.serviceName||'')} ${a.staffName ? '· '+escapeHtml(a.staffName) : ''} ${a.local==='online' ? '· 💻 Online' : ''}</div>
         </div>
         <div style="text-align:right;">
           <span class="badge ${statusClass}">${escapeHtml(a.status)}</span>
@@ -699,23 +889,43 @@ window.goToAgendaToday = function(){
 window.openNewAppointment = async function(){
   const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
   const servicesSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'services'), where('active','==', true)));
+  const staffOpts = await getStaffOptionsHTML(currentUser.uid);
 
   let patientOpts = '<option value="">Selecionar paciente…</option>';
   patientsSnap.forEach(d => patientOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().fullName)}">${escapeHtml(d.data().fullName)}</option>`);
 
   let serviceOpts = '<option value="">Selecionar serviço…</option>';
-  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" data-price="${d.data().price||0}">${escapeHtml(d.data().name)}</option>`);
+  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" data-price="${d.data().price||0}" data-buffer="${d.data().bufferMinutes||0}">${escapeHtml(d.data().name)}</option>`);
 
   document.getElementById('apptFormContainer').innerHTML = `
     <div class="card">
       <h2>Nova marcação</h2>
       <label>Paciente</label><select id="apptPatient">${patientOpts}</select>
       <label>Serviço</label><select id="apptService" onchange="document.getElementById('apptPrice').value = this.selectedOptions[0].dataset.price || 0">${serviceOpts}</select>
+      <label>Profissional</label><select id="apptStaff">${staffOpts}</select>
+      <label>Local</label>
+      <select id="apptLocal">
+        <option value="presencial">Presencial (ocupa a sala)</option>
+        <option value="online">Online (só ocupa a agenda deste profissional)</option>
+      </select>
       <label>Data e hora</label><input id="apptStart" type="datetime-local" value="${window.__agendaSelectedDay ? window.__agendaSelectedDay + 'T09:00' : ''}">
       ${paymentFieldsHTML(null)}
+      <p id="apptConflictWarning" class="muted" style="color:var(--danger);"></p>
       <button class="primary" onclick="saveAppointment()">Guardar</button>
     </div>`;
 };
+
+// Lista de profissionais elegíveis para receber uma marcação — o dono
+// mais quem estiver ativo na equipa.
+async function getStaffOptionsHTML(selectedUid){
+  const staffSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'staff'), where('status','==','active')));
+  let opts = `<option value="${tenantId}" ${selectedUid===tenantId?'selected':''}>${escapeHtml(currentTenantDoc?.ownerEmail || 'Dono do consultório')}</option>`;
+  staffSnap.forEach(d => {
+    const s = d.data();
+    opts += `<option value="${d.id}" ${selectedUid===d.id?'selected':''}>${escapeHtml(s.name||s.email)}</option>`;
+  });
+  return opts;
+}
 
 // Campos de pagamento — reutilizados na criação e edição de marcações.
 function paymentFieldsHTML(a){
@@ -741,23 +951,80 @@ function paymentFieldsHTML(a){
     </select>`;
 }
 
+// ── Bloqueio de sala e de agenda pessoal ────────────────────────────────
+// Presencial ocupa a sala (bloqueia qualquer outro presencial nesse
+// horário, seja de quem for); Online só bloqueia a agenda do próprio
+// profissional. O "tempo de preparação" do serviço soma-se ao fim de
+// cada marcação já existente ao verificar sobreposição.
+function rangesOverlap(startA, endA, startB, endB){
+  return startA < endB && startB < endA;
+}
+
+async function getAppointmentsForDay(dateObj){
+  const dayStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0,0,0);
+  const dayEnd = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 23,59,59,999);
+  const q = query(
+    collection(db, 'tenants', tenantId, 'appointments'),
+    where('startsAt', '>=', Timestamp.fromDate(dayStart)),
+    where('startsAt', '<=', Timestamp.fromDate(dayEnd))
+  );
+  const snap = await getDocs(q);
+  const list = [];
+  snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+  return list;
+}
+
+async function checkAppointmentConflict({ staffUid, local, start, end, excludeId }){
+  const dayAppts = await getAppointmentsForDay(start);
+  for (const a of dayAppts){
+    if (a.id === excludeId || a.status === 'cancelled') continue;
+    const aStart = a.startsAt.toDate();
+    const bufferMs = (a.bufferMinutes || 0) * 60000;
+    const aEnd = new Date((a.endsAt ? a.endsAt.toDate() : aStart).getTime() + bufferMs);
+    const aLocal = a.local || 'presencial';
+    const sameStaff = a.staffUid === staffUid;
+    const roomConflict = local === 'presencial' && aLocal === 'presencial' && rangesOverlap(start, end, aStart, aEnd);
+    const personalConflict = sameStaff && rangesOverlap(start, end, aStart, aEnd);
+    if (roomConflict || personalConflict){
+      return { conflict: true, withAppt: a, reason: roomConflict ? 'sala' : 'profissional' };
+    }
+  }
+  return { conflict: false };
+}
+
 window.saveAppointment = async function(){
   const patientSel = document.getElementById('apptPatient');
   const serviceSel = document.getElementById('apptService');
+  const staffSel = document.getElementById('apptStaff');
+  const localSel = document.getElementById('apptLocal');
   const startInput = document.getElementById('apptStart').value;
   if (!patientSel.value || !serviceSel.value || !startInput){
     toast('Preencha todos os campos.', true); return;
   }
   const duration = parseInt(serviceSel.selectedOptions[0].dataset.duration || '50', 10);
+  const bufferMinutes = parseInt(serviceSel.selectedOptions[0].dataset.buffer || '0', 10);
   const start = new Date(startInput);
   const end = new Date(start.getTime() + duration*60000);
+
+  const warnEl = document.getElementById('apptConflictWarning');
+  warnEl.textContent = '';
+  const check = await checkAppointmentConflict({ staffUid: staffSel.value, local: localSel.value, start, end });
+  if (check.conflict){
+    warnEl.textContent = check.reason === 'sala'
+      ? '⚠️ A sala já está ocupada nesse horário por outra marcação presencial.'
+      : '⚠️ Esse profissional já tem outra marcação nesse horário.';
+    return;
+  }
 
   await addDoc(collection(db, 'tenants', tenantId, 'appointments'), {
     patientId: patientSel.value,
     patientName: patientSel.selectedOptions[0].dataset.name,
     serviceId: serviceSel.value,
     serviceName: serviceSel.selectedOptions[0].dataset.name,
-    staffUid: currentUser.uid,
+    staffUid: staffSel.value,
+    staffName: staffSel.selectedOptions[0].text,
+    local: localSel.value,
+    bufferMinutes,
     startsAt: Timestamp.fromDate(start),
     endsAt: Timestamp.fromDate(end),
     status: 'confirmed',
@@ -777,11 +1044,12 @@ window.editAppointment = async function(appointmentId){
 
   const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
   const servicesSnap = await getDocs(collection(db, 'tenants', tenantId, 'services'));
+  const staffOpts = await getStaffOptionsHTML(a.staffUid);
 
   let patientOpts = '';
   patientsSnap.forEach(d => patientOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().fullName)}" ${d.id===a.patientId?'selected':''}>${escapeHtml(d.data().fullName)}</option>`);
   let serviceOpts = '';
-  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" data-price="${d.data().price||0}" ${d.id===a.serviceId?'selected':''}>${escapeHtml(d.data().name)}</option>`);
+  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" data-price="${d.data().price||0}" data-buffer="${d.data().bufferMinutes||0}" ${d.id===a.serviceId?'selected':''}>${escapeHtml(d.data().name)}</option>`);
 
   const startLocal = new Date(a.startsAt.toDate().getTime() - a.startsAt.toDate().getTimezoneOffset()*60000)
     .toISOString().slice(0,16);
@@ -791,8 +1059,15 @@ window.editAppointment = async function(appointmentId){
       <h2>Editar marcação</h2>
       <label>Paciente</label><select id="apptPatient">${patientOpts}</select>
       <label>Serviço</label><select id="apptService" onchange="document.getElementById('apptPrice').value = this.selectedOptions[0].dataset.price || 0">${serviceOpts}</select>
+      <label>Profissional</label><select id="apptStaff">${staffOpts}</select>
+      <label>Local</label>
+      <select id="apptLocal">
+        <option value="presencial" ${(a.local||'presencial')==='presencial'?'selected':''}>Presencial (ocupa a sala)</option>
+        <option value="online" ${a.local==='online'?'selected':''}>Online (só ocupa a agenda deste profissional)</option>
+      </select>
       <label>Data e hora</label><input id="apptStart" type="datetime-local" value="${startLocal}">
       ${paymentFieldsHTML(a)}
+      <p id="apptConflictWarning" class="muted" style="color:var(--danger);"></p>
       <button class="primary" onclick="updateAppointment('${appointmentId}')">Guardar alterações</button>
     </div>`;
 };
@@ -800,19 +1075,36 @@ window.editAppointment = async function(appointmentId){
 window.updateAppointment = async function(appointmentId){
   const patientSel = document.getElementById('apptPatient');
   const serviceSel = document.getElementById('apptService');
+  const staffSel = document.getElementById('apptStaff');
+  const localSel = document.getElementById('apptLocal');
   const startInput = document.getElementById('apptStart').value;
   if (!patientSel.value || !serviceSel.value || !startInput){
     toast('Preencha todos os campos.', true); return;
   }
   const duration = parseInt(serviceSel.selectedOptions[0].dataset.duration || '50', 10);
+  const bufferMinutes = parseInt(serviceSel.selectedOptions[0].dataset.buffer || '0', 10);
   const start = new Date(startInput);
   const end = new Date(start.getTime() + duration*60000);
+
+  const warnEl = document.getElementById('apptConflictWarning');
+  warnEl.textContent = '';
+  const check = await checkAppointmentConflict({ staffUid: staffSel.value, local: localSel.value, start, end, excludeId: appointmentId });
+  if (check.conflict){
+    warnEl.textContent = check.reason === 'sala'
+      ? '⚠️ A sala já está ocupada nesse horário por outra marcação presencial.'
+      : '⚠️ Esse profissional já tem outra marcação nesse horário.';
+    return;
+  }
 
   await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), {
     patientId: patientSel.value,
     patientName: patientSel.selectedOptions[0].dataset.name,
     serviceId: serviceSel.value,
     serviceName: serviceSel.selectedOptions[0].dataset.name,
+    staffUid: staffSel.value,
+    staffName: staffSel.selectedOptions[0].text,
+    local: localSel.value,
+    bufferMinutes,
     startsAt: Timestamp.fromDate(start),
     endsAt: Timestamp.fromDate(end),
     price: parseFloat(document.getElementById('apptPrice').value || '0') || 0,
@@ -1241,6 +1533,7 @@ function renderServiceForm(editId, s){
       <label>Ícone da categoria (emoji, ex: 🌿 🧘 💆 🦴)</label><input id="sCategoryIcon" value="${escapeHtml(s.categoryIcon||'')}" placeholder="🩺" maxlength="4">
       <label>Descrição (o cliente vê isto na página pública)</label><textarea id="sDescription" rows="2">${escapeHtml(s.description||'')}</textarea>
       <label>Duração (min)</label><input id="sDuration" type="number" value="${s.durationMinutes||50}">
+      <label>Tempo de preparação depois (min) — evita marcações coladas sem intervalo</label><input id="sBuffer" type="number" value="${s.bufferMinutes||0}">
       <label>Preço (€)</label><input id="sPrice" type="number" step="0.01" value="${s.price||''}">
       <button class="primary" onclick="saveService('${editId||''}')">${editId?'Guardar alterações':'Adicionar'}</button>
     </div>`;
@@ -1261,6 +1554,7 @@ window.saveService = async function(editId){
     categoryIcon: document.getElementById('sCategoryIcon').value.trim(),
     description: document.getElementById('sDescription').value.trim(),
     durationMinutes: parseInt(document.getElementById('sDuration').value || '50', 10),
+    bufferMinutes: parseInt(document.getElementById('sBuffer').value || '0', 10),
     price: parseFloat(document.getElementById('sPrice').value || '0')
   };
   if (editId){
