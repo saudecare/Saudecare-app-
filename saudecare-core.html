@@ -142,7 +142,8 @@
     <button data-view="trainings">🎓 Formações</button>
     <button data-view="profile">🏥 Perfil</button>
     <button data-view="settings">⚙️ Configurações</button>
-    <button data-view="logout" style="margin-top:20px;color:#f2b8b8;">Sair</button>
+    <button onclick="installApp()" style="margin-top:20px;">📲 Instalar app no dispositivo</button>
+    <button data-view="logout" style="color:#f2b8b8;">Sair</button>
   </nav>
   <main id="mainView"></main>
 </div>
@@ -579,10 +580,42 @@ async function logAudit(action, targetPatientId){
   }
 }
 
+// ── Instalar app no dispositivo ─────────────────────────────────────────
+// No Android/Chrome, o browser dispara "beforeinstallprompt" e podemos
+// mostrar o diálogo nativo de instalação. No iPhone/iPad (Safari) esse
+// evento não existe — mostramos instruções manuais em alternativa.
+let __deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  __deferredInstallPrompt = e;
+});
+
+window.installApp = async function(){
+  if (__deferredInstallPrompt){
+    __deferredInstallPrompt.prompt();
+    await __deferredInstallPrompt.userChoice;
+    __deferredInstallPrompt = null;
+  } else {
+    alert('Para instalar a app neste dispositivo:\n\n📱 iPhone/iPad (Safari): toque no botão Partilhar (o quadrado com a seta para cima) e escolha "Adicionar ao ecrã principal".\n\n🤖 Android/Chrome: toque no menu ⋮ do navegador e escolha "Instalar app" ou "Adicionar ao ecrã principal".\n\n💻 Computador (Chrome/Edge): toque no ícone de instalação que aparece do lado direito da barra de endereço.');
+  }
+};
+
 // ── Router simples ──────────────────────────────────────────────────
+// Cada mudança de vista fica registada no histórico do browser, para
+// que o botão "retroceder" do telemóvel navegue dentro da app (volta ao
+// ecrã anterior) em vez de sair da app logo na primeira vez que é usado.
+let __currentView = 'agenda';
+let __navigatingFromPopstate = false;
+
 function renderView(view){
   const main = document.getElementById('mainView');
   main.innerHTML = '<p class="muted">A carregar…</p>';
+  if (!__navigatingFromPopstate){
+    if (view === __currentView) history.replaceState({ view }, '', '#'+view);
+    else history.pushState({ view }, '', '#'+view);
+  }
+  __currentView = view;
+  __navigatingFromPopstate = false;
   if (view === 'agenda') renderAgenda(main);
   else if (view === 'finances') renderFinances(main);
   else if (view === 'team') renderTeam(main);
@@ -594,6 +627,12 @@ function renderView(view){
   else if (view === 'profile') renderProfile(main);
   else if (view === 'settings') renderSettings(main);
 }
+
+window.addEventListener('popstate', (e) => {
+  if (!currentUser) return; // antes do login não há vistas para navegar
+  __navigatingFromPopstate = true;
+  renderView(e.state?.view || 'agenda');
+});
 
 // ── AGENDA ───────────────────────────────────────────────────────────
 window.__agendaMonth = null; // Date (dia 1 do mês visível)
@@ -901,7 +940,11 @@ window.goToAgendaToday = function(){
 
 window.openNewAppointment = async function(){
   const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
-  const servicesSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'services'), where('active','==', true)));
+  // Nota: já não filtramos por where('active','==',true) no Firestore —
+  // serviços criados antes deste campo existir ficavam invisíveis aqui
+  // mesmo estando "ativos" na prática. Em vez disso, mostramos tudo o
+  // que não esteja explicitamente marcado como inativo (active === false).
+  const servicesSnap = await getDocs(collection(db, 'tenants', tenantId, 'services'));
   const staffOpts = await getStaffOptionsHTML(currentUser.uid);
 
   window.__apptPatientsCache = {};
@@ -912,7 +955,10 @@ window.openNewAppointment = async function(){
   });
 
   let serviceOpts = '<option value="">Selecionar serviço…</option>';
-  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" data-price="${d.data().price||0}" data-buffer="${d.data().bufferMinutes||0}">${escapeHtml(d.data().name)}</option>`);
+  servicesSnap.forEach(d => {
+    if (d.data().active === false) return;
+    serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" data-price="${d.data().price||0}" data-buffer="${d.data().bufferMinutes||0}">${escapeHtml(d.data().name)}</option>`;
+  });
 
   document.getElementById('apptFormContainer').innerHTML = `
     <div class="card">
