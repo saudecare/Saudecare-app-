@@ -1616,6 +1616,11 @@ function renderPackagesList(patientId, p){
 window.showAddPackageForm = function(patientId){
   document.getElementById('addPackageFormContainer').innerHTML = `
     <div class="card" style="background:#f6f8f7;margin-top:8px;">
+      <p class="muted" style="margin-bottom:6px;">Modelos rápidos (opcional) — preenche os campos abaixo, que pode sempre ajustar antes de guardar:</p>
+      <div class="row" style="margin-bottom:10px;">
+        <button class="ghost" onclick="fillPackagePreset('Pack 5 sessões', 5, 200)">Pack 5 sessões</button>
+        <button class="ghost" onclick="fillPackagePreset('Pack 10 sessões', 10, 380)">Pack 10 sessões</button>
+      </div>
       <label>Nome do pacote (ex: "Pack 5 sessões")</label>
       <input id="pkgName" placeholder="Pack 5 sessões">
       <label>Número de sessões</label>
@@ -1624,6 +1629,12 @@ window.showAddPackageForm = function(patientId){
       <input id="pkgPrice" type="number" step="0.01">
       <button class="primary" onclick="savePackage('${patientId}')">Guardar pacote</button>
     </div>`;
+};
+
+window.fillPackagePreset = function(name, total, price){
+  document.getElementById('pkgName').value = name;
+  document.getElementById('pkgTotal').value = total;
+  document.getElementById('pkgPrice').value = price;
 };
 
 window.savePackage = async function(patientId){
@@ -1776,6 +1787,7 @@ async function renderServices(main){
 
   main.innerHTML = `
     <div class="row"><h2>Serviços</h2></div>
+    ${renderServiceTemplatesSection()}
     ${hintBox('O que oferece aos seus clientes — cada serviço aparece na sua página pública e no funil de marcação, com nome, preço e duração.')}
     <div class="card">${rows}</div>
     <div id="serviceFormContainer"></div>
@@ -1890,6 +1902,7 @@ async function renderForms(main){
     <div class="row"><h2>Fichas / Questionários</h2>
       <button class="primary" onclick="openNewForm()">+ Nova ficha</button>
     </div>
+    ${renderFormTemplatesSection()}
     ${hintBox('Crie questionários para os seus clientes preencherem antes ou depois de um atendimento — avaliação inicial, satisfação, o que for útil à sua prática.')}
     <div class="card">${rows}</div>
     <h2 style="margin:16px 0 10px;">Respostas pendentes de associar</h2>
@@ -2080,6 +2093,208 @@ window.confirmAttach = async function(responseId){
   renderView('forms');
 };
 
+// ── MODELOS PRONTOS — protocolos e fichas de exemplo, prontos a usar ────
+// Servem só como ponto de partida opcional: qualquer subscritor pode usar
+// tal e qual, editar depois de copiar para os seus, ou ignorar por
+// completo e criar tudo do zero — não interferem em nada se não forem
+// usados.
+const TEMPLATE_PROTOCOLS = [
+  {
+    name: 'Reiki — Sessão nos 7 Chakras Principais',
+    type: 'simple',
+    points: [
+      { name: 'Chakra Base (Muladhara)', knowledgeText: 'Ligado ao enraizamento, segurança e sobrevivência. Bloqueios podem manifestar-se como medo, instabilidade ou insegurança financeira/material.' },
+      { name: 'Chakra Sacral (Svadhisthana)', knowledgeText: 'Ligado à criatividade, emoções e sexualidade. Bloqueios podem manifestar-se como culpa ou dificuldade em sentir prazer.' },
+      { name: 'Chakra Plexo Solar (Manipura)', knowledgeText: 'Ligado ao poder pessoal e autoestima. Bloqueios podem manifestar-se como falta de confiança ou dificuldade em impor limites.' },
+      { name: 'Chakra Cardíaco (Anahata)', knowledgeText: 'Ligado ao amor, compaixão e relações. Bloqueios podem manifestar-se como dificuldade em dar/receber afeto.' },
+      { name: 'Chakra Laríngeo (Vishuddha)', knowledgeText: 'Ligado à comunicação e expressão pessoal. Bloqueios podem manifestar-se como dificuldade em expressar-se ou ser ouvido.' },
+      { name: 'Chakra Frontal / Terceiro Olho (Ajna)', knowledgeText: 'Ligado à intuição e clareza mental. Bloqueios podem manifestar-se como confusão ou dificuldade de concentração.' },
+      { name: 'Chakra Coronário (Sahasrara)', knowledgeText: 'Ligado à ligação espiritual e propósito. Bloqueios podem manifestar-se como sensação de desconexão.' }
+    ],
+    finalClassifications: [
+      { label: 'Nível de energia sentido pelo cliente antes da sessão', type: 'text', when: 'before', options: [] },
+      { label: 'Zona(s) onde sentiu mais calor, formigueiro ou reação', type: 'text', when: 'after', options: [] },
+      { label: 'Estado emocional no final da sessão', type: 'text', when: 'after', options: [] }
+    ]
+  },
+  {
+    name: 'Radiestesia — Avaliação Energética Geral',
+    type: 'simple',
+    points: [
+      { name: 'Nível energético geral do campo', knowledgeText: 'Leitura geral do estado vibracional da pessoa no momento da consulta.' },
+      { name: 'Bloqueios emocionais', knowledgeText: 'Presença de padrões emocionais retidos que possam estar a condicionar o bem-estar.' },
+      { name: 'Compatibilidade com alimentos/suplementos testados', knowledgeText: 'Resposta do pêndulo aos itens apresentados durante a consulta.' },
+      { name: 'Geopatias no espaço habitual', knowledgeText: 'Indicação de possíveis interferências no local onde a pessoa passa mais tempo (casa, quarto, trabalho).' },
+      { name: 'Estado dos principais chakras', knowledgeText: 'Leitura geral de abertura/fecho dos centros energéticos principais.' },
+      { name: 'Nível de stress acumulado', knowledgeText: 'Avaliação da carga de stress percebida energeticamente.' },
+      { name: 'Ressonância com remédios florais/essências', knowledgeText: 'Testagem de compatibilidade com florais ou essências disponíveis.' }
+    ],
+    finalClassifications: [
+      { label: 'Pergunta feita ao pêndulo (registo literal)', type: 'text', when: 'before', options: [] },
+      { label: 'Sugestão/recomendação dada no final', type: 'text', when: 'after', options: [] }
+    ]
+  },
+  {
+    name: 'Avaliação Psicológica Inicial',
+    type: 'simple',
+    points: [
+      { name: 'Estado de humor predominante', knowledgeText: 'Registo do humor relatado/observado ao longo da sessão.' },
+      { name: 'Nível de ansiedade percebido', knowledgeText: 'Sinais de ansiedade relatados ou observados (fisiológicos, cognitivos, comportamentais).' },
+      { name: 'Padrão de sono', knowledgeText: 'Qualidade, duração e regularidade do sono relatadas.' },
+      { name: 'Relações interpessoais relevantes', knowledgeText: 'Dinâmicas familiares, sociais ou profissionais mencionadas como significativas.' },
+      { name: 'Pensamentos automáticos identificados', knowledgeText: 'Padrões de pensamento recorrentes trazidos pela pessoa.' },
+      { name: 'Estratégias de coping utilizadas', knowledgeText: 'Formas como a pessoa tem lidado com as dificuldades até agora.' },
+      { name: 'Objetivos definidos para o acompanhamento', knowledgeText: 'O que a pessoa espera alcançar com o processo terapêutico.' }
+    ],
+    finalClassifications: [
+      { label: 'Motivo principal da consulta', type: 'text', when: 'before', options: [] },
+      { label: 'Encaminhamentos anteriores (psiquiatria, outros profissionais)', type: 'text', when: 'before', options: [] },
+      { label: 'Áreas prioritárias para as próximas sessões', type: 'text', when: 'after', options: [] }
+    ]
+  }
+];
+
+const TEMPLATE_FORMS = [
+  {
+    title: 'Ficha de Anamnese Geral (Universal)',
+    description: 'Ficha de avaliação inicial genérica, adequada a qualquer área de atendimento.',
+    questions: [
+      { type: 'text', label: 'Nome completo' },
+      { type: 'text', label: 'Data de nascimento' },
+      { type: 'text', label: 'Motivo da consulta / o que o traz até aqui' },
+      { type: 'text', label: 'Histórico de saúde relevante (condições, cirurgias, diagnósticos)' },
+      { type: 'text', label: 'Medicação atual (nome, dose, frequência)' },
+      { type: 'text', label: 'Alergias conhecidas' },
+      { type: 'multiple_choice', label: 'Já recorreu a este tipo de terapia/acompanhamento antes?', options: ['Sim', 'Não'] },
+      { type: 'text', label: 'Expectativas para este acompanhamento' }
+    ]
+  },
+  {
+    title: 'Check-in de Bem-Estar (Pré-Sessão)',
+    description: 'Questionário rápido para perceber o estado da pessoa antes de cada sessão.',
+    questions: [
+      { type: 'scale', label: 'Nível de stress hoje (0 = nenhum, 10 = extremo)' },
+      { type: 'scale', label: 'Qualidade do sono na última semana (0 = muito má, 10 = excelente)' },
+      { type: 'scale', label: 'Nível de energia hoje (0 = esgotado, 10 = cheio de energia)' },
+      { type: 'text', label: 'O que gostaria de trabalhar nesta sessão?' }
+    ]
+  },
+  {
+    title: 'Questionário de Satisfação Pós-Consulta',
+    description: 'Para recolher feedback dos seus clientes depois de um atendimento.',
+    questions: [
+      { type: 'scale', label: 'Satisfação geral com o atendimento (0-10)' },
+      { type: 'multiple_choice', label: 'Recomendaria este serviço a alguém?', options: ['Sim', 'Talvez', 'Não'] },
+      { type: 'text', label: 'Algo que gostaria de partilhar ou sugerir?' }
+    ]
+  }
+];
+
+function renderProtocolTemplatesSection(){
+  const cards = TEMPLATE_PROTOCOLS.map((t, idx) => `
+    <div class="appt-item row">
+      <div><strong>${escapeHtml(t.name)}</strong>
+        <div class="muted">📋 Modelo pronto · ${t.points.length} pontos</div>
+      </div>
+      <button class="ghost" onclick="useProtocolTemplate(${idx})">Usar este modelo</button>
+    </div>`).join('');
+  return `
+    <h2 style="margin:16px 0 10px;">Modelos prontos (opcional)</h2>
+    ${hintBox('Estes modelos ficam disponíveis para todos, mas são apenas um ponto de partida — pode usar tal e qual, editar à sua maneira depois de os copiar, ou simplesmente ignorá-los se preferir criar tudo do zero.')}
+    <div class="card">${cards}</div>`;
+}
+
+window.useProtocolTemplate = async function(idx){
+  const t = TEMPLATE_PROTOCOLS[idx];
+  if (!t) return;
+  await addDoc(collection(db, 'tenants', tenantId, 'protocols'), {
+    name: t.name,
+    type: t.type,
+    points: t.points.map(p => ({...p})),
+    finalClassifications: (t.finalClassifications||[]).map(c => ({...c})),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+  toast('Modelo adicionado aos seus protocolos — já pode editá-lo à vontade.');
+  renderView('protocols');
+};
+
+function renderFormTemplatesSection(){
+  const cards = TEMPLATE_FORMS.map((t, idx) => `
+    <div class="appt-item row">
+      <div><strong>${escapeHtml(t.title)}</strong>
+        <div class="muted">📝 Modelo pronto · ${t.questions.length} perguntas</div>
+      </div>
+      <button class="ghost" onclick="useFormTemplate(${idx})">Usar este modelo</button>
+    </div>`).join('');
+  return `
+    <h2 style="margin:16px 0 10px;">Modelos prontos (opcional)</h2>
+    ${hintBox('Fichas de exemplo prontas a usar — copie e edite as perguntas à sua maneira, ou ignore se preferir criar as suas próprias.')}
+    <div class="card">${cards}</div>`;
+}
+
+window.useFormTemplate = async function(idx){
+  const t = TEMPLATE_FORMS[idx];
+  if (!t) return;
+  const questions = t.questions.map(q => ({ id: 'q'+Date.now()+Math.random().toString(36).slice(2,7), ...q }));
+  await addDoc(collection(db, 'tenants', tenantId, 'forms'), {
+    title: t.title,
+    description: t.description || '',
+    questions,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+  toast('Modelo adicionado às suas fichas — já pode editá-lo à vontade.');
+  renderView('forms');
+};
+
+const TEMPLATE_SERVICES = [
+  { name: 'Sessão de Reiki', category: 'Reiki', categoryIcon: '🌿', description: 'Sessão de harmonização energética nos 7 chakras principais.', durationMinutes: 45, bufferMinutes: 10, price: 35 },
+  { name: 'Consulta de Radiestesia', category: 'Radiestesia', categoryIcon: '🔮', description: 'Avaliação energética geral com pêndulo.', durationMinutes: 40, bufferMinutes: 10, price: 30 },
+  { name: 'Consulta de Psicologia', category: 'Psicologia', categoryIcon: '🧠', description: 'Sessão de acompanhamento psicológico individual.', durationMinutes: 50, bufferMinutes: 10, price: 45 },
+  { name: 'Primeira Consulta (Avaliação Inicial)', category: 'Geral', categoryIcon: '🩺', description: 'Primeira sessão, dedicada à anamnese e definição de objetivos.', durationMinutes: 60, bufferMinutes: 10, price: 40 },
+  { name: 'Sessão de Acompanhamento', category: 'Geral', categoryIcon: '🩺', description: 'Sessão de seguimento regular.', durationMinutes: 50, bufferMinutes: 10, price: 35 }
+];
+
+function renderServiceTemplatesSection(){
+  const cards = TEMPLATE_SERVICES.map((t, idx) => `
+    <div class="appt-item row">
+      <div><strong>${t.categoryIcon} ${escapeHtml(t.name)}</strong>
+        <div class="muted">${escapeHtml(t.category)} · ${t.durationMinutes}min · ${t.price}€</div>
+      </div>
+      <button class="ghost" onclick="useServiceTemplate(${idx})">Usar este modelo</button>
+    </div>`).join('');
+  return `
+    <h2 style="margin:16px 0 10px;">Modelos prontos (opcional)</h2>
+    ${hintBox('Exemplos de serviços por área — usa tal e qual, ou adiciona e depois edita o preço/duração à sua maneira em "Editar".')}
+    <div class="card">${cards}</div>`;
+}
+
+window.useServiceTemplate = async function(idx){
+  const t = TEMPLATE_SERVICES[idx];
+  if (!t) return;
+  await addDoc(collection(db, 'tenants', tenantId, 'services'), { ...t, active: true });
+  toast('Modelo adicionado aos seus serviços — já pode editar o preço/duração.');
+  renderView('services');
+};
+
+// ── Modelos prontos — mensagens (WhatsApp/Email) ────────────────────────
+// Apenas texto pronto a copiar — o envio continua a ser feito manualmente
+// pelo subscritor (abrir WhatsApp/Email e colar). Nada aqui é enviado
+// automaticamente.
+const DEFAULT_MESSAGE_TEMPLATES = {
+  confirmacao: 'Olá {{nome}}! A sua marcação de {{servico}} está confirmada para {{data}} às {{hora}}. Até já! 😊',
+  lembrete: 'Olá {{nome}}, só a lembrar da sua consulta de {{servico}} amanhã, dia {{data}} às {{hora}}. Até breve!',
+  cancelamento: 'Olá {{nome}}, infelizmente foi necessário cancelar a marcação de {{servico}} do dia {{data}} às {{hora}}. Vamos remarcar assim que possível — desculpe o incómodo.'
+};
+
+// ── Modelos prontos — termo de consentimento informado ──────────────────
+const DEFAULT_CONSENT_TEXT = `Declaro que fui informado(a) sobre a natureza, objetivos e método do atendimento que vou receber, e que tive oportunidade de esclarecer as minhas dúvidas antes de dar o meu consentimento.
+
+Autorizo o registo dos meus dados pessoais e de saúde necessários ao acompanhamento, sabendo que estes são tratados de forma confidencial, nos termos do RGPD, e que posso solicitar o seu acesso, retificação ou eliminação a qualquer momento.
+
+Compreendo que este acompanhamento não substitui o aconselhamento médico convencional quando este for necessário, e que devo procurar apoio médico sempre que sinta que a minha situação o exige.`;
+
 // ── PROTOCOLOS (métodos de atendimento personalizados) ─────────────────
 // Dois tipos: "simples" (lista plana de pontos, como já existia) e
 // "mapeamento" (grupos de pontos organizados por sistema, com zonas do
@@ -2112,6 +2327,7 @@ async function renderProtocols(main){
     <div class="row"><h2>Protocolos / Métodos de Atendimento</h2>
       <button class="primary" onclick="openNewProtocol()">+ Novo protocolo</button>
     </div>
+    ${renderProtocolTemplatesSection()}
     ${hintBox(`Um protocolo é o seu próprio método de trabalho — serve para qualquer área.
       <strong>Lista simples</strong>: uma checklist de pontos a observar (ex: sintomas, temas de sessão, exercícios).
       <strong>Mapeamento por zonas</strong>: pontos marcados sobre uma imagem do corpo, organizados em grupos (ex: "Pontos principais", "Sistema X"), com zonas frente/costas e esquerdo/direito — útil para terapias manuais, corporais ou energéticas.
@@ -3343,6 +3559,23 @@ async function renderProfile(main){
       }
     </div>
     <div class="card">
+      <h2>Termo de consentimento informado</h2>
+      ${hintBox('Texto pronto (editável) que pode usar como base do consentimento dos seus clientes. Ajuste-o à sua área de atuação e às suas obrigações legais específicas antes de usar — este texto é apenas um ponto de partida genérico.')}
+      <textarea id="pfConsentText" rows="8">${escapeHtml(currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT)}</textarea>
+      <button class="primary" onclick="saveConsentText()">Guardar termo de consentimento</button>
+    </div>
+    <div class="card">
+      <h2>Modelos de mensagens (WhatsApp/Email)</h2>
+      ${hintBox('Textos prontos a copiar e enviar manualmente — use {{nome}}, {{data}}, {{hora}} e {{servico}} como marcadores, e substitua-os antes de enviar. Envio automático ainda não está disponível.')}
+      <label>Confirmação de marcação</label>
+      <textarea id="pfMsgConfirmacao" rows="3">${escapeHtml(currentTenantDoc?.messageTemplates?.confirmacao ?? DEFAULT_MESSAGE_TEMPLATES.confirmacao)}</textarea>
+      <label>Lembrete</label>
+      <textarea id="pfMsgLembrete" rows="3">${escapeHtml(currentTenantDoc?.messageTemplates?.lembrete ?? DEFAULT_MESSAGE_TEMPLATES.lembrete)}</textarea>
+      <label>Cancelamento</label>
+      <textarea id="pfMsgCancelamento" rows="3">${escapeHtml(currentTenantDoc?.messageTemplates?.cancelamento ?? DEFAULT_MESSAGE_TEMPLATES.cancelamento)}</textarea>
+      <button class="primary" onclick="saveMessageTemplates()">Guardar modelos de mensagens</button>
+    </div>
+    <div class="card">
       <label>Nome do negócio</label>
       <input id="pfBusinessName" value="${escapeHtml(currentTenantDoc?.businessName||'')}">
       <label>Frase de apresentação (tagline curta)</label>
@@ -3401,6 +3634,29 @@ async function renderProfile(main){
     </div>
   `;
 }
+
+window.saveConsentText = async function(){
+  const consentText = document.getElementById('pfConsentText').value.trim();
+  await updateDoc(doc(db, 'tenants', tenantId), {
+    'legalTexts.consentText': consentText,
+    'legalTexts.consentVersion': String(Date.now())
+  });
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  currentTenantDoc = snap.data();
+  toast('Termo de consentimento guardado.');
+};
+
+window.saveMessageTemplates = async function(){
+  const messageTemplates = {
+    confirmacao: document.getElementById('pfMsgConfirmacao').value.trim(),
+    lembrete: document.getElementById('pfMsgLembrete').value.trim(),
+    cancelamento: document.getElementById('pfMsgCancelamento').value.trim()
+  };
+  await updateDoc(doc(db, 'tenants', tenantId), { messageTemplates });
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  currentTenantDoc = snap.data();
+  toast('Modelos de mensagens guardados.');
+};
 
 window.saveProfile = async function(){
   const profileData = {
