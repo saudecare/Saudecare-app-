@@ -215,7 +215,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-30-9';
+const APP_VERSION = '2026-08-30-10';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -3725,7 +3725,7 @@ async function renderProfile(main){
     </div>
     <div class="card">
       <h2>Modelos de mensagens (WhatsApp/Email)</h2>
-      ${hintBox('Textos prontos a copiar e enviar manualmente — use {{nome}}, {{data}}, {{hora}} e {{servico}} como marcadores, e substitua-os antes de enviar. Envio automático ainda não está disponível.')}
+      ${hintBox('Textos prontos a usar como lembrete/confirmação — use {{nome}}, {{data}}, {{hora}} e {{servico}} como marcadores. O WhatsApp continua manual (copiar e enviar); o email de lembrete pode ser enviado sozinho, se ativar a opção abaixo.')}
       <label>Confirmação de marcação</label>
       <textarea id="pfMsgConfirmacao" rows="3">${escapeHtml(currentTenantDoc?.messageTemplates?.confirmacao ?? DEFAULT_MESSAGE_TEMPLATES.confirmacao)}</textarea>
       <label>Lembrete</label>
@@ -3733,6 +3733,13 @@ async function renderProfile(main){
       <label>Cancelamento</label>
       <textarea id="pfMsgCancelamento" rows="3">${escapeHtml(currentTenantDoc?.messageTemplates?.cancelamento ?? DEFAULT_MESSAGE_TEMPLATES.cancelamento)}</textarea>
       <button class="primary" onclick="saveMessageTemplates()">Guardar modelos de mensagens</button>
+      <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;">
+        <input type="checkbox" id="pfAutoEmailReminders" style="width:auto;" ${currentTenantDoc?.remindersSettings?.autoEmailReminders ? 'checked' : ''}>
+        Enviar automaticamente o lembrete por email, 24h antes de cada consulta
+      </label>
+      <p class="muted" style="margin-top:6px;">Só funciona para pacientes com email registado na ficha. Precisa de configuração adicional (chave do serviço de email) — se ainda não fez essa parte, fale comigo.</p>
+      <button class="ghost" style="margin-top:8px;" onclick="saveAutoReminderSettings()">Guardar preferência de envio automático</button>
     </div>
     <div class="card">
       <label>Nome do negócio</label>
@@ -3815,6 +3822,16 @@ window.saveMessageTemplates = async function(){
   const snap = await getDoc(doc(db, 'tenants', tenantId));
   currentTenantDoc = snap.data();
   toast('Modelos de mensagens guardados.');
+};
+
+window.saveAutoReminderSettings = async function(){
+  const autoEmailReminders = document.getElementById('pfAutoEmailReminders').checked;
+  await updateDoc(doc(db, 'tenants', tenantId), {
+    remindersSettings: { ...(currentTenantDoc?.remindersSettings||{}), autoEmailReminders }
+  });
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  currentTenantDoc = snap.data();
+  toast(autoEmailReminders ? 'Lembretes automáticos por email ativados.' : 'Lembretes automáticos por email desativados.');
 };
 
 window.saveProfile = async function(){
@@ -4190,8 +4207,8 @@ const CHATBOT_KB = [
     answer: 'Toque em "📲 Instalar app no dispositivo" no menu — no Android/Chrome instala diretamente; no iPhone, use o botão Partilhar do Safari → "Adicionar ao ecrã principal".' },
   { keywords: ['consentimento','rgpd','dados pessoais','privacidade'],
     answer: 'Em Perfil pode editar o texto de consentimento informado que os seus pacientes veem — já vem com um modelo base, mas deve ajustá-lo à sua área e obrigações legais específicas.' },
-  { keywords: ['mensagem','whatsapp','lembrete','confirmacao'],
-    answer: 'Em Perfil → "Modelos de mensagens" pode editar os textos de confirmação, lembrete e cancelamento, com marcadores como {{nome}} e {{data}}, para copiar e enviar manualmente.' },
+  { keywords: ['mensagem','whatsapp','lembrete','confirmacao','lembrete automatico','envio automatico'],
+    answer: 'Em Perfil → "Modelos de mensagens" pode editar os textos de confirmação, lembrete e cancelamento, com marcadores como {{nome}} e {{data}}. O WhatsApp continua manual (copiar e enviar); o lembrete por email pode ser enviado automaticamente 24h antes da consulta, ativando a opção no mesmo sítio — funciona para pacientes com email registado.' },
   { keywords: ['teste','trial','experimentar','quanto custa','preco do saudecare','subscricao','plano'],
     answer: 'O SaúdeCare tem um período de teste gratuito de 14 dias. Para saber mais sobre os planos disponíveis, contacte-nos através da página pública ou do email de suporte.' },
   { keywords: ['reiki'],
