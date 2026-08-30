@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="SaúdeCare">
 <title>SaúdeCare</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
     --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#ffffff;
@@ -120,6 +121,7 @@
   <nav>
     <h1>SaúdeCare</h1>
     <button data-view="agenda" class="active">📅 Agenda</button>
+    <button data-view="finances">💶 Finanças</button>
     <button data-view="patients">🗂️ Pacientes</button>
     <button data-view="services">🩺 Serviços</button>
     <button data-view="protocols">📋 Protocolos</button>
@@ -477,6 +479,7 @@ function renderView(view){
   const main = document.getElementById('mainView');
   main.innerHTML = '<p class="muted">A carregar…</p>';
   if (view === 'agenda') renderAgenda(main);
+  else if (view === 'finances') renderFinances(main);
   else if (view === 'patients') renderPatients(main);
   else if (view === 'services') renderServices(main);
   else if (view === 'protocols') renderProtocols(main);
@@ -489,6 +492,81 @@ function renderView(view){
 // ── AGENDA ───────────────────────────────────────────────────────────
 window.__agendaMonth = null; // Date (dia 1 do mês visível)
 window.__agendaSelectedDay = null; // 'YYYY-MM-DD'
+
+// ── Finanças — resumo mensal de pagamentos das marcações ────────────────
+async function renderFinances(main){
+  if (!window.__financesMonth) window.__financesMonth = new Date();
+  const monthDate = window.__financesMonth;
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  const firstOfMonth = new Date(year, month, 1);
+  const lastOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+  const q = query(
+    collection(db, 'tenants', tenantId, 'appointments'),
+    where('startsAt', '>=', Timestamp.fromDate(firstOfMonth)),
+    where('startsAt', '<=', Timestamp.fromDate(lastOfMonth)),
+    orderBy('startsAt')
+  );
+  const snap = await getDocs(q);
+
+  let totalPaid = 0, totalPending = 0, totalPartial = 0, countPaid = 0, countPending = 0;
+  let rows = '';
+  snap.forEach(d => {
+    const a = d.data();
+    if (a.status === 'cancelled' || !a.price) return;
+    if (a.paymentStatus === 'paid'){ totalPaid += a.price; countPaid++; }
+    else if (a.paymentStatus === 'partial'){ totalPartial += a.price; countPending++; }
+    else { totalPending += a.price; countPending++; }
+
+    const time = a.startsAt.toDate().toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
+    const statusLabel = a.paymentStatus==='paid'?'Pago':(a.paymentStatus==='partial'?'Parcial':'Pendente');
+    const statusClass = a.paymentStatus==='paid'?'active':(a.paymentStatus==='partial'?'trial':'suspended');
+    rows += `<div class="appt-item row">
+      <div><strong>${time}</strong> — ${escapeHtml(a.patientName||'')}
+        <div class="muted">${escapeHtml(a.serviceName||'')} ${a.paymentMethod ? '· '+escapeHtml(a.paymentMethod) : ''}</div>
+      </div>
+      <div style="text-align:right;">
+        <span class="badge ${statusClass}">${statusLabel}</span>
+        <div class="muted" style="margin-top:2px;">${a.price}€</div>
+      </div>
+    </div>`;
+  });
+  if (!rows) rows = '<p class="muted">Sem marcações com preço este mês.</p>';
+
+  main.innerHTML = `
+    <h2>Finanças</h2>
+    ${hintBox('Resumo de pagamentos das suas marcações. Os valores vêm do preço definido em cada marcação — atualize o estado do pagamento na Agenda ou aqui mesmo.')}
+    <div class="row" style="margin-bottom:10px;">
+      <button class="ghost" onclick="changeFinancesMonth(-1)">‹</button>
+      <strong style="text-transform:capitalize;">${monthNames[month]} ${year}</strong>
+      <button class="ghost" onclick="changeFinancesMonth(1)">›</button>
+    </div>
+    <div class="stat-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
+      <div class="stat-card" style="background:#fff;border-radius:12px;padding:14px;text-align:center;">
+        <div style="font-size:22px;font-weight:700;color:var(--primary);">${totalPaid.toFixed(2)}€</div>
+        <div class="muted">Recebido (${countPaid})</div>
+      </div>
+      <div class="stat-card" style="background:#fff;border-radius:12px;padding:14px;text-align:center;">
+        <div style="font-size:22px;font-weight:700;color:#8a5a00;">${totalPartial.toFixed(2)}€</div>
+        <div class="muted">Parcial</div>
+      </div>
+      <div class="stat-card" style="background:#fff;border-radius:12px;padding:14px;text-align:center;">
+        <div style="font-size:22px;font-weight:700;color:var(--danger);">${totalPending.toFixed(2)}€</div>
+        <div class="muted">Pendente (${countPending})</div>
+      </div>
+    </div>
+    <div class="card">${rows}</div>
+  `;
+}
+
+window.changeFinancesMonth = function(delta){
+  const d = window.__financesMonth || new Date();
+  window.__financesMonth = new Date(d.getFullYear(), d.getMonth() + delta, 1);
+  renderView('finances');
+};
 
 async function renderAgenda(main){
   if (!window.__agendaMonth) window.__agendaMonth = new Date();
@@ -518,6 +596,7 @@ async function renderAgenda(main){
     const key = dateKey(a.startsAt.toDate());
     (byDay[key] = byDay[key] || []).push({ id: d.id, ...a });
   });
+  window.__apptCache = apptsById;
 
   const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const weekdayLabels = ['D','S','T','Q','Q','S','S'];
@@ -547,15 +626,23 @@ async function renderAgenda(main){
   let itemsHtml = dayAppts.map(a => {
     const time = a.startsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
     const statusClass = a.status === 'cancelled' ? 'cancelled' : '';
+    const payBadge = a.price
+      ? `<span class="badge ${a.paymentStatus==='paid'?'active':(a.paymentStatus==='partial'?'trial':'suspended')}">${a.paymentStatus==='paid'?'Pago':(a.paymentStatus==='partial'?'Parcial':'Pendente')} · ${a.price}€</span>`
+      : '';
     return `<div class="appt-item">
       <div class="row">
         <div><strong>${time}</strong> — ${escapeHtml(a.patientName||'Paciente')}
           <div class="muted">${escapeHtml(a.serviceName||'')}</div>
         </div>
-        <span class="badge ${statusClass}">${escapeHtml(a.status)}</span>
+        <div style="text-align:right;">
+          <span class="badge ${statusClass}">${escapeHtml(a.status)}</span>
+          ${payBadge ? `<div style="margin-top:4px;">${payBadge}</div>` : ''}
+        </div>
       </div>
       <div class="row" style="margin-top:6px;">
         <button class="ghost" onclick="editAppointment('${a.id}')">Editar</button>
+        <button class="ghost" onclick="downloadAppointmentICS('${a.id}')">📅 Calendário</button>
+        ${a.price && a.paymentStatus !== 'paid' ? `<button class="ghost" onclick="markAppointmentPaid('${a.id}')">💶 Marcar pago</button>` : ''}
         ${a.status !== 'cancelled' ? `<button class="ghost" onclick="cancelAppointment('${a.id}')">Cancelar</button>` : ''}
         <button class="danger" onclick="deleteAppointment('${a.id}')">Apagar</button>
       </div>
@@ -617,17 +704,42 @@ window.openNewAppointment = async function(){
   patientsSnap.forEach(d => patientOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().fullName)}">${escapeHtml(d.data().fullName)}</option>`);
 
   let serviceOpts = '<option value="">Selecionar serviço…</option>';
-  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}">${escapeHtml(d.data().name)}</option>`);
+  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" data-price="${d.data().price||0}">${escapeHtml(d.data().name)}</option>`);
 
   document.getElementById('apptFormContainer').innerHTML = `
     <div class="card">
       <h2>Nova marcação</h2>
       <label>Paciente</label><select id="apptPatient">${patientOpts}</select>
-      <label>Serviço</label><select id="apptService">${serviceOpts}</select>
+      <label>Serviço</label><select id="apptService" onchange="document.getElementById('apptPrice').value = this.selectedOptions[0].dataset.price || 0">${serviceOpts}</select>
       <label>Data e hora</label><input id="apptStart" type="datetime-local" value="${window.__agendaSelectedDay ? window.__agendaSelectedDay + 'T09:00' : ''}">
+      ${paymentFieldsHTML(null)}
       <button class="primary" onclick="saveAppointment()">Guardar</button>
     </div>`;
 };
+
+// Campos de pagamento — reutilizados na criação e edição de marcações.
+function paymentFieldsHTML(a){
+  const status = a?.paymentStatus || 'pending';
+  const method = a?.paymentMethod || '';
+  return `
+    <label>Preço (€)</label>
+    <input id="apptPrice" type="number" step="0.01" value="${a?.price ?? ''}">
+    <label>Estado do pagamento</label>
+    <select id="apptPaymentStatus">
+      <option value="pending" ${status==='pending'?'selected':''}>Pendente</option>
+      <option value="paid" ${status==='paid'?'selected':''}>Pago</option>
+      <option value="partial" ${status==='partial'?'selected':''}>Pago parcialmente</option>
+    </select>
+    <label>Método (opcional)</label>
+    <select id="apptPaymentMethod">
+      <option value="">—</option>
+      <option value="dinheiro" ${method==='dinheiro'?'selected':''}>Dinheiro</option>
+      <option value="mbway" ${method==='mbway'?'selected':''}>MB WAY</option>
+      <option value="transferencia" ${method==='transferencia'?'selected':''}>Transferência</option>
+      <option value="cartao" ${method==='cartao'?'selected':''}>Cartão / TPA</option>
+      <option value="link" ${method==='link'?'selected':''}>Link de pagamento online</option>
+    </select>`;
+}
 
 window.saveAppointment = async function(){
   const patientSel = document.getElementById('apptPatient');
@@ -649,6 +761,9 @@ window.saveAppointment = async function(){
     startsAt: Timestamp.fromDate(start),
     endsAt: Timestamp.fromDate(end),
     status: 'confirmed',
+    price: parseFloat(document.getElementById('apptPrice').value || '0') || 0,
+    paymentStatus: document.getElementById('apptPaymentStatus').value,
+    paymentMethod: document.getElementById('apptPaymentMethod').value,
     createdAt: serverTimestamp()
   });
   toast('Marcação criada.');
@@ -666,7 +781,7 @@ window.editAppointment = async function(appointmentId){
   let patientOpts = '';
   patientsSnap.forEach(d => patientOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().fullName)}" ${d.id===a.patientId?'selected':''}>${escapeHtml(d.data().fullName)}</option>`);
   let serviceOpts = '';
-  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" ${d.id===a.serviceId?'selected':''}>${escapeHtml(d.data().name)}</option>`);
+  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" data-price="${d.data().price||0}" ${d.id===a.serviceId?'selected':''}>${escapeHtml(d.data().name)}</option>`);
 
   const startLocal = new Date(a.startsAt.toDate().getTime() - a.startsAt.toDate().getTimezoneOffset()*60000)
     .toISOString().slice(0,16);
@@ -675,8 +790,9 @@ window.editAppointment = async function(appointmentId){
     <div class="card">
       <h2>Editar marcação</h2>
       <label>Paciente</label><select id="apptPatient">${patientOpts}</select>
-      <label>Serviço</label><select id="apptService">${serviceOpts}</select>
+      <label>Serviço</label><select id="apptService" onchange="document.getElementById('apptPrice').value = this.selectedOptions[0].dataset.price || 0">${serviceOpts}</select>
       <label>Data e hora</label><input id="apptStart" type="datetime-local" value="${startLocal}">
+      ${paymentFieldsHTML(a)}
       <button class="primary" onclick="updateAppointment('${appointmentId}')">Guardar alterações</button>
     </div>`;
 };
@@ -698,9 +814,18 @@ window.updateAppointment = async function(appointmentId){
     serviceId: serviceSel.value,
     serviceName: serviceSel.selectedOptions[0].dataset.name,
     startsAt: Timestamp.fromDate(start),
-    endsAt: Timestamp.fromDate(end)
+    endsAt: Timestamp.fromDate(end),
+    price: parseFloat(document.getElementById('apptPrice').value || '0') || 0,
+    paymentStatus: document.getElementById('apptPaymentStatus').value,
+    paymentMethod: document.getElementById('apptPaymentMethod').value
   });
   toast('Marcação atualizada.');
+  renderView('agenda');
+};
+
+window.markAppointmentPaid = async function(appointmentId){
+  await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { paymentStatus: 'paid' });
+  toast('Marcado como pago.');
   renderView('agenda');
 };
 
@@ -1051,7 +1176,8 @@ window.viewSavedReport = async function(patientId, reportId){
       <h2>${escapeHtml(r.protocolName)}</h2>
       <textarea rows="14" readonly>${escapeHtml(r.reportText)}</textarea>
       <div class="row" style="margin-top:8px;">
-        <button class="ghost" onclick="downloadReportFile('${escapeHtml(r.protocolName)}', document.querySelector('#patientFormContainer textarea').value)">⬇️ Descarregar ficheiro</button>
+        <button class="primary" onclick="downloadReportPDF('${escapeHtml(r.protocolName)}', document.querySelector('#patientFormContainer textarea').value)">📄 Descarregar PDF</button>
+        <button class="ghost" onclick="shareReportPDF('${escapeHtml(r.protocolName)}', document.querySelector('#patientFormContainer textarea').value)">📤 Partilhar</button>
       </div>
     </div>`;
 };
@@ -2450,14 +2576,150 @@ function renderGeneratedReportScreen(protocolName, reportText){
       <h2>Relatório gerado</h2>
       <textarea rows="14" readonly>${escapeHtml(reportText)}</textarea>
       <div class="row" style="margin-top:8px;">
-        <button class="ghost" onclick="downloadReportFile('${escapeHtml(protocolName)}', document.querySelector('#patientFormContainer textarea').value)">⬇️ Descarregar ficheiro</button>
+        <button class="primary" onclick="downloadReportPDF('${escapeHtml(protocolName)}', document.querySelector('#patientFormContainer textarea').value)">📄 Descarregar PDF</button>
+        <button class="ghost" onclick="shareReportPDF('${escapeHtml(protocolName)}', document.querySelector('#patientFormContainer textarea').value)">📤 Partilhar</button>
       </div>
-      <p class="muted" style="margin-top:8px;">Guardado na ficha do paciente. Copie o texto ou descarregue o ficheiro para enviar por email/WhatsApp.</p>
+      <p class="muted" style="margin-top:8px;">Guardado na ficha do paciente. "Partilhar" abre o WhatsApp, Email ou outra app, já com o PDF pronto a enviar.</p>
     </div>`;
   toast('Relatório gerado e guardado.');
 }
 
-// ── Descarregar relatório/prescrição como ficheiro de texto ────────────
+// ── PDF elegante para relatórios (consulta, mapeamento, etc.) ──────────
+// Usa o nome do negócio e a cor principal do subscritor como cabeçalho.
+function hexToRgb(hex){
+  hex = (hex||'#2f6f5e').replace('#','');
+  if (hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+  const num = parseInt(hex,16) || 0x2f6f5e;
+  return [(num>>16)&255, (num>>8)&255, num&255];
+}
+
+function buildReportPDF(title, bodyText){
+  const branding = currentTenantDoc?.branding || {};
+  const businessName = currentTenantDoc?.businessName || 'Relatório';
+  const [r,g,b] = hexToRgb(branding.primaryColor);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'pt', format:'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 42;
+  let y;
+
+  doc.setFillColor(r,g,b);
+  doc.rect(0,0,pageWidth,72,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(15);
+  doc.text(businessName, margin, 32);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10.5);
+  doc.text(title, margin, 52);
+
+  y = 100;
+  doc.setTextColor(30,30,30);
+
+  bodyText.split('\n').forEach(line => {
+    if (y > pageHeight - 60){ doc.addPage(); y = 44; }
+    if (line.startsWith('== ')){
+      y += 8;
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(12);
+      doc.setTextColor(r,g,b);
+      doc.text(line.replace(/=/g,'').trim(), margin, y);
+      doc.setTextColor(30,30,30);
+      y += 16;
+    } else if (line.trim() === ''){
+      y += 8;
+    } else {
+      doc.setFont('helvetica', line.startsWith('•') ? 'bold' : 'normal');
+      doc.setFontSize(10.5);
+      const wrapped = doc.splitTextToSize(line, pageWidth - margin*2);
+      wrapped.forEach(w => {
+        if (y > pageHeight - 60){ doc.addPage(); y = 44; }
+        doc.text(w, margin, y);
+        y += 14;
+      });
+    }
+  });
+
+  doc.setFontSize(8);
+  doc.setTextColor(150,150,150);
+  doc.text(`Gerado em ${new Date().toLocaleString('pt-PT')}`, margin, pageHeight - 24);
+
+  return doc;
+}
+
+window.downloadReportPDF = function(title, content){
+  const doc = buildReportPDF(title, content);
+  doc.save(`${title.replace(/[^a-zA-Z0-9]+/g,'_')}.pdf`);
+};
+
+// Partilha o PDF diretamente (WhatsApp, Email, etc.) usando o seletor
+// nativo do telemóvel, quando disponível; caso contrário, descarrega o
+// ficheiro para o subscritor anexar manualmente.
+window.shareReportPDF = async function(title, content){
+  const doc = buildReportPDF(title, content);
+  const blob = doc.output('blob');
+  const filename = `${title.replace(/[^a-zA-Z0-9]+/g,'_')}.pdf`;
+  const file = new File([blob], filename, { type: 'application/pdf' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })){
+    try{
+      await navigator.share({ files: [file], title });
+      return;
+    }catch(e){ console.error(e); return; }
+  }
+  doc.save(filename);
+  toast('PDF descarregado — anexe-o manualmente no WhatsApp/Email.');
+};
+
+// ── Adicionar marcação ao calendário (.ics) ─────────────────────────────
+// Ficheiro standard que qualquer app de calendário sabe abrir — sem
+// precisar de ligar a conta Google/Apple nem pedir autorizações.
+function toICSDate(date){
+  return date.toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z';
+}
+function icsEscape(str){
+  return String(str||'').replace(/[\\;,]/g, m => '\\'+m).replace(/\n/g,'\\n');
+}
+
+window.downloadAppointmentICS = function(apptId){
+  const a = window.__apptCache?.[apptId];
+  if (!a){ toast('Não foi possível encontrar esta marcação.', true); return; }
+  const start = a.startsAt.toDate();
+  const end = a.endsAt ? a.endsAt.toDate() : new Date(start.getTime() + 50*60000);
+  const businessName = currentTenantDoc?.businessName || 'SaúdeCare';
+  const summary = `${a.serviceName || 'Marcação'} — ${a.patientName || ''}`;
+  const description = `Marcação em ${businessName}.${a.notes ? '\\n'+icsEscape(a.notes) : ''}`;
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//SaudeCare//PT',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:${apptId}@saudecare`,
+    `DTSTAMP:${toICSDate(new Date())}`,
+    `DTSTART:${toICSDate(start)}`,
+    `DTEND:${toICSDate(end)}`,
+    `SUMMARY:${icsEscape(summary)}`,
+    `DESCRIPTION:${description}`,
+    `LOCATION:${icsEscape(businessName)}`,
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'marcacao.ics';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  toast('Ficheiro de calendário descarregado — abra-o para adicionar ao seu calendário.');
+};
+
+// ── (antigo) Descarregar relatório/prescrição como ficheiro de texto ───
 // Funciona 100% no browser, sem servidor — o subscritor pode depois
 // guardar esse ficheiro onde quiser (telemóvel, Drive, pen, etc.).
 window.downloadReportFile = function(title, content){
