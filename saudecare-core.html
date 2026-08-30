@@ -208,6 +208,10 @@ const CLOUDINARY_UPLOAD_PRESET = 'ml_default';
 // Mesma função privilegiada usada no painel de admin, para ativar
 // membros de equipa sem precisar de Cloud Shell.
 const STAFF_CLAIMS_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/activateStaff';
+// Sincronização com o Google Calendar — ver Perfil → Google Calendar.
+const GOOGLE_CLIENT_ID = '455466438728-8ivguk4992s9iumup0gb732vo5khapda.apps.googleusercontent.com';
+const GOOGLE_OAUTH_REDIRECT_URI = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/googleOAuthCallback';
+const SYNC_CALENDAR_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/syncCalendarEvent';
 
 // Sobe um ficheiro para uma pasta do próprio subscritor e devolve o link
 // público, para usar exatamente como se fosse um link colado à mão.
@@ -504,6 +508,15 @@ onAuthStateChanged(auth, async (user) => {
   applyBranding();
   applyDynamicManifestAdmin();
   renderView('agenda');
+
+  const calendarParam = new URLSearchParams(window.location.search).get('calendarConnected');
+  if (calendarParam === '1'){
+    toast('Google Calendar ligado com sucesso!');
+    window.history.replaceState({}, '', window.location.pathname);
+  } else if (calendarParam === '0'){
+    toast('Não foi possível ligar o Google Calendar. Tente novamente.', true);
+    window.history.replaceState({}, '', window.location.pathname);
+  }
 });
 
 document.querySelectorAll('nav button[data-view]').forEach(btn=>{
@@ -996,6 +1009,54 @@ async function getAppointmentsForDay(dateObj){
   return list;
 }
 
+// ── Sincronização automática com o Google Calendar ──────────────────────
+// Não faz nada visível se o subscritor não tiver ligado a conta (a função
+// do Netlify devolve skipped:'not_connected' e seguimos em frente).
+async function syncAppointmentToGoogle(action, appt, appointmentId, googleEventId){
+  try{
+    const idToken = await currentUser.getIdToken();
+    const res = await fetch(SYNC_CALENDAR_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+      body: JSON.stringify({
+        tenantId, action, googleEventId,
+        summary: `${appt.serviceName || 'Marcação'} — ${appt.patientName || ''}`,
+        description: `Marcação em ${currentTenantDoc?.businessName || 'SaúdeCare'}${appt.local==='online' ? ' (online)' : ''}.`,
+        location: currentTenantDoc?.businessName || '',
+        startISO: appt.startsAt instanceof Date ? appt.startsAt.toISOString() : appt.startsAt,
+        endISO: appt.endsAt instanceof Date ? appt.endsAt.toISOString() : appt.endsAt
+      })
+    });
+    const data = await res.json();
+    if (data.ok && data.googleEventId && appointmentId){
+      await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { googleEventId: data.googleEventId });
+    }
+  }catch(e){
+    console.error('Falha na sincronização com o Google Calendar:', e);
+  }
+}
+
+window.connectGoogleCalendar = function(){
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: GOOGLE_OAUTH_REDIRECT_URI,
+    response_type: 'code',
+    scope: 'https://www.googleapis.com/auth/calendar.events',
+    access_type: 'offline',
+    prompt: 'consent',
+    state: tenantId
+  });
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+};
+
+window.disconnectGoogleCalendar = async function(){
+  if (!confirm('Desligar o Google Calendar? As marcações deixam de ser sincronizadas.')) return;
+  await updateDoc(doc(db, 'tenants', tenantId), { googleCalendar: null });
+  currentTenantDoc.googleCalendar = null;
+  toast('Google Calendar desligado.');
+  renderView('profile');
+};
+
 async function checkAppointmentConflict({ staffUid, local, start, end, excludeId }){
   const dayAppts = await getAppointmentsForDay(start);
   for (const a of dayAppts){
@@ -1063,7 +1124,8 @@ window.saveAppointment = async function(){
     data.packagePatientIdx = usePackageIdx;
     await consumePackageSession(patientSel.value, usePackageIdx);
   }
-  await addDoc(collection(db, 'tenants', tenantId, 'appointments'), data);
+  const newRef = await addDoc(collection(db, 'tenants', tenantId, 'appointments'), data);
+  syncAppointmentToGoogle('create', { ...data, startsAt: start, endsAt: end }, newRef.id);
   toast('Marcação criada.');
   renderView('agenda');
 };
@@ -1139,7 +1201,10 @@ window.updateAppointment = async function(appointmentId){
     return;
   }
 
-  await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), {
+  const existingSnap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
+  const existingGoogleEventId = existingSnap.data()?.googleEventId;
+
+  const updateData = {
     patientId: patientSel.value,
     patientName: patientSel.selectedOptions[0].dataset.name,
     serviceId: serviceSel.value,
@@ -1153,7 +1218,9 @@ window.updateAppointment = async function(appointmentId){
     price: parseFloat(document.getElementById('apptPrice').value || '0') || 0,
     paymentStatus: document.getElementById('apptPaymentStatus').value,
     paymentMethod: document.getElementById('apptPaymentMethod').value
-  });
+  };
+  await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), updateData);
+  syncAppointmentToGoogle('update', { ...updateData, startsAt: start, endsAt: end }, appointmentId, existingGoogleEventId);
   toast('Marcação atualizada.');
   renderView('agenda');
 };
@@ -1166,14 +1233,19 @@ window.markAppointmentPaid = async function(appointmentId){
 
 window.cancelAppointment = async function(appointmentId){
   if (!confirm('Cancelar esta marcação? Fica registada como cancelada, não é apagada.')) return;
+  const existingSnap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
   await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { status: 'cancelled' });
+  syncAppointmentToGoogle('delete', {}, appointmentId, existingSnap.data()?.googleEventId);
   toast('Marcação cancelada.');
   renderView('agenda');
 };
 
 window.deleteAppointment = async function(appointmentId){
   if (!confirm('Apagar esta marcação definitivamente? Não pode ser desfeito.')) return;
+  const existingSnap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
+  const existingGoogleEventId = existingSnap.data()?.googleEventId;
   await deleteDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
+  syncAppointmentToGoogle('delete', {}, appointmentId, existingGoogleEventId);
   toast('Marcação apagada.');
   renderView('agenda');
 };
@@ -3260,6 +3332,15 @@ async function renderProfile(main){
       <label>🔗 O seu link público — partilhe nas redes sociais, WhatsApp, etc.</label>
       <input readonly value="${publicLink}" onclick="this.select()">
       <button class="primary" onclick="navigator.clipboard.writeText('${publicLink}').then(()=>toast('Link copiado.'))">Copiar link público</button>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:6px;">📅 Google Calendar</h3>
+      ${currentTenantDoc?.googleCalendar?.refreshToken
+        ? `<p class="muted">✅ Ligado — as suas marcações são sincronizadas automaticamente.</p>
+           <button class="ghost" onclick="disconnectGoogleCalendar()">Desligar</button>`
+        : `<p class="muted" style="margin-bottom:8px;">Ligue a sua conta para as marcações aparecerem automaticamente no seu Google Calendar, mesmo com a app fechada.</p>
+           <button class="primary" onclick="connectGoogleCalendar()">Ligar ao Google Calendar</button>`
+      }
     </div>
     <div class="card">
       <label>Nome do negócio</label>
