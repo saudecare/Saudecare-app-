@@ -215,7 +215,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-30-7';
+const APP_VERSION = '2026-08-30-9';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -4260,7 +4260,7 @@ window.sendChatbotSuggestion = function(text){
 };
 
 // ── Ensinar o assistente (só disponível com sessão iniciada) ────────────
-window.openTeachBotForm = function(){
+window.openTeachBotForm = function(originalQuestion){
   if (!tenantId){
     chatbotAppendMessage('Só é possível ensinar o assistente com uma sessão iniciada — entre na sua conta primeiro.', 'bot');
     return;
@@ -4268,9 +4268,10 @@ window.openTeachBotForm = function(){
   const box = document.getElementById('chatbotMessages');
   const div = document.createElement('div');
   div.className = 'chatbotMsg bot';
+  const suggestedKeywords = originalQuestion ? escapeAttrJs(originalQuestion.split(/\s+/).slice(0,4).join(' ')) : '';
   div.innerHTML = `
-    <p style="margin:0 0 6px;">Vamos ensinar algo novo! Escreva palavras-chave que os seus clientes possam usar (separadas por vírgula) e a resposta que o assistente deve dar a partir de agora:</p>
-    <input id="teachKeywords" placeholder="ex: horário, quando abrem" style="width:100%;margin-bottom:6px;padding:6px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
+    <p style="margin:0 0 6px;">${originalQuestion ? 'Ainda não sei responder a isso — vamos ensinar?' : 'Vamos ensinar algo novo!'} Escreva palavras-chave que os seus clientes possam usar (separadas por vírgula) e a resposta que o assistente deve dar a partir de agora:</p>
+    <input id="teachKeywords" placeholder="ex: horário, quando abrem" value="${suggestedKeywords}" style="width:100%;margin-bottom:6px;padding:6px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;">
     <textarea id="teachAnswer" placeholder="Resposta do assistente…" rows="3" style="width:100%;margin-bottom:6px;padding:6px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;"></textarea>
     <button onclick="saveTeachEntry(this)" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;">Guardar</button>
   `;
@@ -4297,22 +4298,50 @@ window.saveTeachEntry = async function(btn){
 async function tryChatbotWeeklyAgenda(text){
   const t = stripAccents(text);
   if (!tenantId) return null;
-  if (!(t.includes('agenda') && (t.includes('semana') || t.includes('esta semana') || t.includes('hoje')))) return null;
 
-  const now = new Date();
-  const end = new Date(now.getTime() + 7*86400000);
+  const mentionsAgenda = t.includes('agenda') || t.includes('marcac') || t.includes('consulta') || t.includes('sessao') || t.includes('sessoes');
+  if (!mentionsAgenda) return null;
+
+  // Percebe a que período a pessoa se refere — por omissão, olha para os
+  // próximos 7 dias, mas ajusta-se se falar em "hoje" ou "amanhã".
+  let rangeStart = new Date();
+  let rangeEnd = new Date(rangeStart.getTime() + 7*86400000);
+  let label = 'nos próximos 7 dias';
+
+  if (t.includes('amanha')){
+    rangeStart = new Date(); rangeStart.setDate(rangeStart.getDate()+1); rangeStart.setHours(0,0,0,0);
+    rangeEnd = new Date(rangeStart); rangeEnd.setHours(23,59,59,999);
+    label = 'amanhã';
+  } else if (t.includes('hoje')){
+    rangeStart = new Date(); rangeStart.setHours(0,0,0,0);
+    rangeEnd = new Date(rangeStart); rangeEnd.setHours(23,59,59,999);
+    label = 'hoje';
+  } else if (t.includes('semana')){
+    label = 'nos próximos 7 dias';
+  } else if (!(t.includes('tenho') || t.includes('ver') || t.includes('quais') || t.includes('quantas') || t.includes('quando') || t.includes('proxim') || t.includes('como esta') || t.includes('como e que esta'))){
+    // Só uma palavra solta como "marcação" sem intenção clara de consulta
+    // (ex: dentro de outra frase) — não assume que é uma pergunta à agenda.
+    return null;
+  }
+
   const q = query(
     collection(db, 'tenants', tenantId, 'appointments'),
-    where('startsAt', '>=', Timestamp.fromDate(now)),
-    where('startsAt', '<=', Timestamp.fromDate(end))
+    where('startsAt', '>=', Timestamp.fromDate(rangeStart)),
+    where('startsAt', '<=', Timestamp.fromDate(rangeEnd))
   );
   const snap = await getDocs(q);
   const list = [];
   snap.forEach(d => { const a = d.data(); if (a.status !== 'cancelled') list.push(a); });
   list.sort((a,b) => a.startsAt.toDate() - b.startsAt.toDate());
 
-  if (!list.length) return '📅 Não tem marcações nos próximos 7 dias.';
-  let out = `📅 Tem ${list.length} marcação(ões) nos próximos 7 dias:\n\n`;
+  const isDaySpecific = label === 'hoje' || label === 'amanhã';
+
+  if (!list.length){
+    return isDaySpecific ? `Não, não tem nenhuma marcação ${label}.` : `📅 Não tem marcações ${label}.`;
+  }
+  let out = isDaySpecific
+    ? `Sim — tem ${list.length} marcação(ões) ${label}:\n\n`
+    : `📅 Tem ${list.length} marcação(ões) ${label}:\n\n`;
   list.slice(0, 15).forEach(a => {
     const d = a.startsAt.toDate();
     out += `• ${d.toLocaleDateString('pt-PT', {weekday:'short', day:'2-digit', month:'2-digit'})} às ${d.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})} — ${a.patientName||'?'} (${a.serviceName||'?'})\n`;
@@ -4425,7 +4454,13 @@ window.sendChatbotMessage = async function(){
   document.getElementById('chatbotMessages').appendChild(thinking);
   const answer = await resolveChatbotAnswer(text);
   thinking.remove();
-  chatbotAppendMessage(answer, 'bot');
+
+  if (answer === CHATBOT_FALLBACK && tenantId){
+    chatbotAppendMessage(answer, 'bot');
+    openTeachBotForm(text);
+  } else {
+    chatbotAppendMessage(answer, 'bot');
+  }
   speakChatbotText(answer);
 };
 
