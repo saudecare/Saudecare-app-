@@ -14,7 +14,7 @@
 <title>SaúdeCare</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <style>
   :root{
     --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#ffffff;
@@ -63,6 +63,10 @@
   .hintBox{background:#eef6f2;border:1px solid #d7ebe2;border-radius:10px;padding:10px 12px;
     font-size:12.5px;color:var(--primary-dark);margin-bottom:14px;line-height:1.4;}
   .mapFullscreenOverlay{position:fixed;inset:0;background:#0b1310;z-index:2000;display:flex;flex-direction:column;}
+.patientOverlay{position:fixed;inset:0;background:#f6f8f7;z-index:1900;display:flex;flex-direction:column;}
+.patientOverlayHeader{background:var(--primary);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.patientOverlayHeader button{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:20px;line-height:1;cursor:pointer;}
+.patientOverlayBody{flex:1;overflow-y:auto;padding:14px;}
   .mapFullscreenHeader{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;color:#fff;flex-shrink:0;}
   .mapFullscreenHeader button{background:rgba(255,255,255,.15);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;}
   .mapFullscreenBody{flex:1;display:flex;align-items:center;justify-content:center;padding:6px;overflow:auto;min-height:0;}
@@ -220,7 +224,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-30-15';
+const APP_VERSION = '2026-08-31-1';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -947,6 +951,24 @@ async function renderHome(main){
     const pendingStaff = staffSnap.docs.filter(d => d.data().status === 'pending_activation').length;
     if (pendingStaff) alerts.push({ icon: '👥', text: `${pendingStaff} pedido(s) de equipa por aprovar`, view: 'team' });
   }
+
+  const unreadByPatient = await Promise.all(patientsSnap.docs.map(async d => {
+    const msgsSnap = await getDocs(query(
+      collection(db, 'tenants', tenantId, 'patients', d.id, 'messages'),
+      where('sender', '==', 'patient'), where('readByProfessional', '==', false)
+    ));
+    return { patientId: d.id, patientName: d.data().fullName, count: msgsSnap.size };
+  }));
+  const withUnread = unreadByPatient.filter(p => p.count > 0);
+  const totalUnread = withUnread.reduce((sum, p) => sum + p.count, 0);
+  let unreadHtml = '';
+  if (totalUnread){
+    unreadHtml = `<div class="appt-item">
+      <div>💬 ${totalUnread} mensagem(ns) por ler</div>
+      ${withUnread.map(p => `<div class="muted" style="cursor:pointer;margin-top:2px;" onclick="viewPatient('${p.patientId}')">↳ ${escapeHtml(p.patientName)} (${p.count})</div>`).join('')}
+    </div>`;
+  }
+
   if (waitlistSnap.size){
     alerts.push({ icon: '⏳', text: `${waitlistSnap.size} pessoa(s) em lista de espera`, view: 'waitlist' });
   }
@@ -964,10 +986,10 @@ async function renderHome(main){
     }
   }
 
-  const alertsHtml = alerts.length
+  const alertsHtml = (alerts.length || unreadHtml)
     ? alerts.map(a => `<div class="appt-item row" style="cursor:pointer;" onclick="renderView('${a.view}')">
         <div>${a.icon} ${escapeHtml(a.text)}</div><div>›</div>
-      </div>`).join('')
+      </div>`).join('') + unreadHtml
     : '<p class="muted">Sem alertas — está tudo em dia. ✅</p>';
 
   const now = new Date();
@@ -1609,30 +1631,49 @@ window.deleteAppointment = async function(appointmentId){
 // ── PACIENTES (dados de saúde — tratamento reforçado) ──────────────────
 async function renderPatients(main){
   const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients'), orderBy('fullName')));
-  let rows = '';
-  snap.forEach(d=>{
-    const p = d.data();
-    rows += `<div class="patient-item row">
-      <div><strong>${escapeHtml(p.fullName)}</strong>
-        <div class="muted">${escapeHtml(p.phone||'')} ${p.consentGivenAt ? '· consentimento registado' : '· <span style=\"color:var(--danger)\">sem consentimento</span>'}</div>
-      </div>
-      <div>
-        <button class="ghost" onclick="viewPatient('${d.id}')">Ver ficha</button>
-        <button class="danger" onclick="deletePatient('${d.id}','${escapeHtml(p.fullName)}')">Apagar</button>
-      </div>
-    </div>`;
-  });
-  if (!rows) rows = '<p class="muted">Ainda sem pacientes.</p>';
+  window.__allPatientsCache = [];
+  snap.forEach(d => window.__allPatientsCache.push({ id: d.id, ...d.data() }));
 
   main.innerHTML = `
     <div class="row"><h2>Pacientes</h2>
       <button class="primary" onclick="openNewPatient()">+ Novo paciente</button>
     </div>
-    ${hintBox('A sua lista de clientes/pacientes. Guarde o consentimento RGPD de cada um antes de registar dados sensíveis — é obrigatório por lei.')}
-    <div class="card">${rows}</div>
+    ${hintBox('A sua lista de clientes/pacientes, de A a Z. Guarde o consentimento RGPD de cada um antes de registar dados sensíveis — é obrigatório por lei.')}
+    <input id="patientSearchInput" placeholder="🔍 Pesquisar por nome, telefone ou email…" oninput="filterPatientsList()" style="margin-bottom:10px;">
+    <div class="card" id="patientsListBox"></div>
     <div id="patientFormContainer"></div>
   `;
+  renderPatientsListRows(window.__allPatientsCache);
 }
+
+function renderPatientsListRows(list){
+  const box = document.getElementById('patientsListBox');
+  if (!box) return;
+  let rows = '';
+  list.forEach(p => {
+    rows += `<div class="patient-item row">
+      <div style="cursor:pointer;flex:1;" onclick="viewPatient('${p.id}')">
+        <strong>${escapeHtml(p.fullName)}</strong>
+        <div class="muted">${escapeHtml(p.phone||'')} ${p.consentGivenAt ? '· consentimento registado' : '· <span style=\"color:var(--danger)\">sem consentimento</span>'}</div>
+      </div>
+      <div>
+        <button class="ghost" onclick="viewPatient('${p.id}')">Ver ficha</button>
+        <button class="danger" onclick="deletePatient('${p.id}','${escapeHtml(p.fullName)}')">Apagar</button>
+      </div>
+    </div>`;
+  });
+  box.innerHTML = rows || '<p class="muted">Ainda sem pacientes.</p>';
+}
+
+window.filterPatientsList = function(){
+  const q = stripAccents(document.getElementById('patientSearchInput').value.trim());
+  if (!q){ renderPatientsListRows(window.__allPatientsCache); return; }
+  const filtered = window.__allPatientsCache.filter(p => {
+    const haystack = stripAccents(`${p.fullName||''} ${p.phone||''} ${p.email||''}`);
+    return haystack.includes(q);
+  });
+  renderPatientsListRows(filtered);
+};
 
 let patientCustomFieldsDraft = [];
 let patientAttachmentsDraft = [];
@@ -1714,6 +1755,7 @@ window.openNewPatient = function(){
   patientCustomFieldsDraft = [];
   patientAttachmentsDraft = [];
   window.__editingPatientId = null;
+  showPatientOverlay('Novo paciente', '');
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
       <h2>Novo paciente</h2>
@@ -1743,7 +1785,7 @@ window.editPatient = async function(patientId){
   patientCustomFieldsDraft = (p.customFields || []).map(f => ({...f}));
   patientAttachmentsDraft = (p.attachments || []).map(f => ({...f}));
   window.__editingPatientId = patientId;
-  document.getElementById('patientFormContainer').innerHTML = `
+  showPatientOverlay('Editar paciente', `
     <div class="card">
       <h2>Editar paciente</h2>
       <label>Nome completo</label><input id="pFullName" value="${escapeHtml(p.fullName||'')}">
@@ -1758,7 +1800,7 @@ window.editPatient = async function(patientId){
         <button class="primary" onclick="updatePatient('${patientId}')">Guardar alterações</button>
         <button class="ghost" onclick="viewPatient('${patientId}')">Cancelar</button>
       </div>
-    </div>`;
+    </div>`);
   refreshPatientAttachmentsList();
 };
 
@@ -1840,7 +1882,27 @@ window.savePatient = async function(){
     createdBy: currentUser.uid
   });
   toast('Paciente registado, com assinatura de consentimento guardada.');
+  closePatientOverlay();
   renderView('patients');
+};
+
+// ── Janela dedicada da ficha do paciente (em vez de aparecer no fundo da lista) ──
+function showPatientOverlay(title, bodyHtml){
+  document.getElementById('patientOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'patientOverlay';
+  overlay.id = 'patientOverlay';
+  overlay.innerHTML = `
+    <div class="patientOverlayHeader">
+      <strong>${escapeHtml(title)}</strong>
+      <button onclick="closePatientOverlay()">✕</button>
+    </div>
+    <div class="patientOverlayBody">${bodyHtml}<div id="patientFormContainer"></div></div>`;
+  document.body.appendChild(overlay);
+}
+
+window.closePatientOverlay = function(){
+  document.getElementById('patientOverlay')?.remove();
 };
 
 window.viewPatient = async function(patientId){
@@ -1889,7 +1951,7 @@ window.viewPatient = async function(patientId){
     ? (p.attachments||[]).map(f => `<div class="appt-item row"><span>${escapeHtml(f.label)}</span><a href="${escapeHtml(f.url)}" target="_blank" rel="noopener"><button class="ghost">Abrir</button></a></div>`).join('')
     : '<p class="muted">Sem ficheiros anexados.</p>';
 
-  document.getElementById('patientFormContainer').innerHTML = `
+  const overlayBody = `
     <div class="card">
       <div class="row">
         <div class="row" style="gap:12px;">
@@ -1938,6 +2000,7 @@ window.viewPatient = async function(patientId){
       <h2>Fichas respondidas</h2>
       ${formRespHtml}
     </div>`;
+  showPatientOverlay(p.fullName, overlayBody);
   renderPatientPortalLink(patientId, p);
   renderPatientMessages(patientId);
 };
@@ -1972,9 +2035,11 @@ async function renderPatientMessages(patientId){
     orderBy('createdAt', 'asc')
   ));
   let msgsHtml = '';
+  const unreadDocs = [];
   snap.forEach(d => {
     const m = d.data();
     const isPatient = m.sender === 'patient';
+    if (isPatient && m.readByProfessional === false) unreadDocs.push(d.ref);
     const time = m.createdAt?.toDate ? m.createdAt.toDate().toLocaleString('pt-PT', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
     msgsHtml += `<div style="text-align:${isPatient?'left':'right'};margin-bottom:6px;">
       <span style="display:inline-block;max-width:80%;padding:6px 10px;border-radius:10px;background:${isPatient?'#e9f0ee':'var(--primary)'};color:${isPatient?'var(--text)':'#fff'};font-size:13px;">${escapeHtml(m.text)}</span>
@@ -1989,6 +2054,7 @@ async function renderPatientMessages(patientId){
       <input id="patientMsgInput" placeholder="Escrever mensagem…" onkeydown="if(event.key==='Enter')sendPatientMessage('${patientId}')">
       <button class="primary" onclick="sendPatientMessage('${patientId}')">Enviar</button>
     </div>`;
+  unreadDocs.forEach(ref => updateDoc(ref, { readByProfessional: true }).catch(()=>{}));
 }
 
 window.sendPatientMessage = async function(patientId){
@@ -2221,6 +2287,7 @@ window.deletePatient = async function(patientId, name){
   await logAudit('patient_deleted', patientId);
   await deleteDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
   toast('Paciente apagado.');
+  closePatientOverlay();
   renderView('patients');
 };
 
@@ -2954,20 +3021,40 @@ function bodyDiagramHTML(bodyImages, side, overlayHtml){
   const inner = imgUrl
     ? `<img src="${escapeHtml(imgUrl)}" style="width:100%;display:block;border-radius:8px;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
        <p class="muted" style="display:none;padding:30px 10px;text-align:center;">Não foi possível carregar esta imagem — verifique o link.</p>`
-    : `<svg viewBox="0 0 200 400" style="width:100%;display:block;" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="100" cy="42" rx="30" ry="34" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-        <rect x="68" y="76" width="64" height="94" rx="20" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-        <rect x="34" y="82" width="30" height="128" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-        <rect x="136" y="82" width="30" height="128" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-        <rect x="70" y="168" width="28" height="160" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-        <rect x="102" y="168" width="28" height="160" rx="14" style="fill:#e4ede9;stroke:#b9cfc6;stroke-width:2;"/>
-       </svg>`;
+    : (side === 'costas' ? DEFAULT_BODY_SVG_BACK : DEFAULT_BODY_SVG_FRONT);
   return `<div class="mapDiagramWrap" style="position:relative;width:100%;max-width:380px;margin:0 auto;">
     ${inner}
     <div style="position:absolute;top:4px;left:8px;font-size:11px;background:rgba(0,0,0,.45);color:#fff;padding:2px 8px;border-radius:10px;">${side==='costas'?'Costas':'Frente'}</div>
     ${overlayHtml}
   </div>`;
 }
+
+const DEFAULT_BODY_SVG_FRONT = `<svg viewBox="0 0 200 420" style="width:100%;display:block;" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="100" cy="34" rx="24" ry="28" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <path d="M88,56 L88,72 Q100,80 112,72 L112,56 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <path d="M62,80 C62,74 70,70 80,70 L120,70 C130,70 138,74 138,80 L134,142 C132,156 128,166 126,176 L74,176 C72,166 68,156 66,142 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <circle cx="86" cy="98" r="3.5" style="fill:#c98b5f;"/>
+  <circle cx="114" cy="98" r="3.5" style="fill:#c98b5f;"/>
+  <circle cx="100" cy="140" r="3" style="fill:#c98b5f;"/>
+  <path d="M63,80 C50,86 40,112 36,142 C33,167 30,192 28,216 C27,223 30,227 35,227 C40,227 43,223 44,216 C48,191 53,166 58,143 C61,121 64,100 66,84 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <path d="M137,80 C150,86 160,112 164,142 C167,167 170,192 172,216 C173,223 170,227 165,227 C160,227 157,223 156,216 C152,191 147,166 142,143 C139,121 136,100 134,84 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <path d="M74,176 C72,220 70,270 68,320 C67,350 66,376 65,396 C64,403 68,407 74,407 C80,407 83,403 83,396 C85,371 88,341 90,311 C92,271 94,222 96,179 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <path d="M126,176 C128,220 130,270 132,320 C133,350 134,376 135,396 C136,403 132,407 126,407 C120,407 117,403 117,396 C115,371 112,341 110,311 C108,271 106,222 104,179 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+</svg>`;
+
+const DEFAULT_BODY_SVG_BACK = `<svg viewBox="0 0 200 420" style="width:100%;display:block;" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="100" cy="34" rx="24" ry="28" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <path d="M88,56 L88,72 Q100,80 112,72 L112,56 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <path d="M62,80 C62,74 70,70 80,70 L120,70 C130,70 138,74 138,80 L134,142 C132,156 128,166 126,176 L74,176 C72,166 68,156 66,142 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <line x1="100" y1="76" x2="100" y2="172" style="stroke:#c98b5f;stroke-width:1.5;stroke-dasharray:2,3;"/>
+  <path d="M78,90 Q70,105 78,122" style="fill:none;stroke:#c98b5f;stroke-width:1.5;"/>
+  <path d="M122,90 Q130,105 122,122" style="fill:none;stroke:#c98b5f;stroke-width:1.5;"/>
+  <path d="M63,80 C50,86 40,112 36,142 C33,167 30,192 28,216 C27,223 30,227 35,227 C40,227 43,223 44,216 C48,191 53,166 58,143 C61,121 64,100 66,84 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <path d="M137,80 C150,86 160,112 164,142 C167,167 170,192 172,216 C173,223 170,227 165,227 C160,227 157,223 156,216 C152,191 147,166 142,143 C139,121 136,100 134,84 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <path d="M74,176 C72,195 82,205 100,205 C118,205 128,195 126,176 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <path d="M74,176 C72,220 70,270 68,320 C67,350 66,376 65,396 C64,403 68,407 74,407 C80,407 83,403 83,396 C85,371 88,341 90,311 C92,271 94,222 96,179 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+  <path d="M126,176 C128,220 130,270 132,320 C133,350 134,376 135,396 C136,403 132,407 126,407 C120,407 117,403 117,396 C115,371 112,341 110,311 C108,271 106,222 104,179 Z" style="fill:#f3d0b0;stroke:#c98b5f;stroke-width:2;"/>
+</svg>`;
 
 // ── Ecrã inteiro reutilizável para qualquer mapa do corpo ───────────────
 // Recebe o nome de uma função global que sabe (re)desenhar o diagrama —
@@ -4031,6 +4118,26 @@ async function renderProfile(main){
       }
     </div>
     <div class="card">
+      <h2>💻 Consultório Online</h2>
+      ${hintBox('Escolha como quer atender os seus pacientes online. Isto aparece no Portal do Paciente para as consultas marcadas como "Online".')}
+      <label>Ferramenta</label>
+      <select id="pfOnlineTool" onchange="toggleOnlineToolFields()">
+        <option value="jitsi" ${(!currentTenantDoc?.onlineConsult?.tool || currentTenantDoc?.onlineConsult?.tool==='jitsi')?'selected':''}>Videochamada grátis incluída (Jitsi, sem conta)</option>
+        <option value="custom" ${currentTenantDoc?.onlineConsult?.tool==='custom'?'selected':''}>O meu próprio link fixo (Zoom, Google Meet, etc.)</option>
+        <option value="whatsapp" ${currentTenantDoc?.onlineConsult?.tool==='whatsapp'?'selected':''}>WhatsApp</option>
+      </select>
+      <div id="pfOnlineCustomField" class="${currentTenantDoc?.onlineConsult?.tool==='custom'?'':'hidden'}">
+        <label>Link fixo da sua sala (Zoom/Meet/etc.)</label>
+        <input id="pfOnlineCustomLink" value="${escapeHtml(currentTenantDoc?.onlineConsult?.customLink||'')}" placeholder="https://meet.google.com/xxx-xxxx-xxx">
+      </div>
+      <div id="pfOnlineWhatsappField" class="${currentTenantDoc?.onlineConsult?.tool==='whatsapp'?'':'hidden'}">
+        <label>Número de WhatsApp (com indicativo do país)</label>
+        <input id="pfOnlineWhatsapp" value="${escapeHtml(currentTenantDoc?.onlineConsult?.whatsappNumber||'')}" placeholder="351912345678">
+        <p class="muted" style="margin-top:4px;">O paciente vai poder abrir uma conversa consigo — a chamada de vídeo em si tem de ser iniciada por si dentro do WhatsApp, não é automática.</p>
+      </div>
+      <button class="primary" style="margin-top:8px;" onclick="saveOnlineConsultSettings()">Guardar</button>
+    </div>
+    <div class="card">
       <h2>Termo de consentimento informado</h2>
       ${hintBox('Texto pronto (editável) que pode usar como base do consentimento dos seus clientes. Ajuste-o à sua área de atuação e às suas obrigações legais específicas antes de usar — este texto é apenas um ponto de partida genérico.')}
       <textarea id="pfConsentText" rows="8">${escapeHtml(currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT)}</textarea>
@@ -4113,6 +4220,25 @@ async function renderProfile(main){
     </div>
   `;
 }
+
+window.toggleOnlineToolFields = function(){
+  const tool = document.getElementById('pfOnlineTool').value;
+  document.getElementById('pfOnlineCustomField').classList.toggle('hidden', tool !== 'custom');
+  document.getElementById('pfOnlineWhatsappField').classList.toggle('hidden', tool !== 'whatsapp');
+};
+
+window.saveOnlineConsultSettings = async function(){
+  const tool = document.getElementById('pfOnlineTool').value;
+  const onlineConsult = {
+    tool,
+    customLink: document.getElementById('pfOnlineCustomLink').value.trim(),
+    whatsappNumber: document.getElementById('pfOnlineWhatsapp').value.replace(/\D/g,'')
+  };
+  await updateDoc(doc(db, 'tenants', tenantId), { onlineConsult });
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  currentTenantDoc = snap.data();
+  toast('Preferência de consultório online guardada.');
+};
 
 window.saveConsentText = async function(){
   const consentText = document.getElementById('pfConsentText').value.trim();
@@ -4529,23 +4655,11 @@ const CHATBOT_KB = [
   { keywords: ['mensagem','whatsapp','lembrete','confirmacao','lembrete automatico','envio automatico'],
     answer: 'Em Perfil → "Modelos de mensagens" pode editar os textos de confirmação, lembrete e cancelamento, com marcadores como {{nome}} e {{data}}. O WhatsApp continua manual (copiar e enviar); o lembrete por email pode ser enviado automaticamente 24h antes da consulta, ativando a opção no mesmo sítio — funciona para pacientes com email registado.' },
   { keywords: ['teste','trial','experimentar','quanto custa','preco do saudecare','subscricao','plano'],
-    answer: 'O SaúdeCare tem um período de teste gratuito de 14 dias. Para saber mais sobre os planos disponíveis, contacte-nos através da página pública ou do email de suporte.' },
-  { keywords: ['reiki'],
-    answer: 'Reiki é uma prática complementar de origem japonesa, baseada na imposição de mãos, associada por quem a pratica à harmonização energética. Não substitui acompanhamento médico. Cada profissional na app define os seus próprios serviços e preços de Reiki.' },
-  { keywords: ['radiestesia','pendulo'],
-    answer: 'Radiestesia é uma prática que usa um pêndulo ou outros instrumentos para, segundo os seus praticantes, detetar informação energética. É considerada uma prática complementar, sem validação científica estabelecida, e não substitui diagnóstico médico.' },
-  { keywords: ['psicologia','psicologo','ansiedade','terapia'],
-    answer: 'A Psicologia é uma área profissional regulamentada, focada no acompanhamento da saúde mental e do comportamento. Na app, cada psicólogo(a) gere as suas próprias consultas, fichas e protocolos de acompanhamento.' },
-  { keywords: ['fisioterapia','fisioterapeuta'],
-    answer: 'A Fisioterapia é uma área da saúde regulamentada, focada na reabilitação e prevenção de disfunções do movimento. Na app, cada fisioterapeuta pode gerir os seus próprios protocolos de tratamento e evolução dos pacientes.' },
-  { keywords: ['nutricao','nutricionista'],
-    answer: 'A Nutrição é uma área da saúde regulamentada, focada na alimentação e no bem-estar. Cada nutricionista na app gere os seus próprios planos, fichas e acompanhamento de pacientes.' },
-  { keywords: ['coach','coaching'],
-    answer: 'Coaching é um processo de acompanhamento orientado para objetivos pessoais ou profissionais. Cada coach na app define os seus próprios serviços, protocolos e fichas de acompanhamento.' }
+    answer: 'O SaúdeCare tem um período de teste gratuito de 14 dias. Para saber mais sobre os planos disponíveis, contacte-nos através da página pública ou do email de suporte.' }
 ];
 
 const CHATBOT_FALLBACK = 'Não tenho uma resposta pronta para isso. Pode reformular a pergunta, ou contactar diretamente o profissional/suporte para mais detalhes.';
-const CHATBOT_SUGGESTIONS = ['Como criar uma marcação?', 'O que é Reiki?', 'Como convidar a equipa?', 'Como fazer backup?'];
+const CHATBOT_SUGGESTIONS = ['Como criar uma marcação?', 'Tenho marcações amanhã?', 'Como convidar a equipa?', 'Como fazer backup?'];
 
 function matchChatbotAnswer(userText){
   const text = stripAccents(userText);
@@ -4848,7 +4962,7 @@ window.runKnowledgePdf = async function(input){
   msg.classList.remove('hidden');
   msg.textContent = 'A extrair o texto do PDF, aguarde…';
   try{
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
     const buffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
     let fullText = '';
