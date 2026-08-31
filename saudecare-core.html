@@ -7,11 +7,13 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <link rel="manifest" id="dynamicManifest" href="manifest.json">
-<link rel="apple-touch-icon" id="appleTouchIcon" href="">
+<link rel="apple-touch-icon" id="appleTouchIcon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzJmNmY1ZSIvPgo8cGF0aCBkPSJNOTYgNDAgQzcwIDYwIDUyIDg0IDUyIDExMiBDNTIgMTM0IDcxIDE1MCA5NiAxNTAgQzEyMSAxNTAgMTQwIDEzNCAxNDAgMTEyIEMxNDAgODQgMTIyIDYwIDk2IDQwIFoiIGZpbGw9IiNlYWYzZWYiLz4KPGNpcmNsZSBjeD0iOTYiIGN5PSIxMTIiIHI9IjE0IiBmaWxsPSIjMmY2ZjVlIi8+Cjwvc3ZnPg==">
+<link rel="icon" id="faviconLink" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzJmNmY1ZSIvPgo8cGF0aCBkPSJNOTYgNDAgQzcwIDYwIDUyIDg0IDUyIDExMiBDNTIgMTM0IDcxIDE1MCA5NiAxNTAgQzEyMSAxNTAgMTQwIDEzNCAxNDAgMTEyIEMxNDAgODQgMTIyIDYwIDk2IDQwIFoiIGZpbGw9IiNlYWYzZWYiLz4KPGNpcmNsZSBjeD0iOTYiIGN5PSIxMTIiIHI9IjE0IiBmaWxsPSIjMmY2ZjVlIi8+Cjwvc3ZnPg==">
+
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="SaúdeCare">
-<title>SaúdeCare</title>
+<meta name="apple-mobile-web-app-title" content="Vindora">
+<title>Vindora</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
@@ -46,15 +48,20 @@
   .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:#e4ede9;color:var(--primary-dark);}
   .badge.cancelled{background:#f6e2e0;color:var(--danger);}
   .muted{color:var(--muted);font-size:13px;}
-  #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;padding:20px;}
+  #loginScreen{display:flex;flex-direction:column;align-items:center;min-height:100vh;width:100%;padding:0 0 40px;overflow-y:auto;}
+  .authHero{width:100%;background:linear-gradient(160deg,var(--primary-dark),var(--primary));color:#fff;padding:40px 20px 34px;text-align:center;}
+  .authHero .authLogo{width:68px;height:68px;margin:0 auto 14px;}
+  .authHero h1{font-size:26px;margin-bottom:6px;letter-spacing:.3px;}
+  .authHero p.tagline{opacity:.92;font-size:14.5px;max-width:420px;margin:0 auto;}
+  .authFeatures{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:440px;margin:22px auto 0;text-align:left;}
+  .authFeatures div{background:rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;font-size:13px;}
+  .authFeatures div b{display:block;font-size:13.5px;margin-bottom:2px;}
+  .authTrust{max-width:460px;margin:18px auto 0;font-size:12.5px;opacity:.9;line-height:1.5;}
+  #loginScreen .card{max-width:380px;width:100%;margin:-18px 20px 0;position:relative;z-index:1;}
   .authTabs{display:flex;border-bottom:1px solid #eef2f0;margin-bottom:18px;}
   .authTabs button{flex:1;background:none;border:none;padding:12px 8px;font-size:14px;cursor:pointer;
     color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;}
   .authTabs button.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600;}
-  .authBrand{text-align:center;margin-bottom:20px;}
-  .authBrand .authLogo{width:52px;height:52px;border-radius:14px;background:var(--primary);color:#fff;
-    display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;margin:0 auto 10px;}
-  .authBrand h2{margin-bottom:4px;}
   .trialNote{background:#eef6f2;border:1px solid #d7ebe2;border-radius:10px;padding:10px 12px;
     font-size:12.5px;color:var(--primary-dark);margin-bottom:14px;}
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a2b26;
@@ -112,11 +119,20 @@
 </head>
 <body>
 
+<!-- Barra discreta de nova versão — nunca recarrega sozinha -->
+<div id="updateBanner" class="hidden" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--primary-dark);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px;">
+  <span>🔄 Há uma versão nova da app.</span>
+  <span>
+    <button onclick="applyAppUpdate()" style="background:#fff;color:var(--primary-dark);border:none;padding:6px 12px;border-radius:8px;font-weight:600;cursor:pointer;">Atualizar agora</button>
+    <button onclick="document.getElementById('updateBanner').classList.add('hidden')" style="background:none;color:#fff;border:1px solid rgba(255,255,255,.5);padding:6px 10px;border-radius:8px;cursor:pointer;margin-left:6px;">Mais tarde</button>
+  </span>
+</div>
+
 <!-- Assistente virtual — visível sempre, antes e depois do login -->
-<button id="chatbotToggle" onclick="toggleChatbot()" title="Assistente SaúdeCare">💬</button>
+<button id="chatbotToggle" onclick="toggleChatbot()" title="Assistente Vindora">💬</button>
 <div id="chatbotWindow" class="hidden">
   <div id="chatbotHeader">
-    <span>🤖 Assistente SaúdeCare</span>
+    <span>🤖 Assistente Vindora</span>
     <span>
       <button id="chatbotVoiceOutBtn" onclick="toggleChatbotVoiceOut()" title="Ler respostas em voz alta">🔇</button>
       <button onclick="openTeachBotForm()" title="Ensinar o assistente">🎓</button>
@@ -133,13 +149,24 @@
 </div>
 
 <div id="loginScreen">
-  <div class="card" style="max-width:380px;width:100%;">
-    <div class="authBrand">
-      <div class="authLogo">SC</div>
-      <h2>SaúdeCare</h2>
-      <p class="muted">Gestão de consultas, pacientes e protocolos para profissionais de saúde e terapeutas em Portugal</p>
+  <div class="authHero">
+    <svg class="authLogo" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+      <rect width="120" height="120" rx="26" fill="#ffffff" fill-opacity="0.14"/>
+      <path d="M60 92 C40 74 26 56 26 38 C26 24 38 16 50 22 C56 25 60 32 60 40 C60 32 64 25 70 22 C82 16 94 24 94 38 C94 56 80 74 60 92 Z" fill="#eaf3ef"/>
+      <circle cx="60" cy="86" r="6" fill="#d4a24c"/>
+    </svg>
+    <h1>Vindora</h1>
+    <p class="tagline">A plataforma completa para terapeutas e profissionais de saúde gerirem consultas, pacientes e protocolos — tudo num só lugar, em português.</p>
+    <div class="authFeatures">
+      <div><b>📅 Agenda inteligente</b>Marcações, lembretes e Google Calendar sincronizado</div>
+      <div><b>🧑‍🤝‍🧑 Portal do Paciente</b>Mensagens, relatórios e videochamada incluídos</div>
+      <div><b>📋 Protocolos à medida</b>Mapeamento corporal e fichas para qualquer terapia</div>
+      <div><b>🧠 Biblioteca de Conhecimento</b>O assistente responde com o que você sabe</div>
     </div>
+    <p class="authTrust">🔒 Isolamento total entre consultórios — os seus dados nunca se misturam com os de outra conta. 🇪🇺 Servidores na União Europeia, em conformidade com o RGPD. 🔐 Ligação encriptada de ponta a ponta.</p>
+  </div>
 
+  <div class="card" style="max-width:380px;width:100%;">
     <div class="authTabs">
       <button id="authTabLoginBtn" class="active" onclick="switchAuthTab('login')">Entrar</button>
       <button id="authTabRegisterBtn" onclick="switchAuthTab('register')">Criar conta</button>
@@ -185,7 +212,7 @@
 
 <div id="app" class="hidden">
   <nav>
-    <h1>SaúdeCare</h1>
+    <h1>Vindora</h1>
     <button data-view="home" class="active">🏠 Início</button>
     <button data-view="agenda">📅 Agenda</button>
     <button data-view="finances">💶 Finanças</button>
@@ -220,24 +247,57 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ── Verificação automática de versão ────────────────────────────────────
-// Evita o problema de o telemóvel mostrar uma versão antiga em cache: ao
-// abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
-// qualquer cache) e compara a versão. Se houver uma mais recente,
-// recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-31-5';
+// Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
+// a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
+const APP_VERSION = '2026-08-31-12';
+let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
     const html = await res.text();
     const match = html.match(/const APP_VERSION = '([^']+)'/);
-    if (match && match[1] !== APP_VERSION && !sessionStorage.getItem('__reloadedForUpdate')){
-      sessionStorage.setItem('__reloadedForUpdate', '1');
-      window.location.reload();
+    if (match && match[1] !== APP_VERSION){
+      __latestKnownVersion = match[1];
+      document.getElementById('updateBanner').classList.remove('hidden');
     }
   } catch(e){
     // Falha de rede ao verificar não deve travar o arranque da app.
   }
 })();
+
+window.applyAppUpdate = function(){
+  window.location.reload();
+};
+
+// ── Rascunhos automáticos — protege texto longo de qualquer recarregamento
+// inesperado (atualização, bateria, o telemóvel a "matar" a aba). Guarda no
+// localStorage a cada poucos segundos e oferece para recuperar ao reabrir.
+const AUTOSAVE_FIELDS = ['kbContent','kbIngredientes','kbComoFazer','kbComoTomar','kbCuidados','patientMsgInput','protoName'];
+let __autosaveTimer = null;
+function startAutosaveWatcher(){
+  if (__autosaveTimer) return;
+  __autosaveTimer = setInterval(() => {
+    AUTOSAVE_FIELDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const val = el.value || '';
+      if (val.trim().length > 5){
+        localStorage.setItem('draft_' + id, val);
+      }
+    });
+  }, 4000);
+}
+function restoreAutosaveField(id){
+  const el = document.getElementById(id);
+  const saved = localStorage.getItem('draft_' + id);
+  if (!el || !saved || el.value.trim()) return; // não substitui algo já preenchido
+  el.value = saved;
+  toast('Recuperámos um rascunho que tinha ficado por guardar.');
+}
+function clearAutosaveField(id){
+  localStorage.removeItem('draft_' + id);
+}
+startAutosaveWatcher();
 
 // ── CONFIGURAÇÃO — substituir pelos valores reais do projeto Firebase ──
 const firebaseConfig = {
@@ -660,16 +720,18 @@ function applyBranding(){
 // ── "Adicionar ao ecrã principal" com identidade do subscritor ─────────
 // Mesmo mecanismo da página pública — gera um manifest à medida no
 // browser, para o subscritor poder instalar o SEU painel com o nome e
-// logótipo do seu próprio negócio, não com o nome genérico "SaúdeCare".
+// logótipo do seu próprio negócio, não com o nome genérico "Vindora".
+// Enquanto não tiver logótipo próprio, usa sempre um ícone predefinido —
+// nunca fica com o ícone em branco ao instalar.
+const DEFAULT_APP_ICON = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzJmNmY1ZSIvPgo8cGF0aCBkPSJNOTYgNDAgQzcwIDYwIDUyIDg0IDUyIDExMiBDNTIgMTM0IDcxIDE1MCA5NiAxNTAgQzEyMSAxNTAgMTQwIDEzNCAxNDAgMTEyIEMxNDAgODQgMTIyIDYwIDk2IDQwIFoiIGZpbGw9IiNlYWYzZWYiLz4KPGNpcmNsZSBjeD0iOTYiIGN5PSIxMTIiIHI9IjE0IiBmaWxsPSIjMmY2ZjVlIi8+Cjwvc3ZnPg==';
+
 function applyDynamicManifestAdmin(){
-  const businessName = currentTenantDoc?.businessName || 'SaúdeCare';
-  const logoUrl = currentTenantDoc?.branding?.logoUrl || '';
+  const businessName = currentTenantDoc?.businessName || 'Vindora';
+  const logoUrl = currentTenantDoc?.branding?.logoUrl || DEFAULT_APP_ICON;
   document.title = businessName;
 
-  if (logoUrl){
-    const appleIcon = document.getElementById('appleTouchIcon');
-    if (appleIcon) appleIcon.href = logoUrl;
-  }
+  const appleIcon = document.getElementById('appleTouchIcon');
+  if (appleIcon) appleIcon.href = logoUrl;
 
   const manifestObj = {
     name: businessName + ' — Painel',
@@ -678,10 +740,10 @@ function applyDynamicManifestAdmin(){
     display: 'standalone',
     background_color: '#f6f8f7',
     theme_color: currentTenantDoc?.branding?.primaryColor || '#2f6f5e',
-    icons: logoUrl ? [
-      { src: logoUrl, sizes: '192x192', type: 'image/png' },
-      { src: logoUrl, sizes: '512x512', type: 'image/png' }
-    ] : []
+    icons: [
+      { src: logoUrl, sizes: '192x192', type: logoUrl.startsWith('data:') ? 'image/svg+xml' : 'image/png' },
+      { src: logoUrl, sizes: '512x512', type: logoUrl.startsWith('data:') ? 'image/svg+xml' : 'image/png' }
+    ]
   };
   const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
   const manifestLink = document.getElementById('dynamicManifest');
@@ -821,6 +883,18 @@ async function renderTeam(main){
 }
 
 window.createStaffInvite = async function(){
+  const limits = getPlanLimits();
+  if (limits.staff !== Infinity){
+    const [staffSnap, invitesSnap] = await Promise.all([
+      getDocs(collection(db, 'tenants', tenantId, 'staff')),
+      getDocs(query(collection(db, 'tenants', tenantId, 'staffInvites'), where('used','==', false)))
+    ]);
+    const currentCount = 1 + staffSnap.size + invitesSnap.size; // 1 = o dono
+    if (currentCount >= limits.staff){
+      toast(`O seu plano permite até ${limits.staff} profissional(is) (incluindo si). Remova alguém da equipa, cancele um convite por usar, ou peça upgrade de plano.`, true);
+      return;
+    }
+  }
   const role = document.getElementById('newInviteRole').value;
   const ref = await addDoc(collection(db, 'tenants', tenantId, 'staffInvites'), {
     role, used: false, usedByUid: null, createdAt: serverTimestamp()
@@ -830,6 +904,7 @@ window.createStaffInvite = async function(){
 };
 
 window.cancelStaffInvite = async function(inviteId){
+  if (!confirm('Cancelar este convite? O link deixa de funcionar.')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'staffInvites', inviteId));
   toast('Convite cancelado.');
   renderView('team');
@@ -1011,15 +1086,41 @@ async function renderHome(main){
   } else {
     Object.entries(byDay).forEach(([key, list]) => {
       const d = list[0].startsAt.toDate();
-      weekHtml += `<div style="margin-bottom:10px;">
-        <strong>${d.toLocaleDateString('pt-PT', { weekday:'long', day:'2-digit', month:'2-digit' })}</strong>
+      weekHtml += `<div class="appt-item" style="cursor:pointer;margin-bottom:8px;" onclick="goToAgendaDay('${key}')">
+        <div class="row"><strong>${d.toLocaleDateString('pt-PT', { weekday:'long', day:'2-digit', month:'2-digit' })}</strong><div>›</div></div>
         ${list.map(a => `<div class="muted">${a.startsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})} — ${escapeHtml(a.patientName||'?')} (${escapeHtml(a.serviceName||'')})</div>`).join('')}
       </div>`;
     });
   }
 
+  const firstName = (currentTenantDoc?.businessName || currentUser?.email || '').split(' ')[0] || '';
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Bom dia' : hour < 20 ? 'Boa tarde' : 'Boa noite';
+
+  const SHORTCUTS = [
+    { icon: '📅', label: 'Agenda', view: 'agenda' },
+    { icon: '🧑‍🤝‍🧑', label: 'Pacientes', view: 'patients' },
+    { icon: '💚', label: 'Finanças', view: 'finances' },
+    { icon: '📋', label: 'Protocolos', view: 'protocols' },
+    { icon: '🧠', label: 'Conhecimento', view: 'knowledge' },
+    { icon: '⏳', label: 'Lista de espera', view: 'waitlist' },
+    { icon: '👥', label: 'Equipa', view: 'team' },
+    { icon: '⚙️', label: 'Definições', view: 'settings' }
+  ];
+  const shortcutsHtml = SHORTCUTS.map(s => `
+    <div onclick="renderView('${s.view}')" style="cursor:pointer;text-align:center;background:#fff;border:1px solid #e4e7ea;border-radius:12px;padding:14px 6px;">
+      <div style="font-size:26px;">${s.icon}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px;">${s.label}</div>
+    </div>`).join('');
+
   main.innerHTML = `
-    <h2>Início</h2>
+    <h2 style="margin-bottom:2px;">${greeting}${firstName ? ', ' + escapeHtml(firstName) : ''} 👋</h2>
+    <p class="muted" style="margin-bottom:14px;">${now.toLocaleDateString('pt-PT', { weekday:'long', day:'2-digit', month:'long' })}</p>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+      ${shortcutsHtml}
+    </div>
+
     <div class="card">
       <h2 style="margin-bottom:8px;">🔔 Alertas</h2>
       ${alertsHtml}
@@ -1031,6 +1132,13 @@ async function renderHome(main){
       ${weekHtml}
     </div>`;
 }
+
+window.goToAgendaDay = function(dayKey){
+  const [y, m, d] = dayKey.split('-').map(Number);
+  window.__agendaMonth = new Date(y, m - 1, 1);
+  window.__agendaSelectedDay = dayKey;
+  renderView('agenda');
+};
 
 async function renderAgenda(main){
   if (!window.__agendaMonth) window.__agendaMonth = new Date();
@@ -1387,7 +1495,7 @@ async function syncAppointmentToGoogle(action, appt, appointmentId, googleEventI
       body: JSON.stringify({
         tenantId, action, googleEventId,
         summary: `${appt.serviceName || 'Marcação'} — ${appt.patientName || ''}`,
-        description: `Marcação em ${currentTenantDoc?.businessName || 'SaúdeCare'}${appt.local==='online' ? ' (online)' : ''}.`,
+        description: `Marcação em ${currentTenantDoc?.businessName || 'Vindora'}${appt.local==='online' ? ' (online)' : ''}.`,
         location: currentTenantDoc?.businessName || '',
         startISO: appt.startsAt instanceof Date ? appt.startsAt.toISOString() : appt.startsAt,
         endISO: appt.endsAt instanceof Date ? appt.endsAt.toISOString() : appt.endsAt
@@ -2031,7 +2139,7 @@ function renderPatientPortalLink(patientId, p){
     return;
   }
 
-  const link = `https://saudecare.github.io/Saudecare-app-/saudecare-portal-paciente.html?t=${tenantId}&p=${patientId}&k=${p.portalToken}`;
+  const link = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-portal-paciente.html')}?t=${tenantId}&p=${patientId}&k=${p.portalToken}`;
   box.innerHTML = `
     <div class="muted" style="margin-bottom:6px;">${statusBadge}</div>
     <input readonly value="${link}" onclick="this.select()">
@@ -2110,6 +2218,7 @@ async function renderPatientMessages(patientId){
       <input id="patientMsgInput" placeholder="Escrever mensagem…" onkeydown="if(event.key==='Enter')sendPatientMessage('${patientId}')">
       <button class="primary" onclick="sendPatientMessage('${patientId}')">Enviar</button>
     </div>`;
+  restoreAutosaveField('patientMsgInput');
   unreadDocs.forEach(ref => updateDoc(ref, { readByProfessional: true }).catch(()=>{}));
 }
 
@@ -2121,6 +2230,7 @@ window.sendPatientMessage = async function(patientId){
     sender: 'professional', text, createdAt: serverTimestamp()
   });
   input.value = '';
+  clearAutosaveField('patientMsgInput');
   renderPatientMessages(patientId);
 };
 
@@ -2730,6 +2840,67 @@ const TEMPLATE_PROTOCOLS = [
     ]
   },
   {
+    name: 'Reiki — Mapa Corporal das 12 Posições Tradicionais (Usui)',
+    type: 'mapping',
+    bodyFrontImageUrl: '',
+    bodyBackImageUrl: '',
+    groups: [
+      { groupName: 'Cabeça', points: [
+        { name: '1. Olhos e testa', baseText: 'Coloque as mãos suavemente sobre os olhos fechados e a testa, sem pressionar. Na tradição Reiki, esta posição está associada a acalmar a mente e aliviar tensão mental/ocular. Mantenha 3 a 5 minutos, respiração lenta.', mapX: 50, mapY: 22, mapSide: 'frente' },
+        { name: '2. Têmporas e orelhas', baseText: 'Mãos em concha sobre as orelhas e têmporas. Tradicionalmente associada ao equilíbrio emocional e à libertação de pensamentos repetitivos. 3 a 5 minutos.', mapX: 50, mapY: 19, mapSide: 'frente' },
+        { name: '3. Garganta (sem tocar)', baseText: 'Mãos pairando alguns centímetros acima da garganta, sem tocar diretamente. Associada, na tradição, à expressão e comunicação. 3 minutos — posição sensível, confirme sempre o conforto da pessoa antes.', mapX: 50, mapY: 18, mapSide: 'frente' },
+        { name: '4. Nuca e base do crânio', baseText: 'Da parte de trás, mãos na base do crânio/nuca. Associada a alívio de tensão acumulada e clareza mental. 3 a 5 minutos.', mapX: 50, mapY: 12, mapSide: 'costas' }
+      ]},
+      { groupName: 'Tronco — Frente', points: [
+        { name: '5. Coração/peito', baseText: 'Mãos sobre o centro do peito. Associada, na tradição Reiki, à posição do chakra cardíaco — acolhimento, compaixão, processos emocionais ligados a perdas ou relações. 5 minutos.', mapX: 50, mapY: 26, mapSide: 'frente' },
+        { name: '6. Plexo solar/estômago', baseText: 'Mãos sobre a zona do estômago/plexo solar. Associada a autoestima, digestão emocional e gestão do stress. 5 minutos.', mapX: 50, mapY: 34, mapSide: 'frente' },
+        { name: '7. Baixo-ventre', baseText: 'Mãos abaixo do umbigo. Associada à vitalidade e criatividade. 3 a 5 minutos.', mapX: 50, mapY: 39, mapSide: 'frente' },
+        { name: '8. Quadril/púbis (sem tocar zona íntima)', baseText: 'Mãos sobre o osso do quadril, nunca sobre a zona genital. Associada a enraizamento e segurança de base. 3 minutos.', mapX: 50, mapY: 42, mapSide: 'frente' }
+      ]},
+      { groupName: 'Tronco — Costas', points: [
+        { name: '9. Ombros', baseText: 'Mãos sobre os ombros, da parte de trás. Alívio de tensão física relacionada com sobrecarga e responsabilidade. 3 minutos.', mapX: 50, mapY: 20, mapSide: 'costas' },
+        { name: '10. Omoplatas (coração — costas)', baseText: 'Mãos entre as omoplatas, na "porta de trás" do chakra cardíaco. Frequentemente associada a padrões de proteção emocional. 5 minutos.', mapX: 50, mapY: 27, mapSide: 'costas' },
+        { name: '11. Lombar/rins', baseText: 'Mãos na zona lombar, sobre a área dos rins. Associada, na tradição, a medo e esgotamento energético. 5 minutos.', mapX: 50, mapY: 36, mapSide: 'costas' },
+        { name: '12. Sacro', baseText: 'Mãos na base da coluna. Associada a enraizamento e conexão com o corpo físico. Fecha a sessão. 3 a 5 minutos.', mapX: 50, mapY: 43, mapSide: 'costas' }
+      ]}
+    ],
+    finalClassifications: [
+      { label: 'Nível de energia sentido pelo cliente antes da sessão', type: 'text', when: 'before', options: [] },
+      { label: 'Posições onde sentiu mais calor, formigueiro ou reação', type: 'text', when: 'after', options: [] },
+      { label: 'Estado emocional no final da sessão', type: 'text', when: 'after', options: [] }
+    ]
+  },
+  {
+    name: 'Radiestesia — Mapa Corporal de Varrimento com Pêndulo',
+    type: 'mapping',
+    bodyFrontImageUrl: '',
+    bodyBackImageUrl: '',
+    groups: [
+      { groupName: 'Centros energéticos — Frente', points: [
+        { name: 'Coroa', baseText: 'Posicione o pêndulo cerca de 5cm acima do topo da cabeça. Calibre antes (pergunte "sim"/"não" conhecidos) e depois pergunte: "Este centro está aberto/equilibrado?". Registe o movimento.', mapX: 50, mapY: 3, mapSide: 'frente' },
+        { name: 'Terceiro olho', baseText: 'Pêndulo entre as sobrancelhas, sem tocar. Testar clareza mental e intuição. Pergunta sugerida: "Há bloqueio nesta zona?".', mapX: 50, mapY: 20, mapSide: 'frente' },
+        { name: 'Garganta', baseText: 'Pêndulo sobre a garganta, sem tocar. Testar expressão/comunicação.', mapX: 50, mapY: 18, mapSide: 'frente' },
+        { name: 'Coração', baseText: 'Pêndulo sobre o centro do peito. Testar abertura emocional e relações.', mapX: 50, mapY: 26, mapSide: 'frente' },
+        { name: 'Plexo solar', baseText: 'Pêndulo sobre o estômago. Testar autoestima e stress acumulado.', mapX: 50, mapY: 34, mapSide: 'frente' },
+        { name: 'Sacral/umbigo', baseText: 'Pêndulo sobre o umbigo. Testar vitalidade e criatividade.', mapX: 50, mapY: 38, mapSide: 'frente' },
+        { name: 'Base/raiz', baseText: 'Pêndulo sobre o osso púbico (sem tocar). Testar enraizamento e segurança.', mapX: 50, mapY: 42, mapSide: 'frente' }
+      ]},
+      { groupName: 'Varrimento — Costas', points: [
+        { name: 'Cervicais/nuca', baseText: 'Testar tensão acumulada e sobrecarga mental — zona muito reativa em quadros de stress.', mapX: 50, mapY: 11, mapSide: 'costas' },
+        { name: 'Zona pulmonar (dorsal alta)', baseText: 'Testar respiração e processos de luto/tristeza guardada, segundo a tradição.', mapX: 50, mapY: 22, mapSide: 'costas' },
+        { name: 'Rim esquerdo', baseText: 'Testar medo e esgotamento energético do lado esquerdo. Compare a reação com o rim direito.', mapX: 36, mapY: 34, mapSide: 'costas' },
+        { name: 'Rim direito', baseText: 'Testar medo e esgotamento energético do lado direito. Compare a reação com o rim esquerdo.', mapX: 64, mapY: 34, mapSide: 'costas' },
+        { name: 'Coluna lombossacra', baseText: 'Testar enraizamento e sustentação — encerramento do varrimento.', mapX: 50, mapY: 43, mapSide: 'costas' }
+      ]}
+    ],
+    finalClassifications: [
+      { label: 'Movimento de calibração do pêndulo (sim / não / neutro)', type: 'text', when: 'before', options: [] },
+      { label: 'Pergunta exata feita ao pêndulo em cada ponto (registo literal)', type: 'text', when: 'before', options: [] },
+      { label: 'Zonas com maior desequilíbrio detetado', type: 'text', when: 'after', options: [] },
+      { label: 'Recomendação/sugestão dada no final', type: 'text', when: 'after', options: [] }
+    ]
+  },
+  {
     name: 'Avaliação Psicológica Inicial',
     type: 'simple',
     points: [
@@ -2786,30 +2957,42 @@ const TEMPLATE_FORMS = [
 ];
 
 function renderProtocolTemplatesSection(){
-  const cards = TEMPLATE_PROTOCOLS.map((t, idx) => `
+  const cards = TEMPLATE_PROTOCOLS.map((t, idx) => {
+    const isMapping = t.type === 'mapping';
+    const pointCount = isMapping ? (t.groups||[]).reduce((n,g)=>n+(g.points||[]).length,0) : (t.points||[]).length;
+    const typeLabel = isMapping ? '🗺️ Mapeamento no corpo' : '📋 Lista de pontos';
+    return `
     <div class="appt-item row">
       <div><strong>${escapeHtml(t.name)}</strong>
-        <div class="muted">📋 Modelo pronto · ${t.points.length} pontos</div>
+        <div class="muted">${typeLabel} · ${pointCount} pontos</div>
       </div>
       <button class="ghost" onclick="useProtocolTemplate(${idx})">Usar este modelo</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   return `
     <h2 style="margin:16px 0 10px;">Modelos prontos (opcional)</h2>
-    ${hintBox('Estes modelos ficam disponíveis para todos, mas são apenas um ponto de partida — pode usar tal e qual, editar à sua maneira depois de os copiar, ou simplesmente ignorá-los se preferir criar tudo do zero.')}
+    ${hintBox('Estes modelos ficam disponíveis para todos, mas são apenas um ponto de partida — pode usar tal e qual, editar à sua maneira depois de os copiar, ou simplesmente ignorá-los se preferir criar tudo do zero. Nos modelos com mapeamento, os pontos já vêm posicionados no boneco genérico — pode arrastar/reposicionar depois de copiar, como qualquer ponto seu.')}
     <div class="card">${cards}</div>`;
 }
 
 window.useProtocolTemplate = async function(idx){
   const t = TEMPLATE_PROTOCOLS[idx];
   if (!t) return;
-  await addDoc(collection(db, 'tenants', tenantId, 'protocols'), {
+  const data = {
     name: t.name,
     type: t.type,
-    points: t.points.map(p => ({...p})),
     finalClassifications: (t.finalClassifications||[]).map(c => ({...c})),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
-  });
+  };
+  if (t.type === 'mapping'){
+    data.groups = (t.groups||[]).map(g => ({ groupName: g.groupName, points: (g.points||[]).map(p => ({...p})) }));
+    data.bodyFrontImageUrl = t.bodyFrontImageUrl || '';
+    data.bodyBackImageUrl = t.bodyBackImageUrl || '';
+  } else {
+    data.points = (t.points||[]).map(p => ({...p}));
+  }
+  await addDoc(collection(db, 'tenants', tenantId, 'protocols'), data);
   toast('Modelo adicionado aos seus protocolos — já pode editá-lo à vontade.');
   renderView('protocols');
 };
@@ -2989,6 +3172,7 @@ function renderProtocolForm(editId, data){
         <button class="primary" onclick="saveProtocol('${editId||''}')">Guardar protocolo</button>
       </div>
     </div>`;
+  if (!editId) restoreAutosaveField('protoName');
 }
 
 // ── Tipo "simples" (como já existia) ────────────────────────────────────
@@ -3386,6 +3570,7 @@ window.saveProtocol = async function(editId){
     data.createdAt = serverTimestamp();
     await addDoc(collection(db, 'tenants', tenantId, 'protocols'), data);
   }
+  clearAutosaveField('protoName');
   toast('Protocolo guardado.');
   renderView('protocols');
 };
@@ -4070,7 +4255,7 @@ window.downloadAppointmentICS = function(apptId){
   if (!a){ toast('Não foi possível encontrar esta marcação.', true); return; }
   const start = a.startsAt.toDate();
   const end = a.endsAt ? a.endsAt.toDate() : new Date(start.getTime() + 50*60000);
-  const businessName = currentTenantDoc?.businessName || 'SaúdeCare';
+  const businessName = currentTenantDoc?.businessName || 'Vindora';
   const summary = `${a.serviceName || 'Marcação'} — ${a.patientName || ''}`;
   const description = `Marcação em ${businessName}.${a.notes ? '\\n'+icsEscape(a.notes) : ''}`;
 
@@ -4619,7 +4804,7 @@ window.downloadBackup = async function(silent){
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `backup-saudecare-${new Date().toISOString().slice(0,10)}.json`;
+    a.download = `backup-vindora-${new Date().toISOString().slice(0,10)}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -4691,7 +4876,7 @@ function kbSplitSentences(text){
 
 const CHATBOT_KB = [
   { keywords: ['ola','oi','bom dia','boa tarde','boa noite'],
-    answer: 'Olá! 👋 Sou o assistente do SaúdeCare. Posso ajudar a perceber como usar a app, ou dar-lhe informação geral sobre as áreas terapêuticas que apoiamos. O que gostaria de saber?' },
+    answer: 'Olá! 👋 Sou o assistente do Vindora. Posso ajudar a perceber como usar a app, ou dar-lhe informação geral sobre as áreas terapêuticas que apoiamos. O que gostaria de saber?' },
   { keywords: ['marcacao','marcar','agenda','calendario','sobrepos','sala ocupada'],
     answer: 'Para criar uma marcação: vá a "Agenda" → escolha o dia → "Nova marcação" → selecione paciente e serviço. A app impede automaticamente sobreposições: uma marcação "Presencial" bloqueia a sala para qualquer profissional nesse horário; "Online" só bloqueia a agenda de quem a faz.' },
   { keywords: ['google calendar','sincroniz'],
@@ -4722,8 +4907,8 @@ const CHATBOT_KB = [
     answer: 'Em Perfil pode editar o texto de consentimento informado. Ao registar um novo paciente, o próprio paciente lê esse texto e assina no ecrã, num quadro de assinatura — fica guardada a assinatura, a data e o texto exato que foi assinado.' },
   { keywords: ['mensagem','whatsapp','lembrete','confirmacao','lembrete automatico','envio automatico'],
     answer: 'Em Perfil → "Modelos de mensagens" pode editar os textos de confirmação, lembrete e cancelamento, com marcadores como {{nome}} e {{data}}. O WhatsApp continua manual (copiar e enviar); o lembrete por email pode ser enviado automaticamente 24h antes da consulta, ativando a opção no mesmo sítio — funciona para pacientes com email registado.' },
-  { keywords: ['teste','trial','experimentar','quanto custa','preco do saudecare','subscricao','plano'],
-    answer: 'O SaúdeCare tem um período de teste gratuito de 14 dias. Para saber mais sobre os planos disponíveis, contacte-nos através da página pública ou do email de suporte.' }
+  { keywords: ['teste','trial','experimentar','quanto custa','preco da vindora','subscricao','plano'],
+    answer: 'O Vindora tem um período de teste gratuito de 14 dias. Para saber mais sobre os planos disponíveis, contacte-nos através da página pública ou do email de suporte.' }
 ];
 
 const CHATBOT_FALLBACK = 'Não tenho uma resposta pronta para isso. Pode reformular a pergunta, ou contactar diretamente o profissional/suporte para mais detalhes.';
@@ -4766,7 +4951,7 @@ window.toggleChatbot = function(){
   if (voiceBtn) voiceBtn.textContent = window.__chatbotVoiceOut ? '🔊' : '🔇';
   if (opening && !window.__chatbotStarted){
     window.__chatbotStarted = true;
-    chatbotAppendMessage('Olá! 👋 Sou o assistente do SaúdeCare. Posso ajudar a perceber como usar a app, ou dar-lhe informação geral sobre as áreas terapêuticas que apoiamos. O que gostaria de saber?', 'bot');
+    chatbotAppendMessage('Olá! 👋 Sou o assistente do Vindora. Posso ajudar a perceber como usar a app, ou dar-lhe informação geral sobre as áreas terapêuticas que apoiamos. O que gostaria de saber?', 'bot');
     const sugg = document.getElementById('chatbotSuggestions');
     sugg.innerHTML = CHATBOT_SUGGESTIONS.map(s => `<button onclick="sendChatbotSuggestion('${escapeAttrJs(s)}')">${escapeHtml(s)}</button>`).join('');
   }
@@ -4913,7 +5098,7 @@ async function tryChatbotPatientLookup(text){
 // literalmente o que foi escrito aqui. A responsabilidade pelo conteúdo
 // e pela decisão de o usar é sempre do profissional — daí o aviso e a
 // aceitação explícita antes de poder usar esta secção.
-const KB_DISCLAIMER_TEXT = `Tudo o que inserir aqui (texto, fotos, PDFs) é da sua exclusiva responsabilidade — o SaúdeCare não verifica, valida nem garante a veracidade, atualidade ou segurança clínica desta informação.
+const KB_DISCLAIMER_TEXT = `Tudo o que inserir aqui (texto, fotos, PDFs) é da sua exclusiva responsabilidade — o Vindora não verifica, valida nem garante a veracidade, atualidade ou segurança clínica desta informação.
 
 O assistente virtual apenas devolve o que você escreveu — nunca cria, deduz ou avalia interações, doses ou segurança por conta própria.
 
@@ -4942,7 +5127,13 @@ function getPlanLimits(){
   // campo "plan" seja alterado por engano.
   if (tenantId === 'hikari-terapias') return PLAN_LIMITS.lifetime;
   const plan = currentTenantDoc?.plan || 'start';
-  return PLAN_LIMITS[plan] || PLAN_LIMITS.start;
+  const base = PLAN_LIMITS[plan] || PLAN_LIMITS.start;
+  const extra = currentTenantDoc?.limitOverrides || {};
+  return {
+    staff: base.staff === Infinity ? Infinity : base.staff + (extra.staffExtra || 0),
+    kbBytes: base.kbBytes === Infinity ? Infinity : base.kbBytes + (extra.kbBytesExtra || 0),
+    portalPatients: base.portalPatients === Infinity ? Infinity : base.portalPatients + (extra.portalPatientsExtra || 0)
+  };
 }
 
 function byteLength(str){
@@ -4957,7 +5148,7 @@ function formatBytes(bytes){
 async function getKnowledgeUsageBytes(excludeId){
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'knowledgeBase'));
   let total = 0;
-  snap.forEach(d => { if (d.id !== excludeId) total += byteLength(d.data().content || ''); });
+  snap.forEach(d => { if (d.id !== excludeId) total += byteLength(structuredKnowledgeText(d.data())); });
   return total;
 }
 
@@ -4983,7 +5174,7 @@ async function renderKnowledgeBase(main){
   const topics = [...new Set(entries.map(e => e.topic || 'Sem tema'))];
 
   const limits = getPlanLimits();
-  const usedBytes = entries.reduce((sum, e) => sum + byteLength(e.content || ''), 0);
+  const usedBytes = entries.reduce((sum, e) => sum + byteLength(structuredKnowledgeText(e)), 0);
   const pct = limits.kbBytes === Infinity ? 0 : Math.min(100, Math.round((usedBytes / limits.kbBytes) * 100));
   const usageHtml = `<div class="card" style="margin-bottom:10px;">
     <div class="muted">Espaço usado na Biblioteca: <strong>${formatBytes(usedBytes)}</strong> de ${formatBytes(limits.kbBytes)} (plano ${escapeHtml(currentTenantDoc?.plan || 'start')})</div>
@@ -4999,7 +5190,7 @@ async function renderKnowledgeBase(main){
       entries.filter(e => (e.topic||'Sem tema') === topic).forEach(e => {
         listHtml += `<div class="appt-item">
           <div class="row">
-            <strong>${escapeHtml(e.title)}</strong>
+            <strong>${escapeHtml(e.title)}${(e.structured && (e.structured.ingredientes||e.structured.comoFazer||e.structured.comoTomar||e.structured.cuidados)) ? ' <span class="badge active" style="font-size:11px;">📋 receita</span>' : ''}</strong>
             <span>
               <button class="ghost" onclick="editKnowledgeEntry('${e.id}')">Editar</button>
               <button class="ghost" onclick="deleteKnowledgeEntry('${e.id}')">Apagar</button>
@@ -5065,11 +5256,31 @@ window.openNewKnowledgeEntry = function(entry){
       <p id="kbProcessingMsg" class="muted hidden">A processar, aguarde…</p>
       <label>Conteúdo (reveja/edite antes de guardar — pode apagar só uma parte)</label>
       <textarea id="kbContent" rows="8">${isEdit ? escapeHtml(entry.content||'') : ''}</textarea>
+
+      <label style="display:flex;align-items:center;gap:6px;margin-top:12px;cursor:pointer;">
+        <input type="checkbox" id="kbStructuredToggle" style="width:auto;" ${isEdit && entry.structured ? 'checked' : ''} onchange="document.getElementById('kbStructuredFields').classList.toggle('hidden', !this.checked)">
+        Organizar como receita/protocolo (Ingredientes, Como Fazer, Como Tomar, Cuidados)
+      </label>
+      <div id="kbStructuredFields" class="${isEdit && entry.structured ? '' : 'hidden'}" style="margin-top:6px;">
+        ${hintBox('Estes campos são só para si organizar melhor a sua própria receita. Ao guardar, o assistente virtual mostra-os já formatados assim, na íntegra, sem cortar — mas continua a ser sempre o que você escreveu aqui, nunca inventado pela app.')}
+        <label>Ingredientes & Medidas</label>
+        <textarea id="kbIngredientes" rows="2" placeholder="ex: 1 colher de sopa de flores de alfazema; 200ml de água">${isEdit ? escapeHtml(entry.structured?.ingredientes||'') : ''}</textarea>
+        <label>Como Fazer (passo a passo)</label>
+        <textarea id="kbComoFazer" rows="3" placeholder="ex: Ferver a água, deitar sobre as flores, abafar 8 min e coar.">${isEdit ? escapeHtml(entry.structured?.comoFazer||'') : ''}</textarea>
+        <label>Como Tomar / Aplicar & Frequência</label>
+        <textarea id="kbComoTomar" rows="2" placeholder="ex: Beber morno, 1x ao dia.">${isEdit ? escapeHtml(entry.structured?.comoTomar||'') : ''}</textarea>
+        <label>Contraindicações & Cuidados de Segurança</label>
+        <textarea id="kbCuidados" rows="2" placeholder="ex: Não usar em crianças com menos de 3 anos.">${isEdit ? escapeHtml(entry.structured?.cuidados||'') : ''}</textarea>
+      </div>
+
       <div class="row" style="margin-top:8px;">
         <button class="primary" onclick="saveKnowledgeEntry(${isEdit ? `'${entry.id}'` : 'null'})">Guardar</button>
         ${isEdit ? `<button class="ghost" onclick="document.getElementById('knowledgeFormContainer').innerHTML=''">Cancelar</button>` : ''}
       </div>
     </div>`;
+  if (!isEdit){
+    ['kbContent','kbIngredientes','kbComoFazer','kbComoTomar','kbCuidados'].forEach(restoreAutosaveField);
+  }
 };
 
 window.runKnowledgeOcr = async function(input){
@@ -5146,7 +5357,16 @@ window.saveKnowledgeEntry = async function(editId){
   const content = document.getElementById('kbContent').value.trim();
   if (!title || !content){ toast('Preencha o título e o conteúdo.', true); return; }
 
-  const entryBytes = byteLength(content);
+  const useStructured = document.getElementById('kbStructuredToggle').checked;
+  const structured = useStructured ? {
+    ingredientes: document.getElementById('kbIngredientes').value.trim(),
+    comoFazer: document.getElementById('kbComoFazer').value.trim(),
+    comoTomar: document.getElementById('kbComoTomar').value.trim(),
+    cuidados: document.getElementById('kbCuidados').value.trim()
+  } : null;
+
+  const fullText = content + '\n' + (structured ? Object.values(structured).join('\n') : '');
+  const entryBytes = byteLength(fullText);
   if (entryBytes > KB_ENTRY_HARD_CAP_BYTES){
     toast(`Esta entrada é demasiado grande para guardar de uma vez (limite técnico do Firebase, cerca de ${formatBytes(KB_ENTRY_HARD_CAP_BYTES)}). Divida o conteúdo em vários temas mais pequenos — ex: um por assunto do livro — e guarde cada um em separado.`, true);
     return;
@@ -5162,15 +5382,17 @@ window.saveKnowledgeEntry = async function(editId){
     toast(`Aviso: está perto do limite de espaço do seu plano (${formatBytes(projected)} de ${formatBytes(limits.kbBytes)}).`);
   }
 
+  const data = { topic, title, content, structured };
   if (editId){
-    await updateDoc(doc(db, 'tenants', tenantId, 'knowledgeBase', editId), { topic, title, content, updatedAt: serverTimestamp() });
+    await updateDoc(doc(db, 'tenants', tenantId, 'knowledgeBase', editId), { ...data, updatedAt: serverTimestamp() });
     toast('Conhecimento atualizado.');
   } else {
     await addDoc(collection(db, 'tenants', tenantId, 'knowledgeBase'), {
-      topic, title, content, createdAt: serverTimestamp(), createdBy: currentUser.uid
+      ...data, createdAt: serverTimestamp(), createdBy: currentUser.uid
     });
     toast('Conhecimento guardado.');
   }
+  ['kbContent','kbIngredientes','kbComoFazer','kbComoTomar','kbCuidados'].forEach(clearAutosaveField);
   renderView('knowledge');
 };
 
@@ -5180,6 +5402,21 @@ window.deleteKnowledgeEntry = async function(id){
   toast('Apagado.');
   renderView('knowledge');
 };
+
+function structuredKnowledgeText(e){
+  const s = e.structured || {};
+  return [e.content, s.ingredientes, s.comoFazer, s.comoTomar, s.cuidados].filter(Boolean).join('\n');
+}
+
+function formatStructuredKnowledgeAnswer(e){
+  const s = e.structured || {};
+  let out = `📖 ${e.topic} — ${e.title}\n`;
+  if (s.ingredientes) out += `\n🧂 *Ingredientes & Medidas*\n${s.ingredientes}\n`;
+  if (s.comoFazer)    out += `\n🔥 *Como Fazer*\n${s.comoFazer}\n`;
+  if (s.comoTomar)    out += `\n💧 *Como Tomar / Aplicar & Frequência*\n${s.comoTomar}\n`;
+  if (s.cuidados)      out += `\n⚠️ *Contraindicações & Cuidados de Segurança*\n${s.cuidados}\n`;
+  return out + `\n(Isto é o que você escreveu nesta ficha — não é gerado automaticamente.)${KB_ANSWER_DISCLAIMER}`;
+}
 
 async function tryChatbotKnowledgeSearch(text){
   if (!tenantId || !currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt) return null;
@@ -5194,8 +5431,9 @@ async function tryChatbotKnowledgeSearch(text){
     const e = d.data();
     const titleHay = stripAccents((e.topic||'') + ' ' + (e.title||''));
     const titleBonus = queryWords.filter(w => titleHay.includes(w)).length * 0.5;
+    const fullText = structuredKnowledgeText(e);
 
-    const sentences = kbSplitSentences(e.content || '');
+    const sentences = kbSplitSentences(fullText);
     const WINDOW = 4; // frases seguidas agrupadas, para dar contexto sem devolver o texto todo
     for (let i = 0; i < sentences.length; i += 2){
       const windowText = sentences.slice(i, i + WINDOW).join(' ');
@@ -5207,14 +5445,22 @@ async function tryChatbotKnowledgeSearch(text){
     }
     // Entradas curtas sem "parágrafos" longos (ex: texto escrito à mão) — testa também o conteúdo inteiro
     if (sentences.length <= WINDOW){
-      const hay = stripAccents(e.content || '');
+      const hay = stripAccents(fullText);
       let score = titleBonus;
       queryWords.forEach(w => { if (hay.includes(w)) score++; });
-      if (score > bestScore){ bestScore = score; bestWindow = (e.content || '').trim(); bestEntry = e; }
+      if (score > bestScore){ bestScore = score; bestWindow = fullText.trim(); bestEntry = e; }
     }
   });
 
   if (!bestEntry || bestScore < 1) return null;
+
+  // Entradas em formato "receita" são devolvidas por inteiro — nunca cortadas
+  // a meio, porque um passo ou um cuidado de segurança truncado é pior do
+  // que não responder.
+  const s = bestEntry.structured || {};
+  if (s.ingredientes || s.comoFazer || s.comoTomar || s.cuidados){
+    return formatStructuredKnowledgeAnswer(bestEntry);
+  }
 
   let excerpt = bestWindow.trim();
   if (excerpt.length > 700) excerpt = excerpt.slice(0, 700).trim() + '…';
@@ -5222,7 +5468,31 @@ async function tryChatbotKnowledgeSearch(text){
   return `📖 ${bestEntry.topic} — ${bestEntry.title}\n\n${excerpt}\n\n(Isto é um excerto do que guardou, relacionado com a sua pergunta — não é o conteúdo todo. Para ver tudo, consulte "🧠 Conhecimento".)${KB_ANSWER_DISCLAIMER}`;
 }
 
+// ── Alerta de emergência — nunca gera conselho, só encaminha para ajuda real.
+// Corre ANTES de tudo o resto no chatbot, em qualquer painel.
+const CHATBOT_RED_FLAGS = [
+  'perda de consciencia', 'perdeu a consciencia', 'desmaiou', 'desmaio',
+  'dor no peito', 'aperto no peito', 'falta de ar', 'dificuldade em respirar',
+  'febre alta', 'rigidez na nuca', 'convulsao', 'convulsoes',
+  'perda de forca', 'dormencia de um lado', 'fala arrastada', 'boca torta',
+  'hemorragia', 'sangramento intenso', 'pior dor de cabeca da vida', 'dor subita muito forte'
+];
+const CHATBOT_SELFHARM_FLAGS = ['quero morrer', 'nao aguento mais viver', 'ideias suicidas', 'quero acabar com tudo', 'quero desaparecer'];
+
+function tryEmergencyAlert(text){
+  const t = stripAccents(text);
+  if (CHATBOT_SELFHARM_FLAGS.some(f => t.includes(stripAccents(f)))){
+    return '💛 Isto soa a uma altura muito difícil. Se está em perigo imediato, ligue já para o 112. Pode também ligar para o SNS 24 (808 24 24 24) ou para a Linha SOS Voz Amiga (213 544 545, das 16h à 1h). Não está sozinho(a) — fale com alguém agora.';
+  }
+  if (CHATBOT_RED_FLAGS.some(f => t.includes(stripAccents(f)))){
+    return '🚨 Isto pode ser uma emergência médica. Ligue já para o 112 ou dirija-se ao serviço de urgência mais próximo — não espere por uma resposta aqui. Pode também ligar para o SNS 24 (808 24 24 24) para orientação imediata.';
+  }
+  return null;
+}
+
 async function resolveChatbotAnswer(text){
+  const emergency = tryEmergencyAlert(text);
+  if (emergency) return emergency;
   const agenda = await tryChatbotWeeklyAgenda(text);
   if (agenda) return agenda;
   const patient = await tryChatbotPatientLookup(text);

@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>SaúdeCare — Administração</title>
+<title>Vindora — Administração</title>
 <style>
   :root{
     --primary:#1f2d5c; --primary-dark:#141d3f; --bg:#f6f7fb; --card:#ffffff;
@@ -65,7 +65,7 @@
 <div id="loginScreen">
   <div class="login-card">
   <h2>Administração — Entrar</h2>
-  <p class="muted" style="margin-bottom:14px;">Acesso restrito à equipa da plataforma SaúdeCare.</p>
+  <p class="muted" style="margin-bottom:14px;">Acesso restrito à equipa da plataforma Vindora.</p>
   <label>Email</label>
   <input id="loginEmail" type="email" autocomplete="username">
   <label>Palavra-passe</label>
@@ -77,7 +77,7 @@
 
 <div id="app" class="hidden">
   <nav>
-    <h1>SaúdeCare</h1>
+    <h1>Vindora</h1>
     <p>Administração da plataforma</p>
     <button data-view="overview" class="active">📊 Visão geral</button>
     <button data-view="tenants">🏢 Subscritores</button>
@@ -324,6 +324,16 @@ window.openTenantDetail = function(tenantId){
         <option value="enterprise" ${t.plan==='enterprise'?'selected':''}>Enterprise</option>
         <option value="lifetime" ${t.plan==='lifetime'?'selected':''}>Vitalício (sem restrições)</option>
       </select>
+
+      <h3 style="margin:14px 0 6px;">Extras manuais (bónus sobre o plano)</h3>
+      <p class="muted" style="margin-bottom:8px;">Use isto para dar mais espaço/pacientes/equipa a uma conta específica (ex: testador convidado), sem mudar o plano todo. Deixe a 0 se não houver extras.</p>
+      <label>+ Espaço na Biblioteca de Conhecimento (MB)</label>
+      <input id="tdExtraKbMb" type="number" min="0" value="${t.limitOverrides?.kbBytesExtra ? Math.round(t.limitOverrides.kbBytesExtra/1024/1024) : 0}">
+      <label>+ Pacientes com Portal ativo</label>
+      <input id="tdExtraPortal" type="number" min="0" value="${t.limitOverrides?.portalPatientsExtra || 0}">
+      <label>+ Profissionais na equipa</label>
+      <input id="tdExtraStaff" type="number" min="0" value="${t.limitOverrides?.staffExtra || 0}">
+
       <div class="row">
         <button class="primary" onclick="saveTenantChanges('${tenantId}')">Guardar alterações</button>
         <button class="danger" onclick="confirmDeleteTenant('${tenantId}','${escapeAttr(t.businessName||t.id)}')">Apagar subscritor</button>
@@ -337,7 +347,12 @@ window.saveTenantChanges = async function(tenantId){
   const ownerEmail = document.getElementById('tdOwnerEmail').value.trim();
   const status = document.getElementById('tdStatus').value;
   const plan = document.getElementById('tdPlan').value;
-  await updateDoc(doc(db, 'tenants', tenantId), { businessName, slug, ownerEmail, status, plan });
+  const limitOverrides = {
+    kbBytesExtra: (parseInt(document.getElementById('tdExtraKbMb').value, 10) || 0) * 1024 * 1024,
+    portalPatientsExtra: parseInt(document.getElementById('tdExtraPortal').value, 10) || 0,
+    staffExtra: parseInt(document.getElementById('tdExtraStaff').value, 10) || 0
+  };
+  await updateDoc(doc(db, 'tenants', tenantId), { businessName, slug, ownerEmail, status, plan, limitOverrides });
   toast('Subscritor atualizado.');
   renderView('tenants');
 };
