@@ -10,8 +10,8 @@
 <link rel="apple-touch-icon" id="appleTouchIcon" href="">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="SaúdeCare">
-<title>SaúdeCare</title>
+<meta name="apple-mobile-web-app-title" content="Vindora">
+<title>Vindora</title>
 <style>
   :root{ --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#fff; --text:#1a2b26; --muted:#6b7d76; }
   *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
@@ -56,7 +56,7 @@
   <section id="contactSection"></section>
 </div>
 
-<footer>Powered by SaúdeCare</footer>
+<footer>Powered by Vindora</footer>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -126,7 +126,7 @@ async function load(){
 // "instalar" a página. No iPhone/Safari o ícone depende também da tag
 // apple-touch-icon, que também é atualizada aqui.
 function applyDynamicManifest(profile){
-  document.title = profile.businessName || 'SaúdeCare';
+  document.title = profile.businessName || 'Vindora';
   const logoUrl = profile.branding?.logoUrl || '';
 
   if (logoUrl){
@@ -135,8 +135,8 @@ function applyDynamicManifest(profile){
   }
 
   const manifestObj = {
-    name: profile.businessName || 'SaúdeCare',
-    short_name: (profile.businessName || 'SaúdeCare').slice(0, 12),
+    name: profile.businessName || 'Vindora',
+    short_name: (profile.businessName || 'Vindora').slice(0, 12),
     start_url: window.location.href,
     display: 'standalone',
     background_color: '#f6f8f7',
