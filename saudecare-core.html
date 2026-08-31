@@ -224,7 +224,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-31-4';
+const APP_VERSION = '2026-08-31-5';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -2009,20 +2009,76 @@ window.viewPatient = async function(patientId){
 function renderPatientPortalLink(patientId, p){
   const box = document.getElementById('patientPortalLinkBox');
   if (!box) return;
+
   if (!p.portalToken){
     box.innerHTML = `<button class="ghost" onclick="generatePatientPortalLink('${patientId}')">Gerar link do portal</button>`;
     return;
   }
+
+  const revoked = !!p.portalRevoked;
+  const accessed = !!p.portalFirstAccessedAt;
+  const statusBadge = revoked
+    ? '<span class="badge" style="background:#f4d7d3;color:#8a2e20;">🚫 Revogado</span>'
+    : accessed
+      ? '<span class="badge active">✅ Ativo — já acedeu</span>'
+      : '<span class="badge" style="background:#fff3cd;color:#7a5b00;">🕓 Pendente — ainda não acedeu</span>';
+
+  if (revoked){
+    box.innerHTML = `
+      <div class="muted" style="margin-bottom:6px;">${statusBadge}</div>
+      <p class="muted">O link anterior deixou de funcionar.</p>
+      <button class="ghost" onclick="generatePatientPortalLink('${patientId}')">Gerar novo link (reativa o acesso)</button>`;
+    return;
+  }
+
   const link = `https://saudecare.github.io/Saudecare-app-/saudecare-portal-paciente.html?t=${tenantId}&p=${patientId}&k=${p.portalToken}`;
   box.innerHTML = `
+    <div class="muted" style="margin-bottom:6px;">${statusBadge}</div>
     <input readonly value="${link}" onclick="this.select()">
-    <button class="ghost" style="margin-top:6px;" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar link do portal</button>`;
+    <div class="row" style="margin-top:6px;flex-wrap:wrap;">
+      <button class="ghost" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar link</button>
+      <button class="ghost" onclick="regeneratePatientPortalLink('${patientId}')">Gerar novo link</button>
+      <button class="danger" onclick="revokePatientPortalAccess('${patientId}','${escapeAttrJs(p.fullName||'')}')">Revogar acesso</button>
+    </div>`;
+}
+
+async function getActivePortalCount(excludePatientId){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+  let count = 0;
+  snap.forEach(d => {
+    if (d.id === excludePatientId) return;
+    const data = d.data();
+    if (data.portalToken && !data.portalRevoked) count++;
+  });
+  return count;
 }
 
 window.generatePatientPortalLink = async function(patientId){
+  const limits = getPlanLimits();
+  if (limits.portalPatients !== Infinity){
+    const activeCount = await getActivePortalCount(patientId);
+    if (activeCount >= limits.portalPatients){
+      toast(`Chegou ao limite de ${limits.portalPatients} pacientes com Portal ativo no seu plano. Revogue o acesso a algum paciente inativo, ou peça upgrade de plano para continuar.`, true);
+      return;
+    }
+  }
   const portalToken = crypto.randomUUID().replace(/-/g, '');
-  await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), { portalToken });
+  await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), {
+    portalToken, portalRevoked: false, portalFirstAccessedAt: null, portalGeneratedAt: serverTimestamp()
+  });
   toast('Link do portal criado.');
+  viewPatient(patientId);
+};
+
+window.regeneratePatientPortalLink = async function(patientId){
+  if (!confirm('Gerar um novo link invalida o link anterior — quem tiver o link antigo deixa de conseguir usá-lo. Continuar?')) return;
+  await window.generatePatientPortalLink(patientId);
+};
+
+window.revokePatientPortalAccess = async function(patientId, name){
+  if (!confirm(`Revogar o acesso de "${name}" ao Portal do Paciente? O link atual deixa de funcionar até gerar um novo.`)) return;
+  await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), { portalRevoked: true });
+  toast('Acesso revogado.');
   viewPatient(patientId);
 };
 
@@ -4870,11 +4926,11 @@ const KB_ANSWER_DISCLAIMER = '\n\n⚠️ Isto é conteúdo que você inseriu —
 // enterprise/lifetime); aqui é onde os limites de cada plano passam a
 // ter efeito real. Ajustável só mudando os números abaixo.
 const PLAN_LIMITS = {
-  start:      { staff: 1,  kbBytes: 5   * 1024 * 1024 },
-  grow:       { staff: 3,  kbBytes: 25  * 1024 * 1024 },
-  pro:        { staff: 8,  kbBytes: 100 * 1024 * 1024 },
-  enterprise: { staff: 20, kbBytes: 500 * 1024 * 1024 },
-  lifetime:   { staff: Infinity, kbBytes: Infinity }
+  start:      { staff: 1,  kbBytes: 5   * 1024 * 1024, portalPatients: 10 },
+  grow:       { staff: 3,  kbBytes: 25  * 1024 * 1024, portalPatients: 50 },
+  pro:        { staff: 8,  kbBytes: 100 * 1024 * 1024, portalPatients: 200 },
+  enterprise: { staff: 20, kbBytes: 500 * 1024 * 1024, portalPatients: 1000 },
+  lifetime:   { staff: Infinity, kbBytes: Infinity, portalPatients: Infinity }
 };
 // Limite técnico do Firebase por documento (~1MB) — aplica-se a todos os
 // planos, incluindo o vitalício, porque é uma limitação da plataforma,
