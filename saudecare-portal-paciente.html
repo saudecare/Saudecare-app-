@@ -137,7 +137,17 @@ async function load(){
       : '<p class="muted">Ainda sem relatórios partilhados.</p>';
 
     const hasOnlineUpcoming = data.upcoming.some(a => a.local === 'online');
-    const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
+    const oc = data.onlineConsult || { tool: 'jitsi' };
+    let onlineToolHtml = '';
+    if (oc.tool === 'custom' && oc.customLink){
+      onlineToolHtml = `<a class="btn btn-block" target="_blank" href="${escapeHtml(oc.customLink)}">Entrar na videochamada</a>`;
+    } else if (oc.tool === 'whatsapp' && oc.whatsappNumber){
+      onlineToolHtml = `<a class="btn btn-block" target="_blank" href="https://wa.me/${oc.whatsappNumber}">Abrir WhatsApp</a>
+        <p class="muted" style="margin-top:6px;">O seu terapeuta vai iniciar a chamada de vídeo lá dentro, à hora combinada.</p>`;
+    } else {
+      const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
+      onlineToolHtml = `<a class="btn btn-block" target="_blank" href="https://meet.jit.si/${jitsiRoom}">Entrar na videochamada</a>`;
+    }
 
     main.innerHTML = `
       <div class="card crisis">
@@ -148,8 +158,8 @@ async function load(){
       ${hasOnlineUpcoming ? `
       <div class="card">
         <h2>💻 Consulta online</h2>
-        <p class="muted">Tem uma consulta online agendada. Toque no botão à hora combinada para entrar na sala de videochamada.</p>
-        <a class="btn btn-block" target="_blank" href="https://meet.jit.si/${jitsiRoom}">Entrar na videochamada</a>
+        <p class="muted">Tem uma consulta online agendada. Toque no botão à hora combinada.</p>
+        ${onlineToolHtml}
       </div>` : ''}
 
       <div class="card">
