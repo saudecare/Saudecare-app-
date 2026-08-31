@@ -224,7 +224,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-31-2';
+const APP_VERSION = '2026-08-31-3';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -4934,8 +4934,8 @@ window.openNewKnowledgeEntry = function(){
       <input id="kbTitle" placeholder="ex: Lavanda">
       <div class="row" style="margin:8px 0;">
         <label class="ghost" style="text-align:center;cursor:pointer;">
-          📷 Foto (lê o texto sozinho)
-          <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="runKnowledgeOcr(this)">
+          📷 Fotos (até 10 de cada vez, lê o texto sozinho)
+          <input type="file" accept="image/*" multiple style="display:none;" onchange="runKnowledgeOcr(this)">
         </label>
         <label class="ghost" style="text-align:center;cursor:pointer;">
           📄 PDF (extrai o texto sozinho)
@@ -4950,18 +4950,38 @@ window.openNewKnowledgeEntry = function(){
 };
 
 window.runKnowledgeOcr = async function(input){
-  const file = input.files[0];
-  if (!file) return;
+  let files = Array.from(input.files || []);
+  if (!files.length) return;
+  const MAX_PHOTOS = 10;
+  if (files.length > MAX_PHOTOS){
+    toast(`Só é possível processar ${MAX_PHOTOS} fotos de cada vez — as primeiras ${MAX_PHOTOS} vão ser lidas agora.`, true);
+    files = files.slice(0, MAX_PHOTOS);
+  }
   const msg = document.getElementById('kbProcessingMsg');
+  const box = document.getElementById('kbContent');
   msg.classList.remove('hidden');
-  msg.textContent = 'A ler o texto da foto, aguarde (pode demorar um pouco)…';
-  try{
-    const { data } = await Tesseract.recognize(file, 'por');
-    const box = document.getElementById('kbContent');
-    box.value = (box.value ? box.value + '\n\n' : '') + data.text.trim();
-  }catch(e){
-    console.error(e);
-    toast('Não foi possível ler o texto da foto. Tente outra imagem ou escreva à mão.', true);
+  let okCount = 0, failCount = 0;
+  // Processa uma foto de cada vez (não em paralelo) para não sobrecarregar a memória do telemóvel
+  for (let i = 0; i < files.length; i++){
+    msg.textContent = `A ler o texto da foto ${i + 1} de ${files.length}, aguarde…`;
+    try{
+      const { data } = await Tesseract.recognize(files[i], 'por');
+      const text = (data.text || '').trim();
+      if (text){
+        box.value = (box.value ? box.value + '\n\n' : '') + text;
+        okCount++;
+      }
+    }catch(e){
+      console.error(e);
+      failCount++;
+    }
+  }
+  if (failCount && okCount){
+    toast(`${okCount} foto(s) lida(s) com sucesso. ${failCount} não foi/foram possível ler — tente novamente para essas.`, true);
+  } else if (failCount && !okCount){
+    toast('Não foi possível ler o texto das fotos. Tente outras imagens ou escreva à mão.', true);
+  } else {
+    toast(`${okCount} foto(s) lida(s) com sucesso.`);
   }
   msg.classList.add('hidden');
   input.value = '';
