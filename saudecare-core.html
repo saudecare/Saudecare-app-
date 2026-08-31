@@ -13,6 +13,8 @@
 <meta name="apple-mobile-web-app-title" content="SaúdeCare">
 <title>SaúdeCare</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.js"></script>
 <style>
   :root{
     --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#ffffff;
@@ -180,7 +182,8 @@
 <div id="app" class="hidden">
   <nav>
     <h1>SaúdeCare</h1>
-    <button data-view="agenda" class="active">📅 Agenda</button>
+    <button data-view="home" class="active">🏠 Início</button>
+    <button data-view="agenda">📅 Agenda</button>
     <button data-view="finances">💶 Finanças</button>
     <button data-view="team" id="navTeamBtn">👥 Equipa</button>
     <button data-view="patients">🗂️ Pacientes</button>
@@ -188,6 +191,7 @@
     <button data-view="services">🩺 Serviços</button>
     <button data-view="protocols">📋 Protocolos</button>
     <button data-view="forms">📝 Fichas</button>
+    <button data-view="knowledge">🧠 Conhecimento</button>
     <button data-view="trainings">🎓 Formações</button>
     <button data-view="profile">🏥 Perfil</button>
     <button data-view="settings">⚙️ Configurações</button>
@@ -216,7 +220,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-30-13';
+const APP_VERSION = '2026-08-30-15';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -621,7 +625,7 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById('navTeamBtn').classList.toggle('hidden', tenantRole === 'staff_restricted');
   applyBranding();
   applyDynamicManifestAdmin();
-  renderView('agenda');
+  renderView('home');
   checkBackupReminder();
 
   const calendarParam = new URLSearchParams(window.location.search).get('calendarConnected');
@@ -718,7 +722,7 @@ window.installApp = async function(){
 // Cada mudança de vista fica registada no histórico do browser, para
 // que o botão "retroceder" do telemóvel navegue dentro da app (volta ao
 // ecrã anterior) em vez de sair da app logo na primeira vez que é usado.
-let __currentView = 'agenda';
+let __currentView = 'home';
 let __navigatingFromPopstate = false;
 
 function renderView(view){
@@ -730,7 +734,8 @@ function renderView(view){
   }
   __currentView = view;
   __navigatingFromPopstate = false;
-  if (view === 'agenda') renderAgenda(main);
+  if (view === 'home') renderHome(main);
+  else if (view === 'agenda') renderAgenda(main);
   else if (view === 'finances') renderFinances(main);
   else if (view === 'team') renderTeam(main);
   else if (view === 'patients') renderPatients(main);
@@ -738,6 +743,7 @@ function renderView(view){
   else if (view === 'services') renderServices(main);
   else if (view === 'protocols') renderProtocols(main);
   else if (view === 'forms') renderForms(main);
+  else if (view === 'knowledge') renderKnowledgeBase(main);
   else if (view === 'trainings') renderTrainings(main);
   else if (view === 'profile') renderProfile(main);
   else if (view === 'settings') renderSettings(main);
@@ -746,7 +752,7 @@ function renderView(view){
 window.addEventListener('popstate', (e) => {
   if (!currentUser) return; // antes do login não há vistas para navegar
   __navigatingFromPopstate = true;
-  renderView(e.state?.view || 'agenda');
+  renderView(e.state?.view || 'home');
 });
 
 // ── AGENDA ───────────────────────────────────────────────────────────
@@ -924,6 +930,85 @@ window.changeFinancesMonth = function(delta){
   window.__financesMonth = new Date(d.getFullYear(), d.getMonth() + delta, 1);
   renderView('finances');
 };
+
+// ── Início — alertas + resumo da semana ─────────────────────────────────
+async function renderHome(main){
+  main.innerHTML = '<p class="muted">A carregar…</p>';
+
+  const [apptsSnap, waitlistSnap, patientsSnap, staffSnap] = await Promise.all([
+    getDocs(collection(db, 'tenants', tenantId, 'appointments')),
+    getDocs(collection(db, 'tenants', tenantId, 'waitlist')),
+    getDocs(collection(db, 'tenants', tenantId, 'patients')),
+    tenantRole === 'owner' ? getDocs(collection(db, 'tenants', tenantId, 'staff')) : Promise.resolve(null)
+  ]);
+
+  const alerts = [];
+  if (staffSnap){
+    const pendingStaff = staffSnap.docs.filter(d => d.data().status === 'pending_activation').length;
+    if (pendingStaff) alerts.push({ icon: '👥', text: `${pendingStaff} pedido(s) de equipa por aprovar`, view: 'team' });
+  }
+  if (waitlistSnap.size){
+    alerts.push({ icon: '⏳', text: `${waitlistSnap.size} pessoa(s) em lista de espera`, view: 'waitlist' });
+  }
+  const noConsent = patientsSnap.docs.filter(d => !d.data().consentGivenAt).length;
+  if (noConsent){
+    alerts.push({ icon: '📝', text: `${noConsent} paciente(s) sem consentimento registado`, view: 'patients' });
+  }
+  const bkSettings = currentTenantDoc?.backupSettings;
+  if (bkSettings?.remindersEnabled || bkSettings?.autoBackup){
+    const last = bkSettings.lastBackupAt?.toDate ? bkSettings.lastBackupAt.toDate() : null;
+    const days = last ? Math.floor((Date.now() - last.getTime()) / 86400000) : null;
+    const freq = bkSettings.frequencyDays || 30;
+    if (!last || days >= freq){
+      alerts.push({ icon: '💾', text: last ? `Já lá vão ${days} dias desde o último backup` : 'Ainda não fez nenhum backup', view: 'settings' });
+    }
+  }
+
+  const alertsHtml = alerts.length
+    ? alerts.map(a => `<div class="appt-item row" style="cursor:pointer;" onclick="renderView('${a.view}')">
+        <div>${a.icon} ${escapeHtml(a.text)}</div><div>›</div>
+      </div>`).join('')
+    : '<p class="muted">Sem alertas — está tudo em dia. ✅</p>';
+
+  const now = new Date();
+  const weekEnd = new Date(now.getTime() + 7*86400000);
+  const weekAppts = apptsSnap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(a => a.status !== 'cancelled' && a.startsAt && a.startsAt.toDate() >= now && a.startsAt.toDate() <= weekEnd)
+    .sort((a,b) => a.startsAt.toMillis() - b.startsAt.toMillis());
+
+  const byDay = {};
+  weekAppts.forEach(a => {
+    const key = dateKey(a.startsAt.toDate());
+    (byDay[key] = byDay[key] || []).push(a);
+  });
+
+  let weekHtml = '';
+  if (!weekAppts.length){
+    weekHtml = '<p class="muted">Sem marcações nos próximos 7 dias.</p>';
+  } else {
+    Object.entries(byDay).forEach(([key, list]) => {
+      const d = list[0].startsAt.toDate();
+      weekHtml += `<div style="margin-bottom:10px;">
+        <strong>${d.toLocaleDateString('pt-PT', { weekday:'long', day:'2-digit', month:'2-digit' })}</strong>
+        ${list.map(a => `<div class="muted">${a.startsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})} — ${escapeHtml(a.patientName||'?')} (${escapeHtml(a.serviceName||'')})</div>`).join('')}
+      </div>`;
+    });
+  }
+
+  main.innerHTML = `
+    <h2>Início</h2>
+    <div class="card">
+      <h2 style="margin-bottom:8px;">🔔 Alertas</h2>
+      ${alertsHtml}
+    </div>
+    <div class="card">
+      <div class="row"><h2>📅 Esta semana</h2>
+        <button class="ghost" onclick="renderView('agenda')">Ver agenda completa →</button>
+      </div>
+      ${weekHtml}
+    </div>`;
+}
 
 async function renderAgenda(main){
   if (!window.__agendaMonth) window.__agendaMonth = new Date();
@@ -4427,6 +4512,8 @@ const CHATBOT_KB = [
     answer: 'Em "Serviços" define os serviços que presta, com duração e preço. Há modelos prontos por área (Reiki, Radiestesia, Psicologia, avaliação inicial) para começar mais depressa.' },
   { keywords: ['pacote','pack de sessoes','5 sessoes','10 sessoes'],
     answer: 'Nos "Pacotes de sessões" (dentro da ficha de um paciente) pode vender um conjunto de sessões, que vão sendo consumidas uma por marcação. Há atalhos rápidos para 5 ou 10 sessões.' },
+  { keywords: ['conhecimento','biblioteca','oleos essenciais','fitoterapicos','probioticos','ervas','suplemento natural'],
+    answer: 'Em "🧠 Conhecimento" pode guardar o que já sabe sobre óleos essenciais, fitoterápicos, ervas, probióticos, etc — por texto, foto (lê o texto sozinho) ou PDF. Depois, pode perguntar-me sobre um tema e devolvo o que escreveu. Atenção: isto é sempre conteúdo seu — eu nunca avalio interações ou faço recomendações clínicas por conta própria.' },
   { keywords: ['lista de espera','espera','vaga'],
     answer: 'Em "Lista de espera" pode adicionar pacientes que não encontraram horário. Quando cancela uma marcação, se houver alguém à espera desse serviço, a app avisa-o — e há um botão para notificar por WhatsApp com a mensagem já pronta.' },
   { keywords: ['portal do paciente','portal','videochamada','video chamada','mensagens com paciente'],
@@ -4639,11 +4726,193 @@ async function tryChatbotPatientLookup(text){
   return out;
 }
 
+// ── Biblioteca de Conhecimento — só o que o subscritor inserir ─────────
+// O assistente nunca gera avaliações clínicas sozinho: só devolve
+// literalmente o que foi escrito aqui. A responsabilidade pelo conteúdo
+// e pela decisão de o usar é sempre do profissional — daí o aviso e a
+// aceitação explícita antes de poder usar esta secção.
+const KB_DISCLAIMER_TEXT = `Tudo o que inserir aqui (texto, fotos, PDFs) é da sua exclusiva responsabilidade — o SaúdeCare não verifica, valida nem garante a veracidade, atualidade ou segurança clínica desta informação.
+
+O assistente virtual apenas devolve o que você escreveu — nunca cria, deduz ou avalia interações, doses ou segurança por conta própria.
+
+Antes de aconselhar qualquer suplemento, óleo essencial, erva ou produto natural a um paciente que esteja a tomar medicação, confirme sempre com o médico que o acompanha se existe alguma contraindicação.`;
+
+const KB_ANSWER_DISCLAIMER = '\n\n⚠️ Isto é conteúdo que você inseriu — não é uma avaliação clínica automática. Confirme sempre com o médico responsável pelo paciente antes de aconselhar.';
+
+async function renderKnowledgeBase(main){
+  if (!currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt){
+    main.innerHTML = `
+      <h2>🧠 Biblioteca de Conhecimento</h2>
+      <div class="card">
+        <h2>⚠️ Antes de continuar</h2>
+        <p style="white-space:pre-wrap;line-height:1.5;">${escapeHtml(KB_DISCLAIMER_TEXT)}</p>
+        <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:10px;">
+          <input type="checkbox" id="kbAcceptCheck" style="width:auto;">
+          Li e aceito a responsabilidade por todo o conteúdo que inserir aqui.
+        </label>
+        <button class="primary" style="margin-top:10px;" onclick="acceptKnowledgeBaseDisclaimer()">Continuar</button>
+      </div>`;
+    return;
+  }
+
+  const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'knowledgeBase'), orderBy('topic')));
+  const entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const topics = [...new Set(entries.map(e => e.topic || 'Sem tema'))];
+
+  let listHtml = '';
+  if (!entries.length){
+    listHtml = '<p class="muted">Ainda não inseriu nenhum conhecimento.</p>';
+  } else {
+    topics.forEach(topic => {
+      listHtml += `<h3 style="margin:14px 0 6px;">${escapeHtml(topic)}</h3>`;
+      entries.filter(e => (e.topic||'Sem tema') === topic).forEach(e => {
+        listHtml += `<div class="appt-item">
+          <div class="row">
+            <strong>${escapeHtml(e.title)}</strong>
+            <button class="ghost" onclick="deleteKnowledgeEntry('${e.id}')">Apagar</button>
+          </div>
+          <div class="muted" style="white-space:pre-wrap;margin-top:4px;">${escapeHtml((e.content||'').slice(0,240))}${(e.content||'').length>240?'…':''}</div>
+        </div>`;
+      });
+    });
+  }
+
+  main.innerHTML = `
+    <div class="row"><h2>🧠 Biblioteca de Conhecimento</h2>
+      <button class="primary" onclick="openNewKnowledgeEntry()">+ Novo conhecimento</button>
+    </div>
+    ${hintBox('Insira aqui o que já sabe sobre óleos essenciais, fitoterápicos, probióticos, ervas, ou outros temas — por texto, foto ou PDF. Pergunte depois ao assistente (💬) e ele devolve o que escreveu aqui — a decisão de usar continua sempre a ser sua.')}
+    <div class="card">${listHtml}</div>
+    <div id="knowledgeFormContainer"></div>
+  `;
+}
+
+window.acceptKnowledgeBaseDisclaimer = async function(){
+  if (!document.getElementById('kbAcceptCheck').checked){
+    toast('Tem de marcar a caixa para continuar.', true);
+    return;
+  }
+  await updateDoc(doc(db, 'tenants', tenantId), { knowledgeBaseDisclaimerAcceptedAt: serverTimestamp() });
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  currentTenantDoc = snap.data();
+  renderView('knowledge');
+};
+
+window.openNewKnowledgeEntry = function(){
+  document.getElementById('knowledgeFormContainer').innerHTML = `
+    <div class="card" style="margin-top:10px;">
+      <h3 style="margin-bottom:8px;">Novo conhecimento</h3>
+      <label>Tema (ex: Óleos Essenciais, Fitoterápicos, Probióticos, Ervas…)</label>
+      <input id="kbTopic" placeholder="Óleos Essenciais">
+      <label>Título</label>
+      <input id="kbTitle" placeholder="ex: Lavanda">
+      <div class="row" style="margin:8px 0;">
+        <label class="ghost" style="text-align:center;cursor:pointer;">
+          📷 Foto (lê o texto sozinho)
+          <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="runKnowledgeOcr(this)">
+        </label>
+        <label class="ghost" style="text-align:center;cursor:pointer;">
+          📄 PDF (extrai o texto sozinho)
+          <input type="file" accept="application/pdf" style="display:none;" onchange="runKnowledgePdf(this)">
+        </label>
+      </div>
+      <p id="kbProcessingMsg" class="muted hidden">A processar, aguarde…</p>
+      <label>Conteúdo (reveja/edite antes de guardar)</label>
+      <textarea id="kbContent" rows="8"></textarea>
+      <button class="primary" style="margin-top:8px;" onclick="saveKnowledgeEntry()">Guardar</button>
+    </div>`;
+};
+
+window.runKnowledgeOcr = async function(input){
+  const file = input.files[0];
+  if (!file) return;
+  const msg = document.getElementById('kbProcessingMsg');
+  msg.classList.remove('hidden');
+  msg.textContent = 'A ler o texto da foto, aguarde (pode demorar um pouco)…';
+  try{
+    const { data } = await Tesseract.recognize(file, 'por');
+    const box = document.getElementById('kbContent');
+    box.value = (box.value ? box.value + '\n\n' : '') + data.text.trim();
+  }catch(e){
+    console.error(e);
+    toast('Não foi possível ler o texto da foto. Tente outra imagem ou escreva à mão.', true);
+  }
+  msg.classList.add('hidden');
+  input.value = '';
+};
+
+window.runKnowledgePdf = async function(input){
+  const file = input.files[0];
+  if (!file) return;
+  const msg = document.getElementById('kbProcessingMsg');
+  msg.classList.remove('hidden');
+  msg.textContent = 'A extrair o texto do PDF, aguarde…';
+  try{
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js';
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++){
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      fullText += content.items.map(it => it.str).join(' ') + '\n\n';
+    }
+    if (!fullText.trim()){
+      toast('Este PDF parece ser digitalizado (imagem) — tente antes tirar uma foto de cada página.', true);
+    } else {
+      const box = document.getElementById('kbContent');
+      box.value = (box.value ? box.value + '\n\n' : '') + fullText.trim();
+    }
+  }catch(e){
+    console.error(e);
+    toast('Não foi possível ler este PDF.', true);
+  }
+  msg.classList.add('hidden');
+  input.value = '';
+};
+
+window.saveKnowledgeEntry = async function(){
+  const topic = document.getElementById('kbTopic').value.trim() || 'Geral';
+  const title = document.getElementById('kbTitle').value.trim();
+  const content = document.getElementById('kbContent').value.trim();
+  if (!title || !content){ toast('Preencha o título e o conteúdo.', true); return; }
+  await addDoc(collection(db, 'tenants', tenantId, 'knowledgeBase'), {
+    topic, title, content, createdAt: serverTimestamp(), createdBy: currentUser.uid
+  });
+  toast('Conhecimento guardado.');
+  renderView('knowledge');
+};
+
+window.deleteKnowledgeEntry = async function(id){
+  if (!confirm('Apagar este conhecimento?')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'knowledgeBase', id));
+  toast('Apagado.');
+  renderView('knowledge');
+};
+
+async function tryChatbotKnowledgeSearch(text){
+  if (!tenantId || !currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt) return null;
+  const t = stripAccents(text);
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'knowledgeBase'));
+  let best = null, bestScore = 0;
+  snap.forEach(d => {
+    const e = d.data();
+    const haystack = stripAccents((e.topic||'') + ' ' + (e.title||''));
+    let score = 0;
+    haystack.split(/\s+/).forEach(w => { if (w.length > 2 && t.includes(w)) score++; });
+    if (score > bestScore){ bestScore = score; best = e; }
+  });
+  if (!best || bestScore === 0) return null;
+  return `📖 ${best.topic} — ${best.title}\n\n${best.content}${KB_ANSWER_DISCLAIMER}`;
+}
+
 async function resolveChatbotAnswer(text){
   const agenda = await tryChatbotWeeklyAgenda(text);
   if (agenda) return agenda;
   const patient = await tryChatbotPatientLookup(text);
   if (patient) return patient;
+  const knowledge = await tryChatbotKnowledgeSearch(text);
+  if (knowledge) return knowledge;
   return matchChatbotAnswer(text);
 }
 
