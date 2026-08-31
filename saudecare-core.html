@@ -224,7 +224,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-31-1';
+const APP_VERSION = '2026-08-31-2';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -4621,6 +4621,18 @@ function stripAccents(s){
   return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+// Palavras demasiado comuns para contar como "acerto" na pesquisa de conhecimento
+const KB_STOPWORDS = ['para','como','que','com','uma','umas','uns','dos','das','por','tem','ter','sao','ser','este','esta','isso','isto','qual','quais','quando','onde','sobre','mais','menos','muito','pouco','nao','sim','fazer','pode','posso','gostaria','saber','existe','tenho','minha','meu'];
+
+// Divide um texto grande (ex: livro extraído de PDF) em frases individuais
+function kbSplitSentences(text){
+  return (text||'')
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[\.\!\?\;])\s+|\n+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 12);
+}
+
 const CHATBOT_KB = [
   { keywords: ['ola','oi','bom dia','boa tarde','boa noite'],
     answer: 'Olá! 👋 Sou o assistente do SaúdeCare. Posso ajudar a perceber como usar a app, ou dar-lhe informação geral sobre as áreas terapêuticas que apoiamos. O que gostaria de saber?' },
@@ -5007,17 +5019,42 @@ window.deleteKnowledgeEntry = async function(id){
 async function tryChatbotKnowledgeSearch(text){
   if (!tenantId || !currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt) return null;
   const t = stripAccents(text);
+  const queryWords = [...new Set(t.split(/\s+/).filter(w => w.length > 2 && !KB_STOPWORDS.includes(w)))];
+  if (!queryWords.length) return null;
+
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'knowledgeBase'));
-  let best = null, bestScore = 0;
+  let bestWindow = null, bestScore = 0, bestEntry = null;
+
   snap.forEach(d => {
     const e = d.data();
-    const haystack = stripAccents((e.topic||'') + ' ' + (e.title||''));
-    let score = 0;
-    haystack.split(/\s+/).forEach(w => { if (w.length > 2 && t.includes(w)) score++; });
-    if (score > bestScore){ bestScore = score; best = e; }
+    const titleHay = stripAccents((e.topic||'') + ' ' + (e.title||''));
+    const titleBonus = queryWords.filter(w => titleHay.includes(w)).length * 0.5;
+
+    const sentences = kbSplitSentences(e.content || '');
+    const WINDOW = 4; // frases seguidas agrupadas, para dar contexto sem devolver o texto todo
+    for (let i = 0; i < sentences.length; i += 2){
+      const windowText = sentences.slice(i, i + WINDOW).join(' ');
+      if (!windowText) continue;
+      const hay = stripAccents(windowText);
+      let score = titleBonus;
+      queryWords.forEach(w => { if (hay.includes(w)) score++; });
+      if (score > bestScore){ bestScore = score; bestWindow = windowText; bestEntry = e; }
+    }
+    // Entradas curtas sem "parágrafos" longos (ex: texto escrito à mão) — testa também o conteúdo inteiro
+    if (sentences.length <= WINDOW){
+      const hay = stripAccents(e.content || '');
+      let score = titleBonus;
+      queryWords.forEach(w => { if (hay.includes(w)) score++; });
+      if (score > bestScore){ bestScore = score; bestWindow = (e.content || '').trim(); bestEntry = e; }
+    }
   });
-  if (!best || bestScore === 0) return null;
-  return `📖 ${best.topic} — ${best.title}\n\n${best.content}${KB_ANSWER_DISCLAIMER}`;
+
+  if (!bestEntry || bestScore < 1) return null;
+
+  let excerpt = bestWindow.trim();
+  if (excerpt.length > 700) excerpt = excerpt.slice(0, 700).trim() + '…';
+
+  return `📖 ${bestEntry.topic} — ${bestEntry.title}\n\n${excerpt}\n\n(Isto é um excerto do que guardou, relacionado com a sua pergunta — não é o conteúdo todo. Para ver tudo, consulte "🧠 Conhecimento".)${KB_ANSWER_DISCLAIMER}`;
 }
 
 async function resolveChatbotAnswer(text){
