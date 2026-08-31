@@ -224,7 +224,7 @@ import {
 // abrir a app, vai buscar o próprio ficheiro ao servidor (ignorando
 // qualquer cache) e compara a versão. Se houver uma mais recente,
 // recarrega-se sozinha uma vez, silenciosamente.
-const APP_VERSION = '2026-08-31-3';
+const APP_VERSION = '2026-08-31-4';
 (async function checkForAppUpdate(){
   try {
     const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
@@ -4865,6 +4865,46 @@ Antes de aconselhar qualquer suplemento, óleo essencial, erva ou produto natura
 
 const KB_ANSWER_DISCLAIMER = '\n\n⚠️ Isto é conteúdo que você inseriu — não é uma avaliação clínica automática. Confirme sempre com o médico responsável pelo paciente antes de aconselhar.';
 
+// ── Planos e limites ─────────────────────────────────────────────────
+// O campo tenants.plan já existe no painel de admin (start/grow/pro/
+// enterprise/lifetime); aqui é onde os limites de cada plano passam a
+// ter efeito real. Ajustável só mudando os números abaixo.
+const PLAN_LIMITS = {
+  start:      { staff: 1,  kbBytes: 5   * 1024 * 1024 },
+  grow:       { staff: 3,  kbBytes: 25  * 1024 * 1024 },
+  pro:        { staff: 8,  kbBytes: 100 * 1024 * 1024 },
+  enterprise: { staff: 20, kbBytes: 500 * 1024 * 1024 },
+  lifetime:   { staff: Infinity, kbBytes: Infinity }
+};
+// Limite técnico do Firebase por documento (~1MB) — aplica-se a todos os
+// planos, incluindo o vitalício, porque é uma limitação da plataforma,
+// não do negócio.
+const KB_ENTRY_HARD_CAP_BYTES = 900 * 1024;
+
+function getPlanLimits(){
+  // A Hikari Fafe (tenant titular) tem sempre acesso total, mesmo que o
+  // campo "plan" seja alterado por engano.
+  if (tenantId === 'hikari-terapias') return PLAN_LIMITS.lifetime;
+  const plan = currentTenantDoc?.plan || 'start';
+  return PLAN_LIMITS[plan] || PLAN_LIMITS.start;
+}
+
+function byteLength(str){
+  return new TextEncoder().encode(str || '').length;
+}
+
+function formatBytes(bytes){
+  if (bytes === Infinity) return 'sem limite';
+  return (bytes / 1024 / 1024).toFixed(bytes < 1024*1024*10 ? 1 : 0) + ' MB';
+}
+
+async function getKnowledgeUsageBytes(excludeId){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'knowledgeBase'));
+  let total = 0;
+  snap.forEach(d => { if (d.id !== excludeId) total += byteLength(d.data().content || ''); });
+  return total;
+}
+
 async function renderKnowledgeBase(main){
   if (!currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt){
     main.innerHTML = `
@@ -4883,7 +4923,16 @@ async function renderKnowledgeBase(main){
 
   const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'knowledgeBase'), orderBy('topic')));
   const entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  window.__kbCache = entries;
   const topics = [...new Set(entries.map(e => e.topic || 'Sem tema'))];
+
+  const limits = getPlanLimits();
+  const usedBytes = entries.reduce((sum, e) => sum + byteLength(e.content || ''), 0);
+  const pct = limits.kbBytes === Infinity ? 0 : Math.min(100, Math.round((usedBytes / limits.kbBytes) * 100));
+  const usageHtml = `<div class="card" style="margin-bottom:10px;">
+    <div class="muted">Espaço usado na Biblioteca: <strong>${formatBytes(usedBytes)}</strong> de ${formatBytes(limits.kbBytes)} (plano ${escapeHtml(currentTenantDoc?.plan || 'start')})</div>
+    ${limits.kbBytes !== Infinity ? `<div style="background:#eef0f5;border-radius:6px;height:8px;margin-top:6px;overflow:hidden;"><div style="background:${pct>=100?'#c0392b':pct>=80?'#e0a100':'#2f7d5c'};height:100%;width:${pct}%;"></div></div>` : ''}
+  </div>`;
 
   let listHtml = '';
   if (!entries.length){
@@ -4895,7 +4944,10 @@ async function renderKnowledgeBase(main){
         listHtml += `<div class="appt-item">
           <div class="row">
             <strong>${escapeHtml(e.title)}</strong>
-            <button class="ghost" onclick="deleteKnowledgeEntry('${e.id}')">Apagar</button>
+            <span>
+              <button class="ghost" onclick="editKnowledgeEntry('${e.id}')">Editar</button>
+              <button class="ghost" onclick="deleteKnowledgeEntry('${e.id}')">Apagar</button>
+            </span>
           </div>
           <div class="muted" style="white-space:pre-wrap;margin-top:4px;">${escapeHtml((e.content||'').slice(0,240))}${(e.content||'').length>240?'…':''}</div>
         </div>`;
@@ -4908,6 +4960,7 @@ async function renderKnowledgeBase(main){
       <button class="primary" onclick="openNewKnowledgeEntry()">+ Novo conhecimento</button>
     </div>
     ${hintBox('Insira aqui o que já sabe sobre óleos essenciais, fitoterápicos, probióticos, ervas, ou outros temas — por texto, foto ou PDF. Pergunte depois ao assistente (💬) e ele devolve o que escreveu aqui — a decisão de usar continua sempre a ser sua.')}
+    ${usageHtml}
     <div class="card">${listHtml}</div>
     <div id="knowledgeFormContainer"></div>
   `;
@@ -4924,17 +4977,28 @@ window.acceptKnowledgeBaseDisclaimer = async function(){
   renderView('knowledge');
 };
 
-window.openNewKnowledgeEntry = function(){
+window.editKnowledgeEntry = function(id){
+  const entry = (window.__kbCache || []).find(x => x.id === id);
+  if (!entry){ toast('Não foi possível abrir esta entrada — atualize a página.', true); return; }
+  openNewKnowledgeEntry(entry);
+};
+
+window.openNewKnowledgeEntry = function(entry){
+  const isEdit = !!entry;
   document.getElementById('knowledgeFormContainer').innerHTML = `
     <div class="card" style="margin-top:10px;">
-      <h3 style="margin-bottom:8px;">Novo conhecimento</h3>
+      <h3 style="margin-bottom:8px;">${isEdit ? 'Editar conhecimento' : 'Novo conhecimento'}</h3>
       <label>Tema (ex: Óleos Essenciais, Fitoterápicos, Probióticos, Ervas…)</label>
-      <input id="kbTopic" placeholder="Óleos Essenciais">
+      <input id="kbTopic" placeholder="Óleos Essenciais" value="${isEdit ? escapeHtml(entry.topic||'') : ''}">
       <label>Título</label>
-      <input id="kbTitle" placeholder="ex: Lavanda">
-      <div class="row" style="margin:8px 0;">
+      <input id="kbTitle" placeholder="ex: Lavanda" value="${isEdit ? escapeHtml(entry.title||'') : ''}">
+      <div class="row" style="margin:8px 0;flex-wrap:wrap;">
         <label class="ghost" style="text-align:center;cursor:pointer;">
-          📷 Fotos (até 10 de cada vez, lê o texto sozinho)
+          📷 Tirar foto
+          <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="runKnowledgeOcr(this)">
+        </label>
+        <label class="ghost" style="text-align:center;cursor:pointer;">
+          🖼️ Galeria (até 10 de cada vez)
           <input type="file" accept="image/*" multiple style="display:none;" onchange="runKnowledgeOcr(this)">
         </label>
         <label class="ghost" style="text-align:center;cursor:pointer;">
@@ -4943,9 +5007,12 @@ window.openNewKnowledgeEntry = function(){
         </label>
       </div>
       <p id="kbProcessingMsg" class="muted hidden">A processar, aguarde…</p>
-      <label>Conteúdo (reveja/edite antes de guardar)</label>
-      <textarea id="kbContent" rows="8"></textarea>
-      <button class="primary" style="margin-top:8px;" onclick="saveKnowledgeEntry()">Guardar</button>
+      <label>Conteúdo (reveja/edite antes de guardar — pode apagar só uma parte)</label>
+      <textarea id="kbContent" rows="8">${isEdit ? escapeHtml(entry.content||'') : ''}</textarea>
+      <div class="row" style="margin-top:8px;">
+        <button class="primary" onclick="saveKnowledgeEntry(${isEdit ? `'${entry.id}'` : 'null'})">Guardar</button>
+        ${isEdit ? `<button class="ghost" onclick="document.getElementById('knowledgeFormContainer').innerHTML=''">Cancelar</button>` : ''}
+      </div>
     </div>`;
 };
 
@@ -5017,15 +5084,37 @@ window.runKnowledgePdf = async function(input){
   input.value = '';
 };
 
-window.saveKnowledgeEntry = async function(){
+window.saveKnowledgeEntry = async function(editId){
   const topic = document.getElementById('kbTopic').value.trim() || 'Geral';
   const title = document.getElementById('kbTitle').value.trim();
   const content = document.getElementById('kbContent').value.trim();
   if (!title || !content){ toast('Preencha o título e o conteúdo.', true); return; }
-  await addDoc(collection(db, 'tenants', tenantId, 'knowledgeBase'), {
-    topic, title, content, createdAt: serverTimestamp(), createdBy: currentUser.uid
-  });
-  toast('Conhecimento guardado.');
+
+  const entryBytes = byteLength(content);
+  if (entryBytes > KB_ENTRY_HARD_CAP_BYTES){
+    toast(`Esta entrada é demasiado grande para guardar de uma vez (limite técnico do Firebase, cerca de ${formatBytes(KB_ENTRY_HARD_CAP_BYTES)}). Divida o conteúdo em vários temas mais pequenos — ex: um por assunto do livro — e guarde cada um em separado.`, true);
+    return;
+  }
+
+  const limits = getPlanLimits();
+  const usedBytes = await getKnowledgeUsageBytes(editId || null);
+  const projected = usedBytes + entryBytes;
+  if (projected > limits.kbBytes){
+    toast(`Chegou ao limite de espaço do seu plano na Biblioteca de Conhecimento (${formatBytes(usedBytes)} de ${formatBytes(limits.kbBytes)}). Apague algo, ou peça upgrade de plano para continuar.`, true);
+    return;
+  } else if (limits.kbBytes !== Infinity && projected > limits.kbBytes * 0.8){
+    toast(`Aviso: está perto do limite de espaço do seu plano (${formatBytes(projected)} de ${formatBytes(limits.kbBytes)}).`);
+  }
+
+  if (editId){
+    await updateDoc(doc(db, 'tenants', tenantId, 'knowledgeBase', editId), { topic, title, content, updatedAt: serverTimestamp() });
+    toast('Conhecimento atualizado.');
+  } else {
+    await addDoc(collection(db, 'tenants', tenantId, 'knowledgeBase'), {
+      topic, title, content, createdAt: serverTimestamp(), createdBy: currentUser.uid
+    });
+    toast('Conhecimento guardado.');
+  }
   renderView('knowledge');
 };
 
