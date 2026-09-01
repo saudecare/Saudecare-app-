@@ -259,7 +259,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-01-27';
+const APP_VERSION = '2026-09-01-28';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -366,8 +366,19 @@ function toast(msg, isError=false){
   t.textContent = msg;
   t.style.background = isError ? '#b3413a' : '#1a2b26';
   t.style.display = 'block';
-  setTimeout(()=> t.style.display='none', 3200);
+  setTimeout(()=> t.style.display='none', isError ? 6000 : 3200);
 }
+
+// ── Rede de segurança contra erros silenciosos ──────────────────────────
+// Até agora, se uma ação falhasse a meio (ex: não conseguir ler dados),
+// não aparecia nada — parecia que o botão "não fazia nada". A partir de
+// agora, qualquer falha destas mostra sempre um aviso em baixo no ecrã,
+// para nunca mais ficarmos sem saber o que realmente aconteceu.
+window.addEventListener('unhandledrejection', function(e){
+  console.error('Erro não tratado:', e.reason);
+  const msg = (e.reason && e.reason.message) ? e.reason.message : String(e.reason || 'Ocorreu um erro inesperado.');
+  toast('⚠️ ' + msg, true);
+});
 
 function escapeHtml(str){
   if (str == null) return '';
@@ -1319,11 +1330,16 @@ window.goToAgendaDay = function(dayKey){
 // guiada (por protocolos, com mapeamento no corpo quando aplicável) já
 // existe em cada ficha. Não duplica esse fluxo, só encurta o caminho até lá.
 window.startNewConsultationFlow = function(){
-  renderView('patients');
-  setTimeout(() => {
-    toast('Escolha o paciente para iniciar a nova consulta.');
-    document.getElementById('patientSearchInput')?.focus();
-  }, 300);
+  try{
+    renderView('patients');
+    setTimeout(() => {
+      toast('Escolha o paciente para iniciar a nova consulta.');
+      document.getElementById('patientSearchInput')?.focus();
+    }, 300);
+  }catch(e){
+    console.error(e);
+    toast('⚠️ Não foi possível abrir a lista de pacientes: ' + e.message, true);
+  }
 };
 
 async function renderAgenda(main){
@@ -2438,6 +2454,7 @@ window.sendPatientMessage = async function(patientId){
 // Mostra os relatórios por ordem cronológica e destaca os pontos que se
 // repetem entre sessões, para se perceber padrões ao longo do tempo.
 window.viewPatientEvolution = async function(patientId, patientName){
+ try{
   const reportsSnap = await getDocs(query(
     collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'),
     orderBy('generatedAt', 'asc')
@@ -2498,6 +2515,10 @@ window.viewPatientEvolution = async function(patientId, patientName){
     ${timelineHtml}
   `;
   scrollToEl('patientFormContainer');
+ }catch(e){
+  console.error(e);
+  toast('⚠️ Não foi possível carregar a evolução: ' + e.message, true);
+ }
 };
 
 // ── Pacotes de sessões ───────────────────────────────────────────────────
@@ -3807,25 +3828,30 @@ window.duplicateProtocol = async function(id){
 
 // ── CONSULTA GUIADA — usar um protocolo com um paciente concreto ───────
 window.startGuidedConsultation = async function(patientId, patientName){
-  const snap = await getDocs(collection(db, 'tenants', tenantId, 'protocols'));
-  let opts = '<option value="">Selecionar protocolo...</option>';
-  const protocols = {};
-  snap.forEach(d => { protocols[d.id] = d.data(); opts += `<option value="${d.id}">${escapeHtml(d.data().name)}</option>`; });
+  try{
+    const snap = await getDocs(collection(db, 'tenants', tenantId, 'protocols'));
+    let opts = '<option value="">Selecionar protocolo...</option>';
+    const protocols = {};
+    snap.forEach(d => { protocols[d.id] = d.data(); opts += `<option value="${d.id}">${escapeHtml(d.data().name)}</option>`; });
 
-  if (snap.empty){
-    toast('Crie um protocolo primeiro, em "Protocolos".', true);
-    return;
+    if (snap.empty){
+      toast('Crie um protocolo primeiro, em "Protocolos".', true);
+      return;
+    }
+
+    document.getElementById('patientFormContainer').innerHTML = `
+      <div class="card">
+        <h2>Consulta guiada — ${escapeHtml(patientName)}</h2>
+        <label>Protocolo</label>
+        <select id="guidedProtocolSelect" onchange="onGuidedProtocolChange('${patientId}', '${escapeHtml(patientName)}')">${opts}</select>
+        <div id="guidedPointsArea"></div>
+      </div>`;
+    window.__guidedProtocols = protocols;
+    scrollToEl('patientFormContainer');
+  }catch(e){
+    console.error(e);
+    toast('⚠️ Não foi possível abrir a consulta guiada: ' + e.message, true);
   }
-
-  document.getElementById('patientFormContainer').innerHTML = `
-    <div class="card">
-      <h2>Consulta guiada — ${escapeHtml(patientName)}</h2>
-      <label>Protocolo</label>
-      <select id="guidedProtocolSelect" onchange="onGuidedProtocolChange('${patientId}', '${escapeHtml(patientName)}')">${opts}</select>
-      <div id="guidedPointsArea"></div>
-    </div>`;
-  window.__guidedProtocols = protocols;
-  scrollToEl('patientFormContainer');
 };
 
 window.onGuidedProtocolChange = function(patientId, patientName){
