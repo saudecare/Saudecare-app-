@@ -259,7 +259,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-08-31-24';
+const APP_VERSION = '2026-08-31-25';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -496,12 +496,10 @@ window.doStaffJoin = async function(){
   if (!email){ errEl.textContent = 'Indique o seu email.'; return; }
   if (pass.length < 6){ errEl.textContent = 'A palavra-passe precisa de pelo menos 6 caracteres.'; return; }
 
-  const inviteSnap = await getDoc(doc(db, 'tenants', invite.tenantId, 'staffInvites', invite.inviteId));
-  if (!inviteSnap.exists() || inviteSnap.data().used){
-    errEl.textContent = 'Este convite já não é válido. Peça um novo link.';
-    return;
-  }
-  const role = inviteSnap.data().role;
+  // A validação do convite (existe? já foi usado?) é feita do lado do
+  // servidor, na função staffJoinRequest.js — não aqui, porque quem está
+  // a preencher isto ainda não tem conta nenhuma, e as regras de segurança
+  // corretamente não deixam ler /staffInvites sem sessão.
 
   // Flag própria (diferente de __justRegistered, usada no registo normal
   // de subscritores) — enquanto estiver ativa, o listener de login geral
@@ -539,13 +537,13 @@ window.doStaffJoin = async function(){
     });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || 'Falha ao registar o pedido.');
-    await signOut(auth);
     window.__justRegisteredViaStaffJoin = false;
+    await signOut(auth);
     errEl.style.color = 'var(--primary)';
     errEl.textContent = 'Pedido enviado! Assim que o dono do consultório ativar o seu acesso, já pode entrar com este email e password.';
   }catch(e){
     window.__justRegisteredViaStaffJoin = false;
-    errEl.textContent = 'Não foi possível concluir o pedido. Tente novamente ou peça um novo link.';
+    errEl.textContent = e.message && e.message !== 'Failed to fetch' ? e.message : 'Não foi possível concluir o pedido. Tente novamente ou peça um novo link.';
     console.error(e);
   }
 };
@@ -4676,10 +4674,20 @@ window.renderMyPublicProfile = async function(main){
     <div class="card">
       <label>O seu nome</label>
       <input id="mpName" value="${escapeHtml(existing?.name || currentUserDisplayName || '')}">
-      <label>Especialidade / função (ex: Fisioterapeuta, Terapeuta de Reiki)</label>
+      <label>Categoria</label>
+      <select id="mpCategory" onchange="document.getElementById('mpCategoryOtherField').classList.toggle('hidden', this.value !== 'Outro')">
+        ${['Médico(a)','Fisioterapeuta','Psicólogo(a)','Nutricionista','Terapeuta Integrativo/Holístico','Enfermeiro(a)','Personal Trainer','Outro']
+          .map(c => `<option value="${c}" ${existing?.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+      </select>
+      <div id="mpCategoryOtherField" class="${(existing?.category && !['Médico(a)','Fisioterapeuta','Psicólogo(a)','Nutricionista','Terapeuta Integrativo/Holístico','Enfermeiro(a)','Personal Trainer'].includes(existing.category)) ? '' : 'hidden'}">
+        <label>Qual? (escreva a sua categoria)</label>
+        <input id="mpCategoryOther" value="${escapeHtml((existing?.category && !['Médico(a)','Fisioterapeuta','Psicólogo(a)','Nutricionista','Terapeuta Integrativo/Holístico','Enfermeiro(a)','Personal Trainer'].includes(existing.category)) ? existing.category : '')}">
+      </div>
+      <label>Especialidade / função (opcional — ex: "Reiki", "Ortopedia")</label>
       <input id="mpRole" value="${escapeHtml(existing?.role || '')}">
-      <label>Foto (link de uma imagem)</label>
-      <input id="mpPhotoUrl" value="${escapeHtml(existing?.photoUrl || '')}" placeholder="https://...">
+      <label>Foto</label>
+      ${imageUploadFieldHTML('mpPhotoUrl', `tenants/${tenantId}/team`)}
+      <input id="mpPhotoUrl" value="${escapeHtml(existing?.photoUrl || '')}" placeholder="ou cole aqui o link de uma imagem">
       <label>Sobre si (breve apresentação)</label>
       <textarea id="mpBio" rows="4">${escapeHtml(existing?.bio || '')}</textarea>
       <button class="primary" style="width:100%;margin-top:8px;" onclick="saveMyPublicProfile('${existingId || ''}')">Guardar</button>
@@ -4689,8 +4697,11 @@ window.renderMyPublicProfile = async function(main){
 window.saveMyPublicProfile = async function(existingId){
   const name = document.getElementById('mpName').value.trim();
   if (!name){ toast('O nome é obrigatório.', true); return; }
+  const categorySelect = document.getElementById('mpCategory').value;
+  const category = categorySelect === 'Outro' ? (document.getElementById('mpCategoryOther').value.trim() || 'Outro') : categorySelect;
   const data = {
     name,
+    category,
     role: document.getElementById('mpRole').value.trim(),
     photoUrl: document.getElementById('mpPhotoUrl').value.trim(),
     bio: document.getElementById('mpBio').value.trim(),
