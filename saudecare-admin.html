@@ -250,10 +250,35 @@ async function renderOverview(main){
 // ── LISTA DE SUBSCRITORES ────────────────────────────────────────────
 async function renderTenants(main){
   await loadAllTenants();
+  const todayStr = new Date().toISOString().slice(0,10);
+  const in7DaysStr = new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10);
+
+  function paymentBadge(t){
+    if (!t.nextPaymentDue || t.plan === 'lifetime') return '';
+    if (t.nextPaymentDue < todayStr) return '<span class="badge" style="background:#f4d7d3;color:#8a2e20;">💸 pagamento em atraso</span>';
+    if (t.nextPaymentDue <= in7DaysStr) return '<span class="badge" style="background:#fff3cd;color:#7a5b00;">⏳ pagamento em breve</span>';
+    return '';
+  }
+
+  const countTrial = allTenants.filter(t => t.status === 'trial').length;
+  const countActive = allTenants.filter(t => t.status === 'active').length;
+  const countOverdue = allTenants.filter(t => t.nextPaymentDue && t.nextPaymentDue < todayStr && t.plan !== 'lifetime').length;
+  const countSoon = allTenants.filter(t => t.nextPaymentDue && t.nextPaymentDue >= todayStr && t.nextPaymentDue <= in7DaysStr && t.plan !== 'lifetime').length;
+
+  const summaryHtml = `<div class="card" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;margin-bottom:12px;">
+    <div><div style="font-size:20px;font-weight:700;">${allTenants.length}</div><div class="muted" style="font-size:12px;">Total</div></div>
+    <div><div style="font-size:20px;font-weight:700;">${countTrial}</div><div class="muted" style="font-size:12px;">Em teste</div></div>
+    <div><div style="font-size:20px;font-weight:700;color:${countSoon?'#7a5b00':'inherit'};">${countSoon}</div><div class="muted" style="font-size:12px;">Pag. em breve</div></div>
+    <div><div style="font-size:20px;font-weight:700;color:${countOverdue?'#8a2e20':'inherit'};">${countOverdue}</div><div class="muted" style="font-size:12px;">Pag. em atraso</div></div>
+  </div>`;
+
   const sorted = [...allTenants].sort((a,b) => {
     const pa = a.status === 'pending_activation' ? 0 : 1;
     const pb = b.status === 'pending_activation' ? 0 : 1;
-    return pa - pb;
+    if (pa !== pb) return pa - pb;
+    const overdueA = a.nextPaymentDue && a.nextPaymentDue < todayStr && a.plan !== 'lifetime' ? 0 : 1;
+    const overdueB = b.nextPaymentDue && b.nextPaymentDue < todayStr && b.plan !== 'lifetime' ? 0 : 1;
+    return overdueA - overdueB;
   });
   let rows = sorted.map(t => {
     const isPending = t.status === 'pending_activation';
@@ -263,7 +288,10 @@ async function renderTenants(main){
         <div><strong>${escapeHtml(t.businessName||t.id)}</strong>
           <div class="muted">${escapeHtml(t.slug||'')} · plano ${escapeHtml(t.plan||'—')}</div>
         </div>
-        <span class="badge ${isPending ? '' : escapeHtml(t.status||'')}" style="${isPending ? 'background:#fff3cd;color:#8a5a00;' : ''}">${isPending ? 'por ativar' : escapeHtml(t.status||'')}</span>
+        <span>
+          <span class="badge ${isPending ? '' : escapeHtml(t.status||'')}" style="${isPending ? 'background:#fff3cd;color:#8a5a00;' : ''}">${isPending ? 'por ativar' : escapeHtml(t.status||'')}</span>
+          ${paymentBadge(t)}
+        </span>
       </div>
       <div class="row" style="margin-top:8px;">
         ${isPending
@@ -279,6 +307,7 @@ async function renderTenants(main){
 
   main.innerHTML = `
     <h2>Subscritores <span class="muted" style="font-size:13px;">(${sorted.length})</span></h2>
+    ${summaryHtml}
     <div class="card">${rows}</div>
     <div id="tenantDetailContainer"></div>
   `;
@@ -298,6 +327,15 @@ async function renderTenants(main){
 window.openTenantDetail = function(tenantId){
   const t = allTenants.find(x => x.id === tenantId);
   if (!t) return;
+  const paymentLog = t.paymentLog || [];
+  const paymentRows = paymentLog.length
+    ? [...paymentLog].reverse().slice(0, 10).map(p => `
+        <div class="row" style="font-size:13px;padding:4px 0;border-bottom:1px solid #f0f0f0;">
+          <span>${escapeHtml(p.date||'')} · ${escapeHtml(p.method||'')} ${p.note ? '· '+escapeHtml(p.note) : ''}</span>
+          <strong>${(p.amount||0).toFixed(2)}€</strong>
+        </div>`).join('')
+    : '<p class="muted" style="font-size:13px;">Ainda sem pagamentos registados.</p>';
+
   document.getElementById('tenantDetailContainer').innerHTML = `
     <div class="card">
       <h2>Editar subscritor</h2>
@@ -338,7 +376,52 @@ window.openTenantDetail = function(tenantId){
         <button class="primary" onclick="saveTenantChanges('${tenantId}')">Guardar alterações</button>
         <button class="danger" onclick="confirmDeleteTenant('${tenantId}','${escapeAttr(t.businessName||t.id)}')">Apagar subscritor</button>
       </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:6px;">💶 Pagamentos e recebimentos</h3>
+      <p class="muted" style="margin-bottom:8px;">Registo manual — assinale aqui sempre que receber uma transferência/MBWay deste subscritor. A app avisa sozinha na lista quando o próximo pagamento estiver perto ou em atraso.</p>
+      <label>Data do próximo pagamento</label>
+      <input id="tdNextPayment" type="date" value="${t.nextPaymentDue||''}">
+      <button class="ghost" style="margin-top:6px;" onclick="saveNextPaymentDate('${tenantId}')">Guardar data</button>
+
+      <h4 style="margin:14px 0 6px;">Registar pagamento recebido</h4>
+      <div class="row">
+        <input id="tdPayAmount" type="number" min="0" step="0.01" placeholder="Valor (€)" style="flex:1;">
+        <select id="tdPayMethod" style="flex:1;">
+          <option value="MBWay">MBWay</option>
+          <option value="Transferência">Transferência</option>
+          <option value="Dinheiro">Dinheiro</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <input id="tdPayNote" placeholder="Nota (opcional, ex: renovação anual)">
+      <button class="primary" style="margin-top:6px;" onclick="registerTenantPayment('${tenantId}')">+ Registar pagamento</button>
+
+      <h4 style="margin:14px 0 6px;">Histórico</h4>
+      ${paymentRows}
     </div>`;
+};
+
+window.saveNextPaymentDate = async function(tenantId){
+  const nextPaymentDue = document.getElementById('tdNextPayment').value || null;
+  await updateDoc(doc(db, 'tenants', tenantId), { nextPaymentDue });
+  toast('Data do próximo pagamento guardada.');
+  renderView('tenants');
+};
+
+window.registerTenantPayment = async function(tenantId){
+  const amount = parseFloat(document.getElementById('tdPayAmount').value || '0') || 0;
+  const method = document.getElementById('tdPayMethod').value;
+  const note = document.getElementById('tdPayNote').value.trim();
+  if (amount <= 0){ toast('Indique o valor recebido.', true); return; }
+  const t = allTenants.find(x => x.id === tenantId);
+  const paymentLog = [...(t?.paymentLog || []), {
+    date: new Date().toISOString().slice(0,10), amount, method, note
+  }];
+  await updateDoc(doc(db, 'tenants', tenantId), { paymentLog });
+  toast('Pagamento registado.');
+  renderView('tenants');
 };
 
 window.saveTenantChanges = async function(tenantId){
