@@ -258,7 +258,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-08-31-16';
+const APP_VERSION = '2026-08-31-20';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -391,6 +391,8 @@ const STAFF_CLAIMS_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.ap
 const GOOGLE_CLIENT_ID = '455466438728-tjvlp8mdk22thaknvtf19h0bl4d8174k.apps.googleusercontent.com';
 const GOOGLE_OAUTH_REDIRECT_URI = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/googleOAuthCallback';
 const SYNC_CALENDAR_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/syncCalendarEvent';
+const STAFF_JOIN_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/staffJoinRequest';
+const SELF_ACTIVATE_TRIAL_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/selfActivateTrial';
 
 // Sobe um ficheiro para uma pasta do próprio subscritor e devolve o link
 // público, para usar exatamente como se fosse um link colado à mão.
@@ -527,13 +529,14 @@ window.doStaffJoin = async function(){
   }
 
   try{
-    await setDoc(doc(db, 'tenants', invite.tenantId, 'staff', uid), {
-      name, email, role, status: 'pending_activation',
-      viaInviteId: invite.inviteId, createdAt: serverTimestamp()
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(STAFF_JOIN_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+      body: JSON.stringify({ tenantId: invite.tenantId, inviteId: invite.inviteId, name })
     });
-    await updateDoc(doc(db, 'tenants', invite.tenantId, 'staffInvites', invite.inviteId), {
-      used: true, usedByUid: uid, role
-    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Falha ao registar o pedido.');
     await signOut(auth);
     window.__justRegisteredViaStaffJoin = false;
     errEl.style.color = 'var(--primary)';
@@ -606,20 +609,34 @@ window.doRegister = async function(){
       plan: 'start',
       ownerUid: uid,
       ownerEmail: email,
-      trialDays: 14,
       profile: { email },
       createdAt: serverTimestamp()
     });
 
+    // Ativação automática do período de teste — sem aprovação manual.
+    // Seguro porque a função só consegue tornar quem chama dono do SEU
+    // PRÓPRIO tenant (nunca de outro).
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(SELF_ACTIVATE_TRIAL_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` }
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Falha ao ativar.');
+
     errEl.style.color = 'var(--primary)';
-    errEl.textContent = 'Registo efetuado com sucesso! O seu pedido está a aguardar aprovação — normalmente fica ativo em até 24 horas.';
+    errEl.textContent = 'Conta criada! A preparar o seu período de teste de 14 dias…';
+    window.__justRegistered = false;
+    setTimeout(() => window.location.reload(), 900);
   }catch(e){
     window.__justRegistered = false;
     errEl.style.color = 'var(--danger)';
     if (e.code === 'permission-denied'){
       errEl.textContent = 'Esta conta já tem um registo de subscritor associado. Assim que for ativada, vai poder entrar normalmente.';
+    } else if (e.message && e.message.includes('já usou o período de teste')){
+      errEl.textContent = 'Este email já usou o período de teste gratuito antes. Contacte-nos para escolher um plano e continuar.';
     } else {
-      errEl.textContent = 'Não foi possível concluir o registo. Tente novamente.';
+      errEl.textContent = 'Não foi possível concluir o registo automaticamente. Tente novamente ou contacte o suporte.';
     }
     console.error(e);
   }
@@ -666,12 +683,10 @@ onAuthStateChanged(auth, async (user) => {
 
   if (!tenantId){
     if (window.__justRegistered){
-      window.__justRegistered = false;
-      await signOut(auth);
-      switchAuthTab('login');
-      const errEl = document.getElementById('loginError');
-      errEl.style.color = 'var(--primary)';
-      errEl.textContent = 'O seu registo está a aguardar aprovação — normalmente fica ativo em até 24 horas. Volte a tentar entrar depois desse prazo.';
+      // Não faz nada aqui — é o próprio doRegister que está a tratar da
+      // ativação automática do período de teste. Desligar a sessão agora
+      // desfazia isso a meio, por causa da corrida entre este listener e
+      // o pedido à função de servidor.
       return;
     }
     toast('Esta conta ainda não está associada a nenhum subscritor.', true);
@@ -687,8 +702,22 @@ onAuthStateChanged(auth, async (user) => {
   }
   currentTenantDoc = tSnap.data();
 
+  // Configuração dos planos, editável pelo admin em Definições da
+  // plataforma — carregada uma vez por sessão. Se ainda não existir,
+  // getPlanLimits() usa os valores predefinidos no código sem problema.
+  try{
+    const plansSnap = await getDoc(doc(db, 'settings', 'plans'));
+    if (plansSnap.exists()) window.__planConfigOverride = plansSnap.data();
+  }catch(e){ /* sem permissão ou sem configuração — usa os valores predefinidos */ }
+
   if (currentTenantDoc.status === 'suspended' || currentTenantDoc.status === 'cancelled'){
     toast('Esta conta está suspensa. Contacte o suporte.', true);
+    await signOut(auth);
+    return;
+  }
+
+  if (currentTenantDoc.status === 'trial' && currentTenantDoc.trialEndsAt && currentTenantDoc.trialEndsAt.toDate() < new Date()){
+    toast('O seu período de teste gratuito terminou. Contacte-nos para escolher um plano e continuar a usar a app.', true);
     await signOut(auth);
     return;
   }
@@ -1110,17 +1139,18 @@ async function renderHome(main){
   const greeting = hour < 12 ? 'Bom dia' : hour < 20 ? 'Boa tarde' : 'Boa noite';
 
   const SHORTCUTS = [
-    { icon: '📅', label: 'Agenda', view: 'agenda' },
-    { icon: '🧑‍🤝‍🧑', label: 'Pacientes', view: 'patients' },
-    { icon: '💚', label: 'Finanças', view: 'finances' },
-    { icon: '📋', label: 'Protocolos', view: 'protocols' },
-    { icon: '🧠', label: 'Conhecimento', view: 'knowledge' },
-    { icon: '⏳', label: 'Lista de espera', view: 'waitlist' },
-    { icon: '👥', label: 'Equipa', view: 'team' },
-    { icon: '⚙️', label: 'Definições', view: 'settings' }
+    { icon: '🩺', label: 'Nova Consulta', action: 'startNewConsultationFlow()' },
+    { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
+    { icon: '🧑‍🤝‍🧑', label: 'Pacientes', action: "renderView('patients')" },
+    { icon: '💚', label: 'Finanças', action: "renderView('finances')" },
+    { icon: '📋', label: 'Protocolos', action: "renderView('protocols')" },
+    { icon: '🧠', label: 'Conhecimento', action: "renderView('knowledge')" },
+    { icon: '⏳', label: 'Lista de espera', action: "renderView('waitlist')" },
+    { icon: '👥', label: 'Equipa', action: "renderView('team')" },
+    { icon: '⚙️', label: 'Definições', action: "renderView('settings')" }
   ];
   const shortcutsHtml = SHORTCUTS.map(s => `
-    <div onclick="renderView('${s.view}')" style="cursor:pointer;text-align:center;background:#fff;border:1px solid #e4e7ea;border-radius:12px;padding:14px 6px;">
+    <div onclick="${s.action}" style="cursor:pointer;text-align:center;background:#fff;border:1px solid #e4e7ea;border-radius:12px;padding:14px 6px;">
       <div style="font-size:26px;">${s.icon}</div>
       <div class="muted" style="font-size:12.5px;margin-top:4px;">${s.label}</div>
     </div>`).join('');
@@ -1150,6 +1180,17 @@ window.goToAgendaDay = function(dayKey){
   window.__agendaMonth = new Date(y, m - 1, 1);
   window.__agendaSelectedDay = dayKey;
   renderView('agenda');
+};
+
+// Atalho "Nova Consulta" da home — leva a Pacientes, de onde a consulta
+// guiada (por protocolos, com mapeamento no corpo quando aplicável) já
+// existe em cada ficha. Não duplica esse fluxo, só encurta o caminho até lá.
+window.startNewConsultationFlow = function(){
+  renderView('patients');
+  setTimeout(() => {
+    toast('Escolha o paciente para iniciar a nova consulta.');
+    document.getElementById('patientSearchInput')?.focus();
+  }, 300);
 };
 
 async function renderAgenda(main){
@@ -5150,7 +5191,10 @@ function getPlanLimits(){
   // campo "plan" seja alterado por engano.
   if (tenantId === 'hikari-terapias') return PLAN_LIMITS.lifetime;
   const plan = currentTenantDoc?.plan || 'start';
-  const base = PLAN_LIMITS[plan] || PLAN_LIMITS.start;
+  // Se o admin já configurou os planos pelo painel, usa esses valores;
+  // caso contrário, usa os predefinidos no código como reserva.
+  const configured = window.__planConfigOverride?.[plan];
+  const base = plan === 'lifetime' ? PLAN_LIMITS.lifetime : (configured || PLAN_LIMITS[plan] || PLAN_LIMITS.start);
   const extra = currentTenantDoc?.limitOverrides || {};
   return {
     staff: base.staff === Infinity ? Infinity : base.staff + (extra.staffExtra || 0),
