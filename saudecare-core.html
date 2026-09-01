@@ -233,7 +233,8 @@
     <button data-view="forms">📝 Fichas</button>
     <button data-view="knowledge">🧠 Conhecimento</button>
     <button data-view="trainings">🎓 Formações</button>
-    <button data-view="profile">🏥 Perfil</button>
+    <button data-view="profile" id="navProfileBtn">🏥 Perfil</button>
+    <button data-view="myprofile" id="navMyProfileBtn">🙋 O meu perfil</button>
     <button data-view="settings">⚙️ Configurações</button>
     <button onclick="installApp()" style="margin-top:20px;">📲 Instalar app no dispositivo</button>
     <button data-view="logout" style="color:#f2b8b8;">Sair</button>
@@ -258,7 +259,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-08-31-21';
+const APP_VERSION = '2026-08-31-23';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -357,6 +358,7 @@ let currentUser = null;
 let tenantId = null;
 let tenantRole = null;
 let currentTenantDoc = null;
+let currentUserDisplayName = ''; // nome de QUEM ESTÁ A USAR a app agora — dono ou terapeuta da equipa, nunca o nome do negócio
 
 // ── Helpers de UI ────────────────────────────────────────────────────
 function toast(msg, isError=false){
@@ -702,6 +704,20 @@ onAuthStateChanged(auth, async (user) => {
   }
   currentTenantDoc = tSnap.data();
 
+  // O dono vê o nome do negócio (como sempre); um membro da equipa vê o
+  // PRÓPRIO nome, não o do negócio — antes disto, qualquer terapeuta
+  // convidado via ligava e via sempre o nome da titular na saudação.
+  if (tenantRole === 'owner'){
+    currentUserDisplayName = currentTenantDoc.businessName || currentUser.email || '';
+  } else {
+    try{
+      const staffSnap = await getDoc(doc(db, 'tenants', tenantId, 'staff', currentUser.uid));
+      currentUserDisplayName = staffSnap.exists() ? (staffSnap.data().name || currentUser.email || '') : (currentUser.email || '');
+    }catch(e){
+      currentUserDisplayName = currentUser.email || '';
+    }
+  }
+
   // Configuração dos planos, editável pelo admin em Definições da
   // plataforma — carregada uma vez por sessão. Se ainda não existir,
   // getPlanLimits() usa os valores predefinidos no código sem problema.
@@ -725,6 +741,8 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('navTeamBtn').classList.toggle('hidden', tenantRole === 'staff_restricted');
+  document.getElementById('navProfileBtn').classList.toggle('hidden', tenantRole !== 'owner');
+  document.getElementById('navMyProfileBtn').classList.toggle('hidden', tenantRole === 'owner');
   applyBranding();
   applyDynamicManifestAdmin();
   renderView('home');
@@ -850,6 +868,7 @@ function renderView(view){
   else if (view === 'knowledge') renderKnowledgeBase(main);
   else if (view === 'trainings') renderTrainings(main);
   else if (view === 'profile') renderProfile(main);
+  else if (view === 'myprofile') renderMyPublicProfile(main);
   else if (view === 'settings') renderSettings(main);
 }
 // Exposta em window: onclick inline no HTML corre fora do módulo, por isso
@@ -1141,7 +1160,7 @@ async function renderHome(main){
     });
   }
 
-  const firstName = (currentTenantDoc?.businessName || currentUser?.email || '').split(' ')[0] || '';
+  const firstName = (currentUserDisplayName || '').split(' ')[0] || '';
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Bom dia' : hour < 20 ? 'Boa tarde' : 'Boa noite';
 
@@ -4631,6 +4650,52 @@ window.saveProfile = async function(){
   applyBranding();
   toast('Perfil guardado e publicado.');
 };
+
+// ── "O meu perfil" — cada terapeuta da equipa edita só o SEU PRÓPRIO
+// cartão no perfil público do consultório (nome, especialidade, foto,
+// bio), sem poder ver nem tocar nos dados de negócio nem nos outros
+// membros. Liga-se à conta pela staffUid, não pelo id do documento.
+window.renderMyPublicProfile = async function(main){
+  const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'teamMembers'), where('staffUid', '==', currentUser.uid)));
+  let existing = null, existingId = null;
+  snap.forEach(d => { existing = d.data(); existingId = d.id; });
+
+  main.innerHTML = `
+    <h2>🙋 O meu perfil</h2>
+    ${hintBox('Isto é o que aparece sobre si na página pública do consultório — visível a quem procurar marcar consulta. Preencha como quiser aparecer.')}
+    <div class="card">
+      <label>O seu nome</label>
+      <input id="mpName" value="${escapeHtml(existing?.name || currentUserDisplayName || '')}">
+      <label>Especialidade / função (ex: Fisioterapeuta, Terapeuta de Reiki)</label>
+      <input id="mpRole" value="${escapeHtml(existing?.role || '')}">
+      <label>Foto (link de uma imagem)</label>
+      <input id="mpPhotoUrl" value="${escapeHtml(existing?.photoUrl || '')}" placeholder="https://...">
+      <label>Sobre si (breve apresentação)</label>
+      <textarea id="mpBio" rows="4">${escapeHtml(existing?.bio || '')}</textarea>
+      <button class="primary" style="width:100%;margin-top:8px;" onclick="saveMyPublicProfile('${existingId || ''}')">Guardar</button>
+    </div>`;
+};
+
+window.saveMyPublicProfile = async function(existingId){
+  const name = document.getElementById('mpName').value.trim();
+  if (!name){ toast('O nome é obrigatório.', true); return; }
+  const data = {
+    name,
+    role: document.getElementById('mpRole').value.trim(),
+    photoUrl: document.getElementById('mpPhotoUrl').value.trim(),
+    bio: document.getElementById('mpBio').value.trim(),
+    staffUid: currentUser.uid
+  };
+  if (existingId){
+    await updateDoc(doc(db, 'tenants', tenantId, 'teamMembers', existingId), data);
+  } else {
+    data.createdAt = serverTimestamp();
+    await addDoc(collection(db, 'tenants', tenantId, 'teamMembers'), data);
+  }
+  toast('Perfil guardado — já aparece na página pública.');
+  renderView('myprofile');
+};
+
 
 window.editTeamMember = async function(id){
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'teamMembers', id));
