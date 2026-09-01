@@ -259,7 +259,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-01-30';
+const APP_VERSION = '2026-09-01-31';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1709,8 +1709,12 @@ async function syncAppointmentToGoogle(action, appt, appointmentId, googleEventI
     if (data.ok && data.googleEventId && appointmentId){
       await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { googleEventId: data.googleEventId });
     }
+    // 'skipped' acontece quando o subscritor ainda não ligou o Google
+    // Calendar — não é uma falha, simplesmente não há nada a sincronizar.
+    return data.ok !== false;
   }catch(e){
     console.error('Falha na sincronização com o Google Calendar:', e);
+    return false;
   }
 }
 
@@ -1926,7 +1930,8 @@ window.cancelAppointment = async function(appointmentId){
   const existingSnap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
   const existing = existingSnap.data();
   await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { status: 'cancelled' });
-  syncAppointmentToGoogle('delete', {}, appointmentId, existing?.googleEventId);
+  const syncOk = await syncAppointmentToGoogle('delete', {}, appointmentId, existing?.googleEventId);
+  if (!syncOk) toast('⚠️ Cancelada na app, mas não foi possível remover do Google Calendar — verifique a ligação em Perfil.', true);
 
   // Avisa se há alguém em lista de espera para este serviço — não envia
   // nada sozinho, só lembra o profissional de ir lá avisar.
@@ -1938,7 +1943,7 @@ window.cancelAppointment = async function(appointmentId){
       return;
     }
   }
-  toast('Marcação cancelada.');
+  if (syncOk) toast('Marcação cancelada.');
   renderView('agenda');
 };
 
@@ -1947,8 +1952,8 @@ window.deleteAppointment = async function(appointmentId){
   const existingSnap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
   const existingGoogleEventId = existingSnap.data()?.googleEventId;
   await deleteDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
-  syncAppointmentToGoogle('delete', {}, appointmentId, existingGoogleEventId);
-  toast('Marcação apagada.');
+  const syncOk = await syncAppointmentToGoogle('delete', {}, appointmentId, existingGoogleEventId);
+  toast(syncOk ? 'Marcação apagada.' : '⚠️ Apagada na app, mas não foi possível remover do Google Calendar — verifique a ligação em Perfil.', !syncOk);
   renderView('agenda');
 };
 
@@ -4707,6 +4712,7 @@ async function renderProfile(main){
         : `<p class="muted" style="margin-bottom:8px;">Ligue a sua conta para as marcações aparecerem automaticamente no seu Google Calendar, mesmo com a app fechada.</p>
            <button class="primary" onclick="connectGoogleCalendar()">Ligar ao Google Calendar</button>`
       }
+      ${hintBox('A sincronização funciona apenas num sentido: criar, editar ou apagar uma marcação aqui na app atualiza o Google Calendar automaticamente. O contrário não acontece — se apagar ou mudar um evento diretamente no Google Calendar, isso não volta a refletir-se aqui na app. Para manter tudo certo, faça sempre as alterações às marcações dentro da app.')}
     </div>
     <div class="card">
       <h2>💻 Consultório Online</h2>
@@ -5290,7 +5296,7 @@ const CHATBOT_KB = [
   { keywords: ['marcacao','marcar','agenda','calendario','sobrepos','sala ocupada'],
     answer: 'Para criar uma marcação: vá a "Agenda" → escolha o dia → "Nova marcação" → selecione paciente e serviço. A app impede automaticamente sobreposições: uma marcação "Presencial" bloqueia a sala para qualquer profissional nesse horário; "Online" só bloqueia a agenda de quem a faz.' },
   { keywords: ['google calendar','sincroniz'],
-    answer: 'Pode ligar a sua conta Google em Perfil → "Ligar ao Google Calendar". Depois disso, as marcações passam a aparecer automaticamente no seu Google Calendar.' },
+    answer: 'Pode ligar a sua conta Google em Perfil → "Ligar ao Google Calendar". Depois disso, criar, editar ou apagar marcações na app atualiza automaticamente o Google Calendar. Atenção: só funciona neste sentido — mudanças feitas diretamente no Google Calendar não voltam para a app. Faça sempre as alterações às marcações aqui.' },
   { keywords: ['paciente','cliente','ficha do paciente','anamnese'],
     answer: 'Em "Pacientes" pode criar a ficha de cada pessoa, ver o histórico de marcações, protocolos aplicados, pacotes de sessões e relatórios anteriores.' },
   { keywords: ['protocolo','ponto','mapeamento','zonas'],
