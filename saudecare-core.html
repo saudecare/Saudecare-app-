@@ -1001,7 +1001,7 @@ async function renderTeam(main){
 
   main.innerHTML = `
     <h2>Equipa</h2>
-    ${hintBox('Convide outros profissionais para trabalharem na mesma app. "Acesso total" vê tudo (agenda, pacientes de todos) — use para família ou sócios de confiança. "Acesso restrito" só vê a própria agenda — use para terapeutas externos numa clínica. Em "Foto e bio" edita o que aparece de cada um na página pública, sem sair daqui.')}
+    ${hintBox('Convide outros profissionais para trabalharem na mesma app. Não existe um "portal" à parte para eles — cada terapeuta convidado entra nesta mesma app, com o seu próprio email/password. "Acesso total" vê tudo (agenda, pacientes de todos) — use para família ou sócios de confiança. "Acesso restrito" só vê a própria agenda — use para terapeutas externos numa clínica. Em "Foto e bio" edita o que aparece de cada um na página pública, sem sair daqui.')}
     ${tenantRole === 'owner' ? `
       <div class="card">
         <h3 style="margin-bottom:8px;">Convidar profissional</h3>
@@ -1709,8 +1709,6 @@ async function syncAppointmentToGoogle(action, appt, appointmentId, googleEventI
     if (data.ok && data.googleEventId && appointmentId){
       await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { googleEventId: data.googleEventId });
     }
-    // 'skipped' acontece quando o subscritor ainda não ligou o Google
-    // Calendar — não é uma falha, simplesmente não há nada a sincronizar.
     return data.ok !== false;
   }catch(e){
     console.error('Falha na sincronização com o Google Calendar:', e);
@@ -2304,7 +2302,7 @@ window.viewPatient = async function(patientId){
       </div>
       <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
       <h3 style="margin-bottom:6px;">💚 Portal do paciente</h3>
-      <p class="muted" style="margin-bottom:8px;">Espaço próprio do paciente para ver marcações, relatórios, falar consigo entre sessões e entrar na videochamada. Envie-lhe este link uma vez (por WhatsApp/email) — não precisa de criar conta nem password.</p>
+      <p class="muted" style="margin-bottom:8px;">Espaço próprio do paciente para ver marcações, relatórios, falar consigo entre sessões e entrar na videochamada. Envie-lhe este link uma vez (por WhatsApp/email) — não precisa de criar conta nem password. ⚠️ Este link é único e pessoal deste paciente — não o partilhe com outro paciente nem o publique.</p>
       <div id="patientPortalLinkBox"></div>
       <div id="patientMessagesBox" style="margin-top:12px;"></div>
     </div>
@@ -4698,9 +4696,10 @@ async function renderProfile(main){
 
   main.innerHTML = `
     <h2>Perfil do negócio</h2>
-    ${hintBox('Tudo o que aparece na sua página pública: identidade, contactos, equipa e testemunhos. Preencha o que fizer sentido para a sua prática — nada aqui é obrigatório.')}
+    ${hintBox('Tudo o que preencher aqui (nome, foto, contactos, equipa mostrada ao público e testemunhos) aparece na sua <strong>página pública</strong> — a montra do seu consultório para quem ainda não é cliente. Não é a mesma coisa que dar acesso à app a alguém: para isso, use a secção "Equipa" no menu principal.')}
     <div class="card" style="border:2px solid var(--primary);">
-      <label>🔗 O seu link público — partilhe nas redes sociais, WhatsApp, etc.</label>
+      <label>🔗 O seu link público — a "montra" do seu consultório</label>
+      <p class="muted" style="margin-bottom:6px;">Mostra a quem visita: quem é, o que faz, os seus serviços, testemunhos e um botão para pedir marcação. Partilhe nas redes sociais, WhatsApp, ou coloque no seu Instagram/Google.</p>
       <input readonly value="${publicLink}" onclick="this.select()">
       <button class="primary" onclick="navigator.clipboard.writeText('${publicLink}').then(()=>toast('Link copiado.'))">Copiar link público</button>
     </div>
@@ -4790,7 +4789,7 @@ async function renderProfile(main){
 
     <div class="card">
       <h2>Equipa</h2>
-      <p class="muted" style="margin-bottom:10px;">Membros mostrados publicamente (não são contas de login — para isso use "Convidar colaborador" nas Configurações).</p>
+      <p class="muted" style="margin-bottom:10px;">Membros mostrados publicamente na sua página — não são contas de login. Para dar a alguém acesso real para entrar na app, vá a "👥 Equipa" no menu principal e gere um link de convite.</p>
       ${teamHtml}
       <div style="margin-top:12px;">
         <label>Nome</label><input id="tmName" value="${escapeHtml(window.__editingTeamMember?.name||'')}">
@@ -5315,8 +5314,10 @@ const CHATBOT_KB = [
     answer: 'Em Protocolos há dois modelos "esqueleto" prontos: um com Centros Energéticos (verde) e Pontos de Entrada (vermelho), outro com Sistema Superior (dourado), Central (verde) e Inferiores (preto). Vêm com os pontos todos criados mas sem posição — é só usar o modelo, editar, e tocar em cada ponto para o colocar no boneco, dar-lhe o nome final, cor e descrição.' },
   { keywords: ['portal do paciente','portal','videochamada','video chamada','mensagens com paciente'],
     answer: 'Em cada ficha de paciente, na secção "Portal do paciente", pode gerar um link privado (sem conta nem password) para lhe enviar. Lá, o paciente vê as marcações, relatórios, pode falar consigo por mensagem entre sessões, e entrar numa videochamada gratuita se a consulta for online.' },
-  { keywords: ['equipa','convidar','terapeuta','profissional','staff'],
-    answer: 'Em "Equipa" pode convidar outros profissionais para a mesma app: "Acesso total" vê tudo, "Acesso restrito" só vê a própria agenda — útil para terapeutas externos numa clínica partilhada.' },
+  { keywords: ['pagina publica','perfil publico','montra','link publico','divulgar'],
+    answer: 'Em "Perfil" encontra o seu link público — a montra do seu consultório, com o que preencher lá (foto, contactos, serviços, equipa mostrada ao público, testemunhos) e um botão para pedirem marcação. Partilhe esse link nas redes sociais ou WhatsApp. É diferente de dar acesso à app — isso é só em "Equipa".' },
+  { keywords: ['equipa','convidar','terapeuta','profissional','staff','portal do terapeuta'],
+    answer: 'Em "Equipa" (menu principal) pode convidar outros profissionais para entrarem na mesma app — não existe um portal à parte, cada um recebe o seu próprio login. "Acesso total" vê tudo, "Acesso restrito" só vê a própria agenda. Já em Perfil → Equipa, é só a lista de nomes/fotos mostrada aos visitantes na página pública — isso não dá acesso a ninguém.' },
   { keywords: ['backup','descarregar dados','exportar'],
     answer: 'Em Configurações → "Descarregar backup completo" pode guardar um ficheiro com todos os seus dados (pacientes, marcações, protocolos, fichas), para o guardar onde preferir.' },
   { keywords: ['instalar','ecra principal','download','app store'],
