@@ -249,7 +249,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-08-31-12';
+const APP_VERSION = '2026-08-31-15';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -814,6 +814,9 @@ function renderView(view){
   else if (view === 'profile') renderProfile(main);
   else if (view === 'settings') renderSettings(main);
 }
+// Exposta em window: onclick inline no HTML corre fora do módulo, por isso
+// precisa desta referência explícita para conseguir chamar a função.
+window.renderView = renderView;
 
 window.addEventListener('popstate', (e) => {
   if (!currentUser) return; // antes do login não há vistas para navegar
@@ -1511,6 +1514,11 @@ async function syncAppointmentToGoogle(action, appt, appointmentId, googleEventI
 }
 
 window.connectGoogleCalendar = function(){
+  // Envia a própria página atual como "state" (junto ao tenantId) — assim o
+  // regresso depois de autorizar funciona sempre no domínio certo, seja o
+  // antigo (github.io) ou o domínio próprio, sem depender de um endereço
+  // fixo no lado do servidor.
+  const returnUrl = window.location.origin + window.location.pathname;
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: GOOGLE_OAUTH_REDIRECT_URI,
@@ -1518,7 +1526,7 @@ window.connectGoogleCalendar = function(){
     scope: 'https://www.googleapis.com/auth/calendar.events',
     access_type: 'offline',
     prompt: 'consent',
-    state: tenantId
+    state: `${tenantId}::${encodeURIComponent(returnUrl)}`
   });
   window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 };
@@ -1637,7 +1645,7 @@ window.editAppointment = async function(appointmentId){
     <div class="card">
       <h2>Editar marcação</h2>
       <label>Paciente</label><select id="apptPatient">${patientOpts}</select>
-      <label>Serviço</label><select id="apptService" onchange="document.getElementById('apptPrice').value = this.selectedOptions[0].dataset.price || 0">${serviceOpts}</select>
+      <label>Serviço</label><select id="apptService">${serviceOpts}</select>
       <label>Profissional</label><select id="apptStaff">${staffOpts}</select>
       <label>Local</label>
       <select id="apptLocal">
@@ -1676,7 +1684,13 @@ window.updateAppointment = async function(appointmentId){
   }
 
   const existingSnap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
-  const existingGoogleEventId = existingSnap.data()?.googleEventId;
+  const existingData = existingSnap.data() || {};
+  const existingGoogleEventId = existingData.googleEventId;
+
+  const newPrice = parseFloat(document.getElementById('apptPrice').value || '0') || 0;
+  if (newPrice === 0 && existingData.price > 0){
+    if (!confirm(`Esta marcação tinha um preço de ${existingData.price}€ e está prestes a ficar com 0€. Confirma que é isso mesmo que quer?`)) return;
+  }
 
   const updateData = {
     patientId: patientSel.value,
@@ -1689,7 +1703,7 @@ window.updateAppointment = async function(appointmentId){
     bufferMinutes,
     startsAt: Timestamp.fromDate(start),
     endsAt: Timestamp.fromDate(end),
-    price: parseFloat(document.getElementById('apptPrice').value || '0') || 0,
+    price: newPrice,
     paymentStatus: document.getElementById('apptPaymentStatus').value,
     paymentMethod: document.getElementById('apptPaymentMethod').value
   };
