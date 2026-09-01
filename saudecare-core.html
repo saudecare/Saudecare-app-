@@ -259,7 +259,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-01-29';
+const APP_VERSION = '2026-09-01-30';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2661,6 +2661,39 @@ window.viewSavedReport = async function(patientId, reportId){
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'reports', reportId));
   if (!snap.exists()){ toast('Relatório não encontrado.', true); return; }
   const r = snap.data();
+
+  const allPoints = [
+    ...(r.mappingDetected || []).filter(p => p.mapX != null).map(p => ({ x: p.mapX, y: p.mapY, zona: p.zona, label: p.name })),
+    ...(r.freePoints || []).map(p => ({ x: p.x, y: p.y, zona: p.zona, label: p.label }))
+  ];
+
+  let mapHtml = '';
+  if (allPoints.length){
+    let bodyImages = { front: '', back: '' };
+    if (r.protocolId){
+      try{
+        const protoSnap = await getDoc(doc(db, 'tenants', tenantId, 'protocols', r.protocolId));
+        if (protoSnap.exists()) bodyImages = { front: protoSnap.data().bodyFrontImageUrl || '', back: protoSnap.data().bodyBackImageUrl || '' };
+      }catch(e){ console.warn('Não foi possível carregar a imagem do protocolo original:', e); }
+    }
+    const zonasComPontos = [...new Set(allPoints.map(p => p.zona || 'frente'))];
+    mapHtml = `<div class="card"><h3 style="margin-bottom:8px;">📍 Onde foi marcado</h3>
+      <div class="row" style="flex-wrap:wrap;gap:16px;justify-content:center;">
+        ${zonasComPontos.map(zona => {
+          const pontosZona = allPoints.filter(p => (p.zona || 'frente') === zona);
+          const dots = pontosZona.map(p => `
+            <div style="position:absolute;left:${p.x}%;top:${p.y}%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:#b3413a;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);" title="${escapeHtml(p.label)}"></div>`).join('');
+          return `<div style="width:160px;">
+            ${bodyDiagramHTML(bodyImages, zona, dots)}
+            <div style="margin-top:6px;font-size:12px;text-align:center;">
+              ${pontosZona.map(p => `<div class="muted">📍 ${escapeHtml(p.label)}</div>`).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
       <h2>${escapeHtml(r.protocolName)}</h2>
@@ -2669,7 +2702,8 @@ window.viewSavedReport = async function(patientId, reportId){
         <button class="primary" onclick="downloadReportPDF('${escapeHtml(r.protocolName)}', document.querySelector('#patientFormContainer textarea').value)">📄 Descarregar PDF</button>
         <button class="ghost" onclick="shareReportPDF('${escapeHtml(r.protocolName)}', document.querySelector('#patientFormContainer textarea').value)">📤 Partilhar</button>
       </div>
-    </div>`;
+    </div>
+    ${mapHtml}`;
 };
 
 window.deletePatient = async function(patientId, name){
@@ -3143,6 +3177,87 @@ const TEMPLATE_PROTOCOLS = [
       { label: 'Motivo principal da consulta', type: 'text', when: 'before', options: [] },
       { label: 'Encaminhamentos anteriores (psiquiatria, outros profissionais)', type: 'text', when: 'before', options: [] },
       { label: 'Áreas prioritárias para as próximas sessões', type: 'text', when: 'after', options: [] }
+    ]
+  },
+  {
+    name: 'Sistema Energético — Centros e Pontos de Entrada (esqueleto para editar)',
+    type: 'mapping',
+    bodyFrontImageUrl: '',
+    bodyBackImageUrl: '',
+    groups: [
+      { groupName: 'Centros Energéticos', points: [
+        { name: 'Centro Energético 1', baseText: '', color: '#2e7d32' },
+        { name: 'Centro Energético 2', baseText: '', color: '#2e7d32' },
+        { name: 'Centro Energético 3', baseText: '', color: '#2e7d32' },
+        { name: 'Centro Energético 4', baseText: '', color: '#2e7d32' },
+        { name: 'Centro Energético 5', baseText: '', color: '#2e7d32' },
+        { name: 'Centro Energético 6', baseText: '', color: '#2e7d32' },
+        { name: 'Centro Energético 7', baseText: '', color: '#2e7d32' }
+      ]},
+      { groupName: 'Pontos de Entrada', points: [
+        { name: 'Ponto de Entrada 1', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 2', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 3', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 4', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 5', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 6', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 7', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 8', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 9', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 10', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 11', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 12', baseText: '', color: '#c62828' },
+        { name: 'Ponto de Entrada 13', baseText: '', color: '#c62828' }
+      ]}
+    ],
+    finalClassifications: [
+      { label: 'Momento em relação à gestação', type: 'select', when: 'before', options: ['Antes', 'Durante', 'Depois', 'Não aplicável'] },
+      { label: 'Idade', type: 'text', when: 'before', options: [] }
+    ]
+  },
+  {
+    name: 'Sistema Corporal — Superior, Central e Inferior (esqueleto para editar)',
+    type: 'mapping',
+    bodyFrontImageUrl: '',
+    bodyBackImageUrl: '',
+    groups: [
+      { groupName: 'Sistema Superior', points: [
+        { name: 'Sistema Superior 1', baseText: '', color: '#c9a227' },
+        { name: 'Sistema Superior 2', baseText: '', color: '#c9a227' },
+        { name: 'Sistema Superior 3', baseText: '', color: '#c9a227' },
+        { name: 'Sistema Superior 4', baseText: '', color: '#c9a227' },
+        { name: 'Sistema Superior 5', baseText: '', color: '#c9a227' },
+        { name: 'Sistema Superior 6', baseText: '', color: '#c9a227' },
+        { name: 'Sistema Superior 7', baseText: '', color: '#c9a227' },
+        { name: 'Sistema Superior 8', baseText: '', color: '#c9a227' },
+        { name: 'Sistema Superior 9', baseText: '', color: '#c9a227' }
+      ]},
+      { groupName: 'Central', points: [
+        { name: 'Central 1', baseText: '', color: '#2e7d32' },
+        { name: 'Central 2', baseText: '', color: '#2e7d32' },
+        { name: 'Central 3', baseText: '', color: '#2e7d32' },
+        { name: 'Central 4', baseText: '', color: '#2e7d32' },
+        { name: 'Central 5', baseText: '', color: '#2e7d32' },
+        { name: 'Central 6', baseText: '', color: '#2e7d32' },
+        { name: 'Central 7', baseText: '', color: '#2e7d32' },
+        { name: 'Central 8', baseText: '', color: '#2e7d32' },
+        { name: 'Central 9', baseText: '', color: '#2e7d32' },
+        { name: 'Central 10', baseText: '', color: '#2e7d32' },
+        { name: 'Central 11', baseText: '', color: '#2e7d32' },
+        { name: 'Central 12', baseText: '', color: '#2e7d32' }
+      ]},
+      { groupName: 'Inferiores', points: [
+        { name: 'Inferior 1', baseText: '', color: '#1a1a1a' },
+        { name: 'Inferior 2', baseText: '', color: '#1a1a1a' },
+        { name: 'Inferior 3', baseText: '', color: '#1a1a1a' },
+        { name: 'Inferior 4', baseText: '', color: '#1a1a1a' },
+        { name: 'Inferior 5', baseText: '', color: '#1a1a1a' },
+        { name: 'Inferior 6', baseText: '', color: '#1a1a1a' }
+      ]}
+    ],
+    finalClassifications: [
+      { label: 'Momento em relação à gestação', type: 'select', when: 'before', options: ['Antes', 'Durante', 'Depois', 'Não aplicável'] },
+      { label: 'Idade', type: 'text', when: 'before', options: [] }
     ]
   }
 ];
@@ -4302,7 +4417,8 @@ window.generateMappingReport = async function(patientId, patientName){
           const note = document.getElementById(`${id}_note`)?.value.trim() || '';
           detected.push({
             group: g.groupName, name: pt.name, zona: combo.zona, lado: combo.lado,
-            text: computeMappingPointText(pt, combo.zona, combo.lado), note
+            text: computeMappingPointText(pt, combo.zona, combo.lado), note,
+            mapX: pt.mapX, mapY: pt.mapY
           });
         }
       });
@@ -5189,6 +5305,8 @@ const CHATBOT_KB = [
     answer: 'Em "🧠 Conhecimento" pode guardar o que já sabe sobre óleos essenciais, fitoterápicos, ervas, probióticos, etc — por texto, foto (lê o texto sozinho) ou PDF. Depois, pode perguntar-me sobre um tema e devolvo o que escreveu. Atenção: isto é sempre conteúdo seu — eu nunca avalio interações ou faço recomendações clínicas por conta própria.' },
   { keywords: ['lista de espera','espera','vaga'],
     answer: 'Em "Lista de espera" pode adicionar pacientes que não encontraram horário. Quando cancela uma marcação, se houver alguém à espera desse serviço, a app avisa-o — e há um botão para notificar por WhatsApp com a mensagem já pronta.' },
+  { keywords: ['centros energeticos','pontos de entrada','sistema superior','sistema corporal','esqueleto'],
+    answer: 'Em Protocolos há dois modelos "esqueleto" prontos: um com Centros Energéticos (verde) e Pontos de Entrada (vermelho), outro com Sistema Superior (dourado), Central (verde) e Inferiores (preto). Vêm com os pontos todos criados mas sem posição — é só usar o modelo, editar, e tocar em cada ponto para o colocar no boneco, dar-lhe o nome final, cor e descrição.' },
   { keywords: ['portal do paciente','portal','videochamada','video chamada','mensagens com paciente'],
     answer: 'Em cada ficha de paciente, na secção "Portal do paciente", pode gerar um link privado (sem conta nem password) para lhe enviar. Lá, o paciente vê as marcações, relatórios, pode falar consigo por mensagem entre sessões, e entrar numa videochamada gratuita se a consulta for online.' },
   { keywords: ['equipa','convidar','terapeuta','profissional','staff'],
