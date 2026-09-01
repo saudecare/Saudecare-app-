@@ -259,7 +259,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-08-31-23';
+const APP_VERSION = '2026-08-31-24';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -668,6 +668,16 @@ onAuthStateChanged(auth, async (user) => {
   // aqui para não a desligarmos a meio do processo (era a causa de
   // "convidar profissional" às vezes não funcionar).
   if (window.__justRegisteredViaStaffJoin) return;
+
+  // Se o link trouxer um convite de equipa e já houver sessão de OUTRA
+  // conta neste telemóvel/browser (ex: o dono a testar o próprio link, ou
+  // um telemóvel partilhado), essa sessão antiga tem de sair primeiro —
+  // caso contrário a app mostrava sempre a conta já aberta, ignorando o
+  // convite por completo.
+  if (window.__staffJoinInvite && user){
+    await signOut(auth);
+    return;
+  }
 
   if (!user){
     currentUser = null; tenantId = null;
