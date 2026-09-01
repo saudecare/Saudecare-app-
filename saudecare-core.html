@@ -417,6 +417,15 @@ async function uploadImageFile(file, pathPrefix){
 // escolher/tirar uma foto do telemóvel, PC, ou nuvem/Drive (o seletor de
 // ficheiros do sistema operativo já mostra essas origens sozinho).
 // targetInputId: id do <input> de texto que guarda o link final.
+// Rola o ecrã automaticamente até um elemento — usado depois de ações que
+// preenchem uma área mais abaixo na página (ex: "Iniciar consulta guiada"),
+// para a pessoa não ter de procurar o resultado a "olho".
+function scrollToEl(elId){
+  setTimeout(() => {
+    document.getElementById(elId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 60);
+}
+
 function imageUploadFieldHTML(targetInputId, pathPrefix){
   return `<div class="row" style="margin:-4px 0 10px;gap:8px;">
     <label for="${targetInputId}_file" class="ghost" style="flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;display:block;">
@@ -2447,6 +2456,7 @@ window.viewPatientEvolution = async function(patientId, patientName){
         <div class="row"><h2>Evolução — ${escapeHtml(patientName)}</h2><button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button></div>
         <p class="muted" style="margin-top:10px;">Ainda não há relatórios suficientes para mostrar evolução.</p>
       </div>`;
+    scrollToEl('patientFormContainer');
     return;
   }
 
@@ -2484,6 +2494,7 @@ window.viewPatientEvolution = async function(patientId, patientName){
     <h2 style="margin:16px 0 8px;">Sessões, por ordem</h2>
     ${timelineHtml}
   `;
+  scrollToEl('patientFormContainer');
 };
 
 // ── Pacotes de sessões ───────────────────────────────────────────────────
@@ -2606,6 +2617,7 @@ window.openSendFormToPatient = async function(patientId, patientName){
       <select id="sendFormSelect" onchange="renderSendFormLink('${patientId}')">${opts}</select>
       <div id="sendFormLinkArea"></div>
     </div>`;
+  scrollToEl('sendFormContainer');
 };
 
 window.renderSendFormLink = function(patientId){
@@ -3805,6 +3817,7 @@ window.startGuidedConsultation = async function(patientId, patientName){
       <div id="guidedPointsArea"></div>
     </div>`;
   window.__guidedProtocols = protocols;
+  scrollToEl('patientFormContainer');
 };
 
 window.onGuidedProtocolChange = function(patientId, patientName){
