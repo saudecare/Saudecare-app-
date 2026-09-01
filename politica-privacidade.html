@@ -5,245 +5,103 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Política de Privacidade — Vindora</title>
 <style>
-  :root{
-    --bg:#f7f9fa;
-    --card:#ffffff;
-    --text:#1f2937;
-    --muted:#5b6472;
-    --accent:#2f8f7f;
-    --border:#e5e9eb;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background:var(--bg);
-    color:var(--text);
-    line-height:1.65;
-  }
-  .wrap{
-    max-width:820px;
-    margin:0 auto;
-    padding:40px 20px 80px;
-  }
-  header{
-    margin-bottom:32px;
-  }
-  header h1{
-    font-size:28px;
-    margin:0 0 6px;
-    color:var(--accent);
-  }
-  header p.updated{
-    color:var(--muted);
-    font-size:14px;
-    margin:0;
-  }
-  .card{
-    background:var(--card);
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:28px 30px;
-    margin-bottom:20px;
-  }
-  h2{
-    font-size:19px;
-    color:var(--text);
-    border-bottom:2px solid var(--accent);
-    display:inline-block;
-    padding-bottom:4px;
-    margin-top:0;
-  }
-  h3{
-    font-size:16px;
-    margin-bottom:6px;
-  }
-  p, li{
-    font-size:15px;
-    color:var(--text);
-  }
-  ul{
-    padding-left:20px;
-  }
-  table{
-    width:100%;
-    border-collapse:collapse;
-    margin:14px 0;
-    font-size:14px;
-  }
-  th, td{
-    text-align:left;
-    padding:8px 10px;
-    border:1px solid var(--border);
-  }
-  th{
-    background:#f0f4f3;
-  }
-  .badge{
-    display:inline-block;
-    background:#eaf5f2;
-    color:var(--accent);
-    padding:2px 10px;
-    border-radius:20px;
-    font-size:12px;
-    font-weight:600;
-    margin-bottom:10px;
-  }
-  footer{
-    text-align:center;
-    color:var(--muted);
-    font-size:13px;
-    margin-top:30px;
-  }
-  a{color:var(--accent);}
+  :root{--verde:#1f6f5c;--verde-claro:#e9f5f1;--texto:#2b2b2b;--cinza:#5c6b68;}
+  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--texto);
+    max-width:760px;margin:0 auto;padding:32px 20px 80px;line-height:1.65;background:#fff;}
+  h1{color:var(--verde);font-size:1.6rem;margin-bottom:4px;}
+  .subtitulo{color:var(--cinza);font-size:.9rem;margin-bottom:32px;}
+  h2{color:var(--verde);font-size:1.15rem;margin-top:36px;border-bottom:2px solid var(--verde-claro);padding-bottom:6px;}
+  p,li{font-size:.98rem;}
+  ul{padding-left:20px;}
+  .caixa{background:var(--verde-claro);border-radius:10px;padding:16px 18px;margin:20px 0;}
+  a{color:var(--verde);}
+  footer{margin-top:48px;font-size:.85rem;color:var(--cinza);text-align:center;}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <header>
-    <span class="badge">RGPD / GDPR</span>
-    <h1>Política de Privacidade</h1>
-    <p class="updated">Última atualização: 30 de agosto de 2026</p>
-  </header>
+<h1>Política de Privacidade</h1>
+<p class="subtitulo">Vindora — plataforma de gestão para profissionais de saúde e bem-estar<br>Última atualização: 30 de agosto de 2026</p>
 
-  <div class="card">
-    <h2>1. Quem somos</h2>
-    <p>
-      O Vindora é uma plataforma digital (SaaS) destinada a profissionais de saúde e bem-estar
-      (fisioterapeutas, psicólogos, nutricionistas, terapeutas, treinadores e áreas afins) para gestão
-      de consultas, pacientes, agenda e faturação.
-    </p>
-    <p>
-      Responsável pelo tratamento de dados (<em>data controller</em>):<br>
-      <strong>Vindora</strong><br>
-      Contacto: <a href="mailto:app.saudecare.suporte@gmail.com">app.saudecare.suporte@gmail.com</a>
-    </p>
-    <p style="color:var(--muted); font-size:13px;">
-      [Espaço reservado — substituir por firma/NIF/morada legal, se aplicável]
-    </p>
-  </div>
-
-  <div class="card">
-    <h2>2. Que dados recolhemos</h2>
-    <p>Dependendo do seu papel na plataforma (subscritor/profissional, membro de equipa ou paciente registado por um profissional), podemos tratar os seguintes dados:</p>
-    <table>
-      <tr><th>Categoria</th><th>Exemplos</th></tr>
-      <tr><td>Identificação</td><td>Nome, email, número de telefone</td></tr>
-      <tr><td>Conta</td><td>Credenciais de acesso (geridas de forma encriptada via Firebase Authentication)</td></tr>
-      <tr><td>Profissionais/Clínicos</td><td>Notas de sessão, evolução do paciente, protocolos, diagramas corporais associados ao acompanhamento</td></tr>
-      <tr><td>Agenda</td><td>Marcações, disponibilidade, e — caso o profissional ative a integração — eventos sincronizados com a sua conta Google Calendar</td></tr>
-      <tr><td>Financeiros</td><td>Registo de pagamentos e faturação (não incluímos dados de cartão; pagamentos processados por terceiros certificados)</td></tr>
-      <tr><td>Técnicos</td><td>Endereço IP, tipo de dispositivo, registos de utilização, imagens carregadas para a plataforma</td></tr>
-    </table>
-  </div>
-
-  <div class="card">
-    <h2>3. Integração com o Google (Google Calendar)</h2>
-    <p>
-      Se optar por ativar a sincronização de agenda, o Vindora solicita autorização (OAuth 2.0) para
-      aceder à sua conta Google Calendar, exclusivamente para:
-    </p>
-    <ul>
-      <li>Criar, atualizar e remover eventos correspondentes às marcações realizadas na plataforma;</li>
-      <li>Manter a sua agenda profissional sincronizada entre o Vindora e o Google Calendar.</li>
-    </ul>
-    <p>
-      Não acedemos, lemos nem partilhamos outros dados da sua conta Google além do necessário para esta
-      sincronização. O uso e transferência de informação recebida das APIs Google cumprem a
-      <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>,
-      incluindo os requisitos de Uso Limitado (Limited Use).
-    </p>
-    <p>
-      Pode revogar este acesso a qualquer momento nas definições da sua conta Google
-      (<a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>)
-      ou diretamente nas definições do Vindora.
-    </p>
-  </div>
-
-  <div class="card">
-    <h2>4. Finalidade e base legal do tratamento</h2>
-    <ul>
-      <li><strong>Execução do serviço/contrato</strong> — criação de conta, gestão de agenda, faturação, funcionalidades da plataforma.</li>
-      <li><strong>Consentimento</strong> — integração opcional com Google Calendar, comunicações de marketing (quando aplicável).</li>
-      <li><strong>Interesse legítimo</strong> — segurança da plataforma, prevenção de fraude, melhoria do serviço.</li>
-      <li><strong>Obrigação legal</strong> — quando aplicável, cumprimento de obrigações fiscais/contabilísticas.</li>
-    </ul>
-  </div>
-
-  <div class="card">
-    <h2>5. Partilha com terceiros</h2>
-    <p>Utilizamos os seguintes prestadores de serviços (subcontratantes) para operar a plataforma, cada um sujeito às suas próprias políticas de proteção de dados:</p>
-    <ul>
-      <li><strong>Firebase / Google Cloud</strong> — autenticação e base de dados (região eur3, Europa)</li>
-      <li><strong>Netlify</strong> — funções serverless para processamento de pedidos</li>
-      <li><strong>Cloudinary</strong> — armazenamento e otimização de imagens</li>
-      <li><strong>Google Calendar API</strong> — sincronização de agenda (apenas se ativada pelo utilizador)</li>
-    </ul>
-    <p>Não vendemos nem alugamos dados pessoais a terceiros para fins de marketing.</p>
-  </div>
-
-  <div class="card">
-    <h2>6. Retenção de dados</h2>
-    <p>
-      Os dados são conservados enquanto a conta estiver ativa. Após o cancelamento da subscrição, os
-      dados são conservados por um período razoável para cumprimento de obrigações legais e depois
-      eliminados ou anonimizados, salvo obrigação legal de conservação mais longa (ex. registos fiscais).
-    </p>
-  </div>
-
-  <div class="card">
-    <h2>7. Os seus direitos</h2>
-    <p>Nos termos do RGPD, tem direito a:</p>
-    <ul>
-      <li>Aceder aos seus dados pessoais;</li>
-      <li>Solicitar a retificação de dados incorretos;</li>
-      <li>Solicitar o apagamento dos seus dados ("direito a ser esquecido");</li>
-      <li>Solicitar a limitação ou opor-se ao tratamento;</li>
-      <li>Solicitar a portabilidade dos seus dados;</li>
-      <li>Retirar o consentimento a qualquer momento, sem afetar a licitude do tratamento anterior;</li>
-      <li>Apresentar reclamação junto da <a href="https://www.cnpd.pt" target="_blank" rel="noopener">Comissão Nacional de Proteção de Dados (CNPD)</a>.</li>
-    </ul>
-    <p>Para exercer estes direitos, contacte-nos através de <a href="mailto:app.saudecare.suporte@gmail.com">app.saudecare.suporte@gmail.com</a>.</p>
-  </div>
-
-  <div class="card">
-    <h2>8. Segurança</h2>
-    <p>
-      Implementamos medidas técnicas e organizativas adequadas para proteger os dados, incluindo
-      isolamento de dados por tenant (multi-tenant com regras de segurança ao nível da base de dados),
-      autenticação segura e comunicação encriptada (HTTPS/TLS).
-    </p>
-  </div>
-
-  <div class="card">
-    <h2>9. Cookies</h2>
-    <p>
-      Utilizamos cookies e tecnologias semelhantes essenciais ao funcionamento da plataforma
-      (ex. manter sessão iniciada). Não utilizamos cookies de publicidade de terceiros.
-    </p>
-  </div>
-
-  <div class="card">
-    <h2>10. Alterações a esta política</h2>
-    <p>
-      Esta política pode ser atualizada periodicamente. A data da última atualização está indicada no
-      topo desta página. Alterações relevantes serão comunicadas aos utilizadores registados.
-    </p>
-  </div>
-
-  <div class="card">
-    <h2>11. Contacto</h2>
-    <p>
-      Para questões relacionadas com esta política ou com o tratamento dos seus dados pessoais, contacte-nos:<br>
-      <a href="mailto:app.saudecare.suporte@gmail.com">app.saudecare.suporte@gmail.com</a>
-    </p>
-  </div>
-
-  <footer>
-    © 2026 Vindora — Todos os direitos reservados.
-  </footer>
-
+<div class="caixa">
+  <strong>Responsável pelo tratamento de dados:</strong> Vindora<br>
+  <strong>Contacto:</strong> <a href="mailto:vindoraportugal@gmail.com">vindoraportugal@gmail.com</a>
 </div>
+
+<h2>1. Introdução</h2>
+<p>Esta Política de Privacidade explica como o Vindora ("nós", "a plataforma") recolhe, utiliza, armazena e protege os dados pessoais dos profissionais de saúde e bem-estar que subscrevem a plataforma ("subscritores") e dos clientes/pacientes geridos por esses subscritores. Ao utilizar o Vindora, concorda com as práticas descritas neste documento.</p>
+
+<h2>2. Que dados recolhemos</h2>
+<p><strong>Dados dos subscritores (profissionais):</strong></p>
+<ul>
+  <li>Nome, email, número de telefone e dados do negócio (nome comercial, logótipo, morada)</li>
+  <li>Credenciais de acesso (geridas de forma segura através do Firebase Authentication)</li>
+  <li>Dados de faturação e estado da subscrição</li>
+</ul>
+<p><strong>Dados introduzidos pelos subscritores sobre os seus clientes/pacientes:</strong></p>
+<ul>
+  <li>Nome, contactos, histórico de marcações e pagamentos</li>
+  <li>Fichas clínicas, protocolos, relatórios e evolução de consultas, quando aplicável à atividade do subscritor</li>
+  <li>Fotografias associadas a fichas ou protocolos, quando carregadas pelo subscritor</li>
+</ul>
+<p><strong>Dados recolhidos automaticamente:</strong></p>
+<ul>
+  <li>Dados técnicos básicos de utilização da plataforma (para diagnóstico de erros e melhoria do serviço)</li>
+</ul>
+
+<h2>3. Integração com o Google Calendar</h2>
+<p>O Vindora oferece uma funcionalidade opcional de sincronização com o Google Calendar. Se o subscritor optar por ativar esta funcionalidade e autorizar o acesso através do login Google, o Vindora:</p>
+<ul>
+  <li>Cria, edita e apaga eventos no calendário Google do subscritor, correspondentes às marcações feitas dentro da plataforma;</li>
+  <li>Não acede, lê nem partilha quaisquer outros eventos, calendários ou dados da conta Google do subscritor além do estritamente necessário para esta sincronização;</li>
+  <li>Armazena de forma segura um token de autorização (refresh token) exclusivamente para manter esta sincronização ativa, podendo o subscritor revogar o acesso a qualquer momento nas definições da própria conta Google ou dentro do Vindora.</li>
+</ul>
+
+<h2>4. Como utilizamos os dados</h2>
+<ul>
+  <li>Para disponibilizar e operar as funcionalidades da plataforma (agenda, gestão de clientes, faturação, relatórios)</li>
+  <li>Para comunicar com os subscritores sobre a sua conta ou subscrição</li>
+  <li>Para garantir a segurança e prevenir utilização indevida da plataforma</li>
+  <li>Para cumprir obrigações legais aplicáveis</li>
+</ul>
+
+<h2>5. Com quem partilhamos dados</h2>
+<p>Não vendemos nem alugamos dados pessoais. Os dados são processados pelos seguintes fornecedores de serviços, na medida do necessário para o funcionamento da plataforma:</p>
+<ul>
+  <li><strong>Google Firebase</strong> (Authentication e Firestore) — alojamento de dados na região europeia (eur3), autenticação e base de dados</li>
+  <li><strong>Google Calendar API</strong> — apenas quando o subscritor ativa voluntariamente a sincronização de agenda</li>
+  <li><strong>Cloudinary</strong> — alojamento de imagens carregadas pelos subscritores (fotografias de perfil, logótipos, fichas)</li>
+  <li><strong>Netlify</strong> — alojamento de funções de servidor utilizadas para ativação de contas e integração com o Google Calendar</li>
+</ul>
+
+<h2>6. Onde e por quanto tempo guardamos os dados</h2>
+<p>Os dados são armazenados em servidores localizados na União Europeia (região eur3 do Firebase). Os dados são conservados enquanto a conta do subscritor estiver ativa, ou pelo período exigido por lei, sendo eliminados mediante pedido de encerramento de conta, salvo obrigação legal de conservação superior.</p>
+
+<h2>7. Os seus direitos (RGPD)</h2>
+<p>Qualquer subscritor ou titular de dados tem o direito de:</p>
+<ul>
+  <li>Aceder aos seus dados pessoais</li>
+  <li>Solicitar a retificação de dados incorretos</li>
+  <li>Solicitar o apagamento dos seus dados ("direito ao esquecimento")</li>
+  <li>Solicitar a portabilidade dos seus dados</li>
+  <li>Retirar o consentimento dado (ex.: desligar a integração com o Google Calendar) a qualquer momento</li>
+  <li>Apresentar reclamação junto da Comissão Nacional de Proteção de Dados (CNPD), em <a href="https://www.cnpd.pt" target="_blank" rel="noopener">www.cnpd.pt</a></li>
+</ul>
+<p>Para exercer qualquer um destes direitos, contacte-nos através de <a href="mailto:vindoraportugal@gmail.com">vindoraportugal@gmail.com</a>.</p>
+
+<h2>8. Segurança</h2>
+<p>Aplicamos medidas técnicas e organizativas adequadas para proteger os dados pessoais contra acesso não autorizado, perda ou alteração, incluindo isolamento de dados entre subscritores (multi-tenant), regras de acesso ao nível da base de dados e autenticação segura.</p>
+
+<h2>9. Menores</h2>
+<p>O Vindora não se destina a ser utilizado diretamente por menores de 18 anos como subscritores. Dados de pacientes menores podem ser introduzidos por profissionais de saúde no âmbito legítimo da sua atividade clínica, com o consentimento dos respetivos responsáveis legais.</p>
+
+<h2>10. Alterações a esta política</h2>
+<p>Esta Política de Privacidade pode ser atualizada periodicamente. A data da última atualização é sempre indicada no topo desta página.</p>
+
+<h2>11. Contacto</h2>
+<p>Para qualquer questão sobre esta Política de Privacidade ou sobre o tratamento dos seus dados, contacte-nos em <a href="mailto:vindoraportugal@gmail.com">vindoraportugal@gmail.com</a>.</p>
+
+<footer>Vindora — <a href="https://saudecare.github.io/Saudecare-app-/">saudecare.github.io/Saudecare-app-</a></footer>
+
 </body>
 </html>

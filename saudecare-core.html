@@ -259,7 +259,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-01-28';
+const APP_VERSION = '2026-09-01-29';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1965,7 +1965,6 @@ async function renderPatients(main){
     ${hintBox('A sua lista de clientes/pacientes, de A a Z. Guarde o consentimento RGPD de cada um antes de registar dados sensíveis — é obrigatório por lei.')}
     <input id="patientSearchInput" placeholder="🔍 Pesquisar por nome, telefone ou email…" oninput="filterPatientsList()" style="margin-bottom:10px;">
     <div class="card" id="patientsListBox"></div>
-    <div id="patientFormContainer"></div>
   `;
   renderPatientsListRows(window.__allPatientsCache);
 }
