@@ -258,7 +258,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-08-31-20';
+const APP_VERSION = '2026-08-31-21';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -869,7 +869,14 @@ window.__agendaSelectedDay = null; // 'YYYY-MM-DD'
 // ── Equipa — convites e permissões de vários profissionais ─────────────
 async function renderTeam(main){
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'staff'));
-  const invitesSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'staffInvites'), where('used','==', false)));
+  // Convites só interessam ao dono (só ele os vê no ecrã) — e nunca deixamos
+  // uma falha aqui impedir o resto da página de aparecer.
+  let invitesSnap = { forEach: () => {} };
+  if (tenantRole === 'owner'){
+    try{
+      invitesSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'staffInvites'), where('used','==', false)));
+    }catch(e){ console.error(e); }
+  }
 
   const roleLabel = { owner:'Acesso total (dono)', staff_full:'Acesso total', staff_restricted:'Acesso restrito (só a sua agenda)' };
 
