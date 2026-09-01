@@ -389,6 +389,7 @@ const CLOUDINARY_UPLOAD_PRESET = 'ml_default';
 // Mesma função privilegiada usada no painel de admin, para ativar
 // membros de equipa sem precisar de Cloud Shell.
 const STAFF_CLAIMS_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/activateStaff';
+const STAFF_SUSPEND_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/suspendStaffMember';
 // Sincronização com o Google Calendar — ver Perfil → Google Calendar.
 const GOOGLE_CLIENT_ID = '455466438728-tjvlp8mdk22thaknvtf19h0bl4d8174k.apps.googleusercontent.com';
 const GOOGLE_OAUTH_REDIRECT_URI = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/googleOAuthCallback';
@@ -893,32 +894,73 @@ window.addEventListener('popstate', (e) => {
 window.__agendaMonth = null; // Date (dia 1 do mês visível)
 window.__agendaSelectedDay = null; // 'YYYY-MM-DD'
 
-// ── Equipa — convites e permissões de vários profissionais ─────────────
+// ── Equipa — acessos, e também foto/bio/perfil público de cada membro,
+// tudo no mesmo sítio (antes estava dividido entre esta página e
+// "Perfil do negócio"). O link entre a conta de acesso (staff) e o cartão
+// público (teamMembers) é feito pelo campo staffUid.
+const TEAM_CATEGORY_OPTIONS = ['Médico(a)','Fisioterapeuta','Psicólogo(a)','Nutricionista','Terapeuta Integrativo/Holístico','Enfermeiro(a)','Personal Trainer','Outro'];
+
 async function renderTeam(main){
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'staff'));
   // Convites só interessam ao dono (só ele os vê no ecrã) — e nunca deixamos
   // uma falha aqui impedir o resto da página de aparecer.
   let invitesSnap = { forEach: () => {} };
+  let profileByUid = {};
   if (tenantRole === 'owner'){
     try{
       invitesSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'staffInvites'), where('used','==', false)));
     }catch(e){ console.error(e); }
+    try{
+      const teamSnap = await getDocs(collection(db, 'tenants', tenantId, 'teamMembers'));
+      teamSnap.forEach(d => { const t = d.data(); if (t.staffUid) profileByUid[t.staffUid] = { id: d.id, ...t }; });
+    }catch(e){ console.error(e); }
   }
 
   const roleLabel = { owner:'Acesso total (dono)', staff_full:'Acesso total', staff_restricted:'Acesso restrito (só a sua agenda)' };
+  const statusLabel = { pending_activation:'Por ativar', active:'Ativo', suspended:'Suspenso' };
+  const statusClass = { pending_activation:'trial', active:'active', suspended:'suspended' };
 
   let staffRows = `<div class="tenant-item row"><div><strong>${escapeHtml(currentTenantDoc?.ownerEmail || currentUser.email)}</strong><div class="muted">Dono do consultório</div></div><span class="badge active">Acesso total</span></div>`;
   snap.forEach(d => {
     const s = d.data();
-    const isPending = s.status === 'pending_activation';
+    const status = s.status || 'pending_activation';
+    const profile = profileByUid[d.id];
+    const isEditingThis = window.__editingStaffProfileUid === d.id;
+
     staffRows += `<div class="tenant-item">
       <div class="row">
-        <div><strong>${escapeHtml(s.name||s.email)}</strong><div class="muted">${escapeHtml(s.email||'')} · ${roleLabel[s.role]||s.role}</div></div>
-        <span class="badge ${isPending?'trial':'active'}">${isPending?'Por ativar':'Ativo'}</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${profile?.photoUrl ? `<img src="${escapeAttrJs(profile.photoUrl)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">` : ''}
+          <div><strong>${escapeHtml(s.name||s.email)}</strong><div class="muted">${escapeHtml(s.email||'')} · ${roleLabel[s.role]||s.role}</div></div>
+        </div>
+        <span class="badge ${statusClass[status]}">${statusLabel[status]}</span>
       </div>
-      ${tenantRole === 'owner' ? `<div class="row" style="margin-top:6px;">
-        ${isPending ? `<button class="primary" onclick="activateStaffMember('${d.id}','${s.role}')">✓ Ativar acesso</button>` : ''}
+      ${tenantRole === 'owner' ? `<div class="row" style="margin-top:6px;flex-wrap:wrap;gap:6px;">
+        ${status === 'pending_activation' ? `<button class="primary" onclick="activateStaffMember('${d.id}','${s.role}')">✓ Ativar acesso</button>` : ''}
+        ${status === 'active' ? `<button class="ghost" onclick="suspendStaffMember('${d.id}')">⏸ Suspender acesso</button>` : ''}
+        ${status === 'suspended' ? `<button class="primary" onclick="activateStaffMember('${d.id}','${s.role}')">▶ Reativar acesso</button>` : ''}
+        <button class="ghost" onclick="toggleEditStaffProfile('${d.id}')">${isEditingThis ? 'Fechar' : '🖊 Foto e bio'}</button>
         <button class="danger" onclick="removeStaffMember('${d.id}','${escapeAttrJs(s.name||s.email)}')">Remover</button>
+      </div>` : ''}
+      ${isEditingThis ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e5e5e5;">
+        <label>Nome (como aparece na página pública)</label>
+        <input id="stfName" value="${escapeHtml(profile?.name || s.name || '')}">
+        <label>Categoria</label>
+        <select id="stfCategory" onchange="document.getElementById('stfCategoryOtherField').classList.toggle('hidden', this.value !== 'Outro')">
+          ${TEAM_CATEGORY_OPTIONS.map(c => `<option value="${c}" ${profile?.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+        <div id="stfCategoryOtherField" class="${(profile?.category && !TEAM_CATEGORY_OPTIONS.slice(0,-1).includes(profile.category)) ? '' : 'hidden'}">
+          <label>Qual? (escreva a categoria)</label>
+          <input id="stfCategoryOther" value="${escapeHtml((profile?.category && !TEAM_CATEGORY_OPTIONS.slice(0,-1).includes(profile.category)) ? profile.category : '')}">
+        </div>
+        <label>Especialidade / função (opcional)</label>
+        <input id="stfRole" value="${escapeHtml(profile?.role || '')}">
+        <label>Foto</label>
+        ${imageUploadFieldHTML('stfPhotoUrl', `tenants/${tenantId}/team`)}
+        <input id="stfPhotoUrl" value="${escapeHtml(profile?.photoUrl || '')}" placeholder="ou cole aqui o link de uma imagem">
+        <label>Breve bio</label>
+        <textarea id="stfBio" rows="3">${escapeHtml(profile?.bio || '')}</textarea>
+        <button class="primary" style="width:100%;margin-top:6px;" onclick="saveStaffTeamProfile('${d.id}','${profile?.id || ''}')">Guardar foto e bio</button>
       </div>` : ''}
     </div>`;
   });
@@ -939,7 +981,7 @@ async function renderTeam(main){
 
   main.innerHTML = `
     <h2>Equipa</h2>
-    ${hintBox('Convide outros profissionais para trabalharem na mesma app. "Acesso total" vê tudo (agenda, pacientes de todos) — use para família ou sócios de confiança. "Acesso restrito" só vê a própria agenda — use para terapeutas externos numa clínica.')}
+    ${hintBox('Convide outros profissionais para trabalharem na mesma app. "Acesso total" vê tudo (agenda, pacientes de todos) — use para família ou sócios de confiança. "Acesso restrito" só vê a própria agenda — use para terapeutas externos numa clínica. Em "Foto e bio" edita o que aparece de cada um na página pública, sem sair daqui.')}
     ${tenantRole === 'owner' ? `
       <div class="card">
         <h3 style="margin-bottom:8px;">Convidar profissional</h3>
@@ -956,6 +998,54 @@ async function renderTeam(main){
     <div class="card">${staffRows}</div>
   `;
 }
+
+window.toggleEditStaffProfile = function(staffUid){
+  window.__editingStaffProfileUid = (window.__editingStaffProfileUid === staffUid) ? null : staffUid;
+  renderView('team');
+};
+
+window.saveStaffTeamProfile = async function(staffUid, existingTeamMemberId){
+  const name = document.getElementById('stfName').value.trim();
+  if (!name){ toast('O nome é obrigatório.', true); return; }
+  const categorySelect = document.getElementById('stfCategory').value;
+  const category = categorySelect === 'Outro' ? (document.getElementById('stfCategoryOther').value.trim() || 'Outro') : categorySelect;
+  const data = {
+    name,
+    category,
+    role: document.getElementById('stfRole').value.trim(),
+    photoUrl: document.getElementById('stfPhotoUrl').value.trim(),
+    bio: document.getElementById('stfBio').value.trim(),
+    staffUid
+  };
+  if (existingTeamMemberId){
+    await updateDoc(doc(db, 'tenants', tenantId, 'teamMembers', existingTeamMemberId), data);
+  } else {
+    data.createdAt = serverTimestamp();
+    await addDoc(collection(db, 'tenants', tenantId, 'teamMembers'), data);
+  }
+  window.__editingStaffProfileUid = null;
+  toast('Foto e bio guardadas — já aparecem na página pública.');
+  renderView('team');
+};
+
+window.suspendStaffMember = async function(staffUid){
+  if (!confirm('Suspender o acesso deste terapeuta? Fica sem conseguir entrar na app até reativar, mas os dados dele mantêm-se todos.')) return;
+  try{
+    const idToken = await currentUser.getIdToken();
+    const res = await fetch(STAFF_SUSPEND_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+      body: JSON.stringify({ staffUid, tenantId })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Falha desconhecida');
+    toast('Acesso suspenso.');
+    renderView('team');
+  }catch(e){
+    console.error(e);
+    toast('Não foi possível suspender. Tente novamente.', true);
+  }
+};
 
 window.createStaffInvite = async function(){
   const limits = getPlanLimits();
