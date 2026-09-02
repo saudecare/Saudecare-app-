@@ -203,6 +203,7 @@
 
     <div id="authPanelStaffJoin" class="hidden">
       <div class="trialNote">👋 Foi convidado para se juntar a uma equipa.</div>
+      <p class="muted" style="margin-bottom:10px;">💡 Se abriu este link dentro do WhatsApp, é mais fiável tocar nos três pontinhos (⋮) no canto e escolher "Abrir no navegador" (Chrome/Safari) antes de continuar.</p>
       <label>O seu nome</label>
       <input id="staffJoinName">
       <label>O seu email</label>
@@ -267,7 +268,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-47';
+const APP_VERSION = '2026-09-02-49';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -356,7 +357,10 @@ function updateOnlineBanner(){
     document.body.prepend(el);
   }
   el.style.display = navigator.onLine ? 'none' : 'block';
-  el.textContent = '📴 Sem internet — pode continuar a usar a app normalmente. As alterações guardam-se sozinhas assim que a ligação voltar.';
+  const isLoggedIn = !document.getElementById('app')?.classList.contains('hidden');
+  el.textContent = isLoggedIn
+    ? '📴 Sem internet — pode continuar a usar a app normalmente. As alterações guardam-se sozinhas assim que a ligação voltar.'
+    : '📴 Sem internet — não é possível entrar agora. Assim que voltar a ter ligação, mesmo que por breves segundos, consegue entrar e depois já funciona offline.';
 }
 window.addEventListener('online', updateOnlineBanner);
 window.addEventListener('offline', updateOnlineBanner);
@@ -481,10 +485,18 @@ window.doLogin = async function(){
   const pass = document.getElementById('loginPass').value;
   const errEl = document.getElementById('loginError');
   errEl.textContent = '';
+  if (!navigator.onLine){
+    errEl.textContent = '📴 Sem ligação à internet. Para entrar pela primeira vez neste dispositivo é preciso estar online, mesmo que só por alguns segundos — depois disso, a app funciona offline normalmente.';
+    return;
+  }
   try{
     await signInWithEmailAndPassword(auth, email, pass);
   }catch(e){
-    errEl.textContent = 'Credenciais inválidas ou conta inexistente.';
+    if (e.code === 'auth/network-request-failed'){
+      errEl.textContent = '📴 Sem ligação à internet — não foi possível confirmar as credenciais. Ligue-se à internet e tente novamente.';
+    } else {
+      errEl.textContent = 'Credenciais inválidas ou conta inexistente.';
+    }
     console.error(e);
   }
 };
@@ -572,7 +584,11 @@ window.doStaffJoin = async function(){
     errEl.textContent = 'Pedido enviado! Assim que o dono do consultório ativar o seu acesso, já pode entrar com este email e password.';
   }catch(e){
     window.__justRegisteredViaStaffJoin = false;
-    errEl.textContent = e.message && e.message !== 'Failed to fetch' ? e.message : 'Não foi possível concluir o pedido. Tente novamente ou peça um novo link.';
+    if (e.message === 'Failed to fetch' || e.message === 'Load failed' || !navigator.onLine){
+      errEl.textContent = 'A sua conta já foi criada, mas não foi possível confirmar o pedido — parece ser um problema de ligação (comum ao abrir links dentro do WhatsApp). Tente novamente, ou copie este link e abra-o no navegador normal (Chrome/Safari) em vez de dentro do WhatsApp.';
+    } else {
+      errEl.textContent = e.message || 'Não foi possível concluir o pedido. Tente novamente ou peça um novo link.';
+    }
     console.error(e);
   }
 };
@@ -710,6 +726,7 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = null; tenantId = null;
     document.getElementById('app').classList.add('hidden');
     document.getElementById('loginScreen').classList.remove('hidden');
+    updateOnlineBanner();
     return;
   }
   currentUser = user;
@@ -780,6 +797,7 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById('navTeamBtn').classList.toggle('hidden', tenantRole === 'staff_restricted');
   document.getElementById('navProfileBtn').classList.toggle('hidden', tenantRole !== 'owner');
   document.getElementById('navMyProfileBtn').classList.toggle('hidden', tenantRole === 'owner');
+  updateOnlineBanner();
   applyBranding();
   applyDynamicManifestAdmin();
   renderView('home');
