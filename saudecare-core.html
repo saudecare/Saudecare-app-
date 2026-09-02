@@ -267,7 +267,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-46';
+const APP_VERSION = '2026-09-02-47';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4895,6 +4895,7 @@ window.generateMappingReport = async function(patientId, patientName){
   await logAudit('report_generated', patientId);
   window.__lastMappingDetected = detected;
   window.__lastMappingPatientName = patientName;
+  window.__lastMappingPatientId = patientId;
   renderGeneratedReportScreen(proto.name, reportText, detected, patientName);
 };
 
@@ -4918,8 +4919,29 @@ function renderHealingProtocolSection(detected, patientName){
         <button class="primary" onclick="downloadHealingProtocolPDF('${escapeHtml(patientName)}')">📄 Gerar Protocolo de Cura (PDF)</button>
         <button class="ghost" onclick="shareHealingProtocolPDF('${escapeHtml(patientName)}')">📤 Partilhar</button>
       </div>
+      <button class="ghost" style="width:100%;margin-top:6px;" onclick="saveHealingProtocolToPortal('${escapeHtml(patientName)}')">🌿 Guardar e mostrar no Portal do Paciente</button>
+      <p class="muted" style="margin-top:4px;">Se o paciente tiver Portal ativo, esta rotina fica visível lá, além do PDF.</p>
     </div>`;
 }
+
+window.saveHealingProtocolToPortal = async function(patientName){
+  const patientId = window.__lastMappingPatientId;
+  if (!patientId){ toast('Não foi possível identificar o paciente.', true); return; }
+  const notes = document.getElementById('healingProtocolNotes')?.value.trim() || '';
+  const materialsLink = document.getElementById('healingProtocolLink')?.value.trim() || '';
+  if (!notes && !materialsLink){ toast('Escreva as instruções ou cole um link antes de guardar.', true); return; }
+
+  const eligible = (window.__lastMappingDetected||[]).filter(d => HEALING_PROTOCOL_GROUPS.includes(d.group));
+  const escudoAnswers = (window.__mappingAfterAnswers || []).filter(a => /padrão emocional|escudo/i.test(a.label));
+
+  await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'healingProtocols'), {
+    notes, materialsLink,
+    points: eligible.map(d => ({ name: d.name, group: d.group, zona: d.zona, lado: d.lado })),
+    emotionalPattern: escudoAnswers.map(a => a.value).join(', ') || '',
+    generatedAt: serverTimestamp(), generatedBy: currentUser.uid
+  });
+  toast('Guardado — já aparece no Portal do Paciente.');
+};
 
 function buildHealingProtocolText(patientName){
   const eligible = (window.__lastMappingDetected||[]).filter(d => HEALING_PROTOCOL_GROUPS.includes(d.group));

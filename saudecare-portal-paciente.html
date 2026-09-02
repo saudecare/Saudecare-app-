@@ -82,6 +82,11 @@ function renderMessages(messages){
   box.scrollTop = box.scrollHeight;
 }
 
+function toggleReport(id){
+  const el = document.getElementById('report_' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
 async function sendMessage(){
   const input = document.getElementById('msgInput');
   const text = input.value.trim();
@@ -130,11 +135,27 @@ async function load(){
 
     const reportsHtml = data.reports.length
       ? data.reports.map(r => `
-        <div class="appt">
-          <strong>${escapeHtml(r.protocolName||'Relatório')}</strong>
-          <span class="muted">${r.generatedAt ? formatDateTime(r.generatedAt) : ''}</span>
+        <div class="appt" style="cursor:pointer;" onclick="toggleReport('${r.id}')">
+          <div class="row" style="justify-content:space-between;align-items:center;">
+            <div>
+              <strong>${escapeHtml(r.protocolName||'Relatório')}</strong>
+              <span class="muted">${r.generatedAt ? formatDateTime(r.generatedAt) : ''}</span>
+            </div>
+            <span class="muted">Toque para ver ▾</span>
+          </div>
+          <div id="report_${r.id}" style="display:none;margin-top:8px;white-space:pre-wrap;font-size:.85rem;background:#fff;border-radius:8px;padding:10px;">${escapeHtml(r.reportText||'Sem conteúdo disponível.')}</div>
         </div>`).join('')
       : '<p class="muted">Ainda sem relatórios partilhados.</p>';
+
+    const healingHtml = (data.healingProtocols||[]).length
+      ? data.healingProtocols.map(h => `
+        <div class="appt">
+          <strong>${h.generatedAt ? formatDateTime(h.generatedAt) : 'Rotina de cura'}</strong>
+          ${h.emotionalPattern ? `<div class="muted">Padrão Emocional: ${escapeHtml(h.emotionalPattern)}</div>` : ''}
+          ${h.notes ? `<div style="margin-top:6px;white-space:pre-wrap;">${escapeHtml(h.notes)}</div>` : ''}
+          ${h.materialsLink ? `<a class="btn btn-block" style="margin-top:8px;" target="_blank" href="${escapeHtml(h.materialsLink)}">🎧 Abrir materiais de apoio</a>` : ''}
+        </div>`).join('')
+      : '';
 
     const hasOnlineUpcoming = data.upcoming.some(a => a.local === 'online');
     const oc = data.onlineConsult || { tool: 'jitsi' };
@@ -177,14 +198,20 @@ async function load(){
         </div>
       </div>
 
+      ${healingHtml ? `
       <div class="card">
-        <h2>📖 Relatórios de consultas anteriores</h2>
-        ${reportsHtml}
-      </div>
+        <h2>🌿 A minha rotina de cura</h2>
+        ${healingHtml}
+      </div>` : ''}
 
       <div class="card">
         <h2>🗓️ Histórico de consultas</h2>
         ${pastHtml}
+      </div>
+
+      <div class="card">
+        <h2>📖 Relatórios de consultas anteriores</h2>
+        ${reportsHtml}
       </div>
     `;
     renderMessages(data.messages);
