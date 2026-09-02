@@ -259,7 +259,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-01-31';
+const APP_VERSION = '2026-09-02-38';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3183,84 +3183,106 @@ const TEMPLATE_PROTOCOLS = [
     ]
   },
   {
-    name: 'Sistema Energético — Centros e Pontos de Entrada (esqueleto para editar)',
+    name: 'Pesquisa Emocional Vindora — Ansiedade e Depressão (esqueleto para editar)',
     type: 'mapping',
     bodyFrontImageUrl: '',
     bodyBackImageUrl: '',
     groups: [
-      { groupName: 'Centros Energéticos', points: [
-        { name: 'Centro Energético 1', baseText: '', color: '#2e7d32' },
-        { name: 'Centro Energético 2', baseText: '', color: '#2e7d32' },
-        { name: 'Centro Energético 3', baseText: '', color: '#2e7d32' },
-        { name: 'Centro Energético 4', baseText: '', color: '#2e7d32' },
-        { name: 'Centro Energético 5', baseText: '', color: '#2e7d32' },
-        { name: 'Centro Energético 6', baseText: '', color: '#2e7d32' },
-        { name: 'Centro Energético 7', baseText: '', color: '#2e7d32' }
+      { groupName: 'Mãos — Centros Energéticos', points: [
+        { name: 'Mão · Centro Energético 1', baseText: '', color: '#2e7d32' },
+        { name: 'Mão · Centro Energético 2', baseText: '', color: '#2e7d32' },
+        { name: 'Mão · Centro Energético 3', baseText: '', color: '#2e7d32' },
+        { name: 'Mão · Centro Energético 4', baseText: '', color: '#2e7d32' },
+        { name: 'Mão · Centro Energético 5', baseText: '', color: '#2e7d32' },
+        { name: 'Mão · Centro Energético 6', baseText: '', color: '#2e7d32' },
+        { name: 'Mão · Centro Energético 7', baseText: '', color: '#2e7d32' }
       ]},
-      { groupName: 'Pontos de Entrada', points: [
-        { name: 'Ponto de Entrada 1', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 2', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 3', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 4', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 5', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 6', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 7', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 8', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 9', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 10', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 11', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 12', baseText: '', color: '#c62828' },
-        { name: 'Ponto de Entrada 13', baseText: '', color: '#c62828' }
+      { groupName: 'Mãos — Ponto de Acesso', points: [
+        { name: 'Mão · Ponto de Acesso 1', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 2', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 3', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 4', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 5', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 6', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 7', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 8', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 9', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 10', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 11', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 12', baseText: '', color: '#c62828' },
+        { name: 'Mão · Ponto de Acesso 13', baseText: '', color: '#c62828' }
+      ]},
+      { groupName: 'Localização Lateral — Frente', points: [
+        { name: 'Cabeça', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Pescoço', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Tronco Superior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Tronco Inferior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Anca', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Coxa — Exterior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Coxa — Interior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Joelho — Exterior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Joelho — Interior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Perna — Exterior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Perna — Interior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Tornozelo — Exterior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Tornozelo — Interior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
+        { name: 'Pé', baseText: '', color: '#6a4fb3', mapSide: 'frente' }
+      ]},
+      { groupName: 'Localização Lateral — Costas', points: [
+        { name: 'Cabeça', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Pescoço', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Tronco Superior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Tronco Inferior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Anca', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Coxa — Exterior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Coxa — Interior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Joelho — Exterior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Joelho — Interior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Perna — Exterior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Perna — Interior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Tornozelo — Exterior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Tornozelo — Interior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
+        { name: 'Pé', baseText: '', color: '#8a6fd3', mapSide: 'costas' }
+      ]},
+      { groupName: 'Zona Alta', points: [
+        { name: 'Zona Alta 1', baseText: '', color: '#c9a227' },
+        { name: 'Zona Alta 2', baseText: '', color: '#c9a227' },
+        { name: 'Zona Alta 3', baseText: '', color: '#c9a227' },
+        { name: 'Zona Alta 4', baseText: '', color: '#c9a227' },
+        { name: 'Zona Alta 5', baseText: '', color: '#c9a227' },
+        { name: 'Zona Alta 6', baseText: '', color: '#c9a227' },
+        { name: 'Zona Alta 7', baseText: '', color: '#c9a227' },
+        { name: 'Zona Alta 8', baseText: '', color: '#c9a227' },
+        { name: 'Zona Alta 9', baseText: '', color: '#c9a227' }
+      ]},
+      { groupName: 'Zona Média', points: [
+        { name: 'Zona Média 1', baseText: '', color: '#2e7d32' },
+        { name: 'Zona Média 2', baseText: '', color: '#2e7d32' },
+        { name: 'Zona Média 3', baseText: '', color: '#2e7d32' },
+        { name: 'Zona Média 4', baseText: '', color: '#2e7d32' },
+        { name: 'Zona Média 5', baseText: '', color: '#2e7d32' },
+        { name: 'Zona Média 6', baseText: '', color: '#2e7d32' },
+        { name: 'Zona Média 7', baseText: '', color: '#2e7d32' },
+        { name: 'Zona Média 8', baseText: '', color: '#2e7d32' },
+        { name: 'Zona Média 9', baseText: '', color: '#2e7d32' },
+        { name: 'Zona Média 10', baseText: '', color: '#2e7d32' },
+        { name: 'Zona Média 11', baseText: '', color: '#2e7d32' },
+        { name: 'Zona Média 12', baseText: '', color: '#2e7d32' }
+      ]},
+      { groupName: 'Zona Baixa', points: [
+        { name: 'Zona Baixa 1', baseText: '', color: '#1a1a1a' },
+        { name: 'Zona Baixa 2', baseText: '', color: '#1a1a1a' },
+        { name: 'Zona Baixa 3', baseText: '', color: '#1a1a1a' },
+        { name: 'Zona Baixa 4', baseText: '', color: '#1a1a1a' },
+        { name: 'Zona Baixa 5', baseText: '', color: '#1a1a1a' },
+        { name: 'Zona Baixa 6', baseText: '', color: '#1a1a1a' }
       ]}
     ],
     finalClassifications: [
-      { label: 'Momento em relação à gestação', type: 'select', when: 'before', options: ['Antes', 'Durante', 'Depois', 'Não aplicável'] },
-      { label: 'Idade', type: 'text', when: 'before', options: [] }
-    ]
-  },
-  {
-    name: 'Sistema Corporal — Superior, Central e Inferior (esqueleto para editar)',
-    type: 'mapping',
-    bodyFrontImageUrl: '',
-    bodyBackImageUrl: '',
-    groups: [
-      { groupName: 'Sistema Superior', points: [
-        { name: 'Sistema Superior 1', baseText: '', color: '#c9a227' },
-        { name: 'Sistema Superior 2', baseText: '', color: '#c9a227' },
-        { name: 'Sistema Superior 3', baseText: '', color: '#c9a227' },
-        { name: 'Sistema Superior 4', baseText: '', color: '#c9a227' },
-        { name: 'Sistema Superior 5', baseText: '', color: '#c9a227' },
-        { name: 'Sistema Superior 6', baseText: '', color: '#c9a227' },
-        { name: 'Sistema Superior 7', baseText: '', color: '#c9a227' },
-        { name: 'Sistema Superior 8', baseText: '', color: '#c9a227' },
-        { name: 'Sistema Superior 9', baseText: '', color: '#c9a227' }
-      ]},
-      { groupName: 'Central', points: [
-        { name: 'Central 1', baseText: '', color: '#2e7d32' },
-        { name: 'Central 2', baseText: '', color: '#2e7d32' },
-        { name: 'Central 3', baseText: '', color: '#2e7d32' },
-        { name: 'Central 4', baseText: '', color: '#2e7d32' },
-        { name: 'Central 5', baseText: '', color: '#2e7d32' },
-        { name: 'Central 6', baseText: '', color: '#2e7d32' },
-        { name: 'Central 7', baseText: '', color: '#2e7d32' },
-        { name: 'Central 8', baseText: '', color: '#2e7d32' },
-        { name: 'Central 9', baseText: '', color: '#2e7d32' },
-        { name: 'Central 10', baseText: '', color: '#2e7d32' },
-        { name: 'Central 11', baseText: '', color: '#2e7d32' },
-        { name: 'Central 12', baseText: '', color: '#2e7d32' }
-      ]},
-      { groupName: 'Inferiores', points: [
-        { name: 'Inferior 1', baseText: '', color: '#1a1a1a' },
-        { name: 'Inferior 2', baseText: '', color: '#1a1a1a' },
-        { name: 'Inferior 3', baseText: '', color: '#1a1a1a' },
-        { name: 'Inferior 4', baseText: '', color: '#1a1a1a' },
-        { name: 'Inferior 5', baseText: '', color: '#1a1a1a' },
-        { name: 'Inferior 6', baseText: '', color: '#1a1a1a' }
-      ]}
-    ],
-    finalClassifications: [
-      { label: 'Momento em relação à gestação', type: 'select', when: 'before', options: ['Antes', 'Durante', 'Depois', 'Não aplicável'] },
-      { label: 'Idade', type: 'text', when: 'before', options: [] }
+      { label: 'Motivo da pesquisa', type: 'text', when: 'before', options: [] },
+      { label: 'Padrão Emocional mais ativo', type: 'select', when: 'after', options: ['Desvalorização', 'Desproteção', 'Impotência', 'Perda', 'Sobrevivência'] },
+      { label: 'Momento em relação à gestação', type: 'select', when: 'after', options: ['Antes', 'Durante', 'Depois', 'Não aplicável'] },
+      { label: 'Idade / Tempo', type: 'text', when: 'after', options: [] }
     ]
   }
 ];
@@ -3574,7 +3596,7 @@ function renderMappingGroupsBuilder(){
     return `
       <div class="card" style="border:1px solid var(--primary);margin-bottom:10px;">
         <label>Nome do grupo/sistema</label>
-        <input value="${escapeHtml(g.groupName||'')}" onchange="updateMappingGroupName(${gIdx}, this.value)" placeholder="ex: 7 Pontos Vitais, Sistema Superior...">
+        <input value="${escapeHtml(g.groupName||'')}" onchange="updateMappingGroupName(${gIdx}, this.value)" placeholder="ex: 7 Pontos Vitais, Zona Alta...">
         ${pointsHtml}
         <button class="ghost" onclick="addMappingPoint(${gIdx})">+ Adicionar ponto a este grupo</button>
         <button class="danger" style="margin-left:6px;" onclick="removeMappingGroup(${gIdx})">Remover grupo inteiro</button>
@@ -3831,18 +3853,18 @@ window.updateMappingPoint = function(gIdx, pIdx, field, value){
 };
 
 // ── Classificações finais — genéricas, nomeadas pelo próprio subscritor
-// (ex: "Escudo emocional mais ativo", "Momento", "Idade/Geração"), para
+// (ex: "Padrão Emocional mais ativo", "Momento", "Idade/Geração"), para
 // que a app continue universal a qualquer terapia, não só a uma.
 function renderClassificationsBuilder(){
   let html = protocolClassificationsDraft.map((c, idx) => `
     <div class="card" style="margin-bottom:8px;">
       <label>Pergunta / dado a recolher</label>
-      <input value="${escapeHtml(c.label||'')}" onchange="updateClassification(${idx},'label',this.value)" placeholder="ex: Escudo emocional mais ativo">
+      <input value="${escapeHtml(c.label||'')}" onchange="updateClassification(${idx},'label',this.value)" placeholder="ex: Padrão Emocional mais ativo">
       <label>Quando perguntar</label>
       <select onchange="updateClassification(${idx},'when',this.value)">
         <option value="before" ${c.when==='before'?'selected':''}>No início — antes de começar (ex: dados do paciente, perguntas de recolha)</option>
-        <option value="during" ${c.when==='during'?'selected':''}>A meio — depois de escolher os lados, antes de marcar os pontos (ex: lateralidade)</option>
-        <option value="after" ${(!c.when||c.when==='after')?'selected':''}>No fim — classificação final (ex: escudo ativo, idade/geração)</option>
+        <option value="during" ${c.when==='during'?'selected':''}>A meio — depois de escolher os lados, antes de marcar os pontos (ex: localização lateral)</option>
+        <option value="after" ${(!c.when||c.when==='after')?'selected':''}>No fim — classificação final (ex: padrão emocional ativo, idade/geração)</option>
       </select>
       <label>Tipo de resposta</label>
       <select onchange="updateClassification(${idx},'type',this.value)">
@@ -3859,7 +3881,7 @@ function renderClassificationsBuilder(){
   `).join('');
   return `
     <h3 style="margin:14px 0 8px;">Perguntas do protocolo (opcional)</h3>
-    <p class="muted" style="margin-bottom:8px;">Dados ou perguntas feitas antes de começar (ex: nome, medicação, as 6 perguntas do poder) ou no fim (ex: qual escudo está mais ativo, em que momento/idade).</p>
+    <p class="muted" style="margin-bottom:8px;">Dados ou perguntas feitas antes de começar (ex: nome, medicação, as 6 perguntas do poder) ou no fim (ex: qual padrão emocional está mais ativo, em que momento/idade).</p>
     <div id="protoClassificationsList">${html}</div>
     <button class="ghost" onclick="addClassification()">+ Adicionar pergunta</button>`;
 }
@@ -4234,14 +4256,18 @@ function renderMappingPointsList(patientId, patientName, area, proto, combos){
       renderFreePointPickerBody(container, cIdx, combo, proto);
     };
     html += `<div class="card" style="margin-bottom:8px;background:#fff8ea;">
-      <strong>Zona livre / lateralidade (opcional)</strong>
+      <strong>Zona livre / localização lateral (opcional)</strong>
       <p class="muted" style="margin:4px 0 8px;">Para um local que não está pré-definido acima (ex: um ponto específico de dor). Toque em "Marcar zona", depois no local exato na imagem, e escreva o nome.</p>
       <div id="freePointsList_${cIdx}"></div>
       <button class="ghost" style="width:100%;margin-top:6px;" onclick="startFreePointPick(${cIdx})">+ Marcar zona</button>
     </div>`;
     proto.groups.forEach((g, gIdx) => {
+      const visiblePoints = g.points
+        .map((pt, pIdx) => ({ pt, pIdx }))
+        .filter(({ pt }) => !pt.mapSide || pt.mapSide === combo.zona);
+      if (!visiblePoints.length) return;
       html += `<div class="card" style="margin-bottom:8px;"><strong>${escapeHtml(g.groupName)}</strong>`;
-      g.points.forEach((pt, pIdx) => {
+      visiblePoints.forEach(({ pt, pIdx }) => {
         const id = `mp_${cIdx}_${gIdx}_${pIdx}`;
         html += `
           <div style="margin-top:8px;border-top:1px solid #eef2f0;padding-top:8px;">
@@ -4261,7 +4287,7 @@ function renderMappingPointsList(patientId, patientName, area, proto, combos){
   combos.forEach((combo, cIdx) => refreshFreePointsList(cIdx));
 }
 
-// ── Zona livre / lateralidade — marcar um local à mão durante a consulta ─
+// ── Zona livre / localização lateral — marcar um local à mão durante a consulta ─
 window.startFreePointPick = function(cIdx){
   window.__freePointPending = { cIdx, x: null, y: null };
   openMapFullscreen(`renderFreePointPickerFullscreen_${cIdx}`, 'Marcar zona livre');
@@ -4471,14 +4497,16 @@ window.generateMappingReport = async function(patientId, patientName){
     });
   });
   if (freePointsFlat.length){
-    reportText += `\n== Zonas livres / lateralidade marcadas na sessão ==\n`;
+    reportText += `\n== Zonas livres / localização lateral marcadas na sessão ==\n`;
     freePointsFlat.forEach(fp => {
       reportText += `• ${fp.label} (${zonaLabel[fp.zona]}, Lado ${ladoLabel[fp.lado]})\n`;
     });
   }
 
   if (classificationAnswers.length){
+    const zonasMapeadas = [...new Set(combos.map(c => zonaLabel[c.zona]))].join(' + ');
     reportText += `\n== Classificação final ==\n`;
+    reportText += `(Mapeamento realizado em: ${zonasMapeadas})\n`;
     classificationAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
   }
 
@@ -4489,20 +4517,88 @@ window.generateMappingReport = async function(patientId, patientName){
     reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
   });
   await logAudit('report_generated', patientId);
-  renderGeneratedReportScreen(proto.name, reportText);
+  window.__lastMappingDetected = detected;
+  window.__lastMappingPatientName = patientName;
+  renderGeneratedReportScreen(proto.name, reportText, detected, patientName);
 };
 
-function renderGeneratedReportScreen(protocolName, reportText){
+// ── Protocolo de Cura — só pontos dos 3 sistemas corporais (não Mãos) ──
+// Gera um PDF à parte, com os pontos detetados e as instruções da
+// subscritora para o paciente praticar em casa durante a semana.
+const HEALING_PROTOCOL_GROUPS = ['Zona Alta', 'Zona Média', 'Zona Baixa'];
+
+function renderHealingProtocolSection(detected, patientName){
+  const eligible = (detected||[]).filter(d => HEALING_PROTOCOL_GROUPS.includes(d.group));
+  if (!eligible.length) return '';
+  return `
+    <div class="card" style="margin-top:10px;background:#f6f8f7;">
+      <h3>Protocolo de Cura (opcional)</h3>
+      <p class="muted" style="margin-bottom:8px;">Baseado nos ${eligible.length} pontos detetados nas Zonas Alta/Média/Baixa desta consulta. Escreva como o paciente deve praticar em casa durante a semana — vai gerar um PDF à parte, pronto a enviar.</p>
+      <textarea id="healingProtocolNotes" rows="4" placeholder="ex: Repetir a respiração consciente sobre estes pontos, 5 minutos por dia, de manhã..."></textarea>
+      <div class="row" style="margin-top:8px;">
+        <button class="primary" onclick="downloadHealingProtocolPDF('${escapeHtml(patientName)}')">📄 Gerar Protocolo de Cura (PDF)</button>
+        <button class="ghost" onclick="shareHealingProtocolPDF('${escapeHtml(patientName)}')">📤 Partilhar</button>
+      </div>
+    </div>`;
+}
+
+function buildHealingProtocolText(patientName){
+  const eligible = (window.__lastMappingDetected||[]).filter(d => HEALING_PROTOCOL_GROUPS.includes(d.group));
+  const zonaLabel = { frente:'Frente', costas:'Costas' };
+  const ladoLabel = { esquerdo:'Esquerdo', direito:'Direito' };
+  const notes = document.getElementById('healingProtocolNotes')?.value.trim() || '';
+  const escudoAnswers = (window.__mappingAfterAnswers || []).filter(a => /padrão emocional|escudo/i.test(a.label));
+
+  let text = `Protocolo de Cura\n`;
+  text += `Paciente: ${patientName}\n`;
+  text += `Data: ${new Date().toLocaleDateString('pt-PT')}\n\n`;
+  if (escudoAnswers.length){
+    text += `== Padrão Emocional ==\n`;
+    escudoAnswers.forEach(a => { text += `${a.label}: ${a.value}\n`; });
+    text += `\n`;
+  }
+  text += `== Pontos detetados ==\n`;
+  let currentGroup = null;
+  eligible.forEach(d => {
+    if (d.group !== currentGroup){ text += `\n${d.group}\n`; currentGroup = d.group; }
+    text += `• ${d.name} (${zonaLabel[d.zona]}, Lado ${ladoLabel[d.lado]})\n`;
+  });
+  if (notes){
+    text += `\n== Como praticar em casa esta semana ==\n${notes}\n`;
+  }
+  return text;
+}
+
+window.downloadHealingProtocolPDF = function(patientName){
+  const doc = buildReportPDF('Protocolo de Cura', buildHealingProtocolText(patientName));
+  doc.save(`Protocolo_Cura_${patientName.replace(/[^a-zA-Z0-9]+/g,'_')}.pdf`);
+};
+
+window.shareHealingProtocolPDF = async function(patientName){
+  const doc = buildReportPDF('Protocolo de Cura', buildHealingProtocolText(patientName));
+  const blob = doc.output('blob');
+  const filename = `Protocolo_Cura_${patientName.replace(/[^a-zA-Z0-9]+/g,'_')}.pdf`;
+  const file = new File([blob], filename, { type: 'application/pdf' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })){
+    try{ await navigator.share({ files: [file], title: 'Protocolo de Cura' }); return; }
+    catch(e){ console.error(e); return; }
+  }
+  doc.save(filename);
+  toast('PDF descarregado — anexe-o manualmente no WhatsApp/Email.');
+};
+
+function renderGeneratedReportScreen(protocolName, reportText, detected, patientName){
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
       <h2>Relatório gerado</h2>
-      <textarea rows="14" readonly>${escapeHtml(reportText)}</textarea>
+      <textarea id="mainReportTextarea" rows="14" readonly>${escapeHtml(reportText)}</textarea>
       <div class="row" style="margin-top:8px;">
-        <button class="primary" onclick="downloadReportPDF('${escapeHtml(protocolName)}', document.querySelector('#patientFormContainer textarea').value)">📄 Descarregar PDF</button>
-        <button class="ghost" onclick="shareReportPDF('${escapeHtml(protocolName)}', document.querySelector('#patientFormContainer textarea').value)">📤 Partilhar</button>
+        <button class="primary" onclick="downloadReportPDF('${escapeHtml(protocolName)}', document.getElementById('mainReportTextarea').value)">📄 Descarregar PDF</button>
+        <button class="ghost" onclick="shareReportPDF('${escapeHtml(protocolName)}', document.getElementById('mainReportTextarea').value)">📤 Partilhar</button>
       </div>
       <p class="muted" style="margin-top:8px;">Guardado na ficha do paciente. "Partilhar" abre o WhatsApp, Email ou outra app, já com o PDF pronto a enviar.</p>
-    </div>`;
+    </div>
+    ${renderHealingProtocolSection(detected, patientName)}`;
   toast('Relatório gerado e guardado.');
 }
 
@@ -5310,8 +5406,8 @@ const CHATBOT_KB = [
     answer: 'Em "🧠 Conhecimento" pode guardar o que já sabe sobre óleos essenciais, fitoterápicos, ervas, probióticos, etc — por texto, foto (lê o texto sozinho) ou PDF. Depois, pode perguntar-me sobre um tema e devolvo o que escreveu. Atenção: isto é sempre conteúdo seu — eu nunca avalio interações ou faço recomendações clínicas por conta própria.' },
   { keywords: ['lista de espera','espera','vaga'],
     answer: 'Em "Lista de espera" pode adicionar pacientes que não encontraram horário. Quando cancela uma marcação, se houver alguém à espera desse serviço, a app avisa-o — e há um botão para notificar por WhatsApp com a mensagem já pronta.' },
-  { keywords: ['centros energeticos','pontos de entrada','sistema superior','sistema corporal','esqueleto'],
-    answer: 'Em Protocolos há dois modelos "esqueleto" prontos: um com Centros Energéticos (verde) e Pontos de Entrada (vermelho), outro com Sistema Superior (dourado), Central (verde) e Inferiores (preto). Vêm com os pontos todos criados mas sem posição — é só usar o modelo, editar, e tocar em cada ponto para o colocar no boneco, dar-lhe o nome final, cor e descrição.' },
+  { keywords: ['centros energeticos','ponto de acesso','zona alta','zona média','zona baixa','esqueleto'],
+    answer: 'Em Protocolos há um modelo "esqueleto" pronto de Pesquisa Completa: Mãos (Centros Energéticos em verde e Ponto de Acesso em vermelho), Localização Lateral, depois Zona Alta (dourado), Zona Média (verde) e Zona Baixa (preto). Vêm com os pontos todos criados mas sem posição — é só usar o modelo, editar, e tocar em cada ponto para o colocar no boneco, dar-lhe o nome final, cor e descrição. Pode adicionar ou remover pontos livremente, sem limite, e reordenar tudo.' },
   { keywords: ['portal do paciente','portal','videochamada','video chamada','mensagens com paciente'],
     answer: 'Em cada ficha de paciente, na secção "Portal do paciente", pode gerar um link privado (sem conta nem password) para lhe enviar. Lá, o paciente vê as marcações, relatórios, pode falar consigo por mensagem entre sessões, e entrar numa videochamada gratuita se a consulta for online.' },
   { keywords: ['pagina publica','perfil publico','montra','link publico','divulgar'],
