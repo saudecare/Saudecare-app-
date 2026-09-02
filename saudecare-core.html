@@ -32,6 +32,8 @@
   nav button{display:block;width:100%;text-align:left;background:none;border:none;color:#e4ede9;
     padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;margin-bottom:4px;}
   nav button.active,nav button:hover{background:var(--primary);color:#fff;}
+  .navGroupLabel{color:#9db3ab;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    padding:14px 12px 4px;}
   main{flex:1;padding:24px;max-width:900px;}
   .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;
     box-shadow:0 1px 3px rgba(0,0,0,.06);}
@@ -86,6 +88,7 @@
     #app{flex-direction:column;}
     nav{width:100%;display:flex;overflow-x:auto;padding:8px;gap:4px;}
     nav .navBrand{display:none;}
+    nav .navGroupLabel{display:none;}
     nav button{flex-shrink:0;width:auto;margin-right:0;margin-bottom:0;padding:8px 10px;font-size:12.5px;white-space:nowrap;}
     main{padding:14px;}
   }
@@ -223,19 +226,24 @@
       <h1>Vindora</h1>
     </div>
     <button data-view="home" class="active">🏠 Início</button>
+    <button onclick="startNewConsultationFlow()" style="background:var(--primary);color:#fff;font-weight:600;">🩺 Nova Consulta</button>
+    <div class="navGroupLabel">Consultas</div>
     <button data-view="agenda">📅 Agenda</button>
+    <button data-view="patients">🧑‍🤝‍🧑 Pacientes</button>
+    <button data-view="waitlist">⏳ Lista de espera</button>
+    <button data-view="protocols">📋 Os Meus Métodos</button>
+    <button data-view="forms">📝 Fichas</button>
+    <div class="navGroupLabel">Negócio</div>
     <button data-view="finances">💶 Finanças</button>
     <button data-view="team" id="navTeamBtn">👥 Equipa</button>
-    <button data-view="patients">🗂️ Pacientes</button>
-    <button data-view="waitlist">⏳ Lista de espera</button>
     <button data-view="services">🩺 Serviços</button>
-    <button data-view="protocols">📋 Protocolos</button>
-    <button data-view="forms">📝 Fichas</button>
+    <button data-view="profile" id="navProfileBtn">🏥 Perfil do Negócio</button>
+    <div class="navGroupLabel">Aprender</div>
     <button data-view="knowledge">🧠 Conhecimento</button>
     <button data-view="trainings">🎓 Formações</button>
-    <button data-view="profile" id="navProfileBtn">🏥 Perfil</button>
-    <button data-view="myprofile" id="navMyProfileBtn">🙋 O meu perfil</button>
-    <button data-view="settings">⚙️ Configurações</button>
+    <div class="navGroupLabel">A minha conta</div>
+    <button data-view="myprofile" id="navMyProfileBtn">🙋 O Meu Perfil Pessoal</button>
+    <button data-view="settings">⚙️ Definições</button>
     <button onclick="installApp()" style="margin-top:20px;">📲 Instalar app no dispositivo</button>
     <button data-view="logout" style="color:#f2b8b8;">Sair</button>
   </nav>
@@ -259,7 +267,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-40';
+const APP_VERSION = '2026-09-02-46';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1286,8 +1294,8 @@ async function renderHome(main){
     { icon: '🩺', label: 'Nova Consulta', action: 'startNewConsultationFlow()' },
     { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
     { icon: '🧑‍🤝‍🧑', label: 'Pacientes', action: "renderView('patients')" },
-    { icon: '💚', label: 'Finanças', action: "renderView('finances')" },
-    { icon: '📋', label: 'Protocolos', action: "renderView('protocols')" },
+    { icon: '💶', label: 'Finanças', action: "renderView('finances')" },
+    { icon: '📋', label: 'Os Meus Métodos', action: "renderView('protocols')" },
     { icon: '🧠', label: 'Conhecimento', action: "renderView('knowledge')" },
     { icon: '⏳', label: 'Lista de espera', action: "renderView('waitlist')" },
     { icon: '👥', label: 'Equipa', action: "renderView('team')" },
@@ -2754,7 +2762,7 @@ async function renderServices(main){
   main.innerHTML = `
     <div class="row"><h2>Serviços</h2></div>
     ${renderServiceTemplatesSection()}
-    ${hintBox('O que oferece aos seus clientes — cada serviço aparece na sua página pública e no funil de marcação, com nome, preço e duração.')}
+    ${hintBox('O que oferece aos seus clientes — cada serviço aparece na sua página pública e no funil de marcação, com nome, preço e duração (ex: "Reiki 60min — 40€"). Diferente de "Os Meus Métodos" (como conduz a consulta) e "Fichas" (questionários avulsos).')}
     <div class="card">${rows}</div>
     <div id="serviceFormContainer"></div>
   `;
@@ -2870,7 +2878,7 @@ async function renderForms(main){
       <button class="primary" onclick="openNewForm()">+ Nova ficha</button>
     </div>
     ${renderFormTemplatesSection()}
-    ${hintBox('Crie questionários para os seus clientes preencherem antes ou depois de um atendimento — avaliação inicial, satisfação, o que for útil à sua prática.')}
+    ${hintBox('Crie questionários avulsos para os seus clientes preencherem antes ou depois de um atendimento — avaliação inicial, satisfação, o que for útil à sua prática. Enviados por link próprio, sem precisar de estar dentro de uma consulta. Diferente de "Os Meus Métodos" (o que usa durante a própria consulta, com pontos/mapeamento).')}
     <div class="card">${rows}</div>
     <h2 style="margin:16px 0 10px;">Respostas pendentes de associar</h2>
     <div class="card">${pendingHtml}</div>
@@ -3454,29 +3462,30 @@ async function renderProtocols(main){
     const isMapping = p.type === 'mapping';
     const countInfo = isMapping
       ? `${(p.groups||[]).length} grupos de pontos`
-      : `${(p.points||[]).length} pontos definidos`;
+      : `${(p.points||[]).length} pontos definidos${(p.images||[]).length ? ` · ${p.images.length} imagem(ns)` : ''}`;
     rows += `<div class="appt-item row">
       <div><strong>${escapeHtml(p.name)}</strong>
-        <div class="muted">${isMapping ? '🗺️ Mapeamento por zonas' : '📋 Lista simples'} · ${countInfo}</div>
+        <div class="muted">${isMapping ? '🗺️ Mapeamento por zonas' : '📋 Lista livre'} · ${countInfo}</div>
       </div>
       <div>
+        <button class="ghost" onclick="previewProtocol('${d.id}')">👁️ Pré-visualizar</button>
         <button class="ghost" onclick="editProtocol('${d.id}')">Editar</button>
         <button class="ghost" onclick="duplicateProtocol('${d.id}')">Duplicar</button>
         <button class="danger" onclick="deleteProtocol('${d.id}')">Remover</button>
       </div>
     </div>`;
   });
-  if (!rows) rows = '<p class="muted">Ainda sem protocolos. Crie o seu primeiro método de atendimento.</p>';
+  if (!rows) rows = '<p class="muted">Ainda sem métodos. Crie o seu primeiro método de consulta.</p>';
 
   main.innerHTML = `
-    <div class="row"><h2>Protocolos / Métodos de Atendimento</h2>
-      <button class="primary" onclick="openNewProtocol()">+ Novo protocolo</button>
+    <div class="row"><h2>Os Meus Métodos de Consulta</h2>
+      <button class="primary" onclick="openNewProtocol()">+ Novo método</button>
     </div>
     ${renderProtocolTemplatesSection()}
-    ${hintBox(`Um protocolo é o seu próprio método de trabalho — serve para qualquer área.
-      <strong>Lista simples</strong>: uma checklist de pontos a observar (ex: sintomas, temas de sessão, exercícios).
-      <strong>Mapeamento por zonas</strong>: pontos marcados sobre uma imagem do corpo, organizados em grupos (ex: "Pontos principais", "Sistema X"), com zonas frente/costas e esquerdo/direito — útil para terapias manuais, corporais ou energéticas.
-      Em ambos, pode acrescentar perguntas antes, durante ou depois do atendimento, e a app gera um relatório automático no fim.`)}
+    ${hintBox(`Como conduz uma consulta, passo a passo — usa isto durante o atendimento, com o paciente à sua frente.
+      <strong>Lista livre</strong>: uma checklist de pontos a observar, com ou sem imagens — sem lógica fixa a seguir; coloque o que quiser, onde quiser (ex: sintomas, temas de sessão, ou pontos marcados numa foto sua, sem restrição de frente/costas/lados).
+      <strong>Mapeamento por zonas</strong>: pontos organizados em grupos sobre uma imagem do corpo, com zonas frente/costas e esquerdo/direito escolhidas antes de cada consulta — útil quando o seu método segue mesmo essa lógica (terapias manuais, corporais ou energéticas).
+      Em ambos, pode acrescentar perguntas antes, durante ou depois do atendimento, e a app gera um relatório automático no fim. Diferente de "Fichas" (questionário enviado à parte, sem estar numa consulta) e "Serviços" (o que vende, com preço e duração).`)}
     <div class="card">${rows}</div>
     <div id="protocolFormContainer"></div>
   `;
@@ -3486,12 +3495,14 @@ let protocolPointsDraft = [];
 let protocolGroupsDraft = [];
 let protocolClassificationsDraft = [];
 let protocolBodyImages = { front: '', back: '' };
+let protocolFreeImagesDraft = [];
 
 window.openNewProtocol = function(){
   protocolPointsDraft = [];
   protocolGroupsDraft = [];
   protocolClassificationsDraft = [];
   protocolBodyImages = { front: '', back: '' };
+  protocolFreeImagesDraft = [];
   window.__editingProtocolId = null;
   renderProtocolForm(null, { type: 'simple' });
 };
@@ -3505,6 +3516,7 @@ window.editProtocol = async function(id){
   protocolGroupsDraft = (p.groups || []).map(g => ({...g, points: (g.points||[]).map(pt=>({...pt}))}));
   protocolClassificationsDraft = (p.finalClassifications || []).map(c => ({...c}));
   protocolBodyImages = { front: p.bodyFrontImageUrl || '', back: p.bodyBackImageUrl || '' };
+  protocolFreeImagesDraft = (p.images || []).map(img => ({...img}));
   renderProtocolForm(id, p);
   scrollToEl('protocolFormContainer');
 };
@@ -3527,13 +3539,13 @@ function renderProtocolForm(editId, data){
 
   document.getElementById('protocolFormContainer').innerHTML = `
     <div class="card">
-      <h2>${editId ? 'Editar protocolo' : 'Novo protocolo'}</h2>
+      <h2>${editId ? 'Editar método' : 'Novo método'}</h2>
       <label>Nome do protocolo</label>
       <input id="protoName" value="${escapeHtml(name)}" placeholder="ex: Avaliação de Ansiedade e Depressão">
       <label>Tipo de protocolo</label>
       <select id="protoType" onchange="changeProtocolType(this.value)">
-        <option value="simple" ${type==='simple'?'selected':''}>Lista simples de pontos</option>
-        <option value="mapping" ${type==='mapping'?'selected':''}>Mapeamento por zonas do corpo</option>
+        <option value="simple" ${type==='simple'?'selected':''}>Lista de pontos (livre — com ou sem imagens)</option>
+        <option value="mapping" ${type==='mapping'?'selected':''}>Mapeamento por zonas do corpo (frente/costas × esquerda/direita)</option>
       </select>
       <div id="protoTypeBody">${bodyHtml}</div>
       <div style="margin-top:14px;">
@@ -3543,31 +3555,238 @@ function renderProtocolForm(editId, data){
   if (!editId) restoreAutosaveField('protoName');
 }
 
-// ── Tipo "simples" (como já existia) ────────────────────────────────────
+// ── Tipo "simples" (como já existia, agora com imagens opcionais livres) ─
 function renderSimplePointsBuilder(){
-  let pointsHtml = protocolPointsDraft.map((pt, idx) => `
-    <div class="card" style="margin-bottom:8px;">
-      <label>Nome do ponto</label>
-      <input value="${escapeHtml(pt.name||'')}" onchange="updateProtocolPoint(${idx}, 'name', this.value)">
-      <label>Fonte de conhecimento (o que significa quando detetado)</label>
-      <textarea rows="3" onchange="updateProtocolPoint(${idx}, 'knowledgeText', this.value)">${escapeHtml(pt.knowledgeText||'')}</textarea>
-      <button class="danger" onclick="removeProtocolPoint(${idx})">Remover ponto</button>
+  let imagesHtml = protocolFreeImagesDraft.map((img, iIdx) => `
+    <div class="card" style="margin-bottom:8px;background:#f6f8f7;">
+      <label>Nome da imagem (ex: Mão, Rosto, Costas...)</label>
+      <input value="${escapeHtml(img.label||'')}" onchange="updateFreeImage(${iIdx},'label',this.value)">
+      <label>Imagem</label>
+      <input id="freeImgUrl${iIdx}" value="${escapeHtml(img.url||'')}" onchange="updateFreeImage(${iIdx},'url',this.value)" placeholder="https://... (ou escolha uma foto abaixo)">
+      ${imageUploadFieldHTML(`freeImgUrl${iIdx}`, `tenants/${tenantId}/protocols`)}
+      <button class="danger" onclick="removeFreeImage(${iIdx})">Remover imagem</button>
     </div>
   `).join('');
+
+  const total = protocolPointsDraft.length;
+  const reorderBar = (idx) => `
+    <div class="row" style="margin-bottom:6px;">
+      <span class="muted">Nº ${idx+1} de ${total}</span>
+      <div>
+        <button class="ghost" ${idx===0?'disabled':''} onclick="moveProtocolItem(${idx},-1)" style="padding:4px 10px;">↑ Mover para cima</button>
+        <button class="ghost" ${idx===total-1?'disabled':''} onclick="moveProtocolItem(${idx},1)" style="padding:4px 10px;">↓ Mover para baixo</button>
+      </div>
+    </div>`;
+  let pointsHtml = protocolPointsDraft.map((pt, idx) => {
+    if (pt.kind === 'question'){
+      const optionsHtml = (pt.options||[]).map((opt, oIdx) => `
+        <div class="row" style="margin-top:4px;">
+          <input value="${escapeHtml(opt)}" onchange="updateQuestionOption(${idx},${oIdx},this.value)" style="flex:1;">
+          <button class="danger" onclick="removeQuestionOption(${idx},${oIdx})">✕</button>
+        </div>`).join('');
+      return `
+      <div class="card" style="margin-bottom:8px;border-left:3px solid #6a4fb3;">
+        ${reorderBar(idx)}
+        <div class="muted" style="margin-bottom:4px;">❓ Pergunta</div>
+        <label>Texto da pergunta</label>
+        <input value="${escapeHtml(pt.name||'')}" onchange="updateProtocolPoint(${idx}, 'name', this.value)" placeholder="ex: Como descreveria o seu sono esta semana?">
+        <label>Tipo de resposta</label>
+        <select onchange="updateQuestionType(${idx}, this.value)">
+          <option value="text" ${(!pt.qtype||pt.qtype==='text')?'selected':''}>Texto livre</option>
+          <option value="multiple_choice" ${pt.qtype==='multiple_choice'?'selected':''}>Múltipla escolha</option>
+        </select>
+        ${pt.qtype==='multiple_choice' ? `
+          <p class="muted" style="margin:8px 0 2px;">Opções:</p>
+          ${optionsHtml}
+          <button class="ghost" style="margin-top:6px;" onclick="addQuestionOption(${idx})">+ Adicionar opção</button>
+        ` : ''}
+        <button class="danger" style="margin-top:8px;" onclick="removeProtocolPoint(${idx})">Remover pergunta</button>
+      </div>`;
+    }
+    const posLabel = pt.mapX != null
+      ? `📍 Posição definida (${escapeHtml(protocolFreeImagesDraft[pt.imgIdx]?.label || 'Imagem')}) — toque para editar`
+      : '📍 Marcar numa imagem (opcional)';
+    return `
+    <div class="card" style="margin-bottom:8px;">
+      ${reorderBar(idx)}
+      <div class="muted" style="margin-bottom:4px;">📋 Ponto</div>
+      <label>Nome do ponto</label>
+      <input value="${escapeHtml(pt.name||'')}" onchange="updateProtocolPoint(${idx}, 'name', this.value)">
+      <label>O que significa quando for marcado?</label>
+      <textarea rows="3" onchange="updateProtocolPoint(${idx}, 'knowledgeText', this.value)">${escapeHtml(pt.knowledgeText||'')}</textarea>
+      ${protocolFreeImagesDraft.length ? `<button onclick="openFreePositionPicker(${idx})" style="width:100%;background:${pt.mapX!=null?'var(--primary)':'#fff3cd'};color:${pt.mapX!=null?'#fff':'#8a5a00'};border:2px solid ${pt.mapX!=null?'var(--primary)':'#e0a83c'};padding:10px;border-radius:8px;font-weight:600;cursor:pointer;margin-bottom:8px;">${posLabel}</button>` : ''}
+      <button class="danger" onclick="removeProtocolPoint(${idx})">Remover ponto</button>
+    </div>
+  `;
+  }).join('');
+
   return `
-    <div id="protoPointsList">${pointsHtml || '<p class="muted">Ainda sem pontos. Adicione o primeiro.</p>'}</div>
-    <button class="ghost" onclick="addProtocolPoint()">+ Adicionar ponto</button>`;
+    <h3 style="margin:14px 0 8px;">Imagens (opcional)</h3>
+    <p class="muted" style="margin-bottom:8px;">Adicione quantas imagens quiser (não precisam de ser frente/costas — podem ser o que fizer sentido para o seu método: uma mão, um rosto, um objeto). Depois, em cada ponto abaixo, pode colocá-lo numa dessas imagens, ou deixá-lo só na lista, sem imagem.</p>
+    <div id="freeImagesList">${imagesHtml}</div>
+    <button class="ghost" onclick="addFreeImage()">+ Adicionar imagem</button>
+    <div id="freePickerContainer"></div>
+    <h3 style="margin:14px 0 8px;">Pontos e perguntas</h3>
+    <p class="muted" style="margin-bottom:8px;">Misture pontos e perguntas na ordem que quiser — a consulta segue exatamente esta sequência.</p>
+    ${!protocolPointsDraft.length ? `
+      <div class="card" style="background:#fff8ea;text-align:center;margin-bottom:8px;">
+        <p class="muted" style="margin-bottom:8px;">Ainda sem nada aqui. Se preferir, comece com um exemplo simples que pode editar ou apagar à vontade.</p>
+        <button class="ghost" onclick="addExampleProtocolItems()">✨ Começar com um exemplo</button>
+      </div>` : ''}
+    <div id="protoPointsList">${pointsHtml}</div>
+    <div class="row">
+      <button class="ghost" onclick="addProtocolPoint()">+ Adicionar ponto</button>
+      <button class="ghost" onclick="addProtocolQuestion()">+ Adicionar pergunta</button>
+    </div>`;
 }
+
+window.addExampleProtocolItems = function(){
+  protocolPointsDraft.push(
+    { kind: 'question', name: 'Como se sente hoje, antes de começarmos?', qtype: 'text', options: [] },
+    { kind: 'point', name: 'Ombro direito', knowledgeText: 'Sinal de tensão ou sobrecarga relacionada com responsabilidades recentes.' },
+    { kind: 'question', name: 'Nível de energia', qtype: 'multiple_choice', options: ['Baixo', 'Médio', 'Alto'] }
+  );
+  refreshProtoTypeBody();
+};
+
+window.addFreeImage = function(){
+  protocolFreeImagesDraft.push({ label: '', url: '' });
+  refreshProtoTypeBody();
+};
+window.updateFreeImage = function(idx, field, value){
+  protocolFreeImagesDraft[idx][field] = value;
+};
+window.removeFreeImage = function(idx){
+  protocolFreeImagesDraft.splice(idx, 1);
+  protocolPointsDraft.forEach(pt => {
+    if (pt.imgIdx === idx){ delete pt.imgIdx; delete pt.mapX; delete pt.mapY; }
+    else if (pt.imgIdx != null && pt.imgIdx > idx){ pt.imgIdx -= 1; }
+  });
+  refreshProtoTypeBody();
+};
+
+// ── Seletor de posição livre — qualquer imagem, sem lados/zonas ────────
+window.openFreePositionPicker = function(pIdx){
+  window.__freePickerTarget = pIdx;
+  const pt = protocolPointsDraft[pIdx];
+  window.__freePickerImgIdx = pt.imgIdx ?? 0;
+  window.__freePickerX = pt.mapX ?? null;
+  window.__freePickerY = pt.mapY ?? null;
+  renderFreePositionPicker();
+  document.getElementById('freePickerContainer').scrollIntoView({ behavior:'smooth', block:'center' });
+};
+
+function renderFreePositionPicker(){
+  const pIdx = window.__freePickerTarget;
+  const pt = protocolPointsDraft[pIdx];
+  const imgIdx = window.__freePickerImgIdx;
+  const img = protocolFreeImagesDraft[imgIdx];
+  const dot = (window.__freePickerX != null)
+    ? `<div style="position:absolute;left:${window.__freePickerX}%;top:${window.__freePickerY}%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);pointer-events:none;"></div>`
+    : '';
+  const imgTabs = protocolFreeImagesDraft.map((im, i) => `
+    <button onclick="setFreePickerImg(${i})" style="flex:1;background:${i===imgIdx?'var(--primary)':'none'};color:${i===imgIdx?'#fff':'var(--text)'};border:1px solid #d8e0dc;padding:8px;cursor:pointer;">${escapeHtml(im.label||'Imagem '+(i+1))}</button>
+  `).join('');
+  document.getElementById('freePickerContainer').innerHTML = `
+    <div class="card" style="background:#f6f8f7;">
+      <div class="row" style="margin-bottom:8px;">
+        <strong>${escapeHtml(pt.name||'(sem nome)')}</strong>
+        <button class="ghost" onclick="closeFreePositionPicker()">Fechar</button>
+      </div>
+      ${protocolFreeImagesDraft.length > 1 ? `<div style="display:flex;margin-bottom:10px;">${imgTabs}</div>` : ''}
+      ${img?.url
+        ? `<div class="freeImgWrap" onclick="handleFreePickerClick(event)" style="position:relative;cursor:crosshair;">
+            <img src="${escapeHtml(img.url)}" style="width:100%;border-radius:8px;display:block;">
+            ${dot}
+          </div>`
+        : '<p class="muted">Esta imagem ainda não tem um link — adicione um acima primeiro.</p>'}
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="primary" onclick="saveFreePosition()">Guardar posição</button>
+        ${pt.mapX!=null ? `<button class="danger" onclick="removeFreePosition()">Remover posição</button>` : ''}
+      </div>
+    </div>`;
+}
+
+window.setFreePickerImg = function(imgIdx){
+  window.__freePickerImgIdx = imgIdx;
+  window.__freePickerX = null;
+  window.__freePickerY = null;
+  renderFreePositionPicker();
+};
+
+window.handleFreePickerClick = function(evt){
+  const wrap = evt.currentTarget;
+  const rect = wrap.getBoundingClientRect();
+  const x = ((evt.clientX - rect.left) / rect.width) * 100;
+  const y = ((evt.clientY - rect.top) / rect.height) * 100;
+  window.__freePickerX = Math.max(0, Math.min(100, x));
+  window.__freePickerY = Math.max(0, Math.min(100, y));
+  renderFreePositionPicker();
+};
+
+window.saveFreePosition = function(){
+  const pIdx = window.__freePickerTarget;
+  if (window.__freePickerX == null){ toast('Toque na imagem para marcar a posição.', true); return; }
+  protocolPointsDraft[pIdx].imgIdx = window.__freePickerImgIdx;
+  protocolPointsDraft[pIdx].mapX = window.__freePickerX;
+  protocolPointsDraft[pIdx].mapY = window.__freePickerY;
+  closeFreePositionPicker();
+  refreshProtoTypeBody();
+  toast('Posição guardada.');
+};
+
+window.removeFreePosition = function(){
+  const pIdx = window.__freePickerTarget;
+  delete protocolPointsDraft[pIdx].imgIdx;
+  delete protocolPointsDraft[pIdx].mapX;
+  delete protocolPointsDraft[pIdx].mapY;
+  closeFreePositionPicker();
+  refreshProtoTypeBody();
+  toast('Posição removida.');
+};
+
+window.closeFreePositionPicker = function(){
+  window.__freePickerTarget = null;
+  const el = document.getElementById('freePickerContainer');
+  if (el) el.innerHTML = '';
+};
 
 window.updateProtocolPoint = function(idx, field, value){
   protocolPointsDraft[idx][field] = value;
 };
 window.addProtocolPoint = function(){
-  protocolPointsDraft.push({ name: '', knowledgeText: '' });
+  protocolPointsDraft.push({ kind: 'point', name: '', knowledgeText: '' });
+  refreshProtoTypeBody();
+};
+window.addProtocolQuestion = function(){
+  protocolPointsDraft.push({ kind: 'question', name: '', qtype: 'text', options: [] });
   refreshProtoTypeBody();
 };
 window.removeProtocolPoint = function(idx){
   protocolPointsDraft.splice(idx, 1);
+  refreshProtoTypeBody();
+};
+window.moveProtocolItem = function(idx, dir){
+  const target = idx + dir;
+  if (target < 0 || target >= protocolPointsDraft.length) return;
+  [protocolPointsDraft[idx], protocolPointsDraft[target]] = [protocolPointsDraft[target], protocolPointsDraft[idx]];
+  refreshProtoTypeBody();
+};
+window.updateQuestionType = function(idx, value){
+  protocolPointsDraft[idx].qtype = value;
+  if (value === 'multiple_choice' && !protocolPointsDraft[idx].options) protocolPointsDraft[idx].options = [];
+  refreshProtoTypeBody();
+};
+window.addQuestionOption = function(idx){
+  protocolPointsDraft[idx].options = protocolPointsDraft[idx].options || [];
+  protocolPointsDraft[idx].options.push('');
+  refreshProtoTypeBody();
+};
+window.updateQuestionOption = function(idx, oIdx, value){
+  protocolPointsDraft[idx].options[oIdx] = value;
+};
+window.removeQuestionOption = function(idx, oIdx){
+  protocolPointsDraft[idx].options.splice(oIdx, 1);
   refreshProtoTypeBody();
 };
 
@@ -3948,8 +4167,9 @@ window.saveProtocol = async function(editId){
   data.finalClassifications = protocolClassificationsDraft.filter(c => c.label && c.label.trim());
   if (type === 'simple'){
     const validPoints = protocolPointsDraft.filter(p => p.name && p.name.trim());
-    if (!validPoints.length){ toast('Adicione pelo menos um ponto com nome.', true); return; }
+    if (!validPoints.length){ toast('Adicione pelo menos um item (ponto ou pergunta) com nome.', true); return; }
     data.points = validPoints;
+    data.images = protocolFreeImagesDraft.filter(img => img.url && img.url.trim());
   } else {
     const validGroups = protocolGroupsDraft
       .filter(g => g.groupName && g.groupName.trim())
@@ -3968,7 +4188,7 @@ window.saveProtocol = async function(editId){
     await addDoc(collection(db, 'tenants', tenantId, 'protocols'), data);
   }
   clearAutosaveField('protoName');
-  toast('Protocolo guardado.');
+  toast('Método guardado.');
   renderView('protocols');
 };
 
@@ -3994,8 +4214,52 @@ window.duplicateProtocol = async function(id){
   renderView('protocols');
 };
 
+// ── Pré-visualizar um método — como se fosse uma consulta real, mas sem
+// paciente e sem guardar nada no fim. Serve para conferir como fica antes
+// de usar com alguém de verdade.
+window.previewProtocol = async function(id){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'protocols', id));
+  if (!snap.exists()){ toast('Método não encontrado.', true); return; }
+  const proto = snap.data();
+
+  window.__previewMode = true;
+  window.__guidedProtocols = { [id]: proto };
+  window.__currentGuidedProtoId = id;
+  window.__mappingBeforeAnswers = [];
+  window.__mappingDuringAnswers = [];
+  window.__mappingAfterAnswers = [];
+
+  document.getElementById('protocolFormContainer').innerHTML = `
+    <div class="card">
+      <div class="card" style="background:#fff8ea;margin-bottom:8px;">
+        <strong>🔎 Pré-visualização — ${escapeHtml(proto.name)}</strong>
+        <p class="muted" style="margin-top:4px;">A experimentar como um paciente de exemplo. Nada disto é guardado.</p>
+        <button class="ghost" style="margin-top:8px;" onclick="renderView('protocols')">✕ Fechar pré-visualização</button>
+      </div>
+      <div id="guidedPointsArea"></div>
+    </div>`;
+  scrollToEl('protocolFormContainer');
+
+  const area = document.getElementById('guidedPointsArea');
+  const patientId = '__preview__';
+  const patientName = 'Paciente de Exemplo';
+
+  const nextStep = () => {
+    if (proto.type === 'mapping') renderMappingZoneSelection(patientId, patientName, area);
+    else renderGuidedPoints(patientId, patientName, area, proto);
+  };
+
+  const beforeQuestions = (proto.finalClassifications || []).filter(c => c.when === 'before');
+  if (beforeQuestions.length){
+    renderQuestionsScreen(area, beforeQuestions, 'before', nextStep);
+  } else {
+    nextStep();
+  }
+};
+
 // ── CONSULTA GUIADA — usar um protocolo com um paciente concreto ───────
 window.startGuidedConsultation = async function(patientId, patientName){
+  window.__previewMode = false;
   try{
     const snap = await getDocs(collection(db, 'tenants', tenantId, 'protocols'));
     let opts = '<option value="">Selecionar protocolo...</option>';
@@ -4003,14 +4267,14 @@ window.startGuidedConsultation = async function(patientId, patientName){
     snap.forEach(d => { protocols[d.id] = d.data(); opts += `<option value="${d.id}">${escapeHtml(d.data().name)}</option>`; });
 
     if (snap.empty){
-      toast('Crie um protocolo primeiro, em "Protocolos".', true);
+      toast('Crie um método primeiro, em "Os Meus Métodos".', true);
       return;
     }
 
     document.getElementById('patientFormContainer').innerHTML = `
       <div class="card">
         <h2>Consulta guiada — ${escapeHtml(patientName)}</h2>
-        <label>Protocolo</label>
+        <label>Método</label>
         <select id="guidedProtocolSelect" onchange="onGuidedProtocolChange('${patientId}', '${escapeHtml(patientName)}')">${opts}</select>
         <div id="guidedPointsArea"></div>
       </div>`;
@@ -4097,18 +4361,69 @@ function renderQuestionsScreen(area, questions, phase, onContinue){
 }
 
 // ── Fluxo tipo "simples" (como já existia) ──────────────────────────────
+function renderSimpleImagesWithDots(proto){
+  const images = proto.images || [];
+  if (!images.length) return '';
+  return images.map((img, imgIdx) => {
+    if (!img.url) return '';
+    let dots = '';
+    (proto.points||[]).forEach((pt, idx) => {
+      if (pt.imgIdx !== imgIdx || pt.mapX == null) return;
+      dots += `<div onclick="toggleSimpleDot(${idx})" id="ptDot${idx}"
+        style="position:absolute;left:${pt.mapX}%;top:${pt.mapY}%;width:22px;height:22px;margin:-11px 0 0 -11px;
+        border-radius:50%;background:#fff;border:3px solid var(--primary);cursor:pointer;
+        box-shadow:0 1px 4px rgba(0,0,0,.3);"></div>`;
+    });
+    return `<div class="card" style="text-align:center;">
+      ${img.label ? `<p class="muted" style="margin-bottom:6px;">${escapeHtml(img.label)}</p>` : ''}
+      <div style="position:relative;display:inline-block;max-width:100%;">
+        <img src="${escapeHtml(img.url)}" style="max-width:100%;border-radius:8px;display:block;">
+        ${dots}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.toggleSimpleDot = function(idx){
+  const check = document.getElementById(`ptCheck${idx}`);
+  if (!check) return;
+  check.checked = !check.checked;
+  const dot = document.getElementById(`ptDot${idx}`);
+  if (dot) dot.style.background = check.checked ? 'var(--primary)' : '#fff';
+};
+
 function renderGuidedPoints(patientId, patientName, area, proto){
   const duringQuestions = (proto.finalClassifications || []).filter(c => c.when === 'during');
-  let html = proto.points.map((pt, idx) => `
+  let html = renderSimpleImagesWithDots(proto);
+  html += proto.points.map((pt, idx) => {
+    if (pt.kind === 'question'){
+      if (pt.qtype === 'multiple_choice'){
+        const optionsHtml = (pt.options||[]).map((opt, oIdx) => `
+          <label style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <input type="radio" name="ptAnswer${idx}" value="${escapeHtml(opt)}" style="width:auto;margin:0;">
+            ${escapeHtml(opt)}
+          </label>`).join('');
+        return `<div class="card" style="margin:8px 0;">
+          <strong>${escapeHtml(pt.name)}</strong>
+          ${optionsHtml || '<p class="muted">(sem opções definidas)</p>'}
+        </div>`;
+      }
+      return `<div class="card" style="margin:8px 0;">
+        <strong>${escapeHtml(pt.name)}</strong>
+        <textarea id="ptAnswer${idx}" rows="2" placeholder="Resposta..." style="margin-top:6px;"></textarea>
+      </div>`;
+    }
+    return `
     <div class="card" style="margin:8px 0;">
       <label style="display:flex;align-items:center;gap:8px;">
-        <input type="checkbox" id="ptCheck${idx}" style="width:auto;margin:0;">
+        <input type="checkbox" id="ptCheck${idx}" onchange="const d=document.getElementById('ptDot${idx}'); if(d) d.style.background=this.checked?'var(--primary)':'#fff';" style="width:auto;margin:0;">
         <strong>${escapeHtml(pt.name)}</strong>
       </label>
       <label style="margin-top:6px;">Nota desta sessão (opcional)</label>
       <textarea id="ptNote${idx}" rows="2" placeholder="Observações específicas desta consulta..."></textarea>
     </div>
-  `).join('');
+  `;
+  }).join('');
   if (duringQuestions.length){
     html += `<h3 style="margin:16px 0 8px;">Durante a consulta</h3>` + questionsFieldsHTML(duringQuestions, 'during');
   }
@@ -4118,8 +4433,16 @@ function renderGuidedPoints(patientId, patientName, area, proto){
 
 window.startSimpleClassificationsPhase = function(patientId, patientName){
   const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
-  const hasChecked = proto.points.some((pt, idx) => document.getElementById(`ptCheck${idx}`)?.checked);
-  if (!hasChecked){ toast('Marque pelo menos um ponto para continuar.', true); return; }
+  const hasAnswer = proto.points.some((pt, idx) => {
+    if (pt.kind === 'question'){
+      if (pt.qtype === 'multiple_choice'){
+        return !!document.querySelector(`input[name="ptAnswer${idx}"]:checked`);
+      }
+      return !!document.getElementById(`ptAnswer${idx}`)?.value.trim();
+    }
+    return document.getElementById(`ptCheck${idx}`)?.checked;
+  });
+  if (!hasAnswer){ toast('Marque pelo menos um ponto ou responda a uma pergunta para continuar.', true); return; }
 
   const duringQuestions = (proto.finalClassifications || []).filter(c => c.when === 'during');
   window.__mappingDuringAnswers = duringQuestions.length ? readQuestionsAnswers(duringQuestions, 'during') : [];
@@ -4141,18 +4464,28 @@ window.startSimpleClassificationsPhase = function(patientId, patientName){
 window.generateReport = async function(patientId, patientName){
   const protoId = window.__currentGuidedProtoId;
   const proto = window.__guidedProtocols[protoId];
-  const detectedPoints = [];
+  const detectedItems = [];
 
   proto.points.forEach((pt, idx) => {
+    if (pt.kind === 'question'){
+      let value = '';
+      if (pt.qtype === 'multiple_choice'){
+        value = document.querySelector(`input[name="ptAnswer${idx}"]:checked`)?.value || '';
+      } else {
+        value = document.getElementById(`ptAnswer${idx}`)?.value.trim() || '';
+      }
+      if (value) detectedItems.push({ kind: 'question', name: pt.name, value });
+      return;
+    }
     const checked = document.getElementById(`ptCheck${idx}`)?.checked;
     if (checked){
       const note = document.getElementById(`ptNote${idx}`)?.value.trim() || '';
-      detectedPoints.push({ name: pt.name, knowledgeText: pt.knowledgeText, note });
+      detectedItems.push({ kind: 'point', name: pt.name, knowledgeText: pt.knowledgeText, note });
     }
   });
 
-  if (!detectedPoints.length){
-    toast('Marque pelo menos um ponto para gerar o relatório.', true);
+  if (!detectedItems.length){
+    toast('Marque pelo menos um ponto ou responda a uma pergunta para gerar o relatório.', true);
     return;
   }
 
@@ -4176,10 +4509,14 @@ window.generateReport = async function(patientId, patientName){
     reportText += `\n`;
   }
 
-  detectedPoints.forEach(p => {
-    reportText += `• ${p.name}\n${p.knowledgeText}\n`;
-    if (p.note) reportText += `Nota da sessão: ${p.note}\n`;
-    reportText += `\n`;
+  detectedItems.forEach(item => {
+    if (item.kind === 'question'){
+      reportText += `❓ ${item.name}\nResposta: ${item.value}\n\n`;
+    } else {
+      reportText += `• ${item.name}\n${item.knowledgeText}\n`;
+      if (item.note) reportText += `Nota da sessão: ${item.note}\n`;
+      reportText += `\n`;
+    }
   });
 
   if (afterAnswers.length){
@@ -4187,8 +4524,13 @@ window.generateReport = async function(patientId, patientName){
     afterAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
   }
 
+  if (window.__previewMode){
+    renderGeneratedReportScreen(proto.name, reportText, null, null, true);
+    return;
+  }
+
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
-    protocolId: protoId, protocolName: proto.name, points: detectedPoints,
+    protocolId: protoId, protocolName: proto.name, points: detectedItems,
     beforeAnswers, duringAnswers, classifications: afterAnswers,
     reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
   });
@@ -4539,6 +4881,11 @@ window.generateMappingReport = async function(patientId, patientName){
     classificationAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
   }
 
+  if (window.__previewMode){
+    renderGeneratedReportScreen(proto.name, reportText, null, null, true);
+    return;
+  }
+
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
     protocolId: window.__currentGuidedProtoId, protocolName: proto.name,
     mappingDetected: detected, freePoints: freePointsFlat,
@@ -4623,19 +4970,23 @@ window.shareHealingProtocolPDF = async function(patientName){
   toast('PDF descarregado — anexe-o manualmente no WhatsApp/Email.');
 };
 
-function renderGeneratedReportScreen(protocolName, reportText, detected, patientName){
-  document.getElementById('patientFormContainer').innerHTML = `
+function renderGeneratedReportScreen(protocolName, reportText, detected, patientName, isPreview){
+  const targetId = isPreview ? 'protocolFormContainer' : 'patientFormContainer';
+  document.getElementById(targetId).innerHTML = `
     <div class="card">
       <h2>Relatório gerado</h2>
+      ${isPreview ? `<div class="card" style="background:#fff8ea;margin-bottom:8px;"><strong>🔎 Isto foi uma pré-visualização.</strong> Nada foi guardado, e não há PDF real para descarregar — é só para ver como fica a consulta.<br><button class="ghost" style="margin-top:8px;" onclick="renderView('protocols')">✕ Fechar pré-visualização</button></div>` : ''}
       <textarea id="mainReportTextarea" rows="14" readonly>${escapeHtml(reportText)}</textarea>
+      ${isPreview ? '' : `
       <div class="row" style="margin-top:8px;">
         <button class="primary" onclick="downloadReportPDF('${escapeHtml(protocolName)}', document.getElementById('mainReportTextarea').value)">📄 Descarregar PDF</button>
         <button class="ghost" onclick="shareReportPDF('${escapeHtml(protocolName)}', document.getElementById('mainReportTextarea').value)">📤 Partilhar</button>
       </div>
-      <p class="muted" style="margin-top:8px;">Guardado na ficha do paciente. "Partilhar" abre o WhatsApp, Email ou outra app, já com o PDF pronto a enviar.</p>
+      <p class="muted" style="margin-top:8px;">Guardado na ficha do paciente. "Partilhar" abre o WhatsApp, Email ou outra app, já com o PDF pronto a enviar.</p>`}
     </div>
-    ${renderHealingProtocolSection(detected, patientName)}`;
-  toast('Relatório gerado e guardado.');
+    ${isPreview ? '' : renderHealingProtocolSection(detected, patientName)}`;
+  if (!isPreview) toast('Relatório gerado e guardado.');
+  window.__previewMode = false;
 }
 
 // ── PDF elegante para relatórios (consulta, mapeamento, etc.) ──────────
@@ -5058,7 +5409,7 @@ window.renderMyPublicProfile = async function(main){
   snap.forEach(d => { existing = d.data(); existingId = d.id; });
 
   main.innerHTML = `
-    <h2>🙋 O meu perfil</h2>
+    <h2>🙋 O Meu Perfil Pessoal</h2>
     ${hintBox('Isto é o que aparece sobre si na página pública do consultório — visível a quem procurar marcar consulta. Preencha como quiser aparecer.')}
     <div class="card">
       <label>O seu nome</label>
@@ -5310,7 +5661,7 @@ async function checkBackupReminder(){
     if (settings.autoBackup){
       await downloadBackup(true);
     } else if (settings.remindersEnabled){
-      toast(`💾 Já lá vão ${last ? Math.floor(daysSince) : 'muitos'} dias desde o último backup — sugerimos fazer um em Configurações.`);
+      toast(`💾 Já lá vão ${last ? Math.floor(daysSince) : 'muitos'} dias desde o último backup — sugerimos fazer um em Definições.`);
     }
   }catch(e){
     console.warn('Não foi possível verificar o lembrete de backup:', e);
@@ -5372,7 +5723,7 @@ window.downloadBackup = async function(silent){
 // ── CONFIGURAÇÕES ────────────────────────────────────────────────────
 function renderSettings(main){
   main.innerHTML = `
-    <h2>Configurações da conta</h2>
+    <h2>Definições da conta</h2>
     <div class="card">
       <p class="muted">Plano atual: <strong>${escapeHtml(currentTenantDoc?.plan||'—')}</strong></p>
       <p class="muted">Estado: <strong>${escapeHtml(currentTenantDoc?.status||'—')}</strong></p>
@@ -5431,7 +5782,7 @@ const CHATBOT_KB = [
   { keywords: ['paciente','cliente','ficha do paciente','anamnese'],
     answer: 'Em "Pacientes" pode criar a ficha de cada pessoa, ver o histórico de marcações, protocolos aplicados, pacotes de sessões e relatórios anteriores.' },
   { keywords: ['protocolo','ponto','mapeamento','zonas'],
-    answer: 'Os "Protocolos" são o seu método de trabalho: uma checklist de pontos a observar, ou um mapeamento sobre uma imagem do corpo. Em "Protocolos" há modelos prontos (Reiki, Radiestesia, Psicologia) que pode usar tal e qual ou editar.' },
+    answer: 'Em "Os Meus Métodos" define o seu método de trabalho: uma checklist de pontos a observar, ou um mapeamento sobre uma imagem do corpo. Há modelos prontos (Reiki, Radiestesia, Psicologia) que pode usar tal e qual ou editar.' },
   { keywords: ['ficha','questionario','formulario'],
     answer: 'Em "Fichas" pode criar questionários para os seus pacientes preencherem (anamnese, check-ins, satisfação). Há 3 modelos universais prontos a usar.' },
   { keywords: ['servico','preco','tabela de precos'],
@@ -5451,7 +5802,7 @@ const CHATBOT_KB = [
   { keywords: ['equipa','convidar','terapeuta','profissional','staff','portal do terapeuta'],
     answer: 'Em "Equipa" (menu principal) pode convidar outros profissionais para entrarem na mesma app — não existe um portal à parte, cada um recebe o seu próprio login. "Acesso total" vê tudo, "Acesso restrito" só vê a própria agenda. Já em Perfil → Equipa, é só a lista de nomes/fotos mostrada aos visitantes na página pública — isso não dá acesso a ninguém.' },
   { keywords: ['backup','descarregar dados','exportar'],
-    answer: 'Em Configurações → "Descarregar backup completo" pode guardar um ficheiro com todos os seus dados (pacientes, marcações, protocolos, fichas), para o guardar onde preferir.' },
+    answer: 'Em Definições → "Descarregar backup completo" pode guardar um ficheiro com todos os seus dados (pacientes, marcações, protocolos, fichas), para o guardar onde preferir.' },
   { keywords: ['instalar','ecra principal','download','app store'],
     answer: 'Toque em "📲 Instalar app no dispositivo" no menu — no Android/Chrome instala diretamente; no iPhone, use o botão Partilhar do Safari → "Adicionar ao ecrã principal".' },
   { keywords: ['consentimento','rgpd','dados pessoais','privacidade','assinatura','assinar'],
