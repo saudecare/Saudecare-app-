@@ -268,7 +268,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-49';
+const APP_VERSION = '2026-09-02-50';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1015,11 +1015,13 @@ async function renderTeam(main){
   invitesSnap.forEach(d => {
     const inv = d.data();
     const link = `${window.location.origin}${window.location.pathname}?staffJoin=${d.id}&tenant=${tenantId}`;
+    const waMsg = encodeURIComponent(`Olá! Aqui está o link para se juntar à equipa: ${link}\n\n⚠️ Importante: toque nos três pontinhos (⋮) no canto e escolha "Abrir no navegador" (Chrome/Safari) — não preencha ficando dentro do WhatsApp, para evitar erros.`);
     invitesHtml += `<div class="tenant-item">
       <div class="row"><strong>Convite por usar</strong><span class="badge trial">${roleLabel[inv.role]||inv.role}</span></div>
       <input readonly value="${link}" onclick="this.select()" style="margin-top:6px;">
       <div class="row" style="margin-top:6px;">
         <button class="ghost" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar link</button>
+        <a class="ghost" style="text-decoration:none;display:inline-block;" target="_blank" href="https://wa.me/?text=${waMsg}">📱 Enviar por WhatsApp</a>
         <button class="danger" onclick="cancelStaffInvite('${d.id}')">Cancelar convite</button>
       </div>
     </div>`;
