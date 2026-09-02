@@ -259,7 +259,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-38';
+const APP_VERSION = '2026-09-02-40';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3599,6 +3599,7 @@ function renderMappingGroupsBuilder(){
         <input value="${escapeHtml(g.groupName||'')}" onchange="updateMappingGroupName(${gIdx}, this.value)" placeholder="ex: 7 Pontos Vitais, Zona Alta...">
         ${pointsHtml}
         <button class="ghost" onclick="addMappingPoint(${gIdx})">+ Adicionar ponto a este grupo</button>
+        <button class="ghost" onclick="autoAlignGroupPoints(${gIdx})">↕ Alinhar em linha reta</button>
         <button class="danger" style="margin-left:6px;" onclick="removeMappingGroup(${gIdx})">Remover grupo inteiro</button>
       </div>`;
   }).join('');
@@ -3847,6 +3848,34 @@ window.addMappingPoint = function(gIdx){
 window.removeMappingPoint = function(gIdx, pIdx){
   protocolGroupsDraft[gIdx].points.splice(pIdx, 1);
   refreshProtoTypeBody();
+};
+// Alinha todos os pontos de um grupo numa linha reta e uniforme (ex: os
+// 7 chakras), usando os pontos já posicionados manualmente como topo/base
+// de referência. Precisa de pelo menos 2 pontos já colocados no grupo.
+window.autoAlignGroupPoints = function(gIdx){
+  const points = protocolGroupsDraft[gIdx].points || [];
+  const positioned = points.filter(pt => pt.mapX != null && pt.mapY != null);
+  if (positioned.length < 2){
+    toast('Coloque manualmente pelo menos o primeiro e o último ponto deste grupo (topo e base), depois toque em "Alinhar".', true);
+    return;
+  }
+  const sideCounts = {};
+  positioned.forEach(pt => { sideCounts[pt.mapSide||'frente'] = (sideCounts[pt.mapSide||'frente']||0) + 1; });
+  const targetSide = Object.keys(sideCounts).sort((a,b) => sideCounts[b]-sideCounts[a])[0];
+  const anchors = positioned.filter(pt => (pt.mapSide||'frente') === targetSide);
+  const topY = Math.min(...anchors.map(pt => pt.mapY));
+  const bottomY = Math.max(...anchors.map(pt => pt.mapY));
+  const avgX = anchors.reduce((s,pt) => s+pt.mapX, 0) / anchors.length;
+
+  const toAlign = points.filter(pt => !pt.mapX || (pt.mapSide||'frente') === targetSide);
+  const n = toAlign.length;
+  toAlign.forEach((pt, i) => {
+    pt.mapX = Math.round(avgX);
+    pt.mapY = n > 1  ? Math.round(topY + (bottomY-topY) * (i/(n-1))) : Math.round((topY+bottomY)/2);
+    pt.mapSide = targetSide;
+  });
+  refreshProtoTypeBody();
+  toast('Pontos alinhados.');
 };
 window.updateMappingPoint = function(gIdx, pIdx, field, value){
   protocolGroupsDraft[gIdx].points[pIdx][field] = value;
@@ -4535,6 +4564,9 @@ function renderHealingProtocolSection(detected, patientName){
       <h3>Protocolo de Cura (opcional)</h3>
       <p class="muted" style="margin-bottom:8px;">Baseado nos ${eligible.length} pontos detetados nas Zonas Alta/Média/Baixa desta consulta. Escreva como o paciente deve praticar em casa durante a semana — vai gerar um PDF à parte, pronto a enviar.</p>
       <textarea id="healingProtocolNotes" rows="4" placeholder="ex: Repetir a respiração consciente sobre estes pontos, 5 minutos por dia, de manhã..."></textarea>
+      <label style="margin-top:6px;">Link de materiais de apoio (opcional)</label>
+      <input id="healingProtocolLink" placeholder="ex: link do Google Drive/YouTube com a música, áudio ou meditação para esta semana">
+      <p class="muted" style="margin:4px 0 8px;">Guarde os seus áudios/músicas na sua própria nuvem (Drive, etc.) e cole aqui o link de partilha — fica incluído no PDF.</p>
       <div class="row" style="margin-top:8px;">
         <button class="primary" onclick="downloadHealingProtocolPDF('${escapeHtml(patientName)}')">📄 Gerar Protocolo de Cura (PDF)</button>
         <button class="ghost" onclick="shareHealingProtocolPDF('${escapeHtml(patientName)}')">📤 Partilhar</button>
@@ -4547,6 +4579,7 @@ function buildHealingProtocolText(patientName){
   const zonaLabel = { frente:'Frente', costas:'Costas' };
   const ladoLabel = { esquerdo:'Esquerdo', direito:'Direito' };
   const notes = document.getElementById('healingProtocolNotes')?.value.trim() || '';
+  const materialsLink = document.getElementById('healingProtocolLink')?.value.trim() || '';
   const escudoAnswers = (window.__mappingAfterAnswers || []).filter(a => /padrão emocional|escudo/i.test(a.label));
 
   let text = `Protocolo de Cura\n`;
@@ -4565,6 +4598,9 @@ function buildHealingProtocolText(patientName){
   });
   if (notes){
     text += `\n== Como praticar em casa esta semana ==\n${notes}\n`;
+  }
+  if (materialsLink){
+    text += `\n== Materiais de apoio ==\n${materialsLink}\n`;
   }
   return text;
 }
