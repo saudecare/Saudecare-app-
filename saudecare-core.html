@@ -274,7 +274,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-52';
+const APP_VERSION = '2026-09-02-53';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -917,6 +917,7 @@ function renderView(view){
     else history.pushState({ view }, '', '#'+view);
   }
   if (view === 'profile' && __currentView !== 'profile') __profileSection = null;
+  if (view === 'settings' && __currentView !== 'settings') __settingsSection = null;
   __currentView = view;
   __navigatingFromPopstate = false;
   if (view === 'home') renderHome(main);
@@ -5965,15 +5966,27 @@ window.downloadBackup = async function(silent){
 
 // ── CONFIGURAÇÕES ────────────────────────────────────────────────────
 function renderSettings(main){
-  main.innerHTML = `
-    <h2>Definições da conta</h2>
-    <div class="card">
+  if (!__settingsSection){
+    main.innerHTML = `
+      <h2>Definições da conta</h2>
+      <div class="profile-grid">
+        <button class="profile-tile" onclick="openSettingsSection('plano')"><span class="ptile-icon">📊</span><span>Plano & Estado</span></button>
+        <button class="profile-tile" onclick="openSettingsSection('backup')"><span class="ptile-icon">💾</span><span>Backup dos Meus Dados</span></button>
+      </div>`;
+    return;
+  }
+  const backBtn = `<button class="ghost" onclick="closeSettingsSection()">← Voltar às categorias</button>`;
+  let inner = '';
+  if (__settingsSection === 'plano'){
+    inner = `
+      <h2>📊 Plano & Estado</h2>
       <p class="muted">Plano atual: <strong>${escapeHtml(currentTenantDoc?.plan||'—')}</strong></p>
       <p class="muted">Estado: <strong>${escapeHtml(currentTenantDoc?.status||'—')}</strong></p>
       <p class="muted" style="margin-top:10px;">Para alterar nome, logótipo, cores, contactos e equipa, use a aba <strong>Perfil</strong>.</p>
-    </div>
-    <div class="card">
-      <h2>Backup dos meus dados</h2>
+    `;
+  } else if (__settingsSection === 'backup'){
+    inner = `
+      <h2>💾 Backup dos meus dados</h2>
       ${hintBox('Descarrega um ficheiro com todos os seus dados (pacientes, relatórios, marcações, serviços, protocolos e fichas), para guardar onde preferir — telemóvel, computador ou a sua cloud pessoal.')}
       <button class="primary" onclick="downloadBackup()">💾 Descarregar backup completo</button>
       <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
@@ -5991,8 +6004,13 @@ function renderSettings(main){
         <option value="30" ${(!currentTenantDoc?.backupSettings?.frequencyDays || currentTenantDoc?.backupSettings?.frequencyDays===30)?'selected':''}>Todo o mês</option>
       </select>
       <button class="ghost" style="margin-top:8px;" onclick="saveBackupSettings()">Guardar preferências</button>
-    </div>`;
+    `;
+  }
+  main.innerHTML = `${backBtn}<div class="card" style="margin-top:10px;">${inner}</div>`;
 }
+let __settingsSection = null;
+window.openSettingsSection = function(key){ __settingsSection = key; renderView('settings'); };
+window.closeSettingsSection = function(){ __settingsSection = null; renderView('settings'); };
 
 // ── Assistente virtual — baseado em regras, sem custos de API ──────────
 // Responde com base numa lista de perguntas/palavras-chave conhecidas.
