@@ -80,6 +80,10 @@
   .hintBox{background:#eef6f2;border:1px solid #d7ebe2;border-radius:10px;padding:10px 12px;
     font-size:12.5px;color:var(--primary-dark);margin-bottom:14px;line-height:1.4;}
   .mapFullscreenOverlay{position:fixed;inset:0;background:#0b1310;z-index:2000;display:flex;flex-direction:column;}
+  #callOverlay{position:fixed;inset:0;background:#0b1310;z-index:3000;display:flex;flex-direction:column;}
+  #callOverlayHeader{display:flex;justify-content:flex-end;padding:10px;flex-shrink:0;}
+  #callOverlayHeader button{background:rgba(255,255,255,.15);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;}
+  #jitsiContainer{flex:1;min-height:0;}
 .patientOverlay{position:fixed;inset:0;background:#f6f8f7;z-index:1900;display:flex;flex-direction:column;}
 .patientOverlayHeader{background:var(--primary);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .patientOverlayHeader button{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:20px;line-height:1;cursor:pointer;}
@@ -129,6 +133,13 @@
 </style>
 </head>
 <body>
+
+<div id="callOverlay" class="hidden">
+  <div id="callOverlayHeader">
+    <button onclick="endOnlineConsultCall()">✕ Sair da chamada</button>
+  </div>
+  <div id="jitsiContainer"></div>
+</div>
 
 <!-- Barra discreta de nova versão — nunca recarrega sozinha -->
 <div id="updateBanner" class="hidden" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--primary-dark);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px;">
@@ -297,7 +308,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-63';
+const APP_VERSION = '2026-09-02-64';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1616,8 +1627,55 @@ window.joinOnlineConsult = function(patientId){
     // Mesma fórmula usada no Portal do Paciente — assim ambos entram
     // exatamente na mesma sala, sem precisar de combinar nada à parte.
     const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
-    window.open(`https://meet.jit.si/${jitsiRoom}`, '_blank');
+    startEmbeddedCall(jitsiRoom, currentTenantDoc?.businessName || currentUser?.email || 'Terapeuta');
   }
+};
+
+// ── Videochamada embutida (Jitsi) — sem sair da app, sem pré-ecrã, sem
+// pedir para desligar o microfone à mão: entra já pronta a falar. ────────
+let __jitsiApi = null;
+function startEmbeddedCall(roomName, displayName){
+  document.getElementById('callOverlay').classList.remove('hidden');
+  const container = document.getElementById('jitsiContainer');
+  container.innerHTML = '<p style="color:#fff;text-align:center;padding-top:40%;">A ligar…</p>';
+
+  function launch(){
+    container.innerHTML = '';
+    __jitsiApi = new window.JitsiMeetExternalAPI('meet.jit.si', {
+      roomName,
+      width: '100%',
+      height: '100%',
+      parentNode: container,
+      configOverwrite: {
+        startWithAudioMuted: false,
+        startWithVideoMuted: false,
+        prejoinPageEnabled: false,
+        disableDeepLinking: true
+      },
+      interfaceConfigOverwrite: {
+        SHOW_JITSI_WATERMARK: false,
+        MOBILE_APP_PROMO: false
+      },
+      userInfo: { displayName: displayName || 'Utilizador' }
+    });
+    __jitsiApi.addEventListener('videoConferenceLeft', endOnlineConsultCall);
+    __jitsiApi.addEventListener('readyToClose', endOnlineConsultCall);
+  }
+
+  if (window.JitsiMeetExternalAPI){ launch(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://meet.jit.si/external_api.js';
+  s.onload = launch;
+  s.onerror = () => {
+    toast('Não foi possível carregar a videochamada. Verifique a ligação à internet.', true);
+    document.getElementById('callOverlay').classList.add('hidden');
+  };
+  document.head.appendChild(s);
+}
+
+window.endOnlineConsultCall = function(){
+  if (__jitsiApi){ __jitsiApi.dispose(); __jitsiApi = null; }
+  document.getElementById('callOverlay').classList.add('hidden');
 };
 
 // ── Lista de espera ──────────────────────────────────────────────────
