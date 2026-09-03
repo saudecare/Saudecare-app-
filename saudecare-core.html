@@ -308,7 +308,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-64';
+const APP_VERSION = '2026-09-02-66';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1617,6 +1617,20 @@ function dateKey(d){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+window.notifyPatientForCall = function(patientId, phone, patientName, portalToken, channel){
+  const portalLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-portal-paciente.html')}?t=${tenantId}&p=${patientId}${portalToken ? '&k='+portalToken : ''}`;
+  const text = portalToken
+    ? `Olá ${patientName}! Vamos começar a nossa consulta online agora — entre no seu Portal e toque em "Entrar na videochamada": ${portalLink} (é preciso estar ligado à internet, wifi ou dados móveis)`
+    : `Olá ${patientName}! Vamos começar a nossa consulta online agora (é preciso estar ligado à internet, wifi ou dados móveis).`;
+  let digits = (phone||'').replace(/\D/g, '');
+  if (digits.length === 9) digits = '351' + digits;
+  if (channel === 'sms'){
+    window.open(`sms:${digits}?body=${encodeURIComponent(text)}`, '_blank');
+  } else {
+    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`, '_blank');
+  }
+};
+
 window.joinOnlineConsult = function(patientId){
   const oc = currentTenantDoc?.onlineConsult || { tool: 'jitsi' };
   if (oc.tool === 'custom' && oc.customLink){
@@ -2545,9 +2559,12 @@ window.viewPatient = async function(patientId){
       <div class="row" style="margin-top:10px;">
         <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeHtml(p.fullName)}')">🧭 Iniciar consulta guiada</button>
         <button class="primary" onclick="joinOnlineConsult('${patientId}')">💻 Iniciar videochamada agora</button>
+        ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName)}','${escapeAttrJs(p.portalToken||'')}','whatsapp')">📱 Avisar por WhatsApp</button>` : ''}
+        ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName)}','${escapeAttrJs(p.portalToken||'')}','sms')">💬 Avisar por SMS</button>` : ''}
         <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeHtml(p.fullName)}')">📝 Enviar ficha a este paciente</button>
         <button class="ghost" onclick="viewPatientEvolution('${patientId}','${escapeHtml(p.fullName)}')">📈 Ver evolução</button>
       </div>
+      <p class="muted" style="margin-top:6px;">⚠️ A videochamada precisa de ligação à internet dos dois lados (wifi ou dados móveis) — não funciona sem internet, mesmo com boa rede telefónica.</p>
       <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
       <h3 style="margin-bottom:6px;">💚 Portal do paciente</h3>
       <p class="muted" style="margin-bottom:8px;">Espaço próprio do paciente para ver marcações, relatórios, falar consigo entre sessões e entrar na videochamada. Envie-lhe este link uma vez (por WhatsApp/email) — não precisa de criar conta nem password. ⚠️ Este link é único e pessoal deste paciente — não o partilhe com outro paciente nem o publique.</p>
@@ -2738,6 +2755,8 @@ async function renderPatientPortalOverview(main){
       <div class="row" style="margin-top:6px;flex-wrap:wrap;">
         <button class="ghost" onclick="navigator.clipboard.writeText('${linkFor(p)}').then(()=>toast('Link copiado.'))">Copiar</button>
         <button class="primary" onclick="joinOnlineConsult('${p.id}')">💻 Chamada agora</button>
+        ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${p.id}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','${escapeAttrJs(p.portalToken||'')}','whatsapp')">📱 WhatsApp</button>` : ''}
+        ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${p.id}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','${escapeAttrJs(p.portalToken||'')}','sms')">💬 SMS</button>` : ''}
         <button class="ghost" onclick="regeneratePortalLinkFromOverview('${p.id}')">Novo link</button>
         <button class="danger" onclick="revokePortalLinkFromOverview('${p.id}','${escapeAttrJs(p.fullName||'')}')">Revogar</button>
       </div>
