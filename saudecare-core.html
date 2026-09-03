@@ -274,7 +274,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-53';
+const APP_VERSION = '2026-09-02-55';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -934,6 +934,7 @@ function renderView(view){
   else if (view === 'profile') renderProfile(main);
   else if (view === 'myprofile') renderMyPublicProfile(main);
   else if (view === 'settings') renderSettings(main);
+  else if (view === 'portalPaciente') renderPatientPortalOverview(main);
 }
 // Exposta em window: onclick inline no HTML corre fora do módulo, por isso
 // precisa desta referência explícita para conseguir chamar a função.
@@ -1323,6 +1324,7 @@ async function renderHome(main){
     { icon: '🩺', label: 'Nova Consulta', action: 'startNewConsultationFlow()' },
     { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
     { icon: '🧑‍🤝‍🧑', label: 'Pacientes', action: "renderView('patients')" },
+    { icon: '💚', label: 'Portal do Paciente', action: "renderView('portalPaciente')" },
     { icon: '💶', label: 'Finanças', action: "renderView('finances')" },
     { icon: '📋', label: 'Os Meus Métodos', action: "renderView('protocols')" },
     { icon: '🧠', label: 'Conhecimento', action: "renderView('knowledge')" },
@@ -2342,6 +2344,10 @@ window.viewPatient = async function(patientId){
       <p class="muted" style="margin-bottom:8px;">Espaço próprio do paciente para ver marcações, relatórios, falar consigo entre sessões e entrar na videochamada. Envie-lhe este link uma vez (por WhatsApp/email) — não precisa de criar conta nem password. ⚠️ Este link é único e pessoal deste paciente — não o partilhe com outro paciente nem o publique.</p>
       <div id="patientPortalLinkBox"></div>
       <div id="patientMessagesBox" style="margin-top:12px;"></div>
+      <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
+      <h3 style="margin-bottom:6px;">🌱 Diário de Bem-Estar</h3>
+      <p class="muted" style="margin-bottom:8px;">Registos que o próprio paciente faz no seu Portal — humor, sono, energia e notas livres, ao longo do tempo. Útil para acompanhar a evolução entre sessões, principalmente em casos de ansiedade, depressão ou qualquer acompanhamento continuado.</p>
+      <div id="patientCheckinsBox"></div>
     </div>
     <div id="sendFormContainer"></div>
     <div class="card">
@@ -2366,7 +2372,39 @@ window.viewPatient = async function(patientId){
   showPatientOverlay(p.fullName, overlayBody);
   renderPatientPortalLink(patientId, p);
   renderPatientMessages(patientId);
+  renderPatientCheckins(patientId);
 };
+
+const CHECKIN_MOOD_ICONS = ['😔','😕','😐','🙂','😄'];
+const CHECKIN_SLEEP_ICONS = ['😩','😪','😐','🙂','😴'];
+const CHECKIN_ENERGY_ICONS = ['🪫','🔋','🔋','🔋','⚡'];
+
+async function renderPatientCheckins(patientId){
+  const box = document.getElementById('patientCheckinsBox');
+  if (!box) return;
+  box.innerHTML = '<p class="muted">A carregar registos…</p>';
+  const snap = await getDocs(query(
+    collection(db, 'tenants', tenantId, 'patients', patientId, 'checkins'),
+    orderBy('createdAt', 'desc')
+  ));
+  if (snap.empty){
+    box.innerHTML = '<p class="muted">Este paciente ainda não fez nenhum registo no Portal.</p>';
+    return;
+  }
+  box.innerHTML = snap.docs.map(d => {
+    const c = d.data();
+    const date = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString('pt-PT', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+    const parts = [];
+    if (c.mood) parts.push(`${CHECKIN_MOOD_ICONS[c.mood-1]} Humor`);
+    if (c.sleepQuality) parts.push(`${CHECKIN_SLEEP_ICONS[c.sleepQuality-1]} Sono`);
+    if (c.energyLevel) parts.push(`${CHECKIN_ENERGY_ICONS[c.energyLevel-1]} Energia`);
+    return `<div class="appt-item" style="margin-bottom:6px;">
+      <strong>${date}</strong>
+      ${parts.length ? `<div class="muted">${parts.join(' &nbsp; ')}</div>` : ''}
+      ${c.notes ? `<div style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(c.notes)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
 
 // ── Portal do paciente — link privado e mensagens ────────────────────
 function renderPatientPortalLink(patientId, p){
@@ -2416,13 +2454,13 @@ async function getActivePortalCount(excludePatientId){
   return count;
 }
 
-window.generatePatientPortalLink = async function(patientId){
+async function _generatePortalToken(patientId){
   const limits = getPlanLimits();
   if (limits.portalPatients !== Infinity){
     const activeCount = await getActivePortalCount(patientId);
     if (activeCount >= limits.portalPatients){
       toast(`Chegou ao limite de ${limits.portalPatients} pacientes com Portal ativo no seu plano. Revogue o acesso a algum paciente inativo, ou peça upgrade de plano para continuar.`, true);
-      return;
+      return false;
     }
   }
   const portalToken = crypto.randomUUID().replace(/-/g, '');
@@ -2430,20 +2468,102 @@ window.generatePatientPortalLink = async function(patientId){
     portalToken, portalRevoked: false, portalFirstAccessedAt: null, portalGeneratedAt: serverTimestamp()
   });
   toast('Link do portal criado.');
-  viewPatient(patientId);
+  return true;
+}
+
+async function _revokePortalToken(patientId){
+  await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), { portalRevoked: true });
+  toast('Acesso revogado.');
+}
+
+window.generatePatientPortalLink = async function(patientId){
+  if (await _generatePortalToken(patientId)) viewPatient(patientId);
 };
 
 window.regeneratePatientPortalLink = async function(patientId){
   if (!confirm('Gerar um novo link invalida o link anterior — quem tiver o link antigo deixa de conseguir usá-lo. Continuar?')) return;
-  await window.generatePatientPortalLink(patientId);
+  if (await _generatePortalToken(patientId)) viewPatient(patientId);
 };
 
 window.revokePatientPortalAccess = async function(patientId, name){
   if (!confirm(`Revogar o acesso de "${name}" ao Portal do Paciente? O link atual deixa de funcionar até gerar um novo.`)) return;
-  await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), { portalRevoked: true });
-  toast('Acesso revogado.');
+  await _revokePortalToken(patientId);
   viewPatient(patientId);
 };
+
+window.generatePortalLinkFromOverview = async function(patientId){
+  if (await _generatePortalToken(patientId)) renderView('portalPaciente');
+};
+
+window.regeneratePortalLinkFromOverview = async function(patientId){
+  if (!confirm('Gerar um novo link invalida o link anterior — quem tiver o link antigo deixa de conseguir usá-lo. Continuar?')) return;
+  if (await _generatePortalToken(patientId)) renderView('portalPaciente');
+};
+
+window.revokePortalLinkFromOverview = async function(patientId, name){
+  if (!confirm(`Revogar o acesso de "${name}" ao Portal do Paciente? O link atual deixa de funcionar até gerar um novo.`)) return;
+  await _revokePortalToken(patientId);
+  renderView('portalPaciente');
+};
+
+async function renderPatientPortalOverview(main){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+  const patients = [];
+  snap.forEach(d => patients.push({ id: d.id, ...d.data() }));
+
+  const active = patients.filter(p => p.portalToken && !p.portalRevoked);
+  const revoked = patients.filter(p => p.portalToken && p.portalRevoked);
+  const noPortal = patients.filter(p => !p.portalToken);
+
+  const limits = getPlanLimits();
+  const limitLabel = limits.portalPatients === Infinity ? `${active.length} (ilimitado no seu plano)` : `${active.length} / ${limits.portalPatients}`;
+
+  const linkFor = (p) => `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-portal-paciente.html')}?t=${tenantId}&p=${p.id}&k=${p.portalToken}`;
+
+  let activeHtml = active.map(p => `
+    <div class="appt-item">
+      <div class="row"><strong>${escapeHtml(p.fullName||'Sem nome')}</strong>
+        <span class="badge ${p.portalFirstAccessedAt ? 'active' : ''}" style="${p.portalFirstAccessedAt ? '' : 'background:#fff3cd;color:#7a5b00;'}">${p.portalFirstAccessedAt ? '✅ Já acedeu' : '🕓 Pendente'}</span>
+      </div>
+      <input readonly value="${linkFor(p)}" style="font-size:11px;margin-top:6px;" onclick="this.select()">
+      <div class="row" style="margin-top:6px;flex-wrap:wrap;">
+        <button class="ghost" onclick="navigator.clipboard.writeText('${linkFor(p)}').then(()=>toast('Link copiado.'))">Copiar</button>
+        <button class="ghost" onclick="regeneratePortalLinkFromOverview('${p.id}')">Novo link</button>
+        <button class="danger" onclick="revokePortalLinkFromOverview('${p.id}','${escapeAttrJs(p.fullName||'')}')">Revogar</button>
+      </div>
+    </div>`).join('');
+  if (!activeHtml) activeHtml = '<p class="muted">Ainda sem pacientes com Portal ativo.</p>';
+
+  let revokedHtml = revoked.map(p => `
+    <div class="appt-item row">
+      <strong>${escapeHtml(p.fullName||'Sem nome')}</strong> <span class="muted">🚫 Revogado</span>
+      <button class="ghost" onclick="generatePortalLinkFromOverview('${p.id}')">Reativar</button>
+    </div>`).join('');
+
+  let noPortalHtml = noPortal.map(p => `
+    <div class="appt-item row">
+      <strong>${escapeHtml(p.fullName||'Sem nome')}</strong>
+      <button class="ghost" onclick="generatePortalLinkFromOverview('${p.id}')">Gerar link</button>
+    </div>`).join('');
+  if (!noPortalHtml) noPortalHtml = '<p class="muted">Todos os pacientes já têm portal, ou ainda não tem pacientes registados.</p>';
+
+  main.innerHTML = `
+    <h2>💚 Portal do Paciente</h2>
+    ${hintBox('Aqui gere, num único sítio, o acesso de cada paciente ao portal (mensagens, relatórios, marcações e videochamada) — sem precisar de entrar na ficha de cada um. As definições de como atende online e os textos de mensagens automáticas também estão aqui a um toque.')}
+    <div class="card">
+      <div class="muted">Pacientes com Portal ativo: <strong>${limitLabel}</strong></div>
+    </div>
+    <div class="profile-grid">
+      <button class="profile-tile" onclick="openProfileSection('online')"><span class="ptile-icon">💻</span><span>Consultório Online</span></button>
+      <button class="profile-tile" onclick="openProfileSection('mensagens')"><span class="ptile-icon">💬</span><span>Modelos de Mensagens</span></button>
+    </div>
+    <h3 style="margin:16px 0 8px;">✅ Com acesso ativo</h3>
+    ${activeHtml}
+    ${revokedHtml ? `<h3 style="margin:16px 0 8px;">🚫 Acesso revogado</h3>${revokedHtml}` : ''}
+    <h3 style="margin:16px 0 8px;">➕ Ainda sem portal</h3>
+    ${noPortalHtml}
+  `;
+}
 
 async function renderPatientMessages(patientId){
   const box = document.getElementById('patientMessagesBox');

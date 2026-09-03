@@ -29,6 +29,13 @@
   .inputrow{display:flex;gap:6px;}
   .inputrow input{flex:1;padding:9px 10px;border:1px solid #ccc;border-radius:8px;font-size:.9rem;}
   .loading, .errorbox{text-align:center;padding:40px 20px;color:#6b7a75;}
+  .scale-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .scale-btn{width:42px;height:42px;border-radius:50%;border:2px solid #e0e0e0;background:#fff;font-size:1.1rem;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7a75;user-select:none;}
+  .scale-btn.selected{border-color:var(--primary);background:var(--primary);color:#fff;}
+  .scale-label{font-size:.8rem;color:#6b7a75;margin:2px 0 6px;}
+  .checkin-entry{background:#f6f8f7;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:.85rem;}
+  .checkin-entry .cvals{display:flex;gap:10px;margin:4px 0;font-size:.85rem;}
 </style>
 </head>
 <body>
@@ -85,6 +92,72 @@ function renderMessages(messages){
 function toggleReport(id){
   const el = document.getElementById('report_' + id);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// ── Diário de Bem-Estar ───────────────────────────────────────────────
+const SCALE_LABELS = ['Muito baixo', 'Baixo', 'Médio', 'Bom', 'Muito bom'];
+const MOOD_ICONS = ['😔','😕','😐','🙂','😄'];
+const SLEEP_ICONS = ['😩','😪','😐','🙂','😴'];
+const ENERGY_ICONS = ['🪫','🔋','🔋','🔋','⚡'];
+const checkinState = { mood: null, sleepQuality: null, energyLevel: null };
+
+function buildScale(containerId, key, icons){
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = [1,2,3,4,5].map(n => `<div class="scale-btn" onclick="selectScale('${containerId}','${key}',${n})">${icons[n-1]}</div>`).join('');
+}
+
+function selectScale(containerId, key, val){
+  checkinState[key] = checkinState[key] === val ? null : val;
+  const el = document.getElementById(containerId);
+  [...el.children].forEach((btn, i) => btn.classList.toggle('selected', (i+1) === checkinState[key]));
+}
+
+function renderCheckinHistory(checkins){
+  const box = document.getElementById('checkinHistory');
+  if (!box) return;
+  if (!checkins || !checkins.length){
+    box.innerHTML = '<p class="muted">Ainda sem registos — o primeiro fica aqui assim que guardar.</p>';
+    return;
+  }
+  box.innerHTML = checkins.map(c => {
+    const parts = [];
+    if (c.mood) parts.push(`${MOOD_ICONS[c.mood-1]} Humor`);
+    if (c.sleepQuality) parts.push(`${SLEEP_ICONS[c.sleepQuality-1]} Sono`);
+    if (c.energyLevel) parts.push(`${ENERGY_ICONS[c.energyLevel-1]} Energia`);
+    return `<div class="checkin-entry">
+      <strong>${formatDateTime(c.createdAt)}</strong>
+      ${parts.length ? `<div class="cvals">${parts.join(' &nbsp; ')}</div>` : ''}
+      ${c.notes ? `<div style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(c.notes)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function submitCheckin(){
+  const notes = document.getElementById('checkinNotes').value.trim();
+  if (!checkinState.mood && !checkinState.sleepQuality && !checkinState.energyLevel && !notes){
+    alert('Escolha pelo menos uma escala ou escreva algo antes de guardar.');
+    return;
+  }
+  const btn = document.getElementById('checkinSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'A guardar…';
+  try{
+    await callPortal('addCheckin', { mood: checkinState.mood, sleepQuality: checkinState.sleepQuality, energyLevel: checkinState.energyLevel, notes });
+    document.getElementById('checkinNotes').value = '';
+    checkinState.mood = null; checkinState.sleepQuality = null; checkinState.energyLevel = null;
+    buildScale('moodScale', 'mood', MOOD_ICONS);
+    buildScale('sleepScale', 'sleepQuality', SLEEP_ICONS);
+    buildScale('energyScale', 'energyLevel', ENERGY_ICONS);
+    const data = await callPortal('get');
+    renderCheckinHistory(data.checkins);
+    btn.textContent = '✅ Registado!';
+    setTimeout(() => { btn.textContent = 'Guardar registo de hoje'; }, 1800);
+  }catch(e){
+    alert('Não foi possível guardar o registo. Tente novamente.');
+    btn.textContent = 'Guardar registo de hoje';
+  }
+  btn.disabled = false;
 }
 
 async function sendMessage(){
@@ -189,6 +262,20 @@ async function load(){
       </div>
 
       <div class="card">
+        <h2>🌱 Diário de Bem-Estar</h2>
+        <p class="muted" style="margin-bottom:10px;">Registe como se sente hoje — sono, energia, humor, ou o que quiser partilhar. Fica guardado para o seu terapeuta acompanhar consigo, sessão após sessão. Não precisa de preencher tudo, nem todos os dias.</p>
+        <div class="scale-label">Humor</div>
+        <div class="scale-row" id="moodScale"></div>
+        <div class="scale-label" style="margin-top:10px;">Sono</div>
+        <div class="scale-row" id="sleepScale"></div>
+        <div class="scale-label" style="margin-top:10px;">Energia</div>
+        <div class="scale-row" id="energyScale"></div>
+        <textarea id="checkinNotes" placeholder="Algo que queira partilhar (sintomas, pensamentos, o que sentir)…" rows="3" style="width:100%;margin-top:12px;padding:9px 10px;border:1px solid #ccc;border-radius:8px;font-family:inherit;font-size:.9rem;resize:vertical;"></textarea>
+        <button id="checkinSubmitBtn" class="btn btn-block" onclick="submitCheckin()">Guardar registo de hoje</button>
+        <div id="checkinHistory" style="margin-top:14px;"></div>
+      </div>
+
+      <div class="card">
         <h2>💬 Mensagens</h2>
         <p class="muted" style="margin-bottom:8px;">Fale com o seu terapeuta entre sessões.</p>
         <div id="msgs"></div>
@@ -215,6 +302,10 @@ async function load(){
       </div>
     `;
     renderMessages(data.messages);
+    buildScale('moodScale', 'mood', MOOD_ICONS);
+    buildScale('sleepScale', 'sleepQuality', SLEEP_ICONS);
+    buildScale('energyScale', 'energyLevel', ENERGY_ICONS);
+    renderCheckinHistory(data.checkins);
   }catch(e){
     console.error(e);
     main.innerHTML = '<div class="errorbox">Não foi possível abrir o seu portal. Verifique o link ou peça um novo ao seu terapeuta.</div>';
