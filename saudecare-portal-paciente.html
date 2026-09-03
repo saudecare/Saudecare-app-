@@ -36,9 +36,21 @@
   .scale-label{font-size:.8rem;color:#6b7a75;margin:2px 0 6px;}
   .checkin-entry{background:#f6f8f7;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:.85rem;}
   .checkin-entry .cvals{display:flex;gap:10px;margin:4px 0;font-size:.85rem;}
+  #callOverlay{position:fixed;inset:0;background:#0b1310;z-index:3000;display:flex;flex-direction:column;}
+  #callOverlay.hidden{display:none;}
+  #callOverlayHeader{display:flex;justify-content:flex-end;padding:10px;flex-shrink:0;}
+  #callOverlayHeader button{background:rgba(255,255,255,.15);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;}
+  #jitsiContainer{flex:1;min-height:0;}
 </style>
 </head>
 <body>
+
+<div id="callOverlay" class="hidden">
+  <div id="callOverlayHeader">
+    <button onclick="endOnlineConsultCall()">✕ Sair da chamada</button>
+  </div>
+  <div id="jitsiContainer"></div>
+</div>
 
 <header>
   <h1 id="hBusiness">Portal do Paciente</h1>
@@ -93,6 +105,52 @@ function toggleReport(id){
   const el = document.getElementById('report_' + id);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
+
+// ── Videochamada embutida (Jitsi) — sem sair da página, sem pré-ecrã. ────
+let __jitsiApi = null;
+window.startEmbeddedCall = function(roomName, displayName){
+  document.getElementById('callOverlay').classList.remove('hidden');
+  const container = document.getElementById('jitsiContainer');
+  container.innerHTML = '<p style="color:#fff;text-align:center;padding-top:40%;">A ligar…</p>';
+
+  function launch(){
+    container.innerHTML = '';
+    __jitsiApi = new window.JitsiMeetExternalAPI('meet.jit.si', {
+      roomName,
+      width: '100%',
+      height: '100%',
+      parentNode: container,
+      configOverwrite: {
+        startWithAudioMuted: false,
+        startWithVideoMuted: false,
+        prejoinPageEnabled: false,
+        disableDeepLinking: true
+      },
+      interfaceConfigOverwrite: {
+        SHOW_JITSI_WATERMARK: false,
+        MOBILE_APP_PROMO: false
+      },
+      userInfo: { displayName: displayName || 'Paciente' }
+    });
+    __jitsiApi.addEventListener('videoConferenceLeft', endOnlineConsultCall);
+    __jitsiApi.addEventListener('readyToClose', endOnlineConsultCall);
+  }
+
+  if (window.JitsiMeetExternalAPI){ launch(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://meet.jit.si/external_api.js';
+  s.onload = launch;
+  s.onerror = () => {
+    alert('Não foi possível carregar a videochamada. Verifique a ligação à internet.');
+    document.getElementById('callOverlay').classList.add('hidden');
+  };
+  document.head.appendChild(s);
+};
+
+window.endOnlineConsultCall = function(){
+  if (__jitsiApi){ __jitsiApi.dispose(); __jitsiApi = null; }
+  document.getElementById('callOverlay').classList.add('hidden');
+};
 
 // ── Diário de Bem-Estar ───────────────────────────────────────────────
 const SCALE_LABELS = ['Muito baixo', 'Baixo', 'Médio', 'Bom', 'Muito bom'];
@@ -240,7 +298,7 @@ async function load(){
         <p class="muted" style="margin-top:6px;">O seu terapeuta vai iniciar a chamada de vídeo lá dentro, à hora combinada.</p>`;
     } else {
       const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
-      onlineToolHtml = `<a class="btn btn-block" target="_blank" href="https://meet.jit.si/${jitsiRoom}">Entrar na videochamada</a>`;
+      onlineToolHtml = `<button class="btn btn-block" onclick="startEmbeddedCall('${jitsiRoom}','${escapeHtml(data.patientName||'Paciente')}')">Entrar na videochamada</button>`;
     }
 
     main.innerHTML = `
