@@ -181,6 +181,7 @@
     <div class="authTabs">
       <button id="authTabLoginBtn" class="active" onclick="switchAuthTab('login')">Entrar</button>
       <button id="authTabRegisterBtn" onclick="switchAuthTab('register')">Criar conta</button>
+      <button id="authTabStaffCodeBtn" onclick="switchAuthTab('staffcode')">Código de equipa</button>
     </div>
 
     <div id="authPanelLogin">
@@ -207,9 +208,25 @@
       <p id="registerError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
     </div>
 
+    <div id="authPanelStaffCode" class="hidden">
+      <div class="trialNote">👋 Foi convidado(a) para se juntar a uma equipa.</div>
+      <p class="muted" style="margin-bottom:10px;">Peça ao dono do consultório o código de 6 dígitos que gerou para si. <strong>Este código serve só uma vez</strong>, para criar o seu perfil abaixo (nome, email e password) — depois disso, guarde bem esse email/password: é com eles que vai entrar sempre a partir daí, tocando em "Entrar" (não volta a precisar do código).</p>
+      <label>Código de convite</label>
+      <input id="staffJoinCode" maxlength="6" placeholder="ex: 482910" style="text-align:center;font-size:1.3rem;letter-spacing:4px;">
+      <label>O seu nome</label>
+      <input id="staffJoinName2">
+      <label>O seu email</label>
+      <input id="staffJoinEmail2" type="email" autocomplete="username">
+      <label>Palavra-passe</label>
+      <input id="staffJoinPass2" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres">
+      <button class="primary" style="width:100%" onclick="doStaffJoinByCode()">Juntar-me à equipa</button>
+      <p id="staffJoinCodeError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+    </div>
+
     <div id="authPanelStaffJoin" class="hidden">
       <div class="trialNote">👋 Foi convidado para se juntar a uma equipa.</div>
       <p class="muted" style="margin-bottom:10px;">💡 Se abriu este link dentro do WhatsApp, é mais fiável tocar nos três pontinhos (⋮) no canto e escolher "Abrir no navegador" (Chrome/Safari) antes de continuar.</p>
+      <p class="muted" style="margin-bottom:10px;"><strong>Este link serve só uma vez</strong>, para criar o seu perfil abaixo (nome, email e password) — guarde bem esse email/password: é com eles que vai entrar sempre a partir daí, no ecrã principal, separador "Entrar" (este link deixa de funcionar depois de usado).</p>
       <label>O seu nome</label>
       <input id="staffJoinName">
       <label>O seu email</label>
@@ -274,7 +291,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-55';
+const APP_VERSION = '2026-09-02-60';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -509,10 +526,71 @@ window.doLogin = async function(){
 
 window.switchAuthTab = function(tab){
   const isLogin = tab === 'login';
+  const isRegister = tab === 'register';
+  const isStaffCode = tab === 'staffcode';
   document.getElementById('authTabLoginBtn').classList.toggle('active', isLogin);
-  document.getElementById('authTabRegisterBtn').classList.toggle('active', !isLogin);
+  document.getElementById('authTabRegisterBtn').classList.toggle('active', isRegister);
+  document.getElementById('authTabStaffCodeBtn').classList.toggle('active', isStaffCode);
   document.getElementById('authPanelLogin').classList.toggle('hidden', !isLogin);
-  document.getElementById('authPanelRegister').classList.toggle('hidden', isLogin);
+  document.getElementById('authPanelRegister').classList.toggle('hidden', !isRegister);
+  document.getElementById('authPanelStaffCode').classList.toggle('hidden', !isStaffCode);
+};
+
+window.doStaffJoinByCode = async function(){
+  const code = document.getElementById('staffJoinCode').value.trim();
+  const name = document.getElementById('staffJoinName2').value.trim();
+  const email = document.getElementById('staffJoinEmail2').value.trim();
+  const pass = document.getElementById('staffJoinPass2').value;
+  const errEl = document.getElementById('staffJoinCodeError');
+  errEl.style.color = 'var(--danger)';
+  errEl.textContent = '';
+
+  if (!code || code.length < 4){ errEl.textContent = 'Indique o código de 6 dígitos que lhe deram.'; return; }
+  if (!name){ errEl.textContent = 'Indique o seu nome.'; return; }
+  if (!email){ errEl.textContent = 'Indique o seu email.'; return; }
+  if (pass.length < 6){ errEl.textContent = 'A palavra-passe precisa de pelo menos 6 caracteres.'; return; }
+
+  window.__justRegisteredViaStaffJoin = true;
+  let uid;
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    uid = cred.user.uid;
+  }catch(e){
+    if (e.code === 'auth/email-already-in-use'){
+      try{
+        const cred = await signInWithEmailAndPassword(auth, email, pass);
+        uid = cred.user.uid;
+      }catch(e2){
+        window.__justRegisteredViaStaffJoin = false;
+        errEl.textContent = 'Já existe uma conta com este email, mas esta password não corresponde. Use "Esqueci-me da password" no ecrã de Entrar.';
+        return;
+      }
+    } else {
+      window.__justRegisteredViaStaffJoin = false;
+      errEl.textContent = 'Não foi possível criar a conta. Tente novamente.';
+      console.error(e);
+      return;
+    }
+  }
+
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(STAFF_JOIN_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+      body: JSON.stringify({ code, name })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Falha ao registar o pedido.');
+    window.__justRegisteredViaStaffJoin = false;
+    await signOut(auth);
+    errEl.style.color = 'var(--primary)';
+    errEl.textContent = 'Pedido enviado! Assim que o dono do consultório ativar o seu acesso, feche esta página e entre normalmente pelo separador "Entrar", com este email e password.';
+  }catch(e){
+    window.__justRegisteredViaStaffJoin = false;
+    errEl.textContent = e.message === 'Failed to fetch' ? 'Problema de ligação. Tente novamente.' : (e.message || 'Não foi possível concluir o pedido. Verifique o código e tente novamente.');
+    console.error(e);
+  }
 };
 
 // Se o link tiver ?staffJoin=<inviteId>&tenant=<tenantId>, mostra o ecrã
@@ -525,6 +603,7 @@ window.switchAuthTab = function(tab){
   window.__staffJoinInvite = { inviteId, tenantId: inviteTenant };
   document.getElementById('authTabLoginBtn').classList.add('hidden');
   document.getElementById('authTabRegisterBtn').classList.add('hidden');
+  document.getElementById('authTabStaffCodeBtn').classList.add('hidden');
   document.getElementById('authPanelLogin').classList.add('hidden');
   document.getElementById('authPanelRegister').classList.add('hidden');
   document.getElementById('authPanelStaffJoin').classList.remove('hidden');
@@ -587,11 +666,13 @@ window.doStaffJoin = async function(){
     window.__justRegisteredViaStaffJoin = false;
     await signOut(auth);
     errEl.style.color = 'var(--primary)';
-    errEl.textContent = 'Pedido enviado! Assim que o dono do consultório ativar o seu acesso, já pode entrar com este email e password.';
+    errEl.textContent = 'Pedido enviado! Assim que o dono do consultório ativar o seu acesso, feche esta página e entre normalmente pelo separador "Entrar", com este email e password.';
   }catch(e){
     window.__justRegisteredViaStaffJoin = false;
     if (e.message === 'Failed to fetch' || e.message === 'Load failed' || !navigator.onLine){
       errEl.textContent = 'A sua conta já foi criada, mas não foi possível confirmar o pedido — parece ser um problema de ligação (comum ao abrir links dentro do WhatsApp). Tente novamente, ou copie este link e abra-o no navegador normal (Chrome/Safari) em vez de dentro do WhatsApp.';
+    } else if ((e.message || '').includes('já não é válido')){
+      errEl.textContent = 'Este link já foi usado. Se o dono do consultório já ativou o seu acesso, feche esta página e entre normalmente pelo ecrã principal com o seu email e password.';
     } else {
       errEl.textContent = e.message || 'Não foi possível concluir o pedido. Tente novamente ou peça um novo link.';
     }
@@ -1025,15 +1106,24 @@ async function renderTeam(main){
   invitesSnap.forEach(d => {
     const inv = d.data();
     const link = `${window.location.origin}${window.location.pathname}?staffJoin=${d.id}&tenant=${tenantId}`;
-    const waMsg = encodeURIComponent(`Olá! Aqui está o link para se juntar à equipa: ${link}\n\n⚠️ Importante: toque nos três pontinhos (⋮) no canto e escolha "Abrir no navegador" (Chrome/Safari) — não preencha ficando dentro do WhatsApp, para evitar erros.`);
+    const waMsg = encodeURIComponent(`Olá! Para se juntar à equipa:\n1. Entre em ${window.location.origin}${window.location.pathname}\n2. Toque em "Código de equipa"\n3. Use o código: ${inv.code}\n\nEste código serve só uma vez, para criar o seu perfil (nome, email e password). Depois de eu confirmar o seu acesso, avise-a(o) para voltar a esse mesmo endereço, mas desta vez tocar em "Entrar" e usar o email/password que criou — não precisa mais do código.`);
     invitesHtml += `<div class="tenant-item">
       <div class="row"><strong>Convite por usar</strong><span class="badge trial">${roleLabel[inv.role]||inv.role}</span></div>
-      <input readonly value="${link}" onclick="this.select()" style="margin-top:6px;">
-      <div class="row" style="margin-top:6px;">
-        <button class="ghost" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar link</button>
-        <a class="ghost" style="text-decoration:none;display:inline-block;" target="_blank" href="https://wa.me/?text=${waMsg}">📱 Enviar por WhatsApp</a>
-        <button class="danger" onclick="cancelStaffInvite('${d.id}')">Cancelar convite</button>
+      <div style="text-align:center;margin:10px 0;">
+        <div class="muted" style="font-size:.8rem;">Código de convite</div>
+        <div style="font-size:1.6rem;letter-spacing:6px;font-weight:700;color:var(--primary-dark, var(--primary));">${inv.code||'------'}</div>
       </div>
+      <p class="muted" style="text-align:center;margin-bottom:8px;">Este código serve para a pessoa criar o seu perfil uma única vez (nome, email, password). Depois de o(a) ativar aqui em Equipa, ela entra normalmente pelo ecrã de "Entrar" — já não precisa do código.</p>
+      <div class="row" style="flex-wrap:wrap;gap:6px;">
+        <button class="ghost" onclick="navigator.clipboard.writeText('${inv.code}').then(()=>toast('Código copiado.'))">Copiar código</button>
+        <a class="ghost" style="text-decoration:none;display:inline-block;" target="_blank" href="https://wa.me/?text=${waMsg}">📱 Enviar instruções por WhatsApp</a>
+        <button class="danger" onclick="cancelStaffInvite('${d.id}','${inv.code||''}')">Cancelar convite</button>
+      </div>
+      <details style="margin-top:8px;">
+        <summary class="muted" style="cursor:pointer;">Ou usar link direto (alternativa menos fiável)</summary>
+        <input readonly value="${link}" onclick="this.select()" style="margin-top:6px;">
+        <button class="ghost" style="margin-top:6px;" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar link</button>
+      </details>
     </div>`;
   });
 
@@ -1048,7 +1138,7 @@ async function renderTeam(main){
           <option value="staff_full">Acesso total (vê tudo — ex: família, sócios)</option>
           <option value="staff_restricted">Acesso restrito (só a sua própria agenda — ex: terapeuta externo)</option>
         </select>
-        <button class="primary" style="width:100%" onclick="createStaffInvite()">Gerar link de convite</button>
+        <button class="primary" style="width:100%" onclick="createStaffInvite()">Gerar código de convite</button>
       </div>
       ${invitesHtml ? `<h3 style="margin:16px 0 8px;">Convites por aceitar</h3>${invitesHtml}` : ''}
     ` : ''}
@@ -1119,16 +1209,24 @@ window.createStaffInvite = async function(){
     }
   }
   const role = document.getElementById('newInviteRole').value;
+  const code = String(Math.floor(100000 + Math.random() * 900000)); // 6 dígitos
   const ref = await addDoc(collection(db, 'tenants', tenantId, 'staffInvites'), {
-    role, used: false, usedByUid: null, createdAt: serverTimestamp()
+    role, code, used: false, usedByUid: null, createdAt: serverTimestamp()
+  });
+  // Mapa simples código → convite, para a função de adesão encontrar o
+  // convite certo com uma leitura direta (sem pesquisas/índices — mais
+  // rápido e sem qualquer risco de erro técnico para quem usa o código).
+  await setDoc(doc(db, 'inviteCodes', code), {
+    tenantId, inviteId: ref.id, used: false, createdAt: serverTimestamp()
   });
   toast('Convite criado.');
   renderView('team');
 };
 
-window.cancelStaffInvite = async function(inviteId){
-  if (!confirm('Cancelar este convite? O link deixa de funcionar.')) return;
+window.cancelStaffInvite = async function(inviteId, code){
+  if (!confirm('Cancelar este convite? O link e o código deixam de funcionar.')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'staffInvites', inviteId));
+  if (code) await deleteDoc(doc(db, 'inviteCodes', code)).catch(()=>{});
   toast('Convite cancelado.');
   renderView('team');
 };
@@ -3756,6 +3854,94 @@ Compreendo que este acompanhamento não substitui o aconselhamento médico conve
 // corpo escolhidas antes de mapear — frente/costas × esquerda/direita —
 // e textos que só precisam de ser escritos uma vez, com variações
 // opcionais quando o significado muda consoante a zona/lado).
+// ── Exemplos de demonstração — só visíveis na conta hikari-terapias ────
+// Não fazem parte dos "Modelos prontos" partilhados com outros
+// subscritores; existem só para apresentações ao vivo da app.
+const DEMO_PROTOCOLS_HIKARI = [
+  {
+    name: 'Reiki — Guia Completo dos 7 Chakras (com perguntas)',
+    type: 'simple',
+    points: [
+      { kind: 'point', name: '1. Chakra Base / Raiz (Muladhara)', knowledgeText: 'Significado: enraizamento, segurança, sobrevivência e ligação ao corpo/mundo material.\nSinais de equilíbrio: sensação de segurança, estabilidade, confiança na vida, boa ligação ao corpo e ao presente.\nSinais de desequilíbrio: medo constante, ansiedade financeira, sensação de instabilidade, desconexão do corpo.\nExemplo: cliente com ansiedade recorrente sobre dinheiro, casa ou mudanças na vida.' },
+      { kind: 'question', name: 'Sente-se seguro(a) e estável na sua vida neste momento?', qtype: 'multiple_choice', options: ['Sim, sinto-me equilibrado(a)', 'Não, sinto medo/instabilidade', 'Às vezes, depende da situação', 'Não sabe dizer'] },
+
+      { kind: 'point', name: '2. Chakra Sacral (Svadhisthana)', knowledgeText: 'Significado: criatividade, emoções, prazer e sexualidade.\nSinais de equilíbrio: fluidez emocional, criatividade ativa, capacidade de sentir prazer, boa relação com o corpo.\nSinais de desequilíbrio: culpa, bloqueio criativo, dificuldade em sentir prazer, repressão emocional.\nExemplo: pessoa com dificuldade em expressar-se criativamente ou culpa ligada ao prazer.' },
+      { kind: 'question', name: 'Sente-se à vontade para expressar as suas emoções e criatividade?', qtype: 'multiple_choice', options: ['Sim, sinto-me livre para isso', 'Não, sinto bloqueio ou culpa', 'Às vezes, depende da situação', 'Não sabe dizer'] },
+
+      { kind: 'point', name: '3. Chakra Plexo Solar (Manipura)', knowledgeText: 'Significado: poder pessoal, autoestima e força de vontade.\nSinais de equilíbrio: confiança, autoestima saudável, capacidade de decisão, limites claros com os outros.\nSinais de desequilíbrio: baixa autoestima, dificuldade em dizer não, necessidade de controlo, raiva reprimida.\nExemplo: pessoa com dificuldade em impor limites no trabalho ou nas relações.' },
+      { kind: 'question', name: 'Sente que consegue impor os seus limites e confiar nas suas decisões?', qtype: 'multiple_choice', options: ['Sim, sinto-me confiante', 'Não, sinto insegurança/dificuldade', 'Às vezes, depende da situação', 'Não sabe dizer'] },
+
+      { kind: 'point', name: '4. Chakra Cardíaco (Anahata)', knowledgeText: 'Significado: amor, compaixão, relações e cura emocional.\nSinais de equilíbrio: capacidade de amar e ser amado(a), compaixão, relações equilibradas, capacidade de perdoar.\nSinais de desequilíbrio: dificuldade em dar/receber afeto, mágoa não resolvida, isolamento emocional, ciúme.\nExemplo: pessoa a lidar com luto, um término recente, ou dificuldade em confiar em novas relações.' },
+      { kind: 'question', name: 'Como sente as suas relações atualmente?', qtype: 'multiple_choice', options: ['Sinto-me aberto(a) a dar/receber afeto', 'Sinto mágoa ou bloqueio', 'Às vezes, depende da relação', 'Não sabe dizer'] },
+
+      { kind: 'point', name: '5. Chakra Laríngeo (Vishuddha)', knowledgeText: 'Significado: comunicação, expressão pessoal e verdade.\nSinais de equilíbrio: comunicação clara, autenticidade, capacidade de se expressar e ser ouvido(a).\nSinais de desequilíbrio: dificuldade em dizer o que sente, medo de julgamento, voz "presa", evasão.\nExemplo: pessoa com dificuldade em falar em público ou em expressar as suas necessidades.' },
+      { kind: 'question', name: 'Sente que consegue expressar o que pensa e sente com clareza?', qtype: 'multiple_choice', options: ['Sim, comunico com clareza', 'Não, tenho dificuldade em expressar-me', 'Às vezes, depende do contexto', 'Não sabe dizer'] },
+
+      { kind: 'point', name: '6. Chakra Frontal / Terceiro Olho (Ajna)', knowledgeText: 'Significado: intuição, clareza mental e visão interior.\nSinais de equilíbrio: clareza mental, intuição confiável, boa concentração, visão de futuro.\nSinais de desequilíbrio: confusão mental, dificuldade de concentração, desconfiança da própria intuição, pensamento excessivo.\nExemplo: pessoa indecisa, com dificuldade em confiar nas próprias escolhas.' },
+      { kind: 'question', name: 'Sente a mente clara e a intuição afiada neste momento?', qtype: 'multiple_choice', options: ['Sim, sinto clareza', 'Não, sinto confusão/dificuldade em decidir', 'Às vezes, depende do dia', 'Não sabe dizer'] },
+
+      { kind: 'point', name: '7. Chakra Coronário (Sahasrara)', knowledgeText: 'Significado: ligação espiritual, propósito e ligação ao todo.\nSinais de equilíbrio: sensação de propósito, ligação espiritual, paz interior, confiança na vida.\nSinais de desequilíbrio: sensação de desconexão, falta de sentido/propósito, isolamento espiritual.\nExemplo: pessoa que sente falta de rumo/sentido, mesmo com a vida material resolvida.' },
+      { kind: 'question', name: 'Sente-se ligado(a) a algo maior ou com um propósito claro?', qtype: 'multiple_choice', options: ['Sim, sinto ligação/propósito', 'Não, sinto vazio ou desconexão', 'Às vezes, depende da fase', 'Não sabe dizer'] }
+    ],
+    finalClassifications: [
+      { label: 'Nível de energia sentido pelo cliente antes da sessão (0-10)', type: 'text', when: 'before', options: [] },
+      { label: 'Chakra(s) onde sentiu mais calor, formigueiro ou reação', type: 'text', when: 'after', options: [] },
+      { label: 'Estado emocional no final da sessão', type: 'text', when: 'after', options: [] }
+    ]
+  },
+  {
+    name: 'Reiki — Mapa dos 7 Chakras no Corpo (visual)',
+    type: 'mapping',
+    bodyFrontImageUrl: '',
+    bodyBackImageUrl: '',
+    groups: [
+      { groupName: 'Os 7 Chakras (frente)', points: [
+        { name: '1. Base / Raiz (Muladhara)', baseText: 'Enraizamento e segurança. Equilíbrio: sensação de estabilidade e confiança. Desequilíbrio: medo, ansiedade financeira, instabilidade. Pergunte: "Sente-se seguro(a) e estável na sua vida?"', mapX: 50, mapY: 46, mapSide: 'frente' },
+        { name: '2. Sacral (Svadhisthana)', baseText: 'Criatividade, emoções e prazer. Equilíbrio: fluidez emocional e criativa. Desequilíbrio: culpa, bloqueio criativo. Pergunte: "Sente-se à vontade para expressar as suas emoções?"', mapX: 50, mapY: 40, mapSide: 'frente' },
+        { name: '3. Plexo Solar (Manipura)', baseText: 'Poder pessoal e autoestima. Equilíbrio: confiança e limites claros. Desequilíbrio: baixa autoestima, dificuldade em dizer não. Pergunte: "Confia nas suas decisões?"', mapX: 50, mapY: 34, mapSide: 'frente' },
+        { name: '4. Cardíaco (Anahata)', baseText: 'Amor, compaixão e relações. Equilíbrio: capacidade de dar/receber afeto. Desequilíbrio: mágoa, isolamento emocional. Pergunte: "Como sente as suas relações atualmente?"', mapX: 50, mapY: 27, mapSide: 'frente' },
+        { name: '5. Laríngeo (Vishuddha)', baseText: 'Comunicação e expressão. Equilíbrio: comunicação clara e autêntica. Desequilíbrio: dificuldade em expressar-se, medo de julgamento. Pergunte: "Consegue expressar o que sente com clareza?"', mapX: 50, mapY: 20, mapSide: 'frente' },
+        { name: '6. Terceiro Olho (Ajna)', baseText: 'Intuição e clareza mental. Equilíbrio: boa concentração e intuição confiável. Desequilíbrio: confusão mental, indecisão. Pergunte: "Sente a mente clara neste momento?"', mapX: 50, mapY: 15, mapSide: 'frente' },
+        { name: '7. Coronário (Sahasrara)', baseText: 'Ligação espiritual e propósito. Equilíbrio: paz interior e sensação de propósito. Desequilíbrio: sensação de desconexão ou vazio. Pergunte: "Sente-se ligado(a) a algo maior ou com um propósito claro?"', mapX: 50, mapY: 5, mapSide: 'frente' }
+      ]}
+    ],
+    finalClassifications: [
+      { label: 'Nível de energia sentido pelo cliente antes da sessão (0-10)', type: 'text', when: 'before', options: [] },
+      { label: 'Chakra(s) onde sentiu mais calor, formigueiro ou reação', type: 'text', when: 'after', options: [] },
+      { label: 'Estado emocional no final da sessão', type: 'text', when: 'after', options: [] }
+    ]
+  }
+];
+
+function renderDemoProtocolsSection(){
+  return `
+    <div class="card" style="border:2px dashed var(--primary);">
+      <h3 style="margin-bottom:6px;">🎤 Exemplos para apresentações (só visível na sua conta)</h3>
+      <p class="muted" style="margin-bottom:10px;">Cria os 2 métodos de exemplo dos 7 Chakras (por botões e visual no mapa), prontos para mostrar ao vivo numa demonstração. Não aparecem para nenhum outro subscritor.</p>
+      <button class="primary" style="width:100%" onclick="createDemoProtocols()">Criar exemplos de demonstração</button>
+    </div>`;
+}
+
+window.createDemoProtocols = async function(){
+  for (const t of DEMO_PROTOCOLS_HIKARI){
+    const data = {
+      name: t.name, type: t.type,
+      finalClassifications: (t.finalClassifications||[]).map(c => ({...c})),
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    };
+    if (t.type === 'mapping'){
+      data.groups = (t.groups||[]).map(g => ({ groupName: g.groupName, points: (g.points||[]).map(p => ({...p})) }));
+      data.bodyFrontImageUrl = t.bodyFrontImageUrl || '';
+      data.bodyBackImageUrl = t.bodyBackImageUrl || '';
+    } else {
+      data.points = (t.points||[]).map(p => ({...p}));
+    }
+    await addDoc(collection(db, 'tenants', tenantId, 'protocols'), data);
+  }
+  toast('Exemplos de demonstração criados — já pode abri-los em "Os Meus Métodos".');
+  renderView('protocols');
+};
+
 async function renderProtocols(main){
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'protocols'));
   let rows = '';
@@ -3784,6 +3970,7 @@ async function renderProtocols(main){
       <button class="primary" onclick="openNewProtocol()">+ Novo método</button>
     </div>
     ${renderProtocolTemplatesSection()}
+    ${tenantId === 'hikari-terapias' ? renderDemoProtocolsSection() : ''}
     ${hintBox(`Como conduz uma consulta, passo a passo — usa isto durante o atendimento, com o paciente à sua frente.
       <strong>Lista livre</strong>: uma checklist de pontos a observar, com ou sem imagens — sem lógica fixa a seguir; coloque o que quiser, onde quiser (ex: sintomas, temas de sessão, ou pontos marcados numa foto sua, sem restrição de frente/costas/lados).
       <strong>Mapeamento por zonas</strong>: pontos organizados em grupos sobre uma imagem do corpo, com zonas frente/costas e esquerdo/direito escolhidas antes de cada consulta — útil quando o seu método segue mesmo essa lógica (terapias manuais, corporais ou energéticas).
