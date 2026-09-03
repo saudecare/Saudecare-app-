@@ -185,6 +185,7 @@
     </div>
 
     <div id="authPanelLogin">
+      <p class="muted" style="margin-bottom:10px;">Já tem conta na Vindora (dono(a) de consultório ou membro de equipa já ativado)? Entre aqui com o seu email e password.</p>
       <label>Email</label>
       <input id="loginEmail" type="email" autocomplete="username">
       <label>Palavra-passe</label>
@@ -197,6 +198,7 @@
     </div>
 
     <div id="authPanelRegister" class="hidden">
+      <p class="muted" style="margin-bottom:6px;">Ainda não tem conta e quer começar o seu próprio consultório na Vindora? Registe-se aqui como novo(a) subscritor(a).</p>
       <div class="trialNote">✨ 14 dias grátis, sem cartão de crédito. Sem compromisso.</div>
       <label>Nome do consultório / prática</label>
       <input id="regBusinessName" placeholder="ex: Clínica Bem-Estar">
@@ -210,6 +212,7 @@
 
     <div id="authPanelStaffCode" class="hidden">
       <div class="trialNote">👋 Foi convidado(a) para se juntar a uma equipa.</div>
+      <p class="muted" style="margin-bottom:10px;">Use este separador <strong>só</strong> se um dono de consultório já existente lhe deu um código para se juntar à equipa dele. Se está a criar o seu próprio consultório, use "Criar conta" acima.</p>
       <p class="muted" style="margin-bottom:10px;">Peça ao dono do consultório o código de 6 dígitos que gerou para si. <strong>Este código serve só uma vez</strong>, para criar o seu perfil abaixo (nome, email e password) — depois disso, guarde bem esse email/password: é com eles que vai entrar sempre a partir daí, tocando em "Entrar" (não volta a precisar do código).</p>
       <label>Código de convite</label>
       <input id="staffJoinCode" maxlength="6" placeholder="ex: 482910" style="text-align:center;font-size:1.3rem;letter-spacing:4px;">
@@ -235,6 +238,9 @@
       <input id="staffJoinPass" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres">
       <button class="primary" style="width:100%" onclick="doStaffJoin()">Juntar-me à equipa</button>
       <p id="staffJoinError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+      <p class="muted" style="margin-top:10px;text-align:center;">
+        Este link não é para si, ou já criou o seu perfil e só quer entrar? <a href="#" onclick="exitStaffJoinLinkScreen();return false;" style="color:var(--primary);">Ir para Entrar / Criar conta</a>
+      </p>
     </div>
   </div>
 </div>
@@ -291,7 +297,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-60';
+const APP_VERSION = '2026-09-02-63';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -608,6 +614,15 @@ window.doStaffJoinByCode = async function(){
   document.getElementById('authPanelRegister').classList.add('hidden');
   document.getElementById('authPanelStaffJoin').classList.remove('hidden');
 })();
+
+window.exitStaffJoinLinkScreen = function(){
+  window.__staffJoinInvite = null;
+  document.getElementById('authTabLoginBtn').classList.remove('hidden');
+  document.getElementById('authTabRegisterBtn').classList.remove('hidden');
+  document.getElementById('authTabStaffCodeBtn').classList.remove('hidden');
+  document.getElementById('authPanelStaffJoin').classList.add('hidden');
+  switchAuthTab('login');
+};
 
 window.doStaffJoin = async function(){
   const invite = window.__staffJoinInvite;
@@ -1553,6 +1568,7 @@ async function renderAgenda(main){
       <div class="row" style="margin-top:6px;">
         <button class="ghost" onclick="editAppointment('${a.id}')">Editar</button>
         <button class="ghost" onclick="downloadAppointmentICS('${a.id}')">📅 Calendário</button>
+        ${a.local==='online' && a.patientId ? `<button class="primary" onclick="joinOnlineConsult('${a.patientId}')">💻 Entrar na videochamada</button>` : ''}
         ${a.price && a.paymentStatus !== 'paid' ? `<button class="ghost" onclick="markAppointmentPaid('${a.id}')">💶 Marcar pago</button>` : ''}
         ${a.status !== 'cancelled' ? `<button class="ghost" onclick="cancelAppointment('${a.id}')">Cancelar</button>` : ''}
         <button class="danger" onclick="deleteAppointment('${a.id}')">Apagar</button>
@@ -1589,6 +1605,20 @@ async function renderAgenda(main){
 function dateKey(d){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+
+window.joinOnlineConsult = function(patientId){
+  const oc = currentTenantDoc?.onlineConsult || { tool: 'jitsi' };
+  if (oc.tool === 'custom' && oc.customLink){
+    window.open(oc.customLink, '_blank');
+  } else if (oc.tool === 'whatsapp' && oc.whatsappNumber){
+    window.open(`https://wa.me/${oc.whatsappNumber}`, '_blank');
+  } else {
+    // Mesma fórmula usada no Portal do Paciente — assim ambos entram
+    // exatamente na mesma sala, sem precisar de combinar nada à parte.
+    const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
+    window.open(`https://meet.jit.si/${jitsiRoom}`, '_blank');
+  }
+};
 
 // ── Lista de espera ──────────────────────────────────────────────────
 // Quando não há horário disponível, o paciente entra nesta lista. Quando
@@ -2214,6 +2244,26 @@ window.removePatientCustomField = function(idx){
   refreshPatientCustomFieldsList();
 };
 
+window.importPatientFromContacts = async function(){
+  if (!('contacts' in navigator) || !('ContactsManager' in window)){
+    toast('O seu telemóvel/navegador não suporta importar contactos diretamente (funciona no Chrome/Opera Android). Preencha os dados à mão.', true);
+    return;
+  }
+  try{
+    const contacts = await navigator.contacts.select(['name', 'tel', 'email'], { multiple: false });
+    if (!contacts.length) return; // pessoa cancelou o seletor
+    const c = contacts[0];
+    if (c.name && c.name.length) document.getElementById('pFullName').value = c.name[0];
+    if (c.tel && c.tel.length) document.getElementById('pPhone').value = c.tel[0].replace(/\s+/g, '');
+    if (c.email && c.email.length) document.getElementById('pEmail').value = c.email[0];
+    toast('Contacto importado — reveja e complete o que faltar.');
+  }catch(e){
+    console.error(e);
+    // Pessoa cancelou o seletor do sistema — não é um erro real, não avisa.
+    if (e.name !== 'AbortError') toast('Não foi possível aceder aos contactos.', true);
+  }
+};
+
 window.openNewPatient = function(){
   patientCustomFieldsDraft = [];
   patientAttachmentsDraft = [];
@@ -2222,6 +2272,7 @@ window.openNewPatient = function(){
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
       <h2>Novo paciente</h2>
+      <button type="button" class="ghost" style="width:100%;margin-bottom:10px;" onclick="importPatientFromContacts()">📇 Importar de um contacto do telemóvel</button>
       <label>Nome completo</label><input id="pFullName">
       <label>Telefone</label><input id="pPhone">
       <label>Email</label><input id="pEmail" type="email">
@@ -2251,6 +2302,7 @@ window.editPatient = async function(patientId){
   showPatientOverlay('Editar paciente', `
     <div class="card">
       <h2>Editar paciente</h2>
+      <button type="button" class="ghost" style="width:100%;margin-bottom:10px;" onclick="importPatientFromContacts()">📇 Importar de um contacto do telemóvel</button>
       <label>Nome completo</label><input id="pFullName" value="${escapeHtml(p.fullName||'')}">
       <label>Telefone</label><input id="pPhone" value="${escapeHtml(p.phone||'')}">
       <label>Email</label><input id="pEmail" type="email" value="${escapeHtml(p.email||'')}">
@@ -2434,6 +2486,7 @@ window.viewPatient = async function(patientId){
       ` : ''}
       <div class="row" style="margin-top:10px;">
         <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeHtml(p.fullName)}')">🧭 Iniciar consulta guiada</button>
+        <button class="primary" onclick="joinOnlineConsult('${patientId}')">💻 Iniciar videochamada agora</button>
         <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeHtml(p.fullName)}')">📝 Enviar ficha a este paciente</button>
         <button class="ghost" onclick="viewPatientEvolution('${patientId}','${escapeHtml(p.fullName)}')">📈 Ver evolução</button>
       </div>
@@ -2626,6 +2679,7 @@ async function renderPatientPortalOverview(main){
       <input readonly value="${linkFor(p)}" style="font-size:11px;margin-top:6px;" onclick="this.select()">
       <div class="row" style="margin-top:6px;flex-wrap:wrap;">
         <button class="ghost" onclick="navigator.clipboard.writeText('${linkFor(p)}').then(()=>toast('Link copiado.'))">Copiar</button>
+        <button class="primary" onclick="joinOnlineConsult('${p.id}')">💻 Chamada agora</button>
         <button class="ghost" onclick="regeneratePortalLinkFromOverview('${p.id}')">Novo link</button>
         <button class="danger" onclick="revokePortalLinkFromOverview('${p.id}','${escapeAttrJs(p.fullName||'')}')">Revogar</button>
       </div>
