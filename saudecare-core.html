@@ -80,10 +80,6 @@
   .hintBox{background:#eef6f2;border:1px solid #d7ebe2;border-radius:10px;padding:10px 12px;
     font-size:12.5px;color:var(--primary-dark);margin-bottom:14px;line-height:1.4;}
   .mapFullscreenOverlay{position:fixed;inset:0;background:#0b1310;z-index:2000;display:flex;flex-direction:column;}
-  #callOverlay{position:fixed;inset:0;background:#0b1310;z-index:3000;display:flex;flex-direction:column;}
-  #callOverlayHeader{display:flex;justify-content:flex-end;padding:10px;flex-shrink:0;}
-  #callOverlayHeader button{background:rgba(255,255,255,.15);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;}
-  #jitsiContainer{flex:1;min-height:0;}
 .patientOverlay{position:fixed;inset:0;background:#f6f8f7;z-index:1900;display:flex;flex-direction:column;}
 .patientOverlayHeader{background:var(--primary);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .patientOverlayHeader button{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:20px;line-height:1;cursor:pointer;}
@@ -133,13 +129,6 @@
 </style>
 </head>
 <body>
-
-<div id="callOverlay" class="hidden">
-  <div id="callOverlayHeader">
-    <button onclick="endOnlineConsultCall()">✕ Sair da chamada</button>
-  </div>
-  <div id="jitsiContainer"></div>
-</div>
 
 <!-- Barra discreta de nova versão — nunca recarrega sozinha -->
 <div id="updateBanner" class="hidden" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--primary-dark);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px;">
@@ -308,7 +297,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-66';
+const APP_VERSION = '2026-09-02-68';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1580,6 +1569,8 @@ async function renderAgenda(main){
         <button class="ghost" onclick="editAppointment('${a.id}')">Editar</button>
         <button class="ghost" onclick="downloadAppointmentICS('${a.id}')">📅 Calendário</button>
         ${a.local==='online' && a.patientId ? `<button class="primary" onclick="joinOnlineConsult('${a.patientId}')">💻 Entrar na videochamada</button>` : ''}
+        ${a.local==='online' && a.patientId ? `<button class="ghost" onclick="sendCallInvite('${a.id}','whatsapp')">📤 Convite WhatsApp</button>` : ''}
+        ${a.local==='online' && a.patientId ? `<button class="ghost" onclick="sendCallInvite('${a.id}','sms')">📤 Convite SMS</button>` : ''}
         ${a.price && a.paymentStatus !== 'paid' ? `<button class="ghost" onclick="markAppointmentPaid('${a.id}')">💶 Marcar pago</button>` : ''}
         ${a.status !== 'cancelled' ? `<button class="ghost" onclick="cancelAppointment('${a.id}')">Cancelar</button>` : ''}
         <button class="danger" onclick="deleteAppointment('${a.id}')">Apagar</button>
@@ -1640,56 +1631,62 @@ window.joinOnlineConsult = function(patientId){
   } else {
     // Mesma fórmula usada no Portal do Paciente — assim ambos entram
     // exatamente na mesma sala, sem precisar de combinar nada à parte.
+    // A incorporação (iframe) do Jitsi grátis corta a chamada aos 5
+    // minutos — por isso abrimos numa aba normal, mas com configuração
+    // no próprio link para saltar o ecrã inicial e entrar já com o som
+    // ligado, sem pedir mais nada.
     const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
-    startEmbeddedCall(jitsiRoom, currentTenantDoc?.businessName || currentUser?.email || 'Terapeuta');
+    const displayName = encodeURIComponent(currentTenantDoc?.businessName || currentUser?.email || 'Terapeuta');
+    window.open(`https://meet.jit.si/${jitsiRoom}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22`, '_blank');
   }
 };
 
-// ── Videochamada embutida (Jitsi) — sem sair da app, sem pré-ecrã, sem
-// pedir para desligar o microfone à mão: entra já pronta a falar. ────────
-let __jitsiApi = null;
-function startEmbeddedCall(roomName, displayName){
-  document.getElementById('callOverlay').classList.remove('hidden');
-  const container = document.getElementById('jitsiContainer');
-  container.innerHTML = '<p style="color:#fff;text-align:center;padding-top:40%;">A ligar…</p>';
+window.sendCallInvite = async function(apptId, channel){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', apptId));
+  if (!snap.exists()){ toast('Marcação não encontrada.', true); return; }
+  const a = snap.data();
+  if (!a.patientId){ toast('Esta marcação não tem paciente associado.', true); return; }
 
-  function launch(){
-    container.innerHTML = '';
-    __jitsiApi = new window.JitsiMeetExternalAPI('meet.jit.si', {
-      roomName,
-      width: '100%',
-      height: '100%',
-      parentNode: container,
-      configOverwrite: {
-        startWithAudioMuted: false,
-        startWithVideoMuted: false,
-        prejoinPageEnabled: false,
-        disableDeepLinking: true
-      },
-      interfaceConfigOverwrite: {
-        SHOW_JITSI_WATERMARK: false,
-        MOBILE_APP_PROMO: false
-      },
-      userInfo: { displayName: displayName || 'Utilizador' }
-    });
-    __jitsiApi.addEventListener('videoConferenceLeft', endOnlineConsultCall);
-    __jitsiApi.addEventListener('readyToClose', endOnlineConsultCall);
+  const phone = a.patientPhone || '';
+  if (!phone){ toast('Este paciente não tem telefone registado — adicione um na ficha dele.', true); return; }
+
+  const dt = a.startsAt.toDate();
+  const dateStr = dt.toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: '2-digit' });
+  const timeStr = dt.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  const serviceLabel = a.serviceName ? ' de ' + a.serviceName : '';
+
+  const oc = currentTenantDoc?.onlineConsult || { tool: 'jitsi' };
+  let text;
+  if (oc.tool === 'whatsapp'){
+    // A chamada em si acontece dentro do próprio WhatsApp — não faz
+    // sentido mandar um link à parte, só confirmar dia/hora.
+    text = `Olá ${a.patientName||''}! A sua consulta online${serviceLabel} está marcada para ${dateStr} às ${timeStr}. Faço-lhe a chamada de vídeo por aqui, pelo WhatsApp, a essa hora — fique atento(a) (é preciso estar ligado à internet, wifi ou dados móveis).`;
+  } else if (oc.tool === 'custom' && oc.customLink){
+    text = `Olá ${a.patientName||''}! A sua consulta online${serviceLabel} está marcada para ${dateStr} às ${timeStr}. Para entrar, aceda a este link a essa hora: ${oc.customLink} (é preciso estar ligado à internet, wifi ou dados móveis).`;
+  } else {
+    // Vai buscar o token do portal — se ainda não existir, cria-o agora
+    // automaticamente, para o link funcionar sempre, sem passos extra.
+    let pSnap = await getDoc(doc(db, 'tenants', tenantId, 'patients', a.patientId));
+    let portalToken = pSnap.exists() ? (pSnap.data().portalToken || '') : '';
+    const portalRevoked = pSnap.exists() ? pSnap.data().portalRevoked : false;
+    if (!portalToken || portalRevoked){
+      const ok = await _generatePortalToken(a.patientId);
+      if (ok){
+        pSnap = await getDoc(doc(db, 'tenants', tenantId, 'patients', a.patientId));
+        portalToken = pSnap.data().portalToken || '';
+      }
+    }
+    const portalLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-portal-paciente.html')}?t=${tenantId}&p=${a.patientId}${portalToken ? '&k='+portalToken : ''}`;
+    text = `Olá ${a.patientName||''}! A sua consulta online${serviceLabel} está marcada para ${dateStr} às ${timeStr}. Nessa hora, aceda a este link e toque em "Entrar na videochamada": ${portalLink} (é preciso estar ligado à internet, wifi ou dados móveis).`;
   }
 
-  if (window.JitsiMeetExternalAPI){ launch(); return; }
-  const s = document.createElement('script');
-  s.src = 'https://meet.jit.si/external_api.js';
-  s.onload = launch;
-  s.onerror = () => {
-    toast('Não foi possível carregar a videochamada. Verifique a ligação à internet.', true);
-    document.getElementById('callOverlay').classList.add('hidden');
-  };
-  document.head.appendChild(s);
-}
-
-window.endOnlineConsultCall = function(){
-  if (__jitsiApi){ __jitsiApi.dispose(); __jitsiApi = null; }
-  document.getElementById('callOverlay').classList.add('hidden');
+  let digits = phone.replace(/\D/g, '');
+  if (digits.length === 9) digits = '351' + digits;
+  if (channel === 'sms'){
+    window.open(`sms:${digits}?body=${encodeURIComponent(text)}`, '_blank');
+  } else {
+    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`, '_blank');
+  }
 };
 
 // ── Lista de espera ──────────────────────────────────────────────────
