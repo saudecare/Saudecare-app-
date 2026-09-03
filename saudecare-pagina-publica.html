@@ -29,6 +29,13 @@
   .card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
   .service-card{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
   .service-card .price{font-weight:700;color:var(--primary-dark);white-space:nowrap;}
+  .cat-card{cursor:pointer;}
+  .cat-card .cat-head{display:flex;justify-content:space-between;align-items:center;}
+  .cat-card .cat-mod{font-size:12px;color:var(--primary-dark);font-weight:600;}
+  .cat-card .cat-items{margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,.08);}
+  .cat-card .cat-items.hidden{display:none;}
+  .cat-card .chevron{transition:transform .15s;}
+  .cat-card.open .chevron{transform:rotate(180deg);}
   .muted{color:var(--muted);font-size:13px;}
   .team-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .team-card{text-align:center;}
@@ -105,14 +112,15 @@ async function load(){
   renderContact(profile);
   applyDynamicManifest(profile);
 
-  const [servicesSnap, teamSnap, trainingsSnap, testimonialsSnap] = await Promise.all([
+  const [categoriesSnap, servicesSnap, teamSnap, trainingsSnap, testimonialsSnap] = await Promise.all([
+    getDocs(collection(db, 'tenants', tenantId, 'serviceCategories')),
     getDocs(collection(db, 'tenants', tenantId, 'services')),
     getDocs(collection(db, 'tenants', tenantId, 'teamMembers')),
     getDocs(collection(db, 'tenants', tenantId, 'trainings')),
     getDocs(collection(db, 'tenants', tenantId, 'testimonials'))
   ]);
 
-  renderServices(servicesSnap, tenantSlug);
+  renderServices(categoriesSnap, servicesSnap, tenantSlug);
   renderTeam(teamSnap);
   renderTrainings(trainingsSnap, tenantSlug);
   renderTestimonials(testimonialsSnap);
@@ -178,35 +186,58 @@ function renderAbout(profile){
   `;
 }
 
-function renderServices(snap, slug){
-  if (snap.empty) return;
+function renderServices(categoriesSnap, servicesSnap, slug){
+  if (servicesSnap.empty) return;
   const services = [];
-  snap.forEach(d => services.push(d.data()));
-  const groups = {};
-  services.forEach(s => {
-    const cat = s.category || 'Serviços';
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(s);
-  });
+  servicesSnap.forEach(d => services.push(d.data()));
+  const modLabel = { presencial: '📍 Presencial', online: '💻 Online', ambos: '📍 Presencial · 💻 Online' };
+
+  let categories = [];
+  categoriesSnap.forEach(d => categories.push({ id: d.id, ...d.data() }));
+
+  // Compatibilidade: serviços antigos sem categoryId (ainda não migrados
+  // no momento em que este perfil foi visto) — agrupa por nome de categoria.
+  if (categories.length === 0){
+    const byName = {};
+    services.forEach(s => { const n = s.category || 'Serviços'; if(!byName[n]) byName[n] = { name:n, icon: s.categoryIcon||'🩺', modalidade:'', id:n }; });
+    categories = Object.values(byName);
+    services.forEach(s => { s.categoryId = s.category || 'Serviços'; });
+  }
 
   let html = '';
-  Object.keys(groups).sort().forEach(cat => {
-    const icon = groups[cat][0]?.categoryIcon || '🩺';
-    html += `<h3 style="margin:16px 0 8px;color:var(--primary-dark);">${icon} ${escapeHtml(cat)}</h3>`;
-    groups[cat].forEach(s => {
-      html += `<div class="card service-card">
+  categories.sort((a,b) => (a.name||'').localeCompare(b.name||'')).forEach((cat, i) => {
+    const items = services.filter(s => s.categoryId === cat.id);
+    if (!items.length) return;
+    const itemsHtml = items.map(s => `
+      <div class="service-card" style="margin-top:8px;">
         <div>
           <strong>${escapeHtml(s.name)}</strong>
+          ${s.type === 'pack' ? `<div class="muted">Pack · ${s.packSessions||''} sessões</div>` : ''}
           ${s.description ? `<div class="muted">${escapeHtml(s.description)}</div>` : ''}
         </div>
         <div class="price">${s.price}€</div>
-      </div>`;
-    });
+      </div>`).join('');
+    html += `<div class="card cat-card" id="catCard${i}" onclick="toggleCatCard(${i})">
+      <div class="cat-head">
+        <h3 style="margin:0;color:var(--primary-dark);">${cat.icon||'🩺'} ${escapeHtml(cat.name)}</h3>
+        <span class="chevron">▾</span>
+      </div>
+      ${cat.modalidade ? `<div class="cat-mod">${modLabel[cat.modalidade]||''}</div>` : ''}
+      ${cat.description ? `<div class="muted" style="margin-top:4px;">${escapeHtml(cat.description)}</div>` : ''}
+      <div class="cat-items hidden">${itemsHtml}</div>
+    </div>`;
   });
   document.getElementById('servicesSection').innerHTML = `
     <h2 class="section-title">Serviços</h2>${html}
   `;
 }
+
+window.toggleCatCard = function(i){
+  const card = document.getElementById('catCard' + i);
+  if (!card) return;
+  card.classList.toggle('open');
+  card.querySelector('.cat-items')?.classList.toggle('hidden');
+};
 
 function renderTeam(snap){
   if (snap.empty) return;

@@ -71,6 +71,12 @@
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a2b26;
     color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:999;}
   .hidden{display:none !important;}
+  .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+  .profile-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    background:var(--card,#fff);border:1px solid #e5e5e5;border-radius:14px;padding:16px 10px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06);cursor:pointer;text-align:center;font-size:13px;color:var(--text,#1a2b26);}
+  .profile-tile:active{background:#eef6f2;}
+  .profile-tile .ptile-icon{font-size:26px;}
   .hintBox{background:#eef6f2;border:1px solid #d7ebe2;border-radius:10px;padding:10px 12px;
     font-size:12.5px;color:var(--primary-dark);margin-bottom:14px;line-height:1.4;}
   .mapFullscreenOverlay{position:fixed;inset:0;background:#0b1310;z-index:2000;display:flex;flex-direction:column;}
@@ -268,7 +274,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-50';
+const APP_VERSION = '2026-09-02-52';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -901,6 +907,7 @@ window.installApp = async function(){
 // ecrã anterior) em vez de sair da app logo na primeira vez que é usado.
 let __currentView = 'home';
 let __navigatingFromPopstate = false;
+let __profileSection = null;
 
 function renderView(view){
   const main = document.getElementById('mainView');
@@ -909,6 +916,7 @@ function renderView(view){
     if (view === __currentView) history.replaceState({ view }, '', '#'+view);
     else history.pushState({ view }, '', '#'+view);
   }
+  if (view === 'profile' && __currentView !== 'profile') __profileSection = null;
   __currentView = view;
   __navigatingFromPopstate = false;
   if (view === 'home') renderHome(main);
@@ -2747,94 +2755,206 @@ window.deletePatient = async function(patientId, name){
 };
 
 // ── SERVIÇOS ─────────────────────────────────────────────────────────
-async function renderServices(main){
-  const snap = await getDocs(collection(db, 'tenants', tenantId, 'services'));
-  const services = [];
-  snap.forEach(d => services.push({ id: d.id, ...d.data() }));
-
-  // Agrupa por categoria — cada categoria mostra o ícone escolhido pelo
-  // subscritor (ou um genérico se ainda não escolheu nenhum).
-  const groups = {};
-  services.forEach(s => {
-    const cat = s.category || 'Sem categoria';
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(s);
+// ── SERVIÇOS / CATEGORIAS ────────────────────────────────────────────
+// Cada Categoria (ex: "Reiki") tem ícone, descrição e uma modalidade
+// (presencial/online/ambos) que se aplica a todos os itens dentro dela.
+// Dentro de cada categoria há Itens — Sessão avulsa ou Pack — cada um
+// com nome, descrição, duração e preço.
+async function migrateServicesToCategories(){
+  const catSnap = await getDocs(collection(db, 'tenants', tenantId, 'serviceCategories'));
+  if (!catSnap.empty) return; // já migrado
+  const svcSnap = await getDocs(collection(db, 'tenants', tenantId, 'services'));
+  if (svcSnap.empty) return; // nada para migrar
+  const byName = {};
+  svcSnap.forEach(d => {
+    const s = d.data();
+    if (s.categoryId) return; // já no formato novo
+    const name = s.category || 'Sem categoria';
+    if (!byName[name]) byName[name] = { icon: s.categoryIcon || '🩺', docs: [] };
+    byName[name].docs.push({ id: d.id, ...s });
   });
+  for (const name of Object.keys(byName)){
+    const lower = name.toLowerCase();
+    const modalidade = (lower.includes('reflexolog') || lower.includes('aromaterap')) ? 'presencial' : 'online';
+    const catRef = await addDoc(collection(db, 'tenants', tenantId, 'serviceCategories'), {
+      name, icon: byName[name].icon, description: '', modalidade
+    });
+    for (const s of byName[name].docs){
+      await updateDoc(doc(db, 'tenants', tenantId, 'services', s.id), {
+        categoryId: catRef.id, type: s.type || 'avulso'
+      });
+    }
+  }
+}
+
+async function renderServices(main){
+  await migrateServicesToCategories();
+  const [catSnap, svcSnap] = await Promise.all([
+    getDocs(collection(db, 'tenants', tenantId, 'serviceCategories')),
+    getDocs(collection(db, 'tenants', tenantId, 'services'))
+  ]);
+  const categories = [];
+  catSnap.forEach(d => categories.push({ id: d.id, ...d.data() }));
+  const services = [];
+  svcSnap.forEach(d => services.push({ id: d.id, ...d.data() }));
+
+  const modLabel = { presencial: '📍 Presencial', online: '💻 Online', ambos: '📍💻 Presencial e Online' };
 
   let rows = '';
-  Object.keys(groups).sort().forEach(cat => {
-    const icon = groups[cat][0]?.categoryIcon || '🩺';
-    rows += `<h3 style="margin:14px 0 8px;">${icon} ${escapeHtml(cat)}</h3>`;
-    groups[cat].forEach(s => {
-      rows += `<div class="appt-item row">
-        <div><strong>${escapeHtml(s.name)}</strong> <span class="muted">${s.durationMinutes}min · ${s.price}€</span>
+  if (!categories.length) rows = '<p class="muted">Ainda sem categorias. Crie a primeira abaixo.</p>';
+  categories.sort((a,b) => (a.name||'').localeCompare(b.name||'')).forEach(cat => {
+    const items = services.filter(s => s.categoryId === cat.id);
+    let itemsHtml = items.map(s => `
+      <div class="appt-item row" style="margin-left:14px;">
+        <div><strong>${escapeHtml(s.name)}</strong> <span class="muted">${s.type === 'pack' ? `Pack · ${s.packSessions||''} sessões` : 'Sessão avulsa'} · ${s.durationMinutes}min · ${s.price}€</span>
           ${s.description ? `<div class="muted">${escapeHtml(s.description)}</div>` : ''}
         </div>
         <div>
           <button class="ghost" onclick="editService('${s.id}')">Editar</button>
           <button class="danger" onclick="deleteService('${s.id}')">Remover</button>
         </div>
-      </div>`;
-    });
+      </div>`).join('');
+    if (!itemsHtml) itemsHtml = '<p class="muted" style="margin-left:14px;">Sem itens nesta categoria ainda.</p>';
+    rows += `<div class="card" style="margin-bottom:10px;">
+      <div class="row">
+        <h3 style="margin:0;">${cat.icon||'🩺'} ${escapeHtml(cat.name)}</h3>
+        <div>
+          <button class="ghost" onclick="editCategory('${cat.id}')">Editar categoria</button>
+          <button class="danger" onclick="deleteCategory('${cat.id}')">Remover</button>
+        </div>
+      </div>
+      <div class="muted" style="margin:4px 0 8px;">${modLabel[cat.modalidade] || ''}${cat.description ? ' · ' + escapeHtml(cat.description) : ''}</div>
+      ${itemsHtml}
+      <button class="ghost" style="margin-top:8px;" onclick="openNewServiceItem('${cat.id}')">+ Item nesta categoria</button>
+    </div>`;
   });
-  if (!rows) rows = '<p class="muted">Ainda sem serviços.</p>';
 
   main.innerHTML = `
     <div class="row"><h2>Serviços</h2></div>
     ${renderServiceTemplatesSection()}
-    ${hintBox('O que oferece aos seus clientes — cada serviço aparece na sua página pública e no funil de marcação, com nome, preço e duração (ex: "Reiki 60min — 40€"). Diferente de "Os Meus Métodos" (como conduz a consulta) e "Fichas" (questionários avulsos).')}
-    <div class="card">${rows}</div>
+    ${hintBox('Organize por categorias (ex: Reiki, Fisioterapia) — cada categoria define a modalidade (presencial/online) e dentro dela cria sessões avulsas ou packs, com descrição e preço. Isto é o que o cliente vê na sua página pública. Diferente de "Os Meus Métodos" (como conduz a consulta) e "Fichas" (questionários avulsos).')}
+    ${rows}
+    <div id="categoryFormContainer"></div>
     <div id="serviceFormContainer"></div>
   `;
-  renderServiceForm(null, {});
+  renderCategoryForm(null, {});
 }
+
+function renderCategoryForm(editId, c){
+  document.getElementById('categoryFormContainer').innerHTML = `
+    <div class="card">
+      <h2>${editId ? 'Editar categoria' : 'Nova categoria'}</h2>
+      <label>Nome (ex: "Reiki", "Reflexologia Podal")</label><input id="cName" value="${escapeHtml(c.name||'')}">
+      <label>Ícone (emoji)</label><input id="cIcon" value="${escapeHtml(c.icon||'')}" placeholder="🩺" maxlength="4">
+      <label>Descrição geral (o cliente vê isto na página pública)</label><textarea id="cDescription" rows="2">${escapeHtml(c.description||'')}</textarea>
+      <label>Modalidade</label>
+      <select id="cModalidade">
+        <option value="online" ${c.modalidade==='online'?'selected':''}>💻 Online / à distância</option>
+        <option value="presencial" ${c.modalidade==='presencial'?'selected':''}>📍 Presencial</option>
+        <option value="ambos" ${c.modalidade==='ambos'?'selected':''}>📍💻 Presencial e Online</option>
+      </select>
+      <button class="primary" onclick="saveCategory('${editId||''}')">${editId?'Guardar alterações':'Criar categoria'}</button>
+      ${editId ? `<button class="ghost" onclick="renderCategoryForm(null,{})">Cancelar</button>` : ''}
+    </div>`;
+  if (editId) scrollToEl('categoryFormContainer');
+}
+
+window.editCategory = async function(id){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'serviceCategories', id));
+  if (!snap.exists()){ toast('Categoria não encontrada.', true); return; }
+  renderCategoryForm(id, snap.data());
+};
+
+window.saveCategory = async function(editId){
+  const name = document.getElementById('cName').value.trim();
+  if (!name){ toast('Nome é obrigatório.', true); return; }
+  const data = {
+    name,
+    icon: document.getElementById('cIcon').value.trim() || '🩺',
+    description: document.getElementById('cDescription').value.trim(),
+    modalidade: document.getElementById('cModalidade').value
+  };
+  if (editId){
+    await updateDoc(doc(db, 'tenants', tenantId, 'serviceCategories', editId), data);
+  } else {
+    await addDoc(collection(db, 'tenants', tenantId, 'serviceCategories'), data);
+  }
+  toast('Categoria guardada.');
+  renderView('services');
+};
+
+window.deleteCategory = async function(id){
+  const svcSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'services'), where('categoryId', '==', id)));
+  if (!svcSnap.empty){ toast('Remova primeiro os itens desta categoria.', true); return; }
+  if (!confirm('Remover esta categoria?')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'serviceCategories', id));
+  renderView('services');
+};
+
+window.openNewServiceItem = function(categoryId){
+  renderServiceForm(null, { categoryId });
+};
 
 function renderServiceForm(editId, s){
   document.getElementById('serviceFormContainer').innerHTML = `
     <div class="card">
-      <h2>${editId ? 'Editar serviço' : 'Novo serviço'}</h2>
-      <label>Nome</label><input id="sName" value="${escapeHtml(s.name||'')}">
-      <label>Categoria (ex: "Reiki", "Fisioterapia", "Nutrição")</label><input id="sCategory" value="${escapeHtml(s.category||'')}">
-      <label>Ícone da categoria (emoji, ex: 🌿 🧘 💆 🦴)</label><input id="sCategoryIcon" value="${escapeHtml(s.categoryIcon||'')}" placeholder="🩺" maxlength="4">
+      <h2>${editId ? 'Editar item' : 'Novo item'}</h2>
+      <label>Nome (ex: "Sessão de Reiki 60min")</label><input id="sName" value="${escapeHtml(s.name||'')}">
+      <label>Tipo</label>
+      <select id="sType" onchange="document.getElementById('sPackField').classList.toggle('hidden', this.value !== 'pack')">
+        <option value="avulso" ${s.type!=='pack'?'selected':''}>Sessão avulsa</option>
+        <option value="pack" ${s.type==='pack'?'selected':''}>Pack</option>
+      </select>
+      <div id="sPackField" class="${s.type==='pack'?'':'hidden'}">
+        <label>Número de sessões incluídas no pack</label><input id="sPackSessions" type="number" value="${s.packSessions||''}">
+      </div>
       <label>Descrição (o cliente vê isto na página pública)</label><textarea id="sDescription" rows="2">${escapeHtml(s.description||'')}</textarea>
-      <label>Duração (min)</label><input id="sDuration" type="number" value="${s.durationMinutes||50}">
-      <label>Tempo de preparação depois (min) — evita marcações coladas sem intervalo</label><input id="sBuffer" type="number" value="${s.bufferMinutes||0}">
+      <label>Duração por sessão (min)</label><input id="sDuration" type="number" value="${s.durationMinutes||50}">
+      <label>Tempo de preparação depois (min)</label><input id="sBuffer" type="number" value="${s.bufferMinutes||0}">
       <label>Preço (€)</label><input id="sPrice" type="number" step="0.01" value="${s.price||''}">
+      <input type="hidden" id="sCategoryId" value="${s.categoryId||''}">
       <button class="primary" onclick="saveService('${editId||''}')">${editId?'Guardar alterações':'Adicionar'}</button>
+      <button class="ghost" onclick="document.getElementById('serviceFormContainer').innerHTML=''">Cancelar</button>
     </div>`;
-  if (editId) scrollToEl('serviceFormContainer');
+  scrollToEl('serviceFormContainer');
 }
 
 window.editService = async function(id){
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'services', id));
-  if (!snap.exists()){ toast('Serviço não encontrado.', true); return; }
-  renderServiceForm(id, snap.data());
+  if (!snap.exists()){ toast('Item não encontrado.', true); return; }
+  renderServiceForm(id, { id, ...snap.data() });
 };
 
 window.saveService = async function(editId){
   const name = document.getElementById('sName').value.trim();
   if (!name){ toast('Nome é obrigatório.', true); return; }
+  const categoryId = document.getElementById('sCategoryId').value;
+  if (!categoryId){ toast('Categoria em falta — abra o item a partir de "+ Item nesta categoria".', true); return; }
+  const type = document.getElementById('sType').value;
   const data = {
     name,
-    category: document.getElementById('sCategory').value.trim(),
-    categoryIcon: document.getElementById('sCategoryIcon').value.trim(),
+    categoryId,
+    type,
     description: document.getElementById('sDescription').value.trim(),
     durationMinutes: parseInt(document.getElementById('sDuration').value || '50', 10),
     bufferMinutes: parseInt(document.getElementById('sBuffer').value || '0', 10),
     price: parseFloat(document.getElementById('sPrice').value || '0')
   };
+  if (type === 'pack'){
+    data.packSessions = parseInt(document.getElementById('sPackSessions').value || '0', 10);
+  }
   if (editId){
     await updateDoc(doc(db, 'tenants', tenantId, 'services', editId), data);
   } else {
     data.active = true;
     await addDoc(collection(db, 'tenants', tenantId, 'services'), data);
   }
-  toast('Serviço guardado.');
+  toast('Item guardado.');
   renderView('services');
 };
 
 window.deleteService = async function(serviceId){
-  if (!confirm('Remover este serviço?')) return;
+  if (!confirm('Remover este item?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'services', serviceId));
   renderView('services');
 };
@@ -2849,23 +2969,38 @@ let formQuestionsDraft = [];
 async function renderForms(main){
   try{
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'forms'));
+  const forms = [];
+  snap.forEach(d => forms.push({ id: d.id, ...d.data() }));
+
+  // Agrupa por categoria (a mesma usada em Serviços, quando preenchida) —
+  // fichas sem categoria ficam juntas no fim, sob "Sem categoria".
+  const groups = {};
+  forms.forEach(f => {
+    const cat = f.category || 'Sem categoria';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(f);
+  });
+  const catOrder = Object.keys(groups).sort((a,b) => a === 'Sem categoria' ? 1 : b === 'Sem categoria' ? -1 : a.localeCompare(b));
+
   let rows = '';
-  snap.forEach(d=>{
-    const f = d.data();
-    const link = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-ficha-publica.html')}?t=${currentTenantDoc.slug}&f=${d.id}`;
-    rows += `<div class="appt-item">
-      <div class="row">
-        <div><strong>${escapeHtml(f.title)}</strong><div class="muted">${(f.questions||[]).length} perguntas</div></div>
-        <div>
-          <button class="ghost" onclick="editForm('${d.id}')">Editar</button>
-          <button class="danger" onclick="deleteForm('${d.id}')">Remover</button>
+  catOrder.forEach(cat => {
+    rows += `<h3 style="margin:14px 0 8px;">${escapeHtml(cat)}</h3>`;
+    groups[cat].forEach(f=>{
+      const link = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-ficha-publica.html')}?t=${currentTenantDoc.slug}&f=${f.id}`;
+      rows += `<div class="appt-item">
+        <div class="row">
+          <div><strong>${escapeHtml(f.title)}</strong><div class="muted">${(f.questions||[]).length} perguntas</div></div>
+          <div>
+            <button class="ghost" onclick="editForm('${f.id}')">Editar</button>
+            <button class="danger" onclick="deleteForm('${f.id}')">Remover</button>
+          </div>
         </div>
-      </div>
-      <div class="row" style="margin-top:8px;">
-        <input readonly value="${link}" style="font-size:11px;margin:0;" onclick="this.select()">
-        <button class="ghost" onclick="navigator.clipboard.writeText('${link}');toast('Link copiado.')">Copiar</button>
-      </div>
-    </div>`;
+        <div class="row" style="margin-top:8px;">
+          <input readonly value="${link}" style="font-size:11px;margin:0;" onclick="this.select()">
+          <button class="ghost" onclick="navigator.clipboard.writeText('${link}');toast('Link copiado.')">Copiar</button>
+        </div>
+      </div>`;
+    });
   });
   if (!rows) rows = '<p class="muted">Ainda sem fichas. Crie a sua primeira ficha de avaliação.</p>';
 
@@ -2920,7 +3055,7 @@ const DEFAULT_FORM_QUESTIONS = [
 
 window.openNewForm = function(){
   formQuestionsDraft = DEFAULT_FORM_QUESTIONS.map(q => ({ id: 'q'+Date.now()+Math.random().toString(36).slice(2,7), ...q }));
-  renderFormBuilder(null, '', '', formQuestionsDraft);
+  renderFormBuilder(null, '', '', '', formQuestionsDraft);
 };
 
 window.editForm = async function(id){
@@ -2928,13 +3063,19 @@ window.editForm = async function(id){
   if (!snap.exists()){ toast('Ficha não encontrada.', true); return; }
   const f = snap.data();
   formQuestionsDraft = (f.questions || []).map(q => ({...q}));
-  renderFormBuilder(id, f.title, f.description||'', formQuestionsDraft);
+  renderFormBuilder(id, f.title, f.category||'', f.description||'', formQuestionsDraft);
   scrollToEl('formBuilderContainer');
 };
 
-function renderFormBuilder(editId, title, description, questions){
+async function renderFormBuilder(editId, title, category, description, questions){
   formQuestionsDraft = questions;
+  window.__editingFormId = editId;
   const qTypeLabel = { text: 'Texto livre', multiple_choice: 'Escolha múltipla', scale: 'Escala (0-10)' };
+
+  // Sugere as categorias já criadas em Serviços, para manter tudo coerente,
+  // mas continua a aceitar texto livre (ex: fichas sem categoria de serviço).
+  const catSnap = await getDocs(collection(db, 'tenants', tenantId, 'serviceCategories'));
+  const categoryNames = []; catSnap.forEach(d => categoryNames.push(d.data().name));
 
   let qHtml = formQuestionsDraft.map((q, idx) => `
     <div class="card" style="margin-bottom:8px;">
@@ -2959,6 +3100,9 @@ function renderFormBuilder(editId, title, description, questions){
       <h2>${editId ? 'Editar ficha' : 'Nova ficha'}</h2>
       <label>Título da ficha</label>
       <input id="formTitle" value="${escapeHtml(title)}" placeholder="ex: Questionário Pré-Consulta">
+      <label>Categoria (opcional — ex: "Reiki", para agrupar com os serviços)</label>
+      <input id="formCategory" list="formCategoryOptions" value="${escapeHtml(category)}" placeholder="Sem categoria">
+      <datalist id="formCategoryOptions">${categoryNames.map(n=>`<option value="${escapeHtml(n)}">`).join('')}</datalist>
       <label>Descrição (opcional, o paciente vê isto)</label>
       <textarea id="formDescription" rows="2">${escapeHtml(description)}</textarea>
       <div id="formQuestionsList">${qHtml || '<p class="muted">Ainda sem perguntas.</p>'}</div>
@@ -2982,6 +3126,7 @@ window.changeQuestionType = function(idx, type){
   if (type === 'multiple_choice' && !formQuestionsDraft[idx].options) formQuestionsDraft[idx].options = [];
   renderFormBuilder(window.__editingFormId,
     document.getElementById('formTitle')?.value || '',
+    document.getElementById('formCategory')?.value || '',
     document.getElementById('formDescription')?.value || '', formQuestionsDraft);
 };
 
@@ -2989,6 +3134,7 @@ window.addFormQuestion = function(){
   formQuestionsDraft.push({ id: 'q'+Date.now(), type: 'text', label: '' });
   renderFormBuilder(window.__editingFormId,
     document.getElementById('formTitle')?.value || '',
+    document.getElementById('formCategory')?.value || '',
     document.getElementById('formDescription')?.value || '', formQuestionsDraft);
 };
 
@@ -2996,6 +3142,7 @@ window.removeFormQuestion = function(idx){
   formQuestionsDraft.splice(idx, 1);
   renderFormBuilder(window.__editingFormId,
     document.getElementById('formTitle')?.value || '',
+    document.getElementById('formCategory')?.value || '',
     document.getElementById('formDescription')?.value || '', formQuestionsDraft);
 };
 
@@ -3007,6 +3154,7 @@ window.saveForm = async function(editId){
 
   const data = {
     title,
+    category: document.getElementById('formCategory').value.trim(),
     description: document.getElementById('formDescription').value.trim(),
     questions: validQuestions,
     updatedAt: serverTimestamp()
@@ -3446,8 +3594,21 @@ function renderServiceTemplatesSection(){
 window.useServiceTemplate = async function(idx){
   const t = TEMPLATE_SERVICES[idx];
   if (!t) return;
-  await addDoc(collection(db, 'tenants', tenantId, 'services'), { ...t, active: true });
-  toast('Modelo adicionado aos seus serviços — já pode editar o preço/duração.');
+  const catSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'serviceCategories'), where('name', '==', t.category)));
+  let categoryId;
+  if (!catSnap.empty){
+    categoryId = catSnap.docs[0].id;
+  } else {
+    const catRef = await addDoc(collection(db, 'tenants', tenantId, 'serviceCategories'), {
+      name: t.category, icon: t.categoryIcon, description: '', modalidade: 'online'
+    });
+    categoryId = catRef.id;
+  }
+  await addDoc(collection(db, 'tenants', tenantId, 'services'), {
+    name: t.name, categoryId, type: 'avulso', description: t.description,
+    durationMinutes: t.durationMinutes, bufferMinutes: t.bufferMinutes, price: t.price, active: true
+  });
+  toast('Modelo adicionado — já pode editar dentro da categoria correspondente.');
   renderView('services');
 };
 
@@ -5185,51 +5346,88 @@ window.downloadReportFile = function(title, content){
 // Tudo aqui alimenta a futura página pública (Fase B) — logótipo, cores,
 // sobre, contactos, redes sociais e a equipa que trabalha na conta.
 async function renderProfile(main){
-  const p = currentTenantDoc?.profile || {};
-  const b = currentTenantDoc?.branding || {};
-  const social = p.social || {};
+  if (!__profileSection){
+    renderProfileMenu(main);
+  } else {
+    await renderProfileSection(main, __profileSection);
+  }
+}
+
+function renderProfileMenu(main){
   const publicLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-pagina-publica.html')}?t=${currentTenantDoc.slug}`;
-
-  const teamSnap = await getDocs(collection(db, 'tenants', tenantId, 'teamMembers'));
-  let teamHtml = '';
-  teamSnap.forEach(d=>{
-    const m = d.data();
-    teamHtml += `<div class="appt-item row">
-      <div><strong>${escapeHtml(m.name)}</strong><div class="muted">${escapeHtml(m.role||'')}</div></div>
-      <div>
-        <button class="ghost" onclick="editTeamMember('${d.id}')">Editar</button>
-        <button class="danger" onclick="deleteTeamMember('${d.id}')">Remover</button>
-      </div>
-    </div>`;
-  });
-  if (!teamHtml) teamHtml = '<p class="muted">Ainda sem membros de equipa.</p>';
-
-  const testimonialsSnap = await getDocs(collection(db, 'tenants', tenantId, 'testimonials'));
-  let testimonialsHtml = '';
-  testimonialsSnap.forEach(d=>{
-    const t = d.data();
-    testimonialsHtml += `<div class="appt-item row">
-      <div><strong>${escapeHtml(t.name)}</strong> <span class="muted">${'★'.repeat(t.rating||5)}</span>
-        <div class="muted">${escapeHtml(t.text)}</div></div>
-      <div>
-        <button class="ghost" onclick="editTestimonial('${d.id}')">Editar</button>
-        <button class="danger" onclick="deleteTestimonial('${d.id}')">Remover</button>
-      </div>
-    </div>`;
-  });
-  if (!testimonialsHtml) testimonialsHtml = '<p class="muted">Ainda sem testemunhos.</p>';
-
+  const tiles = [
+    { key: 'negocio', icon: '🏢', label: 'Dados do Negócio' },
+    { key: 'contactos', icon: '📞', label: 'Contactos & Redes Sociais' },
+    { key: 'calendar', icon: '📅', label: 'Google Calendar' },
+    { key: 'online', icon: '💻', label: 'Consultório Online' },
+    { key: 'consentimento', icon: '📄', label: 'Consentimento Informado' },
+    { key: 'mensagens', icon: '💬', label: 'Modelos de Mensagens' },
+    { key: 'equipa', icon: '🙋', label: 'Equipa (página pública)' },
+    { key: 'testemunhos', icon: '⭐', label: 'Testemunhos' }
+  ];
   main.innerHTML = `
     <h2>Perfil do negócio</h2>
-    ${hintBox('Tudo o que preencher aqui (nome, foto, contactos, equipa mostrada ao público e testemunhos) aparece na sua <strong>página pública</strong> — a montra do seu consultório para quem ainda não é cliente. Não é a mesma coisa que dar acesso à app a alguém: para isso, use a secção "Equipa" no menu principal.')}
+    ${hintBox('Tudo o que preencher aqui aparece na sua <strong>página pública</strong> — a montra do seu consultório para quem ainda não é cliente. Escolha uma categoria abaixo.')}
     <div class="card" style="border:2px solid var(--primary);">
-      <label>🔗 O seu link público — a "montra" do seu consultório</label>
-      <p class="muted" style="margin-bottom:6px;">Mostra a quem visita: quem é, o que faz, os seus serviços, testemunhos e um botão para pedir marcação. Partilhe nas redes sociais, WhatsApp, ou coloque no seu Instagram/Google.</p>
+      <label>🔗 O seu link público</label>
       <input readonly value="${publicLink}" onclick="this.select()">
       <button class="primary" onclick="navigator.clipboard.writeText('${publicLink}').then(()=>toast('Link copiado.'))">Copiar link público</button>
     </div>
-    <div class="card">
-      <h3 style="margin-bottom:6px;">📅 Google Calendar</h3>
+    <div class="profile-grid">
+      ${tiles.map(t => `<button class="profile-tile" onclick="openProfileSection('${t.key}')"><span class="ptile-icon">${t.icon}</span><span>${t.label}</span></button>`).join('')}
+    </div>
+  `;
+}
+
+window.openProfileSection = function(key){
+  __profileSection = key;
+  renderView('profile');
+};
+
+window.closeProfileSection = function(){
+  __profileSection = null;
+  renderView('profile');
+};
+
+async function renderProfileSection(main, section){
+  const p = currentTenantDoc?.profile || {};
+  const b = currentTenantDoc?.branding || {};
+  const social = p.social || {};
+  const backBtn = `<button class="ghost" onclick="closeProfileSection()">← Voltar às categorias</button>`;
+  let inner = '';
+
+  if (section === 'negocio'){
+    inner = `
+      <h2>🏢 Dados do negócio</h2>
+      <label>Nome do negócio</label>
+      <input id="pfBusinessName" value="${escapeHtml(currentTenantDoc?.businessName||'')}">
+      <label>Frase de apresentação (tagline curta)</label>
+      <input id="pfTagline" value="${escapeHtml(p.tagline||'')}" placeholder="ex: Cuidado que transforma">
+      <label>Sobre / apresentação</label>
+      <textarea id="pfAbout" rows="4">${escapeHtml(p.about||'')}</textarea>
+      <label>Logótipo</label>
+      <input id="pfLogoUrl" value="${escapeHtml(b.logoUrl||'')}" placeholder="https://... (ou escolha uma foto abaixo)">
+      ${imageUploadFieldHTML('pfLogoUrl', `tenants/${tenantId}/branding`)}
+      <label>Cor principal</label>
+      <input id="pfColor" type="color" value="${b.primaryColor||'#2f6f5e'}">
+      <button class="primary" style="margin-top:8px;" onclick="saveProfile()">Guardar</button>
+    `;
+  } else if (section === 'contactos'){
+    inner = `
+      <h2>📞 Contactos & Redes Sociais</h2>
+      <label>Telefone</label><input id="pfPhone" value="${escapeHtml(p.phone||'')}">
+      <label>Email</label><input id="pfEmail" value="${escapeHtml(p.email||'')}">
+      <label>Morada (se atender presencialmente)</label><input id="pfAddress" value="${escapeHtml(p.address||'')}">
+      <h3 style="margin-top:14px;">Redes sociais</h3>
+      <label>Facebook</label><input id="pfFacebook" value="${escapeHtml(social.facebook||'')}" placeholder="https://facebook.com/...">
+      <label>Instagram</label><input id="pfInstagram" value="${escapeHtml(social.instagram||'')}" placeholder="https://instagram.com/...">
+      <label>WhatsApp</label><input id="pfWhatsapp" value="${escapeHtml(social.whatsapp||'')}" placeholder="https://wa.me/351...">
+      <label>Website</label><input id="pfWebsite" value="${escapeHtml(social.website||'')}" placeholder="https://...">
+      <button class="primary" style="margin-top:8px;" onclick="saveProfile()">Guardar</button>
+    `;
+  } else if (section === 'calendar'){
+    inner = `
+      <h2>📅 Google Calendar</h2>
       ${currentTenantDoc?.googleCalendar?.refreshToken
         ? `<p class="muted">✅ Ligado — as suas marcações são sincronizadas automaticamente.</p>
            <button class="ghost" onclick="disconnectGoogleCalendar()">Desligar</button>`
@@ -5237,8 +5435,9 @@ async function renderProfile(main){
            <button class="primary" onclick="connectGoogleCalendar()">Ligar ao Google Calendar</button>`
       }
       ${hintBox('A sincronização funciona apenas num sentido: criar, editar ou apagar uma marcação aqui na app atualiza o Google Calendar automaticamente. O contrário não acontece — se apagar ou mudar um evento diretamente no Google Calendar, isso não volta a refletir-se aqui na app. Para manter tudo certo, faça sempre as alterações às marcações dentro da app.')}
-    </div>
-    <div class="card">
+    `;
+  } else if (section === 'online'){
+    inner = `
       <h2>💻 Consultório Online</h2>
       ${hintBox('Escolha como quer atender os seus pacientes online. Isto aparece no Portal do Paciente para as consultas marcadas como "Online".')}
       <label>Ferramenta</label>
@@ -5257,15 +5456,17 @@ async function renderProfile(main){
         <p class="muted" style="margin-top:4px;">O paciente vai poder abrir uma conversa consigo — a chamada de vídeo em si tem de ser iniciada por si dentro do WhatsApp, não é automática.</p>
       </div>
       <button class="primary" style="margin-top:8px;" onclick="saveOnlineConsultSettings()">Guardar</button>
-    </div>
-    <div class="card">
-      <h2>Termo de consentimento informado</h2>
+    `;
+  } else if (section === 'consentimento'){
+    inner = `
+      <h2>📄 Termo de consentimento informado</h2>
       ${hintBox('Texto pronto (editável) que pode usar como base do consentimento dos seus clientes. Ajuste-o à sua área de atuação e às suas obrigações legais específicas antes de usar — este texto é apenas um ponto de partida genérico.')}
       <textarea id="pfConsentText" rows="8">${escapeHtml(currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT)}</textarea>
       <button class="primary" onclick="saveConsentText()">Guardar termo de consentimento</button>
-    </div>
-    <div class="card">
-      <h2>Modelos de mensagens (WhatsApp/Email)</h2>
+    `;
+  } else if (section === 'mensagens'){
+    inner = `
+      <h2>💬 Modelos de mensagens (WhatsApp/Email)</h2>
       ${hintBox('Textos prontos a usar como lembrete/confirmação — use {{nome}}, {{data}}, {{hora}} e {{servico}} como marcadores. O WhatsApp continua manual (copiar e enviar); o email de lembrete pode ser enviado sozinho, se ativar a opção abaixo.')}
       <label>Confirmação de marcação</label>
       <textarea id="pfMsgConfirmacao" rows="3">${escapeHtml(currentTenantDoc?.messageTemplates?.confirmacao ?? DEFAULT_MESSAGE_TEMPLATES.confirmacao)}</textarea>
@@ -5281,39 +5482,23 @@ async function renderProfile(main){
       </label>
       <p class="muted" style="margin-top:6px;">Só funciona para pacientes com email registado na ficha. Precisa de configuração adicional (chave do serviço de email) — se ainda não fez essa parte, fale comigo.</p>
       <button class="ghost" style="margin-top:8px;" onclick="saveAutoReminderSettings()">Guardar preferência de envio automático</button>
-    </div>
-    <div class="card">
-      <label>Nome do negócio</label>
-      <input id="pfBusinessName" value="${escapeHtml(currentTenantDoc?.businessName||'')}">
-      <label>Frase de apresentação (tagline curta)</label>
-      <input id="pfTagline" value="${escapeHtml(p.tagline||'')}" placeholder="ex: Cuidado que transforma">
-      <label>Sobre / apresentação</label>
-      <textarea id="pfAbout" rows="4">${escapeHtml(p.about||'')}</textarea>
-      <label>Logótipo</label>
-      <input id="pfLogoUrl" value="${escapeHtml(b.logoUrl||'')}" placeholder="https://... (ou escolha uma foto abaixo)">
-      ${imageUploadFieldHTML('pfLogoUrl', `tenants/${tenantId}/branding`)}
-      <label>Cor principal</label>
-      <input id="pfColor" type="color" value="${b.primaryColor||'#2f6f5e'}">
-    </div>
-
-    <div class="card">
-      <h2>Contactos</h2>
-      <label>Telefone</label><input id="pfPhone" value="${escapeHtml(p.phone||'')}">
-      <label>Email</label><input id="pfEmail" value="${escapeHtml(p.email||'')}">
-      <label>Morada (se atender presencialmente)</label><input id="pfAddress" value="${escapeHtml(p.address||'')}">
-    </div>
-
-    <div class="card">
-      <h2>Redes sociais</h2>
-      <label>Facebook</label><input id="pfFacebook" value="${escapeHtml(social.facebook||'')}" placeholder="https://facebook.com/...">
-      <label>Instagram</label><input id="pfInstagram" value="${escapeHtml(social.instagram||'')}" placeholder="https://instagram.com/...">
-      <label>WhatsApp</label><input id="pfWhatsapp" value="${escapeHtml(social.whatsapp||'')}" placeholder="https://wa.me/351...">
-      <label>Website</label><input id="pfWebsite" value="${escapeHtml(social.website||'')}" placeholder="https://...">
-      <button class="primary" onclick="saveProfile()">Guardar perfil</button>
-    </div>
-
-    <div class="card">
-      <h2>Equipa</h2>
+    `;
+  } else if (section === 'equipa'){
+    const teamSnap = await getDocs(collection(db, 'tenants', tenantId, 'teamMembers'));
+    let teamHtml = '';
+    teamSnap.forEach(d=>{
+      const m = d.data();
+      teamHtml += `<div class="appt-item row">
+        <div><strong>${escapeHtml(m.name)}</strong><div class="muted">${escapeHtml(m.role||'')}</div></div>
+        <div>
+          <button class="ghost" onclick="editTeamMember('${d.id}')">Editar</button>
+          <button class="danger" onclick="deleteTeamMember('${d.id}')">Remover</button>
+        </div>
+      </div>`;
+    });
+    if (!teamHtml) teamHtml = '<p class="muted">Ainda sem membros de equipa.</p>';
+    inner = `
+      <h2>🙋 Equipa</h2>
       <p class="muted" style="margin-bottom:10px;">Membros mostrados publicamente na sua página — não são contas de login. Para dar a alguém acesso real para entrar na app, vá a "👥 Equipa" no menu principal e gere um link de convite.</p>
       ${teamHtml}
       <div style="margin-top:12px;">
@@ -5325,10 +5510,24 @@ async function renderProfile(main){
         <button class="primary" onclick="saveTeamMember('${window.__editingTeamMemberId||''}')">${window.__editingTeamMemberId?'Guardar alterações':'Adicionar à equipa'}</button>
         ${window.__editingTeamMemberId ? `<button class="ghost" onclick="window.__editingTeamMemberId=null;window.__editingTeamMember=null;renderView('profile')">Cancelar edição</button>` : ''}
       </div>
-    </div>
-
-    <div class="card">
-      <h2>Testemunhos / Feedback</h2>
+    `;
+  } else if (section === 'testemunhos'){
+    const testimonialsSnap = await getDocs(collection(db, 'tenants', tenantId, 'testimonials'));
+    let testimonialsHtml = '';
+    testimonialsSnap.forEach(d=>{
+      const t = d.data();
+      testimonialsHtml += `<div class="appt-item row">
+        <div><strong>${escapeHtml(t.name)}</strong> <span class="muted">${'★'.repeat(t.rating||5)}</span>
+          <div class="muted">${escapeHtml(t.text)}</div></div>
+        <div>
+          <button class="ghost" onclick="editTestimonial('${d.id}')">Editar</button>
+          <button class="danger" onclick="deleteTestimonial('${d.id}')">Remover</button>
+        </div>
+      </div>`;
+    });
+    if (!testimonialsHtml) testimonialsHtml = '<p class="muted">Ainda sem testemunhos.</p>';
+    inner = `
+      <h2>⭐ Testemunhos / Feedback</h2>
       <p class="muted" style="margin-bottom:10px;">Escreva testemunhos que recebeu (por WhatsApp, redes sociais, etc.) — aparecem na página inicial.</p>
       ${testimonialsHtml}
       <div style="margin-top:12px;">
@@ -5338,8 +5537,10 @@ async function renderProfile(main){
         <button class="primary" onclick="saveTestimonial('${window.__editingTestimonialId||''}')">${window.__editingTestimonialId?'Guardar alterações':'Adicionar testemunho'}</button>
         ${window.__editingTestimonialId ? `<button class="ghost" onclick="window.__editingTestimonialId=null;window.__editingTestimonial=null;renderView('profile')">Cancelar edição</button>` : ''}
       </div>
-    </div>
-  `;
+    `;
+  }
+
+  main.innerHTML = `${backBtn}<div class="card" style="margin-top:10px;">${inner}</div>`;
 }
 
 window.toggleOnlineToolFields = function(){
