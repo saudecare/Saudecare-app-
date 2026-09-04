@@ -297,7 +297,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-70';
+const APP_VERSION = '2026-09-02-73';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -997,6 +997,32 @@ window.installApp = async function(){
   }
 };
 
+// ── Lembrete para instalar a app, dirigido sobretudo aos membros da
+// equipa (que entram com a própria conta e usam a app no dia-a-dia no
+// seu telemóvel). Aparece uma vez por dispositivo, na página inicial, e
+// não volta a incomodar depois de dispensado ou instalado.
+function maybeShowInstallPrompt(){
+  if (window.matchMedia('(display-mode: standalone)').matches) return; // já instalada
+  if (localStorage.getItem('installPromptDismissed')) return;
+  if (document.getElementById('installPromptBanner')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'installPromptBanner';
+  banner.style.cssText = 'background:var(--primary);color:#fff;padding:12px 14px;border-radius:10px;margin:0 0 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
+  banner.innerHTML = `
+    <span style="flex:1;min-width:180px;">📲 Peça para instalar esta app no seu telemóvel — acesso mais rápido, como se fosse nativa.</span>
+    <button onclick="installApp();dismissInstallPrompt();" style="background:#fff;color:var(--primary);border:none;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;">Instalar</button>
+    <button onclick="dismissInstallPrompt()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:8px 14px;cursor:pointer;">Agora não</button>
+  `;
+  const main = document.getElementById('mainView');
+  main?.prepend(banner);
+}
+
+window.dismissInstallPrompt = function(){
+  localStorage.setItem('installPromptDismissed', '1');
+  document.getElementById('installPromptBanner')?.remove();
+};
+
 // ── Router simples ──────────────────────────────────────────────────
 // Cada mudança de vista fica registada no histórico do browser, para
 // que o botão "retroceder" do telemóvel navegue dentro da app (volta ao
@@ -1469,6 +1495,7 @@ async function renderHome(main){
       </div>
       ${weekHtml}
     </div>`;
+  maybeShowInstallPrompt();
 }
 
 window.goToAgendaDay = function(dayKey){
@@ -2345,6 +2372,7 @@ window.openNewPatient = function(){
       <label>Nome completo</label><input id="pFullName">
       <label>Telefone</label><input id="pPhone">
       <label>Email</label><input id="pEmail" type="email">
+      <label>NIF / Contribuinte (opcional)</label><input id="pNif">
       <label>Foto do paciente (opcional)</label><input id="pPhotoUrl" placeholder="https://... (ou escolha uma foto abaixo)">
       ${imageUploadFieldHTML('pPhotoUrl', `tenants/${tenantId}/patients`)}
       <label>Notas clínicas iniciais</label><textarea id="pNotes" rows="3"></textarea>
@@ -2352,13 +2380,38 @@ window.openNewPatient = function(){
       ${renderPatientAttachmentsBuilder()}
       <label style="margin-top:14px;">Termo de consentimento (peça ao paciente para ler)</label>
       <div style="max-height:140px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:13px;white-space:pre-wrap;margin-bottom:8px;">${escapeHtml(currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT)}</div>
-      <label>Assinatura do paciente (desenhe aqui, no ecrã)</label>
-      <canvas id="consentSignaturePad" width="500" height="160" style="border:1px solid #ccc;border-radius:8px;width:100%;touch-action:none;background:#fff;display:block;"></canvas>
-      <button type="button" class="ghost" style="margin-top:6px;" onclick="clearSignaturePad()">Limpar assinatura</button>
+
+      <div id="consentMethodTabs" class="row" style="margin-bottom:10px;">
+        <button type="button" class="ghost" id="consentTabCheck" onclick="switchConsentMethod('check')" style="flex:1;">✅ Ler e confirmar (recomendado)</button>
+        <button type="button" class="ghost" id="consentTabSign" onclick="switchConsentMethod('sign')" style="flex:1;">✍️ Assinar no ecrã</button>
+      </div>
+
+      <div id="consentPanelCheck">
+        <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
+          <input type="checkbox" id="consentCheckbox" style="width:auto;margin-top:3px;">
+          <span>O paciente leu o termo acima e concorda com ele. Confirmo que expliquei o conteúdo verbalmente, caso a leitura não tenha sido feita diretamente pelo paciente (ex: consulta por telefone).</span>
+        </label>
+      </div>
+
+      <div id="consentPanelSign" class="hidden">
+        <label>Assinatura do paciente (desenhe aqui, no ecrã — precisa de ecrã tátil)</label>
+        <canvas id="consentSignaturePad" width="500" height="160" style="border:1px solid #ccc;border-radius:8px;width:100%;touch-action:none;background:#fff;display:block;"></canvas>
+        <button type="button" class="ghost" style="margin-top:6px;" onclick="clearSignaturePad()">Limpar assinatura</button>
+      </div>
+
       <button class="primary" style="margin-top:10px;" onclick="savePatient()">Guardar</button>
     </div>`;
   refreshPatientAttachmentsList();
   initSignaturePad();
+  switchConsentMethod('check');
+};
+
+window.switchConsentMethod = function(method){
+  window.__consentMethod = method;
+  document.getElementById('consentTabCheck').classList.toggle('primary', method === 'check');
+  document.getElementById('consentTabSign').classList.toggle('primary', method === 'sign');
+  document.getElementById('consentPanelCheck').classList.toggle('hidden', method !== 'check');
+  document.getElementById('consentPanelSign').classList.toggle('hidden', method !== 'sign');
 };
 
 window.editPatient = async function(patientId){
@@ -2375,6 +2428,7 @@ window.editPatient = async function(patientId){
       <label>Nome completo</label><input id="pFullName" value="${escapeHtml(p.fullName||'')}">
       <label>Telefone</label><input id="pPhone" value="${escapeHtml(p.phone||'')}">
       <label>Email</label><input id="pEmail" type="email" value="${escapeHtml(p.email||'')}">
+      <label>NIF / Contribuinte (opcional)</label><input id="pNif" value="${escapeHtml(p.nif||'')}">
       <label>Foto do paciente (opcional)</label><input id="pPhotoUrl" value="${escapeHtml(p.photoUrl||'')}" placeholder="https://... (ou escolha uma foto abaixo)">
       ${imageUploadFieldHTML('pPhotoUrl', `tenants/${tenantId}/patients`)}
       <label>Notas clínicas</label><textarea id="pNotes" rows="3">${escapeHtml(p.clinicalNotes||'')}</textarea>
@@ -2395,6 +2449,7 @@ window.updatePatient = async function(patientId){
     fullName,
     phone: document.getElementById('pPhone').value.trim(),
     email: document.getElementById('pEmail').value.trim(),
+    nif: document.getElementById('pNif').value.trim(),
     photoUrl: document.getElementById('pPhotoUrl').value.trim(),
     clinicalNotes: document.getElementById('pNotes').value.trim(),
     customFields: patientCustomFieldsDraft.filter(f => f.label && f.label.trim()),
@@ -2446,14 +2501,27 @@ window.clearSignaturePad = function(){
 window.savePatient = async function(){
   const fullName = document.getElementById('pFullName').value.trim();
   if (!fullName){ toast('Nome é obrigatório.', true); return; }
-  if (!__sigPadHasStroke){ toast('Peça ao paciente para assinar no quadro antes de guardar.', true); return; }
-  const signatureDataUrl = document.getElementById('consentSignaturePad').toDataURL('image/png');
+
+  const method = window.__consentMethod || 'check';
+  let consentData = {};
+  if (method === 'sign'){
+    if (!__sigPadHasStroke){ toast('Peça ao paciente para assinar no quadro, ou mude para "Ler e confirmar" se não for possível desenhar.', true); return; }
+    consentData = {
+      consentMethod: 'signature',
+      consentSignatureDataUrl: document.getElementById('consentSignaturePad').toDataURL('image/png')
+    };
+  } else {
+    if (!document.getElementById('consentCheckbox').checked){ toast('Confirme que o paciente leu e concorda com o termo, antes de guardar.', true); return; }
+    consentData = { consentMethod: 'checkbox_confirmed_by_therapist' };
+  }
+
   const portalToken = crypto.randomUUID().replace(/-/g, '');
 
   await addDoc(collection(db, 'tenants', tenantId, 'patients'), {
     fullName,
     phone: document.getElementById('pPhone').value.trim(),
     email: document.getElementById('pEmail').value.trim(),
+    nif: document.getElementById('pNif').value.trim(),
     photoUrl: document.getElementById('pPhotoUrl').value.trim(),
     clinicalNotes: document.getElementById('pNotes').value.trim(),
     customFields: patientCustomFieldsDraft.filter(f => f.label && f.label.trim()),
@@ -2461,11 +2529,11 @@ window.savePatient = async function(){
     consentGivenAt: serverTimestamp(),
     consentVersion: currentTenantDoc?.legalTexts?.consentVersion || 'v1',
     consentSignedText: currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT,
-    consentSignatureDataUrl: signatureDataUrl,
+    ...consentData,
     portalToken,
     createdBy: currentUser.uid
   });
-  toast('Paciente registado, com assinatura de consentimento guardada.');
+  toast('Paciente registado, com consentimento guardado.');
   closePatientOverlay();
   renderView('patients');
 };
@@ -2736,49 +2804,17 @@ async function renderPatientPortalOverview(main){
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
   const patients = [];
   snap.forEach(d => patients.push({ id: d.id, ...d.data() }));
+  patients.sort((a,b) => (a.fullName||'').localeCompare(b.fullName||''));
 
-  const active = patients.filter(p => p.portalToken && !p.portalRevoked);
-  const revoked = patients.filter(p => p.portalToken && p.portalRevoked);
-  const noPortal = patients.filter(p => !p.portalToken);
+  window.__portalOverviewPatients = patients; // usado pela pesquisa, sem nova leitura à base de dados
 
   const limits = getPlanLimits();
-  const limitLabel = limits.portalPatients === Infinity ? `${active.length} (ilimitado no seu plano)` : `${active.length} / ${limits.portalPatients}`;
-
-  const linkFor = (p) => `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-portal-paciente.html')}?t=${tenantId}&p=${p.id}&k=${p.portalToken}`;
-
-  let activeHtml = active.map(p => `
-    <div class="appt-item">
-      <div class="row"><strong>${escapeHtml(p.fullName||'Sem nome')}</strong>
-        <span class="badge ${p.portalFirstAccessedAt ? 'active' : ''}" style="${p.portalFirstAccessedAt ? '' : 'background:#fff3cd;color:#7a5b00;'}">${p.portalFirstAccessedAt ? '✅ Já acedeu' : '🕓 Pendente'}</span>
-      </div>
-      <input readonly value="${linkFor(p)}" style="font-size:11px;margin-top:6px;" onclick="this.select()">
-      <div class="row" style="margin-top:6px;flex-wrap:wrap;">
-        <button class="ghost" onclick="navigator.clipboard.writeText('${linkFor(p)}').then(()=>toast('Link copiado.'))">Copiar</button>
-        <button class="primary" onclick="joinOnlineConsult('${p.id}')">💻 Chamada agora</button>
-        ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${p.id}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','${escapeAttrJs(p.portalToken||'')}','whatsapp')">📱 WhatsApp</button>` : ''}
-        ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${p.id}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','${escapeAttrJs(p.portalToken||'')}','sms')">💬 SMS</button>` : ''}
-        <button class="ghost" onclick="regeneratePortalLinkFromOverview('${p.id}')">Novo link</button>
-        <button class="danger" onclick="revokePortalLinkFromOverview('${p.id}','${escapeAttrJs(p.fullName||'')}')">Revogar</button>
-      </div>
-    </div>`).join('');
-  if (!activeHtml) activeHtml = '<p class="muted">Ainda sem pacientes com Portal ativo.</p>';
-
-  let revokedHtml = revoked.map(p => `
-    <div class="appt-item row">
-      <strong>${escapeHtml(p.fullName||'Sem nome')}</strong> <span class="muted">🚫 Revogado</span>
-      <button class="ghost" onclick="generatePortalLinkFromOverview('${p.id}')">Reativar</button>
-    </div>`).join('');
-
-  let noPortalHtml = noPortal.map(p => `
-    <div class="appt-item row">
-      <strong>${escapeHtml(p.fullName||'Sem nome')}</strong>
-      <button class="ghost" onclick="generatePortalLinkFromOverview('${p.id}')">Gerar link</button>
-    </div>`).join('');
-  if (!noPortalHtml) noPortalHtml = '<p class="muted">Todos os pacientes já têm portal, ou ainda não tem pacientes registados.</p>';
+  const activeCount = patients.filter(p => p.portalToken && !p.portalRevoked).length;
+  const limitLabel = limits.portalPatients === Infinity ? `${activeCount} (ilimitado no seu plano)` : `${activeCount} / ${limits.portalPatients}`;
 
   main.innerHTML = `
     <h2>💚 Portal do Paciente</h2>
-    ${hintBox('Aqui gere, num único sítio, o acesso de cada paciente ao portal (mensagens, relatórios, marcações e videochamada) — sem precisar de entrar na ficha de cada um. As definições de como atende online e os textos de mensagens automáticas também estão aqui a um toque.')}
+    ${hintBox('Aqui gere, num único sítio, o acesso de cada paciente ao portal (mensagens, relatórios, marcações e videochamada) — sem precisar de entrar na ficha de cada um. Toque num paciente para abrir as opções dele.')}
     <div class="card">
       <div class="muted">Pacientes com Portal ativo: <strong>${limitLabel}</strong></div>
     </div>
@@ -2786,13 +2822,83 @@ async function renderPatientPortalOverview(main){
       <button class="profile-tile" onclick="openProfileSection('online')"><span class="ptile-icon">💻</span><span>Consultório Online</span></button>
       <button class="profile-tile" onclick="openProfileSection('mensagens')"><span class="ptile-icon">💬</span><span>Modelos de Mensagens</span></button>
     </div>
-    <h3 style="margin:16px 0 8px;">✅ Com acesso ativo</h3>
-    ${activeHtml}
-    ${revokedHtml ? `<h3 style="margin:16px 0 8px;">🚫 Acesso revogado</h3>${revokedHtml}` : ''}
-    <h3 style="margin:16px 0 8px;">➕ Ainda sem portal</h3>
-    ${noPortalHtml}
+    <label style="margin-top:14px;">🔎 Pesquisar</label>
+    <input id="portalOverviewSearch" placeholder="Nome, telefone, email ou NIF…" oninput="filterPortalOverview(this.value)">
+    <div id="portalOverviewList" style="margin-top:10px;"></div>
   `;
+  renderPortalOverviewList(patients);
 }
+
+window.filterPortalOverview = function(term){
+  const q = term.trim().toLowerCase();
+  const all = window.__portalOverviewPatients || [];
+  if (!q){ renderPortalOverviewList(all); return; }
+  const filtered = all.filter(p =>
+    (p.fullName||'').toLowerCase().includes(q) ||
+    (p.phone||'').toLowerCase().includes(q) ||
+    (p.email||'').toLowerCase().includes(q) ||
+    (p.nif||'').toLowerCase().includes(q)
+  );
+  renderPortalOverviewList(filtered);
+};
+
+function renderPortalOverviewList(patients){
+  const listEl = document.getElementById('portalOverviewList');
+  if (!listEl) return;
+  const linkFor = (p) => `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-portal-paciente.html')}?t=${tenantId}&p=${p.id}&k=${p.portalToken}`;
+  const avatarFor = (p) => p.photoUrl
+    ? `<img src="${escapeAttrJs(p.photoUrl)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none';">`
+    : `<div style="width:44px;height:44px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">${escapeHtml((p.fullName||'?').trim()[0]||'?').toUpperCase()}</div>`;
+
+  if (!patients.length){
+    listEl.innerHTML = '<p class="muted">Nenhum paciente encontrado.</p>';
+    return;
+  }
+
+  listEl.innerHTML = patients.map(p => {
+    let statusBadge, actionsHtml;
+    if (p.portalToken && !p.portalRevoked){
+      statusBadge = p.portalFirstAccessedAt
+        ? `<span class="badge active">✅ Já acedeu</span>`
+        : `<span class="badge" style="background:#fff3cd;color:#7a5b00;">🕓 Pendente</span>`;
+      actionsHtml = `
+        <input readonly value="${linkFor(p)}" style="font-size:11px;margin-top:8px;" onclick="this.select()">
+        <div class="row" style="margin-top:6px;flex-wrap:wrap;">
+          <button class="ghost" onclick="navigator.clipboard.writeText('${linkFor(p)}').then(()=>toast('Link copiado.'))">Copiar</button>
+          <button class="primary" onclick="joinOnlineConsult('${p.id}')">💻 Chamada agora</button>
+          ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${p.id}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','${escapeAttrJs(p.portalToken||'')}','whatsapp')">📱 WhatsApp</button>` : ''}
+          ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${p.id}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','${escapeAttrJs(p.portalToken||'')}','sms')">💬 SMS</button>` : ''}
+          <button class="ghost" onclick="regeneratePortalLinkFromOverview('${p.id}')">Novo link</button>
+          <button class="danger" onclick="revokePortalLinkFromOverview('${p.id}','${escapeAttrJs(p.fullName||'')}')">Revogar</button>
+        </div>`;
+    } else if (p.portalToken && p.portalRevoked){
+      statusBadge = `<span class="badge" style="background:#f3d4d1;color:#7a2a20;">🚫 Revogado</span>`;
+      actionsHtml = `<div class="row" style="margin-top:6px;"><button class="ghost" onclick="generatePortalLinkFromOverview('${p.id}')">Reativar</button></div>`;
+    } else {
+      statusBadge = `<span class="badge">➕ Sem portal</span>`;
+      actionsHtml = `<div class="row" style="margin-top:6px;"><button class="ghost" onclick="generatePortalLinkFromOverview('${p.id}')">Gerar link</button></div>`;
+    }
+
+    return `<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="togglePortalOverviewItem(event,'${p.id}')">
+      <div class="row" style="align-items:center;gap:10px;">
+        ${avatarFor(p)}
+        <div style="flex:1;">
+          <strong>${escapeHtml(p.fullName||'Sem nome')}</strong>
+          <div class="muted" style="font-size:12px;">${escapeHtml(p.phone||p.email||'')}</div>
+        </div>
+        ${statusBadge}
+      </div>
+      <div id="portalItemBody-${p.id}" class="hidden">${actionsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+window.togglePortalOverviewItem = function(ev, patientId){
+  // Ignora o toque se veio de um botão/input lá dentro (não deve fechar
+  // o cartão ao copiar o link, por exemplo).
+  if (ev.target.closest('button, input, a')) return;
+  document.getElementById('portalItemBody-' + patientId)?.classList.toggle('hidden');
+};
 
 async function renderPatientMessages(patientId, isPoll){
   const box = document.getElementById('patientMessagesBox');
@@ -3607,6 +3713,7 @@ window.confirmAttach = async function(responseId){
     formId: r.formId,
     formTitle: r.formTitle,
     answers: r.answers,
+    consentConfirmedAt: r.consentConfirmedAt || null,
     submittedAt: r.submittedAt || serverTimestamp()
   });
 

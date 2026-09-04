@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal do Paciente</title>
+<link rel="manifest" id="dynamicManifest" href="manifest.json">
+<link rel="apple-touch-icon" id="appleTouchIcon" href="">
 <style>
   :root{ --primary:#1a2b26; }
   *{box-sizing:border-box;}
@@ -224,6 +226,47 @@ function crisisBox(){
   </div>`;
 }
 
+// ── "Adicionar ao ecrã principal" com identidade do consultório ─────────
+// Mesmo mecanismo usado na página pública — troca o manifest genérico por
+// um construído na hora com o nome/cor/logótipo deste consultório.
+function applyPortalManifest(businessName, primaryColor, logoUrl){
+  if (logoUrl){
+    const appleIcon = document.getElementById('appleTouchIcon');
+    if (appleIcon) appleIcon.href = logoUrl;
+  }
+  const manifestObj = {
+    name: (businessName || 'Vindora') + ' — Portal do Paciente',
+    short_name: (businessName || 'Vindora').slice(0, 12),
+    start_url: window.location.href,
+    display: 'standalone',
+    background_color: '#f6f8f7',
+    theme_color: primaryColor || '#1a2b26',
+    icons: logoUrl ? [
+      { src: logoUrl, sizes: '192x192', type: 'image/png' },
+      { src: logoUrl, sizes: '512x512', type: 'image/png' }
+    ] : []
+  };
+  const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
+  const manifestLink = document.getElementById('dynamicManifest');
+  if (manifestLink) manifestLink.href = URL.createObjectURL(blob);
+}
+
+let __deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  __deferredInstallPrompt = e;
+});
+
+window.installPortalApp = async function(){
+  if (__deferredInstallPrompt){
+    __deferredInstallPrompt.prompt();
+    await __deferredInstallPrompt.userChoice;
+    __deferredInstallPrompt = null;
+  } else {
+    alert('Para guardar este Portal no seu telemóvel, como se fosse uma app:\n\n📱 iPhone/iPad (Safari): toque no botão Partilhar (o quadrado com a seta para cima) e escolha "Adicionar ao ecrã principal".\n\n🤖 Android/Chrome: toque no menu ⋮ do navegador e escolha "Instalar app" ou "Adicionar ao ecrã principal".');
+  }
+};
+
 function renderMenu(){
   stopMessagePolling();
   const main = document.getElementById('mainContent');
@@ -232,6 +275,7 @@ function renderMenu(){
   const hasHealing = (data.healingProtocols||[]).length > 0;
   main.innerHTML = `
     ${crisisBox()}
+    <button class="btn btn-block" style="margin-bottom:14px;" onclick="installPortalApp()">📲 Guardar no telemóvel (como uma app)</button>
     <div class="tile-grid">
       <button class="tile" onclick="openPortalSection('appointments')">
         ${hasOnlineUpcoming ? '<span class="tile-badge">Online</span>' : ''}
@@ -252,13 +296,26 @@ function renderMenu(){
 
 window.openPortalSection = function(name){
   currentSection = name;
+  history.pushState({ section: name }, '', '#' + name);
   renderPortalSection(name);
 };
 
-window.backToPortalMenu = function(){
+window.backToPortalMenu = function(fromPopstate){
   currentSection = null;
+  if (!fromPopstate) history.pushState({ section: null }, '', window.location.pathname + window.location.search);
   renderMenu();
 };
+
+// Faz o botão físico/gesto de retroceder do telemóvel voltar ao menu do
+// Portal, em vez de sair da página logo na primeira vez que é usado.
+window.addEventListener('popstate', (e) => {
+  if (e.state && e.state.section){
+    currentSection = e.state.section;
+    renderPortalSection(currentSection);
+  } else {
+    backToPortalMenu(true);
+  }
+});
 
 function renderPortalSection(name){
   stopMessagePolling();
@@ -412,12 +469,55 @@ async function load(){
     document.getElementById('hBusiness').textContent = data.businessName;
     document.getElementById('hPatient').textContent = 'Olá, ' + data.patientName + '!';
     document.title = data.businessName + ' — Portal do Paciente';
-    renderMenu();
+    applyPortalManifest(data.businessName, data.primaryColor, data.logoUrl);
+
+    if (!data.portalConsentGivenAt && data.consentText){
+      renderConsentGate();
+    } else {
+      renderMenu();
+    }
   }catch(e){
     console.error(e);
     main.innerHTML = '<div class="errorbox">Não foi possível abrir o seu portal. Verifique o link ou peça um novo ao seu terapeuta.</div>';
   }
 }
+
+function renderConsentGate(){
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+    <div class="card">
+      <h2>📄 Antes de continuar</h2>
+      <p class="muted" style="margin-bottom:10px;">Por favor leia o termo de consentimento abaixo. Precisa de confirmar que leu e concorda antes de aceder ao seu Portal.</p>
+      <div style="max-height:280px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;margin-bottom:14px;">${escapeHtml(portalData.consentText)}</div>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;margin-bottom:14px;">
+        <input type="checkbox" id="consentGateCheckbox" style="width:auto;margin-top:3px;">
+        <span>Li e concordo com o termo de consentimento acima.</span>
+      </label>
+      <button id="consentGateBtn" class="btn btn-block" onclick="acceptConsentGate()">Confirmar e continuar</button>
+      <p id="consentGateError" class="muted" style="color:#b3413a;margin-top:8px;"></p>
+    </div>
+  `;
+}
+
+window.acceptConsentGate = async function(){
+  const errEl = document.getElementById('consentGateError');
+  errEl.textContent = '';
+  if (!document.getElementById('consentGateCheckbox').checked){
+    errEl.textContent = 'Precisa de marcar a confirmação antes de continuar.';
+    return;
+  }
+  const btn = document.getElementById('consentGateBtn');
+  btn.disabled = true;
+  btn.textContent = 'A confirmar…';
+  try{
+    await callPortal('giveConsent');
+    renderMenu();
+  }catch(e){
+    errEl.textContent = 'Não foi possível confirmar. Tente novamente.';
+    btn.disabled = false;
+    btn.textContent = 'Confirmar e continuar';
+  }
+};
 
 load();
 </script>

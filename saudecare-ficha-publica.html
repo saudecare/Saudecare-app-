@@ -140,6 +140,12 @@ function renderForm(){
       <input id="respContact" placeholder="Telefone ou email">
     </div>
     ${questionsHtml}
+    <div class="card">
+      <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
+        <input type="checkbox" id="respConsent" style="width:auto;margin-top:3px;">
+        <span>Confirmo que as respostas que estou a dar são verdadeiras e autorizo o seu uso pelo profissional responsável para efeitos de avaliação e acompanhamento.</span>
+      </label>
+    </div>
     <button class="primary" onclick="window.__submitForm()">Enviar respostas</button>
   `;
 }
@@ -165,6 +171,7 @@ window.__setChoice = function(qId, idx, label){
 window.__submitForm = async function(){
   const name = document.getElementById('respName').value.trim();
   if (!name){ toast('Indique o seu nome.', true); return; }
+  if (!document.getElementById('respConsent').checked){ toast('Confirme a autorização antes de enviar.', true); return; }
 
   const answers = formData.questions.map(q => ({
     questionId: q.id,
@@ -181,6 +188,7 @@ window.__submitForm = async function(){
       respondentName: name,
       respondentContact: document.getElementById('respContact').value.trim(),
       answers,
+      consentConfirmedAt: serverTimestamp(),
       status: 'pending_review',
       submittedAt: serverTimestamp()
     });
