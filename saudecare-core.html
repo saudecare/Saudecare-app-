@@ -199,7 +199,7 @@
 
     <div id="authPanelRegister" class="hidden">
       <p class="muted" style="margin-bottom:6px;">Ainda não tem conta e quer começar o seu próprio consultório na Vindora? Registe-se aqui como novo(a) subscritor(a).</p>
-      <div class="trialNote">✨ 14 dias grátis, sem cartão de crédito. Sem compromisso.</div>
+      <div class="trialNote" id="trialDaysNote">✨ dias grátis, sem cartão de crédito. Sem compromisso.</div>
       <label>Nome do consultório / prática</label>
       <input id="regBusinessName" placeholder="ex: Clínica Bem-Estar">
       <label>O seu email</label>
@@ -305,7 +305,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-82';
+const APP_VERSION = '2026-09-02-84';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -827,9 +827,14 @@ window.doRegister = async function(){
     if (!res.ok || !data.ok) throw new Error(data.error || 'Falha ao ativar.');
 
     errEl.style.color = 'var(--primary)';
-    errEl.textContent = 'Conta criada! A preparar o seu período de teste de 14 dias…';
-    window.__justRegistered = false;
-    setTimeout(() => window.location.reload(), 900);
+    if (data.pendingManualActivation){
+      errEl.textContent = 'Conta criada! O seu registo vai ser analisado antes de dar acesso — entraremos em contacto brevemente.';
+      window.__justRegistered = false;
+    } else {
+      errEl.textContent = 'Conta criada! A preparar o seu período de teste…';
+      window.__justRegistered = false;
+      setTimeout(() => window.location.reload(), 900);
+    }
   }catch(e){
     window.__justRegistered = false;
     errEl.style.color = 'var(--danger)';
@@ -944,9 +949,10 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   if (currentTenantDoc.status === 'trial' && currentTenantDoc.trialEndsAt && currentTenantDoc.trialEndsAt.toDate() < new Date()){
-    toast('O seu período de teste gratuito terminou. Contacte-nos para escolher um plano e continuar a usar a app.', true);
-    await signOut(auth);
-    return;
+    // Já não expulsa logo — deixa entrar, para poder ver o aviso na
+    // página inicial e escolher "Quero subscrever" ou "Preciso de mais
+    // tempo", em vez de ficar sem forma nenhuma de reagir.
+    toast('O seu período de teste terminou — veja as opções na página inicial.', true);
   }
 
   document.getElementById('loginScreen').classList.add('hidden');
@@ -1082,6 +1088,57 @@ async function maybeShowPlatformAnnouncement(){
 window.dismissPlatformAnnouncement = function(id){
   localStorage.setItem('announcementDismissed', id);
   document.getElementById('platformAnnouncementBanner')?.remove();
+};
+
+// ── Aviso de fim do período de teste — aparece quando faltam poucos dias
+// ou já terminou, com duas opções: pedir mais tempo, ou avisar que quer
+// subscrever. Os pedidos ficam guardados no próprio tenant, visíveis no
+// painel de administração da Vindora.
+function maybeShowTrialEndingBanner(){
+  if (tenantRole !== 'owner') return;
+  if (currentTenantDoc?.status !== 'trial' || !currentTenantDoc?.trialEndsAt) return;
+  if (document.getElementById('trialEndingBanner')) return;
+
+  const endsAt = currentTenantDoc.trialEndsAt.toDate();
+  const daysLeft = Math.ceil((endsAt.getTime() - Date.now()) / (24*60*60*1000));
+  if (daysLeft > 3) return; // só avisa quando estiver mesmo a chegar ao fim
+
+  const alreadyRequestedTime = currentTenantDoc.trialExtensionRequestedAt;
+  const alreadyRequestedSub = currentTenantDoc.subscriptionRequestedAt;
+
+  const banner = document.createElement('div');
+  banner.id = 'trialEndingBanner';
+  banner.style.cssText = daysLeft <= 0
+    ? 'background:#fdf2f0;border:1px solid #f0c9c2;color:#7a2a20;padding:14px;border-radius:10px;margin:0 0 14px;'
+    : 'background:#fff8ed;border:1px solid #f0d9a8;color:#5a4a1a;padding:14px;border-radius:10px;margin:0 0 14px;';
+  banner.innerHTML = `
+    <strong>${daysLeft <= 0 ? '⏰ O seu período de teste terminou' : `⏳ O seu período de teste termina em ${daysLeft} dia(s)`}</strong>
+    <p style="margin-top:6px;">Quer continuar a usar a Vindora? Pode pedir para subscrever, ou pedir mais alguns dias de teste, se ainda precisar de experimentar.</p>
+    <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+      <button class="primary" onclick="requestSubscription()" ${alreadyRequestedSub ? 'disabled' : ''}>${alreadyRequestedSub ? '✅ Já pediu para subscrever' : '💳 Quero subscrever'}</button>
+      <button class="ghost" onclick="requestTrialExtension()" ${alreadyRequestedTime ? 'disabled' : ''}>${alreadyRequestedTime ? '✅ Já pediu mais tempo' : '🕐 Preciso de mais tempo'}</button>
+    </div>
+  `;
+  const main = document.getElementById('mainView');
+  main?.prepend(banner);
+}
+
+window.requestSubscription = async function(){
+  await updateDoc(doc(db, 'tenants', tenantId), { subscriptionRequestedAt: serverTimestamp() });
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  currentTenantDoc = snap.data();
+  toast('Pedido enviado! Entraremos em contacto brevemente.');
+  document.getElementById('trialEndingBanner')?.remove();
+  maybeShowTrialEndingBanner();
+};
+
+window.requestTrialExtension = async function(){
+  await updateDoc(doc(db, 'tenants', tenantId), { trialExtensionRequestedAt: serverTimestamp() });
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  currentTenantDoc = snap.data();
+  toast('Pedido enviado! Vamos avaliar e responder em breve.');
+  document.getElementById('trialEndingBanner')?.remove();
+  maybeShowTrialEndingBanner();
 };
 
 // ── Pedido de aceitação do Acordo de Processamento de Dados, para quem
@@ -1631,6 +1688,7 @@ async function renderHome(main){
   maybeShowInstallPrompt();
   maybeShowDpaGate();
   maybeShowPlatformAnnouncement();
+  maybeShowTrialEndingBanner();
 }
 
 window.goToAgendaDay = function(dayKey){
@@ -4412,6 +4470,19 @@ Ao criar a conta, o subscritor aceita eletronicamente este acordo, ficando essa 
 (function fillDpaTextBox(){
   const el = document.getElementById('dpaTextBoxRegister');
   if (el) el.textContent = DPA_TEXT;
+})();
+
+// Duração real do período de teste, vinda da configuração da
+// administradora (settings/platformConfig, legível publicamente para
+// este efeito) — nunca mais fica um número fixo desatualizado no ecrã.
+let CURRENT_TRIAL_DAYS = 7;
+(async function fillTrialDaysNote(){
+  try{
+    const snap = await getDoc(doc(db, 'settings', 'platformConfig'));
+    if (snap.exists() && Number.isFinite(snap.data().trialDays)) CURRENT_TRIAL_DAYS = snap.data().trialDays;
+  }catch(e){ /* mantém o valor por omissão em caso de falha */ }
+  const el = document.getElementById('trialDaysNote');
+  if (el) el.textContent = CURRENT_TRIAL_DAYS > 0 ? `✨ ${CURRENT_TRIAL_DAYS} dias grátis, sem cartão de crédito. Sem compromisso.` : '✨ Sem cartão de crédito. Sem compromisso.';
 })();
 
 // ── PROTOCOLOS (métodos de atendimento personalizados) ─────────────────
