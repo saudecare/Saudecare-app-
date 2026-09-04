@@ -60,6 +60,7 @@
   <section id="teamSection"></section>
   <section id="trainingsSection"></section>
   <section id="testimonialsSection"></section>
+  <section id="availabilitySection"></section>
   <section id="contactSection"></section>
 </div>
 
@@ -111,6 +112,7 @@ async function load(){
   renderHero(profile, tenantSlug);
   renderAbout(profile);
   renderContact(profile);
+  renderAvailability(profile);
   applyDynamicManifest(profile);
 
   // Livro de Reclamações Eletrónico — obrigatório por lei em Portugal
@@ -325,6 +327,21 @@ function renderContact(profile){
   document.getElementById('contactSection').innerHTML = `
     <h2 class="section-title">Contactos</h2>
     <div class="card contact-row">${rows}</div>
+  `;
+}
+
+const DAY_LABELS = { mon:'Segunda', tue:'Terça', wed:'Quarta', thu:'Quinta', fri:'Sexta', sat:'Sábado', sun:'Domingo' };
+
+function renderAvailability(profile){
+  const avail = profile.availability || {};
+  const activeDays = Object.keys(DAY_LABELS).filter(k => avail[k]?.enabled);
+  const el = document.getElementById('availabilitySection');
+  if (!activeDays.length){ el.innerHTML = ''; return; }
+
+  const scheduleHtml = activeDays.map(k => `<div>${DAY_LABELS[k]}: ${escapeHtml(avail[k].start)} – ${escapeHtml(avail[k].end)}</div>`).join('');
+  el.innerHTML = `
+    <h2 class="section-title">🗓️ Horários</h2>
+    <div class="card">${scheduleHtml}</div>
   `;
 }
 

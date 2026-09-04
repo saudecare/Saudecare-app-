@@ -62,7 +62,10 @@
       <label>Nome completo</label><input id="cName">
       <label>Telefone</label><input id="cPhone" type="tel">
       <label>Email</label><input id="cEmail" type="email">
-      <label>Data e hora preferida</label><input id="cDate" type="datetime-local">
+      <label>Data e hora preferida</label>
+      <input id="cDate" type="date">
+      <select id="cTime"><option value="">Escolha a hora…</option></select>
+      <p id="dateHint" class="muted" style="margin-top:-6px;margin-bottom:10px;"></p>
       <label style="display:flex;align-items:center;gap:8px;margin-top:6px;">
         <input type="checkbox" id="cConsent" style="width:auto;margin:0;">
         Aceito a <a href="#" id="privacyLink" target="_blank">política de privacidade</a> e autorizo o tratamento dos meus dados para esta marcação
@@ -193,6 +196,40 @@ function renderServices(){
   }).join('');
 }
 
+document.getElementById('cDate')?.addEventListener('change', onDateChange);
+
+function onDateChange(){
+  const dateVal = document.getElementById('cDate').value;
+  const timeSel = document.getElementById('cTime');
+  const hintEl = document.getElementById('dateHint');
+  timeSel.innerHTML = '<option value="">Escolha a hora…</option>';
+  if (!dateVal || !profile) return;
+
+  const dayKeys = ['sun','mon','tue','wed','thu','fri','sat'];
+  const dayKey = dayKeys[new Date(dateVal + 'T00:00:00').getDay()];
+  const cfg = profile.availability?.[dayKey];
+
+  if (!cfg?.enabled){
+    hintEl.textContent = '⚠️ Sem atendimento neste dia — escolha outra data.';
+    hintEl.style.color = '#b3413a';
+    return;
+  }
+  hintEl.textContent = `Atende das ${cfg.start} às ${cfg.end} neste dia.`;
+  hintEl.style.color = '';
+
+  // Gera horários de 30 em 30 minutos dentro do horário de atendimento.
+  const [startH, startM] = cfg.start.split(':').map(Number);
+  const [endH, endM] = cfg.end.split(':').map(Number);
+  let mins = startH * 60 + startM;
+  const endMins = endH * 60 + endM;
+  while (mins < endMins){
+    const h = String(Math.floor(mins / 60)).padStart(2, '0');
+    const m = String(mins % 60).padStart(2, '0');
+    timeSel.innerHTML += `<option value="${h}:${m}">${h}:${m}</option>`;
+    mins += 30;
+  }
+}
+
 window.selectService = function(idx){
   document.querySelectorAll('.service').forEach(el=>el.classList.remove('selected'));
   document.getElementById(`svc-${idx}`).classList.add('selected');
@@ -214,9 +251,10 @@ window.submitBooking = async function(){
   const phone = document.getElementById('cPhone').value.trim();
   const email = document.getElementById('cEmail').value.trim();
   const dateVal = document.getElementById('cDate').value;
+  const timeVal = document.getElementById('cTime').value;
   const consent = document.getElementById('cConsent').checked;
 
-  if (!name || !phone || !dateVal){ toast('Preencha nome, telefone e data.', true); return; }
+  if (!name || !phone || !dateVal || !timeVal){ toast('Preencha nome, telefone, data e hora.', true); return; }
   if (!consent){ toast('É necessário aceitar a política de privacidade para continuar.', true); return; }
 
   try{
@@ -231,7 +269,7 @@ window.submitBooking = async function(){
       clientName: name,
       clientPhone: phone,
       clientEmail: email,
-      requestedStart: dateVal,
+      requestedStart: `${dateVal}T${timeVal}`,
       serviceName: selectedService.name,
       servicePrice: selectedService.price,
       consentGivenAt: serverTimestamp(),

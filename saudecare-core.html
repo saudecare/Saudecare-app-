@@ -305,7 +305,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-88';
+const APP_VERSION = '2026-09-02-89';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3735,14 +3735,32 @@ window.saveService = async function(editId){
     await addDoc(collection(db, 'tenants', tenantId, 'services'), data);
   }
   toast('Item guardado.');
+  await syncPublicServices();
   renderView('services');
 };
 
 window.deleteService = async function(serviceId){
   if (!confirm('Remover este item?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'services', serviceId));
+  await syncPublicServices();
   renderView('services');
 };
+
+// ── Sincroniza os serviços ativos para o funil público de marcação
+// (saudecare-funil-publico.html) — sem isto, o funil mostra sempre
+// "sem serviços disponíveis", porque lê de public_tenant_profiles, não
+// diretamente da coleção de serviços de cada subscritor.
+async function syncPublicServices(){
+  if (!currentTenantDoc?.slug) return;
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'services'));
+  const publicServices = [];
+  snap.forEach(d => {
+    const s = d.data();
+    if (s.active === false) return;
+    publicServices.push({ name: s.name, price: s.price || 0, durationMinutes: s.durationMinutes || 50 });
+  });
+  await setDoc(doc(db, 'public_tenant_profiles', currentTenantDoc.slug), { publicServices }, { merge: true });
+}
 
 // ── FICHAS / QUESTIONÁRIOS (tipo Google Forms) ──────────────────────────
 // O subscritor cria uma ficha com perguntas de vários tipos. Gera-se um
@@ -6384,6 +6402,7 @@ function renderProfileMenu(main){
   const tiles = [
     { key: 'negocio', icon: '🏢', label: 'Dados do Negócio' },
     { key: 'contactos', icon: '📞', label: 'Contactos & Redes Sociais' },
+    { key: 'disponibilidade', icon: '🗓️', label: 'Disponibilidade & Marcação' },
     { key: 'calendar', icon: '📅', label: 'Google Calendar' },
     { key: 'online', icon: '💻', label: 'Consultório Online' },
     { key: 'consentimento', icon: '📄', label: 'Consentimento Informado' },
@@ -6483,6 +6502,31 @@ async function renderProfileSection(main, section){
       </div>
       <button class="primary" style="margin-top:8px;" onclick="saveOnlineConsultSettings()">Guardar</button>
     `;
+  } else if (section === 'disponibilidade'){
+    const avail = currentTenantDoc?.availability || {};
+    const days = [
+      { key: 'mon', label: 'Segunda' }, { key: 'tue', label: 'Terça' }, { key: 'wed', label: 'Quarta' },
+      { key: 'thu', label: 'Quinta' }, { key: 'fri', label: 'Sexta' }, { key: 'sat', label: 'Sábado' }, { key: 'sun', label: 'Domingo' }
+    ];
+    inner = `
+      <h2>🗓️ Disponibilidade & Marcação</h2>
+      ${hintBox('Defina os dias e horas em que atende. Isto aparece na sua página pública, e quem visitar pode pedir uma marcação dentro desses horários — a marcação só fica confirmada depois de você aceitar, para nunca haver reservas automáticas por engano.')}
+      ${days.map(d => {
+        const cfg = avail[d.key] || { enabled: false, start: '09:00', end: '18:00' };
+        return `<div class="row" style="align-items:center;margin-bottom:8px;">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:600;width:110px;flex-shrink:0;">
+            <input type="checkbox" id="avail_${d.key}_on" style="width:auto;" ${cfg.enabled ? 'checked' : ''}> ${d.label}
+          </label>
+          <input type="time" id="avail_${d.key}_start" value="${cfg.start||'09:00'}" style="flex:1;">
+          <span class="muted">até</span>
+          <input type="time" id="avail_${d.key}_end" value="${cfg.end||'18:00'}" style="flex:1;">
+        </div>`;
+      }).join('')}
+      <button class="primary" style="margin-top:10px;" onclick="saveAvailability()">Guardar disponibilidade</button>
+      <hr style="margin:16px 0;border:none;border-top:1px solid #e5e5e5;">
+      <h3 style="margin-bottom:6px;">📬 Pedidos de marcação recebidos</h3>
+      <div id="bookingRequestsList">${hintBox('A carregar…')}</div>
+    `;
   } else if (section === 'consentimento'){
     inner = `
       <h2>📄 Termo de consentimento informado</h2>
@@ -6574,6 +6618,60 @@ async function renderProfileSection(main, section){
   }
 
   main.innerHTML = `${backBtn}<div class="card" style="margin-top:10px;">${inner}</div>`;
+  if (section === 'disponibilidade') loadBookingRequests();
+}
+
+async function loadBookingRequests(){
+  const listEl = document.getElementById('bookingRequestsList');
+  if (!listEl) return;
+  const snap = await getDocs(query(
+    collection(db, 'public_booking_requests'),
+    where('tenantId', '==', tenantId), where('status', '==', 'pending_review')
+  ));
+  const list = [];
+  snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+  if (!list.length){ listEl.innerHTML = '<p class="muted">Sem pedidos por rever.</p>'; return; }
+  listEl.innerHTML = list.map(r => `
+    <div class="appt-item">
+      <strong>${escapeHtml(r.clientName||'Sem nome')}</strong> — ${escapeHtml(r.clientPhone||r.clientEmail||'')}
+      <div class="muted">Pediu: ${r.requestedStart ? new Date(r.requestedStart).toLocaleString('pt-PT', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''} · ${escapeHtml(r.serviceName||'')} ${r.servicePrice ? `(${r.servicePrice}€)` : ''}</div>
+      <div class="row" style="margin-top:6px;">
+        <button class="primary" onclick="acceptBookingRequest('${r.id}')">✅ Aceitar (criar marcação)</button>
+        <button class="danger" onclick="declineBookingRequest('${r.id}')">Recusar</button>
+      </div>
+    </div>`).join('');
+}
+
+window.declineBookingRequest = async function(requestId){
+  await updateDoc(doc(db, 'public_booking_requests', requestId), { status: 'declined' });
+  toast('Pedido recusado.');
+  loadBookingRequests();
+};
+
+window.acceptBookingRequest = async function(requestId){
+  toast('Abra "Nova marcação" na Agenda para criar a consulta com os dados deste pedido.');
+  await updateDoc(doc(db, 'public_booking_requests', requestId), { status: 'processed' });
+  loadBookingRequests();
+  renderView('agenda');
+};
+
+window.saveAvailability = async function(){
+  const days = ['mon','tue','wed','thu','fri','sat','sun'];
+  const availability = {};
+  days.forEach(k => {
+    availability[k] = {
+      enabled: document.getElementById(`avail_${k}_on`).checked,
+      start: document.getElementById(`avail_${k}_start`).value,
+      end: document.getElementById(`avail_${k}_end`).value
+    };
+  });
+  await updateDoc(doc(db, 'tenants', tenantId), { availability });
+  currentTenantDoc.availability = availability;
+  // Publica de imediato na página pública, tal como o resto do Perfil.
+  if (currentTenantDoc?.slug){
+    await setDoc(doc(db, 'public_tenant_profiles', currentTenantDoc.slug), { availability }, { merge: true });
+  }
+  toast('Disponibilidade guardada e publicada.');
 }
 
 window.toggleOnlineToolFields = function(){
