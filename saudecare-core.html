@@ -305,7 +305,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-87';
+const APP_VERSION = '2026-09-02-88';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -7344,15 +7344,21 @@ function getPlanLimits(){
   // campo "plan" seja alterado por engano.
   if (tenantId === 'hikari-terapias') return PLAN_LIMITS.lifetime;
   const plan = currentTenantDoc?.plan || 'start';
-  // Se o admin já configurou os planos pelo painel, usa esses valores;
-  // caso contrário, usa os predefinidos no código como reserva.
+  // Se o admin já configurou os planos pelo painel (Catálogo de Planos),
+  // usa esses valores; caso contrário, usa os predefinidos no código
+  // como reserva. Um valor null/undefined no catálogo significa "sem
+  // limite" (o admin deixou o campo em branco de propósito).
   const configured = window.__planConfigOverride?.[plan];
   const base = plan === 'lifetime' ? PLAN_LIMITS.lifetime : (configured || PLAN_LIMITS[plan] || PLAN_LIMITS.start);
   const extra = currentTenantDoc?.limitOverrides || {};
+  const norm = (v, fallbackInfinite) => (v === null || v === undefined) ? Infinity : v;
+  const staffBase = configured ? norm(configured.staff) : base.staff;
+  const kbBase = configured ? norm(configured.kbBytes) : base.kbBytes;
+  const portalBase = configured ? norm(configured.portalPatients) : base.portalPatients;
   return {
-    staff: base.staff === Infinity ? Infinity : base.staff + (extra.staffExtra || 0),
-    kbBytes: base.kbBytes === Infinity ? Infinity : base.kbBytes + (extra.kbBytesExtra || 0),
-    portalPatients: base.portalPatients === Infinity ? Infinity : base.portalPatients + (extra.portalPatientsExtra || 0)
+    staff: staffBase === Infinity ? Infinity : staffBase + (extra.staffExtra || 0),
+    kbBytes: kbBase === Infinity ? Infinity : kbBase + (extra.kbBytesExtra || 0),
+    portalPatients: portalBase === Infinity ? Infinity : portalBase + (extra.portalPatientsExtra || 0)
   };
 }
 

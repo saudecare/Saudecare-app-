@@ -84,6 +84,8 @@
     <button data-view="newTenant">➕ Novo subscritor</button>
     <button data-view="announcements">📢 Avisos</button>
     <button data-view="platformSettings">⚙️ Definições</button>
+    <button data-view="planCatalog">💶 Catálogo de Planos</button>
+    <button data-view="systemHealth">🩺 Saúde do Sistema</button>
     <button data-view="privateProtocols">🔒 Métodos Privados</button>
     <button data-view="privateForms">🔒 Fichas Privadas</button>
     <button data-view="methodRequests">📩 Pedidos de Acesso</button>
@@ -207,6 +209,8 @@ function renderView(view){
   else if (view === 'newTenant') renderNewTenant(main);
   else if (view === 'announcements') renderAnnouncements(main);
   else if (view === 'platformSettings') renderPlatformSettings(main);
+  else if (view === 'planCatalog') renderPlanCatalog(main);
+  else if (view === 'systemHealth') renderSystemHealth(main);
   else if (view === 'privateProtocols') renderPrivateProtocols(main);
   else if (view === 'privateForms') renderPrivateForms(main);
   else if (view === 'methodRequests') renderMethodRequests(main);
@@ -231,6 +235,39 @@ async function renderOverview(main){
 
   const pending = allTenants.filter(t => t.status === 'pending_activation');
 
+  // ── Receita (MRR) — vem do Catálogo de Planos que configurou.
+  const pricesSnap = await getDoc(doc(db, 'settings', 'plans'));
+  const prices = pricesSnap.exists() ? pricesSnap.data() : {};
+  const activeTenants = allTenants.filter(t => t.status === 'active');
+  let mrr = 0, lifetimeCount = 0;
+  activeTenants.forEach(t => {
+    if (t.plan === 'lifetime') lifetimeCount++;
+    else mrr += (prices[t.plan]?.price || 0);
+  });
+  const hasPrices = Object.values(prices).some(p => (p?.price || 0) > 0);
+
+  // ── Leads quentes — sinais de negócio que precisam de ação.
+  const hotSubRequests = allTenants.filter(t => t.subscriptionRequestedAt);
+  const hotExtRequests = allTenants.filter(t => t.trialExtensionRequestedAt);
+  const trialEndingSoon = allTenants.filter(t => {
+    if (t.status !== 'trial' || !t.trialEndsAt?.toDate) return false;
+    const days = (t.trialEndsAt.toDate().getTime() - Date.now()) / (24*60*60*1000);
+    return days <= 3;
+  });
+
+  // ── Crescimento — registos por mês, últimos 3 meses.
+  const now = new Date();
+  const monthBuckets = [0,1,2].map(offset => {
+    const d = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+    return { label: d.toLocaleDateString('pt-PT', {month:'short', year:'2-digit'}), year: d.getFullYear(), month: d.getMonth(), count: 0 };
+  });
+  allTenants.forEach(t => {
+    const created = t.createdAt?.toDate ? t.createdAt.toDate() : null;
+    if (!created) return;
+    const bucket = monthBuckets.find(b => b.year === created.getFullYear() && b.month === created.getMonth());
+    if (bucket) bucket.count++;
+  });
+
   main.innerHTML = `
     <h2>Visão geral</h2>
     ${pending.length ? `
@@ -239,12 +276,43 @@ async function renderOverview(main){
         <p class="muted" style="margin:6px 0 10px;">Alguém já se registou sozinho mas ainda não consegue entrar.</p>
         <button class="primary" onclick="document.querySelector('nav button[data-view=tenants]').click()">Ver e ativar →</button>
       </div>` : ''}
+
+    <div class="card" style="background:var(--primary);color:#fff;margin-bottom:14px;">
+      <div class="muted" style="color:#dfe8e4;">Receita mensal recorrente (MRR)</div>
+      <div style="font-size:32px;font-weight:800;">${hasPrices ? mrr.toFixed(2)+'€' : '—'}</div>
+      ${!hasPrices ? `<button class="ghost" style="margin-top:8px;color:#fff;border-color:#fff;" onclick="document.querySelector('nav button[data-view=planCatalog]').click()">Configurar preços dos planos →</button>` : `<div class="muted" style="color:#dfe8e4;margin-top:4px;">${activeTenants.length} subscritores ativos${lifetimeCount ? ` (+${lifetimeCount} lifetime, à parte do MRR)` : ''}</div>`}
+    </div>
+
+    ${(hotSubRequests.length || hotExtRequests.length || trialEndingSoon.length) ? `
+    <div class="card" style="border:1.5px solid var(--primary);margin-bottom:14px;">
+      <h3 style="margin-bottom:8px;">🔥 Leads quentes — precisam de ação</h3>
+      ${hotSubRequests.map(t => `<div class="tenant-item row"><span>💳 <strong>${escapeHtml(t.businessName||t.id)}</strong> quer subscrever</span><button class="ghost" onclick="openTenantDetail('${t.id}')">Ver</button></div>`).join('')}
+      ${hotExtRequests.map(t => `<div class="tenant-item row"><span>🙋 <strong>${escapeHtml(t.businessName||t.id)}</strong> pediu mais tempo de teste</span><button class="ghost" onclick="openTenantDetail('${t.id}')">Ver</button></div>`).join('')}
+      ${trialEndingSoon.filter(t => !t.subscriptionRequestedAt && !t.trialExtensionRequestedAt).map(t => `<div class="tenant-item row"><span>⏳ <strong>${escapeHtml(t.businessName||t.id)}</strong> — teste a acabar, sem pedido ainda</span><button class="ghost" onclick="openTenantDetail('${t.id}')">Ver</button></div>`).join('')}
+    </div>` : ''}
+
     <div class="stat-grid">
       <div class="stat-card"><div class="num">${allTenants.length}</div><div class="muted">Total subscritores</div></div>
       <div class="stat-card"><div class="num">${counts.trial}</div><div class="muted">Em teste</div></div>
       <div class="stat-card"><div class="num">${counts.active}</div><div class="muted">Ativos</div></div>
       <div class="stat-card"><div class="num">${counts.suspended + counts.cancelled}</div><div class="muted">Suspensos/Cancelados</div></div>
     </div>
+
+    <div class="card" style="margin-top:16px;">
+      <h3 style="margin-bottom:8px;">📈 Novos registos (últimos 3 meses)</h3>
+      <div class="row" style="align-items:flex-end;gap:16px;height:80px;">
+        ${monthBuckets.slice().reverse().map(b => {
+          const maxCount = Math.max(...monthBuckets.map(x => x.count), 1);
+          const h = Math.max(6, (b.count / maxCount) * 70);
+          return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="font-size:12px;font-weight:700;">${b.count}</div>
+            <div style="width:36px;height:${h}px;background:var(--primary);border-radius:4px 4px 0 0;"></div>
+            <div class="muted" style="font-size:11px;">${b.label}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
     <div class="card" style="margin-top:16px;">
       <h2>Mais recentes</h2>
       ${allTenants.slice(0, 5).map(t => `
@@ -998,6 +1066,150 @@ async function renderMethodRequests(main){
     });
   }));
 }
+
+// ── CATÁLOGO DE PLANOS — preço E quantidades incluídas em cada plano.
+// Grava em settings/plans, que a app principal já sabe ler sozinha
+// (getPlanLimits) — só faltava este ecrã para editar sem código.
+async function renderPlanCatalog(main){
+  const snap = await getDoc(doc(db, 'settings', 'plans'));
+  const saved = snap.exists() ? snap.data() : {};
+  const defaults = {
+    start:      { price: 0,  staff: 1,  kbMB: 5,   portalPatients: 10 },
+    grow:       { price: 0,  staff: 3,  kbMB: 25,  portalPatients: 50 },
+    pro:        { price: 0,  staff: 8,  kbMB: 100, portalPatients: 200 },
+    enterprise: { price: 0,  staff: 20, kbMB: 500, portalPatients: 1000 },
+    lifetime:   { price: 0,  staff: null, kbMB: null, portalPatients: null }
+  };
+  const plans = [
+    { key: 'start', label: 'Start' },
+    { key: 'grow', label: 'Grow' },
+    { key: 'pro', label: 'Pro' },
+    { key: 'enterprise', label: 'Enterprise' },
+    { key: 'lifetime', label: 'Lifetime (pagamento único)' }
+  ];
+
+  main.innerHTML = `
+    <h2>💶 Catálogo de Planos</h2>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px;">Preço e quantidades incluídas em cada plano. Deixe uma quantidade em branco para "sem limite". Isto controla o que cada subscritor pode fazer — e também a receita mensal (MRR) mostrada na Visão Geral.</p>
+      ${plans.map(p => {
+        const v = { ...defaults[p.key], ...(saved[p.key] || {}) };
+        const kbMB = v.kbMB ?? (v.kbBytes != null ? Math.round(v.kbBytes / (1024*1024)) : null);
+        return `
+        <div style="border:1px solid #e5e5e5;border-radius:10px;padding:12px;margin-bottom:10px;">
+          <strong>${p.label}</strong>
+          <label style="margin-top:8px;">Preço (€/mês${p.key==='lifetime'?', só para referência':''})</label>
+          <input id="price_${p.key}" type="number" min="0" step="0.01" value="${v.price ?? 0}">
+          <div class="row">
+            <div style="flex:1;">
+              <label>Membros de equipa</label>
+              <input id="staff_${p.key}" type="number" min="0" placeholder="sem limite" value="${v.staff ?? ''}">
+            </div>
+            <div style="flex:1;">
+              <label>Armazenamento (MB)</label>
+              <input id="kb_${p.key}" type="number" min="0" placeholder="sem limite" value="${kbMB ?? ''}">
+            </div>
+            <div style="flex:1;">
+              <label>Pacientes no Portal</label>
+              <input id="portal_${p.key}" type="number" min="0" placeholder="sem limite" value="${v.portalPatients ?? ''}">
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+      <button class="primary" onclick="savePlanCatalog()">Guardar catálogo</button>
+    </div>
+  `;
+}
+
+window.savePlanCatalog = async function(){
+  const plans = ['start','grow','pro','enterprise','lifetime'];
+  const data = {};
+  plans.forEach(k => {
+    const price = parseFloat(document.getElementById(`price_${k}`).value);
+    const staffVal = document.getElementById(`staff_${k}`).value;
+    const kbVal = document.getElementById(`kb_${k}`).value;
+    const portalVal = document.getElementById(`portal_${k}`).value;
+    data[k] = {
+      price: Number.isFinite(price) ? price : 0,
+      staff: staffVal === '' ? null : parseInt(staffVal, 10),
+      kbBytes: kbVal === '' ? null : parseInt(kbVal, 10) * 1024 * 1024,
+      portalPatients: portalVal === '' ? null : parseInt(portalVal, 10)
+    };
+  });
+  await setDoc(doc(db, 'settings', 'plans'), data, { merge: true });
+  toast('Catálogo de planos guardado — já se aplica a todos os subscritores.');
+};
+
+// ── SAÚDE DO SISTEMA — verificações automáticas, para saber sozinha se
+// algo está com problemas, sem precisar de perguntar a ninguém.
+const NETLIFY_FUNCTIONS_BASE = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/';
+const HEALTH_FUNCTIONS = ['patientPortal', 'staffJoinRequest', 'selfActivateTrial', 'activateTenant', 'activateStaff', 'suspendStaffMember', 'syncCalendarEvent'];
+
+async function renderSystemHealth(main){
+  main.innerHTML = `
+    <h2>🩺 Saúde do Sistema</h2>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px;">Verificações automáticas às partes técnicas da Vindora. 🟢 significa que está a responder normalmente; 🔴 significa que precisa de atenção — normalmente resolve-se ao confirmar se o último ficheiro foi mesmo publicado corretamente.</p>
+      <button class="primary" onclick="runSystemHealthChecks()">🔄 Verificar agora</button>
+    </div>
+    <div id="healthResults"></div>
+  `;
+  runSystemHealthChecks();
+}
+
+window.runSystemHealthChecks = async function(){
+  const resultsEl = document.getElementById('healthResults');
+  resultsEl.innerHTML = '<div class="card"><p class="muted">A verificar…</p></div>';
+  const checks = [];
+
+  // 1) Base de dados (Firestore) — escreve e lê um registo de teste.
+  try{
+    const testRef = doc(db, 'settings', 'healthCheck');
+    await setDoc(testRef, { lastCheckedAt: serverTimestamp(), by: 'admin' });
+    const snap = await getDoc(testRef);
+    checks.push({ name: 'Base de dados (Firestore)', ok: snap.exists(), detail: 'Escrita e leitura confirmadas.' });
+  }catch(e){
+    checks.push({ name: 'Base de dados (Firestore)', ok: false, detail: 'Erro: ' + (e.message||e) });
+  }
+
+  // 2) Site público em direto — confirma que o domínio responde e lê a
+  // versão publicada, para saber se o último upload foi mesmo aplicado.
+  try{
+    const res = await fetch('https://vindora.pt/saudecare-core.html?_=' + Date.now(), { cache: 'no-store' });
+    const html = await res.text();
+    const match = html.match(/const APP_VERSION = '([^']+)'/);
+    checks.push({ name: 'Site público (vindora.pt)', ok: res.ok, detail: res.ok ? `Em linha — versão publicada: ${match ? match[1] : 'desconhecida'}` : `Respondeu com erro ${res.status}` });
+  }catch(e){
+    checks.push({ name: 'Site público (vindora.pt)', ok: false, detail: 'Não foi possível contactar o site — pode ser um problema de DNS/HTTPS.' });
+  }
+
+  // 3) Funções serverless (Netlify) — uma chamada leve a cada uma; o que
+  // importa é que respondam alguma coisa (mesmo um erro 400 conta como
+  // "viva"), o preocupante é não responder rigorosamente nada.
+  for (const fn of HEALTH_FUNCTIONS){
+    try{
+      const res = await fetch(NETLIFY_FUNCTIONS_BASE + fn, { method: 'OPTIONS' });
+      checks.push({ name: `Função: ${fn}`, ok: res.status < 500, detail: `Respondeu (código ${res.status}).` });
+    }catch(e){
+      checks.push({ name: `Função: ${fn}`, ok: false, detail: 'Sem resposta — pode estar em baixo ou mal configurada.' });
+    }
+  }
+
+  const allOk = checks.every(c => c.ok);
+  resultsEl.innerHTML = `
+    <div class="card" style="border:1.5px solid ${allOk ? '#3f8a5f' : '#b3413a'};margin-bottom:12px;">
+      <strong style="color:${allOk ? '#1f6d3f' : '#8a2e20'};">${allOk ? '✅ Tudo a funcionar normalmente' : '⚠️ Há algo a precisar de atenção'}</strong>
+      <p class="muted" style="margin-top:4px;">Última verificação: ${new Date().toLocaleString('pt-PT')}</p>
+    </div>
+    <div class="card">
+      ${checks.map(c => `
+        <div class="tenant-item">
+          <div class="row"><span>${c.ok ? '🟢' : '🔴'} <strong>${escapeHtml(c.name)}</strong></span></div>
+          <div class="muted" style="font-size:12.5px;">${escapeHtml(c.detail)}</div>
+        </div>`).join('')}
+    </div>
+  `;
+};
 
 function renderNewTenant(main){
   main.innerHTML = `
