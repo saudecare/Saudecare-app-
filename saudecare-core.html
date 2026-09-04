@@ -297,7 +297,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-68';
+const APP_VERSION = '2026-09-02-69';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2485,7 +2485,10 @@ function showPatientOverlay(title, bodyHtml){
   document.body.appendChild(overlay);
 }
 
+let __patientMsgPollTimer = null;
+
 window.closePatientOverlay = function(){
+  if (__patientMsgPollTimer){ clearInterval(__patientMsgPollTimer); __patientMsgPollTimer = null; }
   document.getElementById('patientOverlay')?.remove();
 };
 
@@ -2821,6 +2824,14 @@ async function renderPatientMessages(patientId){
     </div>`;
   restoreAutosaveField('patientMsgInput');
   unreadDocs.forEach(ref => updateDoc(ref, { readByProfessional: true }).catch(()=>{}));
+
+  // Verifica mensagens novas a cada 5 segundos enquanto a ficha estiver
+  // aberta — evita ter de fechar e reabrir para ver o que chegou.
+  if (__patientMsgPollTimer) clearInterval(__patientMsgPollTimer);
+  __patientMsgPollTimer = setInterval(() => {
+    if (document.getElementById('patientMessagesBox')) renderPatientMessages(patientId);
+    else clearInterval(__patientMsgPollTimer);
+  }, 5000);
 }
 
 window.sendPatientMessage = async function(patientId){
