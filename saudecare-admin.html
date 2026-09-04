@@ -82,6 +82,7 @@
     <button data-view="overview" class="active">📊 Visão geral</button>
     <button data-view="tenants">🏢 Subscritores</button>
     <button data-view="newTenant">➕ Novo subscritor</button>
+    <button data-view="announcements">📢 Avisos</button>
     <button data-view="logout" style="margin-top:20px;color:#f2b8b8;">Sair</button>
   </nav>
   <main id="mainView"></main>
@@ -96,7 +97,7 @@ import {
   createUserWithEmailAndPassword, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
+  getFirestore, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc,
   query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -200,6 +201,7 @@ function renderView(view){
   if (view === 'overview') renderOverview(main);
   else if (view === 'tenants') renderTenants(main);
   else if (view === 'newTenant') renderNewTenant(main);
+  else if (view === 'announcements') renderAnnouncements(main);
 }
 
 async function loadAllTenants(){
@@ -459,6 +461,52 @@ window.deleteTenant = async function(tenantId){
 };
 
 // ── NOVO SUBSCRITOR ──────────────────────────────────────────────────
+// ── AVISOS À PLATAFORMA ──────────────────────────────────────────────
+// Mensagem visível a todos os subscritores (dono e equipa), usada para
+// avisos importantes — ex: alteração de sub-processadores no Acordo de
+// Processamento de Dados, manutenções, etc. Guardada num único
+// documento (settings/platformAnnouncement), lido por qualquer conta
+// autenticada, mas só escrito por administradores da plataforma.
+async function renderAnnouncements(main){
+  const snap = await getDoc(doc(db, 'settings', 'platformAnnouncement'));
+  const current = snap.exists() ? snap.data() : null;
+
+  main.innerHTML = `
+    <h2>📢 Avisos à Plataforma</h2>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px;">A mensagem abaixo aparece a todos os subscritores (dono e equipa) na página inicial da app, com um botão para confirmarem que leram. Use para avisos importantes — ex: mudança de fornecedor no Acordo de Processamento de Dados, manutenção agendada, etc.</p>
+      ${current?.active ? `<div class="badge active" style="margin-bottom:10px;">🟢 Aviso ativo agora</div>` : `<div class="badge" style="margin-bottom:10px;">⚪ Sem aviso ativo</div>`}
+      <label>Mensagem</label>
+      <textarea id="announcementText" rows="5" placeholder="Ex: A partir de 15/10/2026, a Vindora vai mudar de fornecedor de armazenamento de X para Y. Se se opuser a esta alteração, contacte-nos em vindoraportugal@gmail.com até essa data.">${current ? escapeHtml(current.text||'') : ''}</textarea>
+      <div class="row">
+        <button class="primary" onclick="publishAnnouncement()">Publicar aviso</button>
+        ${current?.active ? `<button class="danger" onclick="deactivateAnnouncement()">Retirar aviso atual</button>` : ''}
+      </div>
+      ${current?.publishedAt ? `<p class="muted" style="margin-top:10px;">Publicado em: ${current.publishedAt.toDate ? current.publishedAt.toDate().toLocaleString('pt-PT') : ''}</p>` : ''}
+    </div>
+  `;
+}
+
+window.publishAnnouncement = async function(){
+  const text = document.getElementById('announcementText').value.trim();
+  if (!text){ toast('Escreva a mensagem do aviso.', true); return; }
+  await setDoc(doc(db, 'settings', 'platformAnnouncement'), {
+    text,
+    active: true,
+    id: String(Date.now()), // muda sempre que publica de novo, para reaparecer mesmo a quem já tinha lido um aviso anterior
+    publishedAt: serverTimestamp()
+  });
+  toast('Aviso publicado — já visível para todos os subscritores.');
+  renderView('announcements');
+};
+
+window.deactivateAnnouncement = async function(){
+  if (!confirm('Retirar o aviso atual? Deixa de aparecer a quem ainda não o leu.')) return;
+  await updateDoc(doc(db, 'settings', 'platformAnnouncement'), { active: false });
+  toast('Aviso retirado.');
+  renderView('announcements');
+};
+
 function renderNewTenant(main){
   main.innerHTML = `
     <h2>Criar novo subscritor</h2>

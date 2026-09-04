@@ -206,7 +206,15 @@
       <input id="regEmail" type="email" autocomplete="username">
       <label>Palavra-passe</label>
       <input id="regPass" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres">
-      <button class="primary" style="width:100%" onclick="doRegister()">Criar conta e começar período de teste</button>
+      <details style="margin:10px 0;">
+        <summary style="cursor:pointer;color:var(--primary);">Ler o Acordo de Processamento de Dados (RGPD)</summary>
+        <div id="dpaTextBoxRegister" style="max-height:180px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;margin-top:8px;">A carregar…</div>
+      </details>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
+        <input type="checkbox" id="regDpaCheckbox" style="width:auto;margin-top:3px;">
+        <span>Li e aceito o Acordo de Processamento de Dados. Compreendo que, ao usar a Vindora, sou eu quem decide que dados de pacientes recolho, e sou responsável por cumprir o RGPD perante os meus próprios pacientes.</span>
+      </label>
+      <button class="primary" style="width:100%;margin-top:10px;" onclick="doRegister()">Criar conta e começar período de teste</button>
       <p id="registerError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
     </div>
 
@@ -297,7 +305,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-79';
+const APP_VERSION = '2026-09-02-82';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -755,6 +763,7 @@ window.doRegister = async function(){
   if (!businessName){ errEl.textContent = 'Indique o nome do consultório/prática.'; return; }
   if (!email){ errEl.textContent = 'Indique o seu email.'; return; }
   if (pass.length < 6){ errEl.textContent = 'A palavra-passe precisa de ter pelo menos 6 caracteres.'; return; }
+  if (!document.getElementById('regDpaCheckbox').checked){ errEl.textContent = 'Precisa de aceitar o Acordo de Processamento de Dados antes de continuar.'; return; }
 
   window.__justRegistered = true;
   let uid;
@@ -801,6 +810,8 @@ window.doRegister = async function(){
       ownerUid: uid,
       ownerEmail: email,
       profile: { email },
+      dpaAcceptedAt: serverTimestamp(),
+      dpaVersion: DPA_VERSION,
       createdAt: serverTimestamp()
     });
 
@@ -1039,6 +1050,80 @@ window.installApp = async function(){
   } else {
     alert('Para instalar a app neste dispositivo:\n\n📱 iPhone/iPad (Safari): toque no botão Partilhar (o quadrado com a seta para cima) e escolha "Adicionar ao ecrã principal".\n\n🤖 Android/Chrome: toque no menu ⋮ do navegador e escolha "Instalar app" ou "Adicionar ao ecrã principal".\n\n💻 Computador (Chrome/Edge): toque no ícone de instalação que aparece do lado direito da barra de endereço.');
   }
+};
+
+// ── Aviso da plataforma (publicado pela Vindora) — para comunicações
+// importantes, ex: mudança de sub-processador no Acordo de
+// Processamento de Dados. Cada aviso tem um id novo sempre que
+// republicado, para voltar a aparecer mesmo a quem já tinha lido um
+// aviso anterior.
+async function maybeShowPlatformAnnouncement(){
+  try{
+    const snap = await getDoc(doc(db, 'settings', 'platformAnnouncement'));
+    if (!snap.exists()) return;
+    const a = snap.data();
+    if (!a.active || !a.text) return;
+    if (localStorage.getItem('announcementDismissed') === a.id) return;
+    if (document.getElementById('platformAnnouncementBanner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'platformAnnouncementBanner';
+    banner.style.cssText = 'background:#fff8ed;border:1px solid #f0d9a8;color:#5a4a1a;padding:12px 14px;border-radius:10px;margin:0 0 14px;';
+    banner.innerHTML = `
+      <strong>📢 Aviso da Vindora</strong>
+      <p style="margin-top:4px;white-space:pre-wrap;">${escapeHtml(a.text)}</p>
+      <button onclick="dismissPlatformAnnouncement('${a.id}')" style="margin-top:8px;background:#5a4a1a;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;">Entendi</button>
+    `;
+    const main = document.getElementById('mainView');
+    main?.prepend(banner);
+  }catch(e){ /* falha silenciosa — nunca deve travar a página inicial */ }
+}
+
+window.dismissPlatformAnnouncement = function(id){
+  localStorage.setItem('announcementDismissed', id);
+  document.getElementById('platformAnnouncementBanner')?.remove();
+};
+
+// ── Pedido de aceitação do Acordo de Processamento de Dados, para quem
+// já tinha conta antes desta funcionalidade existir. Só o dono do
+// consultório vê isto (é quem assina o acordo pelo negócio) — bloqueia
+// mesmo, porque é uma obrigação legal, não um lembrete opcional.
+function maybeShowDpaGate(){
+  if (tenantRole !== 'owner') return;
+  if (currentTenantDoc?.dpaAcceptedAt) return;
+  if (document.getElementById('dpaGateOverlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'dpaGateOverlay';
+  overlay.className = 'patientOverlay';
+  overlay.innerHTML = `
+    <div class="patientOverlayHeader"><strong>📄 Acordo de Processamento de Dados</strong></div>
+    <div class="patientOverlayBody">
+      <div class="card">
+        <p class="muted" style="margin-bottom:10px;">Como a Vindora trata dados de pacientes (incluindo dados de saúde) por sua conta, a lei (RGPD, Artigo 28º) exige um acordo escrito entre si e a Vindora sobre esse tratamento. Precisa de o aceitar para continuar a usar a app.</p>
+        <div style="max-height:300px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;margin-bottom:10px;">${escapeHtml(DPA_TEXT)}</div>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
+          <input type="checkbox" id="dpaGateCheckbox" style="width:auto;margin-top:3px;">
+          <span>Li e aceito o Acordo de Processamento de Dados.</span>
+        </label>
+        <button class="primary" style="width:100%;margin-top:12px;" onclick="acceptDpaGate()">Aceitar e continuar</button>
+        <p id="dpaGateError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+window.acceptDpaGate = async function(){
+  const errEl = document.getElementById('dpaGateError');
+  if (!document.getElementById('dpaGateCheckbox').checked){
+    errEl.textContent = 'Marque a confirmação antes de continuar.';
+    return;
+  }
+  await updateDoc(doc(db, 'tenants', tenantId), { dpaAcceptedAt: serverTimestamp(), dpaVersion: DPA_VERSION });
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  currentTenantDoc = snap.data();
+  document.getElementById('dpaGateOverlay')?.remove();
+  toast('Acordo aceite. Obrigada!');
 };
 
 // ── Lembrete para instalar a app, dirigido sobretudo aos membros da
@@ -1544,6 +1629,8 @@ async function renderHome(main){
       ${weekHtml}
     </div>`;
   maybeShowInstallPrompt();
+  maybeShowDpaGate();
+  maybeShowPlatformAnnouncement();
 }
 
 window.goToAgendaDay = function(dayKey){
@@ -4277,6 +4364,56 @@ Autorizo o registo dos meus dados pessoais e de saúde necessários ao acompanha
 
 Compreendo que este acompanhamento não substitui o aconselhamento médico convencional quando este for necessário, e que devo procurar apoio médico sempre que sinta que a minha situação o exige.`;
 
+// ── Acordo de Processamento de Dados (RGPD, Artigo 28º) — entre a
+// Vindora (subcontratante) e cada subscritor (responsável pelo
+// tratamento). Necessário porque a Vindora trata dados de saúde de
+// pacientes por conta de cada subscritor. Este texto é um ponto de
+// partida — deve ser revisto por um advogado antes de ser considerado
+// definitivo, mas fica já a aceitação registada com prova (data/hora).
+const DPA_VERSION = 'v2-2026';
+const DPA_TEXT = `ACORDO DE PROCESSAMENTO DE DADOS PESSOAIS (RGPD, Artigo 28º)
+
+Ao criar a sua conta na Vindora, o subscritor ("Responsável pelo Tratamento") e a Vindora ("Subcontratante") celebram este acordo, nos termos do artigo 28º do Regulamento Geral sobre a Proteção de Dados (RGPD).
+
+1. OBJETO
+A Vindora processa os dados pessoais que o subscritor carrega na plataforma (incluindo dados de pacientes, que podem constituir dados de saúde — categoria especial de dados), exclusivamente para prestar o serviço de gestão de consultório contratado, durante o período em que a subscrição estiver ativa.
+
+2. INSTRUÇÕES
+A Vindora só trata estes dados de acordo com as instruções documentadas do subscritor (as ações que o próprio realiza dentro da app), e nunca para finalidades próprias.
+
+3. CONFIDENCIALIDADE
+A Vindora garante que qualquer pessoa autorizada a tratar os dados (ex: suporte técnico) está sujeita a um dever de confidencialidade.
+
+4. SEGURANÇA
+A Vindora aplica medidas técnicas e organizativas adequadas: isolamento de dados entre diferentes consultórios (cada subscritor só acede aos seus próprios dados), autenticação por conta individual, encriptação da ligação (HTTPS), e cópias de segurança do lado dos fornecedores de infraestrutura.
+
+5. SUBCONTRATANTES ADICIONAIS (SUB-PROCESSADORES)
+Para prestar o serviço, a Vindora recorre aos seguintes fornecedores, que também tratam dados nesse âmbito:
+- Google Firebase / Google Cloud (armazenamento da base de dados e autenticação)
+- Netlify (funções de acesso do Portal do Paciente)
+- Cloudinary (armazenamento de imagens e ficheiros anexados)
+Estes fornecedores estão vinculados pelas suas próprias políticas de proteção de dados e acordos de subcontratação. Ao aceitar este acordo, o subscritor autoriza genericamente o recurso a estes sub-processadores. Se a Vindora pretender adicionar ou substituir algum destes fornecedores, avisa todos os subscritores com antecedência mínima de 15 dias (através de um aviso visível dentro da própria aplicação), dando oportunidade de oposição nesse prazo. Se um subscritor se opuser, a Vindora não usará o novo fornecedor para tratar os dados desse subscritor em particular — podendo, nesse caso, ou manter a solução anterior só para ele, ou o subscritor optar por cancelar a subscrição sem qualquer penalização. A oposição de um subscritor não impede a alteração para os restantes.
+
+6. RETENÇÃO E ELIMINAÇÃO DE DADOS
+A Vindora mantém os dados enquanto a subscrição estiver ativa. Após o cancelamento ou términus da subscrição, os dados são eliminados dos sistemas ativos da Vindora num prazo de 30 dias, salvo pedido de exportação feito pelo subscritor antes desse prazo, ou obrigação legal que exija prazo diferente. A decisão de quanto tempo cada tipo de dado deve ser conservado enquanto a subscrição está ativa (ex: processos clínicos, faturação) é do subscritor, como responsável pelo tratamento — nomeadamente teria de ponderar prazos legais ou de referência do seu setor (ex: a prática comum em processos clínicos é de cerca de 5 anos após o último registo, podendo ir até 20 anos por motivos de prescrição civil, mas isto deve ser confirmado com aconselhamento jurídico próprio).
+
+7. ASSISTÊNCIA AO RESPONSÁVEL
+A Vindora presta apoio razoável ao subscritor para responder a pedidos de titulares de dados (acesso, retificação, eliminação) e para cumprir as suas obrigações de segurança e notificação.
+
+8. VIOLAÇÕES DE DADOS
+Em caso de violação de segurança que afete dados pessoais, a Vindora notifica o subscritor sem atraso injustificado.
+
+9. DURAÇÃO
+Este acordo mantém-se em vigor enquanto a subscrição estiver ativa, e nas obrigações de confidencialidade e eliminação, mesmo após o término.
+
+10. ACEITAÇÃO
+Ao criar a conta, o subscritor aceita eletronicamente este acordo, ficando essa aceitação registada com data e hora, como prova de conformidade com o artigo 28º do RGPD.`;
+
+(function fillDpaTextBox(){
+  const el = document.getElementById('dpaTextBoxRegister');
+  if (el) el.textContent = DPA_TEXT;
+})();
+
 // ── PROTOCOLOS (métodos de atendimento personalizados) ─────────────────
 // Dois tipos: "simples" (lista plana de pontos, como já existia) e
 // "mapeamento" (grupos de pontos organizados por sistema, com zonas do
@@ -6736,11 +6873,18 @@ function renderSettings(main){
   const backBtn = `<button class="ghost" onclick="closeSettingsSection()">← Voltar às categorias</button>`;
   let inner = '';
   if (__settingsSection === 'plano'){
+    const dpaDate = currentTenantDoc?.dpaAcceptedAt?.toDate ? currentTenantDoc.dpaAcceptedAt.toDate().toLocaleDateString('pt-PT') : null;
     inner = `
       <h2>📊 Plano & Estado</h2>
       <p class="muted">Plano atual: <strong>${escapeHtml(currentTenantDoc?.plan||'—')}</strong></p>
       <p class="muted">Estado: <strong>${escapeHtml(currentTenantDoc?.status||'—')}</strong></p>
       <p class="muted" style="margin-top:10px;">Para alterar nome, logótipo, cores, contactos e equipa, use a aba <strong>Perfil</strong>.</p>
+      <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
+      <p class="muted">${dpaDate ? `📄 Acordo de Processamento de Dados aceite em ${dpaDate}.` : '📄 Acordo de Processamento de Dados ainda não aceite.'}</p>
+      <details style="margin-top:8px;">
+        <summary style="cursor:pointer;color:var(--primary);">Ver texto do Acordo</summary>
+        <div id="dpaTextBoxSettings" style="max-height:220px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;margin-top:8px;">${escapeHtml(DPA_TEXT)}</div>
+      </details>
     `;
   } else if (__settingsSection === 'backup'){
     inner = `
