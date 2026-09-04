@@ -297,7 +297,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-74';
+const APP_VERSION = '2026-09-02-78';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -465,6 +465,22 @@ async function uploadImageFile(file, pathPrefix){
   return data.secure_url;
 }
 
+async function uploadDocumentFile(file, pathPrefix){
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  formData.append('folder', pathPrefix);
+  // "auto" deteta sozinho se é PDF, imagem, etc. — ao contrário do upload
+  // de fotos (que só aceita imagens), aqui também precisamos de PDFs.
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+    method: 'POST',
+    body: formData
+  });
+  if (!res.ok) throw new Error('Falha no upload do documento.');
+  const docData = await res.json();
+  return docData.secure_url;
+}
+
 // Gera o HTML de um campo de imagem "duas vias": link colado à mão OU
 // escolher/tirar uma foto do telemóvel, PC, ou nuvem/Drive (o seletor de
 // ficheiros do sistema operativo já mostra essas origens sozinho).
@@ -508,7 +524,35 @@ window.handleImageUpload = async function(fileInputEl, targetInputId, pathPrefix
   fileInputEl.value = '';
 };
 
-// ── Auth ─────────────────────────────────────────────────────────────
+window.attachInvoiceToAppointment = async function(fileInputEl, appointmentId, patientId){
+  const file = fileInputEl.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024){ toast('Ficheiro demasiado grande — escolha um até 10MB.', true); return; }
+  toast('A enviar fatura…');
+  try{
+    const url = await uploadDocumentFile(file, `tenants/${tenantId}/invoices`);
+    await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { invoiceUrl: url });
+    toast('Fatura anexada.');
+    viewPatient(patientId);
+  }catch(e){
+    console.error(e);
+    toast('Não foi possível enviar a fatura. Tente novamente.', true);
+  }
+  fileInputEl.value = '';
+};
+
+window.sendInvoiceToPatient = function(invoiceUrl, phone, patientName, channel){
+  const text = `Olá ${patientName}! Aqui está a sua fatura: ${invoiceUrl}`;
+  let digits = (phone||'').replace(/\D/g, '');
+  if (digits.length === 9) digits = '351' + digits;
+  if (channel === 'sms'){
+    window.open(`sms:${digits}?body=${encodeURIComponent(text)}`, '_blank');
+  } else {
+    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`, '_blank');
+  }
+};
+
+
 window.doLogin = async function(){
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPass').value;
@@ -1342,6 +1386,10 @@ async function renderFinances(main){
 
   main.innerHTML = `
     <h2>Finanças</h2>
+    <div class="card" style="background:#fff8ed;border:1px solid #f0d9a8;">
+      <strong style="color:#8a5a00;">⚠️ Isto não é um documento fiscal.</strong>
+      <p class="muted" style="margin-top:4px;">Estes valores são só um registo interno de controlo de pagamentos — <strong>não substituem a fatura/recibo</strong>. Por lei, em Portugal precisa de emitir os seus documentos através de um software de faturação certificado pela Autoridade Tributária (ex: Portal das Finanças, Vendus, InvoiceXpress, Moloni). Confirme com o seu contabilista qual se aplica ao seu caso.</p>
+    </div>
     ${hintBox('Resumo de pagamentos das suas marcações. Os valores vêm do preço definido em cada marcação — atualize o estado do pagamento na Agenda ou aqui mesmo.')}
     <div class="row" style="margin-bottom:10px;">
       <button class="ghost" onclick="changeFinancesMonth(-1)">‹</button>
@@ -2186,6 +2234,12 @@ window.markAppointmentPaid = async function(appointmentId){
   renderView('agenda');
 };
 
+window.markAppointmentPaidFromPatient = async function(appointmentId, patientId){
+  await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { paymentStatus: 'paid' });
+  toast('Marcado como pago.');
+  viewPatient(patientId);
+};
+
 window.cancelAppointment = async function(appointmentId){
   if (!confirm('Cancelar esta marcação? Fica registada como cancelada, não é apagada.')) return;
   const existingSnap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
@@ -2224,12 +2278,23 @@ async function renderPatients(main){
   window.__allPatientsCache = [];
   snap.forEach(d => window.__allPatientsCache.push({ id: d.id, ...d.data() }));
 
+  // Saldo em dívida por paciente — uma só leitura de todas as marcações,
+  // em vez de uma leitura extra por cada paciente da lista.
+  const apptsSnap = await getDocs(collection(db, 'tenants', tenantId, 'appointments'));
+  const owedByPatient = {};
+  apptsSnap.forEach(ad => {
+    const a = ad.data();
+    if (a.status === 'cancelled' || !a.price || a.paymentStatus === 'paid' || !a.patientId) return;
+    owedByPatient[a.patientId] = (owedByPatient[a.patientId] || 0) + a.price;
+  });
+  window.__allPatientsCache.forEach(p => { p.totalOwed = owedByPatient[p.id] || 0; });
+
   main.innerHTML = `
     <div class="row"><h2>Pacientes</h2>
       <button class="primary" onclick="openNewPatient()">+ Novo paciente</button>
     </div>
     ${hintBox('A sua lista de clientes/pacientes, de A a Z. Guarde o consentimento RGPD de cada um antes de registar dados sensíveis — é obrigatório por lei.')}
-    <input id="patientSearchInput" placeholder="🔍 Pesquisar por nome, telefone ou email…" oninput="filterPatientsList()" style="margin-bottom:10px;">
+    <input id="patientSearchInput" placeholder="🔍 Pesquisar por nome, telefone, email ou NIF…" oninput="filterPatientsList()" style="margin-bottom:10px;">
     <div class="card" id="patientsListBox"></div>
   `;
   renderPatientsListRows(window.__allPatientsCache);
@@ -2240,15 +2305,16 @@ function renderPatientsListRows(list){
   if (!box) return;
   let rows = '';
   list.forEach(p => {
-    rows += `<div class="patient-item row">
-      <div style="cursor:pointer;flex:1;" onclick="viewPatient('${p.id}')">
+    const avatar = p.photoUrl
+      ? `<img src="${escapeAttrJs(p.photoUrl)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none';">`
+      : `<div style="width:44px;height:44px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">${escapeHtml((p.fullName||'?').trim()[0]||'?').toUpperCase()}</div>`;
+    rows += `<div class="patient-item row" style="align-items:center;gap:10px;cursor:pointer;" onclick="viewPatient('${p.id}')">
+      ${avatar}
+      <div style="flex:1;">
         <strong>${escapeHtml(p.fullName)}</strong>
-        <div class="muted">${escapeHtml(p.phone||'')} ${p.consentGivenAt ? '· consentimento registado' : '· <span style=\"color:var(--danger)\">sem consentimento</span>'}</div>
+        <div class="muted" style="font-size:12.5px;">${escapeHtml(p.phone||'')} ${p.consentGivenAt ? '' : '· <span style=\"color:var(--danger)\">sem consentimento</span>'}</div>
       </div>
-      <div>
-        <button class="ghost" onclick="viewPatient('${p.id}')">Ver ficha</button>
-        <button class="danger" onclick="deletePatient('${p.id}','${escapeHtml(p.fullName)}')">Apagar</button>
-      </div>
+      ${p.totalOwed > 0 ? `<span class="badge" style="background:#fdf2f0;color:#b3413a;">${p.totalOwed.toFixed(2)}€</span>` : ''}
     </div>`;
   });
   box.innerHTML = rows || '<p class="muted">Ainda sem pacientes.</p>';
@@ -2258,7 +2324,7 @@ window.filterPatientsList = function(){
   const q = stripAccents(document.getElementById('patientSearchInput').value.trim());
   if (!q){ renderPatientsListRows(window.__allPatientsCache); return; }
   const filtered = window.__allPatientsCache.filter(p => {
-    const haystack = stripAccents(`${p.fullName||''} ${p.phone||''} ${p.email||''}`);
+    const haystack = stripAccents(`${p.fullName||''} ${p.phone||''} ${p.email||''} ${p.nif||''}`);
     return haystack.includes(q);
   });
   renderPatientsListRows(filtered);
@@ -2438,6 +2504,7 @@ window.editPatient = async function(patientId){
         <button class="primary" onclick="updatePatient('${patientId}')">Guardar alterações</button>
         <button class="ghost" onclick="viewPatient('${patientId}')">Cancelar</button>
       </div>
+      <button class="danger" style="width:100%;margin-top:10px;" onclick="deletePatient('${patientId}','${escapeAttrJs(p.fullName||'')}')">🗑 Apagar este paciente</button>
     </div>`);
   refreshPatientAttachmentsList();
 };
@@ -2627,6 +2694,50 @@ window.viewPatient = async function(patientId){
   });
   if (!formRespHtml) formRespHtml = '<p class="muted">Ainda sem fichas respondidas para este paciente.</p>';
 
+  // Resumo de pagamentos deste paciente — quanto está em dívida e de que
+  // marcações, sem ter de ir procurar em Finanças.
+  const apptsForPatientSnap = await getDocs(query(
+    collection(db, 'tenants', tenantId, 'appointments'),
+    where('patientId', '==', patientId)
+  ));
+  let totalOwed = 0;
+  let paymentsHtml = '';
+  let invoicesHtml = '';
+  apptsForPatientSnap.forEach(ad => {
+    const a = ad.data();
+    if (a.status === 'cancelled' || !a.price) return;
+    const date = a.startsAt?.toDate ? a.startsAt.toDate().toLocaleDateString('pt-PT', {day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+
+    if (a.paymentStatus !== 'paid'){
+      totalOwed += a.price;
+      const statusLabel = a.paymentStatus === 'partial' ? 'Parcial' : 'Pendente';
+      paymentsHtml += `<div class="appt-item row">
+        <div><strong>${date}</strong> — ${escapeHtml(a.serviceName||'')}<div class="muted">${statusLabel} · ${a.price}€</div></div>
+        <button class="ghost" onclick="markAppointmentPaidFromPatient('${ad.id}','${patientId}')">💶 Marcar pago</button>
+      </div>`;
+    }
+
+    if (a.invoiceUrl){
+      invoicesHtml += `<div class="appt-item">
+        <div><strong>${date}</strong> — ${escapeHtml(a.serviceName||'')}<div class="muted">${a.price}€</div></div>
+        <div class="row" style="margin-top:6px;flex-wrap:wrap;">
+          <a href="${escapeAttrJs(a.invoiceUrl)}" target="_blank" rel="noopener"><button class="ghost" type="button">📄 Ver fatura</button></a>
+          ${p.phone ? `<button class="ghost" onclick="sendInvoiceToPatient('${escapeAttrJs(a.invoiceUrl)}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','whatsapp')">📱 Enviar WhatsApp</button>` : ''}
+          ${p.phone ? `<button class="ghost" onclick="sendInvoiceToPatient('${escapeAttrJs(a.invoiceUrl)}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','sms')">💬 Enviar SMS</button>` : ''}
+        </div>
+      </div>`;
+    } else {
+      invoicesHtml += `<div class="appt-item">
+        <div><strong>${date}</strong> — ${escapeHtml(a.serviceName||'')}<div class="muted">${a.price}€ · sem fatura anexada</div></div>
+        <label class="ghost" style="display:inline-block;margin-top:6px;padding:6px 12px;border-radius:8px;cursor:pointer;">
+          📎 Anexar fatura (PDF)
+          <input type="file" accept="application/pdf,image/*" style="display:none;" onchange="attachInvoiceToAppointment(this,'${ad.id}','${patientId}')">
+        </label>
+      </div>`;
+    }
+  });
+  if (!invoicesHtml) invoicesHtml = '<p class="muted">Ainda sem marcações com preço para faturar.</p>';
+
   const customFieldsHtml = (p.customFields||[]).length
     ? (p.customFields||[]).map(f => `<p class="muted"><strong>${escapeHtml(f.label)}:</strong> ${escapeHtml(f.value)}</p>`).join('')
     : '';
@@ -2645,6 +2756,14 @@ window.viewPatient = async function(patientId){
         <button class="ghost" onclick="editPatient('${patientId}')">✏️ Editar</button>
       </div>
       <p class="muted">${escapeHtml(p.phone||'')} · ${escapeHtml(p.email||'')}</p>
+      ${totalOwed > 0 ? `
+      <div style="margin-top:10px;padding:10px 12px;background:#fdf2f0;border:1px solid #f0c9c2;border-radius:10px;">
+        <strong style="color:#b3413a;">💶 Valor em dívida: ${totalOwed.toFixed(2)}€</strong>
+        <p class="muted" style="margin-top:4px;font-size:11.5px;">Registo interno — não é fatura/recibo. Emita o documento fiscal através do seu software certificado.</p>
+      </div>` : `
+      <div style="margin-top:10px;padding:8px 12px;background:#eef6f2;border-radius:10px;">
+        <span class="muted">✅ Sem valores em dívida.</span>
+      </div>`}
       ${customFieldsHtml}
       <label style="margin-top:10px;">Notas clínicas</label>
       <textarea rows="5" readonly>${escapeHtml(p.clinicalNotes||'')}</textarea>
@@ -2673,6 +2792,15 @@ window.viewPatient = async function(patientId){
       <div id="patientCheckinsBox"></div>
     </div>
     <div id="sendFormContainer"></div>
+    <div class="card">
+      <h2>💶 Pagamentos em dívida</h2>
+      ${paymentsHtml || '<p class="muted">Sem marcações por pagar.</p>'}
+    </div>
+    <div class="card">
+      <h2>🧾 Faturas</h2>
+      <p class="muted" style="margin-bottom:8px;">A Vindora não emite faturas/recibos com valor fiscal. Faça a fatura no seu software certificado (Portal das Finanças, Moloni, Vendus, etc.) e anexe aqui o PDF, para poder enviar ao paciente com um toque.</p>
+      ${invoicesHtml}
+    </div>
     <div class="card">
       <h2>Pacotes de sessões</h2>
       ${hintBox('Para vender um conjunto de sessões de uma vez (ex: "5 sessões por 200€"). Ao marcar uma consulta, pode escolher consumir uma sessão de um pacote em vez de cobrar à parte.')}

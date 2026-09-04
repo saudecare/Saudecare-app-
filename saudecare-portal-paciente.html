@@ -7,6 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Portal do Paciente</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="manifest" id="dynamicManifest" href="manifest.json">
 <link rel="apple-touch-icon" id="appleTouchIcon" href="">
 <style>
@@ -99,6 +100,41 @@ function escapeHtml(s){
   if (s == null) return '';
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+function escapeAttrJs(str){
+  return escapeHtml(str).replace(/'/g, "\\'");
+}
+
+window.downloadPaymentProof = function(serviceName, dateStr, price){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const business = portalData?.businessName || 'Vindora';
+  const patientName = portalData?.patientName || '';
+  let y = 60;
+
+  doc.setFontSize(16);
+  doc.text('Comprovativo de Pagamento', 40, y); y += 30;
+
+  doc.setFontSize(11);
+  doc.setTextColor(150, 60, 40);
+  doc.text('Este documento NÃO é fatura, fatura-recibo nem qualquer documento fiscal.', 40, y); y += 16;
+  doc.text('Serve apenas como confirmação interna de pagamento.', 40, y); y += 30;
+
+  doc.setTextColor(20, 30, 25);
+  doc.setFontSize(12);
+  doc.text(`Consultório: ${business}`, 40, y); y += 20;
+  doc.text(`Paciente: ${patientName}`, 40, y); y += 20;
+  doc.text(`Serviço: ${serviceName || '-'}`, 40, y); y += 20;
+  doc.text(`Data da consulta: ${dateStr}`, 40, y); y += 20;
+  doc.text(`Valor pago: ${price}€`, 40, y); y += 20;
+  doc.text(`Emitido em: ${new Date().toLocaleString('pt-PT')}`, 40, y); y += 40;
+
+  doc.setFontSize(10);
+  doc.setTextColor(120, 120, 120);
+  doc.text('Se precisar de fatura para efeitos fiscais, contacte o seu terapeuta diretamente.', 40, y);
+
+  doc.save(`comprovativo-pagamento-${dateStr.replace(/[/,: ]/g,'-')}.pdf`);
+};
 
 async function callPortal(action, extra){
   const res = await fetch(FUNCTION_URL, {
@@ -351,11 +387,17 @@ function renderPortalSection(name){
   let inner = '';
 
   if (name === 'appointments'){
+    const paymentBadge = (a) => {
+      if (!a.price) return '';
+      const label = a.paymentStatus === 'paid' ? '✅ Pago' : (a.paymentStatus === 'partial' ? '🟡 Parcial' : '🔴 Pendente');
+      return `<div class="muted" style="margin-top:2px;">${label} · ${a.price}€</div>`;
+    };
     const upcomingHtml = data.upcoming.length
       ? data.upcoming.map(a => `
         <div class="appt">
           <strong>${formatDateTime(a.startsAt)}</strong>
           <span class="muted">${escapeHtml(a.serviceName||'')} ${a.local==='online' ? '· 💻 Online' : ''}</span>
+          ${paymentBadge(a)}
         </div>`).join('')
       : '<p class="muted">Sem marcações agendadas.</p>';
 
@@ -364,6 +406,8 @@ function renderPortalSection(name){
         <div class="appt">
           <strong>${formatDateTime(a.startsAt)}</strong>
           <span class="muted">${escapeHtml(a.serviceName||'')}</span>
+          ${paymentBadge(a)}
+          ${a.price && a.paymentStatus === 'paid' ? `<button class="ghost" style="margin-top:6px;" onclick="downloadPaymentProof('${escapeAttrJs(a.serviceName||'')}','${escapeAttrJs(formatDateTime(a.startsAt))}',${a.price})">📥 Descarregar comprovativo</button>` : ''}
         </div>`).join('')
       : '<p class="muted">Ainda sem consultas anteriores.</p>';
 
