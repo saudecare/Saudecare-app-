@@ -305,7 +305,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-84';
+const APP_VERSION = '2026-09-02-87';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4614,8 +4614,89 @@ async function renderProtocols(main){
       Em ambos, pode acrescentar perguntas antes, durante ou depois do atendimento, e a app gera um relatório automático no fim. Diferente de "Fichas" (questionário enviado à parte, sem estar numa consulta) e "Serviços" (o que vende, com preço e duração).`)}
     <div class="card">${rows}</div>
     <div id="protocolFormContainer"></div>
+    ${currentTenantDoc?.privateMethodsEligible ? `
+    <div class="card" style="border:1.5px dashed var(--primary);margin-top:14px;">
+      <h3 style="margin-bottom:6px;">🔒🧘 Ansiedade e Depressão — Acesso Privado</h3>
+      <p class="muted" style="margin-bottom:8px;">Tem formação numa técnica específica de acompanhamento para ansiedade e depressão, com direitos reservados? Peça acesso, anexando o(s) certificado(s) da formação — a equipa Vindora analisa e ativa manualmente, se aplicável.</p>
+
+      <div style="max-height:160px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;margin-bottom:8px;">Este conteúdo, se ativado, é protegido por direitos de autor de terceiros. Ao pedir acesso, declara que:
+1) Tem formação e autorização própria para usar este método;
+2) Vai usá-lo apenas para o seu uso profissional exclusivo, nesta conta;
+3) Não vai partilhar, copiar, distribuir ou fornecer este conteúdo a terceiros, sob nenhuma forma;
+4) Compreende que o acesso pode ser revogado a qualquer momento se estas condições não forem respeitadas.</div>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;margin-bottom:10px;">
+        <input type="checkbox" id="pmrTermsCheckbox" style="width:auto;margin-top:3px;">
+        <span>Li e aceito estas condições.</span>
+      </label>
+
+      <label>Que método pretende?</label>
+      <input id="pmrMethodName" placeholder="ex: Acompanhamento de Ansiedade e Depressão">
+
+      <label>Certificado 1 (obrigatório) — PDF ou imagem</label>
+      <label class="ghost" style="display:block;text-align:center;padding:8px;border-radius:8px;cursor:pointer;margin-bottom:6px;">
+        📎 Escolher ficheiro
+        <input type="file" id="pmrCertFile" accept="application/pdf,image/*" style="display:none;">
+      </label>
+      <p id="pmrFileStatus" class="muted" style="margin-bottom:10px;"></p>
+
+      <label>Certificado 2 (opcional) — PDF ou imagem</label>
+      <label class="ghost" style="display:block;text-align:center;padding:8px;border-radius:8px;cursor:pointer;margin-bottom:6px;">
+        📎 Escolher ficheiro
+        <input type="file" id="pmrCertFile2" accept="application/pdf,image/*" style="display:none;">
+      </label>
+      <p id="pmrFileStatus2" class="muted" style="margin-bottom:10px;"></p>
+
+      <button class="primary" onclick="submitPrivateMethodRequest()">Enviar pedido</button>
+      <p id="pmrError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+    </div>` : ''}
   `;
+  document.getElementById('pmrCertFile')?.addEventListener('change', function(){
+    const f = this.files[0];
+    document.getElementById('pmrFileStatus').textContent = f ? `Selecionado: ${f.name}` : '';
+  });
+  document.getElementById('pmrCertFile2')?.addEventListener('change', function(){
+    const f = this.files[0];
+    document.getElementById('pmrFileStatus2').textContent = f ? `Selecionado: ${f.name}` : '';
+  });
 }
+
+window.submitPrivateMethodRequest = async function(){
+  const methodName = document.getElementById('pmrMethodName').value.trim();
+  const fileInput = document.getElementById('pmrCertFile');
+  const fileInput2 = document.getElementById('pmrCertFile2');
+  const errEl = document.getElementById('pmrError');
+  errEl.textContent = '';
+  if (!document.getElementById('pmrTermsCheckbox').checked){ errEl.textContent = 'Precisa de aceitar as condições antes de enviar.'; return; }
+  if (!methodName){ errEl.textContent = 'Indique o nome do método pretendido.'; return; }
+  const file = fileInput.files[0];
+  if (!file){ errEl.textContent = 'Anexe pelo menos um certificado da formação.'; return; }
+  if (file.size > 10 * 1024 * 1024){ errEl.textContent = 'Ficheiro demasiado grande — até 10MB.'; return; }
+  const file2 = fileInput2.files[0];
+  if (file2 && file2.size > 10 * 1024 * 1024){ errEl.textContent = 'Segundo ficheiro demasiado grande — até 10MB.'; return; }
+
+  document.getElementById('pmrFileStatus').textContent = 'A enviar…';
+  try{
+    const certUrl = await uploadDocumentFile(file, `tenants/${tenantId}/certificates`);
+    const certUrl2 = file2 ? await uploadDocumentFile(file2, `tenants/${tenantId}/certificates`) : '';
+    await addDoc(collection(db, 'privateMethodRequests'), {
+      tenantId,
+      tenantName: currentTenantDoc?.businessName || '',
+      requestedByEmail: currentUser?.email || '',
+      methodName,
+      certificateUrl: certUrl,
+      certificateUrl2: certUrl2,
+      termsAcceptedAt: serverTimestamp(),
+      status: 'pending',
+      submittedAt: serverTimestamp()
+    });
+    toast('Pedido enviado! Vamos analisar e entrar em contacto.');
+    renderView('protocols');
+  }catch(e){
+    console.error(e);
+    errEl.textContent = 'Não foi possível enviar o pedido. Tente novamente.';
+    document.getElementById('pmrFileStatus').textContent = '';
+  }
+};
 
 let protocolPointsDraft = [];
 let protocolGroupsDraft = [];

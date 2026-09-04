@@ -83,6 +83,10 @@
     <button data-view="tenants">🏢 Subscritores</button>
     <button data-view="newTenant">➕ Novo subscritor</button>
     <button data-view="announcements">📢 Avisos</button>
+    <button data-view="platformSettings">⚙️ Definições</button>
+    <button data-view="privateProtocols">🔒 Métodos Privados</button>
+    <button data-view="privateForms">🔒 Fichas Privadas</button>
+    <button data-view="methodRequests">📩 Pedidos de Acesso</button>
     <button data-view="logout" style="margin-top:20px;color:#f2b8b8;">Sair</button>
   </nav>
   <main id="mainView"></main>
@@ -98,7 +102,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc,
-  query, orderBy, serverTimestamp
+  query, orderBy, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -202,6 +206,10 @@ function renderView(view){
   else if (view === 'tenants') renderTenants(main);
   else if (view === 'newTenant') renderNewTenant(main);
   else if (view === 'announcements') renderAnnouncements(main);
+  else if (view === 'platformSettings') renderPlatformSettings(main);
+  else if (view === 'privateProtocols') renderPrivateProtocols(main);
+  else if (view === 'privateForms') renderPrivateForms(main);
+  else if (view === 'methodRequests') renderMethodRequests(main);
 }
 
 async function loadAllTenants(){
@@ -262,6 +270,16 @@ async function renderTenants(main){
     return '';
   }
 
+  function requestBadges(t){
+    let html = '';
+    if (t.subscriptionRequestedAt) html += '<span class="badge active" style="margin-left:4px;">💳 quer subscrever</span>';
+    if (t.trialExtensionRequestedAt) html += '<span class="badge" style="background:#fff3cd;color:#7a5b00;margin-left:4px;">🙋 pediu mais tempo</span>';
+    return html;
+  }
+
+  const countSubRequests = allTenants.filter(t => t.subscriptionRequestedAt).length;
+  const countExtRequests = allTenants.filter(t => t.trialExtensionRequestedAt).length;
+
   const countTrial = allTenants.filter(t => t.status === 'trial').length;
   const countActive = allTenants.filter(t => t.status === 'active').length;
   const countOverdue = allTenants.filter(t => t.nextPaymentDue && t.nextPaymentDue < todayStr && t.plan !== 'lifetime').length;
@@ -272,7 +290,11 @@ async function renderTenants(main){
     <div><div style="font-size:20px;font-weight:700;">${countTrial}</div><div class="muted" style="font-size:12px;">Em teste</div></div>
     <div><div style="font-size:20px;font-weight:700;color:${countSoon?'#7a5b00':'inherit'};">${countSoon}</div><div class="muted" style="font-size:12px;">Pag. em breve</div></div>
     <div><div style="font-size:20px;font-weight:700;color:${countOverdue?'#8a2e20':'inherit'};">${countOverdue}</div><div class="muted" style="font-size:12px;">Pag. em atraso</div></div>
-  </div>`;
+  </div>
+  ${(countSubRequests || countExtRequests) ? `<div class="card" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;text-align:center;margin-bottom:12px;">
+    <div><div style="font-size:20px;font-weight:700;color:#1f6d3f;">${countSubRequests}</div><div class="muted" style="font-size:12px;">💳 Querem subscrever</div></div>
+    <div><div style="font-size:20px;font-weight:700;color:#7a5b00;">${countExtRequests}</div><div class="muted" style="font-size:12px;">🙋 Pediram mais tempo</div></div>
+  </div>` : ''}`;
 
   const sorted = [...allTenants].sort((a,b) => {
     const pa = a.status === 'pending_activation' ? 0 : 1;
@@ -293,6 +315,7 @@ async function renderTenants(main){
         <span>
           <span class="badge ${isPending ? '' : escapeHtml(t.status||'')}" style="${isPending ? 'background:#fff3cd;color:#8a5a00;' : ''}">${isPending ? 'por ativar' : escapeHtml(t.status||'')}</span>
           ${paymentBadge(t)}
+          ${requestBadges(t)}
         </span>
       </div>
       <div class="row" style="margin-top:8px;">
@@ -381,6 +404,38 @@ window.openTenantDetail = function(tenantId){
     </div>
 
     <div class="card">
+      <h3 style="margin-bottom:6px;">🔒 Métodos Privados — visibilidade</h3>
+      <p class="muted" style="margin-bottom:8px;">Enquanto desligado, este subscritor nem sequer vê que existe um "Método Exclusivo" para pedir — fica completamente escondido. Só ligue depois de já saber, por fora da app, que esta pessoa tem formação na área (ex: já a conhece, ou já verificou um certificado antes de ativar).</p>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;">
+        <input type="checkbox" id="tdPrivateMethodsEligible" style="width:auto;" ${t.privateMethodsEligible ? 'checked' : ''}>
+        Mostrar o pedido de acesso a Métodos Privados a este subscritor
+      </label>
+      <button class="primary" style="margin-top:10px;" onclick="savePrivateMethodsEligibility('${tenantId}')">Guardar</button>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:6px;">🕐 Período de teste</h3>
+      ${t.status === 'trial' && t.trialEndsAt ? `
+        <p class="muted">Termina em: <strong>${t.trialEndsAt.toDate ? t.trialEndsAt.toDate().toLocaleDateString('pt-PT') : ''}</strong></p>
+        <div class="row" style="margin-top:8px;">
+          <button class="ghost" onclick="extendTrial('${tenantId}',7)">+7 dias</button>
+          <button class="ghost" onclick="extendTrial('${tenantId}',14)">+14 dias</button>
+          <button class="ghost" onclick="extendTrial('${tenantId}',30)">+30 dias</button>
+        </div>
+      ` : `<p class="muted">Esta conta não está atualmente em período de teste.</p>`}
+      ${t.trialExtensionRequestedAt ? `
+        <div class="badge" style="background:#fff3cd;color:#7a5b00;margin-top:10px;display:block;padding:8px;">
+          🙋 Pediu mais tempo em ${t.trialExtensionRequestedAt.toDate ? t.trialExtensionRequestedAt.toDate().toLocaleDateString('pt-PT') : ''}
+          <button class="ghost" style="margin-left:8px;" onclick="clearTrialRequest('${tenantId}')">Marcar como resolvido</button>
+        </div>` : ''}
+      ${t.subscriptionRequestedAt ? `
+        <div class="badge" style="background:#dcf0e4;color:#1f6d3f;margin-top:10px;display:block;padding:8px;">
+          💳 Quer subscrever — pediu em ${t.subscriptionRequestedAt.toDate ? t.subscriptionRequestedAt.toDate().toLocaleDateString('pt-PT') : ''}
+          <button class="ghost" style="margin-left:8px;" onclick="clearSubscriptionRequest('${tenantId}')">Marcar como resolvido</button>
+        </div>` : ''}
+    </div>
+
+    <div class="card">
       <h3 style="margin-bottom:6px;">💶 Pagamentos e recebimentos</h3>
       <p class="muted" style="margin-bottom:8px;">Registo manual — assinale aqui sempre que receber uma transferência/MBWay deste subscritor. A app avisa sozinha na lista quando o próximo pagamento estiver perto ou em atraso.</p>
       <label>Data do próximo pagamento</label>
@@ -403,6 +458,36 @@ window.openTenantDetail = function(tenantId){
       <h4 style="margin:14px 0 6px;">Histórico</h4>
       ${paymentRows}
     </div>`;
+};
+
+window.savePrivateMethodsEligibility = async function(tenantId){
+  const eligible = document.getElementById('tdPrivateMethodsEligible').checked;
+  await updateDoc(doc(db, 'tenants', tenantId), { privateMethodsEligible: eligible });
+  toast(eligible ? 'Agora este subscritor já vê o pedido de Métodos Privados.' : 'Voltou a ficar escondido para este subscritor.');
+};
+
+window.extendTrial = async function(tenantId, days){
+  const t = allTenants.find(x => x.id === tenantId);
+  const base = (t?.trialEndsAt?.toDate ? t.trialEndsAt.toDate() : new Date());
+  const newEnd = new Date(Math.max(base.getTime(), Date.now()) + days * 24*60*60*1000);
+  await updateDoc(doc(db, 'tenants', tenantId), {
+    trialEndsAt: Timestamp.fromDate(newEnd),
+    trialExtensionRequestedAt: null
+  });
+  toast(`Período de teste alargado +${days} dias.`);
+  renderView('tenants');
+};
+
+window.clearTrialRequest = async function(tenantId){
+  await updateDoc(doc(db, 'tenants', tenantId), { trialExtensionRequestedAt: null });
+  toast('Pedido marcado como resolvido.');
+  renderView('tenants');
+};
+
+window.clearSubscriptionRequest = async function(tenantId){
+  await updateDoc(doc(db, 'tenants', tenantId), { subscriptionRequestedAt: null });
+  toast('Pedido marcado como resolvido.');
+  renderView('tenants');
 };
 
 window.saveNextPaymentDate = async function(tenantId){
@@ -506,6 +591,413 @@ window.deactivateAnnouncement = async function(){
   toast('Aviso retirado.');
   renderView('announcements');
 };
+
+// ── DEFINIÇÕES DA PLATAFORMA ─────────────────────────────────────────
+// Configuração interna, nunca visível aos subscritores — controla o
+// período de teste automático dado a quem se regista sozinho.
+async function renderPlatformSettings(main){
+  const snap = await getDoc(doc(db, 'settings', 'platformConfig'));
+  const cfg = snap.exists() ? snap.data() : {};
+  const trialDays = cfg.trialDays ?? 7;
+  const trialEnabled = cfg.trialEnabled !== false; // por omissão, ativo
+
+  main.innerHTML = `
+    <h2>⚙️ Definições da Plataforma</h2>
+    <div class="card">
+      <h3 style="margin-bottom:6px;">Período de teste automático</h3>
+      <p class="muted" style="margin-bottom:10px;">Controla o que acontece quando alguém se regista sozinho como novo subscritor. Isto é só interno — não aparece em lado nenhum visível aos subscritores; o texto "14 dias grátis" no ecrã de registo tem de ser atualizado à parte, no ficheiro da app, se mudar este número.</p>
+
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:12px;">
+        <input type="checkbox" id="trialEnabledCheckbox" style="width:auto;" ${trialEnabled ? 'checked' : ''}>
+        Ativar período de teste automático (sem isto, novos registos ficam "por ativar" à espera da sua aprovação manual, tal como já acontece com convites recusados)
+      </label>
+
+      <label>Duração do período de teste (dias)</label>
+      <input id="trialDaysInput" type="number" min="0" value="${trialDays}" ${trialEnabled ? '' : 'disabled'}>
+
+      <button class="primary" onclick="savePlatformConfig()">Guardar</button>
+      <p class="muted" style="margin-top:10px;">Estado atual: ${trialEnabled ? `período de teste ativo, ${trialDays} dias` : 'período de teste desligado — novos registos ficam por ativar até aprovar manualmente'}</p>
+    </div>
+  `;
+
+  document.getElementById('trialEnabledCheckbox').addEventListener('change', (e) => {
+    document.getElementById('trialDaysInput').disabled = !e.target.checked;
+  });
+}
+
+window.savePlatformConfig = async function(){
+  const trialEnabled = document.getElementById('trialEnabledCheckbox').checked;
+  const trialDays = Math.max(0, parseInt(document.getElementById('trialDaysInput').value || '14', 10));
+  await setDoc(doc(db, 'settings', 'platformConfig'), { trialEnabled, trialDays }, { merge: true });
+  toast('Definições guardadas.');
+  renderView('platformSettings');
+};
+
+// ── MÉTODOS PRIVADOS (protocolos com direitos de autor de terceiros) ───
+// Nunca aparecem na lista partilhada de "Modelos prontos" da app, nem
+// em lado nenhum visível a subscritores — só existem aqui, e só a
+// administradora consegue guardá-los e aplicá-los a UM subscritor de
+// cada vez, depois de confirmar que esse subscritor tem autorização
+// própria (ex: pagou a mesma formação) para usar o método.
+async function renderPrivateProtocols(main){
+  const snap = await getDocs(collection(db, 'platformProtocolTemplates'));
+  const templates = [];
+  snap.forEach(d => templates.push({ id: d.id, ...d.data() }));
+
+  let rows = templates.map(t => `
+    <div class="tenant-item">
+      <div class="row">
+        <div><strong>${escapeHtml(t.name||'Sem nome')}</strong><div class="muted">${escapeHtml(t.note||'')}</div></div>
+        <div>
+          <button class="ghost" data-edit="${escapeAttr(t.id)}">Editar</button>
+          <button class="primary" data-deploy="${escapeAttr(t.id)}">Aplicar a subscritor</button>
+        </div>
+      </div>
+    </div>`).join('');
+  if (!rows) rows = '<p class="muted">Ainda sem métodos privados guardados.</p>';
+
+  const tenantOptions = allTenants.length
+    ? allTenants.map(t => `<option value="${escapeAttr(t.id)}">${escapeHtml(t.businessName||t.id)}</option>`).join('')
+    : (await loadAllTenants()).map(t => `<option value="${escapeAttr(t.id)}">${escapeHtml(t.businessName||t.id)}</option>`).join('');
+
+  main.innerHTML = `
+    <h2>🔒 Métodos Privados</h2>
+    <div class="card">
+      <p class="muted">Guarde aqui métodos de consulta que não pode partilhar livremente (ex: por terem direitos de autor de terceiros). Nunca aparecem em lado nenhum da app para os subscritores — só pode aplicar um a UM subscritor de cada vez, aqui mesmo, depois de confirmar que essa pessoa tem autorização própria para o usar.</p>
+      <div class="row">
+        <button class="primary" data-newtemplate="1">+ Novo (escrever JSON à mão)</button>
+        <button class="ghost" data-import="1">📥 Importar de uma conta (recomendado)</button>
+      </div>
+    </div>
+    <div id="importProtocolContainer"></div>
+    <div class="card">${rows}</div>
+    <div id="privateProtocolFormContainer"></div>
+    <div id="deployProtocolContainer"></div>
+  `;
+
+  main.querySelector('[data-newtemplate]')?.addEventListener('click', () => renderPrivateProtocolForm(null));
+  main.querySelector('[data-import]')?.addEventListener('click', () => renderImportProtocolForm(tenantOptions));
+  main.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => renderPrivateProtocolForm(templates.find(t => t.id === btn.dataset.edit))));
+  main.querySelectorAll('[data-deploy]').forEach(btn => btn.addEventListener('click', () => renderDeployProtocolForm(templates.find(t => t.id === btn.dataset.deploy), tenantOptions)));
+}
+
+function renderImportProtocolForm(tenantOptions){
+  document.getElementById('importProtocolContainer').innerHTML = `
+    <div class="card">
+      <h3 style="margin-bottom:6px;">Importar um método já construído</h3>
+      <p class="muted" style="margin-bottom:8px;">Construa o método normalmente na conta escolhida (em "Os Meus Métodos", como qualquer subscritor faria), depois volte aqui e importe-o para a biblioteca privada — mais rápido e sem erros do que escrever JSON à mão.</p>
+      <label>De que conta importar?</label>
+      <select id="importTenantSelect">${tenantOptions}</select>
+      <button class="ghost" id="importLoadBtn" style="margin-top:8px;">Ver métodos dessa conta</button>
+      <div id="importProtocolList" style="margin-top:10px;"></div>
+    </div>`;
+
+  document.getElementById('importLoadBtn').addEventListener('click', async () => {
+    const sourceTenantId = document.getElementById('importTenantSelect').value;
+    const snap = await getDocs(collection(db, 'tenants', sourceTenantId, 'protocols'));
+    const list = [];
+    snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+    const listEl = document.getElementById('importProtocolList');
+    if (!list.length){ listEl.innerHTML = '<p class="muted">Esta conta ainda não tem métodos construídos.</p>'; return; }
+    listEl.innerHTML = list.map(p => `
+      <div class="tenant-item row">
+        <span>${escapeHtml(p.name||'Sem nome')}</span>
+        <button class="ghost" data-import-id="${escapeAttr(p.id)}">Importar este</button>
+      </div>`).join('');
+    listEl.querySelectorAll('[data-import-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const p = list.find(x => x.id === btn.dataset.importId);
+        const { id, ...data } = p;
+        await addDoc(collection(db, 'platformProtocolTemplates'), {
+          name: data.name || 'Sem nome', note: `Importado de ${sourceTenantId}`, data, createdAt: serverTimestamp()
+        });
+        toast('Método importado para a biblioteca privada.');
+        renderView('privateProtocols');
+      });
+    });
+  });
+}
+
+function renderPrivateProtocolForm(existing){
+  document.getElementById('privateProtocolFormContainer').innerHTML = `
+    <div class="card">
+      <h3 style="margin-bottom:6px;">${existing ? 'Editar' : 'Novo'} método privado</h3>
+      <label>Nome (só para si — nunca aparece ao subscritor)</label>
+      <input id="ppName" value="${escapeAttr(existing?.name||'')}">
+      <label>Nota interna (ex: origem da formação, para se lembrar)</label>
+      <input id="ppNote" value="${escapeAttr(existing?.note||'')}">
+      <label>Estrutura do método (JSON) — mesma forma usada nos "Modelos prontos" da app (type: "simple" ou "mapping", points/groups, finalClassifications)</label>
+      <textarea id="ppJson" rows="14" style="font-family:monospace;font-size:12px;">${existing ? escapeHtml(JSON.stringify(existing.data || {}, null, 2)) : '{\n  "name": "",\n  "type": "simple",\n  "points": [\n    { "name": "", "knowledgeText": "" }\n  ],\n  "finalClassifications": []\n}'}</textarea>
+      <div class="row">
+        <button class="primary" id="ppSaveBtn">Guardar</button>
+        ${existing ? `<button class="danger" id="ppDeleteBtn">Apagar método privado</button>` : ''}
+      </div>
+      <p id="ppError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+    </div>`;
+
+  document.getElementById('ppSaveBtn').addEventListener('click', async () => {
+    const name = document.getElementById('ppName').value.trim();
+    const note = document.getElementById('ppNote').value.trim();
+    const errEl = document.getElementById('ppError');
+    if (!name){ errEl.textContent = 'Dê um nome ao método.'; return; }
+    let data;
+    try{ data = JSON.parse(document.getElementById('ppJson').value); }
+    catch(e){ errEl.textContent = 'O JSON não é válido — reveja a formatação.'; return; }
+
+    if (existing){
+      await updateDoc(doc(db, 'platformProtocolTemplates', existing.id), { name, note, data, updatedAt: serverTimestamp() });
+    } else {
+      await addDoc(collection(db, 'platformProtocolTemplates'), { name, note, data, createdAt: serverTimestamp() });
+    }
+    toast('Método privado guardado.');
+    renderView('privateProtocols');
+  });
+
+  document.getElementById('ppDeleteBtn')?.addEventListener('click', async () => {
+    if (!confirm('Apagar este método privado?')) return;
+    await deleteDoc(doc(db, 'platformProtocolTemplates', existing.id));
+    toast('Método privado apagado.');
+    renderView('privateProtocols');
+  });
+}
+
+function renderDeployProtocolForm(template, tenantOptions){
+  document.getElementById('deployProtocolContainer').innerHTML = `
+    <div class="card" style="border:1.5px solid var(--primary);">
+      <h3 style="margin-bottom:6px;">Aplicar "${escapeHtml(template.name)}" a um subscritor</h3>
+      <label>Subscritor</label>
+      <select id="deployTenantSelect">${tenantOptions}</select>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;margin-top:10px;">
+        <input type="checkbox" id="deployConfirmCheckbox" style="width:auto;margin-top:3px;">
+        <span>Confirmo que este subscritor tem autorização/formação própria para usar este método (ex: pagou a mesma formação), e que não estou a distribuir conteúdo protegido sem autorização.</span>
+      </label>
+      <button class="primary" id="deployBtn" style="margin-top:10px;">Aplicar agora</button>
+      <p id="deployError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+    </div>`;
+
+  document.getElementById('deployBtn').addEventListener('click', async () => {
+    const errEl = document.getElementById('deployError');
+    if (!document.getElementById('deployConfirmCheckbox').checked){
+      errEl.textContent = 'Confirme antes de aplicar.';
+      return;
+    }
+    const targetTenantId = document.getElementById('deployTenantSelect').value;
+    const protocolData = { ...template.data };
+    delete protocolData.id; // segurança, caso o JSON guardado tenha um id antigo
+    await addDoc(collection(db, 'tenants', targetTenantId, 'protocols'), {
+      ...protocolData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      deployedFromPrivateTemplate: template.id
+    });
+    await updateDoc(doc(db, 'platformProtocolTemplates', template.id), {
+      lastDeployedTo: targetTenantId, lastDeployedAt: serverTimestamp()
+    });
+    toast('Método aplicado à conta do subscritor — já aparece em "Os Meus Métodos" dele.');
+    document.getElementById('deployProtocolContainer').innerHTML = '';
+  });
+}
+
+// ── FICHAS PRIVADAS (mesmo conceito, para Fichas/questionários) ────────
+async function renderPrivateForms(main){
+  const snap = await getDocs(collection(db, 'platformFormTemplates'));
+  const templates = [];
+  snap.forEach(d => templates.push({ id: d.id, ...d.data() }));
+
+  let rows = templates.map(t => `
+    <div class="tenant-item">
+      <div class="row">
+        <div><strong>${escapeHtml(t.name||'Sem nome')}</strong><div class="muted">${escapeHtml(t.note||'')}</div></div>
+        <div>
+          <button class="danger" data-del="${escapeAttr(t.id)}">Apagar</button>
+          <button class="primary" data-deployform="${escapeAttr(t.id)}">Aplicar a subscritor</button>
+        </div>
+      </div>
+    </div>`).join('');
+  if (!rows) rows = '<p class="muted">Ainda sem fichas privadas guardadas.</p>';
+
+  const tenants = allTenants.length ? allTenants : await loadAllTenants();
+  const tenantOptions = tenants.map(t => `<option value="${escapeAttr(t.id)}">${escapeHtml(t.businessName||t.id)}</option>`).join('');
+
+  main.innerHTML = `
+    <h2>🔒 Fichas Privadas</h2>
+    <div class="card">
+      <p class="muted">O mesmo conceito dos Métodos Privados, mas para Fichas/questionários com direitos reservados. Construa a ficha normalmente numa conta (a sua, por exemplo), depois importe-a para aqui.</p>
+      <button class="ghost" data-importform="1">📥 Importar de uma conta</button>
+    </div>
+    <div id="importFormContainer"></div>
+    <div class="card">${rows}</div>
+    <div id="deployFormContainer"></div>
+  `;
+
+  main.querySelector('[data-importform]')?.addEventListener('click', () => {
+    document.getElementById('importFormContainer').innerHTML = `
+      <div class="card">
+        <h3 style="margin-bottom:6px;">Importar uma ficha já construída</h3>
+        <label>De que conta importar?</label>
+        <select id="importFormTenantSelect">${tenantOptions}</select>
+        <button class="ghost" id="importFormLoadBtn" style="margin-top:8px;">Ver fichas dessa conta</button>
+        <div id="importFormList" style="margin-top:10px;"></div>
+      </div>`;
+    document.getElementById('importFormLoadBtn').addEventListener('click', async () => {
+      const sourceTenantId = document.getElementById('importFormTenantSelect').value;
+      const fSnap = await getDocs(collection(db, 'tenants', sourceTenantId, 'forms'));
+      const list = [];
+      fSnap.forEach(d => list.push({ id: d.id, ...d.data() }));
+      const listEl = document.getElementById('importFormList');
+      if (!list.length){ listEl.innerHTML = '<p class="muted">Esta conta ainda não tem fichas construídas.</p>'; return; }
+      listEl.innerHTML = list.map(f => `
+        <div class="tenant-item row">
+          <span>${escapeHtml(f.title||'Sem nome')}</span>
+          <button class="ghost" data-import-id="${escapeAttr(f.id)}">Importar esta</button>
+        </div>`).join('');
+      listEl.querySelectorAll('[data-import-id]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const f = list.find(x => x.id === btn.dataset.importId);
+          const { id, ...data } = f;
+          await addDoc(collection(db, 'platformFormTemplates'), {
+            name: data.title || 'Sem nome', note: `Importado de ${sourceTenantId}`, data, createdAt: serverTimestamp()
+          });
+          toast('Ficha importada para a biblioteca privada.');
+          renderView('privateForms');
+        });
+      });
+    });
+  });
+
+  main.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', async () => {
+    if (!confirm('Apagar esta ficha privada?')) return;
+    await deleteDoc(doc(db, 'platformFormTemplates', btn.dataset.del));
+    renderView('privateForms');
+  }));
+
+  main.querySelectorAll('[data-deployform]').forEach(btn => btn.addEventListener('click', () => {
+    const template = templates.find(t => t.id === btn.dataset.deployform);
+    document.getElementById('deployFormContainer').innerHTML = `
+      <div class="card" style="border:1.5px solid var(--primary);">
+        <h3 style="margin-bottom:6px;">Aplicar "${escapeHtml(template.name)}" a um subscritor</h3>
+        <label>Subscritor</label>
+        <select id="deployFormTenantSelect">${tenantOptions}</select>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;margin-top:10px;">
+          <input type="checkbox" id="deployFormConfirmCheckbox" style="width:auto;margin-top:3px;">
+          <span>Confirmo que este subscritor tem autorização/formação própria para usar esta ficha.</span>
+        </label>
+        <button class="primary" id="deployFormBtn" style="margin-top:10px;">Aplicar agora</button>
+        <p id="deployFormError" class="muted" style="color:var(--danger);margin-top:8px;"></p>
+      </div>`;
+    document.getElementById('deployFormBtn').addEventListener('click', async () => {
+      const errEl = document.getElementById('deployFormError');
+      if (!document.getElementById('deployFormConfirmCheckbox').checked){ errEl.textContent = 'Confirme antes de aplicar.'; return; }
+      const targetTenantId = document.getElementById('deployFormTenantSelect').value;
+      const formData = { ...template.data };
+      delete formData.id;
+      await addDoc(collection(db, 'tenants', targetTenantId, 'forms'), {
+        ...formData, updatedAt: serverTimestamp(), deployedFromPrivateTemplate: template.id
+      });
+      await updateDoc(doc(db, 'platformFormTemplates', template.id), { lastDeployedTo: targetTenantId, lastDeployedAt: serverTimestamp() });
+      toast('Ficha aplicada à conta do subscritor.');
+      document.getElementById('deployFormContainer').innerHTML = '';
+    });
+  }));
+}
+
+// ── PEDIDOS DE ACESSO A MÉTODOS PRIVADOS (com certificado) ──────────────
+async function renderMethodRequests(main){
+  const snap = await getDocs(collection(db, 'privateMethodRequests'));
+  const requests = [];
+  snap.forEach(d => requests.push({ id: d.id, ...d.data() }));
+  requests.sort((a,b) => (b.submittedAt?.toMillis?.()||0) - (a.submittedAt?.toMillis?.()||0));
+
+  const pending = requests.filter(r => r.status === 'pending');
+  const resolved = requests.filter(r => r.status !== 'pending');
+
+  function requestRow(r){
+    return `<div class="tenant-item">
+      <div class="row">
+        <div>
+          <strong>${escapeHtml(r.methodName||'Sem nome')}</strong>
+          <div class="muted">${escapeHtml(r.tenantName||r.tenantId)} · ${escapeHtml(r.requestedByEmail||'')}</div>
+          <div class="muted">${r.submittedAt?.toDate ? r.submittedAt.toDate().toLocaleDateString('pt-PT') : ''} · <span class="badge ${r.status==='approved'?'active':(r.status==='rejected'?'suspended':'trial')}">${escapeHtml(r.status||'pending')}</span></div>
+        </div>
+        <div>
+          <a href="${escapeAttr(r.certificateUrl)}" target="_blank" rel="noopener"><button class="ghost" type="button">📄 Certificado 1</button></a>
+          ${r.certificateUrl2 ? `<a href="${escapeAttr(r.certificateUrl2)}" target="_blank" rel="noopener"><button class="ghost" type="button">📄 Certificado 2</button></a>` : ''}
+        </div>
+      </div>
+      ${r.status === 'pending' ? `
+      <div class="row" style="margin-top:8px;">
+        <button class="primary" data-approve="${escapeAttr(r.id)}">Aprovar e aplicar método</button>
+        <button class="danger" data-reject="${escapeAttr(r.id)}">Recusar</button>
+      </div>` : ''}
+    </div>`;
+  }
+
+  main.innerHTML = `
+    <h2>📩 Pedidos de Acesso a Métodos</h2>
+    <div class="card">
+      <h3 style="margin-bottom:6px;">Por analisar (${pending.length})</h3>
+      ${pending.map(requestRow).join('') || '<p class="muted">Sem pedidos pendentes.</p>'}
+    </div>
+    ${resolved.length ? `<div class="card"><h3 style="margin-bottom:6px;">Já resolvidos</h3>${resolved.map(requestRow).join('')}</div>` : ''}
+    <div id="approveRequestContainer"></div>
+  `;
+
+  main.querySelectorAll('[data-reject]').forEach(btn => btn.addEventListener('click', async () => {
+    await updateDoc(doc(db, 'privateMethodRequests', btn.dataset.reject), { status: 'rejected', resolvedAt: serverTimestamp() });
+    toast('Pedido recusado.');
+    renderView('methodRequests');
+  }));
+
+  main.querySelectorAll('[data-approve]').forEach(btn => btn.addEventListener('click', async () => {
+    const r = requests.find(x => x.id === btn.dataset.approve);
+    const protoSnap = await getDocs(collection(db, 'platformProtocolTemplates'));
+    const templates = []; protoSnap.forEach(d => templates.push({ id: d.id, ...d.data() }));
+    const formSnap = await getDocs(collection(db, 'platformFormTemplates'));
+    const formTemplates = []; formSnap.forEach(d => formTemplates.push({ id: d.id, ...d.data() }));
+
+    document.getElementById('approveRequestContainer').innerHTML = `
+      <div class="card" style="border:1.5px solid var(--primary);">
+        <h3 style="margin-bottom:6px;">Aprovar pedido de "${escapeHtml(r.tenantName||r.tenantId)}"</h3>
+        <p class="muted" style="margin-bottom:8px;">Escolha qual método/ficha privada aplicar à conta desta pessoa.</p>
+        <label>Método (protocolo)</label>
+        <select id="approveProtocolSelect">
+          <option value="">— nenhum —</option>
+          ${templates.map(t => `<option value="${escapeAttr(t.id)}">${escapeHtml(t.name)}</option>`).join('')}
+        </select>
+        <label>Ficha (opcional)</label>
+        <select id="approveFormSelect">
+          <option value="">— nenhuma —</option>
+          ${formTemplates.map(t => `<option value="${escapeAttr(t.id)}">${escapeHtml(t.name)}</option>`).join('')}
+        </select>
+        <button class="primary" id="approveConfirmBtn" style="margin-top:10px;">Aplicar e aprovar</button>
+      </div>`;
+
+    document.getElementById('approveConfirmBtn').addEventListener('click', async () => {
+      const protoId = document.getElementById('approveProtocolSelect').value;
+      const formId = document.getElementById('approveFormSelect').value;
+      if (protoId){
+        const t = templates.find(x => x.id === protoId);
+        const protocolData = { ...t.data };
+        delete protocolData.id;
+        await addDoc(collection(db, 'tenants', r.tenantId, 'protocols'), {
+          ...protocolData, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), deployedFromPrivateTemplate: t.id
+        });
+      }
+      if (formId){
+        const t = formTemplates.find(x => x.id === formId);
+        const formData = { ...t.data };
+        delete formData.id;
+        await addDoc(collection(db, 'tenants', r.tenantId, 'forms'), {
+          ...formData, updatedAt: serverTimestamp(), deployedFromPrivateTemplate: t.id
+        });
+      }
+      await updateDoc(doc(db, 'privateMethodRequests', r.id), { status: 'approved', resolvedAt: serverTimestamp() });
+      await updateDoc(doc(db, 'tenants', r.tenantId), { privateMethodsEligible: true });
+      toast('Pedido aprovado e método aplicado.');
+      renderView('methodRequests');
+    });
+  }));
+}
 
 function renderNewTenant(main){
   main.innerHTML = `
