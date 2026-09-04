@@ -297,7 +297,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-69';
+const APP_VERSION = '2026-09-02-70';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2794,20 +2794,34 @@ async function renderPatientPortalOverview(main){
   `;
 }
 
-async function renderPatientMessages(patientId){
+async function renderPatientMessages(patientId, isPoll){
   const box = document.getElementById('patientMessagesBox');
   if (!box) return;
-  box.innerHTML = '<p class="muted">A carregar mensagens…</p>';
+
+  if (!isPoll){
+    box.innerHTML = `
+      <h3 style="margin-bottom:6px;">💬 Mensagens</h3>
+      <div id="patientMsgList" style="max-height:220px;overflow-y:auto;background:#fafafa;border-radius:8px;padding:10px;">A carregar mensagens…</div>
+      <div class="row" style="margin-top:6px;">
+        <input id="patientMsgInput" placeholder="Escrever mensagem…" onkeydown="if(event.key==='Enter')sendPatientMessage('${patientId}')">
+        <button class="primary" onclick="sendPatientMessage('${patientId}')">Enviar</button>
+      </div>`;
+    restoreAutosaveField('patientMsgInput');
+    window.__lastPatientMsgSig = null;
+  }
+
   const snap = await getDocs(query(
     collection(db, 'tenants', tenantId, 'patients', patientId, 'messages'),
     orderBy('createdAt', 'asc')
   ));
   let msgsHtml = '';
+  let sig = '';
   const unreadDocs = [];
   snap.forEach(d => {
     const m = d.data();
     const isPatient = m.sender === 'patient';
     if (isPatient && m.readByProfessional === false) unreadDocs.push(d.ref);
+    sig += d.id + (m.readByProfessional ? '1' : '0') + '|';
     const time = m.createdAt?.toDate ? m.createdAt.toDate().toLocaleString('pt-PT', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
     msgsHtml += `<div style="text-align:${isPatient?'left':'right'};margin-bottom:6px;">
       <span style="display:inline-block;max-width:80%;padding:6px 10px;border-radius:10px;background:${isPatient?'#e9f0ee':'var(--primary)'};color:${isPatient?'var(--text)':'#fff'};font-size:13px;">${escapeHtml(m.text)}</span>
@@ -2815,23 +2829,28 @@ async function renderPatientMessages(patientId){
     </div>`;
   });
   if (!msgsHtml) msgsHtml = '<p class="muted">Ainda sem mensagens trocadas.</p>';
-  box.innerHTML = `
-    <h3 style="margin-bottom:6px;">💬 Mensagens</h3>
-    <div style="max-height:220px;overflow-y:auto;background:#fafafa;border-radius:8px;padding:10px;">${msgsHtml}</div>
-    <div class="row" style="margin-top:6px;">
-      <input id="patientMsgInput" placeholder="Escrever mensagem…" onkeydown="if(event.key==='Enter')sendPatientMessage('${patientId}')">
-      <button class="primary" onclick="sendPatientMessage('${patientId}')">Enviar</button>
-    </div>`;
-  restoreAutosaveField('patientMsgInput');
+
+  // Só volta a desenhar a lista se algo mudou mesmo (mensagem nova ou
+  // ficou lida) — evita "piscar" o ecrã a cada verificação automática.
+  if (sig !== window.__lastPatientMsgSig){
+    window.__lastPatientMsgSig = sig;
+    const listEl = document.getElementById('patientMsgList');
+    if (listEl){
+      listEl.innerHTML = msgsHtml;
+      listEl.scrollTop = listEl.scrollHeight;
+    }
+  }
   unreadDocs.forEach(ref => updateDoc(ref, { readByProfessional: true }).catch(()=>{}));
 
   // Verifica mensagens novas a cada 5 segundos enquanto a ficha estiver
-  // aberta — evita ter de fechar e reabrir para ver o que chegou.
-  if (__patientMsgPollTimer) clearInterval(__patientMsgPollTimer);
-  __patientMsgPollTimer = setInterval(() => {
-    if (document.getElementById('patientMessagesBox')) renderPatientMessages(patientId);
-    else clearInterval(__patientMsgPollTimer);
-  }, 5000);
+  // aberta — sem nunca tocar na caixa de escrita, para não perturbar.
+  if (!isPoll){
+    if (__patientMsgPollTimer) clearInterval(__patientMsgPollTimer);
+    __patientMsgPollTimer = setInterval(() => {
+      if (document.getElementById('patientMessagesBox')) renderPatientMessages(patientId, true);
+      else clearInterval(__patientMsgPollTimer);
+    }, 5000);
+  }
 }
 
 window.sendPatientMessage = async function(patientId){
@@ -2843,7 +2862,7 @@ window.sendPatientMessage = async function(patientId){
   });
   input.value = '';
   clearAutosaveField('patientMsgInput');
-  renderPatientMessages(patientId);
+  renderPatientMessages(patientId, true);
 };
 
 // ── Evolução do paciente — linha do tempo de relatórios ─────────────────
@@ -3570,10 +3589,12 @@ window.confirmAttach = async function(responseId){
   let patientId = document.getElementById('attachPatientSelect').value;
 
   if (!patientId){
+    const contact = (r.respondentContact || '').trim();
+    const isEmail = contact.includes('@');
     const newPatientRef = await addDoc(collection(db, 'tenants', tenantId, 'patients'), {
       fullName: r.respondentName || 'Paciente sem nome',
-      phone: r.respondentPhone || '',
-      email: r.respondentEmail || '',
+      phone: isEmail ? '' : contact,
+      email: isEmail ? contact : '',
       clinicalNotes: '',
       consentGivenAt: serverTimestamp(),
       consentVersion: 'form-v1',

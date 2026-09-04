@@ -89,9 +89,13 @@ function formatDateTime(iso){
     d.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
 }
 
+let __lastPortalMsgSig = null;
 function renderMessages(messages){
   const box = document.getElementById('msgs');
   if (!box) return;
+  const sig = messages.map(m => m.id + (m.readByProfessional ? '1' : '0')).join('|');
+  if (sig === __lastPortalMsgSig) return; // nada mudou, não redesenha (evita "piscar")
+  __lastPortalMsgSig = sig;
   box.innerHTML = messages.length ? messages.map(m => `
     <div class="msg ${m.sender === 'patient' ? 'me' : 'them'}">
       ${escapeHtml(m.text)}
@@ -389,6 +393,7 @@ function renderPortalSection(name){
     renderCheckinHistory(data.checkins);
   }
   if (name === 'messages'){
+    __lastPortalMsgSig = null;
     renderMessages(data.messages);
     startMessagePolling();
   }
