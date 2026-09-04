@@ -63,6 +63,7 @@
   <section id="contactSection"></section>
 </div>
 
+<div id="livroReclamacoesLink" style="display:none;text-align:center;padding:0 16px;"></div>
 <footer>Powered by Vindora</footer>
 
 <script type="module">
@@ -111,6 +112,16 @@ async function load(){
   renderAbout(profile);
   renderContact(profile);
   applyDynamicManifest(profile);
+
+  // Livro de Reclamações Eletrónico — obrigatório por lei em Portugal
+  // para quem presta serviços a consumidores; link visível na página
+  // inicial, como a lei exige, sempre que o subscritor o tiver configurado.
+  if (profile.legalTexts?.livroReclamacoesUrl){
+    const linkEl = document.getElementById('livroReclamacoesLink');
+    linkEl.style.display = 'block';
+    linkEl.innerHTML =
+      `<a href="${escapeHtml(profile.legalTexts.livroReclamacoesUrl)}" target="_blank" rel="noopener" style="color:var(--muted);font-size:12px;">📕 Livro de Reclamações</a>`;
+  }
 
   const [categoriesSnap, servicesSnap, teamSnap, trainingsSnap, testimonialsSnap] = await Promise.all([
     getDocs(collection(db, 'tenants', tenantId, 'serviceCategories')),

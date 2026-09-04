@@ -297,7 +297,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-78';
+const APP_VERSION = '2026-09-02-79';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -6200,6 +6200,13 @@ async function renderProfileSection(main, section){
       ${hintBox('Texto pronto (editável) que pode usar como base do consentimento dos seus clientes. Ajuste-o à sua área de atuação e às suas obrigações legais específicas antes de usar — este texto é apenas um ponto de partida genérico.')}
       <textarea id="pfConsentText" rows="8">${escapeHtml(currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT)}</textarea>
       <button class="primary" onclick="saveConsentText()">Guardar termo de consentimento</button>
+      <hr style="margin:16px 0;border:none;border-top:1px solid #e5e5e5;">
+      <h2>📕 Livro de Reclamações Eletrónico</h2>
+      ${hintBox('Obrigatório por lei em Portugal para quem presta serviços a consumidores, mesmo só online. Registe-se primeiro em livroreclamacoes.pt (com os seus dados das Finanças) — é grátis para começar (25 reclamações incluídas). Depois, cole aqui o seu link — aparece automaticamente na sua página pública, como a lei exige.')}
+      <label>O seu link do Livro de Reclamações</label>
+      <input id="pfLivroReclamacoesUrl" value="${escapeHtml(currentTenantDoc?.legalTexts?.livroReclamacoesUrl || '')}" placeholder="https://www.livroreclamacoes.pt/...">
+      <button class="primary" onclick="saveLivroReclamacoesUrl()">Guardar</button>
+      <a href="#" onclick="window.open('https://www.livroreclamacoes.pt/Operador/RegistoOperadores','_blank');return false;" style="display:block;margin-top:10px;color:var(--primary);text-align:center;">Ainda não me registei — abrir livroreclamacoes.pt</a>
     `;
   } else if (section === 'mensagens'){
     inner = `
@@ -6308,6 +6315,21 @@ window.saveConsentText = async function(){
   const snap = await getDoc(doc(db, 'tenants', tenantId));
   currentTenantDoc = snap.data();
   toast('Termo de consentimento guardado.');
+};
+
+window.saveLivroReclamacoesUrl = async function(){
+  const url = document.getElementById('pfLivroReclamacoesUrl').value.trim();
+  await updateDoc(doc(db, 'tenants', tenantId), { 'legalTexts.livroReclamacoesUrl': url });
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  currentTenantDoc = snap.data();
+  // Publica de imediato — sem isto, só ficaria visível na página pública
+  // depois de voltar a gravar o Perfil inteiro.
+  if (currentTenantDoc?.slug){
+    await setDoc(doc(db, 'public_tenant_profiles', currentTenantDoc.slug), {
+      legalTexts: currentTenantDoc.legalTexts || {}
+    }, { merge: true });
+  }
+  toast('Link do Livro de Reclamações guardado e publicado.');
 };
 
 window.saveMessageTemplates = async function(){
