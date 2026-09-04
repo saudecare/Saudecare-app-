@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Portal do Paciente</title>
 <link rel="manifest" id="dynamicManifest" href="manifest.json">
 <link rel="apple-touch-icon" id="appleTouchIcon" href="">
@@ -47,11 +50,16 @@
   .tile-badge{position:absolute;top:8px;right:8px;background:var(--primary);color:#fff;font-size:.65rem;
     padding:2px 7px;border-radius:20px;}
   .btn-back{background:none;border:none;color:var(--primary);font-size:.95rem;padding:6px 0 14px;cursor:pointer;font-weight:600;}
+  .hidden{display:none !important;}
   .msg-tick{font-size:.75rem;color:#8fa39a;margin-left:4px;}
   .msg-tick.read{color:var(--primary);}
 </style>
 </head>
 <body>
+
+<div id="updateBanner" class="hidden" style="position:sticky;top:0;z-index:500;background:#1a2b26;color:#fff;padding:10px 14px;text-align:center;font-size:.85rem;">
+  Há uma versão mais recente desta página. <button onclick="window.location.reload()" style="background:#fff;color:#1a2b26;border:none;border-radius:6px;padding:4px 10px;margin-left:6px;cursor:pointer;font-weight:600;">Atualizar agora</button>
+</div>
 
 <header>
   <h1 id="hBusiness">Portal do Paciente</h1>
@@ -63,6 +71,24 @@
 </main>
 
 <script>
+const PAGE_VERSION = '2026-09-04-01';
+
+// ── Verificação automática de versão ────────────────────────────────────
+// Nunca recarrega sozinha (podia interromper alguém a meio de escrever
+// uma mensagem) — só mostra um aviso discreto, a pessoa escolhe quando.
+(async function checkForPageUpdate(){
+  try {
+    const res = await fetch(window.location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
+    const html = await res.text();
+    const match = html.match(/const PAGE_VERSION = '([^']+)'/);
+    if (match && match[1] !== PAGE_VERSION){
+      document.getElementById('updateBanner').classList.remove('hidden');
+    }
+  } catch(e){
+    // Falha de rede ao verificar não deve travar o arranque da página.
+  }
+})();
+
 const FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/patientPortal';
 const params = new URLSearchParams(window.location.search);
 const tenantId = params.get('t');

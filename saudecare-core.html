@@ -297,7 +297,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-73';
+const APP_VERSION = '2026-09-02-74';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2560,11 +2560,40 @@ window.closePatientOverlay = function(){
   document.getElementById('patientOverlay')?.remove();
 };
 
+// Associa automaticamente à ficha do paciente qualquer resposta pendente
+// que já venha identificada com o patientId certo (enviada por link
+// personalizado) — sem depender de a terapeuta se lembrar de confirmar.
+async function autoAttachPendingResponsesForPatient(patientId){
+  const pendingSnap = await getDocs(query(
+    collection(db, 'public_form_responses'),
+    where('tenantId', '==', tenantId),
+    where('patientId', '==', patientId),
+    where('status', '==', 'pending_review')
+  ));
+  for (const d of pendingSnap.docs){
+    const r = d.data();
+    await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'formResponses'), {
+      formId: r.formId,
+      formTitle: r.formTitle,
+      answers: r.answers,
+      consentConfirmedAt: r.consentConfirmedAt || null,
+      submittedAt: r.submittedAt || serverTimestamp()
+    });
+    await updateDoc(doc(db, 'public_form_responses', d.id), { status: 'processed' });
+  }
+}
+
 window.viewPatient = async function(patientId){
   await logAudit('patient_viewed', patientId);
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
   if (!snap.exists()){ toast('Paciente não encontrado.', true); return; }
   const p = snap.data();
+
+  // Respostas a fichas enviadas com link personalizado (já identificam
+  // o paciente) — associa-as automaticamente, sem esperar por confirmação
+  // manual. Isto acontecia antes e fazia parecer que a resposta tinha
+  // "desaparecido", quando só estava à espera de um passo extra.
+  await autoAttachPendingResponsesForPatient(patientId);
 
   const reportsSnap = await getDocs(query(
     collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'),
@@ -3492,15 +3521,20 @@ async function renderForms(main){
     where('tenantId', '==', tenantId), where('status', '==', 'pending_review')
   ));
   let pendingHtml = '';
-  pendingSnap.forEach(d=>{
+  for (const d of pendingSnap.docs){
     const r = d.data();
-    const linkedBadge = r.patientId ? '<span class="badge">paciente identificado</span>' : '';
+    if (r.patientId){
+      // Já vem identificada (link personalizado) — associa-a sozinha,
+      // sem exigir confirmação manual, e não a lista como pendente.
+      await autoAttachPendingResponsesForPatient(r.patientId);
+      continue;
+    }
     pendingHtml += `<div class="appt-item row">
-      <div><strong>${escapeHtml(r.respondentName||'Sem nome')}</strong> ${linkedBadge}
+      <div><strong>${escapeHtml(r.respondentName||'Sem nome')}</strong>
         <div class="muted">${escapeHtml(r.formTitle||'')}</div></div>
       <button class="primary" onclick="openAttachResponse('${d.id}')">Associar a paciente</button>
     </div>`;
-  });
+  }
   if (!pendingHtml) pendingHtml = '<p class="muted">Sem respostas pendentes.</p>';
 
   // Alerta visível no menu quando há respostas por associar.
