@@ -305,7 +305,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-90';
+const APP_VERSION = '2026-09-02-91';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1990,10 +1990,14 @@ window.notifyPatientForCall = function(patientId, phone, patientName, portalToke
 };
 
 window.joinOnlineConsult = function(patientId){
-  const oc = currentTenantDoc?.onlineConsult || { tool: 'jitsi' };
+  const oc = currentTenantDoc?.onlineConsult || { tool: 'whatsapp' };
   if (oc.tool === 'custom' && oc.customLink){
     window.open(oc.customLink, '_blank');
-  } else if (oc.tool === 'whatsapp' && oc.whatsappNumber){
+  } else if (oc.tool === 'whatsapp'){
+    if (!oc.whatsappNumber){
+      toast('Escolheu WhatsApp como ferramenta, mas ainda não preencheu o número em Perfil → Consultório Online.', true);
+      return;
+    }
     window.open(`https://wa.me/${oc.whatsappNumber}`, '_blank');
   } else {
     // Mesma fórmula usada no Portal do Paciente — assim ambos entram
@@ -2022,7 +2026,7 @@ window.sendCallInvite = async function(apptId, channel){
   const timeStr = dt.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
   const serviceLabel = a.serviceName ? ' de ' + a.serviceName : '';
 
-  const oc = currentTenantDoc?.onlineConsult || { tool: 'jitsi' };
+  const oc = currentTenantDoc?.onlineConsult || { tool: 'whatsapp' };
   let text;
   if (oc.tool === 'whatsapp'){
     // A chamada em si acontece dentro do próprio WhatsApp — não faz
@@ -6848,10 +6852,15 @@ window.toggleOnlineToolFields = function(){
 
 window.saveOnlineConsultSettings = async function(){
   const tool = document.getElementById('pfOnlineTool').value;
+  const whatsappNumber = document.getElementById('pfOnlineWhatsapp').value.replace(/\D/g,'');
+  if (tool === 'whatsapp' && !whatsappNumber){
+    toast('Escolheu WhatsApp mas não preencheu o número — preencha-o para a videochamada funcionar corretamente.', true);
+    return;
+  }
   const onlineConsult = {
     tool,
     customLink: document.getElementById('pfOnlineCustomLink').value.trim(),
-    whatsappNumber: document.getElementById('pfOnlineWhatsapp').value.replace(/\D/g,'')
+    whatsappNumber
   };
   await updateDoc(doc(db, 'tenants', tenantId), { onlineConsult });
   const snap = await getDoc(doc(db, 'tenants', tenantId));

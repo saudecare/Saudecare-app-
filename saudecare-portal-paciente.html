@@ -412,13 +412,17 @@ function renderPortalSection(name){
       : '<p class="muted">Ainda sem consultas anteriores.</p>';
 
     const hasOnlineUpcoming = data.upcoming.some(a => a.local === 'online');
-    const oc = data.onlineConsult || { tool: 'jitsi' };
+    const oc = data.onlineConsult || { tool: 'whatsapp' };
     let onlineToolHtml = '';
     if (oc.tool === 'custom' && oc.customLink){
       onlineToolHtml = `<a class="btn btn-block" target="_blank" href="${escapeHtml(oc.customLink)}">Entrar na videochamada</a>`;
-    } else if (oc.tool === 'whatsapp' && oc.whatsappNumber){
-      onlineToolHtml = `<a class="btn btn-block" target="_blank" href="https://wa.me/${oc.whatsappNumber}">Abrir WhatsApp</a>
-        <p class="muted" style="margin-top:6px;">O seu terapeuta vai iniciar a chamada de vídeo lá dentro, à hora combinada.</p>`;
+    } else if (oc.tool === 'whatsapp'){
+      if (oc.whatsappNumber){
+        onlineToolHtml = `<a class="btn btn-block" target="_blank" href="https://wa.me/${oc.whatsappNumber}">Abrir WhatsApp</a>
+          <p class="muted" style="margin-top:6px;">O seu terapeuta vai iniciar a chamada de vídeo lá dentro, à hora combinada.</p>`;
+      } else {
+        onlineToolHtml = `<p class="muted">A videochamada ainda não está configurada — contacte o seu terapeuta diretamente para combinar.</p>`;
+      }
     } else {
       const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
       const displayName = encodeURIComponent(data.patientName || 'Paciente');
