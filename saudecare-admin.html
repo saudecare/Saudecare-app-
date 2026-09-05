@@ -21,6 +21,7 @@
   nav button{display:block;width:100%;text-align:left;background:none;border:none;color:#e4e6f2;
     padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;margin-bottom:4px;}
   nav button.active,nav button:hover{background:var(--primary);color:#fff;}
+  .navGroupLabel{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8890b0;padding:14px 12px 4px;}
   main{flex:1;padding:24px;max-width:1000px;}
   .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;
     box-shadow:0 1px 3px rgba(0,0,0,.06);}
@@ -80,15 +81,18 @@
     <h1>Vindora</h1>
     <p>Administração da plataforma</p>
     <button data-view="overview" class="active">📊 Visão geral</button>
-    <button data-view="tenants">🏢 Subscritores</button>
+    <div class="navGroupLabel">Subscritores</div>
+    <button data-view="tenants">🏢 Lista de Subscritores</button>
     <button data-view="newTenant">➕ Novo subscritor</button>
+    <button data-view="methodRequests">📩 Pedidos de Acesso</button>
+    <div class="navGroupLabel">Plataforma</div>
     <button data-view="announcements">📢 Avisos</button>
-    <button data-view="platformSettings">⚙️ Definições</button>
     <button data-view="planCatalog">💶 Catálogo de Planos</button>
+    <button data-view="platformSettings">⚙️ Definições</button>
     <button data-view="systemHealth">🩺 Saúde do Sistema</button>
+    <div class="navGroupLabel">Conteúdo Privado</div>
     <button data-view="privateProtocols">🔒 Métodos Privados</button>
     <button data-view="privateForms">🔒 Fichas Privadas</button>
-    <button data-view="methodRequests">📩 Pedidos de Acesso</button>
     <button data-view="logout" style="margin-top:20px;color:#f2b8b8;">Sair</button>
   </nav>
   <main id="mainView"></main>
@@ -372,7 +376,35 @@ async function renderTenants(main){
     const overdueB = b.nextPaymentDue && b.nextPaymentDue < todayStr && b.plan !== 'lifetime' ? 0 : 1;
     return overdueA - overdueB;
   });
-  let rows = sorted.map(t => {
+
+  window.__allTenantsCache = sorted;
+  main.innerHTML = `
+    <h2>Subscritores <span class="muted" style="font-size:13px;">(${sorted.length})</span></h2>
+    ${summaryHtml}
+    <input id="tenantSearchInput" placeholder="🔍 Pesquisar por nome ou link…" oninput="filterTenantsList()" style="margin-bottom:10px;">
+    <div class="card" id="tenantsListBox">${renderTenantRows(sorted)}</div>
+    <div id="tenantDetailContainer"></div>
+  `;
+
+  attachTenantRowHandlers();
+}
+
+function renderTenantRows(list){
+  const todayStr = new Date().toISOString().slice(0,10);
+  const in7DaysStr = new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10);
+  function paymentBadge(t){
+    if (!t.nextPaymentDue || t.plan === 'lifetime') return '';
+    if (t.nextPaymentDue < todayStr) return '<span class="badge" style="background:#f4d7d3;color:#8a2e20;">💸 pagamento em atraso</span>';
+    if (t.nextPaymentDue <= in7DaysStr) return '<span class="badge" style="background:#fff3cd;color:#7a5b00;">⏳ pagamento em breve</span>';
+    return '';
+  }
+  function requestBadges(t){
+    let html = '';
+    if (t.subscriptionRequestedAt) html += '<span class="badge active" style="margin-left:4px;">💳 quer subscrever</span>';
+    if (t.trialExtensionRequestedAt) html += '<span class="badge" style="background:#fff3cd;color:#7a5b00;margin-left:4px;">🙋 pediu mais tempo</span>';
+    return html;
+  }
+  return list.map(t => {
     const isPending = t.status === 'pending_activation';
     return `
     <div class="tenant-item" ${isPending ? 'style="background:#fff8ea;border-radius:8px;padding:10px;"' : ''}>
@@ -395,19 +427,13 @@ async function renderTenants(main){
       </div>
     </div>
   `;
-  }).join('');
-  if (!rows) rows = '<p class="muted">Ainda sem subscritores.</p>';
+  }).join('') || '<p class="muted">Ainda sem subscritores.</p>';
+}
 
-  main.innerHTML = `
-    <h2>Subscritores <span class="muted" style="font-size:13px;">(${sorted.length})</span></h2>
-    ${summaryHtml}
-    <div class="card">${rows}</div>
-    <div id="tenantDetailContainer"></div>
-  `;
-
+function attachTenantRowHandlers(){
   // Ligações por evento em vez de onclick inline — evita que nomes com
   // apóstrofos ou campos em falta partam o HTML e façam a linha desaparecer.
-  main.querySelectorAll('button[data-action]').forEach(btn => {
+  document.querySelectorAll('button[data-action]').forEach(btn => {
     btn.addEventListener('click', () => {
       const t = allTenants.find(x => x.id === btn.dataset.id);
       if (!t) return;
@@ -416,6 +442,20 @@ async function renderTenants(main){
     });
   });
 }
+
+window.filterTenantsList = function(){
+  const q = document.getElementById('tenantSearchInput').value.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const box = document.getElementById('tenantsListBox');
+  if (!q){ box.innerHTML = renderTenantRows(window.__allTenantsCache); attachTenantRowHandlers(); return; }
+  const filtered = window.__allTenantsCache.filter(t => {
+    const haystack = `${t.businessName||''} ${t.slug||''} ${t.ownerEmail||''}`.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return haystack.includes(q);
+  });
+  box.innerHTML = renderTenantRows(filtered);
+  attachTenantRowHandlers();
+};
 
 window.openTenantDetail = function(tenantId){
   const t = allTenants.find(x => x.id === tenantId);
