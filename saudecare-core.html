@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-93';
+const APP_VERSION = '2026-09-02-94';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -711,7 +711,7 @@ window.sendInvoiceToPatient = function(invoiceUrl, phone, patientName, channel){
   if (channel === 'sms'){
     window.open(`sms:${digits}?body=${encodeURIComponent(text)}`, '_blank');
   } else {
-    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`, '_blank');
+    openExternalLink(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`);
   }
 };
 
@@ -2047,20 +2047,30 @@ window.notifyPatientForCall = function(patientId, phone, patientName, portalToke
   if (channel === 'sms'){
     window.open(`sms:${digits}?body=${encodeURIComponent(text)}`, '_blank');
   } else {
-    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`, '_blank');
+    openExternalLink(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`);
   }
 };
+
+// Em apps instaladas (modo "standalone"), o Android por vezes bloqueia
+// silenciosamente window.open para links externos — sem erro nenhum, o
+// botão só "não faz nada". Isto garante que sempre acontece alguma coisa.
+function openExternalLink(url){
+  const win = window.open(url, '_blank');
+  if (!win || win.closed || typeof win.closed === 'undefined'){
+    window.location.href = url;
+  }
+}
 
 window.joinOnlineConsult = function(patientId){
   const oc = currentTenantDoc?.onlineConsult || { tool: 'whatsapp' };
   if (oc.tool === 'custom' && oc.customLink){
-    window.open(oc.customLink, '_blank');
+    openExternalLink(oc.customLink);
   } else if (oc.tool === 'whatsapp'){
     if (!oc.whatsappNumber){
       toast('Escolheu WhatsApp como ferramenta, mas ainda não preencheu o número em Perfil → Consultório Online.', true);
       return;
     }
-    window.open(`https://wa.me/${oc.whatsappNumber}`, '_blank');
+    openExternalLink(`https://wa.me/${oc.whatsappNumber}`);
   } else {
     // Mesma fórmula usada no Portal do Paciente — assim ambos entram
     // exatamente na mesma sala, sem precisar de combinar nada à parte.
@@ -2070,7 +2080,7 @@ window.joinOnlineConsult = function(patientId){
     // ligado, sem pedir mais nada.
     const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
     const displayName = encodeURIComponent(currentTenantDoc?.businessName || currentUser?.email || 'Terapeuta');
-    window.open(`https://meet.jit.si/${jitsiRoom}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22`, '_blank');
+    openExternalLink(`https://meet.jit.si/${jitsiRoom}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22`);
   }
 };
 
@@ -2118,7 +2128,7 @@ window.sendCallInvite = async function(apptId, channel){
   if (channel === 'sms'){
     window.open(`sms:${digits}?body=${encodeURIComponent(text)}`, '_blank');
   } else {
-    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`, '_blank');
+    openExternalLink(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`);
   }
 };
 
@@ -4048,13 +4058,16 @@ async function renderForms(main){
     <div class="row"><h2>Fichas / Questionários</h2>
       <button class="primary" onclick="openNewForm()">+ Nova ficha</button>
     </div>
-    ${renderFormTemplatesSection()}
     ${hintBox('Crie questionários avulsos para os seus clientes preencherem antes ou depois de um atendimento — avaliação inicial, satisfação, o que for útil à sua prática. Enviados por link próprio, sem precisar de estar dentro de uma consulta. Diferente de "Os Meus Métodos" (o que usa durante a própria consulta, com pontos/mapeamento).')}
     <div class="card">${rows}</div>
     <h2 style="margin:16px 0 10px;">Respostas pendentes de associar</h2>
     <div class="card">${pendingHtml}</div>
     <div id="formBuilderContainer"></div>
     <div id="attachContainer"></div>
+    <details style="margin-top:18px;">
+      <summary style="cursor:pointer;color:var(--primary);font-weight:600;padding:10px 0;">💡 Ver modelos prontos (exemplos, opcional)</summary>
+      ${renderFormTemplatesSection()}
+    </details>
   `;
   }catch(e){
     console.error('Erro ao carregar fichas:', e);
@@ -4532,7 +4545,6 @@ function renderProtocolTemplatesSection(){
     </div>`;
   }).join('');
   return `
-    <h2 style="margin:16px 0 10px;">Modelos prontos (opcional)</h2>
     ${hintBox('Estes modelos ficam disponíveis para todos, mas são apenas um ponto de partida — pode usar tal e qual, editar à sua maneira depois de os copiar, ou simplesmente ignorá-los se preferir criar tudo do zero. Nos modelos com mapeamento, os pontos já vêm posicionados no boneco genérico — pode arrastar/reposicionar depois de copiar, como qualquer ponto seu.')}
     <div class="card">${cards}</div>`;
 }
@@ -4568,7 +4580,6 @@ function renderFormTemplatesSection(){
       <button class="ghost" onclick="useFormTemplate(${idx})">Usar este modelo</button>
     </div>`).join('');
   return `
-    <h2 style="margin:16px 0 10px;">Modelos prontos (opcional)</h2>
     ${hintBox('Fichas de exemplo prontas a usar — copie e edite as perguntas à sua maneira, ou ignore se preferir criar as suas próprias.')}
     <div class="card">${cards}</div>`;
 }
@@ -4605,7 +4616,6 @@ function renderServiceTemplatesSection(){
       <button class="ghost" onclick="useServiceTemplate(${idx})">Usar este modelo</button>
     </div>`).join('');
   return `
-    <h2 style="margin:16px 0 10px;">Modelos prontos (opcional)</h2>
     ${hintBox('Exemplos de serviços por área — usa tal e qual, ou adiciona e depois edita o preço/duração à sua maneira em "Editar".')}
     <div class="card">${cards}</div>`;
 }
@@ -4832,14 +4842,17 @@ async function renderProtocols(main){
     <div class="row"><h2>Os Meus Métodos de Consulta</h2>
       <button class="primary" onclick="openNewProtocol()">+ Novo método</button>
     </div>
-    ${renderProtocolTemplatesSection()}
-    ${tenantId === 'hikari-terapias' ? renderDemoProtocolsSection() : ''}
     ${hintBox(`Como conduz uma consulta, passo a passo — usa isto durante o atendimento, com o paciente à sua frente.
       <strong>Lista livre</strong>: uma checklist de pontos a observar, com ou sem imagens — sem lógica fixa a seguir; coloque o que quiser, onde quiser (ex: sintomas, temas de sessão, ou pontos marcados numa foto sua, sem restrição de frente/costas/lados).
       <strong>Mapeamento por zonas</strong>: pontos organizados em grupos sobre uma imagem do corpo, com zonas frente/costas e esquerdo/direito escolhidas antes de cada consulta — útil quando o seu método segue mesmo essa lógica (terapias manuais, corporais ou energéticas).
       Em ambos, pode acrescentar perguntas antes, durante ou depois do atendimento, e a app gera um relatório automático no fim. Diferente de "Fichas" (questionário enviado à parte, sem estar numa consulta) e "Serviços" (o que vende, com preço e duração).`)}
     <div class="card">${rows}</div>
     <div id="protocolFormContainer"></div>
+    <details style="margin-top:18px;">
+      <summary style="cursor:pointer;color:var(--primary);font-weight:600;padding:10px 0;">💡 Ver modelos prontos (exemplos, opcional)</summary>
+      ${renderProtocolTemplatesSection()}
+      ${tenantId === 'hikari-terapias' ? renderDemoProtocolsSection() : ''}
+    </details>
     ${currentTenantDoc?.privateMethodsEligible ? `
     <div class="card" style="border:1.5px dashed var(--primary);margin-top:14px;">
       <h3 style="margin-bottom:6px;">🔒🧘 Ansiedade e Depressão — Acesso Privado</h3>
@@ -4937,6 +4950,7 @@ window.openNewProtocol = function(){
   protocolBodyImages = { front: '', back: '' };
   protocolFreeImagesDraft = [];
   window.__editingProtocolId = null;
+  window.__expandedMapPoints = new Set();
   renderProtocolForm(null, { type: 'simple' });
 };
 
@@ -4945,6 +4959,7 @@ window.editProtocol = async function(id){
   if (!snap.exists()){ toast('Protocolo não encontrado.', true); return; }
   const p = snap.data();
   window.__editingProtocolId = id;
+  window.__expandedMapPoints = new Set();
   protocolPointsDraft = (p.points || []).map(pt => ({...pt}));
   protocolGroupsDraft = (p.groups || []).map(g => ({...g, points: (g.points||[]).map(pt=>({...pt}))}));
   protocolClassificationsDraft = (p.finalClassifications || []).map(c => ({...c}));
@@ -5226,25 +5241,51 @@ window.removeQuestionOption = function(idx, oIdx){
 // ── Tipo "mapeamento" — grupos de pontos com variações por zona/lado ───
 function renderMappingGroupsBuilder(){
   let groupsHtml = protocolGroupsDraft.map((g, gIdx) => {
-    let pointsHtml = (g.points||[]).map((pt, pIdx) => `
-      <div class="card" style="margin:8px 0;background:#f6f8f7;">
+    let pointsHtml = (g.points||[]).map((pt, pIdx) => {
+      const key = `${gIdx}_${pIdx}`;
+      const expanded = window.__expandedMapPoints?.has(key);
+      const color = pt.color || '#2f6f5e';
+      const posLabel = pt.mapX != null ? `📍 ${pt.mapSide==='costas'?'Costas':'Frente'}` : '📍 sem posição';
+
+      if (!expanded){
+        // Linha compacta — o que se vê na maior parte do tempo. Nome e
+        // posição são os únicos dados que quase sempre mudam; o resto
+        // (descrição, variações por lado) só aparece ao tocar em "✏️".
+        return `<div class="row" style="align-items:center;margin:6px 0;padding:8px 10px;background:#f6f8f7;border-radius:8px;gap:6px;">
+          <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${color};flex-shrink:0;border:1px solid rgba(0,0,0,.15);"></span>
+          <input value="${escapeHtml(pt.name||'')}" onchange="updateMappingPoint(${gIdx},${pIdx},'name',this.value)" style="flex:1;margin:0;min-width:0;">
+          <button class="ghost" style="padding:6px 8px;font-size:12px;white-space:nowrap;background:${pt.mapX!=null?'':'#fff3cd'};" onclick="openMapPositionPicker(${gIdx},${pIdx})">${posLabel}</button>
+          <button class="ghost" style="padding:6px 10px;" onclick="toggleMapPointExpand('${key}')" title="Editar detalhes">✏️</button>
+        </div>`;
+      }
+
+      return `<div class="card" style="margin:8px 0;background:#f6f8f7;">
+        <div class="row" style="margin-bottom:6px;">
+          <strong>Editar ponto</strong>
+          <button class="ghost" onclick="toggleMapPointExpand('${key}')">✕ Fechar</button>
+        </div>
         <label>Nome do ponto</label>
         <input value="${escapeHtml(pt.name||'')}" onchange="updateMappingPoint(${gIdx},${pIdx},'name',this.value)">
-        <label>Texto base (significado geral — usado se não houver variação abaixo)</label>
+        <label>Cor no mapa</label>
+        <input type="color" value="${color}" onchange="updateMappingPoint(${gIdx},${pIdx},'color',this.value)" style="width:60px;height:38px;padding:2px;cursor:pointer;">
+        <label>Descrição / significado</label>
         <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'baseText',this.value)">${escapeHtml(pt.baseText||'')}</textarea>
-        <p class="muted" style="margin:6px 0 4px;">Variações opcionais — deixe em branco se for igual ao texto base:</p>
-        <label>Diferença quando é na FRENTE</label>
-        <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'frontText',this.value)">${escapeHtml(pt.frontText||'')}</textarea>
-        <label>Diferença quando é nas COSTAS</label>
-        <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'backText',this.value)">${escapeHtml(pt.backText||'')}</textarea>
-        <label>Acrescento quando é do lado ESQUERDO</label>
-        <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'leftText',this.value)">${escapeHtml(pt.leftText||'')}</textarea>
-        <label>Acrescento quando é do lado DIREITO</label>
-        <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'rightText',this.value)">${escapeHtml(pt.rightText||'')}</textarea>
-        <button onclick="openMapPositionPicker(${gIdx},${pIdx})" style="width:100%;background:${pt.mapX!=null?'var(--primary)':'#fff3cd'};color:${pt.mapX!=null?'#fff':'#8a5a00'};border:2px solid ${pt.mapX!=null?'var(--primary)':'#e0a83c'};padding:10px;border-radius:8px;font-weight:600;cursor:pointer;margin-bottom:8px;">${pt.mapX!=null ? '📍 Posição definida ('+(pt.mapSide==='costas'?'Costas':'Frente')+') — toque para editar' : '📍 Toque para colocar este ponto no boneco'}</button>
-        <button class="danger" onclick="removeMappingPoint(${gIdx},${pIdx})">Remover ponto</button>
+        <button onclick="openMapPositionPicker(${gIdx},${pIdx})" style="width:100%;background:${pt.mapX!=null?'var(--primary)':'#fff3cd'};color:${pt.mapX!=null?'#fff':'#8a5a00'};border:2px solid ${pt.mapX!=null?'var(--primary)':'#e0a83c'};padding:10px;border-radius:8px;font-weight:600;cursor:pointer;margin:8px 0;">${pt.mapX!=null ? '📍 Posição definida ('+(pt.mapSide==='costas'?'Costas':'Frente')+') — toque para editar' : '📍 Toque para colocar este ponto no boneco'}</button>
+        <details>
+          <summary style="cursor:pointer;color:var(--primary);padding:4px 0;">Variações por lado/zona (opcional — deixe fechado se não precisar)</summary>
+          <label>Diferença quando é na FRENTE</label>
+          <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'frontText',this.value)">${escapeHtml(pt.frontText||'')}</textarea>
+          <label>Diferença quando é nas COSTAS</label>
+          <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'backText',this.value)">${escapeHtml(pt.backText||'')}</textarea>
+          <label>Acrescento quando é do lado ESQUERDO</label>
+          <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'leftText',this.value)">${escapeHtml(pt.leftText||'')}</textarea>
+          <label>Acrescento quando é do lado DIREITO</label>
+          <textarea rows="2" onchange="updateMappingPoint(${gIdx},${pIdx},'rightText',this.value)">${escapeHtml(pt.rightText||'')}</textarea>
+        </details>
+        <button class="danger" style="margin-top:8px;" onclick="removeMappingPoint(${gIdx},${pIdx})">Remover ponto</button>
       </div>
-    `).join('');
+    `;
+    }).join('');
     return `
       <div class="card" style="border:1px solid var(--primary);margin-bottom:10px;">
         <label>Nome do grupo/sistema</label>
@@ -5266,10 +5307,18 @@ function renderMappingGroupsBuilder(){
     <input id="protoImgBack" value="${escapeHtml(protocolBodyImages.back||'')}" onchange="updateProtocolBodyImage('back', this.value)" placeholder="https://... (ou escolha uma foto abaixo)">
     ${imageUploadFieldHTML('protoImgBack', `tenants/${tenantId}/protocols`)}
     <h3 style="margin:14px 0 8px;">Grupos de pontos</h3>
+    ${hintBox('Cada linha compacta mostra a cor, o nome (pode editar aqui mesmo) e se já tem posição no boneco. Toque em "✏️" para abrir a descrição completa e as variações por lado, se precisar delas.')}
     <div id="mapPickerContainer"></div>
     <div id="protoGroupsList">${groupsHtml || '<p class="muted">Ainda sem grupos. Adicione o primeiro (ex: "7 Pontos Vitais").</p>'}</div>
     <button class="ghost" onclick="addMappingGroup()">+ Adicionar grupo</button>`;
 }
+
+window.toggleMapPointExpand = function(key){
+  if (!window.__expandedMapPoints) window.__expandedMapPoints = new Set();
+  if (window.__expandedMapPoints.has(key)) window.__expandedMapPoints.delete(key);
+  else window.__expandedMapPoints.add(key);
+  refreshProtoTypeBody();
+};
 
 window.updateProtocolBodyImage = function(side, value){
   protocolBodyImages[side] = value.trim();
