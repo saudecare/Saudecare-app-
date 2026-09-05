@@ -299,13 +299,13 @@ import {
 import {
   getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager,
   collection, doc, getDoc, getDocs, addDoc, updateDoc,
-  deleteDoc, setDoc, query, where, orderBy, serverTimestamp, Timestamp
+  deleteDoc, setDoc, query, where, orderBy, serverTimestamp, Timestamp, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-89';
+const APP_VERSION = '2026-09-02-90';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -402,6 +402,152 @@ function updateOnlineBanner(){
 window.addEventListener('online', updateOnlineBanner);
 window.addEventListener('offline', updateOnlineBanner);
 updateOnlineBanner();
+
+// ── Bloqueio por PIN neste aparelho ──────────────────────────────────────
+// Protege contra alguém pegar no telemóvel destrancado enquanto a app
+// ainda está aberta. O PIN fica só no localStorage deste aparelho —
+// nunca é enviado para lado nenhum, não é uma credencial da conta.
+window.saveDevicePin = function(){
+  const pin = document.getElementById('newDevicePin').value.trim();
+  const confirm2 = document.getElementById('confirmDevicePin').value.trim();
+  if (!/^\d{4,6}$/.test(pin)){ toast('O PIN deve ter entre 4 a 6 números.', true); return; }
+  if (pin !== confirm2){ toast('Os dois PIN não coincidem.', true); return; }
+  localStorage.setItem('vindoraDevicePin', pin);
+  toast('PIN ativado neste aparelho.');
+  renderView('settings');
+};
+window.removeDevicePin = function(){
+  localStorage.removeItem('vindoraDevicePin');
+  toast('PIN desativado.');
+  renderView('settings');
+};
+window.saveNotifSoundPref = function(){
+  const on = document.getElementById('notifSoundToggle').checked;
+  localStorage.setItem('vindoraNotifSound', on ? 'on' : 'off');
+  toast('Preferência guardada.');
+};
+
+function playNotifSound(){
+  if (localStorage.getItem('vindoraNotifSound') === 'off') return;
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.start(); osc.stop(ctx.currentTime + 0.35);
+  }catch(e){ /* som é só um extra, nunca deve travar nada */ }
+}
+
+let __lockHiddenAt = null;
+function showLockScreen(){
+  if (document.getElementById('pinLockOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'pinLockOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:var(--primary-dark);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;padding:20px;';
+  overlay.innerHTML = `
+    <div style="font-size:40px;margin-bottom:14px;">🔒</div>
+    <p style="margin-bottom:14px;">Introduza o PIN para continuar</p>
+    <input id="lockPinInput" type="tel" inputmode="numeric" maxlength="6" autofocus
+      style="width:160px;text-align:center;font-size:24px;letter-spacing:6px;padding:10px;border-radius:10px;border:none;"
+      onkeydown="if(event.key==='Enter')tryUnlock()">
+    <button class="primary" style="margin-top:14px;width:160px;" onclick="tryUnlock()">Desbloquear</button>
+    <p id="lockError" class="muted" style="color:#f2b8b8;margin-top:10px;height:16px;"></p>
+  `;
+  document.body.appendChild(overlay);
+  setTimeout(()=>document.getElementById('lockPinInput')?.focus(), 100);
+}
+window.tryUnlock = function(){
+  const entered = document.getElementById('lockPinInput').value.trim();
+  if (entered === localStorage.getItem('vindoraDevicePin')){
+    document.getElementById('pinLockOverlay')?.remove();
+  } else {
+    document.getElementById('lockError').textContent = 'PIN incorreto.';
+    document.getElementById('lockPinInput').value = '';
+  }
+};
+document.addEventListener('visibilitychange', () => {
+  const hasPin = !!localStorage.getItem('vindoraDevicePin');
+  const isLoggedIn = !document.getElementById('app')?.classList.contains('hidden');
+  if (!hasPin || !isLoggedIn) return;
+  if (document.hidden){
+    __lockHiddenAt = Date.now();
+  } else if (__lockHiddenAt){
+    showLockScreen();
+    __lockHiddenAt = null;
+  }
+});
+
+// ── Notificações em tempo real ──────────────────────────────────────────
+// Usa listeners do Firestore (onSnapshot) — grátis, e atualizam-se
+// sozinhos sem precisar de navegar/recarregar. Funciona enquanto a app
+// estiver aberta (mesmo em segundo plano no telemóvel); não substitui uma
+// notificação do sistema quando a app está totalmente fechada.
+let __notifPrevCounts = {};
+let __notifUnsubscribers = [];
+
+function setNavBadge(viewName, label, icon, count){
+  const btn = document.querySelector(`button[data-view="${viewName}"]`);
+  if (!btn) return;
+  btn.innerHTML = count > 0
+    ? `${icon} ${label} <span class="badge" style="background:#f6e2e0;color:var(--danger);margin-left:4px;">${count}</span>`
+    : `${icon} ${label}`;
+  if (count > (__notifPrevCounts[viewName] || 0)) playNotifSound();
+  __notifPrevCounts[viewName] = count;
+}
+
+function startRealtimeNotifications(){
+  __notifUnsubscribers.forEach(unsub => unsub());
+  __notifUnsubscribers = [];
+
+  // Lista de espera
+  __notifUnsubscribers.push(onSnapshot(
+    collection(db, 'tenants', tenantId, 'waitlist'),
+    snap => setNavBadge('waitlist', 'Lista de espera', '⏳', snap.size),
+    () => {}
+  ));
+
+  // Pedidos de marcação vindos da página pública
+  __notifUnsubscribers.push(onSnapshot(
+    query(collection(db, 'public_booking_requests'), where('tenantId','==',tenantId), where('status','==','pending_review')),
+    snap => setNavBadge('agenda', 'Agenda', '📅', snap.size),
+    () => {}
+  ));
+
+  // Convites de equipa pendentes (só o dono vê isto)
+  if (tenantRole === 'owner'){
+    __notifUnsubscribers.push(onSnapshot(
+      query(collection(db, 'tenants', tenantId, 'staff'), where('status','==','pending_activation')),
+      snap => setNavBadge('team', 'Equipa', '👥', snap.size),
+      () => {}
+    ));
+  }
+
+  // Mensagens de pacientes por ler — como implica percorrer todos os
+  // pacientes, isto verifica de x em x tempo em vez de tempo real puro
+  // (mais seguro e mais leve do que uma pesquisa entre todos os tenants).
+  const checkUnreadMessages = async () => {
+    try{
+      const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+      let total = 0;
+      for (const p of patientsSnap.docs){
+        const msgsSnap = await getDocs(query(
+          collection(db, 'tenants', tenantId, 'patients', p.id, 'messages'),
+          where('sender','==','patient'), where('readByProfessional','==', false)
+        ));
+        total += msgsSnap.size;
+      }
+      setNavBadge('patients', 'Pacientes', '🧑\u200d🤝\u200d🧑', total);
+    }catch(e){ /* falha silenciosa — não deve incomodar o resto da app */ }
+  };
+  checkUnreadMessages();
+  const msgInterval = setInterval(checkUnreadMessages, 20000);
+  __notifUnsubscribers.push(() => clearInterval(msgInterval));
+}
+
+window.addEventListener('beforeunload', () => __notifUnsubscribers.forEach(u => u()));
 
 let currentUser = null;
 let tenantId = null;
@@ -965,6 +1111,7 @@ onAuthStateChanged(auth, async (user) => {
   applyDynamicManifestAdmin();
   renderView('home');
   checkBackupReminder();
+  startRealtimeNotifications();
 
   const calendarParam = new URLSearchParams(window.location.search).get('calendarConnected');
   if (calendarParam === '1'){
@@ -978,7 +1125,7 @@ onAuthStateChanged(auth, async (user) => {
 
 document.querySelectorAll('nav button[data-view]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    if (btn.dataset.view === 'logout'){ signOut(auth); return; }
+    if (btn.dataset.view === 'logout'){ __notifUnsubscribers.forEach(u => u()); signOut(auth); return; }
     document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     renderView(btn.dataset.view);
@@ -6487,15 +6634,15 @@ async function renderProfileSection(main, section){
       ${hintBox('Escolha como quer atender os seus pacientes online. Isto aparece no Portal do Paciente para as consultas marcadas como "Online".')}
       <label>Ferramenta</label>
       <select id="pfOnlineTool" onchange="toggleOnlineToolFields()">
-        <option value="jitsi" ${(!currentTenantDoc?.onlineConsult?.tool || currentTenantDoc?.onlineConsult?.tool==='jitsi')?'selected':''}>Videochamada grátis incluída (Jitsi, sem conta)</option>
+        <option value="whatsapp" ${(!currentTenantDoc?.onlineConsult?.tool || currentTenantDoc?.onlineConsult?.tool==='whatsapp')?'selected':''}>WhatsApp (recomendado — a maioria dos terapeutas já usa)</option>
+        <option value="jitsi" ${currentTenantDoc?.onlineConsult?.tool==='jitsi'?'selected':''}>Videochamada grátis incluída (Jitsi, sem conta)</option>
         <option value="custom" ${currentTenantDoc?.onlineConsult?.tool==='custom'?'selected':''}>O meu próprio link fixo (Zoom, Google Meet, etc.)</option>
-        <option value="whatsapp" ${currentTenantDoc?.onlineConsult?.tool==='whatsapp'?'selected':''}>WhatsApp</option>
       </select>
       <div id="pfOnlineCustomField" class="${currentTenantDoc?.onlineConsult?.tool==='custom'?'':'hidden'}">
         <label>Link fixo da sua sala (Zoom/Meet/etc.)</label>
         <input id="pfOnlineCustomLink" value="${escapeHtml(currentTenantDoc?.onlineConsult?.customLink||'')}" placeholder="https://meet.google.com/xxx-xxxx-xxx">
       </div>
-      <div id="pfOnlineWhatsappField" class="${currentTenantDoc?.onlineConsult?.tool==='whatsapp'?'':'hidden'}">
+      <div id="pfOnlineWhatsappField" class="${(!currentTenantDoc?.onlineConsult?.tool || currentTenantDoc?.onlineConsult?.tool==='whatsapp')?'':'hidden'}">
         <label>Número de WhatsApp (com indicativo do país)</label>
         <input id="pfOnlineWhatsapp" value="${escapeHtml(currentTenantDoc?.onlineConsult?.whatsappNumber||'')}" placeholder="351912345678">
         <p class="muted" style="margin-top:4px;">O paciente vai poder abrir uma conversa consigo — a chamada de vídeo em si tem de ser iniciada por si dentro do WhatsApp, não é automática.</p>
@@ -6511,6 +6658,11 @@ async function renderProfileSection(main, section){
     inner = `
       <h2>🗓️ Disponibilidade & Marcação</h2>
       ${hintBox('Defina os dias e horas em que atende. Isto aparece na sua página pública, e quem visitar pode pedir uma marcação dentro desses horários — a marcação só fica confirmada depois de você aceitar, para nunca haver reservas automáticas por engano.')}
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:10px;">
+        <input type="checkbox" id="availNoFixedHours" style="width:auto;" onchange="toggleFixedHoursGrid()" ${currentTenantDoc?.availability?.noFixedHours ? 'checked' : ''}>
+        Não tenho horário fixo — atendo só por marcação (avisam-me e combino a hora)
+      </label>
+      <div id="fixedHoursGrid" class="${currentTenantDoc?.availability?.noFixedHours ? 'hidden' : ''}">
       ${days.map(d => {
         const cfg = avail[d.key] || { enabled: false, start: '09:00', end: '18:00' };
         return `<div class="row" style="align-items:center;margin-bottom:8px;">
@@ -6522,6 +6674,13 @@ async function renderProfileSection(main, section){
           <input type="time" id="avail_${d.key}_end" value="${cfg.end||'18:00'}" style="flex:1;">
         </div>`;
       }).join('')}
+      </div>
+      <label style="margin-top:10px;">Como prefere ser avisado de um pedido novo?</label>
+      <select id="pfBookingNotifChannel">
+        <option value="app" ${(!currentTenantDoc?.bookingNotificationChannel || currentTenantDoc?.bookingNotificationChannel==='app')?'selected':''}>Só dentro da app (grátis, tempo real, aparece já em "Agenda")</option>
+        <option value="app_email" ${currentTenantDoc?.bookingNotificationChannel==='app_email'?'selected':''}>Dentro da app + email (em breve — ainda não envia sozinho)</option>
+      </select>
+      <p class="muted" style="margin-top:4px;">Por agora, os pedidos aparecem sempre em tempo real dentro da app (badge em "Agenda"). SMS, chamada e WhatsApp automáticos não são possíveis gratuitamente. O envio automático por email fica registado como preferência, mas ainda não está ligado — avisamos quando estiver.</p>
       <button class="primary" style="margin-top:10px;" onclick="saveAvailability()">Guardar disponibilidade</button>
       <hr style="margin:16px 0;border:none;border-top:1px solid #e5e5e5;">
       <h3 style="margin-bottom:6px;">📬 Pedidos de marcação recebidos</h3>
@@ -6655,9 +6814,14 @@ window.acceptBookingRequest = async function(requestId){
   renderView('agenda');
 };
 
+window.toggleFixedHoursGrid = function(){
+  document.getElementById('fixedHoursGrid').classList.toggle('hidden', document.getElementById('availNoFixedHours').checked);
+};
+
 window.saveAvailability = async function(){
   const days = ['mon','tue','wed','thu','fri','sat','sun'];
-  const availability = {};
+  const noFixedHours = document.getElementById('availNoFixedHours').checked;
+  const availability = { noFixedHours };
   days.forEach(k => {
     availability[k] = {
       enabled: document.getElementById(`avail_${k}_on`).checked,
@@ -6665,8 +6829,10 @@ window.saveAvailability = async function(){
       end: document.getElementById(`avail_${k}_end`).value
     };
   });
-  await updateDoc(doc(db, 'tenants', tenantId), { availability });
+  const bookingNotificationChannel = document.getElementById('pfBookingNotifChannel').value;
+  await updateDoc(doc(db, 'tenants', tenantId), { availability, bookingNotificationChannel });
   currentTenantDoc.availability = availability;
+  currentTenantDoc.bookingNotificationChannel = bookingNotificationChannel;
   // Publica de imediato na página pública, tal como o resto do Perfil.
   if (currentTenantDoc?.slug){
     await setDoc(doc(db, 'public_tenant_profiles', currentTenantDoc.slug), { availability }, { merge: true });
@@ -7117,6 +7283,7 @@ function renderSettings(main){
       <div class="profile-grid">
         <button class="profile-tile" onclick="openSettingsSection('plano')"><span class="ptile-icon">📊</span><span>Plano & Estado</span></button>
         <button class="profile-tile" onclick="openSettingsSection('backup')"><span class="ptile-icon">💾</span><span>Backup dos Meus Dados</span></button>
+        <button class="profile-tile" onclick="openSettingsSection('seguranca')"><span class="ptile-icon">🔒</span><span>Segurança & Notificações</span></button>
       </div>`;
     return;
   }
@@ -7156,6 +7323,29 @@ function renderSettings(main){
         <option value="30" ${(!currentTenantDoc?.backupSettings?.frequencyDays || currentTenantDoc?.backupSettings?.frequencyDays===30)?'selected':''}>Todo o mês</option>
       </select>
       <button class="ghost" style="margin-top:8px;" onclick="saveBackupSettings()">Guardar preferências</button>
+    `;
+  } else if (__settingsSection === 'seguranca'){
+    const pinSet = !!localStorage.getItem('vindoraDevicePin');
+    inner = `
+      <h2>🔒 Bloqueio por PIN neste aparelho</h2>
+      ${hintBox('Protege a app se deixar o telemóvel ligado e alguém pegar nele. O PIN fica guardado só neste aparelho (não sai daqui). Se preferir, pode usar exatamente os mesmos números da sua palavra-passe, desde que sejam só números.')}
+      <p class="muted">${pinSet ? '✅ Já tem um PIN configurado neste aparelho.' : 'Ainda não tem PIN configurado.'}</p>
+      <label>${pinSet ? 'Novo PIN (4 a 6 números)' : 'Criar PIN (4 a 6 números)'}</label>
+      <input id="newDevicePin" type="tel" inputmode="numeric" maxlength="6" placeholder="••••">
+      <label>Confirmar PIN</label>
+      <input id="confirmDevicePin" type="tel" inputmode="numeric" maxlength="6" placeholder="••••">
+      <div class="row" style="margin-top:8px;">
+        <button class="primary" onclick="saveDevicePin()">${pinSet ? 'Alterar PIN' : 'Ativar PIN'}</button>
+        ${pinSet ? `<button class="ghost" onclick="removeDevicePin()">Desativar PIN</button>` : ''}
+      </div>
+
+      <hr style="margin:18px 0;border:none;border-top:1px solid #e5e5e5;">
+      <h2>🔔 Avisos e notificações</h2>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;">
+        <input type="checkbox" id="notifSoundToggle" style="width:auto;" ${localStorage.getItem('vindoraNotifSound')!=='off' ? 'checked' : ''}> Tocar um som quando chegar algo novo (mensagem, pedido de marcação, etc.)
+      </label>
+      <p class="muted" style="margin-top:8px;">Isto avisa-o em tempo real enquanto tiver a app aberta (mesmo que esteja noutra aba/app no telemóvel). Não substitui uma notificação do sistema quando a app está fechada — isso é uma funcionalidade maior, ainda por construir.</p>
+      <button class="ghost" style="margin-top:8px;" onclick="saveNotifSoundPref()">Guardar preferência</button>
     `;
   }
   main.innerHTML = `${backBtn}<div class="card" style="margin-top:10px;">${inner}</div>`;
