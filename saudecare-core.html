@@ -265,23 +265,10 @@
     </div>
     <button data-view="home" class="active">🏠 Início</button>
     <button onclick="startNewConsultationFlow()" style="background:var(--primary);color:#fff;font-weight:600;">🩺 Nova Consulta</button>
-    <div class="navGroupLabel">Consultas</div>
-    <button data-view="agenda">📅 Agenda</button>
-    <button data-view="patients">🧑‍🤝‍🧑 Pacientes</button>
-    <button data-view="waitlist">⏳ Lista de espera</button>
-    <button data-view="protocols">📋 Os Meus Métodos</button>
-    <button data-view="forms">📝 Fichas</button>
-    <div class="navGroupLabel">Negócio</div>
-    <button data-view="finances">💶 Finanças</button>
-    <button data-view="team" id="navTeamBtn">👥 Equipa</button>
-    <button data-view="services">🩺 Serviços</button>
-    <button data-view="profile" id="navProfileBtn">🏥 Perfil do Negócio</button>
-    <div class="navGroupLabel">Aprender</div>
-    <button data-view="knowledge">🧠 Conhecimento</button>
-    <button data-view="trainings">🎓 Formações</button>
-    <div class="navGroupLabel">A minha conta</div>
-    <button data-view="myprofile" id="navMyProfileBtn">🙋 O Meu Perfil Pessoal</button>
-    <button data-view="settings">⚙️ Definições</button>
+    <button data-view="group_agenda">📅 Agenda & Pacientes</button>
+    <button data-view="group_tools">🧰 As Minhas Ferramentas</button>
+    <button data-view="group_business">💼 O Meu Negócio</button>
+    <button data-view="group_account">⚙️ Conta</button>
     <button onclick="installApp()" style="margin-top:20px;">📲 Instalar app no dispositivo</button>
     <button data-view="logout" style="color:#f2b8b8;">Sair</button>
   </nav>
@@ -305,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-91';
+const APP_VERSION = '2026-09-02-93';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -488,14 +475,33 @@ document.addEventListener('visibilitychange', () => {
 let __notifPrevCounts = {};
 let __notifUnsubscribers = [];
 
-function setNavBadge(viewName, label, icon, count){
-  const btn = document.querySelector(`button[data-view="${viewName}"]`);
-  if (!btn) return;
-  btn.innerHTML = count > 0
-    ? `${icon} ${label} <span class="badge" style="background:#f6e2e0;color:var(--danger);margin-left:4px;">${count}</span>`
-    : `${icon} ${label}`;
-  if (count > (__notifPrevCounts[viewName] || 0)) playNotifSound();
-  __notifPrevCounts[viewName] = count;
+let __notifCounts = {};
+
+// Cada aviso pertence a uma funcionalidade específica (ex: "waitlist"),
+// mas como essa funcionalidade agora vive escondida dentro de uma
+// categoria do menu, o número aparece somado no botão da categoria
+// (ex: "📅 Agenda & Pacientes"). NAV_VIEW_TO_GROUP faz essa tradução.
+function setNavBadge(subKey, count){
+  __notifCounts[subKey] = count;
+  if (count > (__notifPrevCounts[subKey] || 0)) playNotifSound();
+  __notifPrevCounts[subKey] = count;
+  renderTopNavBadges();
+}
+
+function renderTopNavBadges(){
+  const groupTotals = {};
+  Object.entries(__notifCounts).forEach(([subKey, val]) => {
+    const groupView = (typeof NAV_VIEW_TO_GROUP !== 'undefined' && NAV_VIEW_TO_GROUP[subKey]) || null;
+    if (!groupView) return;
+    groupTotals[groupView] = (groupTotals[groupView] || 0) + val;
+  });
+  document.querySelectorAll('nav button[data-view^="group_"]').forEach(btn => {
+    if (!btn.dataset.baseLabel) btn.dataset.baseLabel = btn.textContent.trim();
+    const total = groupTotals[btn.dataset.view] || 0;
+    btn.innerHTML = total > 0
+      ? `${btn.dataset.baseLabel} <span class="badge" style="background:#f6e2e0;color:var(--danger);margin-left:4px;">${total}</span>`
+      : btn.dataset.baseLabel;
+  });
 }
 
 function startRealtimeNotifications(){
@@ -505,22 +511,25 @@ function startRealtimeNotifications(){
   // Lista de espera
   __notifUnsubscribers.push(onSnapshot(
     collection(db, 'tenants', tenantId, 'waitlist'),
-    snap => setNavBadge('waitlist', 'Lista de espera', '⏳', snap.size),
+    snap => setNavBadge('waitlist', snap.size),
     () => {}
   ));
 
-  // Pedidos de marcação vindos da página pública
-  __notifUnsubscribers.push(onSnapshot(
-    query(collection(db, 'public_booking_requests'), where('tenantId','==',tenantId), where('status','==','pending_review')),
-    snap => setNavBadge('agenda', 'Agenda', '📅', snap.size),
-    () => {}
-  ));
+  // Pedidos de marcação vindos da página pública — só quem pode mesmo
+  // aceitar/recusar (dono e acesso total).
+  if (tenantRole !== 'staff_restricted'){
+    __notifUnsubscribers.push(onSnapshot(
+      query(collection(db, 'public_booking_requests'), where('tenantId','==',tenantId), where('status','==','pending_review')),
+      snap => setNavBadge('agenda', snap.size),
+      () => {}
+    ));
+  }
 
   // Convites de equipa pendentes (só o dono vê isto)
   if (tenantRole === 'owner'){
     __notifUnsubscribers.push(onSnapshot(
       query(collection(db, 'tenants', tenantId, 'staff'), where('status','==','pending_activation')),
-      snap => setNavBadge('team', 'Equipa', '👥', snap.size),
+      snap => setNavBadge('team', snap.size),
       () => {}
     ));
   }
@@ -539,7 +548,7 @@ function startRealtimeNotifications(){
         ));
         total += msgsSnap.size;
       }
-      setNavBadge('patients', 'Pacientes', '🧑\u200d🤝\u200d🧑', total);
+      setNavBadge('patients', total);
     }catch(e){ /* falha silenciosa — não deve incomodar o resto da app */ }
   };
   checkUnreadMessages();
@@ -1103,9 +1112,6 @@ onAuthStateChanged(auth, async (user) => {
 
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  document.getElementById('navTeamBtn').classList.toggle('hidden', tenantRole === 'staff_restricted');
-  document.getElementById('navProfileBtn').classList.toggle('hidden', tenantRole !== 'owner');
-  document.getElementById('navMyProfileBtn').classList.toggle('hidden', tenantRole === 'owner');
   updateOnlineBanner();
   applyBranding();
   applyDynamicManifestAdmin();
@@ -1126,8 +1132,6 @@ onAuthStateChanged(auth, async (user) => {
 document.querySelectorAll('nav button[data-view]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     if (btn.dataset.view === 'logout'){ __notifUnsubscribers.forEach(u => u()); signOut(auth); return; }
-    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
     renderView(btn.dataset.view);
   });
 });
@@ -1364,6 +1368,62 @@ let __currentView = 'home';
 let __navigatingFromPopstate = false;
 let __profileSection = null;
 
+// ── Menu simplificado — os 14 botões de antes viviam todos ao mesmo
+// nível, o que ficava confuso. Agora só há 5 categorias visíveis; cada
+// uma abre uma grelha simples com as funcionalidades lá dentro.
+const NAV_GROUPS = {
+  agenda: { title: '📅 Agenda & Pacientes', items: [
+    { view: 'agenda', icon: '📅', label: 'Agenda' },
+    { view: 'patients', icon: '🧑\u200d🤝\u200d🧑', label: 'Pacientes' },
+    { view: 'waitlist', icon: '⏳', label: 'Lista de Espera' }
+  ]},
+  tools: { title: '🧰 As Minhas Ferramentas', items: [
+    { view: 'protocols', icon: '📋', label: 'Os Meus Métodos' },
+    { view: 'forms', icon: '📝', label: 'Fichas' },
+    { view: 'services', icon: '🩺', label: 'Serviços' },
+    { view: 'knowledge', icon: '🧠', label: 'Conhecimento' }
+  ]},
+  business: { title: '💼 O Meu Negócio', items: [
+    { view: 'finances', icon: '💶', label: 'Finanças' },
+    { view: 'team', icon: '👥', label: 'Equipa', hideForRestricted: true },
+    { view: 'profile', icon: '🏥', label: 'Perfil do Negócio', ownerOnly: true },
+    { view: 'trainings', icon: '🎓', label: 'Formações' }
+  ]},
+  account: { title: '⚙️ Conta', items: [
+    { view: 'myprofile', icon: '🙋', label: 'O Meu Perfil', hideForOwner: true },
+    { view: 'settings', icon: '⚙️', label: 'Definições' }
+  ]}
+};
+// Para saber, quando se está dentro de "Agenda" ou "Pacientes", qual o
+// botão de topo do menu que deve ficar destacado.
+const NAV_VIEW_TO_GROUP = {};
+Object.entries(NAV_GROUPS).forEach(([groupKey, group]) => {
+  group.items.forEach(it => { NAV_VIEW_TO_GROUP[it.view] = 'group_' + groupKey; });
+});
+
+function renderGroupMenu(main, groupKey){
+  const group = NAV_GROUPS[groupKey];
+  if (!group) return;
+  const items = group.items.filter(it => {
+    if (it.hideForRestricted && tenantRole === 'staff_restricted') return false;
+    if (it.ownerOnly && tenantRole !== 'owner') return false;
+    if (it.hideForOwner && tenantRole === 'owner') return false;
+    return true;
+  });
+  main.innerHTML = `
+    <h2>${group.title}</h2>
+    <div class="profile-grid">
+      ${items.map(it => `<button class="profile-tile" onclick="renderView('${it.view}')"><span class="ptile-icon">${it.icon}</span><span>${it.label}</span></button>`).join('')}
+    </div>`;
+}
+
+function highlightActiveNavGroup(view){
+  const activeTarget = view.startsWith('group_') ? view : (NAV_VIEW_TO_GROUP[view] || view);
+  document.querySelectorAll('nav button[data-view]').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === activeTarget);
+  });
+}
+
 function renderView(view){
   const main = document.getElementById('mainView');
   main.innerHTML = '<p class="muted">A carregar…</p>';
@@ -1390,6 +1450,8 @@ function renderView(view){
   else if (view === 'myprofile') renderMyPublicProfile(main);
   else if (view === 'settings') renderSettings(main);
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
+  else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
+  highlightActiveNavGroup(view);
 }
 // Exposta em window: onclick inline no HTML corre fora do módulo, por isso
 // precisa desta referência explícita para conseguir chamar a função.
@@ -3980,12 +4042,7 @@ async function renderForms(main){
   if (!pendingHtml) pendingHtml = '<p class="muted">Sem respostas pendentes.</p>';
 
   // Alerta visível no menu quando há respostas por associar.
-  const pendingCountEl = document.querySelector('button[data-view="forms"]');
-  if (pendingCountEl){
-    pendingCountEl.innerHTML = pendingSnap.size > 0
-      ? `📝 Fichas <span class="badge" style="background:#f6e2e0;color:var(--danger);margin-left:4px;">${pendingSnap.size}</span>`
-      : `📝 Fichas`;
-  }
+  setNavBadge('forms', pendingSnap.size);
 
   main.innerHTML = `
     <div class="row"><h2>Fichas / Questionários</h2>
@@ -5612,11 +5669,11 @@ window.previewProtocol = async function(id){
         <p class="muted" style="margin-top:4px;">A experimentar como um paciente de exemplo. Nada disto é guardado.</p>
         <button class="ghost" style="margin-top:8px;" onclick="renderView('protocols')">✕ Fechar pré-visualização</button>
       </div>
-      <div id="guidedPointsArea"></div>
+      <div id="guidedPointsAreaPreview"></div>
     </div>`;
   scrollToEl('protocolFormContainer');
 
-  const area = document.getElementById('guidedPointsArea');
+  const area = document.getElementById('guidedPointsAreaPreview');
   const patientId = '__preview__';
   const patientName = 'Paciente de Exemplo';
 
@@ -7285,7 +7342,7 @@ window.downloadBackup = async function(silent){
 };
 
 // ── CONFIGURAÇÕES ────────────────────────────────────────────────────
-function renderSettings(main){
+async function renderSettings(main){
   if (!__settingsSection){
     main.innerHTML = `
       <h2>Definições da conta</h2>
@@ -7300,11 +7357,23 @@ function renderSettings(main){
   let inner = '';
   if (__settingsSection === 'plano'){
     const dpaDate = currentTenantDoc?.dpaAcceptedAt?.toDate ? currentTenantDoc.dpaAcceptedAt.toDate().toLocaleDateString('pt-PT') : null;
+    const nextDue = currentTenantDoc?.nextPaymentDue || null;
+    const isOverdue = nextDue && nextDue < new Date().toISOString().slice(0,10);
+    const platformSnap = await getDoc(doc(db, 'settings', 'platformConfig'));
+    const payInfo = platformSnap.exists() ? platformSnap.data() : {};
     inner = `
       <h2>📊 Plano & Estado</h2>
       <p class="muted">Plano atual: <strong>${escapeHtml(currentTenantDoc?.plan||'—')}</strong></p>
       <p class="muted">Estado: <strong>${escapeHtml(currentTenantDoc?.status||'—')}</strong></p>
-      <p class="muted" style="margin-top:10px;">Para alterar nome, logótipo, cores, contactos e equipa, use a aba <strong>Perfil</strong>.</p>
+      ${nextDue ? `<p class="muted" style="${isOverdue?'color:var(--danger);font-weight:600;':''}">Próximo pagamento: ${new Date(nextDue).toLocaleDateString('pt-PT')}${isOverdue?' — em atraso':''}</p>` : ''}
+      ${currentTenantDoc?.status === 'trial' ? '<p class="muted">Está em período de teste gratuito — sem nada a pagar por agora.</p>' : `
+      <div class="card" style="margin-top:10px;background:#f6f8f7;">
+        <h3 style="margin-bottom:6px;">💳 Como pagar</h3>
+        ${payInfo.iban ? `<p class="muted">Transferência bancária: IBAN <strong>${escapeHtml(payInfo.iban)}</strong></p>` : ''}
+        ${payInfo.mbway ? `<p class="muted">MB Way: <strong>${escapeHtml(payInfo.mbway)}</strong></p>` : ''}
+        ${payInfo.hotmartLink ? `<p class="muted" style="margin-top:6px;">Ou pague automaticamente (cartão/Multibanco) por aqui: <a href="${escapeHtml(payInfo.hotmartLink)}" target="_blank">${escapeHtml(payInfo.hotmartLink)}</a></p>` : ''}
+        <p class="muted" style="margin-top:6px;">Depois de pagar por transferência/MB Way, envie o comprovativo para <strong>${escapeHtml(payInfo.contactEmail || 'vindoraportugal@gmail.com')}</strong> — ativamos assim que confirmarmos.</p>
+      </div>`}
       <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
       <p class="muted">${dpaDate ? `📄 Acordo de Processamento de Dados aceite em ${dpaDate}.` : '📄 Acordo de Processamento de Dados ainda não aceite.'}</p>
       <details style="margin-top:8px;">
