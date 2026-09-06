@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-111';
+const APP_VERSION = '2026-09-02-112';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2803,7 +2803,6 @@ let patientAttachmentsDraft = [];
 
 function renderPatientAttachmentsBuilder(){
   return `
-    <h3 style="margin:14px 0 8px;">Ficheiros/fotos anexados (opcional)</h3>
     <p class="muted" style="margin-bottom:8px;">Escolha uma foto do telemóvel, PC ou nuvem, ou cole um link (ex: Google Drive partilhado).</p>
     <div id="patientAttachmentsList"></div>
     <button class="ghost" onclick="addPatientAttachment()">+ Adicionar ficheiro</button>`;
@@ -2843,7 +2842,6 @@ function renderPatientCustomFieldsBuilder(){
     </div>
   `).join('');
   return `
-    <h3 style="margin:14px 0 8px;">Campos personalizados (opcional)</h3>
     <div id="patientCustomFieldsList">${rows}</div>
     <button class="ghost" onclick="addPatientCustomField()">+ Adicionar campo</button>`;
 }
@@ -2926,30 +2924,44 @@ window.openNewPatient = async function(){
       ${imageUploadFieldHTML('pPhotoUrl', `tenants/${tenantId}/patients`)}
       <label>Notas clínicas iniciais</label><textarea id="pNotes" rows="3"></textarea>
       ${assignedStaffFieldHtml}
-      ${renderPatientCustomFieldsBuilder()}
-      ${renderPatientAttachmentsBuilder()}
-      <label style="margin-top:14px;">Termo de consentimento (peça ao paciente para ler)</label>
-      <div style="max-height:140px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:13px;white-space:pre-wrap;margin-bottom:8px;">${escapeHtml(currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT)}</div>
 
-      <div id="consentMethodTabs" class="row" style="margin-bottom:10px;">
-        <button type="button" class="ghost" id="consentTabCheck" onclick="switchConsentMethod('check')" style="flex:1;">✅ Ler e confirmar (recomendado)</button>
-        <button type="button" class="ghost" id="consentTabSign" onclick="switchConsentMethod('sign')" style="flex:1;">✍️ Assinar no ecrã</button>
-      </div>
+      <details style="margin-top:12px;">
+        <summary style="cursor:pointer;font-weight:700;">🏷️ Campos personalizados (opcional)</summary>
+        <div style="margin-top:8px;">${renderPatientCustomFieldsBuilder()}</div>
+      </details>
 
-      <div id="consentPanelCheck">
-        <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
-          <input type="checkbox" id="consentCheckbox" style="width:auto;margin-top:3px;">
-          <span>O paciente leu o termo acima e concorda com ele. Confirmo que expliquei o conteúdo verbalmente, caso a leitura não tenha sido feita diretamente pelo paciente (ex: consulta por telefone).</span>
-        </label>
-      </div>
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer;font-weight:700;">📁 Ficheiros/fotos anexados (opcional)</summary>
+        <div style="margin-top:8px;">${renderPatientAttachmentsBuilder()}</div>
+      </details>
 
-      <div id="consentPanelSign" class="hidden">
-        <label>Assinatura do paciente (desenhe aqui, no ecrã — precisa de ecrã tátil)</label>
-        <canvas id="consentSignaturePad" width="500" height="160" style="border:1px solid #ccc;border-radius:8px;width:100%;touch-action:none;background:#fff;display:block;"></canvas>
-        <button type="button" class="ghost" style="margin-top:6px;" onclick="clearSignaturePad()">Limpar assinatura</button>
-      </div>
+      <details style="margin-top:10px;" open>
+        <summary style="cursor:pointer;font-weight:700;">📄 Termo de consentimento (obrigatório)</summary>
+        <div style="margin-top:8px;">
+          <p class="muted" style="margin-bottom:6px;">Peça ao paciente para ler antes de guardar.</p>
+          <div style="max-height:140px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:13px;white-space:pre-wrap;margin-bottom:8px;">${escapeHtml(currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT)}</div>
 
-      <button class="primary" style="margin-top:10px;" onclick="savePatient()">Guardar</button>
+          <div id="consentMethodTabs" class="row" style="margin-bottom:10px;">
+            <button type="button" class="ghost" id="consentTabCheck" onclick="switchConsentMethod('check')" style="flex:1;">✅ Ler e confirmar (recomendado)</button>
+            <button type="button" class="ghost" id="consentTabSign" onclick="switchConsentMethod('sign')" style="flex:1;">✍️ Assinar no ecrã</button>
+          </div>
+
+          <div id="consentPanelCheck">
+            <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
+              <input type="checkbox" id="consentCheckbox" style="width:auto;margin-top:3px;">
+              <span>O paciente leu o termo acima e concorda com ele. Confirmo que expliquei o conteúdo verbalmente, caso a leitura não tenha sido feita diretamente pelo paciente (ex: consulta por telefone).</span>
+            </label>
+          </div>
+
+          <div id="consentPanelSign" class="hidden">
+            <label>Assinatura do paciente (desenhe aqui, no ecrã — precisa de ecrã tátil)</label>
+            <canvas id="consentSignaturePad" width="500" height="160" style="border:1px solid #ccc;border-radius:8px;width:100%;touch-action:none;background:#fff;display:block;"></canvas>
+            <button type="button" class="ghost" style="margin-top:6px;" onclick="clearSignaturePad()">Limpar assinatura</button>
+          </div>
+        </div>
+      </details>
+
+      <button class="primary" style="margin-top:14px;" onclick="savePatient()">Guardar</button>
     </div>`;
   refreshPatientAttachmentsList();
   initSignaturePad();
@@ -3081,8 +3093,17 @@ window.editPatient = async function(patientId){
       ${imageUploadFieldHTML('pPhotoUrl', `tenants/${tenantId}/patients`)}
       <label>Notas clínicas</label><textarea id="pNotes" rows="3">${escapeHtml(p.clinicalNotes||'')}</textarea>
       ${assignedStaffFieldHtml}
-      ${renderPatientCustomFieldsBuilder()}
-      ${renderPatientAttachmentsBuilder()}
+
+      <details style="margin-top:12px;" ${(p.customFields||[]).length ? 'open' : ''}>
+        <summary style="cursor:pointer;font-weight:700;">🏷️ Campos personalizados (opcional)</summary>
+        <div style="margin-top:8px;">${renderPatientCustomFieldsBuilder()}</div>
+      </details>
+
+      <details style="margin-top:10px;" ${(p.attachments||[]).length ? 'open' : ''}>
+        <summary style="cursor:pointer;font-weight:700;">📁 Ficheiros/fotos anexados (opcional)</summary>
+        <div style="margin-top:8px;">${renderPatientAttachmentsBuilder()}</div>
+      </details>
+
       <div class="row" style="margin-top:14px;">
         <button class="primary" onclick="updatePatient('${patientId}')">Guardar alterações</button>
         <button class="ghost" onclick="viewPatient('${patientId}')">Cancelar</button>
