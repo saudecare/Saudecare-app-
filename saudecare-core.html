@@ -286,13 +286,13 @@ import {
 import {
   getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager,
   collection, doc, getDoc, getDocs, addDoc, updateDoc,
-  deleteDoc, setDoc, query, where, orderBy, serverTimestamp, Timestamp, onSnapshot
+  deleteDoc, setDoc, query, where, orderBy, serverTimestamp, Timestamp, onSnapshot, arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-99';
+const APP_VERSION = '2026-09-02-100';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2859,6 +2859,48 @@ window.openNewPatient = function(){
   switchConsentMethod('check');
 };
 
+function renderSharedMaterialsList(patientId, p){
+  const list = p.sharedMaterials || [];
+  if (!list.length) return '<p class="muted">Ainda não enviou nenhum material a este paciente.</p>';
+  return list.map(m => `
+    <div class="appt-item row">
+      <div><strong>${escapeHtml(m.label||'Material')}</strong><div class="muted" style="word-break:break-all;">${escapeHtml(m.url||'')}</div></div>
+      <button class="danger" onclick="removeSharedMaterial('${patientId}','${m.id}')">🗑</button>
+    </div>`).join('');
+}
+
+window.showAddMaterialForm = function(patientId){
+  document.getElementById('addMaterialFormContainer').innerHTML = `
+    <div class="card" style="background:#f6f8f7;margin-top:8px;">
+      <label>Título (ex: "Meditação para dormir", "Foto do mapa energético")</label>
+      <input id="matLabel" placeholder="Título do material">
+      <label>Link (Google Drive, YouTube, etc.)</label>
+      <input id="matUrl" placeholder="https://...">
+      <button class="primary" onclick="saveSharedMaterial('${patientId}')">Enviar ao paciente</button>
+    </div>`;
+};
+
+window.saveSharedMaterial = async function(patientId){
+  const label = document.getElementById('matLabel').value.trim();
+  const url = document.getElementById('matUrl').value.trim();
+  if (!label || !url){ toast('Preencha o título e o link.', true); return; }
+  const material = { id: crypto.randomUUID(), label, url, addedAt: new Date().toISOString() };
+  await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), {
+    sharedMaterials: arrayUnion(material)
+  });
+  toast('Material enviado — já aparece no Portal do paciente.');
+  viewPatient(patientId);
+};
+
+window.removeSharedMaterial = async function(patientId, materialId){
+  if (!confirm('Remover este material? Deixa de aparecer no Portal do paciente.')) return;
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
+  const list = (snap.data()?.sharedMaterials || []).filter(m => m.id !== materialId);
+  await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), { sharedMaterials: list });
+  toast('Material removido.');
+  viewPatient(patientId);
+};
+
 window.registerConsentForPatient = async function(patientId, patientName){
   window.__editingPatientId = patientId;
   showPatientOverlay('Registar consentimento', `
@@ -3252,7 +3294,15 @@ window.viewPatient = async function(patientId){
     </div>
     <div class="card">
       <h2>Ficheiros e fotos</h2>
+      <p class="muted" style="margin-bottom:6px;font-size:11.5px;">Só para si — o paciente não vê isto no Portal.</p>
       ${attachmentsHtml}
+    </div>
+    <div class="card">
+      <h2>🎧 Materiais enviados ao paciente</h2>
+      <p class="muted" style="margin-bottom:8px;">Músicas, meditações, ficheiros ou fotos que aparecem no Portal do paciente, prontos a abrir/descarregar. Use um link (Google Drive, YouTube, etc.) — nunca carregue o ficheiro para aqui, para não gastar armazenamento da app.</p>
+      <div id="sharedMaterialsList">${renderSharedMaterialsList(patientId, p)}</div>
+      <button class="ghost" style="width:100%;margin-top:8px;" onclick="showAddMaterialForm('${patientId}')">+ Enviar material</button>
+      <div id="addMaterialFormContainer"></div>
     </div>
     <div class="card">
       <h2>Relatórios anteriores</h2>

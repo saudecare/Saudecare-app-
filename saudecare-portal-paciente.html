@@ -72,7 +72,7 @@
 </main>
 
 <script>
-const PAGE_VERSION = '2026-09-06-01';
+const PAGE_VERSION = '2026-09-06-02';
 
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha (podia interromper alguém a meio de escrever
@@ -355,6 +355,10 @@ function renderMenu(){
       <button class="tile" onclick="openPortalSection('myData')">
         <span class="tile-icon">📋</span><span>Os Meus Dados</span>
       </button>
+      <button class="tile" onclick="openPortalSection('materials')">
+        ${(data.sharedMaterials||[]).length ? '<span class="tile-badge">' + data.sharedMaterials.length + '</span>' : ''}
+        <span class="tile-icon">🎧</span><span>Materiais</span>
+      </button>
     </div>
   `;
 }
@@ -534,6 +538,23 @@ function renderPortalSection(name){
         ${customFieldsHtml}
         ${md.clinicalNotes !== null && md.clinicalNotes !== undefined ? `
         <div class="appt"><strong>Notas clínicas</strong><div class="muted" style="white-space:pre-wrap;">${escapeHtml(md.clinicalNotes||'—')}</div></div>` : ''}
+      </div>
+    `;
+
+  } else if (name === 'materials'){
+    const materials = data.sharedMaterials || [];
+    const materialsHtml = materials.length
+      ? materials.map(m => `
+        <div class="appt">
+          <strong>${escapeHtml(m.label||'Material')}</strong>
+          <a class="btn btn-block" style="margin-top:8px;" target="_blank" rel="noopener" href="${escapeHtml(m.url)}">🎧 Abrir / descarregar</a>
+        </div>`).join('')
+      : '<p class="muted">O seu terapeuta ainda não lhe enviou nenhum material.</p>';
+    inner = `
+      <div class="card">
+        <h2>🎧 Materiais</h2>
+        <p class="muted" style="margin-bottom:10px;">Músicas, meditações, ficheiros e fotos que o seu terapeuta lhe enviou. Toque para abrir — pode guardar no seu telemóvel a partir daí.</p>
+        ${materialsHtml}
       </div>
     `;
   }
