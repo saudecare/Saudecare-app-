@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-94';
+const APP_VERSION = '2026-09-02-95';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2051,36 +2051,39 @@ window.notifyPatientForCall = function(patientId, phone, patientName, portalToke
   }
 };
 
-// Em apps instaladas (modo "standalone"), o Android por vezes bloqueia
-// silenciosamente window.open para links externos — sem erro nenhum, o
-// botão só "não faz nada". Isto garante que sempre acontece alguma coisa.
+// Tentar abrir numa aba nova (window.open) e só usar isto como "plano B"
+// revelou-se pouco fiável em apps instaladas — o próprio window.open às
+// vezes finge ter funcionado sem realmente abrir nada. Navegar direto é
+// mais lento a "voltar" à Vindora, mas garante sempre que algo acontece.
 function openExternalLink(url){
-  const win = window.open(url, '_blank');
-  if (!win || win.closed || typeof win.closed === 'undefined'){
-    window.location.href = url;
-  }
+  window.location.href = url;
 }
 
 window.joinOnlineConsult = function(patientId){
-  const oc = currentTenantDoc?.onlineConsult || { tool: 'whatsapp' };
-  if (oc.tool === 'custom' && oc.customLink){
-    openExternalLink(oc.customLink);
-  } else if (oc.tool === 'whatsapp'){
-    if (!oc.whatsappNumber){
-      toast('Escolheu WhatsApp como ferramenta, mas ainda não preencheu o número em Perfil → Consultório Online.', true);
-      return;
+  try{
+    const oc = currentTenantDoc?.onlineConsult || { tool: 'whatsapp' };
+    if (oc.tool === 'custom' && oc.customLink){
+      openExternalLink(oc.customLink);
+    } else if (oc.tool === 'whatsapp'){
+      if (!oc.whatsappNumber){
+        toast('Escolheu WhatsApp como ferramenta, mas ainda não preencheu o número em Perfil → Consultório Online.', true);
+        return;
+      }
+      openExternalLink(`https://wa.me/${oc.whatsappNumber}`);
+    } else {
+      // Mesma fórmula usada no Portal do Paciente — assim ambos entram
+      // exatamente na mesma sala, sem precisar de combinar nada à parte.
+      // A incorporação (iframe) do Jitsi grátis corta a chamada aos 5
+      // minutos — por isso abrimos numa aba normal, mas com configuração
+      // no próprio link para saltar o ecrã inicial e entrar já com o som
+      // ligado, sem pedir mais nada.
+      const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
+      const displayName = encodeURIComponent(currentTenantDoc?.businessName || currentUser?.email || 'Terapeuta');
+      openExternalLink(`https://meet.jit.si/${jitsiRoom}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22`);
     }
-    openExternalLink(`https://wa.me/${oc.whatsappNumber}`);
-  } else {
-    // Mesma fórmula usada no Portal do Paciente — assim ambos entram
-    // exatamente na mesma sala, sem precisar de combinar nada à parte.
-    // A incorporação (iframe) do Jitsi grátis corta a chamada aos 5
-    // minutos — por isso abrimos numa aba normal, mas com configuração
-    // no próprio link para saltar o ecrã inicial e entrar já com o som
-    // ligado, sem pedir mais nada.
-    const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
-    const displayName = encodeURIComponent(currentTenantDoc?.businessName || currentUser?.email || 'Terapeuta');
-    openExternalLink(`https://meet.jit.si/${jitsiRoom}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22`);
+  }catch(e){
+    console.error('Falha ao iniciar videochamada:', e);
+    toast('⚠️ Não foi possível iniciar a videochamada: ' + (e.message||'erro desconhecido'), true);
   }
 };
 
