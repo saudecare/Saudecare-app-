@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-104';
+const APP_VERSION = '2026-09-02-106';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1418,7 +1418,8 @@ const NAV_GROUPS = {
   ]},
   account: { title: '⚙️ Conta', items: [
     { view: 'myprofile', icon: '🙋', label: 'O Meu Perfil', hideForOwner: true },
-    { view: 'settings', icon: '⚙️', label: 'Definições' }
+    { view: 'settings', icon: '⚙️', label: 'Definições' },
+    { view: 'supportContact', icon: '🆘', label: 'Reportar / Pedir Apoio' }
   ]}
 };
 // Para saber, quando se está dentro de "Agenda" ou "Pacientes", qual o
@@ -1476,6 +1477,7 @@ function renderView(view){
   else if (view === 'profile') renderProfile(main);
   else if (view === 'myprofile') renderMyPublicProfile(main);
   else if (view === 'settings') renderSettings(main);
+  else if (view === 'supportContact') renderSupportContact(main);
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
   highlightActiveNavGroup(view);
@@ -1824,6 +1826,30 @@ async function renderHome(main){
   if (pendingFormsSnap.size){
     alerts.push({ icon: '📝', text: `${pendingFormsSnap.size} resposta(s) de ficha por associar a um paciente`, action: "renderView('forms')" });
   }
+
+  // A conta da Hikari Fafe é, ao mesmo tempo, subscritora normal E
+  // administradora da plataforma Vindora — por isso, quando está a usar
+  // a app do consultório, também precisa de ser avisada se houver
+  // incidentes/pedidos de apoio à espera no painel de administração
+  // (que é uma app separada, com login próprio).
+  try{
+    const adminSnap = await getDoc(doc(db, 'platform_admins', currentUser.uid));
+    if (adminSnap.exists()){
+      const [incSnap, supSnap] = await Promise.all([
+        getDocs(query(collection(db, 'platform_support_requests'), where('type','==','incident'), where('status','==','open'))),
+        getDocs(query(collection(db, 'platform_support_requests'), where('type','==','support'), where('status','==','open')))
+      ]);
+      const total = incSnap.size + supSnap.size;
+      if (total > 0){
+        const adminUrl = window.location.origin + window.location.pathname.replace('saudecare-core.html', 'saudecare-admin.html');
+        alerts.unshift({
+          icon: '🛠️',
+          text: `${total} pedido(s) em aberto no painel de administração${incSnap.size ? ` — ${incSnap.size} incidente(s) urgente(s)` : ''}`,
+          action: `window.open('${adminUrl}','_blank')`
+        });
+      }
+    }
+  }catch(e){ /* falha silenciosa — nunca deve travar o Início do consultório */ }
 
   const unreadByPatient = await Promise.all(patientsSnap.docs
     .filter(d => (!d.data().preferredChannel || d.data().preferredChannel === 'portal') && isPatientVisibleToCurrentStaff(d.data()))
@@ -7566,6 +7592,45 @@ window.downloadBackup = async function(silent){
 };
 
 // ── CONFIGURAÇÕES ────────────────────────────────────────────────────
+// ── Reportar incidente / pedir apoio à administração da Vindora ─────────
+function renderSupportContact(main){
+  main.innerHTML = `
+    <h2>🆘 Reportar / Pedir Apoio</h2>
+    ${hintBox('Isto vai diretamente para a administração da plataforma Vindora — não para os seus pacientes. Use para reportar um incidente sério (ex: uma situação de emergência com um paciente que precise de ficar registada), um problema técnico, ou simplesmente para pedir apoio sobre como usar a app.')}
+    <div class="card">
+      <label>Tipo de pedido</label>
+      <div class="row" id="supportTypeTabs" style="margin-bottom:10px;flex-wrap:wrap;">
+        <button type="button" class="ghost" id="supportTabIncident" onclick="switchSupportType('incident')" style="flex:1;">🚨 Incidente</button>
+        <button type="button" class="ghost" id="supportTabSupport" onclick="switchSupportType('support')" style="flex:1;">💬 Apoio/dúvida</button>
+      </div>
+      <label>Mensagem</label>
+      <textarea id="supportMessage" rows="5" placeholder="Descreva com o máximo de detalhe possível…"></textarea>
+      <button class="primary" style="margin-top:8px;" onclick="submitSupportRequest()">Enviar à administração</button>
+      <p class="muted" style="margin-top:8px;">Responderemos pelo email associado à sua conta (${escapeHtml(currentUser?.email||'')}).</p>
+    </div>
+  `;
+  switchSupportType('support');
+}
+
+window.switchSupportType = function(type){
+  window.__supportType = type;
+  document.getElementById('supportTabIncident').classList.toggle('primary', type === 'incident');
+  document.getElementById('supportTabSupport').classList.toggle('primary', type === 'support');
+};
+
+window.submitSupportRequest = async function(){
+  const message = document.getElementById('supportMessage').value.trim();
+  if (!message){ toast('Escreva a mensagem antes de enviar.', true); return; }
+  await addDoc(collection(db, 'platform_support_requests'), {
+    tenantId, businessName: currentTenantDoc?.businessName || '',
+    ownerEmail: currentUser?.email || '',
+    type: window.__supportType || 'support',
+    message, status: 'open', createdAt: serverTimestamp()
+  });
+  toast('Enviado. A administração vai receber isto o mais rápido possível.');
+  renderView('home');
+};
+
 async function renderSettings(main){
   if (!__settingsSection){
     main.innerHTML = `
@@ -7942,6 +8007,12 @@ function getPlanLimits(){
   // A Hikari Fafe (tenant titular) tem sempre acesso total, mesmo que o
   // campo "plan" seja alterado por engano.
   if (tenantId === 'hikari-terapias') return PLAN_LIMITS.lifetime;
+  // Acesso completo concedido manualmente pela administração (diferente
+  // do plano "Vitalício" comprado) — para sempre, ou até uma data.
+  const fao = currentTenantDoc?.fullAccessOverride;
+  if (fao?.active && (!fao.expiresAt || (fao.expiresAt.toMillis ? fao.expiresAt.toMillis() : fao.expiresAt) > Date.now())){
+    return PLAN_LIMITS.lifetime;
+  }
   const plan = currentTenantDoc?.plan || 'start';
   // Se o admin já configurou os planos pelo painel (Catálogo de Planos),
   // usa esses valores; caso contrário, usa os predefinidos no código

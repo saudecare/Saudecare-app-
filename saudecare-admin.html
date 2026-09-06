@@ -15,13 +15,26 @@
   *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
   body{background:var(--bg);color:var(--text);}
   #app{display:flex;min-height:100vh;}
-  nav{width:220px;background:var(--primary-dark);color:#fff;padding:20px 12px;flex-shrink:0;}
+  #topBar{display:none;align-items:center;justify-content:space-between;background:var(--primary-dark);color:#fff;padding:12px 16px;position:sticky;top:0;z-index:120;}
+  #topBar button{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;}
+  #navOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:150;}
+  #navOverlay.show{display:block;}
+  nav{width:220px;background:var(--primary-dark);color:#fff;padding:20px 12px;flex-shrink:0;overflow-y:auto;}
   nav h1{font-size:18px;margin-bottom:4px;padding:0 8px;}
   nav p{font-size:11px;opacity:.7;padding:0 8px;margin-bottom:20px;}
   nav button{display:block;width:100%;text-align:left;background:none;border:none;color:#e4e6f2;
     padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;margin-bottom:4px;}
   nav button.active,nav button:hover{background:var(--primary);color:#fff;}
-  .navGroupLabel{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8890b0;padding:14px 12px 4px;}
+  .navCategory{background:rgba(255,255,255,.04);border-radius:12px;padding:6px;margin-bottom:10px;}
+  .navGroupLabel{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#c3c8e6;padding:8px 8px 6px;font-weight:700;}
+  @media (max-width: 720px){
+    #app{display:block;}
+    #topBar{display:flex;}
+    nav{position:fixed;top:0;left:0;bottom:0;width:82vw;max-width:300px;z-index:200;
+      transform:translateX(-105%);transition:transform .2s ease;}
+    nav.navOpen{transform:translateX(0);}
+    main{padding:16px;max-width:100%;}
+  }
   main{flex:1;padding:24px;max-width:1000px;}
   .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;
     box-shadow:0 1px 3px rgba(0,0,0,.06);}
@@ -41,6 +54,12 @@
   .badge.active{background:#dcf0e4;color:#1f6d3f;}
   .badge.trial{background:#fff3cd;color:#8a5a00;}
   .badge.suspended,.badge.cancelled{background:#f6e2e0;color:var(--danger);}
+  .pill-group{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;}
+  .pill{padding:8px 14px;border-radius:20px;border:1.5px solid #ccc;background:#fff;font-size:14px;cursor:pointer;color:var(--text,#1a2b26);}
+  .pill.active{background:var(--primary);color:#fff;border-color:var(--primary);font-weight:600;}
+  .plan-summary{cursor:pointer;padding:12px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;}
+  .plan-summary::-webkit-details-marker{display:none;}
+  .plan-summary .muted{font-weight:400;}
   .muted{color:var(--muted);font-size:13px;}
   .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;}
   .stat-card{background:var(--card);border-radius:12px;padding:14px;text-align:center;}
@@ -77,25 +96,49 @@
 </div>
 
 <div id="app" class="hidden">
+  <div id="navOverlay"></div>
   <nav>
     <h1>Vindora</h1>
     <p>Administração da plataforma</p>
     <button data-view="overview" class="active">📊 Visão geral</button>
-    <div class="navGroupLabel">Subscritores</div>
-    <button data-view="tenants">🏢 Lista de Subscritores</button>
-    <button data-view="newTenant">➕ Novo subscritor</button>
-    <button data-view="methodRequests">📩 Pedidos de Acesso</button>
-    <div class="navGroupLabel">Plataforma</div>
-    <button data-view="announcements">📢 Avisos</button>
-    <button data-view="planCatalog">💶 Catálogo de Planos</button>
-    <button data-view="platformSettings">⚙️ Definições</button>
-    <button data-view="systemHealth">🩺 Saúde do Sistema</button>
-    <div class="navGroupLabel">Conteúdo Privado</div>
-    <button data-view="privateProtocols">🔒 Métodos Privados</button>
-    <button data-view="privateForms">🔒 Fichas Privadas</button>
+
+    <div class="navGroupLabel">🏢 Subscritores</div>
+    <div class="navCategory">
+      <button data-view="tenants">📋 Lista de Subscritores</button>
+      <button data-view="newTenant">➕ Novo subscritor</button>
+      <button data-view="methodRequests">📩 Pedidos de Acesso</button>
+    </div>
+
+    <div class="navGroupLabel">🌐 Plataforma</div>
+    <div class="navCategory">
+      <button data-view="announcements">📢 Avisos</button>
+      <button data-view="planCatalog">💶 Catálogo de Planos</button>
+      <button data-view="platformSettings">⚙️ Definições</button>
+      <button data-view="systemHealth">🩺 Saúde do Sistema</button>
+    </div>
+
+    <div class="navGroupLabel">🔒 Conteúdo Privado</div>
+    <div class="navCategory">
+      <button data-view="privateProtocols">🔒 Métodos Privados</button>
+      <button data-view="privateForms">🔒 Fichas Privadas</button>
+    </div>
+
+    <div class="navGroupLabel">🆘 Apoio & Incidentes</div>
+    <div class="navCategory">
+      <button data-view="incidents">🚨 Incidentes reportados</button>
+      <button data-view="supportRequests">💬 Pedidos de apoio</button>
+    </div>
+
     <button data-view="logout" style="margin-top:20px;color:#f2b8b8;">Sair</button>
   </nav>
-  <main id="mainView"></main>
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+    <header id="topBar">
+      <button id="navToggleBtn" aria-label="Menu">☰</button>
+      <strong>Vindora Admin</strong>
+      <span id="topBarAlertDot" style="width:10px;height:10px;border-radius:50%;background:var(--danger);display:none;"></span>
+    </header>
+    <main id="mainView"></main>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -108,7 +151,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc,
-  query, orderBy, serverTimestamp, Timestamp, deleteField
+  query, orderBy, where, serverTimestamp, Timestamp, deleteField, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -194,6 +237,7 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   renderView('overview');
+  startSupportNotifications();
 });
 
 document.querySelectorAll('nav button[data-view]').forEach(btn=>{
@@ -202,8 +246,19 @@ document.querySelectorAll('nav button[data-view]').forEach(btn=>{
     document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     renderView(btn.dataset.view);
+    closeMobileNav();
   });
 });
+
+function closeMobileNav(){
+  document.querySelector('nav').classList.remove('navOpen');
+  document.getElementById('navOverlay').classList.remove('show');
+}
+document.getElementById('navToggleBtn').addEventListener('click', () => {
+  document.querySelector('nav').classList.toggle('navOpen');
+  document.getElementById('navOverlay').classList.toggle('show');
+});
+document.getElementById('navOverlay').addEventListener('click', closeMobileNav);
 
 function renderView(view){
   const main = document.getElementById('mainView');
@@ -218,7 +273,85 @@ function renderView(view){
   else if (view === 'privateProtocols') renderPrivateProtocols(main);
   else if (view === 'privateForms') renderPrivateForms(main);
   else if (view === 'methodRequests') renderMethodRequests(main);
+  else if (view === 'incidents') renderSupportList(main, 'incident');
+  else if (view === 'supportRequests') renderSupportList(main, 'support');
 }
+
+// ── Apoio & Incidentes — pedidos enviados pelos subscritores ─────────────
+let __openIncidentCount = 0, __openSupportCount = 0;
+function playAdminAlertSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.start(); osc.stop(ctx.currentTime + 0.35);
+  }catch(e){ /* som é só um extra */ }
+}
+function updateSupportNavBadges(){
+  const btnIncidents = document.querySelector('nav button[data-view="incidents"]');
+  const btnSupport = document.querySelector('nav button[data-view="supportRequests"]');
+  if (btnIncidents){
+    if (!btnIncidents.dataset.baseLabel) btnIncidents.dataset.baseLabel = btnIncidents.textContent.trim();
+    btnIncidents.innerHTML = __openIncidentCount > 0 ? `${btnIncidents.dataset.baseLabel} <span class="badge" style="background:#f6e2e0;color:var(--danger);">${__openIncidentCount}</span>` : btnIncidents.dataset.baseLabel;
+  }
+  if (btnSupport){
+    if (!btnSupport.dataset.baseLabel) btnSupport.dataset.baseLabel = btnSupport.textContent.trim();
+    btnSupport.innerHTML = __openSupportCount > 0 ? `${btnSupport.dataset.baseLabel} <span class="badge">${__openSupportCount}</span>` : btnSupport.dataset.baseLabel;
+  }
+  const dot = document.getElementById('topBarAlertDot');
+  if (dot) dot.style.display = (__openIncidentCount > 0) ? 'block' : 'none';
+}
+function startSupportNotifications(){
+  onSnapshot(query(collection(db, 'platform_support_requests'), where('type','==','incident'), where('status','==','open')), snap => {
+    if (snap.size > __openIncidentCount) playAdminAlertSound();
+    __openIncidentCount = snap.size;
+    updateSupportNavBadges();
+  }, ()=>{});
+  onSnapshot(query(collection(db, 'platform_support_requests'), where('type','==','support'), where('status','==','open')), snap => {
+    if (snap.size > __openSupportCount) playAdminAlertSound();
+    __openSupportCount = snap.size;
+    updateSupportNavBadges();
+  }, ()=>{});
+}
+
+async function renderSupportList(main, type){
+  const snap = await getDocs(query(collection(db, 'platform_support_requests'), where('type','==', type)));
+  const list = [];
+  snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+  list.sort((a,b) => (b.createdAt?.toMillis?.()||0) - (a.createdAt?.toMillis?.()||0));
+  const open = list.filter(r => r.status !== 'resolved');
+  const resolved = list.filter(r => r.status === 'resolved');
+
+  const rowHtml = (r) => `
+    <div class="card" style="${r.status!=='resolved' && type==='incident' ? 'border:1.5px solid var(--danger);' : ''}margin-bottom:10px;">
+      <div class="row">
+        <strong>${escapeHtml(r.businessName||r.tenantId||'Subscritor')}</strong>
+        <span class="badge ${r.status==='resolved'?'active':''}" style="${r.status!=='resolved'?'background:#fff3cd;color:#8a5a00;':''}">${r.status==='resolved'?'resolvido':'aberto'}</span>
+      </div>
+      <p class="muted" style="margin:6px 0;">${escapeHtml(r.ownerEmail||'')} · ${r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString('pt-PT') : ''}</p>
+      <p style="white-space:pre-wrap;">${escapeHtml(r.message||'')}</p>
+      ${r.status!=='resolved' ? `<button class="primary" style="margin-top:8px;" onclick="markSupportResolved('${r.id}', '${type}')">✓ Marcar como resolvido</button>` : ''}
+    </div>`;
+
+  main.innerHTML = `
+    <h2>${type==='incident' ? '🚨 Incidentes reportados' : '💬 Pedidos de apoio'}</h2>
+    ${hintBox(type==='incident'
+      ? 'Situações que um subscritor marcou como incidente — normalmente merece atenção prioritária.'
+      : 'Dúvidas ou pedidos de ajuda gerais enviados pelos subscritores.')}
+    ${open.length ? open.map(rowHtml).join('') : '<p class="muted">Sem pedidos em aberto.</p>'}
+    ${resolved.length ? `<details style="margin-top:14px;"><summary class="muted" style="cursor:pointer;">Ver ${resolved.length} resolvido(s)</summary>${resolved.map(rowHtml).join('')}</details>` : ''}
+  `;
+}
+
+window.markSupportResolved = async function(id, type){
+  await updateDoc(doc(db, 'platform_support_requests', id), { status: 'resolved', resolvedAt: serverTimestamp() });
+  toast('Marcado como resolvido.');
+  renderSupportList(document.getElementById('mainView'), type);
+};
 
 async function loadAllTenants(){
   // Sem orderBy: o Firestore descarta silenciosamente documentos a que
@@ -287,9 +420,11 @@ async function renderOverview(main){
       ${!hasPrices ? `<button class="ghost" style="margin-top:8px;color:#fff;border-color:#fff;" onclick="document.querySelector('nav button[data-view=planCatalog]').click()">Configurar preços dos planos →</button>` : `<div class="muted" style="color:#dfe8e4;margin-top:4px;">${activeTenants.length} subscritores ativos${lifetimeCount ? ` (+${lifetimeCount} lifetime, à parte do MRR)` : ''}</div>`}
     </div>
 
-    ${(hotSubRequests.length || hotExtRequests.length || trialEndingSoon.length) ? `
+    ${(hotSubRequests.length || hotExtRequests.length || trialEndingSoon.length || __openIncidentCount || __openSupportCount) ? `
     <div class="card" style="border:1.5px solid var(--primary);margin-bottom:14px;">
       <h3 style="margin-bottom:8px;">🔥 Leads quentes — precisam de ação</h3>
+      ${__openIncidentCount ? `<div class="tenant-item row"><span>🚨 <strong>${__openIncidentCount}</strong> incidente(s) por resolver</span><button class="ghost" onclick="document.querySelector('nav button[data-view=incidents]').click()">Ver</button></div>` : ''}
+      ${__openSupportCount ? `<div class="tenant-item row"><span>💬 <strong>${__openSupportCount}</strong> pedido(s) de apoio em aberto</span><button class="ghost" onclick="document.querySelector('nav button[data-view=supportRequests]').click()">Ver</button></div>` : ''}
       ${hotSubRequests.map(t => `<div class="tenant-item row"><span>💳 <strong>${escapeHtml(t.businessName||t.id)}</strong> quer subscrever</span><button class="ghost" onclick="openTenantDetail('${t.id}')">Ver</button></div>`).join('')}
       ${hotExtRequests.map(t => `<div class="tenant-item row"><span>🙋 <strong>${escapeHtml(t.businessName||t.id)}</strong> pediu mais tempo de teste</span><button class="ghost" onclick="openTenantDetail('${t.id}')">Ver</button></div>`).join('')}
       ${trialEndingSoon.filter(t => !t.subscriptionRequestedAt && !t.trialExtensionRequestedAt).map(t => `<div class="tenant-item row"><span>⏳ <strong>${escapeHtml(t.businessName||t.id)}</strong> — teste a acabar, sem pedido ainda</span><button class="ghost" onclick="openTenantDetail('${t.id}')">Ver</button></div>`).join('')}
@@ -488,21 +623,21 @@ window.openTenantDetail = function(tenantId){
       <label>Email do dono</label>
       <input id="tdOwnerEmail" value="${escapeAttr(t.ownerEmail||'')}">
       <label>Estado</label>
-      <select id="tdStatus">
-        <option value="pending_activation" ${t.status==='pending_activation'?'selected':''}>Por ativar</option>
-        <option value="trial" ${t.status==='trial'?'selected':''}>Em teste</option>
-        <option value="active" ${t.status==='active'?'selected':''}>Ativo</option>
-        <option value="suspended" ${t.status==='suspended'?'selected':''}>Suspenso</option>
-        <option value="cancelled" ${t.status==='cancelled'?'selected':''}>Cancelado</option>
-      </select>
+      ${pillGroupHTML('tdStatus', [
+        { value: 'pending_activation', label: 'Por ativar' },
+        { value: 'trial', label: 'Em teste' },
+        { value: 'active', label: 'Ativo' },
+        { value: 'suspended', label: 'Suspenso' },
+        { value: 'cancelled', label: 'Cancelado' }
+      ], t.status)}
       <label>Plano</label>
-      <select id="tdPlan">
-        <option value="start" ${t.plan==='start'?'selected':''}>Start</option>
-        <option value="grow" ${t.plan==='grow'?'selected':''}>Grow</option>
-        <option value="pro" ${t.plan==='pro'?'selected':''}>Pro</option>
-        <option value="enterprise" ${t.plan==='enterprise'?'selected':''}>Enterprise</option>
-        <option value="lifetime" ${t.plan==='lifetime'?'selected':''}>Vitalício (sem restrições)</option>
-      </select>
+      ${pillGroupHTML('tdPlan', [
+        { value: 'start', label: 'Start' },
+        { value: 'grow', label: 'Grow' },
+        { value: 'pro', label: 'Pro' },
+        { value: 'enterprise', label: 'Enterprise' },
+        { value: 'lifetime', label: 'Vitalício' }
+      ], t.plan)}
 
       <h3 style="margin:14px 0 6px;">Extras manuais (bónus sobre o plano)</h3>
       <p class="muted" style="margin-bottom:8px;">Use isto para dar mais espaço/pacientes/equipa a uma conta específica (ex: testador convidado), sem mudar o plano todo. Deixe a 0 se não houver extras.</p>
@@ -517,6 +652,22 @@ window.openTenantDetail = function(tenantId){
         <button class="primary" onclick="saveTenantChanges('${tenantId}')">Guardar alterações</button>
         <button class="danger" onclick="confirmDeleteTenant('${tenantId}','${escapeAttr(t.businessName||t.id)}')">Apagar subscritor</button>
       </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:6px;">🎁 Acesso Completo (estilo Vitalício)</h3>
+      <p class="muted" style="margin-bottom:8px;">Diferente do plano "Vitalício" (que é a compra normal, permanente). Isto dá acesso sem limites a QUALQUER subscritor, no plano que tiver, por um período à sua escolha — útil para parcerias, ofertas promocionais ou situações especiais. Não muda o plano nem o estado dele.</p>
+      <label>Duração</label>
+      ${pillGroupHTML('tdFullAccessMode', [
+        { value: 'off', label: 'Desligado' },
+        { value: 'indefinite', label: '♾️ Para sempre' },
+        { value: 'fixed', label: '📅 Até uma data' }
+      ], t.fullAccessOverride?.active ? (t.fullAccessOverride.expiresAt ? 'fixed' : 'indefinite') : 'off')}
+      <div id="tdFullAccessDateBox" class="${t.fullAccessOverride?.active && t.fullAccessOverride.expiresAt ? '' : 'hidden'}">
+        <label>Termina em</label>
+        <input id="tdFullAccessDate" type="date" value="${t.fullAccessOverride?.expiresAt?.toDate ? t.fullAccessOverride.expiresAt.toDate().toISOString().slice(0,10) : ''}">
+      </div>
+      <button class="primary" onclick="saveFullAccessOverride('${tenantId}')">Guardar acesso completo</button>
     </div>
 
     <div class="card">
@@ -625,6 +776,22 @@ window.registerTenantPayment = async function(tenantId){
   await updateDoc(doc(db, 'tenants', tenantId), { paymentLog });
   toast('Pagamento registado.');
   renderView('tenants');
+};
+
+window.saveFullAccessOverride = async function(tenantId){
+  const mode = document.getElementById('tdFullAccessMode').value;
+  let fullAccessOverride = null;
+  if (mode === 'indefinite'){
+    fullAccessOverride = { active: true, expiresAt: null };
+  } else if (mode === 'fixed'){
+    const dateVal = document.getElementById('tdFullAccessDate').value;
+    if (!dateVal){ toast('Escolha uma data.', true); return; }
+    fullAccessOverride = { active: true, expiresAt: Timestamp.fromDate(new Date(dateVal + 'T23:59:59')) };
+  }
+  await updateDoc(doc(db, 'tenants', tenantId), { fullAccessOverride: fullAccessOverride || deleteField() });
+  toast(mode === 'off' ? 'Acesso completo desligado.' : 'Acesso completo ativado.');
+  await loadAllTenants();
+  openTenantDetail(tenantId);
 };
 
 window.saveTenantChanges = async function(tenantId){
@@ -1139,30 +1306,35 @@ async function renderPlanCatalog(main){
   main.innerHTML = `
     <h2>💶 Catálogo de Planos</h2>
     <div class="card">
-      <p class="muted" style="margin-bottom:10px;">Preço e quantidades incluídas em cada plano. Deixe uma quantidade em branco para "sem limite". Isto controla o que cada subscritor pode fazer — e também a receita mensal (MRR) mostrada na Visão Geral.</p>
-      ${plans.map(p => {
+      <p class="muted" style="margin-bottom:10px;">Preço e quantidades incluídas em cada plano. Deixe uma quantidade em branco para "sem limite". Isto controla o que cada subscritor pode fazer — e também a receita mensal (MRR) mostrada na Visão Geral. Toque num plano para abrir e editar.</p>
+      ${plans.map((p, idx) => {
         const v = { ...defaults[p.key], ...(saved[p.key] || {}) };
         const kbMB = v.kbMB ?? (v.kbBytes != null ? Math.round(v.kbBytes / (1024*1024)) : null);
         return `
-        <div style="border:1px solid #e5e5e5;border-radius:10px;padding:12px;margin-bottom:10px;">
-          <strong>${p.label}</strong>
-          <label style="margin-top:8px;">Preço (€/mês${p.key==='lifetime'?', só para referência':''})</label>
-          <input id="price_${p.key}" type="number" min="0" step="0.01" value="${v.price ?? 0}">
-          <div class="row">
-            <div style="flex:1;">
-              <label>Membros de equipa</label>
-              <input id="staff_${p.key}" type="number" min="0" placeholder="sem limite" value="${v.staff ?? ''}">
-            </div>
-            <div style="flex:1;">
-              <label>Armazenamento (MB)</label>
-              <input id="kb_${p.key}" type="number" min="0" placeholder="sem limite" value="${kbMB ?? ''}">
-            </div>
-            <div style="flex:1;">
-              <label>Pacientes no Portal</label>
-              <input id="portal_${p.key}" type="number" min="0" placeholder="sem limite" value="${v.portalPatients ?? ''}">
+        <details style="border:1px solid #e5e5e5;border-radius:10px;margin-bottom:8px;overflow:hidden;" ${idx===0?'open':''}>
+          <summary class="plan-summary">
+            <span>${p.label}</span>
+            <span class="muted">${(v.price??0).toFixed(2)}€/mês ▾</span>
+          </summary>
+          <div style="padding:0 12px 12px;">
+            <label style="margin-top:8px;">Preço (€/mês${p.key==='lifetime'?', só para referência':''})</label>
+            <input id="price_${p.key}" type="number" min="0" step="0.01" value="${v.price ?? 0}">
+            <div class="row">
+              <div style="flex:1;">
+                <label>Membros de equipa</label>
+                <input id="staff_${p.key}" type="number" min="0" placeholder="sem limite" value="${v.staff ?? ''}">
+              </div>
+              <div style="flex:1;">
+                <label>Armazenamento (MB)</label>
+                <input id="kb_${p.key}" type="number" min="0" placeholder="sem limite" value="${kbMB ?? ''}">
+              </div>
+              <div style="flex:1;">
+                <label>Pacientes no Portal</label>
+                <input id="portal_${p.key}" type="number" min="0" placeholder="sem limite" value="${v.portalPatients ?? ''}">
+              </div>
             </div>
           </div>
-        </div>`;
+        </details>`;
       }).join('')}
       <button class="primary" onclick="savePlanCatalog()">Guardar catálogo</button>
     </div>
@@ -1272,17 +1444,17 @@ function renderNewTenant(main){
       <label>Slug (identificador do link público, sem espaços/acentos)</label><input id="ntSlug" placeholder="ex: joana-silva-fisio">
       <label>Email do subscritor</label><input id="ntEmail" type="email" placeholder="email real do subscritor">
       <label>Plano inicial</label>
-      <select id="ntPlan">
-        <option value="start">Start</option>
-        <option value="grow">Grow</option>
-        <option value="pro">Pro</option>
-        <option value="lifetime">Vitalício (sem restrições)</option>
-      </select>
+      ${pillGroupHTML('ntPlan', [
+        { value: 'start', label: 'Start' },
+        { value: 'grow', label: 'Grow' },
+        { value: 'pro', label: 'Pro' },
+        { value: 'lifetime', label: 'Vitalício' }
+      ], 'start')}
       <label>Como começa este subscritor?</label>
-      <select id="ntStartStatus" onchange="document.getElementById('ntTrialDaysBox').classList.toggle('hidden', this.value !== 'trial')">
-        <option value="active">✅ Já é plano pago — fica Ativo assim que ativar o login</option>
-        <option value="trial">🕓 Período de teste grátis (não pagou ainda)</option>
-      </select>
+      ${pillGroupHTML('ntStartStatus', [
+        { value: 'active', label: '✅ Já é pago — Ativo' },
+        { value: 'trial', label: '🕓 Período de teste' }
+      ], 'active')}
       <div id="ntTrialDaysBox" class="hidden">
         <label>Dias de teste</label>
         <input id="ntTrialDays" type="number" value="7" min="1">
@@ -1400,6 +1572,26 @@ window.renderTenantSetupSteps = function(tenantId, businessName, knownUid){
   `;
   updateSetupCommand();
 };
+
+window.selectPill = function(btn){
+  const name = btn.dataset.name;
+  const value = btn.dataset.value;
+  document.getElementById(name).value = value;
+  document.querySelectorAll(`[data-pill-group="${name}"] .pill`).forEach(b => b.classList.toggle('active', b === btn));
+  if (name === 'ntStartStatus'){
+    document.getElementById('ntTrialDaysBox')?.classList.toggle('hidden', value !== 'trial');
+  }
+  if (name === 'tdFullAccessMode'){
+    document.getElementById('tdFullAccessDateBox')?.classList.toggle('hidden', value !== 'fixed');
+  }
+};
+
+function pillGroupHTML(name, options, selectedValue){
+  return `<div class="pill-group" data-pill-group="${name}">
+    ${options.map(o => `<button type="button" class="pill ${o.value===selectedValue?'active':''}" data-name="${name}" data-value="${escapeAttr(o.value)}" onclick="selectPill(this)">${escapeHtml(o.label)}</button>`).join('')}
+  </div>
+  <input type="hidden" id="${name}" value="${escapeAttr(selectedValue||'')}">`;
+}
 
 window.oneClickActivate = async function(tenantId, uid){
   const btn = document.getElementById('oneClickBtn');
