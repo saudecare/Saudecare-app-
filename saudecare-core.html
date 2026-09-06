@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-95';
+const APP_VERSION = '2026-09-02-99';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -411,6 +411,13 @@ window.removeDevicePin = function(){
 window.saveNotifSoundPref = function(){
   const on = document.getElementById('notifSoundToggle').checked;
   localStorage.setItem('vindoraNotifSound', on ? 'on' : 'off');
+  toast('Preferência guardada.');
+};
+
+window.savePatientPortalDataSettings = async function(){
+  const showClinicalNotes = document.getElementById('portalShowClinicalNotesToggle').checked;
+  await updateDoc(doc(db, 'tenants', tenantId), { 'patientPortalSettings.showClinicalNotes': showClinicalNotes });
+  currentTenantDoc.patientPortalSettings = { ...(currentTenantDoc.patientPortalSettings||{}), showClinicalNotes };
   toast('Preferência guardada.');
 };
 
@@ -1775,17 +1782,23 @@ window.changeFinancesMonth = function(delta){
 async function renderHome(main){
   main.innerHTML = '<p class="muted">A carregar…</p>';
 
-  const [apptsSnap, waitlistSnap, patientsSnap, staffSnap] = await Promise.all([
+  const [apptsSnap, waitlistSnap, patientsSnap, staffSnap, bookingReqSnap] = await Promise.all([
     getDocs(collection(db, 'tenants', tenantId, 'appointments')),
     getDocs(collection(db, 'tenants', tenantId, 'waitlist')),
     getDocs(collection(db, 'tenants', tenantId, 'patients')),
-    tenantRole === 'owner' ? getDocs(collection(db, 'tenants', tenantId, 'staff')) : Promise.resolve(null)
+    tenantRole === 'owner' ? getDocs(collection(db, 'tenants', tenantId, 'staff')) : Promise.resolve(null),
+    tenantRole !== 'staff_restricted'
+      ? getDocs(query(collection(db, 'public_booking_requests'), where('tenantId','==',tenantId), where('status','==','pending_review')))
+      : Promise.resolve(null)
   ]);
 
   const alerts = [];
   if (staffSnap){
     const pendingStaff = staffSnap.docs.filter(d => d.data().status === 'pending_activation').length;
-    if (pendingStaff) alerts.push({ icon: '👥', text: `${pendingStaff} pedido(s) de equipa por aprovar`, view: 'team' });
+    if (pendingStaff) alerts.push({ icon: '👥', text: `${pendingStaff} pedido(s) de equipa por aprovar`, action: "renderView('team')" });
+  }
+  if (bookingReqSnap && bookingReqSnap.size){
+    alerts.push({ icon: '📩', text: `${bookingReqSnap.size} pedido(s) de marcação por rever`, action: "openSettingsSection('disponibilidade')" });
   }
 
   const unreadByPatient = await Promise.all(patientsSnap.docs.map(async d => {
@@ -1806,11 +1819,14 @@ async function renderHome(main){
   }
 
   if (waitlistSnap.size){
-    alerts.push({ icon: '⏳', text: `${waitlistSnap.size} pessoa(s) em lista de espera`, view: 'waitlist' });
+    alerts.push({ icon: '⏳', text: `${waitlistSnap.size} pessoa(s) em lista de espera`, action: "renderView('waitlist')" });
   }
-  const noConsent = patientsSnap.docs.filter(d => !d.data().consentGivenAt).length;
-  if (noConsent){
-    alerts.push({ icon: '📝', text: `${noConsent} paciente(s) sem consentimento registado`, view: 'patients' });
+  const patientsWithoutConsent = patientsSnap.docs.filter(d => !d.data().consentGivenAt);
+  if (patientsWithoutConsent.length === 1){
+    const onlyOne = patientsWithoutConsent[0];
+    alerts.push({ icon: '📝', text: `${onlyOne.data().fullName||'1 paciente'} sem consentimento registado`, action: `viewPatient('${onlyOne.id}')` });
+  } else if (patientsWithoutConsent.length > 1){
+    alerts.push({ icon: '📝', text: `${patientsWithoutConsent.length} paciente(s) sem consentimento registado`, action: "renderView('patients')" });
   }
   const bkSettings = currentTenantDoc?.backupSettings;
   if (bkSettings?.remindersEnabled || bkSettings?.autoBackup){
@@ -1818,12 +1834,12 @@ async function renderHome(main){
     const days = last ? Math.floor((Date.now() - last.getTime()) / 86400000) : null;
     const freq = bkSettings.frequencyDays || 30;
     if (!last || days >= freq){
-      alerts.push({ icon: '💾', text: last ? `Já lá vão ${days} dias desde o último backup` : 'Ainda não fez nenhum backup', view: 'settings' });
+      alerts.push({ icon: '💾', text: last ? `Já lá vão ${days} dias desde o último backup` : 'Ainda não fez nenhum backup', action: "openSettingsSection('backup')" });
     }
   }
 
   const alertsHtml = (alerts.length || unreadHtml)
-    ? alerts.map(a => `<div class="appt-item row" style="cursor:pointer;" onclick="renderView('${a.view}')">
+    ? alerts.map(a => `<div class="appt-item row" style="cursor:pointer;" onclick="${a.action}">
         <div>${a.icon} ${escapeHtml(a.text)}</div><div>›</div>
       </div>`).join('') + unreadHtml
     : '<p class="muted">Sem alertas — está tudo em dia. ✅</p>';
@@ -2843,6 +2859,61 @@ window.openNewPatient = function(){
   switchConsentMethod('check');
 };
 
+window.registerConsentForPatient = async function(patientId, patientName){
+  window.__editingPatientId = patientId;
+  showPatientOverlay('Registar consentimento', `
+    <div class="card">
+      <h2>Registar consentimento — ${escapeHtml(patientName)}</h2>
+      <label style="margin-top:6px;">Termo de consentimento (peça ao paciente para ler)</label>
+      <div style="max-height:180px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:13px;white-space:pre-wrap;margin-bottom:8px;">${escapeHtml(currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT)}</div>
+
+      <div id="consentMethodTabs" class="row" style="margin-bottom:10px;">
+        <button type="button" class="ghost" id="consentTabCheck" onclick="switchConsentMethod('check')" style="flex:1;">✅ Ler e confirmar (recomendado)</button>
+        <button type="button" class="ghost" id="consentTabSign" onclick="switchConsentMethod('sign')" style="flex:1;">✍️ Assinar no ecrã</button>
+      </div>
+
+      <div id="consentPanelCheck">
+        <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
+          <input type="checkbox" id="consentCheckbox" style="width:auto;margin-top:3px;">
+          <span>O paciente leu o termo acima e concorda com ele. Confirmo que expliquei o conteúdo verbalmente, caso a leitura não tenha sido feita diretamente pelo paciente (ex: consulta por telefone).</span>
+        </label>
+      </div>
+
+      <div id="consentPanelSign" class="hidden">
+        <label>Assinatura do paciente (desenhe aqui, no ecrã — precisa de ecrã tátil)</label>
+        <canvas id="consentSignaturePad" width="500" height="160" style="border:1px solid #ccc;border-radius:8px;width:100%;touch-action:none;background:#fff;display:block;"></canvas>
+        <button type="button" class="ghost" style="margin-top:6px;" onclick="clearSignaturePad()">Limpar assinatura</button>
+      </div>
+
+      <button class="primary" style="margin-top:10px;" onclick="saveConsentForExistingPatient('${patientId}')">Guardar consentimento</button>
+    </div>`);
+  initSignaturePad();
+  switchConsentMethod('check');
+};
+
+window.saveConsentForExistingPatient = async function(patientId){
+  const method = window.__consentMethod || 'check';
+  let consentData = {};
+  if (method === 'sign'){
+    if (!__sigPadHasStroke){ toast('Peça ao paciente para assinar no quadro, ou mude para "Ler e confirmar" se não for possível desenhar.', true); return; }
+    consentData = {
+      consentMethod: 'signature',
+      consentSignatureDataUrl: document.getElementById('consentSignaturePad').toDataURL('image/png')
+    };
+  } else {
+    if (!document.getElementById('consentCheckbox').checked){ toast('Confirme que o paciente leu e concorda com o termo, antes de guardar.', true); return; }
+    consentData = { consentMethod: 'checkbox_confirmed_by_therapist' };
+  }
+  await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), {
+    consentGivenAt: serverTimestamp(),
+    consentVersion: currentTenantDoc?.legalTexts?.consentVersion || 'v1',
+    consentSignedText: currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT,
+    ...consentData
+  });
+  toast('Consentimento registado.');
+  viewPatient(patientId);
+};
+
 window.switchConsentMethod = function(method){
   window.__consentMethod = method;
   document.getElementById('consentTabCheck').classList.toggle('primary', method === 'check');
@@ -3138,7 +3209,7 @@ window.viewPatient = async function(patientId){
       ${customFieldsHtml}
       <label style="margin-top:10px;">Notas clínicas</label>
       <textarea rows="5" readonly>${escapeHtml(p.clinicalNotes||'')}</textarea>
-      <p class="muted">Consentimento: ${p.consentGivenAt ? 'registado' : 'em falta'}</p>
+      <p class="muted">Consentimento: ${p.consentGivenAt ? 'registado' : 'em falta'} ${!p.consentGivenAt ? `<button class="ghost" style="padding:2px 8px;font-size:12px;" onclick="registerConsentForPatient('${patientId}','${escapeAttrJs(p.fullName)}')">📋 Registar agora</button>` : ''}</p>
       ${p.consentSignatureDataUrl ? `
         <label style="margin-top:6px;">Assinatura recolhida</label>
         <img src="${p.consentSignatureDataUrl}" style="border:1px solid #e5e5e5;border-radius:8px;background:#fff;max-width:260px;display:block;">
@@ -3551,10 +3622,10 @@ window.viewPatientEvolution = async function(patientId, patientName){
     </div>`;
   }).join('');
 
-  document.getElementById('patientFormContainer').innerHTML = `
+  showPatientOverlay(`Evolução — ${patientName}`, `
     <div class="card">
-      <div class="row"><h2>Evolução — ${escapeHtml(patientName)}</h2><button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button></div>
       ${hintBox('🔁 assinala pontos que já apareceram em mais do que uma sessão — útil para ver o que se repete ao longo do tempo.')}
+      <button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button>
     </div>
     <div class="card">
       <h2>Pontos que mais se repetem</h2>
@@ -3562,8 +3633,7 @@ window.viewPatientEvolution = async function(patientId, patientName){
     </div>
     <h2 style="margin:16px 0 8px;">Sessões, por ordem</h2>
     ${timelineHtml}
-  `;
-  scrollToEl('patientFormContainer');
+  `);
  }catch(e){
   console.error(e);
   toast('⚠️ Não foi possível carregar a evolução: ' + e.message, true);
@@ -3700,10 +3770,81 @@ window.renderSendFormLink = function(patientId){
   if (!formId){ area.innerHTML=''; return; }
   const link = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-ficha-publica.html')}?t=${currentTenantDoc.slug}&f=${formId}&p=${patientId}`;
   area.innerHTML = `
-    <label style="margin-top:10px;">Link personalizado (já identifica o paciente)</label>
+    <label style="margin-top:10px;">Link personalizado (já identifica o paciente) — envie se o paciente vai preencher sozinho</label>
     <input readonly value="${link}" onclick="this.select()">
     <button class="ghost" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado — confirme que colou tudo antes de enviar.'))">Copiar link</button>
+    <hr style="margin:12px 0;border:none;border-top:1px solid #e5e5e5;">
+    <button class="primary" style="width:100%;" onclick="openFillFormNow('${patientId}', '${formId}')">✍️ Preencher agora, aqui mesmo (ex: paciente presente consigo)</button>
   `;
+};
+
+// ── Preencher uma ficha na hora, dentro da app — sem gerar link nem
+// depender do paciente ter internet/dispositivo próprio. Fica guardada
+// diretamente na ficha do paciente, já identificada como preenchida por
+// si (não pelo próprio paciente).
+window.openFillFormNow = async function(patientId, formId){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'forms', formId));
+  if (!snap.exists()){ toast('Ficha não encontrada.', true); return; }
+  const f = snap.data();
+  const questionsHtml = (f.questions||[]).map(q => {
+    if (q.type === 'scale'){
+      return `<div class="card" style="margin-bottom:8px;">
+        <label>${escapeHtml(q.label)}</label>
+        <input type="number" min="0" max="10" data-qid="${q.id}" class="fillNowAnswer" placeholder="0 a 10">
+      </div>`;
+    }
+    if (q.type === 'multiple_choice'){
+      return `<div class="card" style="margin-bottom:8px;">
+        <label>${escapeHtml(q.label)}</label>
+        <select data-qid="${q.id}" class="fillNowAnswer">
+          <option value="">Escolher…</option>
+          ${(q.options||[]).map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}
+        </select>
+      </div>`;
+    }
+    return `<div class="card" style="margin-bottom:8px;">
+      <label>${escapeHtml(q.label)}</label>
+      <textarea rows="2" data-qid="${q.id}" class="fillNowAnswer"></textarea>
+    </div>`;
+  }).join('');
+
+  showPatientOverlay(`Preencher agora — ${escapeHtml(f.title)}`, `
+    <div class="card">
+      <button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button>
+      ${f.description ? `<p class="muted" style="margin-top:8px;">${escapeHtml(f.description)}</p>` : ''}
+    </div>
+    ${f.includesConsent && f.consentTextSnapshot ? `
+    <div class="card">
+      <label style="margin-bottom:6px;">Termo de consentimento</label>
+      <div style="max-height:180px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:13px;white-space:pre-wrap;margin-bottom:8px;">${escapeHtml(f.consentTextSnapshot)}</div>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
+        <input type="checkbox" id="fillNowConsent" style="width:auto;margin-top:3px;">
+        <span>O paciente leu e aceita os termos acima.</span>
+      </label>
+    </div>` : ''}
+    ${questionsHtml}
+    <button class="primary" style="width:100%;" onclick="saveFilledFormNow('${patientId}', '${formId}', '${escapeAttrJs(f.title)}', ${f.includesConsent ? 'true' : 'false'})">Guardar na ficha do paciente</button>
+  `);
+};
+
+window.saveFilledFormNow = async function(patientId, formId, formTitle, includesConsent){
+  if (includesConsent && !document.getElementById('fillNowConsent')?.checked){
+    toast('Confirme que o paciente aceitou o termo de consentimento antes de guardar.', true);
+    return;
+  }
+  const answers = [];
+  document.querySelectorAll('.fillNowAnswer').forEach(el => {
+    answers.push({ questionId: el.dataset.qid, label: el.previousElementSibling?.textContent || '', value: el.value.trim() });
+  });
+  await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'formResponses'), {
+    formId, formTitle, answers,
+    filledBy: 'professional',
+    filledByUid: currentUser.uid,
+    consentTermAccepted: includesConsent ? true : null,
+    submittedAt: serverTimestamp()
+  });
+  toast('Ficha guardada na ficha do paciente.');
+  viewPatient(patientId);
 };
 
 window.viewSavedReport = async function(patientId, reportId){
@@ -3744,16 +3885,16 @@ window.viewSavedReport = async function(patientId, reportId){
     </div>`;
   }
 
-  document.getElementById('patientFormContainer').innerHTML = `
+  showPatientOverlay(r.protocolName, `
     <div class="card">
-      <h2>${escapeHtml(r.protocolName)}</h2>
-      <textarea rows="14" readonly>${escapeHtml(r.reportText)}</textarea>
+      <button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button>
+      <textarea id="savedReportText" rows="14" readonly style="margin-top:10px;">${escapeHtml(r.reportText)}</textarea>
       <div class="row" style="margin-top:8px;">
-        <button class="primary" onclick="downloadReportPDF('${escapeHtml(r.protocolName)}', document.querySelector('#patientFormContainer textarea').value)">📄 Descarregar PDF</button>
-        <button class="ghost" onclick="shareReportPDF('${escapeHtml(r.protocolName)}', document.querySelector('#patientFormContainer textarea').value)">📤 Partilhar</button>
+        <button class="primary" onclick="downloadReportPDF('${escapeHtml(r.protocolName)}', document.getElementById('savedReportText').value)">📄 Descarregar PDF</button>
+        <button class="ghost" onclick="shareReportPDF('${escapeHtml(r.protocolName)}', document.getElementById('savedReportText').value)">📤 Partilhar</button>
       </div>
     </div>
-    ${mapHtml}`;
+    ${mapHtml}`);
 };
 
 window.deletePatient = async function(patientId, name){
@@ -4087,7 +4228,7 @@ const DEFAULT_FORM_QUESTIONS = [
 
 window.openNewForm = function(){
   formQuestionsDraft = DEFAULT_FORM_QUESTIONS.map(q => ({ id: 'q'+Date.now()+Math.random().toString(36).slice(2,7), ...q }));
-  renderFormBuilder(null, '', '', '', formQuestionsDraft);
+  renderFormBuilder(null, '', '', '', formQuestionsDraft, false);
 };
 
 window.editForm = async function(id){
@@ -4095,11 +4236,11 @@ window.editForm = async function(id){
   if (!snap.exists()){ toast('Ficha não encontrada.', true); return; }
   const f = snap.data();
   formQuestionsDraft = (f.questions || []).map(q => ({...q}));
-  renderFormBuilder(id, f.title, f.category||'', f.description||'', formQuestionsDraft);
+  renderFormBuilder(id, f.title, f.category||'', f.description||'', formQuestionsDraft, !!f.includesConsent);
   scrollToEl('formBuilderContainer');
 };
 
-async function renderFormBuilder(editId, title, category, description, questions){
+async function renderFormBuilder(editId, title, category, description, questions, includesConsent){
   formQuestionsDraft = questions;
   window.__editingFormId = editId;
   const qTypeLabel = { text: 'Texto livre', multiple_choice: 'Escolha múltipla', scale: 'Escala (0-10)' };
@@ -4139,6 +4280,11 @@ async function renderFormBuilder(editId, title, category, description, questions
       <textarea id="formDescription" rows="2">${escapeHtml(description)}</textarea>
       <div id="formQuestionsList">${qHtml || '<p class="muted">Ainda sem perguntas.</p>'}</div>
       <button class="ghost" onclick="addFormQuestion()">+ Adicionar pergunta</button>
+      <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;">
+        <input type="checkbox" id="formIncludesConsent" style="width:auto;" ${includesConsent ? 'checked' : ''}>
+        Incluir o termo de consentimento (o mesmo texto configurado em Perfil), com "Li e aceito", antes de submeter esta ficha
+      </label>
       <div style="margin-top:14px;">
         <button class="primary" onclick="saveForm('${editId||''}')">Guardar ficha</button>
       </div>
@@ -4159,7 +4305,8 @@ window.changeQuestionType = function(idx, type){
   renderFormBuilder(window.__editingFormId,
     document.getElementById('formTitle')?.value || '',
     document.getElementById('formCategory')?.value || '',
-    document.getElementById('formDescription')?.value || '', formQuestionsDraft);
+    document.getElementById('formDescription')?.value || '', formQuestionsDraft,
+    document.getElementById('formIncludesConsent')?.checked || false);
 };
 
 window.addFormQuestion = function(){
@@ -4167,7 +4314,8 @@ window.addFormQuestion = function(){
   renderFormBuilder(window.__editingFormId,
     document.getElementById('formTitle')?.value || '',
     document.getElementById('formCategory')?.value || '',
-    document.getElementById('formDescription')?.value || '', formQuestionsDraft);
+    document.getElementById('formDescription')?.value || '', formQuestionsDraft,
+    document.getElementById('formIncludesConsent')?.checked || false);
 };
 
 window.removeFormQuestion = function(idx){
@@ -4175,7 +4323,8 @@ window.removeFormQuestion = function(idx){
   renderFormBuilder(window.__editingFormId,
     document.getElementById('formTitle')?.value || '',
     document.getElementById('formCategory')?.value || '',
-    document.getElementById('formDescription')?.value || '', formQuestionsDraft);
+    document.getElementById('formDescription')?.value || '', formQuestionsDraft,
+    document.getElementById('formIncludesConsent')?.checked || false);
 };
 
 window.saveForm = async function(editId){
@@ -4184,10 +4333,13 @@ window.saveForm = async function(editId){
   const validQuestions = formQuestionsDraft.filter(q => q.label && q.label.trim());
   if (!validQuestions.length){ toast('Adicione pelo menos uma pergunta.', true); return; }
 
+  const includesConsent = document.getElementById('formIncludesConsent').checked;
   const data = {
     title,
     category: document.getElementById('formCategory').value.trim(),
     description: document.getElementById('formDescription').value.trim(),
+    includesConsent,
+    consentTextSnapshot: includesConsent ? (currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT) : '',
     questions: validQuestions,
     updatedAt: serverTimestamp()
   };
@@ -4246,16 +4398,29 @@ window.confirmAttach = async function(responseId){
   if (!patientId){
     const contact = (r.respondentContact || '').trim();
     const isEmail = contact.includes('@');
+    // Só regista consentimento da prática se esta ficha específica incluiu o termo completo
+    // e a pessoa o aceitou — caso contrário ficaria um "consentimento" falso registado.
+    const realConsentGiven = r.consentTermAccepted === true;
     const newPatientRef = await addDoc(collection(db, 'tenants', tenantId, 'patients'), {
       fullName: r.respondentName || 'Paciente sem nome',
       phone: isEmail ? '' : contact,
       email: isEmail ? contact : '',
+      nif: '',
+      photoUrl: '',
       clinicalNotes: '',
-      consentGivenAt: serverTimestamp(),
-      consentVersion: 'form-v1',
+      customFields: [],
+      attachments: [],
+      portalToken: crypto.randomUUID().replace(/-/g, ''),
+      ...(realConsentGiven ? {
+        consentGivenAt: serverTimestamp(),
+        consentVersion: currentTenantDoc?.legalTexts?.consentVersion || 'v1',
+        consentSignedText: currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT,
+        consentMethod: 'accepted_via_public_form'
+      } : {}),
       createdBy: currentUser.uid
     });
     patientId = newPatientRef.id;
+    if (!realConsentGiven) toast('Paciente criado — falta registar o consentimento (a ficha usada não incluía o termo completo).');
   }
 
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'formResponses'), {
@@ -4280,221 +4445,68 @@ window.confirmAttach = async function(responseId){
 // usados.
 const TEMPLATE_PROTOCOLS = [
   {
-    name: 'Reiki — Sessão nos 7 Chakras Principais',
+    name: 'Avaliação Inicial — Checklist Geral (exemplo)',
     type: 'simple',
     points: [
-      { name: 'Chakra Base (Muladhara)', knowledgeText: 'Ligado ao enraizamento, segurança e sobrevivência. Bloqueios podem manifestar-se como medo, instabilidade ou insegurança financeira/material.' },
-      { name: 'Chakra Sacral (Svadhisthana)', knowledgeText: 'Ligado à criatividade, emoções e sexualidade. Bloqueios podem manifestar-se como culpa ou dificuldade em sentir prazer.' },
-      { name: 'Chakra Plexo Solar (Manipura)', knowledgeText: 'Ligado ao poder pessoal e autoestima. Bloqueios podem manifestar-se como falta de confiança ou dificuldade em impor limites.' },
-      { name: 'Chakra Cardíaco (Anahata)', knowledgeText: 'Ligado ao amor, compaixão e relações. Bloqueios podem manifestar-se como dificuldade em dar/receber afeto.' },
-      { name: 'Chakra Laríngeo (Vishuddha)', knowledgeText: 'Ligado à comunicação e expressão pessoal. Bloqueios podem manifestar-se como dificuldade em expressar-se ou ser ouvido.' },
-      { name: 'Chakra Frontal / Terceiro Olho (Ajna)', knowledgeText: 'Ligado à intuição e clareza mental. Bloqueios podem manifestar-se como confusão ou dificuldade de concentração.' },
-      { name: 'Chakra Coronário (Sahasrara)', knowledgeText: 'Ligado à ligação espiritual e propósito. Bloqueios podem manifestar-se como sensação de desconexão.' }
+      { name: 'Motivo principal da consulta', knowledgeText: 'O que traz a pessoa até si, nas próprias palavras dela.' },
+      { name: 'Histórico relevante (doenças, cirurgias, medicação)', knowledgeText: 'Antecedentes de saúde que possam ser relevantes para o acompanhamento.' },
+      { name: 'Estado emocional atual', knowledgeText: 'Como a pessoa descreve o seu estado emocional neste momento.' },
+      { name: 'Nível de energia / vitalidade percebido', knowledgeText: 'Perceção geral de cansaço ou vitalidade.' },
+      { name: 'Padrão de sono', knowledgeText: 'Qualidade e regularidade do sono nas últimas semanas.' },
+      { name: 'Expectativas para o acompanhamento', knowledgeText: 'O que a pessoa espera alcançar com as sessões.' }
     ],
     finalClassifications: [
-      { label: 'Nível de energia sentido pelo cliente antes da sessão', type: 'text', when: 'before', options: [] },
-      { label: 'Zona(s) onde sentiu mais calor, formigueiro ou reação', type: 'text', when: 'after', options: [] },
-      { label: 'Estado emocional no final da sessão', type: 'text', when: 'after', options: [] }
+      { label: 'Encaminhado por', type: 'text', when: 'before', options: [] }
     ]
   },
   {
-    name: 'Radiestesia — Avaliação Energética Geral',
+    name: 'Acompanhamento de Sessão — Evolução (exemplo)',
     type: 'simple',
     points: [
-      { name: 'Nível energético geral do campo', knowledgeText: 'Leitura geral do estado vibracional da pessoa no momento da consulta.' },
-      { name: 'Bloqueios emocionais', knowledgeText: 'Presença de padrões emocionais retidos que possam estar a condicionar o bem-estar.' },
-      { name: 'Compatibilidade com alimentos/suplementos testados', knowledgeText: 'Resposta do pêndulo aos itens apresentados durante a consulta.' },
-      { name: 'Geopatias no espaço habitual', knowledgeText: 'Indicação de possíveis interferências no local onde a pessoa passa mais tempo (casa, quarto, trabalho).' },
-      { name: 'Estado dos principais chakras', knowledgeText: 'Leitura geral de abertura/fecho dos centros energéticos principais.' },
-      { name: 'Nível de stress acumulado', knowledgeText: 'Avaliação da carga de stress percebida energeticamente.' },
-      { name: 'Ressonância com remédios florais/essências', knowledgeText: 'Testagem de compatibilidade com florais ou essências disponíveis.' }
+      { name: 'O que mudou desde a última sessão', knowledgeText: 'Alterações percebidas pela própria pessoa desde o último encontro.' },
+      { name: 'Sintomas atuais (comparar com sessão anterior)', knowledgeText: 'Estado atual dos sintomas ou queixas já conhecidos.' },
+      { name: 'Resposta às orientações/tratamento anterior', knowledgeText: 'Como correu o que foi combinado na sessão passada.' },
+      { name: 'Novos temas ou preocupações', knowledgeText: 'Assuntos que surgiram entretanto e ainda não tinham sido falados.' },
+      { name: 'Grau de bem-estar percebido nesta sessão', knowledgeText: 'Sensação geral da pessoa no momento desta consulta.' }
     ],
-    finalClassifications: [
-      { label: 'Pergunta feita ao pêndulo (registo literal)', type: 'text', when: 'before', options: [] },
-      { label: 'Sugestão/recomendação dada no final', type: 'text', when: 'after', options: [] }
-    ]
+    finalClassifications: []
   },
   {
-    name: 'Reiki — Mapa Corporal das 12 Posições Tradicionais (Usui)',
+    name: 'Mapa Corporal — Zonas de Desconforto (exemplo com posições já marcadas)',
     type: 'mapping',
     bodyFrontImageUrl: '',
     bodyBackImageUrl: '',
     groups: [
-      { groupName: 'Cabeça', points: [
-        { name: '1. Olhos e testa', baseText: 'Coloque as mãos suavemente sobre os olhos fechados e a testa, sem pressionar. Na tradição Reiki, esta posição está associada a acalmar a mente e aliviar tensão mental/ocular. Mantenha 3 a 5 minutos, respiração lenta.', mapX: 50, mapY: 22, mapSide: 'frente' },
-        { name: '2. Têmporas e orelhas', baseText: 'Mãos em concha sobre as orelhas e têmporas. Tradicionalmente associada ao equilíbrio emocional e à libertação de pensamentos repetitivos. 3 a 5 minutos.', mapX: 50, mapY: 19, mapSide: 'frente' },
-        { name: '3. Garganta (sem tocar)', baseText: 'Mãos pairando alguns centímetros acima da garganta, sem tocar diretamente. Associada, na tradição, à expressão e comunicação. 3 minutos — posição sensível, confirme sempre o conforto da pessoa antes.', mapX: 50, mapY: 18, mapSide: 'frente' },
-        { name: '4. Nuca e base do crânio', baseText: 'Da parte de trás, mãos na base do crânio/nuca. Associada a alívio de tensão acumulada e clareza mental. 3 a 5 minutos.', mapX: 50, mapY: 12, mapSide: 'costas' }
+      { groupName: 'Zona Superior', points: [
+        { name: 'Pescoço / Cervical', baseText: 'Exemplo — descreva aqui o que observar nesta zona (tensão, dor, mobilidade).', color: '#c62828', mapX: 50, mapY: 15, mapSide: 'frente' },
+        { name: 'Ombro Direito', baseText: 'Exemplo — descreva aqui o que observar nesta zona.', color: '#c62828', mapX: 32, mapY: 19, mapSide: 'frente' },
+        { name: 'Ombro Esquerdo', baseText: 'Exemplo — descreva aqui o que observar nesta zona.', color: '#c62828', mapX: 68, mapY: 19, mapSide: 'frente' }
       ]},
-      { groupName: 'Tronco — Frente', points: [
-        { name: '5. Coração/peito', baseText: 'Mãos sobre o centro do peito. Associada, na tradição Reiki, à posição do chakra cardíaco — acolhimento, compaixão, processos emocionais ligados a perdas ou relações. 5 minutos.', mapX: 50, mapY: 26, mapSide: 'frente' },
-        { name: '6. Plexo solar/estômago', baseText: 'Mãos sobre a zona do estômago/plexo solar. Associada a autoestima, digestão emocional e gestão do stress. 5 minutos.', mapX: 50, mapY: 34, mapSide: 'frente' },
-        { name: '7. Baixo-ventre', baseText: 'Mãos abaixo do umbigo. Associada à vitalidade e criatividade. 3 a 5 minutos.', mapX: 50, mapY: 39, mapSide: 'frente' },
-        { name: '8. Quadril/púbis (sem tocar zona íntima)', baseText: 'Mãos sobre o osso do quadril, nunca sobre a zona genital. Associada a enraizamento e segurança de base. 3 minutos.', mapX: 50, mapY: 42, mapSide: 'frente' }
-      ]},
-      { groupName: 'Tronco — Costas', points: [
-        { name: '9. Ombros', baseText: 'Mãos sobre os ombros, da parte de trás. Alívio de tensão física relacionada com sobrecarga e responsabilidade. 3 minutos.', mapX: 50, mapY: 20, mapSide: 'costas' },
-        { name: '10. Omoplatas (coração — costas)', baseText: 'Mãos entre as omoplatas, na "porta de trás" do chakra cardíaco. Frequentemente associada a padrões de proteção emocional. 5 minutos.', mapX: 50, mapY: 27, mapSide: 'costas' },
-        { name: '11. Lombar/rins', baseText: 'Mãos na zona lombar, sobre a área dos rins. Associada, na tradição, a medo e esgotamento energético. 5 minutos.', mapX: 50, mapY: 36, mapSide: 'costas' },
-        { name: '12. Sacro', baseText: 'Mãos na base da coluna. Associada a enraizamento e conexão com o corpo físico. Fecha a sessão. 3 a 5 minutos.', mapX: 50, mapY: 43, mapSide: 'costas' }
+      { groupName: 'Zona Inferior', points: [
+        { name: 'Lombar', baseText: 'Exemplo — descreva aqui o que observar nesta zona.', color: '#2e7d32', mapX: 50, mapY: 40, mapSide: 'costas' },
+        { name: 'Joelho Direito', baseText: 'Exemplo — descreva aqui o que observar nesta zona.', color: '#2e7d32', mapX: 40, mapY: 76, mapSide: 'frente' },
+        { name: 'Joelho Esquerdo', baseText: 'Exemplo — descreva aqui o que observar nesta zona.', color: '#2e7d32', mapX: 60, mapY: 76, mapSide: 'frente' }
       ]}
     ],
     finalClassifications: [
-      { label: 'Nível de energia sentido pelo cliente antes da sessão', type: 'text', when: 'before', options: [] },
-      { label: 'Posições onde sentiu mais calor, formigueiro ou reação', type: 'text', when: 'after', options: [] },
-      { label: 'Estado emocional no final da sessão', type: 'text', when: 'after', options: [] }
+      { label: 'Nível de desconforto geral (0-10)', type: 'text', when: 'before', options: [] }
     ]
   },
   {
-    name: 'Radiestesia — Mapa Corporal de Varrimento com Pêndulo',
+    name: 'Mapa Corporal — Registo por Zona, Frente e Costas (exemplo com posições já marcadas)',
     type: 'mapping',
     bodyFrontImageUrl: '',
     bodyBackImageUrl: '',
     groups: [
-      { groupName: 'Centros energéticos — Frente', points: [
-        { name: 'Coroa', baseText: 'Posicione o pêndulo cerca de 5cm acima do topo da cabeça. Calibre antes (pergunte "sim"/"não" conhecidos) e depois pergunte: "Este centro está aberto/equilibrado?". Registe o movimento.', mapX: 50, mapY: 3, mapSide: 'frente' },
-        { name: 'Terceiro olho', baseText: 'Pêndulo entre as sobrancelhas, sem tocar. Testar clareza mental e intuição. Pergunta sugerida: "Há bloqueio nesta zona?".', mapX: 50, mapY: 20, mapSide: 'frente' },
-        { name: 'Garganta', baseText: 'Pêndulo sobre a garganta, sem tocar. Testar expressão/comunicação.', mapX: 50, mapY: 18, mapSide: 'frente' },
-        { name: 'Coração', baseText: 'Pêndulo sobre o centro do peito. Testar abertura emocional e relações.', mapX: 50, mapY: 26, mapSide: 'frente' },
-        { name: 'Plexo solar', baseText: 'Pêndulo sobre o estômago. Testar autoestima e stress acumulado.', mapX: 50, mapY: 34, mapSide: 'frente' },
-        { name: 'Sacral/umbigo', baseText: 'Pêndulo sobre o umbigo. Testar vitalidade e criatividade.', mapX: 50, mapY: 38, mapSide: 'frente' },
-        { name: 'Base/raiz', baseText: 'Pêndulo sobre o osso púbico (sem tocar). Testar enraizamento e segurança.', mapX: 50, mapY: 42, mapSide: 'frente' }
-      ]},
-      { groupName: 'Varrimento — Costas', points: [
-        { name: 'Cervicais/nuca', baseText: 'Testar tensão acumulada e sobrecarga mental — zona muito reativa em quadros de stress.', mapX: 50, mapY: 11, mapSide: 'costas' },
-        { name: 'Zona pulmonar (dorsal alta)', baseText: 'Testar respiração e processos de luto/tristeza guardada, segundo a tradição.', mapX: 50, mapY: 22, mapSide: 'costas' },
-        { name: 'Rim esquerdo', baseText: 'Testar medo e esgotamento energético do lado esquerdo. Compare a reação com o rim direito.', mapX: 36, mapY: 34, mapSide: 'costas' },
-        { name: 'Rim direito', baseText: 'Testar medo e esgotamento energético do lado direito. Compare a reação com o rim esquerdo.', mapX: 64, mapY: 34, mapSide: 'costas' },
-        { name: 'Coluna lombossacra', baseText: 'Testar enraizamento e sustentação — encerramento do varrimento.', mapX: 50, mapY: 43, mapSide: 'costas' }
+      { groupName: 'Pontos de Registo', points: [
+        { name: 'Testa', baseText: 'Exemplo — este ponto já vem com posição marcada na frente. Toque em ✏️ para ver como editar nome, cor, posição e descrição.', color: '#2f6f5e', mapX: 50, mapY: 8, mapSide: 'frente' },
+        { name: 'Peito / Esterno', baseText: 'Exemplo — descreva aqui o que observar nesta zona.', color: '#2f6f5e', mapX: 50, mapY: 24, mapSide: 'frente' },
+        { name: 'Abdómen', baseText: 'Exemplo — descreva aqui o que observar nesta zona.', color: '#2f6f5e', mapX: 50, mapY: 33, mapSide: 'frente' },
+        { name: 'Omoplata Direita', baseText: 'Exemplo — este ponto já vem marcado nas costas, para mostrar como alternar frente/costas.', color: '#c9a227', mapX: 39, mapY: 25, mapSide: 'costas' },
+        { name: 'Omoplata Esquerda', baseText: 'Exemplo — descreva aqui o que observar nesta zona.', color: '#c9a227', mapX: 61, mapY: 25, mapSide: 'costas' }
       ]}
     ],
-    finalClassifications: [
-      { label: 'Movimento de calibração do pêndulo (sim / não / neutro)', type: 'text', when: 'before', options: [] },
-      { label: 'Pergunta exata feita ao pêndulo em cada ponto (registo literal)', type: 'text', when: 'before', options: [] },
-      { label: 'Zonas com maior desequilíbrio detetado', type: 'text', when: 'after', options: [] },
-      { label: 'Recomendação/sugestão dada no final', type: 'text', when: 'after', options: [] }
-    ]
-  },
-  {
-    name: 'Avaliação Psicológica Inicial',
-    type: 'simple',
-    points: [
-      { name: 'Estado de humor predominante', knowledgeText: 'Registo do humor relatado/observado ao longo da sessão.' },
-      { name: 'Nível de ansiedade percebido', knowledgeText: 'Sinais de ansiedade relatados ou observados (fisiológicos, cognitivos, comportamentais).' },
-      { name: 'Padrão de sono', knowledgeText: 'Qualidade, duração e regularidade do sono relatadas.' },
-      { name: 'Relações interpessoais relevantes', knowledgeText: 'Dinâmicas familiares, sociais ou profissionais mencionadas como significativas.' },
-      { name: 'Pensamentos automáticos identificados', knowledgeText: 'Padrões de pensamento recorrentes trazidos pela pessoa.' },
-      { name: 'Estratégias de coping utilizadas', knowledgeText: 'Formas como a pessoa tem lidado com as dificuldades até agora.' },
-      { name: 'Objetivos definidos para o acompanhamento', knowledgeText: 'O que a pessoa espera alcançar com o processo terapêutico.' }
-    ],
-    finalClassifications: [
-      { label: 'Motivo principal da consulta', type: 'text', when: 'before', options: [] },
-      { label: 'Encaminhamentos anteriores (psiquiatria, outros profissionais)', type: 'text', when: 'before', options: [] },
-      { label: 'Áreas prioritárias para as próximas sessões', type: 'text', when: 'after', options: [] }
-    ]
-  },
-  {
-    name: 'Pesquisa Emocional Vindora — Ansiedade e Depressão (esqueleto para editar)',
-    type: 'mapping',
-    bodyFrontImageUrl: '',
-    bodyBackImageUrl: '',
-    groups: [
-      { groupName: 'Mãos — Centros Energéticos', points: [
-        { name: 'Mão · Centro Energético 1', baseText: '', color: '#2e7d32' },
-        { name: 'Mão · Centro Energético 2', baseText: '', color: '#2e7d32' },
-        { name: 'Mão · Centro Energético 3', baseText: '', color: '#2e7d32' },
-        { name: 'Mão · Centro Energético 4', baseText: '', color: '#2e7d32' },
-        { name: 'Mão · Centro Energético 5', baseText: '', color: '#2e7d32' },
-        { name: 'Mão · Centro Energético 6', baseText: '', color: '#2e7d32' },
-        { name: 'Mão · Centro Energético 7', baseText: '', color: '#2e7d32' }
-      ]},
-      { groupName: 'Mãos — Ponto de Acesso', points: [
-        { name: 'Mão · Ponto de Acesso 1', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 2', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 3', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 4', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 5', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 6', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 7', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 8', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 9', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 10', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 11', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 12', baseText: '', color: '#c62828' },
-        { name: 'Mão · Ponto de Acesso 13', baseText: '', color: '#c62828' }
-      ]},
-      { groupName: 'Localização Lateral — Frente', points: [
-        { name: 'Cabeça', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Pescoço', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Tronco Superior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Tronco Inferior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Anca', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Coxa — Exterior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Coxa — Interior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Joelho — Exterior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Joelho — Interior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Perna — Exterior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Perna — Interior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Tornozelo — Exterior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Tornozelo — Interior', baseText: '', color: '#6a4fb3', mapSide: 'frente' },
-        { name: 'Pé', baseText: '', color: '#6a4fb3', mapSide: 'frente' }
-      ]},
-      { groupName: 'Localização Lateral — Costas', points: [
-        { name: 'Cabeça', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Pescoço', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Tronco Superior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Tronco Inferior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Anca', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Coxa — Exterior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Coxa — Interior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Joelho — Exterior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Joelho — Interior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Perna — Exterior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Perna — Interior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Tornozelo — Exterior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Tornozelo — Interior', baseText: '', color: '#8a6fd3', mapSide: 'costas' },
-        { name: 'Pé', baseText: '', color: '#8a6fd3', mapSide: 'costas' }
-      ]},
-      { groupName: 'Zona Alta', points: [
-        { name: 'Zona Alta 1', baseText: '', color: '#c9a227' },
-        { name: 'Zona Alta 2', baseText: '', color: '#c9a227' },
-        { name: 'Zona Alta 3', baseText: '', color: '#c9a227' },
-        { name: 'Zona Alta 4', baseText: '', color: '#c9a227' },
-        { name: 'Zona Alta 5', baseText: '', color: '#c9a227' },
-        { name: 'Zona Alta 6', baseText: '', color: '#c9a227' },
-        { name: 'Zona Alta 7', baseText: '', color: '#c9a227' },
-        { name: 'Zona Alta 8', baseText: '', color: '#c9a227' },
-        { name: 'Zona Alta 9', baseText: '', color: '#c9a227' }
-      ]},
-      { groupName: 'Zona Média', points: [
-        { name: 'Zona Média 1', baseText: '', color: '#2e7d32' },
-        { name: 'Zona Média 2', baseText: '', color: '#2e7d32' },
-        { name: 'Zona Média 3', baseText: '', color: '#2e7d32' },
-        { name: 'Zona Média 4', baseText: '', color: '#2e7d32' },
-        { name: 'Zona Média 5', baseText: '', color: '#2e7d32' },
-        { name: 'Zona Média 6', baseText: '', color: '#2e7d32' },
-        { name: 'Zona Média 7', baseText: '', color: '#2e7d32' },
-        { name: 'Zona Média 8', baseText: '', color: '#2e7d32' },
-        { name: 'Zona Média 9', baseText: '', color: '#2e7d32' },
-        { name: 'Zona Média 10', baseText: '', color: '#2e7d32' },
-        { name: 'Zona Média 11', baseText: '', color: '#2e7d32' },
-        { name: 'Zona Média 12', baseText: '', color: '#2e7d32' }
-      ]},
-      { groupName: 'Zona Baixa', points: [
-        { name: 'Zona Baixa 1', baseText: '', color: '#1a1a1a' },
-        { name: 'Zona Baixa 2', baseText: '', color: '#1a1a1a' },
-        { name: 'Zona Baixa 3', baseText: '', color: '#1a1a1a' },
-        { name: 'Zona Baixa 4', baseText: '', color: '#1a1a1a' },
-        { name: 'Zona Baixa 5', baseText: '', color: '#1a1a1a' },
-        { name: 'Zona Baixa 6', baseText: '', color: '#1a1a1a' }
-      ]}
-    ],
-    finalClassifications: [
-      { label: 'Motivo da pesquisa', type: 'text', when: 'before', options: [] },
-      { label: 'Padrão Emocional mais ativo', type: 'select', when: 'after', options: ['Desvalorização', 'Desproteção', 'Impotência', 'Perda', 'Sobrevivência'] },
-      { label: 'Momento em relação à gestação', type: 'select', when: 'after', options: ['Antes', 'Durante', 'Depois', 'Não aplicável'] },
-      { label: 'Idade / Tempo', type: 'text', when: 'after', options: [] }
-    ]
+    finalClassifications: []
   }
 ];
 
@@ -4502,6 +4514,7 @@ const TEMPLATE_FORMS = [
   {
     title: 'Ficha de Anamnese Geral (Universal)',
     description: 'Ficha de avaliação inicial genérica, adequada a qualquer área de atendimento.',
+    includesConsent: true,
     questions: [
       { type: 'text', label: 'Nome completo' },
       { type: 'text', label: 'Data de nascimento' },
@@ -4530,6 +4543,17 @@ const TEMPLATE_FORMS = [
       { type: 'scale', label: 'Satisfação geral com o atendimento (0-10)' },
       { type: 'multiple_choice', label: 'Recomendaria este serviço a alguém?', options: ['Sim', 'Talvez', 'Não'] },
       { type: 'text', label: 'Algo que gostaria de partilhar ou sugerir?' }
+    ]
+  },
+  {
+    title: 'Reavaliação Periódica — Ponto de Situação',
+    description: 'Para usar a cada X sessões, para rever objetivos e progresso com a pessoa.',
+    questions: [
+      { type: 'text', label: 'Objetivos definidos no início do acompanhamento' },
+      { type: 'scale', label: 'Progresso percebido desde o início (0 = nenhum, 10 = objetivo alcançado)' },
+      { type: 'text', label: 'O que está a funcionar bem' },
+      { type: 'text', label: 'O que ainda precisa de ajuste' },
+      { type: 'multiple_choice', label: 'Deseja continuar o acompanhamento com a mesma periodicidade?', options: ['Sim', 'Prefiro espaçar mais', 'Prefiro sessões mais frequentes'] }
     ]
   }
 ];
@@ -4594,6 +4618,8 @@ window.useFormTemplate = async function(idx){
   await addDoc(collection(db, 'tenants', tenantId, 'forms'), {
     title: t.title,
     description: t.description || '',
+    includesConsent: !!t.includesConsent,
+    consentTextSnapshot: t.includesConsent ? (currentTenantDoc?.legalTexts?.consentText || DEFAULT_CONSENT_TEXT) : '',
     questions,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
@@ -5756,15 +5782,14 @@ window.startGuidedConsultation = async function(patientId, patientName){
       return;
     }
 
-    document.getElementById('patientFormContainer').innerHTML = `
+    showPatientOverlay(`Consulta guiada — ${patientName}`, `
       <div class="card">
-        <h2>Consulta guiada — ${escapeHtml(patientName)}</h2>
-        <label>Método</label>
+        <button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button>
+        <label style="margin-top:10px;">Método</label>
         <select id="guidedProtocolSelect" onchange="onGuidedProtocolChange('${patientId}', '${escapeHtml(patientName)}')">${opts}</select>
         <div id="guidedPointsArea"></div>
-      </div>`;
+      </div>`);
     window.__guidedProtocols = protocols;
-    scrollToEl('patientFormContainer');
   }catch(e){
     console.error(e);
     toast('⚠️ Não foi possível abrir a consulta guiada: ' + e.message, true);
@@ -7476,6 +7501,15 @@ async function renderSettings(main){
       </label>
       <p class="muted" style="margin-top:8px;">Isto avisa-o em tempo real enquanto tiver a app aberta (mesmo que esteja noutra aba/app no telemóvel). Não substitui uma notificação do sistema quando a app está fechada — isso é uma funcionalidade maior, ainda por construir.</p>
       <button class="ghost" style="margin-top:8px;" onclick="saveNotifSoundPref()">Guardar preferência</button>
+
+      <hr style="margin:18px 0;border:none;border-top:1px solid #e5e5e5;">
+      <h2>📋 Ficha que o paciente vê no Portal</h2>
+      ${hintBox('O paciente já vê, no seu Portal, os seus próprios dados de identificação (nome, telefone, email, NIF, foto, campos personalizados) — exatamente a mesma ficha que a subscritora preenche aqui, só que só para leitura. As notas clínicas ficam de fora por predefinição, porque costumam ser registo profissional e nem sempre é adequado partilhá-las diretamente. Pode mudar isso abaixo, se preferir mais transparência com os seus pacientes.')}
+      <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
+        <input type="checkbox" id="portalShowClinicalNotesToggle" style="width:auto;margin-top:3px;" ${currentTenantDoc?.patientPortalSettings?.showClinicalNotes ? 'checked' : ''}>
+        <span>Mostrar também as notas clínicas na ficha do Portal (recomendado só se costuma escrever notas pensando que o paciente as pode ler).</span>
+      </label>
+      <button class="ghost" style="margin-top:8px;" onclick="savePatientPortalDataSettings()">Guardar preferência</button>
     `;
   }
   main.innerHTML = `${backBtn}<div class="card" style="margin-top:10px;">${inner}</div>`;
@@ -7526,8 +7560,8 @@ const CHATBOT_KB = [
     answer: 'Em "🧠 Conhecimento" pode guardar o que já sabe sobre óleos essenciais, fitoterápicos, ervas, probióticos, etc — por texto, foto (lê o texto sozinho) ou PDF. Depois, pode perguntar-me sobre um tema e devolvo o que escreveu. Atenção: isto é sempre conteúdo seu — eu nunca avalio interações ou faço recomendações clínicas por conta própria.' },
   { keywords: ['lista de espera','espera','vaga'],
     answer: 'Em "Lista de espera" pode adicionar pacientes que não encontraram horário. Quando cancela uma marcação, se houver alguém à espera desse serviço, a app avisa-o — e há um botão para notificar por WhatsApp com a mensagem já pronta.' },
-  { keywords: ['centros energeticos','ponto de acesso','zona alta','zona média','zona baixa','esqueleto'],
-    answer: 'Em Protocolos há um modelo "esqueleto" pronto de Pesquisa Completa: Mãos (Centros Energéticos em verde e Ponto de Acesso em vermelho), Localização Lateral, depois Zona Alta (dourado), Zona Média (verde) e Zona Baixa (preto). Vêm com os pontos todos criados mas sem posição — é só usar o modelo, editar, e tocar em cada ponto para o colocar no boneco, dar-lhe o nome final, cor e descrição. Pode adicionar ou remover pontos livremente, sem limite, e reordenar tudo.' },
+  { keywords: ['modelos de protocolo','modelos prontos','exemplos de metodo','mapa corporal exemplo','preencher ficha','preencher agora','consentimento na ficha'],
+    answer: 'Em "Os Meus Métodos" há 4 modelos prontos: 2 sem mapa (checklists de avaliação inicial e de evolução) e 2 com mapa corporal, já com pontos de exemplo posicionados no boneco, para ver como funciona. Em "Fichas", há 4 questionários universais, um deles já com opção de consentimento. Para preencher uma ficha você mesmo(a) dentro da app (paciente presente, sem enviar link), vá à ficha do paciente → "Enviar ficha" → "✍️ Preencher agora".' },
   { keywords: ['portal do paciente','portal','videochamada','video chamada','mensagens com paciente'],
     answer: 'Em cada ficha de paciente, na secção "Portal do paciente", pode gerar um link privado (sem conta nem password) para lhe enviar. Lá, o paciente vê as marcações, relatórios, pode falar consigo por mensagem entre sessões, e entrar numa videochamada gratuita se a consulta for online.' },
   { keywords: ['pagina publica','perfil publico','montra','link publico','divulgar'],

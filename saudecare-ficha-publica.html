@@ -139,6 +139,15 @@ function renderForm(){
       <label>Telefone ou email (para vos ser possível identificar a resposta)</label>
       <input id="respContact" placeholder="Telefone ou email">
     </div>
+    ${formData.includesConsent && formData.consentTextSnapshot ? `
+    <div class="card">
+      <label style="margin-bottom:6px;">Termo de consentimento</label>
+      <div style="max-height:180px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:13px;white-space:pre-wrap;margin-bottom:8px;">${escapeHtml(formData.consentTextSnapshot)}</div>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
+        <input type="checkbox" id="respConsentTerm" style="width:auto;margin-top:3px;">
+        <span>Li e aceito os termos acima.</span>
+      </label>
+    </div>` : ''}
     ${questionsHtml}
     <div class="card">
       <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
@@ -172,6 +181,10 @@ window.__submitForm = async function(){
   const name = document.getElementById('respName').value.trim();
   if (!name){ toast('Indique o seu nome.', true); return; }
   if (!document.getElementById('respConsent').checked){ toast('Confirme a autorização antes de enviar.', true); return; }
+  if (formData.includesConsent && !document.getElementById('respConsentTerm')?.checked){
+    toast('Confirme que leu e aceita o termo de consentimento antes de enviar.', true);
+    return;
+  }
 
   const answers = formData.questions.map(q => ({
     questionId: q.id,
@@ -189,6 +202,7 @@ window.__submitForm = async function(){
       respondentContact: document.getElementById('respContact').value.trim(),
       answers,
       consentConfirmedAt: serverTimestamp(),
+      consentTermAccepted: formData.includesConsent ? true : null,
       status: 'pending_review',
       submittedAt: serverTimestamp()
     });

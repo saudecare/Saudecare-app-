@@ -72,7 +72,7 @@
 </main>
 
 <script>
-const PAGE_VERSION = '2026-09-04-01';
+const PAGE_VERSION = '2026-09-06-01';
 
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha (podia interromper alguém a meio de escrever
@@ -352,6 +352,9 @@ function renderMenu(){
       <button class="tile" onclick="openPortalSection('reports')">
         <span class="tile-icon">📖</span><span>Relatórios${hasHealing ? ' e Rotina' : ''}</span>
       </button>
+      <button class="tile" onclick="openPortalSection('myData')">
+        <span class="tile-icon">📋</span><span>Os Meus Dados</span>
+      </button>
     </div>
   `;
 }
@@ -511,6 +514,26 @@ function renderPortalSection(name){
       <div class="card">
         <h2>📖 Relatórios de consultas anteriores</h2>
         ${reportsHtml}
+      </div>
+    `;
+
+  } else if (name === 'myData'){
+    const md = data.myData || {};
+    const customFieldsHtml = (md.customFields||[]).length
+      ? md.customFields.map(f => `<div class="appt"><strong>${escapeHtml(f.label||'')}</strong><div class="muted">${escapeHtml(f.value||'—')}</div></div>`).join('')
+      : '';
+    inner = `
+      <div class="card">
+        <h2>📋 Os Meus Dados</h2>
+        <p class="muted" style="margin-bottom:10px;">É exatamente esta a ficha que o seu terapeuta tem guardada sobre si — só para leitura. Se algo estiver errado, avise-o pelas Mensagens.</p>
+        ${md.photoUrl ? `<img src="${escapeHtml(md.photoUrl)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:10px;" onerror="this.style.display='none';">` : ''}
+        <div class="appt"><strong>Nome completo</strong><div class="muted">${escapeHtml(md.fullName||'—')}</div></div>
+        <div class="appt"><strong>Telefone</strong><div class="muted">${escapeHtml(md.phone||'—')}</div></div>
+        <div class="appt"><strong>Email</strong><div class="muted">${escapeHtml(md.email||'—')}</div></div>
+        <div class="appt"><strong>NIF / Contribuinte</strong><div class="muted">${escapeHtml(md.nif||'—')}</div></div>
+        ${customFieldsHtml}
+        ${md.clinicalNotes !== null && md.clinicalNotes !== undefined ? `
+        <div class="appt"><strong>Notas clínicas</strong><div class="muted" style="white-space:pre-wrap;">${escapeHtml(md.clinicalNotes||'—')}</div></div>` : ''}
       </div>
     `;
   }
