@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-106';
+const APP_VERSION = '2026-09-02-108';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2127,17 +2127,22 @@ function openExternalLink(url){
   window.location.href = url;
 }
 
-window.joinOnlineConsult = function(patientId){
+window.joinOnlineConsult = async function(patientId){
   try{
     const oc = currentTenantDoc?.onlineConsult || { tool: 'whatsapp' };
     if (oc.tool === 'custom' && oc.customLink){
       openExternalLink(oc.customLink);
     } else if (oc.tool === 'whatsapp'){
-      if (!oc.whatsappNumber){
-        toast('Escolheu WhatsApp como ferramenta, mas ainda não preencheu o número em Perfil → Consultório Online.', true);
+      // Chama o TELEFONE DO PACIENTE (da ficha dele), nunca o número geral
+      // do consultório — esse é para o paciente chamar o consultório, não
+      // o inverso.
+      const pSnap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
+      const patientPhone = pSnap.exists() ? (pSnap.data().phone || '') : '';
+      if (!patientPhone){
+        toast('Este paciente não tem telefone registado na ficha — não é possível abrir o WhatsApp dele.', true);
         return;
       }
-      openExternalLink(`https://wa.me/${oc.whatsappNumber}`);
+      openExternalLink(phoneToWaLink(patientPhone));
     } else {
       // Mesma fórmula usada no Portal do Paciente — assim ambos entram
       // exatamente na mesma sala, sem precisar de combinar nada à parte.
@@ -7296,6 +7301,9 @@ window.renderMyPublicProfile = async function(main){
       </div>
       <label>Especialidade / função (opcional — ex: "Reiki", "Ortopedia")</label>
       <input id="mpRole" value="${escapeHtml(existing?.role || '')}">
+      <label>O seu número de WhatsApp (para videochamadas com os seus pacientes)</label>
+      <input id="mpWhatsapp" value="${escapeHtml(existing?.whatsappNumber || '')}" placeholder="ex: 351912345678, sem espaços">
+      <p class="muted" style="margin-top:-6px;margin-bottom:10px;font-size:11.5px;">Quando um paciente seu tem uma consulta online marcada, o botão de videochamada no Portal dele vai abrir o SEU WhatsApp automaticamente, em vez do número geral do consultório.</p>
       <label>Foto</label>
       ${imageUploadFieldHTML('mpPhotoUrl', `tenants/${tenantId}/team`)}
       <input id="mpPhotoUrl" value="${escapeHtml(existing?.photoUrl || '')}" placeholder="ou cole aqui o link de uma imagem">
@@ -7314,6 +7322,7 @@ window.saveMyPublicProfile = async function(existingId){
     name,
     category,
     role: document.getElementById('mpRole').value.trim(),
+    whatsappNumber: document.getElementById('mpWhatsapp').value.trim().replace(/\D/g,''),
     photoUrl: document.getElementById('mpPhotoUrl').value.trim(),
     bio: document.getElementById('mpBio').value.trim(),
     staffUid: currentUser.uid
@@ -7621,12 +7630,20 @@ window.switchSupportType = function(type){
 window.submitSupportRequest = async function(){
   const message = document.getElementById('supportMessage').value.trim();
   if (!message){ toast('Escreva a mensagem antes de enviar.', true); return; }
+  const type = window.__supportType || 'support';
+  const businessName = currentTenantDoc?.businessName || '';
+  const ownerEmail = currentUser?.email || '';
   await addDoc(collection(db, 'platform_support_requests'), {
-    tenantId, businessName: currentTenantDoc?.businessName || '',
-    ownerEmail: currentUser?.email || '',
-    type: window.__supportType || 'support',
-    message, status: 'open', createdAt: serverTimestamp()
+    tenantId, businessName, ownerEmail,
+    type, message, status: 'open', createdAt: serverTimestamp()
   });
+  // Aviso extra por email para a Vindora — falha silenciosa se não
+  // resultar, porque o pedido já ficou gravado e visível no painel.
+  fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/sendSupportEmail', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, message, businessName, ownerEmail, tenantId })
+  }).catch(()=>{});
   toast('Enviado. A administração vai receber isto o mais rápido possível.');
   renderView('home');
 };
