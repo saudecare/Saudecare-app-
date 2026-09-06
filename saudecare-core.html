@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-108';
+const APP_VERSION = '2026-09-02-109';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -6947,12 +6947,12 @@ async function renderProfileSection(main, section){
   } else if (section === 'online'){
     inner = `
       <h2>💻 Consultório Online</h2>
-      ${hintBox('Escolha como quer atender os seus pacientes online. Isto aparece no Portal do Paciente para as consultas marcadas como "Online".')}
+      ${hintBox('Escolha como quer atender os seus pacientes online. Isto aparece no Portal do Paciente para as consultas marcadas como "Online". Só uma das três opções abaixo é mesmo "um clique e entra logo na chamada" para os dois lados — o Jitsi. As outras duas exigem sempre um último toque manual dentro da outra app (WhatsApp/Zoom/Meet), isso não há como evitar, é uma limitação dessas próprias apps, não da Vindora.')}
       <label>Ferramenta</label>
       <select id="pfOnlineTool" onchange="toggleOnlineToolFields()">
-        <option value="whatsapp" ${(!currentTenantDoc?.onlineConsult?.tool || currentTenantDoc?.onlineConsult?.tool==='whatsapp')?'selected':''}>WhatsApp (recomendado — a maioria dos terapeutas já usa)</option>
-        <option value="jitsi" ${currentTenantDoc?.onlineConsult?.tool==='jitsi'?'selected':''}>Videochamada grátis incluída (Jitsi, sem conta)</option>
-        <option value="custom" ${currentTenantDoc?.onlineConsult?.tool==='custom'?'selected':''}>O meu próprio link fixo (Zoom, Google Meet, etc.)</option>
+        <option value="whatsapp" ${(!currentTenantDoc?.onlineConsult?.tool || currentTenantDoc?.onlineConsult?.tool==='whatsapp')?'selected':''}>WhatsApp (mais familiar aos pacientes — precisa de 1 toque extra para ligar)</option>
+        <option value="jitsi" ${currentTenantDoc?.onlineConsult?.tool==='jitsi'?'selected':''}>✅ Videochamada grátis incluída (Jitsi) — verdadeiramente automática, um clique e entra</option>
+        <option value="custom" ${currentTenantDoc?.onlineConsult?.tool==='custom'?'selected':''}>O meu próprio link fixo (Zoom, Google Meet, etc.) — precisa de 1 toque extra</option>
       </select>
       <div id="pfOnlineCustomField" class="${currentTenantDoc?.onlineConsult?.tool==='custom'?'':'hidden'}">
         <label>Link fixo da sua sala (Zoom/Meet/etc.)</label>
@@ -6961,7 +6961,7 @@ async function renderProfileSection(main, section){
       <div id="pfOnlineWhatsappField" class="${(!currentTenantDoc?.onlineConsult?.tool || currentTenantDoc?.onlineConsult?.tool==='whatsapp')?'':'hidden'}">
         <label>Número de WhatsApp (com indicativo do país)</label>
         <input id="pfOnlineWhatsapp" value="${escapeHtml(currentTenantDoc?.onlineConsult?.whatsappNumber||'')}" placeholder="351912345678">
-        <p class="muted" style="margin-top:4px;">O paciente vai poder abrir uma conversa consigo — a chamada de vídeo em si tem de ser iniciada por si dentro do WhatsApp, não é automática.</p>
+        <p class="muted" style="margin-top:4px;">O paciente vai poder abrir uma conversa consigo — a chamada de vídeo em si tem de ser iniciada por si dentro do WhatsApp, não é automática. Nenhuma app externa (WhatsApp incluído) permite a nenhum programador iniciar a chamada sozinha, por decisão da própria WhatsApp/Meta — não é algo que a Vindora consiga contornar.</p>
       </div>
       <button class="primary" style="margin-top:8px;" onclick="saveOnlineConsultSettings()">Guardar</button>
     `;
