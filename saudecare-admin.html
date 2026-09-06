@@ -108,7 +108,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc,
-  query, orderBy, serverTimestamp, Timestamp
+  query, orderBy, serverTimestamp, Timestamp, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -321,7 +321,7 @@ async function renderOverview(main){
       <h2>Mais recentes</h2>
       ${allTenants.slice(0, 5).map(t => `
         <div class="tenant-item row">
-          <div><strong>${escapeHtml(t.businessName||t.id)}</strong><div class="muted">${escapeHtml(t.slug||'')}</div></div>
+          <div><strong>${escapeHtml(t.businessName||t.id)}</strong><div class="muted">${escapeHtml(t.slug||'')} · plano ${escapeHtml(t.plan||'—')}${trialDaysLabel(t)}</div></div>
           <span class="badge ${t.status}">${escapeHtml(t.status||'')}</span>
         </div>
       `).join('') || '<p class="muted">Ainda sem subscritores.</p>'}
@@ -389,6 +389,14 @@ async function renderTenants(main){
   attachTenantRowHandlers();
 }
 
+function trialDaysLabel(t){
+  if (t.status !== 'trial' || !t.trialEndsAt?.toDate) return '';
+  const days = Math.ceil((t.trialEndsAt.toDate().getTime() - Date.now()) / (24*60*60*1000));
+  if (days < 0) return ' · <span style="color:var(--danger);">teste expirado</span>';
+  if (days === 0) return ' · <span style="color:#7a5b00;">teste termina hoje</span>';
+  return ` · termina em ${days} dia${days===1?'':'s'}`;
+}
+
 function renderTenantRows(list){
   const todayStr = new Date().toISOString().slice(0,10);
   const in7DaysStr = new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10);
@@ -410,7 +418,7 @@ function renderTenantRows(list){
     <div class="tenant-item" ${isPending ? 'style="background:#fff8ea;border-radius:8px;padding:10px;"' : ''}>
       <div class="row">
         <div><strong>${escapeHtml(t.businessName||t.id)}</strong>
-          <div class="muted">${escapeHtml(t.slug||'')} · plano ${escapeHtml(t.plan||'—')}</div>
+          <div class="muted">${escapeHtml(t.slug||'')} · plano ${escapeHtml(t.plan||'—')}${trialDaysLabel(t)}</div>
         </div>
         <span>
           <span class="badge ${isPending ? '' : escapeHtml(t.status||'')}" style="${isPending ? 'background:#fff3cd;color:#8a5a00;' : ''}">${isPending ? 'por ativar' : escapeHtml(t.status||'')}</span>
@@ -1270,6 +1278,15 @@ function renderNewTenant(main){
         <option value="pro">Pro</option>
         <option value="lifetime">Vitalício (sem restrições)</option>
       </select>
+      <label>Como começa este subscritor?</label>
+      <select id="ntStartStatus" onchange="document.getElementById('ntTrialDaysBox').classList.toggle('hidden', this.value !== 'trial')">
+        <option value="active">✅ Já é plano pago — fica Ativo assim que ativar o login</option>
+        <option value="trial">🕓 Período de teste grátis (não pagou ainda)</option>
+      </select>
+      <div id="ntTrialDaysBox" class="hidden">
+        <label>Dias de teste</label>
+        <input id="ntTrialDays" type="number" value="7" min="1">
+      </div>
       <button class="primary" id="ntCreateBtn" onclick="createTenant()">Criar subscritor e enviar email</button>
     </div>
   `;
@@ -1301,6 +1318,10 @@ window.createTenant = async function(){
       slug,
       status: 'pending_activation',
       plan: document.getElementById('ntPlan').value,
+      pendingStartStatus: document.getElementById('ntStartStatus').value,
+      pendingTrialDays: document.getElementById('ntStartStatus').value === 'trial'
+        ? (parseInt(document.getElementById('ntTrialDays').value, 10) || 7)
+        : null,
       ownerUid: newUid,
       ownerEmail: email,
       createdAt: serverTimestamp(),
@@ -1394,7 +1415,7 @@ window.oneClickActivate = async function(tenantId, uid){
     });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || 'Falha desconhecida');
-    toast('Subscritor ativado com sucesso.');
+    toast(data.startStatus === 'trial' ? 'Subscritor ativado em período de teste.' : 'Subscritor ativado — já está Ativo.');
     renderView('tenants');
   }catch(e){
     console.error(e);
@@ -1405,8 +1426,16 @@ window.oneClickActivate = async function(tenantId, uid){
 };
 
 window.markTenantActivated = async function(tenantId){
-  await updateDoc(doc(db, 'tenants', tenantId), { status: 'trial' });
-  toast('Conta ativada — o subscritor já pode entrar.');
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  const t = snap.exists() ? snap.data() : {};
+  const startStatus = t.pendingStartStatus || 'active';
+  const updates = { status: startStatus, pendingStartStatus: deleteField(), pendingTrialDays: deleteField() };
+  if (startStatus === 'trial'){
+    const days = t.pendingTrialDays || 7;
+    updates.trialEndsAt = Timestamp.fromMillis(Date.now() + days * 24 * 60 * 60 * 1000);
+  }
+  await updateDoc(doc(db, 'tenants', tenantId), updates);
+  toast(startStatus === 'trial' ? 'Conta ativada em período de teste — o subscritor já pode entrar.' : 'Conta ativada — o subscritor já pode entrar.');
   renderView('tenants');
 };
 
