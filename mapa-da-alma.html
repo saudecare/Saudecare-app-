@@ -203,6 +203,7 @@ let selectedTipo = 'individual';
 let OVERRIDES = {};
 let SOCIAL_LINKS = {};
 let LIMPEZA_TEXTO = null;
+let LIMPEZA_PRECO_CONSULTA = 35;
 let CONTACT_WHATSAPP = null;
 
 function mergeSimple(base, over){ return over ? { ...base, ...over } : base; }
@@ -218,6 +219,7 @@ async function loadOverrides(){
       OVERRIDES = data.overrides || {};
       SOCIAL_LINKS = data.socialLinks || {};
       LIMPEZA_TEXTO = data.limpezaTexto;
+      LIMPEZA_PRECO_CONSULTA = data.limpezaPrecoConsulta ?? 35;
       CONTACT_WHATSAPP = data.whatsapp;
     }
   }catch(e){ /* usa predefinições se falhar — nunca bloqueia a página */ }
@@ -225,6 +227,10 @@ async function loadOverrides(){
 
 function renderTypeSelector(){
   main.innerHTML = `
+    <div class="card" style="text-align:center;background:linear-gradient(90deg,rgba(212,175,55,.2),rgba(212,175,55,.05));border:1.5px solid var(--gold);">
+      <p style="color:var(--gold-light);font-weight:800;font-size:1.1rem;margin:0;">✨ 100% GRÁTIS ✨</p>
+      <p class="muted" style="margin-top:4px;">Sem cartão, sem compromisso — descubra já o seu primeiro reflexo cósmico.</p>
+    </div>
     <div class="card">
       <p class="muted" style="margin-bottom:12px;">Que tipo de Mapa da Alma quer descobrir?</p>
       <div class="type-grid">
@@ -425,16 +431,63 @@ function renderFreeResult(leadId, r, signo, extra){
         <div>🌿 Ritual completo do Banho de Ervas do seu signo</div>
         <div>🗝️ Plano prático de ativação de 7 a 21 dias</div>
       </div>
+      <div id="priceBox" style="text-align:center;margin-top:14px;"></div>
       <button class="btn" id="btnUpgrade">✦ Desbloquear o Mapa Diamante completo</button>
       <p class="muted" style="margin-top:8px;">Guarde este link — pode voltar a ele sempre.</p>
     </div>
-    ${renderShareAndPromoBlock(leadId, r.nome)}
+    ${renderShareAndPromoBlock(leadId, r.nome, r)}
   `;
   document.getElementById('btnUpgrade').addEventListener('click', () => startCheckout(leadId, extra));
   wireShareAndPromoButtons(leadId, r.nome);
+  loadAndShowPrice(leadId);
 }
 
-function renderShareAndPromoBlock(leadId, nome){
+async function loadAndShowPrice(leadId){
+  try{
+    const res = await fetch(FUNCTION_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getPrice', tenantId: TENANT_ID, leadId })
+    });
+    const data = await res.json();
+    if (!data.ok) return;
+    const box = document.getElementById('priceBox');
+    if (!box) return;
+    if (data.promoActive){
+      let extra = '';
+      if (data.promoMode === 'until' && data.promoUntil){
+        extra = `<div id="promoCountdown" class="muted" style="margin-top:4px;font-size:.8rem;"></div>`;
+        startPromoCountdown(data.promoUntil);
+      } else if (data.promoMode === 'maxOrders' && data.promoOrdersLeft != null){
+        extra = `<div class="muted" style="margin-top:4px;font-size:.8rem;">⚡ Restam ${data.promoOrdersLeft} vagas a este preço</div>`;
+      }
+      box.innerHTML = `
+        <p class="teaser-tag" style="background:rgba(220,60,60,.25);color:#ffb3b3;">🔥 PREÇO DE LANÇAMENTO</p>
+        <div style="margin-top:6px;">
+          <span style="text-decoration:line-through;color:var(--muted);font-size:1.1rem;">${data.normalPrice}€</span>
+          <span style="color:var(--gold-light);font-size:1.8rem;font-weight:800;margin-left:8px;">${data.price}€</span>
+        </div>
+        ${extra}
+      `;
+    } else {
+      box.innerHTML = `<div style="color:var(--gold-light);font-size:1.6rem;font-weight:800;">${data.price}€</div>`;
+    }
+  }catch(e){ /* se falhar, o preço só aparece no ecrã de pagamento — não bloqueia nada */ }
+}
+function startPromoCountdown(untilIso){
+  const el = document.getElementById('promoCountdown');
+  if (!el) return;
+  function tick(){
+    const diff = new Date(untilIso).getTime() - Date.now();
+    if (diff <= 0){ el.textContent = '⏳ Promoção a terminar...'; return; }
+    const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
+    const d = Math.floor(h/24);
+    el.textContent = `⏳ Termina em ${d>0?d+'d ':''}${(h%24).toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+function renderShareAndPromoBlock(leadId, nome, r){
   let html = `
     <div class="card" style="text-align:center;">
       <h3 style="color:var(--gold-light);margin-bottom:8px;">💫 Gostou do que descobriu?</h3>
@@ -449,11 +502,26 @@ function renderShareAndPromoBlock(leadId, nome){
     </div>
   `;
   if (LIMPEZA_TEXTO){
+    // Liga o convite ao que o Mapa realmente encontrou nesta pessoa —
+    // em vez de um anúncio genérico, aponta para o sinal concreto que o
+    // Pêndulo Hebreu consegue investigar e tratar com mais profundidade.
+    const sinais = [];
+    if (r?.excesso?.length) sinais.push('o excesso energético detetado no seu nome');
+    if (r?.carmicas?.length) sinais.push('a lição cármica que ainda está por resolver');
+    if (r?.mediunidade) sinais.push('o sinal de mediunidade/intuição elevada que encontrámos');
+    const ganchoTexto = sinais.length
+      ? `O seu Mapa já apontou um sinal: <strong>${sinais.join(', ')}</strong>. Isto é exatamente o tipo de coisa que o trabalho com o Pêndulo Hebreu consegue investigar em profundidade — e, se for preciso, tratar.`
+      : `Muitas vezes, o que o Mapa da Alma revela é só a ponta do fio. O trabalho com o Pêndulo Hebreu vai mais fundo — deteta e trata bloqueios que os números, sozinhos, não mostram.`;
     html += `
     <div class="card" style="background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);">
-      <h3 style="color:var(--gold-light);margin-bottom:8px;">🛡️ Sente que algo mais pesa sobre si?</h3>
+      <h3 style="color:var(--gold-light);margin-bottom:8px;">🛡️ Quer ir mais fundo?</h3>
+      <p class="muted" style="margin-bottom:10px;">${ganchoTexto}</p>
       <p class="muted" style="white-space:pre-wrap;">${escapeHtml(LIMPEZA_TEXTO)}</p>
-      ${CONTACT_WHATSAPP ? `<a class="btn" style="display:block;text-decoration:none;margin-top:10px;" target="_blank" href="https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent('Olá! Vi o Mapa da Alma e gostava de saber mais sobre o trabalho de limpeza energética.')}">📱 Falar com a Hikari Fafe</a>` : ''}
+      <div style="margin:12px 0;padding:12px;background:rgba(212,175,55,.1);border-radius:10px;text-align:left;">
+        <p class="muted"><strong>🔍 Consulta de Pesquisa Energética: ${LIMPEZA_PRECO_CONSULTA}€</strong><br>Avaliação completa com Pêndulo Hebreu — identifica exatamente o que precisa de ser tratado.</p>
+        <p class="muted" style="margin-top:6px;font-size:.78rem;">A limpeza em si (quebra do que for encontrado) varia de caso para caso, conforme o número de sessões necessárias — só é definida depois desta avaliação.</p>
+      </div>
+      ${CONTACT_WHATSAPP ? `<a class="btn" style="display:block;text-decoration:none;margin-top:10px;" target="_blank" href="https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent('Olá! Fiz o Mapa da Alma e gostava de marcar uma Consulta de Pesquisa Energética.')}">📱 Marcar consulta com a Hikari Fafe</a>` : ''}
     </div>`;
   }
   return html;
@@ -463,12 +531,12 @@ function wireShareAndPromoButtons(leadId, nome){
   const shareBtn = document.getElementById('btnShare');
   if (!shareBtn) return;
   shareBtn.addEventListener('click', async () => {
-    const shareUrl = window.location.href;
-    const shareText = `Descobri o meu Mapa da Alma grátis — experimenta também!`;
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareText = `✦ Descobri o meu Mapa da Alma grátis, da Hikari Fafe — experimenta também, é rápido!`;
     if (navigator.share){
-      try{ await navigator.share({ title:'Mapa da Alma — Hikari Fafe', text:shareText, url:shareUrl }); }catch(e){}
+      try{ await navigator.share({ title:'Mapa da Alma — Hikari Fafe', text:shareText, url:baseUrl }); }catch(e){}
     } else {
-      openWhatsAppShare(shareText + ' ' + shareUrl);
+      openWhatsAppShare(shareText + ' ' + baseUrl);
     }
   });
 }
@@ -497,11 +565,13 @@ function renderManualPayment(leadId, info){
   main.innerHTML = `
     <div class="card">
       <h3 style="color:var(--gold-light);margin-bottom:10px;">💳 Como pagar</h3>
+      ${info.normalPrice ? `<p style="text-align:center;"><span style="text-decoration:line-through;color:var(--muted);">${info.normalPrice}€</span></p>` : ''}
       <p class="price-tag">${info.price || '—'}€</p>
       ${info.iban ? `<p class="muted">Transferência — IBAN: <strong>${escapeHtml(info.iban)}</strong></p>` : ''}
       ${info.mbway ? `<p class="muted" style="margin-top:6px;">MB Way: <strong>${escapeHtml(info.mbway)}</strong></p>` : ''}
+      ${info.refCode ? `<p class="muted" style="margin-top:6px;">Referência a indicar na transferência: <strong>${escapeHtml(info.refCode)}</strong></p>` : ''}
       <p class="muted" style="margin-top:10px;">Depois de pagar, envie o comprovativo por WhatsApp para desbloquearmos o seu Mapa Diamante.</p>
-      ${info.whatsapp ? `<a class="btn btn-ghost" style="display:block;text-decoration:none;" href="https://wa.me/${info.whatsapp}?text=${encodeURIComponent('Olá! Já paguei o Mapa da Alma Diamante, o meu código é: ' + leadId)}" target="_blank">📱 Enviar comprovativo por WhatsApp</a>` : ''}
+      ${info.whatsapp ? `<a class="btn btn-ghost" style="display:block;text-decoration:none;" href="https://wa.me/${info.whatsapp}?text=${encodeURIComponent('Olá! Já paguei o Mapa da Alma Diamante, a minha referência é: ' + (info.refCode||leadId))}" target="_blank">📱 Enviar comprovativo por WhatsApp</a>` : ''}
       <p class="muted" style="margin-top:14px;">O seu código: <strong>${leadId}</strong> — guarde-o.</p>
       <button class="btn btn-ghost" style="margin-top:14px;" onclick="location.reload()">🔄 Já fui confirmado — ver o meu Mapa</button>
     </div>
@@ -593,6 +663,7 @@ function renderFullReport(data){
       <p class="muted" style="margin-top:6px;"><strong>Banho de ervas (${escapeHtml(r.signo)}):</strong> ${escapeHtml(full.banhoErvas||'')}</p>
       <p class="muted" style="margin-top:6px;">${escapeHtml(full.banhoModo||'')}</p>
       <p class="muted" style="margin-top:6px;"><strong>Cristal do dia:</strong> ${escapeHtml(r.diaInfo.cristal)} · <strong>Mantra sugerido:</strong> ${escapeHtml(full.mantra||'')}</p>
+      ${full.avisoProfissional ? `<p class="muted" style="margin-top:10px;font-size:.78rem;background:rgba(212,175,55,.1);padding:8px;border-radius:8px;">⚠️ ${escapeHtml(full.avisoProfissional)}</p>` : ''}
     </div>
     <div class="card">
       <h3 style="color:var(--gold-light);">🌊 Banho de Descarrego</h3>
@@ -614,7 +685,7 @@ function renderFullReport(data){
       <button class="btn" id="btnDownloadPdf">📥 Descarregar o meu Mapa em PDF</button>
       <p class="muted" style="margin-top:8px;">Guarde para reler sempre que precisar, ou imprima.</p>
     </div>
-    ${renderShareAndPromoBlock(null, r.nome)}
+    ${renderShareAndPromoBlock(null, r.nome, r)}
   `;
   document.getElementById('btnDownloadPdf').addEventListener('click', () => downloadFullReportPDF(r, full, dom));
   wireShareAndPromoButtons(null, r.nome);
@@ -802,6 +873,7 @@ function downloadFullReportPDF(r, full, dom){
   paragraph(`Banho de Proteção: ${full.banhoProtecao?.ervas} — ${full.banhoProtecao?.hz}`, { bold:true, gap:2 });
   paragraph(full.banhoProtecao?.modo || '', { size:9 });
   paragraph(`Mantra sugerido: ${full.mantra}`, { size:9 });
+  if (full.avisoProfissional) paragraph(full.avisoProfissional, { size:8.5, color:MUTED });
 
   heading('Decretos "EU SOU" de Poder Pessoal', 'VIII');
   paragraph(`Afirmação do seu número: "${full.euSou}"`, { bold:true, gap:10 });

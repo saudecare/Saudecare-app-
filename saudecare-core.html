@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-116';
+const APP_VERSION = '2026-09-02-119';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -7740,6 +7740,8 @@ async function renderMapaAlma(main){
   const others = leads.filter(l => l.paymentStatus !== 'manual_pending' && l.paymentStatus !== 'paid');
 
   const settings = currentTenantDoc?.mapaAlmaSettings || {};
+  const prices = settings.pricesByType || {};
+  const promo = settings.promo || {};
   const publicLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','mapa-da-alma.html')}`;
 
   const rowHtml = (l) => {
@@ -7770,11 +7772,61 @@ async function renderMapaAlma(main){
     </div>
 
     <details class="card" open>
-      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">⚙️ Preço e forma de pagamento</summary>
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">💶 Tabela de preços</summary>
+      <div style="margin-top:10px;">
+        <p class="muted" style="margin-bottom:8px;">Preço normal de cada tipo de mapa.</p>
+        <label>🧍 Individual (€)</label>
+        <input id="maPriceIndividual" type="number" min="0" step="0.01" value="${prices.individual ?? 27}">
+        <label>💞 Casal (€)</label>
+        <input id="maPriceCasal" type="number" min="0" step="0.01" value="${prices.casal ?? 45}">
+        <label>👨‍👩‍👧 Família (€)</label>
+        <input id="maPriceFamilia" type="number" min="0" step="0.01" value="${prices.familia ?? 60}">
+        <label>👶 Bebé/Criança (€)</label>
+        <input id="maPriceBebe" type="number" min="0" step="0.01" value="${prices.bebe ?? 20}">
+        <label>🏢 Empresa (€)</label>
+        <input id="maPriceEmpresa" type="number" min="0" step="0.01" value="${prices.empresa ?? 80}">
+        <button class="primary" onclick="saveMapaAlmaSettings()">Guardar preços</button>
+      </div>
+    </details>
+
+    <details class="card" ${promo.active ? 'open' : ''}>
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">🔥 Promoção / Preço de Lançamento ${promo.active ? '<span class="badge active">ativa</span>' : ''}</summary>
+      <div style="margin-top:10px;">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:400;">
+          <input type="checkbox" id="maPromoActive" style="width:auto;" ${promo.active ? 'checked' : ''}>
+          Promoção ativa
+        </label>
+        <label>Preço promocional (€)</label>
+        <input id="maPromoPrice" type="number" min="0" step="0.01" value="${promo.price ?? 17}">
+        <label>Aplica-se a</label>
+        <select id="maPromoTipos" multiple style="height:110px;">
+          ${['individual','casal','familia','bebe','empresa'].map(t => `<option value="${t}" ${(!promo.appliesTo || promo.appliesTo.includes(t)) ? 'selected' : ''}>${({individual:'🧍 Individual',casal:'💞 Casal',familia:'👨‍👩‍👧 Família',bebe:'👶 Bebé',empresa:'🏢 Empresa'})[t]}</option>`).join('')}
+        </select>
+        <p class="muted" style="font-size:11px;margin-top:2px;">Toque para escolher um ou vários (nenhum selecionado = aplica-se a todos).</p>
+        <label style="margin-top:10px;">Até quando dura?</label>
+        <select id="maPromoMode" onchange="document.getElementById('maPromoUntilBox').classList.toggle('hidden', this.value!=='until'); document.getElementById('maPromoMaxBox').classList.toggle('hidden', this.value!=='maxOrders');">
+          <option value="indefinite" ${promo.mode==='indefinite'?'selected':''}>Sem limite — até eu desligar à mão</option>
+          <option value="until" ${promo.mode==='until'?'selected':''}>Até uma data/hora</option>
+          <option value="maxOrders" ${promo.mode==='maxOrders'?'selected':''}>Até um número de pedidos confirmados</option>
+        </select>
+        <div id="maPromoUntilBox" class="${promo.mode==='until'?'':'hidden'}">
+          <label>Data e hora de fim</label>
+          <input id="maPromoUntil" type="datetime-local" value="${promo.until ? promo.until.slice(0,16) : ''}">
+        </div>
+        <div id="maPromoMaxBox" class="${promo.mode==='maxOrders'?'':'hidden'}">
+          <label>Número máximo de pedidos com este preço</label>
+          <input id="maPromoMax" type="number" min="1" value="${promo.maxOrders || 50}">
+          <p class="muted" style="font-size:11.5px;">Já usados: <strong>${promo.ordersUsed || 0}</strong></p>
+        </div>
+        <button class="primary" style="margin-top:10px;" onclick="saveMapaAlmaPromo()">Guardar promoção</button>
+        ${promo.active ? `<button class="danger" style="margin-top:6px;" onclick="cancelMapaAlmaPromo()">🔴 Desativar promoção agora</button>` : ''}
+      </div>
+    </details>
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">💳 Forma de pagamento manual</summary>
       <div style="margin-top:10px;">
         <p class="muted" style="margin-bottom:8px;">Usado quando não há deteção automática (SumUp) configurada — a pessoa vê estes dados e depois confirma consigo.</p>
-        <label>Preço (€)</label>
-        <input id="maPrice" type="number" min="0" step="0.01" value="${settings.price || 27}">
         <label>IBAN</label>
         <input id="maIban" value="${escapeHtml(settings.iban||'')}">
         <label>MB Way</label>
@@ -7787,8 +7839,11 @@ async function renderMapaAlma(main){
     <details class="card">
       <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">🛡️ Divulgação — Limpeza Energética</summary>
       <div style="margin-top:10px;">
-        <p class="muted" style="margin-bottom:8px;">Este texto aparece a todos os que veem o Mapa (grátis ou pago), a convidar para o seu serviço de deteção/limpeza energética, magia, inveja, olho gordo e larvas astrais. Deixe em branco para não mostrar nada.</p>
+        <p class="muted" style="margin-bottom:8px;">Este texto aparece em 2 sítios: depois do Mapa da Alma (grátis ou pago), e agora também em destaque na sua página pública. Deixe em branco para não mostrar nada.</p>
         <textarea id="maLimpezaTexto" rows="5" placeholder="ex: Muitas vezes, o desequilíbrio que sente vai além do que o Mapa revela. Trabalho deteção e limpeza de energias densas, inveja, olho gordo e larvas astrais/espirituais — à distância ou presencial.">${escapeHtml(settings.limpezaTexto||'')}</textarea>
+        <label>Preço da Consulta de Pesquisa Energética (€)</label>
+        <input id="maLimpezaPreco" type="number" min="0" step="0.01" value="${settings.limpezaPrecoConsulta ?? 35}">
+        <p class="muted" style="margin-top:-4px;margin-bottom:8px;font-size:11.5px;">Esta é só a avaliação/diagnóstico — a limpeza em si varia por caso, por isso não tem preço fixo aqui.</p>
         <button class="primary" onclick="saveMapaAlmaSettings()">Guardar</button>
       </div>
     </details>
@@ -7824,13 +7879,50 @@ async function renderMapaAlma(main){
 }
 
 window.saveMapaAlmaSettings = async function(){
-  const price = parseFloat(document.getElementById('maPrice').value) || 27;
   const iban = document.getElementById('maIban').value.trim();
   const mbway = document.getElementById('maMbway').value.trim();
   const limpezaTexto = document.getElementById('maLimpezaTexto').value.trim();
-  await updateDoc(doc(db, 'tenants', tenantId), { mapaAlmaSettings: { price, iban, mbway, limpezaTexto } });
-  currentTenantDoc.mapaAlmaSettings = { price, iban, mbway, limpezaTexto };
+  const limpezaPrecoConsulta = parseFloat(document.getElementById('maLimpezaPreco').value) || 35;
+  const pricesByType = {
+    individual: parseFloat(document.getElementById('maPriceIndividual')?.value) || 27,
+    casal: parseFloat(document.getElementById('maPriceCasal')?.value) || 45,
+    familia: parseFloat(document.getElementById('maPriceFamilia')?.value) || 60,
+    bebe: parseFloat(document.getElementById('maPriceBebe')?.value) || 20,
+    empresa: parseFloat(document.getElementById('maPriceEmpresa')?.value) || 80
+  };
+  const merged = { ...(currentTenantDoc?.mapaAlmaSettings||{}), iban, mbway, limpezaTexto, limpezaPrecoConsulta, pricesByType };
+  await updateDoc(doc(db, 'tenants', tenantId), { mapaAlmaSettings: merged });
+  currentTenantDoc.mapaAlmaSettings = merged;
   toast('Preferências guardadas.');
+};
+
+window.saveMapaAlmaPromo = async function(){
+  const tiposSelect = document.getElementById('maPromoTipos');
+  const appliesTo = Array.from(tiposSelect.selectedOptions).map(o => o.value);
+  const promo = {
+    active: document.getElementById('maPromoActive').checked,
+    price: parseFloat(document.getElementById('maPromoPrice').value) || 17,
+    mode: document.getElementById('maPromoMode').value,
+    appliesTo: appliesTo.length === 5 ? [] : appliesTo,
+    until: document.getElementById('maPromoUntil').value ? new Date(document.getElementById('maPromoUntil').value).toISOString() : null,
+    maxOrders: parseInt(document.getElementById('maPromoMax').value, 10) || 50,
+    ordersUsed: currentTenantDoc?.mapaAlmaSettings?.promo?.ordersUsed || 0
+  };
+  const merged = { ...(currentTenantDoc?.mapaAlmaSettings||{}), promo };
+  await updateDoc(doc(db, 'tenants', tenantId), { mapaAlmaSettings: merged });
+  currentTenantDoc.mapaAlmaSettings = merged;
+  toast('Promoção guardada.');
+  renderMapaAlma(document.getElementById('mainView'));
+};
+
+window.cancelMapaAlmaPromo = async function(){
+  if (!confirm('Desativar a promoção agora? Volta imediatamente ao preço normal.')) return;
+  const promo = { ...(currentTenantDoc?.mapaAlmaSettings?.promo||{}), active: false };
+  const merged = { ...(currentTenantDoc?.mapaAlmaSettings||{}), promo };
+  await updateDoc(doc(db, 'tenants', tenantId), { mapaAlmaSettings: merged });
+  currentTenantDoc.mapaAlmaSettings = merged;
+  toast('Promoção desativada.');
+  renderMapaAlma(document.getElementById('mainView'));
 };
 
 window.saveMapaAlmaOverrides = async function(){
@@ -7856,6 +7948,14 @@ window.resendMapaAlmaLink = function(contacto, nome, link){
 window.confirmMapaAlmaPayment = async function(leadId){
   if (!confirm('Confirmar que este pagamento foi recebido? A pessoa vai poder ver o Mapa Diamante completo.')) return;
   await updateDoc(doc(db, 'tenants', tenantId, 'mapaAlmaLeads', leadId), { paymentStatus: 'paid', paidAt: serverTimestamp() });
+  // Se houver uma promoção por número de pedidos ativa, conta este como usado.
+  const promo = currentTenantDoc?.mapaAlmaSettings?.promo;
+  if (promo?.active && promo.mode === 'maxOrders'){
+    const updatedPromo = { ...promo, ordersUsed: (promo.ordersUsed || 0) + 1 };
+    const merged = { ...(currentTenantDoc.mapaAlmaSettings||{}), promo: updatedPromo };
+    await updateDoc(doc(db, 'tenants', tenantId), { mapaAlmaSettings: merged });
+    currentTenantDoc.mapaAlmaSettings = merged;
+  }
   toast('Pagamento confirmado — o Mapa completo já está disponível para a pessoa.');
   renderMapaAlma(document.getElementById('mainView'));
 };

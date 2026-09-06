@@ -56,6 +56,7 @@
 
 <div class="wrap">
   <section id="mapaAlmaSection"></section>
+  <section id="limpezaEnergeticaSection"></section>
   <section id="aboutSection"></section>
   <section id="servicesSection"></section>
   <section id="teamSection"></section>
@@ -126,6 +127,29 @@ async function load(){
         <a href="${escapeHtml(mapaUrl)}" style="display:inline-block;background:linear-gradient(90deg,#d4af37,#f0d878);color:#2a1a00;font-weight:700;padding:12px 26px;border-radius:12px;text-decoration:none;">✦ Ver o meu Mapa da Alma</a>
       </div>
     `;
+
+    // Destaque da Limpeza Energética — texto vem do painel da Hikari
+    // (o mesmo campo que já usa no Mapa da Alma), lido através da função
+    // porque a página pública não tem acesso direto aos dados privados do
+    // tenant. Só aparece se ela tiver escrito alguma coisa nesse campo.
+    fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/mapaAlma', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getOverrides', tenantId: 'hikari-terapias' })
+    }).then(r => r.json()).then(data => {
+      if (!data.ok || !data.limpezaTexto) return;
+      document.getElementById('limpezaEnergeticaSection').innerHTML = `
+        <div style="background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);border-radius:16px;padding:22px 18px;text-align:center;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.25);">
+          <h2 style="color:#f0d878;font-size:19px;margin-bottom:8px;">🛡️ Deteção & Limpeza Energética</h2>
+          <p style="color:#c9b8e8;font-size:14px;line-height:1.6;margin-bottom:14px;white-space:pre-wrap;">${escapeHtml(data.limpezaTexto)}</p>
+          <div style="background:rgba(212,175,55,.1);border-radius:10px;padding:12px;margin-bottom:14px;text-align:left;">
+            <p style="color:#f0d878;font-size:13px;font-weight:700;">🔍 Consulta de Pesquisa Energética: ${data.limpezaPrecoConsulta ?? 35}€</p>
+            <p style="color:#c9b8e8;font-size:12px;margin-top:4px;">Avaliação completa com Pêndulo Hebreu. A limpeza em si varia de caso para caso, conforme as sessões necessárias.</p>
+          </div>
+          <p style="color:#8874ac;font-size:12px;margin-bottom:14px;">À distância ou presencial.</p>
+          ${data.whatsapp ? `<a href="https://wa.me/${data.whatsapp}?text=${encodeURIComponent('Olá! Vi a página e gostava de saber mais sobre a Limpeza Energética.')}" target="_blank" style="display:inline-block;background:linear-gradient(90deg,#d4af37,#f0d878);color:#2a1a00;font-weight:700;padding:12px 26px;border-radius:12px;text-decoration:none;">📱 Falar com a Hikari Fafe</a>` : ''}
+        </div>
+      `;
+    }).catch(()=>{});
   }
 
   renderContact(profile);
