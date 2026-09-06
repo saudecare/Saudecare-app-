@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-100';
+const APP_VERSION = '2026-09-02-104';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -488,6 +488,17 @@ let __notifCounts = {};
 // mas como essa funcionalidade agora vive escondida dentro de uma
 // categoria do menu, o número aparece somado no botão da categoria
 // (ex: "📅 Agenda & Pacientes"). NAV_VIEW_TO_GROUP faz essa tradução.
+// Quando uma clínica tem vários profissionais, cada paciente pode ficar
+// atribuído a um deles (campo assignedStaffUid) — assim os avisos de
+// mensagens só incomodam quem é responsável, e não a equipa toda.
+// Sem atribuição (o normal para quem trabalha sozinho), continua visível
+// a todos, como sempre foi.
+function isPatientVisibleToCurrentStaff(p){
+  if (tenantRole === 'owner') return true;
+  if (!p.assignedStaffUid) return true;
+  return p.assignedStaffUid === currentUser.uid;
+}
+
 function setNavBadge(subKey, count){
   __notifCounts[subKey] = count;
   if (count > (__notifPrevCounts[subKey] || 0)) playNotifSound();
@@ -541,6 +552,13 @@ function startRealtimeNotifications(){
     ));
   }
 
+  // Respostas de fichas públicas por associar a um paciente.
+  __notifUnsubscribers.push(onSnapshot(
+    query(collection(db, 'public_form_responses'), where('tenantId','==',tenantId), where('status','==','pending_review')),
+    snap => setNavBadge('forms', snap.size),
+    () => {}
+  ));
+
   // Mensagens de pacientes por ler — como implica percorrer todos os
   // pacientes, isto verifica de x em x tempo em vez de tempo real puro
   // (mais seguro e mais leve do que uma pesquisa entre todos os tenants).
@@ -549,6 +567,8 @@ function startRealtimeNotifications(){
       const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
       let total = 0;
       for (const p of patientsSnap.docs){
+        if (p.data().preferredChannel && p.data().preferredChannel !== 'portal') continue;
+        if (!isPatientVisibleToCurrentStaff(p.data())) continue;
         const msgsSnap = await getDocs(query(
           collection(db, 'tenants', tenantId, 'patients', p.id, 'messages'),
           where('sender','==','patient'), where('readByProfessional','==', false)
@@ -1782,14 +1802,15 @@ window.changeFinancesMonth = function(delta){
 async function renderHome(main){
   main.innerHTML = '<p class="muted">A carregar…</p>';
 
-  const [apptsSnap, waitlistSnap, patientsSnap, staffSnap, bookingReqSnap] = await Promise.all([
+  const [apptsSnap, waitlistSnap, patientsSnap, staffSnap, bookingReqSnap, pendingFormsSnap] = await Promise.all([
     getDocs(collection(db, 'tenants', tenantId, 'appointments')),
     getDocs(collection(db, 'tenants', tenantId, 'waitlist')),
     getDocs(collection(db, 'tenants', tenantId, 'patients')),
     tenantRole === 'owner' ? getDocs(collection(db, 'tenants', tenantId, 'staff')) : Promise.resolve(null),
     tenantRole !== 'staff_restricted'
       ? getDocs(query(collection(db, 'public_booking_requests'), where('tenantId','==',tenantId), where('status','==','pending_review')))
-      : Promise.resolve(null)
+      : Promise.resolve(null),
+    getDocs(query(collection(db, 'public_form_responses'), where('tenantId','==',tenantId), where('status','==','pending_review')))
   ]);
 
   const alerts = [];
@@ -1800,8 +1821,13 @@ async function renderHome(main){
   if (bookingReqSnap && bookingReqSnap.size){
     alerts.push({ icon: '📩', text: `${bookingReqSnap.size} pedido(s) de marcação por rever`, action: "openSettingsSection('disponibilidade')" });
   }
+  if (pendingFormsSnap.size){
+    alerts.push({ icon: '📝', text: `${pendingFormsSnap.size} resposta(s) de ficha por associar a um paciente`, action: "renderView('forms')" });
+  }
 
-  const unreadByPatient = await Promise.all(patientsSnap.docs.map(async d => {
+  const unreadByPatient = await Promise.all(patientsSnap.docs
+    .filter(d => (!d.data().preferredChannel || d.data().preferredChannel === 'portal') && isPatientVisibleToCurrentStaff(d.data()))
+    .map(async d => {
     const msgsSnap = await getDocs(query(
       collection(db, 'tenants', tenantId, 'patients', d.id, 'messages'),
       where('sender', '==', 'patient'), where('readByProfessional', '==', false)
@@ -2680,11 +2706,24 @@ async function renderPatients(main){
     <div class="row"><h2>Pacientes</h2>
       <button class="primary" onclick="openNewPatient()">+ Novo paciente</button>
     </div>
-    ${hintBox('A sua lista de clientes/pacientes, de A a Z. Guarde o consentimento RGPD de cada um antes de registar dados sensíveis — é obrigatório por lei.')}
+    ${hintBox('A sua lista de clientes/pacientes, de A a Z. Guarde o consentimento RGPD de cada um antes de registar dados sensíveis — é obrigatório por lei. Toque no selo 💚 de cada paciente para gerir o acesso dele ao Portal.')}
+    <div class="row" style="margin-bottom:8px;">
+      <button class="ghost" onclick="renderView('portalPaciente')">💚 Ver Portal do Paciente (todos)</button>
+    </div>
     <input id="patientSearchInput" placeholder="🔍 Pesquisar por nome, telefone, email ou NIF…" oninput="filterPatientsList()" style="margin-bottom:10px;">
     <div class="card" id="patientsListBox"></div>
   `;
   renderPatientsListRows(window.__allPatientsCache);
+}
+
+function portalStatusBadge(p){
+  if (p.portalToken && !p.portalRevoked){
+    return p.portalFirstAccessedAt
+      ? `<span class="badge active">💚 Portal: já acedeu</span>`
+      : `<span class="badge" style="background:#fff3cd;color:#7a5b00;">💚 Portal: pendente</span>`;
+  }
+  if (p.portalToken && p.portalRevoked) return `<span class="badge" style="background:#f3d4d1;color:#7a2a20;">💚 Portal: revogado</span>`;
+  return `<span class="badge">💚 Sem Portal</span>`;
 }
 
 function renderPatientsListRows(list){
@@ -2700,6 +2739,7 @@ function renderPatientsListRows(list){
       <div style="flex:1;">
         <strong>${escapeHtml(p.fullName)}</strong>
         <div class="muted" style="font-size:12.5px;">${escapeHtml(p.phone||'')} ${p.consentGivenAt ? '' : '· <span style=\"color:var(--danger)\">sem consentimento</span>'}</div>
+        <div style="margin-top:3px;cursor:pointer;" onclick="event.stopPropagation();openPortalForPatient('${p.id}')">${portalStatusBadge(p)}</div>
       </div>
       ${p.totalOwed > 0 ? `<span class="badge" style="background:#fdf2f0;color:#b3413a;">${p.totalOwed.toFixed(2)}€</span>` : ''}
     </div>`;
@@ -2813,11 +2853,26 @@ window.importPatientFromContacts = async function(){
   }
 };
 
-window.openNewPatient = function(){
+async function getAssignedStaffFieldHTML(selectedValue){
+  const staffSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'staff'), where('status','==','active')));
+  if (staffSnap.empty) return ''; // consultório sem equipa — não faz sentido mostrar isto
+  let opts = `<option value="">Todos veem (sem atribuição)</option>`;
+  opts += `<option value="${tenantId}" ${selectedValue===tenantId?'selected':''}>${escapeHtml(currentTenantDoc?.ownerEmail || 'Dono do consultório')}</option>`;
+  staffSnap.forEach(d => {
+    const s = d.data();
+    opts += `<option value="${d.id}" ${selectedValue===d.id?'selected':''}>${escapeHtml(s.name||s.email)}</option>`;
+  });
+  return `<label style="margin-top:10px;">Profissional responsável (opcional)</label>
+    <select id="pAssignedStaff">${opts}</select>
+    <p class="muted" style="font-size:11px;margin-top:2px;">Se escolher alguém, só essa pessoa (e o dono) recebe avisos de mensagens deste paciente.</p>`;
+}
+
+window.openNewPatient = async function(){
   patientCustomFieldsDraft = [];
   patientAttachmentsDraft = [];
   window.__editingPatientId = null;
   showPatientOverlay('Novo paciente', '');
+  const assignedStaffFieldHtml = await getAssignedStaffFieldHTML('');
   document.getElementById('patientFormContainer').innerHTML = `
     <div class="card">
       <h2>Novo paciente</h2>
@@ -2829,6 +2884,7 @@ window.openNewPatient = function(){
       <label>Foto do paciente (opcional)</label><input id="pPhotoUrl" placeholder="https://... (ou escolha uma foto abaixo)">
       ${imageUploadFieldHTML('pPhotoUrl', `tenants/${tenantId}/patients`)}
       <label>Notas clínicas iniciais</label><textarea id="pNotes" rows="3"></textarea>
+      ${assignedStaffFieldHtml}
       ${renderPatientCustomFieldsBuilder()}
       ${renderPatientAttachmentsBuilder()}
       <label style="margin-top:14px;">Termo de consentimento (peça ao paciente para ler)</label>
@@ -2971,6 +3027,7 @@ window.editPatient = async function(patientId){
   patientCustomFieldsDraft = (p.customFields || []).map(f => ({...f}));
   patientAttachmentsDraft = (p.attachments || []).map(f => ({...f}));
   window.__editingPatientId = patientId;
+  const assignedStaffFieldHtml = await getAssignedStaffFieldHTML(p.assignedStaffUid || '');
   showPatientOverlay('Editar paciente', `
     <div class="card">
       <h2>Editar paciente</h2>
@@ -2982,6 +3039,7 @@ window.editPatient = async function(patientId){
       <label>Foto do paciente (opcional)</label><input id="pPhotoUrl" value="${escapeHtml(p.photoUrl||'')}" placeholder="https://... (ou escolha uma foto abaixo)">
       ${imageUploadFieldHTML('pPhotoUrl', `tenants/${tenantId}/patients`)}
       <label>Notas clínicas</label><textarea id="pNotes" rows="3">${escapeHtml(p.clinicalNotes||'')}</textarea>
+      ${assignedStaffFieldHtml}
       ${renderPatientCustomFieldsBuilder()}
       ${renderPatientAttachmentsBuilder()}
       <div class="row" style="margin-top:14px;">
@@ -3003,6 +3061,7 @@ window.updatePatient = async function(patientId){
     nif: document.getElementById('pNif').value.trim(),
     photoUrl: document.getElementById('pPhotoUrl').value.trim(),
     clinicalNotes: document.getElementById('pNotes').value.trim(),
+    assignedStaffUid: document.getElementById('pAssignedStaff')?.value || null,
     customFields: patientCustomFieldsDraft.filter(f => f.label && f.label.trim()),
     attachments: patientAttachmentsDraft.filter(f => f.label && f.label.trim() && f.url && f.url.trim())
   });
@@ -3075,6 +3134,7 @@ window.savePatient = async function(){
     nif: document.getElementById('pNif').value.trim(),
     photoUrl: document.getElementById('pPhotoUrl').value.trim(),
     clinicalNotes: document.getElementById('pNotes').value.trim(),
+    assignedStaffUid: document.getElementById('pAssignedStaff')?.value || null,
     customFields: patientCustomFieldsDraft.filter(f => f.label && f.label.trim()),
     attachments: patientAttachmentsDraft.filter(f => f.label && f.label.trim() && f.url && f.url.trim()),
     consentGivenAt: serverTimestamp(),
@@ -3269,6 +3329,13 @@ window.viewPatient = async function(patientId){
       <h3 style="margin-bottom:6px;">💚 Portal do paciente</h3>
       <p class="muted" style="margin-bottom:8px;">Espaço próprio do paciente para ver marcações, relatórios, falar consigo entre sessões e entrar na videochamada. Envie-lhe este link uma vez (por WhatsApp/email) — não precisa de criar conta nem password. ⚠️ Este link é único e pessoal deste paciente — não o partilhe com outro paciente nem o publique.</p>
       <div id="patientPortalLinkBox"></div>
+      <label style="margin-top:10px;">Como prefere acompanhar este paciente entre sessões?</label>
+      <select id="preferredChannelSelect" onchange="savePreferredChannel('${patientId}', this.value)">
+        <option value="portal" ${(!p.preferredChannel || p.preferredChannel==='portal')?'selected':''}>💚 Mensagens do Portal (dentro da app)</option>
+        <option value="whatsapp" ${p.preferredChannel==='whatsapp'?'selected':''}>📱 WhatsApp (fora da app)</option>
+        <option value="other" ${p.preferredChannel==='other'?'selected':''}>📴 Não uso mensagens com este paciente</option>
+      </select>
+      <p class="muted" style="margin-top:4px;font-size:11.5px;">Se escolher WhatsApp ou "não uso", as mensagens do Portal ficam escondidas para este paciente (para não confundir), e deixa de gerar avisos de "mensagem por ler" na sua app para ele.</p>
       <div id="patientMessagesBox" style="margin-top:12px;"></div>
       <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
       <h3 style="margin-bottom:6px;">🌱 Diário de Bem-Estar</h3>
@@ -3312,6 +3379,7 @@ window.viewPatient = async function(patientId){
       <h2>Fichas respondidas</h2>
       ${formRespHtml}
     </div>`;
+  window.__currentPatientChannel = p.preferredChannel || 'portal';
   showPatientOverlay(p.fullName, overlayBody);
   renderPatientPortalLink(patientId, p);
   renderPatientMessages(patientId);
@@ -3449,6 +3517,18 @@ window.revokePortalLinkFromOverview = async function(patientId, name){
   renderView('portalPaciente');
 };
 
+window.savePreferredChannel = async function(patientId, channel){
+  await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), { preferredChannel: channel });
+  window.__currentPatientChannel = channel;
+  toast('Preferência guardada.');
+  renderPatientMessages(patientId);
+};
+
+window.openPortalForPatient = function(patientId){
+  window.__portalOverviewJumpTo = patientId;
+  renderView('portalPaciente');
+};
+
 async function renderPatientPortalOverview(main){
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
   const patients = [];
@@ -3464,6 +3544,9 @@ async function renderPatientPortalOverview(main){
   main.innerHTML = `
     <h2>💚 Portal do Paciente</h2>
     ${hintBox('Aqui gere, num único sítio, o acesso de cada paciente ao portal (mensagens, relatórios, marcações e videochamada) — sem precisar de entrar na ficha de cada um. Toque num paciente para abrir as opções dele.')}
+    <div class="row" style="margin-bottom:8px;">
+      <button class="ghost" onclick="renderView('patients')">🧑‍🤝‍🧑 Ver todos os pacientes (ficha completa)</button>
+    </div>
     <div class="card">
       <div class="muted">Pacientes com Portal ativo: <strong>${limitLabel}</strong></div>
     </div>
@@ -3476,6 +3559,12 @@ async function renderPatientPortalOverview(main){
     <div id="portalOverviewList" style="margin-top:10px;"></div>
   `;
   renderPortalOverviewList(patients);
+  if (window.__portalOverviewJumpTo){
+    const jumpId = window.__portalOverviewJumpTo;
+    window.__portalOverviewJumpTo = null;
+    document.getElementById('portalItemBody-' + jumpId)?.classList.remove('hidden');
+    document.getElementById('portalCard-' + jumpId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 }
 
 window.filterPortalOverview = function(term){
@@ -3528,7 +3617,7 @@ function renderPortalOverviewList(patients){
       actionsHtml = `<div class="row" style="margin-top:6px;"><button class="ghost" onclick="generatePortalLinkFromOverview('${p.id}')">Gerar link</button></div>`;
     }
 
-    return `<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="togglePortalOverviewItem(event,'${p.id}')">
+    return `<div class="card" id="portalCard-${p.id}" style="margin-bottom:8px;cursor:pointer;" onclick="togglePortalOverviewItem(event,'${p.id}')">
       <div class="row" style="align-items:center;gap:10px;">
         ${avatarFor(p)}
         <div style="flex:1;">
@@ -3537,7 +3626,10 @@ function renderPortalOverviewList(patients){
         </div>
         ${statusBadge}
       </div>
-      <div id="portalItemBody-${p.id}" class="hidden">${actionsHtml}</div>
+      <div id="portalItemBody-${p.id}" class="hidden">
+        ${actionsHtml}
+        <button class="ghost" style="margin-top:6px;width:100%;" onclick="viewPatient('${p.id}')">🧑‍🤝‍🧑 Ver ficha completa →</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -3552,6 +3644,11 @@ window.togglePortalOverviewItem = function(ev, patientId){
 async function renderPatientMessages(patientId, isPoll){
   const box = document.getElementById('patientMessagesBox');
   if (!box) return;
+
+  if (window.__currentPatientChannel && window.__currentPatientChannel !== 'portal'){
+    if (!isPoll) box.innerHTML = `<p class="muted">💬 Mensagens do Portal desligadas para este paciente — está a acompanhá-lo por ${window.__currentPatientChannel === 'whatsapp' ? 'WhatsApp' : 'outro meio, fora da app'}.</p>`;
+    return;
+  }
 
   if (!isPoll){
     box.innerHTML = `
@@ -3613,7 +3710,7 @@ window.sendPatientMessage = async function(patientId){
   const text = input.value.trim();
   if (!text) return;
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'messages'), {
-    sender: 'professional', text, createdAt: serverTimestamp()
+    sender: 'professional', text, createdAt: serverTimestamp(), readByPatient: false
   });
   input.value = '';
   clearAutosaveField('patientMsgInput');

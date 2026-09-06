@@ -72,7 +72,7 @@
 </main>
 
 <script>
-const PAGE_VERSION = '2026-09-06-02';
+const PAGE_VERSION = '2026-09-06-04';
 
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha (podia interromper alguém a meio de escrever
@@ -151,6 +151,40 @@ function formatDateTime(iso){
   const d = new Date(iso);
   return d.toLocaleDateString('pt-PT', { weekday:'short', day:'2-digit', month:'2-digit' }) + ' às ' +
     d.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
+}
+
+function playPortalNotifSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.start(); osc.stop(ctx.currentTime + 0.35);
+  }catch(e){ /* som é só um extra, nunca deve travar nada */ }
+}
+
+let __portalLastKnownUnread = null;
+function updateMessagesTileBadge(count){
+  const badge = document.getElementById('msgTileBadge');
+  if (badge) badge.outerHTML = count > 0 ? `<span id="msgTileBadge" class="tile-badge">${count}</span>` : `<span id="msgTileBadge" style="display:none;"></span>`;
+}
+async function checkForNewMessages(){
+  try{
+    const res = await callPortal('unreadCount');
+    const count = res.unreadMessagesCount || 0;
+    if (__portalLastKnownUnread !== null && count > __portalLastKnownUnread) playPortalNotifSound();
+    __portalLastKnownUnread = count;
+    portalData.unreadMessagesCount = count;
+    updateMessagesTileBadge(count);
+  }catch(e){ /* falha silenciosa — não deve incomodar quem está a usar o Portal */ }
+}
+let __portalGlobalPollTimer = null;
+function startGlobalMessagePolling(){
+  if (__portalGlobalPollTimer) return;
+  __portalGlobalPollTimer = setInterval(checkForNewMessages, 25000);
 }
 
 let __lastPortalMsgSig = null;
@@ -347,7 +381,8 @@ function renderMenu(){
         <span class="tile-icon">🌱</span><span>Diário de Bem-Estar</span>
       </button>
       <button class="tile" onclick="openPortalSection('messages')">
-        <span class="tile-icon">💬</span><span>Mensagens</span>
+        <span id="msgTileBadge" class="tile-badge" style="${(data.unreadMessagesCount||0) > 0 ? '' : 'display:none;'}">${data.unreadMessagesCount||0}</span>
+        <span class="tile-icon">💬</span><span>${data.preferredChannel && data.preferredChannel !== 'portal' ? 'Contacto' : 'Mensagens'}</span>
       </button>
       <button class="tile" onclick="openPortalSection('reports')">
         <span class="tile-icon">📖</span><span>Relatórios${hasHealing ? ' e Rotina' : ''}</span>
@@ -472,6 +507,18 @@ function renderPortalSection(name){
     `;
 
   } else if (name === 'messages'){
+    if (data.preferredChannel && data.preferredChannel !== 'portal'){
+      const wa = data.onlineConsult?.tool === 'whatsapp' && data.onlineConsult?.whatsappNumber
+        ? `<a class="btn btn-block" style="margin-top:8px;" target="_blank" href="https://wa.me/${data.onlineConsult.whatsappNumber}">Abrir WhatsApp</a>`
+        : '';
+      inner = `
+        <div class="card">
+          <h2>💬 Contacto</h2>
+          <p class="muted">O seu terapeuta prefere falar consigo por WhatsApp (ou outro meio combinado), em vez de mensagens aqui no Portal.</p>
+          ${wa}
+        </div>
+      `;
+    } else {
     inner = `
       <div class="card">
         <h2>💬 Mensagens</h2>
@@ -483,6 +530,7 @@ function renderPortalSection(name){
         </div>
       </div>
     `;
+    }
 
   } else if (name === 'reports'){
     const reportsHtml = data.reports.length
@@ -567,10 +615,13 @@ function renderPortalSection(name){
     buildScale('energyScale', 'energyLevel', ENERGY_ICONS);
     renderCheckinHistory(data.checkins);
   }
-  if (name === 'messages'){
+  if (name === 'messages' && (!data.preferredChannel || data.preferredChannel === 'portal')){
     __lastPortalMsgSig = null;
     renderMessages(data.messages);
     startMessagePolling();
+    __portalLastKnownUnread = 0;
+    updateMessagesTileBadge(0);
+    callPortal('markMessagesRead').catch(()=>{});
   }
 }
 
@@ -594,6 +645,8 @@ async function load(){
     } else {
       renderMenu();
     }
+    __portalLastKnownUnread = data.unreadMessagesCount || 0;
+    startGlobalMessagePolling();
   }catch(e){
     console.error(e);
     main.innerHTML = '<div class="errorbox">Não foi possível abrir o seu portal. Verifique o link ou peça um novo ao seu terapeuta.</div>';
