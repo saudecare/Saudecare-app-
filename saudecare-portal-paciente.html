@@ -72,7 +72,7 @@
 </main>
 
 <script>
-const PAGE_VERSION = '2026-09-06-04';
+const PAGE_VERSION = '2026-09-06-05';
 
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha (podia interromper alguém a meio de escrever
@@ -468,7 +468,7 @@ function renderPortalSection(name){
     } else {
       const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
       const displayName = encodeURIComponent(data.patientName || 'Paciente');
-      onlineToolHtml = `<a class="btn btn-block" target="_blank" href="https://meet.jit.si/${jitsiRoom}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22">Entrar na videochamada</a>`;
+      onlineToolHtml = `<a class="btn btn-block" target="_blank" href="https://meet.jit.si/${jitsiRoom}#config.disableDeepLinking=true&config.deeplinking.disabled=true&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22">Entrar na videochamada</a>`;
     }
 
     inner = `

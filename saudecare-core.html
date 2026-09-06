@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-112';
+const APP_VERSION = '2026-09-02-113';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2112,7 +2112,7 @@ window.notifyPatientForCall = function(patientId, phone, patientName, portalToke
     // Link direto da sala — o paciente entra com um único toque, sem
     // precisar de passar pelo Portal primeiro.
     const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
-    const jitsiLink = `https://meet.jit.si/${jitsiRoom}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
+    const jitsiLink = `https://meet.jit.si/${jitsiRoom}#config.disableDeepLinking=true&config.deeplinking.disabled=true&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
     text = `Olá ${patientName}! Vamos começar a nossa consulta online agora — toque aqui para entrar na videochamada: ${jitsiLink} (é preciso estar ligado à internet, wifi ou dados móveis)`;
   } else {
     const portalLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-portal-paciente.html')}?t=${tenantId}&p=${patientId}${portalToken ? '&k='+portalToken : ''}`;
@@ -2162,7 +2162,7 @@ window.joinOnlineConsult = async function(patientId){
       // ligado, sem pedir mais nada.
       const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
       const displayName = encodeURIComponent(currentTenantDoc?.businessName || currentUser?.email || 'Terapeuta');
-      openExternalLink(`https://meet.jit.si/${jitsiRoom}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22`);
+      openExternalLink(`https://meet.jit.si/${jitsiRoom}#config.disableDeepLinking=true&config.deeplinking.disabled=true&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22`);
     }
   }catch(e){
     console.error('Falha ao iniciar videochamada:', e);
