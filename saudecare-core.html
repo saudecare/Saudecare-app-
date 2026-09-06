@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-110';
+const APP_VERSION = '2026-09-02-111';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3350,86 +3350,122 @@ window.viewPatient = async function(patientId){
         <span class="muted">✅ Sem valores em dívida.</span>
       </div>`}
       ${customFieldsHtml}
-      <label style="margin-top:10px;">Notas clínicas</label>
-      <textarea rows="5" readonly>${escapeHtml(p.clinicalNotes||'')}</textarea>
-      <p class="muted">Consentimento: ${p.consentGivenAt ? 'registado' : 'em falta'} ${!p.consentGivenAt ? `<button class="ghost" style="padding:2px 8px;font-size:12px;" onclick="registerConsentForPatient('${patientId}','${escapeAttrJs(p.fullName)}')">📋 Registar agora</button>` : ''}</p>
-      ${p.consentSignatureDataUrl ? `
-        <label style="margin-top:6px;">Assinatura recolhida</label>
-        <img src="${p.consentSignatureDataUrl}" style="border:1px solid #e5e5e5;border-radius:8px;background:#fff;max-width:260px;display:block;">
-      ` : ''}
-      <div class="row" style="margin-top:10px;">
+
+      <div class="row" style="margin-top:12px;">
         <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeHtml(p.fullName)}')">🧭 Iniciar consulta guiada</button>
         <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeHtml(p.fullName)}')">📝 Enviar ficha a este paciente</button>
         <button class="ghost" onclick="viewPatientEvolution('${patientId}','${escapeHtml(p.fullName)}')">📈 Ver evolução</button>
       </div>
-      ${p.phone ? `
-      <div style="margin-top:12px;padding:10px 12px;background:#eef6f2;border-radius:10px;">
-        <p class="muted" style="margin-bottom:8px;"><strong>Para a videochamada, nenhuma app (nem o WhatsApp) consegue avisar o paciente sozinha — são precisos sempre estes 2 toques, um a seguir ao outro:</strong></p>
-        <div class="row">
-          <button class="primary" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName)}','${escapeAttrJs(p.portalToken||'')}','whatsapp')">1️⃣ Avisar por WhatsApp</button>
-          <button class="ghost" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName)}','${escapeAttrJs(p.portalToken||'')}','sms')">1️⃣ Avisar por SMS</button>
-          <button class="primary" onclick="joinOnlineConsult('${patientId}')">2️⃣ Entrar na videochamada</button>
+
+      <details style="margin-top:12px;" open>
+        <summary style="cursor:pointer;font-weight:700;">💻 Videochamada</summary>
+        <div style="margin-top:8px;">
+          ${p.phone ? `
+          <div style="padding:10px 12px;background:#eef6f2;border-radius:10px;">
+            <p class="muted" style="margin-bottom:8px;"><strong>Para a videochamada, nenhuma app (nem o WhatsApp) consegue avisar o paciente sozinha — são precisos sempre estes 2 toques, um a seguir ao outro:</strong></p>
+            <div class="row">
+              <button class="primary" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName)}','${escapeAttrJs(p.portalToken||'')}','whatsapp')">1️⃣ Avisar por WhatsApp</button>
+              <button class="ghost" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName)}','${escapeAttrJs(p.portalToken||'')}','sms')">1️⃣ Avisar por SMS</button>
+              <button class="primary" onclick="joinOnlineConsult('${patientId}')">2️⃣ Entrar na videochamada</button>
+            </div>
+          </div>` : `
+          <div class="row">
+            <button class="primary" onclick="joinOnlineConsult('${patientId}')">💻 Iniciar videochamada agora</button>
+          </div>
+          <p class="muted" style="margin-top:4px;">Este paciente não tem telefone registado — não é possível avisá-lo automaticamente antes de entrar.</p>`}
+          <p class="muted" style="margin-top:6px;">⚠️ A videochamada precisa de ligação à internet dos dois lados (wifi ou dados móveis) — não funciona sem internet, mesmo com boa rede telefónica.</p>
         </div>
-      </div>` : `
-      <div class="row" style="margin-top:10px;">
-        <button class="primary" onclick="joinOnlineConsult('${patientId}')">💻 Iniciar videochamada agora</button>
-      </div>
-      <p class="muted" style="margin-top:4px;">Este paciente não tem telefone registado — não é possível avisá-lo automaticamente antes de entrar.</p>`}
-      <p class="muted" style="margin-top:6px;">⚠️ A videochamada precisa de ligação à internet dos dois lados (wifi ou dados móveis) — não funciona sem internet, mesmo com boa rede telefónica.</p>
-      <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
-      <h3 style="margin-bottom:6px;">💚 Portal do paciente</h3>
-      <p class="muted" style="margin-bottom:8px;">Espaço próprio do paciente para ver marcações, relatórios, falar consigo entre sessões e entrar na videochamada. Envie-lhe este link uma vez (por WhatsApp/email) — não precisa de criar conta nem password. ⚠️ Este link é único e pessoal deste paciente — não o partilhe com outro paciente nem o publique.</p>
-      <div id="patientPortalLinkBox"></div>
-      <label style="margin-top:10px;">Como prefere acompanhar este paciente entre sessões?</label>
-      <select id="preferredChannelSelect" onchange="savePreferredChannel('${patientId}', this.value)">
-        <option value="portal" ${(!p.preferredChannel || p.preferredChannel==='portal')?'selected':''}>💚 Mensagens do Portal (dentro da app)</option>
-        <option value="whatsapp" ${p.preferredChannel==='whatsapp'?'selected':''}>📱 WhatsApp (fora da app)</option>
-        <option value="other" ${p.preferredChannel==='other'?'selected':''}>📴 Não uso mensagens com este paciente</option>
-      </select>
-      <p class="muted" style="margin-top:4px;font-size:11.5px;">Se escolher WhatsApp ou "não uso", as mensagens do Portal ficam escondidas para este paciente (para não confundir), e deixa de gerar avisos de "mensagem por ler" na sua app para ele.</p>
-      <div id="patientMessagesBox" style="margin-top:12px;"></div>
-      <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
-      <h3 style="margin-bottom:6px;">🌱 Diário de Bem-Estar</h3>
-      <p class="muted" style="margin-bottom:8px;">Registos que o próprio paciente faz no seu Portal — humor, sono, energia e notas livres, ao longo do tempo. Útil para acompanhar a evolução entre sessões, principalmente em casos de ansiedade, depressão ou qualquer acompanhamento continuado.</p>
-      <div id="patientCheckinsBox"></div>
+      </details>
+
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer;font-weight:700;">📝 Notas clínicas & Consentimento ${!p.consentGivenAt ? '⚠️' : ''}</summary>
+        <div style="margin-top:8px;">
+          <label>Notas clínicas</label>
+          <textarea rows="5" readonly>${escapeHtml(p.clinicalNotes||'')}</textarea>
+          <p class="muted">Consentimento: ${p.consentGivenAt ? 'registado' : 'em falta'} ${!p.consentGivenAt ? `<button class="ghost" style="padding:2px 8px;font-size:12px;" onclick="registerConsentForPatient('${patientId}','${escapeAttrJs(p.fullName)}')">📋 Registar agora</button>` : ''}</p>
+          ${p.consentSignatureDataUrl ? `
+            <label style="margin-top:6px;">Assinatura recolhida</label>
+            <img src="${p.consentSignatureDataUrl}" style="border:1px solid #e5e5e5;border-radius:8px;background:#fff;max-width:260px;display:block;">
+          ` : ''}
+        </div>
+      </details>
+
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer;font-weight:700;">💚 Portal do paciente</summary>
+        <div style="margin-top:8px;">
+          <p class="muted" style="margin-bottom:8px;">Espaço próprio do paciente para ver marcações, relatórios, falar consigo entre sessões e entrar na videochamada. Envie-lhe este link uma vez (por WhatsApp/email) — não precisa de criar conta nem password. ⚠️ Este link é único e pessoal deste paciente — não o partilhe com outro paciente nem o publique.</p>
+          <div id="patientPortalLinkBox"></div>
+          <label style="margin-top:10px;">Como prefere acompanhar este paciente entre sessões?</label>
+          <select id="preferredChannelSelect" onchange="savePreferredChannel('${patientId}', this.value)">
+            <option value="portal" ${(!p.preferredChannel || p.preferredChannel==='portal')?'selected':''}>💚 Mensagens do Portal (dentro da app)</option>
+            <option value="whatsapp" ${p.preferredChannel==='whatsapp'?'selected':''}>📱 WhatsApp (fora da app)</option>
+            <option value="other" ${p.preferredChannel==='other'?'selected':''}>📴 Não uso mensagens com este paciente</option>
+          </select>
+          <p class="muted" style="margin-top:4px;font-size:11.5px;">Se escolher WhatsApp ou "não uso", as mensagens do Portal ficam escondidas para este paciente (para não confundir), e deixa de gerar avisos de "mensagem por ler" na sua app para ele.</p>
+          <div id="patientMessagesBox" style="margin-top:12px;"></div>
+        </div>
+      </details>
+
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer;font-weight:700;">🌱 Diário de Bem-Estar</summary>
+        <div style="margin-top:8px;">
+          <p class="muted" style="margin-bottom:8px;">Registos que o próprio paciente faz no seu Portal — humor, sono, energia e notas livres, ao longo do tempo. Útil para acompanhar a evolução entre sessões, principalmente em casos de ansiedade, depressão ou qualquer acompanhamento continuado.</p>
+          <div id="patientCheckinsBox"></div>
+        </div>
+      </details>
     </div>
     <div id="sendFormContainer"></div>
-    <div class="card">
-      <h2>💶 Pagamentos em dívida</h2>
-      ${paymentsHtml || '<p class="muted">Sem marcações por pagar.</p>'}
-    </div>
-    <div class="card">
-      <h2>🧾 Faturas</h2>
-      <p class="muted" style="margin-bottom:8px;">A Vindora não emite faturas/recibos com valor fiscal. Faça a fatura no seu software certificado (Portal das Finanças, Moloni, Vendus, etc.) e anexe aqui o PDF, para poder enviar ao paciente com um toque.</p>
-      ${invoicesHtml}
-    </div>
-    <div class="card">
-      <h2>Pacotes de sessões</h2>
-      ${hintBox('Para vender um conjunto de sessões de uma vez (ex: "5 sessões por 200€"). Ao marcar uma consulta, pode escolher consumir uma sessão de um pacote em vez de cobrar à parte.')}
-      <div id="packagesList">${renderPackagesList(patientId, p)}</div>
-      <button class="ghost" style="width:100%;margin-top:8px;" onclick="showAddPackageForm('${patientId}')">+ Adicionar pacote</button>
-      <div id="addPackageFormContainer"></div>
-    </div>
-    <div class="card">
-      <h2>Ficheiros e fotos</h2>
-      <p class="muted" style="margin-bottom:6px;font-size:11.5px;">Só para si — o paciente não vê isto no Portal.</p>
-      ${attachmentsHtml}
-    </div>
-    <div class="card">
-      <h2>🎧 Materiais enviados ao paciente</h2>
-      <p class="muted" style="margin-bottom:8px;">Músicas, meditações, ficheiros ou fotos que aparecem no Portal do paciente, prontos a abrir/descarregar. Use um link (Google Drive, YouTube, etc.) — nunca carregue o ficheiro para aqui, para não gastar armazenamento da app.</p>
-      <div id="sharedMaterialsList">${renderSharedMaterialsList(patientId, p)}</div>
-      <button class="ghost" style="width:100%;margin-top:8px;" onclick="showAddMaterialForm('${patientId}')">+ Enviar material</button>
-      <div id="addMaterialFormContainer"></div>
-    </div>
-    <div class="card">
-      <h2>Relatórios anteriores</h2>
-      ${reportsHtml}
-    </div>
-    <div class="card">
-      <h2>Fichas respondidas</h2>
-      ${formRespHtml}
-    </div>`;
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">💶 Pagamentos em dívida ${totalOwed > 0 ? '⚠️' : ''}</summary>
+      <div style="margin-top:10px;">${paymentsHtml || '<p class="muted">Sem marcações por pagar.</p>'}</div>
+    </details>
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">🧾 Faturas</summary>
+      <div style="margin-top:10px;">
+        <p class="muted" style="margin-bottom:8px;">A Vindora não emite faturas/recibos com valor fiscal. Faça a fatura no seu software certificado (Portal das Finanças, Moloni, Vendus, etc.) e anexe aqui o PDF, para poder enviar ao paciente com um toque.</p>
+        ${invoicesHtml}
+      </div>
+    </details>
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">📦 Pacotes de sessões</summary>
+      <div style="margin-top:10px;">
+        ${hintBox('Para vender um conjunto de sessões de uma vez (ex: "5 sessões por 200€"). Ao marcar uma consulta, pode escolher consumir uma sessão de um pacote em vez de cobrar à parte.')}
+        <div id="packagesList">${renderPackagesList(patientId, p)}</div>
+        <button class="ghost" style="width:100%;margin-top:8px;" onclick="showAddPackageForm('${patientId}')">+ Adicionar pacote</button>
+        <div id="addPackageFormContainer"></div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">📁 Ficheiros e fotos</summary>
+      <div style="margin-top:10px;">
+        <p class="muted" style="margin-bottom:6px;font-size:11.5px;">Só para si — o paciente não vê isto no Portal.</p>
+        ${attachmentsHtml}
+      </div>
+    </details>
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">🎧 Materiais enviados ao paciente</summary>
+      <div style="margin-top:10px;">
+        <p class="muted" style="margin-bottom:8px;">Músicas, meditações, ficheiros ou fotos que aparecem no Portal do paciente, prontos a abrir/descarregar. Use um link (Google Drive, YouTube, etc.) — nunca carregue o ficheiro para aqui, para não gastar armazenamento da app.</p>
+        <div id="sharedMaterialsList">${renderSharedMaterialsList(patientId, p)}</div>
+        <button class="ghost" style="width:100%;margin-top:8px;" onclick="showAddMaterialForm('${patientId}')">+ Enviar material</button>
+        <div id="addMaterialFormContainer"></div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">📖 Relatórios anteriores</summary>
+      <div style="margin-top:10px;">${reportsHtml}</div>
+    </details>
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">📋 Fichas respondidas</summary>
+      <div style="margin-top:10px;">${formRespHtml}</div>
+    </details>`;
   window.__currentPatientChannel = p.preferredChannel || 'portal';
   showPatientOverlay(p.fullName, overlayBody);
   renderPatientPortalLink(patientId, p);
