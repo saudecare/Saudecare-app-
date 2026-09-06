@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-113';
+const APP_VERSION = '2026-09-02-116';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1408,7 +1408,8 @@ const NAV_GROUPS = {
     { view: 'protocols', icon: '📋', label: 'Os Meus Métodos' },
     { view: 'forms', icon: '📝', label: 'Fichas' },
     { view: 'services', icon: '🩺', label: 'Serviços' },
-    { view: 'knowledge', icon: '🧠', label: 'Conhecimento' }
+    { view: 'knowledge', icon: '🧠', label: 'Conhecimento' },
+    { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1436,6 +1437,7 @@ function renderGroupMenu(main, groupKey){
     if (it.hideForRestricted && tenantRole === 'staff_restricted') return false;
     if (it.ownerOnly && tenantRole !== 'owner') return false;
     if (it.hideForOwner && tenantRole === 'owner') return false;
+    if (it.tenantOnly && tenantId !== it.tenantOnly) return false;
     return true;
   });
   main.innerHTML = `
@@ -1478,6 +1480,7 @@ function renderView(view){
   else if (view === 'myprofile') renderMyPublicProfile(main);
   else if (view === 'settings') renderSettings(main);
   else if (view === 'supportContact') renderSupportContact(main);
+  else if (view === 'mapaAlma') renderMapaAlma(main);
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
   highlightActiveNavGroup(view);
@@ -7723,6 +7726,138 @@ window.submitSupportRequest = async function(){
   }).catch(()=>{});
   toast('Enviado. A administração vai receber isto o mais rápido possível.');
   renderView('home');
+};
+
+// ── Mapa da Alma Diamante — isca gratuita + upsell (só para hikari-terapias) ──
+async function renderMapaAlma(main){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'mapaAlmaLeads'));
+  const leads = [];
+  snap.forEach(d => leads.push({ id: d.id, ...d.data() }));
+  leads.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
+
+  const pending = leads.filter(l => l.paymentStatus === 'manual_pending');
+  const paid = leads.filter(l => l.paymentStatus === 'paid');
+  const others = leads.filter(l => l.paymentStatus !== 'manual_pending' && l.paymentStatus !== 'paid');
+
+  const settings = currentTenantDoc?.mapaAlmaSettings || {};
+  const publicLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','mapa-da-alma.html')}`;
+
+  const rowHtml = (l) => {
+    const leadLink = `${publicLink}?mapa=${l.id}`;
+    return `
+    <div class="appt-item">
+      <div class="row">
+        <div>
+          <strong>${escapeHtml(l.nome||'Sem nome')}</strong>
+          <div class="muted">${escapeHtml(l.dataNascimento||'')} · ${escapeHtml(l.contacto||'sem contacto')} · ${l.createdAt ? new Date(l.createdAt).toLocaleDateString('pt-PT') : ''}</div>
+        </div>
+        ${l.paymentStatus === 'manual_pending' ? `<button class="primary" onclick="confirmMapaAlmaPayment('${l.id}')">✅ Confirmar</button>` : `<span class="badge ${l.paymentStatus==='paid'?'active':''}">${escapeHtml(l.paymentStatus||'')}</span>`}
+      </div>
+      <div class="row" style="margin-top:6px;flex-wrap:wrap;">
+        <button class="ghost" onclick="navigator.clipboard.writeText('${leadLink}').then(()=>toast('Link copiado.'))">📋 Copiar link</button>
+        ${l.contacto ? `<button class="ghost" onclick="resendMapaAlmaLink('${escapeAttrJs(l.contacto)}','${escapeAttrJs(l.nome||'')}','${leadLink}')">📱 Reenviar por WhatsApp</button>` : ''}
+      </div>
+    </div>`;
+  };
+
+  main.innerHTML = `
+    <h2>🔮 Mapa da Alma Diamante</h2>
+    ${hintBox('Página pública gratuita que gera o primeiro resultado do Mapa da Alma e convida a pessoa a comprar o Mapa Diamante completo. Partilhe o link abaixo nas redes sociais ou nos seus canais.')}
+    <div class="card">
+      <label>🔗 Link público da isca gratuita</label>
+      <input readonly value="${publicLink}" onclick="this.select()">
+      <button class="primary" onclick="navigator.clipboard.writeText('${publicLink}').then(()=>toast('Link copiado.'))">Copiar link</button>
+    </div>
+
+    <details class="card" open>
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">⚙️ Preço e forma de pagamento</summary>
+      <div style="margin-top:10px;">
+        <p class="muted" style="margin-bottom:8px;">Usado quando não há deteção automática (SumUp) configurada — a pessoa vê estes dados e depois confirma consigo.</p>
+        <label>Preço (€)</label>
+        <input id="maPrice" type="number" min="0" step="0.01" value="${settings.price || 27}">
+        <label>IBAN</label>
+        <input id="maIban" value="${escapeHtml(settings.iban||'')}">
+        <label>MB Way</label>
+        <input id="maMbway" value="${escapeHtml(settings.mbway||'')}">
+        <button class="primary" onclick="saveMapaAlmaSettings()">Guardar</button>
+        <p class="muted" style="margin-top:8px;font-size:11.5px;">Para ativar deteção automática de pagamento (SumUp), é preciso configurar a chave de API nas variáveis de ambiente do Netlify — combine isso comigo quando estiver pronta.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">🛡️ Divulgação — Limpeza Energética</summary>
+      <div style="margin-top:10px;">
+        <p class="muted" style="margin-bottom:8px;">Este texto aparece a todos os que veem o Mapa (grátis ou pago), a convidar para o seu serviço de deteção/limpeza energética, magia, inveja, olho gordo e larvas astrais. Deixe em branco para não mostrar nada.</p>
+        <textarea id="maLimpezaTexto" rows="5" placeholder="ex: Muitas vezes, o desequilíbrio que sente vai além do que o Mapa revela. Trabalho deteção e limpeza de energias densas, inveja, olho gordo e larvas astrais/espirituais — à distância ou presencial.">${escapeHtml(settings.limpezaTexto||'')}</textarea>
+        <button class="primary" onclick="saveMapaAlmaSettings()">Guardar</button>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">📚 Base de Conhecimento (editável)</summary>
+      <div style="margin-top:10px;">
+        ${hintBox('Aqui consegue editar ou acrescentar qualquer texto usado no método — significados dos números, orações, banhos, chakras, etc. — sem precisar de mexer em código. Peça-me ajuda sempre que quiser adicionar algo novo (ex: um cristal extra, uma lição cármica diferente) — eu escrevo a estrutura certa para colar aqui.')}
+        <textarea id="maOverrides" rows="10" style="font-family:monospace;font-size:12px;" placeholder='{ "dons": { "7": { "texto": "novo texto..." } } }'>${escapeHtml(JSON.stringify(currentTenantDoc?.mapaAlmaOverrides || {}, null, 2))}</textarea>
+        <div class="row" style="margin-top:8px;">
+          <button class="primary" onclick="saveMapaAlmaOverrides()">Guardar edições</button>
+          <button class="danger" onclick="if(confirm('Apagar todas as suas edições e voltar aos textos predefinidos?')) { document.getElementById('maOverrides').value='{}'; saveMapaAlmaOverrides(); }">Repor predefinições</button>
+        </div>
+      </div>
+    </details>
+
+    ${pending.length ? `
+    <details class="card" open>
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">🕓 Por confirmar (${pending.length})</summary>
+      <div style="margin-top:10px;">${pending.map(rowHtml).join('')}</div>
+    </details>` : ''}
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">✅ Pagos (${paid.length})</summary>
+      <div style="margin-top:10px;">${paid.length ? paid.map(rowHtml).join('') : '<p class="muted">Ainda nenhum.</p>'}</div>
+    </details>
+
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">Todos os pedidos (${leads.length})</summary>
+      <div style="margin-top:10px;">${leads.length ? leads.map(rowHtml).join('') : '<p class="muted">Ainda sem pedidos.</p>'}</div>
+    </details>
+  `;
+}
+
+window.saveMapaAlmaSettings = async function(){
+  const price = parseFloat(document.getElementById('maPrice').value) || 27;
+  const iban = document.getElementById('maIban').value.trim();
+  const mbway = document.getElementById('maMbway').value.trim();
+  const limpezaTexto = document.getElementById('maLimpezaTexto').value.trim();
+  await updateDoc(doc(db, 'tenants', tenantId), { mapaAlmaSettings: { price, iban, mbway, limpezaTexto } });
+  currentTenantDoc.mapaAlmaSettings = { price, iban, mbway, limpezaTexto };
+  toast('Preferências guardadas.');
+};
+
+window.saveMapaAlmaOverrides = async function(){
+  const raw = document.getElementById('maOverrides').value.trim() || '{}';
+  let parsed;
+  try{ parsed = JSON.parse(raw); }
+  catch(e){ toast('O texto colado não é um JSON válido — verifique vírgulas e chavetas.', true); return; }
+  await updateDoc(doc(db, 'tenants', tenantId), { mapaAlmaOverrides: parsed });
+  currentTenantDoc.mapaAlmaOverrides = parsed;
+  toast('Base de conhecimento atualizada.');
+  renderMapaAlma(document.getElementById('mainView'));
+};
+
+window.resendMapaAlmaLink = function(contacto, nome, link){
+  const text = `Olá ${nome}! Aqui está de novo o link do seu Mapa da Alma: ${link}`;
+  if (contacto.includes('@')){
+    window.open(`mailto:${contacto}?subject=${encodeURIComponent('O seu Mapa da Alma')}&body=${encodeURIComponent(text)}`, '_blank');
+  } else {
+    openExternalLink(phoneToWaLink(contacto) + '?text=' + encodeURIComponent(text));
+  }
+};
+
+window.confirmMapaAlmaPayment = async function(leadId){
+  if (!confirm('Confirmar que este pagamento foi recebido? A pessoa vai poder ver o Mapa Diamante completo.')) return;
+  await updateDoc(doc(db, 'tenants', tenantId, 'mapaAlmaLeads', leadId), { paymentStatus: 'paid', paidAt: serverTimestamp() });
+  toast('Pagamento confirmado — o Mapa completo já está disponível para a pessoa.');
+  renderMapaAlma(document.getElementById('mainView'));
 };
 
 async function renderSettings(main){

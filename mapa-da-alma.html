@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Mapa da Alma — Hikari Fafe</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg1:#1a0f2e; --bg2:#2d1b4e; --gold:#d4af37; --gold-light:#f0d878;
+    --text:#f3ecff; --muted:#c9b8e8; --card:#241640;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{background:linear-gradient(160deg,var(--bg1),var(--bg2) 60%,#150a26);color:var(--text);min-height:100vh;padding-bottom:60px;}
+  .wrap{max-width:560px;margin:0 auto;padding:28px 18px;}
+  .hero{text-align:center;margin-bottom:26px;}
+  .hero .stars{font-size:28px;letter-spacing:8px;color:var(--gold);margin-bottom:6px;}
+  .hero h1{font-size:1.6rem;background:linear-gradient(90deg,var(--gold-light),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:8px;}
+  .hero p{color:var(--muted);font-size:.95rem;line-height:1.5;}
+  .card{background:var(--card);border:1px solid rgba(212,175,55,.25);border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 4px 24px rgba(0,0,0,.35);}
+  label{display:block;margin:12px 0 6px;font-size:.85rem;color:var(--muted);}
+  input, select{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(212,175,55,.35);
+    background:rgba(255,255,255,.05);color:var(--text);font-size:1rem;}
+  input::placeholder{color:#8874ac;}
+  .btn{display:block;width:100%;text-align:center;background:linear-gradient(90deg,var(--gold),var(--gold-light));
+    color:#2a1a00;font-weight:700;padding:14px;border:none;border-radius:12px;cursor:pointer;font-size:1rem;margin-top:16px;}
+  .btn:disabled{opacity:.6;}
+  .btn-ghost{background:none;border:1.5px solid var(--gold);color:var(--gold-light);}
+  .muted{color:var(--muted);font-size:.85rem;line-height:1.5;}
+  .result-block{border-top:1px solid rgba(212,175,55,.25);padding-top:14px;margin-top:14px;}
+  .result-block h3{color:var(--gold-light);font-size:1.05rem;margin-bottom:6px;}
+  .badge-num{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;
+    background:radial-gradient(circle,var(--gold-light),var(--gold));color:#2a1a00;font-size:1.6rem;font-weight:800;margin-bottom:10px;}
+  .price-tag{font-size:2rem;font-weight:800;color:var(--gold-light);text-align:center;margin:6px 0;}
+  .loading{text-align:center;padding:60px 20px;color:var(--muted);}
+  .hidden{display:none !important;}
+  .errorbox{background:rgba(200,60,60,.15);border:1px solid rgba(200,60,60,.4);border-radius:10px;padding:12px;margin-top:10px;font-size:.85rem;}
+  .step-list{margin-top:8px;}
+  .step-list div{padding:6px 0;font-size:.85rem;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.06);}
+  .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .type-tile{background:rgba(255,255,255,.05);border:1.5px solid rgba(212,175,55,.3);border-radius:14px;
+    padding:16px 10px;text-align:center;cursor:pointer;color:var(--text);}
+  .type-tile:active, .type-tile.active{border-color:var(--gold);background:rgba(212,175,55,.15);}
+  .type-tile .ic{font-size:26px;display:block;margin-bottom:6px;}
+  .teaser-tag{display:inline-block;font-size:.7rem;background:rgba(212,175,55,.2);color:var(--gold-light);
+    padding:2px 8px;border-radius:10px;margin-left:6px;}
+  a{color:var(--gold-light);}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="hero">
+    <div class="stars">✦ ✧ ✦</div>
+    <h1 id="heroTitle">Mapa da Alma</h1>
+    <p id="heroSub">O método Hikari Fafe — descubra gratuitamente o seu Mapa da Alma Espelho.</p>
+  </div>
+  <div id="mainContent"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const TENANT_ID = 'hikari-terapias';
+const FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/mapaAlma';
+
+const PYTH_MAP = {A:1,B:2,C:3,D:4,E:5,F:6,G:7,H:8,I:9,J:1,K:2,L:3,M:4,N:5,O:6,P:7,Q:8,R:9,S:1,T:2,U:3,V:4,W:5,X:6,Y:7,Z:8};
+const VOWELS = 'AEIOU';
+
+function stripAccents(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function reduceNumber(n){
+  while (n > 9 && n !== 11 && n !== 22 && n !== 33){
+    n = String(n).split('').reduce((a,d) => a + (parseInt(d,10)||0), 0);
+  }
+  return n;
+}
+function letterValue(ch){ return PYTH_MAP[ch.toUpperCase()] || 0; }
+function nameLetters(str){ return stripAccents(str).toUpperCase().split('').filter(ch => /[A-Z]/.test(ch)); }
+function sumLetters(str, filter){
+  let total = 0;
+  for (const ch of nameLetters(str)){
+    if (filter === 'vowels' && !VOWELS.includes(ch)) continue;
+    if (filter === 'consonants' && VOWELS.includes(ch)) continue;
+    total += letterValue(ch);
+  }
+  return total;
+}
+function vibracaoMista(str){
+  let total = 0;
+  for (const ch of stripAccents(str).toUpperCase()){
+    if (/[0-9]/.test(ch)) total += parseInt(ch,10);
+    else if (/[A-Z]/.test(ch)) total += letterValue(ch);
+  }
+  return reduceNumber(total);
+}
+function caminhoDeVida(dateStr){
+  const digits = dateStr.replace(/\D/g,'');
+  const sum = digits.split('').reduce((a,d) => a + parseInt(d,10), 0);
+  return reduceNumber(sum);
+}
+function expressao(nome){ return reduceNumber(sumLetters(nome, null)); }
+function motivacao(nome){ return reduceNumber(sumLetters(nome, 'vowels')); }
+function impressao(nome){ return reduceNumber(sumLetters(nome, 'consonants')); }
+
+function licoesCarmicas(nome){
+  const presentes = new Set(nameLetters(nome).map(ch => letterValue(ch)));
+  const faltam = [];
+  for (let n=1; n<=9; n++) if (!presentes.has(n)) faltam.push(n);
+  return faltam;
+}
+function excessoNumerologico(nome){
+  const counts = {};
+  nameLetters(nome).forEach(ch => { const v = letterValue(ch); counts[v] = (counts[v]||0) + 1; });
+  let max = 0, tops = [];
+  Object.entries(counts).forEach(([n,c]) => {
+    if (c > max){ max = c; tops = [n]; } else if (c === max) tops.push(n);
+  });
+  return max >= 3 ? tops.map(Number) : [];
+}
+function temSinaisMediunidade(cv, exp, mot){ return [cv, exp, mot].includes(11); }
+
+const DONS_NUMERICOS = {
+  1: { nome:'Pioneiro / Liderança', texto:'Empreendedorismo, iniciativa e coragem para abrir novos caminhos.', profissoes:'Empreendedorismo, Gestão de Projetos, Direção de Equipas, Desporto de Competição' },
+  2: { nome:'Empata / Parceria', texto:'Mediação, sensibilidade e talento natural para terapia e cooperação.', profissoes:'Terapia, Mediação de Conflitos, Diplomacia, Trabalho em Parcerias/Duo' },
+  3: { nome:'Mensageiro / Comunicação', texto:'Vendas, artes, vida social — o dom de expressar e encantar.', profissoes:'Artes, Comunicação Social, Marketing, Vendas, Escrita' },
+  4: { nome:'Estrutura / Gestão', texto:'Segurança e organização — cuidado para não deixar a vibração pesar em bens materiais.', profissoes:'Engenharia, Contabilidade, Administração, Construção' },
+  5: { nome:'Viajante / Curador', texto:'Movimento, liberdade e talento comercial.', profissoes:'Turismo, Comércio Internacional, Jornalismo, Terapias de Movimento' },
+  6: { nome:'Cuidador / Amor e Cura', texto:'Saúde, estética, família — vocação natural para cuidar.', profissoes:'Saúde, Estética, Terapias Holísticas, Educação Infantil, Nutrição' },
+  7: { nome:'Místico / Sabedoria', texto:'Pesquisa, ensino, exigência interior — busca incessante de verdade.', profissoes:'Psicologia, Investigação Científica, Espiritualidade, Ensino Superior' },
+  8: { nome:'Alquimista da Matéria / Poder', texto:'Chefia e gestão financeira — talento para transformar esforço em resultado.', profissoes:'Gestão Financeira, Direção Executiva, Investimento, Empresariado' },
+  9: { nome:'Curador Universal', texto:'Humanitarismo, causas sociais e o dom de fechar ciclos com sabedoria.', profissoes:'Ação Social, Causas Humanitárias, Medicina, Aconselhamento' },
+  11: { nome:'Número Mestre — Visionário', texto:'Alta voltagem intuitiva, antena espiritual apurada. Cuidado com nervosismo e ansiedade extrema.', profissoes:'Canalização, Terapias Espirituais, Liderança Inspiracional, Arte Visionária' },
+  22: { nome:'Número Mestre — Grande Construtor', texto:'Capacidade prática fora do comum. Cuidado com a sobrecarga e o peso da responsabilidade.', profissoes:'Construção de Legados, Arquitetura, Fundação de Instituições/Empresas' },
+  33: { nome:'Número Mestre — Mestre do Amor', texto:'Amor incondicional em ação. Cuidado para não se sacrificar nem se esquecer de si.', profissoes:'Cura, Ensino Espiritual, Assistência Humanitária de Grande Escala' }
+};
+
+const DIA_INFO = [
+  { planeta:'Sol', mestre:'El Morya', raio:'1º Raio (Azul)', chakra:'Laríngeo', cristal:'Água-marinha' },
+  { planeta:'Lua', mestre:'Lanto', raio:'2º Raio (Amarelo)', chakra:'Plexo Solar', cristal:'Olho de Tigre' },
+  { planeta:'Marte', mestre:'Rowena', raio:'3º Raio (Rosa)', chakra:'Cardíaco', cristal:'Quartzo Rosa' },
+  { planeta:'Mercúrio', mestre:'Serapis Bey', raio:'4º Raio (Branco)', chakra:'Raiz', cristal:'Hematite' },
+  { planeta:'Júpiter', mestre:'Hilarion', raio:'5º Raio (Verde)', chakra:'Cardíaco', cristal:'Quartzo Verde' },
+  { planeta:'Vénus', mestre:'Nada', raio:'6º Raio (Rubi)', chakra:'Sacral', cristal:'Granada' },
+  { planeta:'Saturno', mestre:'St. Germain', raio:'7º Raio (Violeta)', chakra:'Todos', cristal:'Ametista' }
+];
+const DIAS_NOMES = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+
+const CHAKRA_TEASER = {
+  'Raiz':'segurança e ligação ao corpo — quando este chakra pede atenção, sente-se instabilidade.',
+  'Sacral':'criatividade, prazer e emoções — quando pede atenção, sente-se bloqueio criativo ou culpa.',
+  'Plexo Solar':'poder pessoal e autoestima — quando pede atenção, sente-se insegurança ou necessidade de controlar tudo.',
+  'Cardíaco':'amor e capacidade de dar/receber afeto — quando pede atenção, sente-se dificuldade em perdoar ou entrega excessiva.',
+  'Laríngeo':'comunicação e verdade pessoal — quando pede atenção, sente-se dificuldade em dizer o que precisa de ser dito.',
+  'Todos':'um estado raro de transmutação em todos os centros ao mesmo tempo — mudança profunda em curso.'
+};
+
+const SIGNOS = [
+  { nome:'Capricórnio', ini:[12,22], fim:[1,19] }, { nome:'Aquário', ini:[1,20], fim:[2,18] },
+  { nome:'Peixes', ini:[2,19], fim:[3,20] }, { nome:'Carneiro', ini:[3,21], fim:[4,19] },
+  { nome:'Touro', ini:[4,20], fim:[5,20] }, { nome:'Gémeos', ini:[5,21], fim:[6,20] },
+  { nome:'Caranguejo', ini:[6,21], fim:[7,22] }, { nome:'Leão', ini:[7,23], fim:[8,22] },
+  { nome:'Virgem', ini:[8,23], fim:[9,22] }, { nome:'Balança', ini:[9,23], fim:[10,22] },
+  { nome:'Escorpião', ini:[10,23], fim:[11,21] }, { nome:'Sagitário', ini:[11,22], fim:[12,21] }
+];
+
+function getDiaSemanaInfo(dateStr){ return DIA_INFO[new Date(dateStr+'T12:00:00').getDay()]; }
+function getDiaSemanaNome(dateStr){ return DIAS_NOMES[new Date(dateStr+'T12:00:00').getDay()]; }
+function getSigno(dateStr){
+  const d = new Date(dateStr+'T12:00:00'); const m = d.getMonth()+1, day = d.getDate();
+  for (const s of SIGNOS){
+    const [im,id]=s.ini, [fm,fd]=s.fim;
+    if (im>fm){ if((m===im&&day>=id)||(m===fm&&day<=fd)) return s; }
+    else { if((m===im&&day>=id)||(m===fm&&day<=fd)||(m>im&&m<fm)) return s; }
+  }
+  return SIGNOS[0];
+}
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+const TIPOS_MAPA = {
+  individual: { icon:'🧍', label:'Individual', nomeLabel:'O seu nome completo', dataLabel:'A sua data de nascimento' },
+  casal: { icon:'💞', label:'Casal', nomeLabel:'Nome completo (1º elemento)', dataLabel:'Data de nascimento (1º elemento)' },
+  familia: { icon:'👨‍👩‍👧', label:'Família', nomeLabel:'Nome completo (titular da casa)', dataLabel:'Data de nascimento (titular)' },
+  bebe: { icon:'👶', label:'Bebé/Criança', nomeLabel:'Nome em análise para o bebé', dataLabel:'Data de nascimento (ou prevista)' },
+  empresa: { icon:'🏢', label:'Empresa', nomeLabel:'Nome comercial da empresa', dataLabel:'Data de abertura/registo' }
+};
+
+const main = document.getElementById('mainContent');
+const params = new URLSearchParams(window.location.search);
+const existingToken = params.get('mapa');
+let selectedTipo = 'individual';
+let OVERRIDES = {};
+let SOCIAL_LINKS = {};
+let LIMPEZA_TEXTO = null;
+let CONTACT_WHATSAPP = null;
+
+function mergeSimple(base, over){ return over ? { ...base, ...over } : base; }
+
+async function loadOverrides(){
+  try{
+    const res = await fetch(FUNCTION_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getOverrides', tenantId: TENANT_ID })
+    });
+    const data = await res.json();
+    if (data.ok){
+      OVERRIDES = data.overrides || {};
+      SOCIAL_LINKS = data.socialLinks || {};
+      LIMPEZA_TEXTO = data.limpezaTexto;
+      CONTACT_WHATSAPP = data.whatsapp;
+    }
+  }catch(e){ /* usa predefinições se falhar — nunca bloqueia a página */ }
+}
+
+function renderTypeSelector(){
+  main.innerHTML = `
+    <div class="card">
+      <p class="muted" style="margin-bottom:12px;">Que tipo de Mapa da Alma quer descobrir?</p>
+      <div class="type-grid">
+        ${Object.entries(TIPOS_MAPA).map(([key,t]) => `
+          <div class="type-tile" data-tipo="${key}">
+            <span class="ic">${t.icon}</span>${t.label}
+          </div>`).join('')}
+      </div>
+      <button class="btn" id="btnContinuarTipo">Continuar</button>
+    </div>
+  `;
+  let chosen = 'individual';
+  document.querySelectorAll('.type-tile').forEach(tile => {
+    if (tile.dataset.tipo === chosen) tile.classList.add('active');
+    tile.addEventListener('click', () => {
+      document.querySelectorAll('.type-tile').forEach(t => t.classList.remove('active'));
+      tile.classList.add('active');
+      chosen = tile.dataset.tipo;
+    });
+  });
+  document.getElementById('btnContinuarTipo').addEventListener('click', () => {
+    selectedTipo = chosen;
+    renderForm();
+  });
+}
+
+function renderForm(){
+  const t = TIPOS_MAPA[selectedTipo];
+  main.innerHTML = `
+    <div class="card">
+      <p class="teaser-tag">${t.icon} Mapa ${t.label}</p>
+      <label>${t.nomeLabel}</label>
+      <input id="inpNome" placeholder="Nome completo">
+      <label>${t.dataLabel}</label>
+      <input id="inpData" type="date">
+      <label>O seu WhatsApp ou email (para lhe enviarmos este link, caso o perca)</label>
+      <input id="inpContacto" placeholder="Telemóvel ou email">
+
+      <details style="margin-top:14px;">
+        <summary style="cursor:pointer;color:var(--gold-light);font-weight:700;">✦ Já agora, complete estes dados (opcional agora — só são usados se avançar para o Mapa Diamante)</summary>
+        <div style="margin-top:10px;">
+          <label>Morada completa (rua, nº, andar)</label>
+          <input id="inpMorada" placeholder="Opcional">
+          <label>Número de telemóvel (se diferente do contacto acima)</label>
+          <input id="inpTelemovel" placeholder="Opcional">
+          <label>Matrícula do carro</label>
+          <input id="inpMatricula" placeholder="Opcional">
+          <label>Ao bater palmas espontaneamente, que mão fica por cima?</label>
+          <select id="inpLateralidade">
+            <option value="destro">Mão direita (destro/a)</option>
+            <option value="canhoto">Mão esquerda (canhoto/a)</option>
+          </select>
+          <label>Há alguma zona do corpo que sinta pedir mais atenção? (opcional, sem termos médicos)</label>
+          <input id="inpCorpo" placeholder="ex: 'zona do peito', 'costas' — opcional">
+        </div>
+      </details>
+
+      <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;margin-top:14px;">
+        <input type="checkbox" id="inpConsentimento" style="width:auto;margin-top:3px;">
+        <span>Concordo com o tratamento dos meus dados para receber o meu Mapa da Alma, nos termos da <a href="politica-privacidade.html" target="_blank">Política de Privacidade</a>.</span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;margin-top:8px;">
+        <input type="checkbox" id="inpConsentimentoMarketing" style="width:auto;margin-top:3px;">
+        <span>Aceito também receber, por WhatsApp/email, novidades e promoções da Hikari Fafe (opcional).</span>
+      </label>
+      <button class="btn" id="btnCalcular">✦ Revelar o meu Mapa da Alma Espelho</button>
+      <button class="btn-ghost btn" id="btnVoltarTipo" style="margin-top:8px;">← Escolher outro tipo de mapa</button>
+    </div>
+  `;
+  document.getElementById('btnCalcular').addEventListener('click', onCalcular);
+  document.getElementById('btnVoltarTipo').addEventListener('click', renderTypeSelector);
+}
+
+async function onCalcular(){
+  const nome = document.getElementById('inpNome').value.trim();
+  const data = document.getElementById('inpData').value;
+  const contacto = document.getElementById('inpContacto').value.trim();
+  const consentimento = document.getElementById('inpConsentimento').checked;
+  const consentimentoMarketing = document.getElementById('inpConsentimentoMarketing').checked;
+  const extra = {
+    morada: document.getElementById('inpMorada').value.trim(),
+    telemovel: document.getElementById('inpTelemovel').value.trim() || contacto,
+    matricula: document.getElementById('inpMatricula').value.trim(),
+    lateralidade: document.getElementById('inpLateralidade').value,
+    corpoNota: document.getElementById('inpCorpo').value.trim()
+  };
+  if (!nome || !data || !contacto){ alert('Preencha o nome, a data e um contacto (WhatsApp ou email).'); return; }
+  if (!consentimento){ alert('Precisa de aceitar o tratamento de dados para continuar.'); return; }
+
+  const btn = document.getElementById('btnCalcular');
+  btn.disabled = true; btn.textContent = 'A calcular…';
+
+  const cv = caminhoDeVida(data);
+  const exp = expressao(nome);
+  const mot = motivacao(nome);
+  const diaInfo = getDiaSemanaInfo(data);
+  const diaNome = getDiaSemanaNome(data);
+  const signo = getSigno(data);
+  const carmicas = licoesCarmicas(nome);
+  const excesso = excessoNumerologico(nome);
+  const mediunidade = temSinaisMediunidade(cv, exp, mot);
+  const leadId = crypto.randomUUID();
+
+  const freeResult = {
+    tipo: selectedTipo, nome, dataNascimento: data,
+    caminhoDeVida: cv, motivacao: mot,
+    diaInfo, diaNome, signo: signo.nome,
+    carmicas, excesso, mediunidade
+  };
+
+  try{
+    await setDoc(doc(db, 'tenants', TENANT_ID, 'mapaAlmaLeads', leadId), {
+      nome, dataNascimento: data, tipo: selectedTipo, contacto, extra,
+      consentimento: true, consentimentoAt: new Date().toISOString(),
+      consentimentoMarketing: !!consentimentoMarketing,
+      freeResult, paymentStatus: 'unpaid', createdAt: new Date().toISOString()
+    });
+  }catch(e){ console.error(e); }
+
+  window.history.replaceState({}, '', '?mapa=' + leadId);
+  renderFreeResult(leadId, freeResult, signo, extra);
+}
+
+function renderFreeResult(leadId, r, signo, extra){
+  extra = extra || {};
+  const DONS_NUMEROS_M = mergeSimple(DONS_NUMERICOS, OVERRIDES.dons);
+  const dom = DONS_NUMEROS_M[r.caminhoDeVida] || {};
+  const domAlma = DONS_NUMEROS_M[r.motivacao] || {};
+  const t = TIPOS_MAPA[r.tipo || 'individual'];
+
+  document.getElementById('heroTitle').textContent = 'Mapa da Alma Espelho';
+  document.getElementById('heroSub').textContent = `${escapeHtml(r.nome)} — o seu primeiro reflexo cósmico.`;
+
+  main.innerHTML = `
+    <div class="card">
+      <p class="teaser-tag">${t.icon} Mapa ${t.label} · Espelho (grátis)</p>
+      <div class="result-block" style="border-top:none;padding-top:0;margin-top:8px;">
+        <h3>🔮 O seu perfil, num relance</h3>
+        <p class="muted">${escapeHtml(r.nome.split(/\s+/)[0])} carrega a vibração do número ${r.caminhoDeVida} (${escapeHtml((dom.nome||'').toLowerCase())}), com a alma a pedir ${escapeHtml((domAlma.nome||'').toLowerCase())} e um coração de ${escapeHtml(signo.nome)}. É alguém que, quando alinhado(a) com a sua própria energia, ${escapeHtml(dom.texto ? dom.texto.charAt(0).toLowerCase()+dom.texto.slice(1) : '')} Mas há mais três camadas por revelar — a sua Expressão pública, a sua Sombra escondida, e o que o seu corpo anda a tentar dizer-lhe.</p>
+      </div>
+      <div style="text-align:center;margin-top:8px;">
+        <div class="badge-num">${r.caminhoDeVida}</div>
+        <h3>Caminho de Vida ${r.caminhoDeVida}</h3>
+      </div>
+      <p class="muted" style="margin-top:6px;"><strong>${escapeHtml(dom.nome||'')}:</strong> ${escapeHtml(dom.texto||'')}</p>
+      <p class="muted" style="margin-top:6px;">💼 <strong>Caminhos profissionais afinados consigo:</strong> ${escapeHtml(dom.profissoes||'')}.</p>
+
+      <div class="result-block">
+        <h3>💠 Número da Alma: ${r.motivacao}</h3>
+        <p class="muted">O que o seu coração pede em silêncio: <strong>${escapeHtml(domAlma.nome||'')}</strong>. ${escapeHtml(domAlma.texto||'')}</p>
+      </div>
+
+      <div class="result-block">
+        <h3>🌙 O seu Regente Cósmico</h3>
+        <p class="muted">Nasceu numa ${escapeHtml(r.diaNome)}, sob a regência de <strong>${r.diaInfo.planeta}</strong>, guiado(a) pelo Mestre Ascenso <strong>${r.diaInfo.mestre}</strong> (${r.diaInfo.raio}). Cristal de poder: <strong>${r.diaInfo.cristal}</strong>.</p>
+      </div>
+
+      <div class="result-block">
+        <h3>⚡ O seu Chakra em Foco: ${escapeHtml(r.diaInfo.chakra)}</h3>
+        <p class="muted">Ligado a ${escapeHtml(CHAKRA_TEASER[r.diaInfo.chakra] || '')} <strong>O Mapa Diamante revela a cor, o som e a prática exata para o equilibrar.</strong></p>
+      </div>
+
+      <div class="result-block">
+        <h3>♈ O seu Signo</h3>
+        <p class="muted">${escapeHtml(signo.nome)}.</p>
+      </div>
+
+      ${r.mediunidade ? `
+      <div class="result-block">
+        <h3>✨ Sinal Detetado: Potencial Mediúnico</h3>
+        <p class="muted">Encontrámos um Número Mestre 11 na sua vibração principal — sinal de intuição elevada e possível dom de mediunidade/canalização. <strong>O Mapa Diamante revela exatamente onde este dom mora e como ativá-lo em segurança.</strong></p>
+      </div>` : ''}
+
+      ${r.carmicas.length ? `
+      <div class="result-block">
+        <h3>🔑 Lição Cármica Detetada</h3>
+        <p class="muted">O seu nome não contém o número <strong>${r.carmicas[0]}</strong> — isso indica uma lição desta vida ainda por desenvolver. <strong>No Mapa Diamante explicamos exatamente o que isso significa e como trabalhá-la.</strong></p>
+      </div>` : ''}
+
+      ${r.excesso.length ? `
+      <div class="result-block">
+        <h3>⚡ Excesso Energético Detetado</h3>
+        <p class="muted">O número <strong>${r.excesso[0]}</strong> repete-se em excesso no seu nome — pode gerar desequilíbrio se não for canalizado. <strong>O Mapa Diamante ensina o ajuste exato para esta energia.</strong></p>
+      </div>` : ''}
+    </div>
+
+    <div class="card" style="text-align:center;">
+      <div style="font-size:1.8rem;margin-bottom:6px;">🔒</div>
+      <h3 style="color:var(--gold-light);margin-bottom:6px;">O seu Mapa da Alma Diamante espera por si</h3>
+      <p class="muted">O que acabou de ver foi só o reflexo. O Diamante é a leitura completa:</p>
+      <div class="step-list" style="text-align:left;">
+        <div>💎 Expressão e Impressão (personalidade pública) completas</div>
+        <div>🕊️ Oração de Conexão pessoal + 3 Decretos do EU SOU</div>
+        <div>🔑 Explicação completa das suas Lições Cármicas e Excessos</div>
+        <div>✨ Mapeamento do seu dom mediúnico/espiritual, se detetado</div>
+        <div>🌓 Perfil Integral — a sua Luz e a sua Sombra, sem filtros</div>
+        <div>🏠 Leitura vibracional da sua casa, telemóvel e matrícula</div>
+        <div>🌿 Ritual completo do Banho de Ervas do seu signo</div>
+        <div>🗝️ Plano prático de ativação de 7 a 21 dias</div>
+      </div>
+      <button class="btn" id="btnUpgrade">✦ Desbloquear o Mapa Diamante completo</button>
+      <p class="muted" style="margin-top:8px;">Guarde este link — pode voltar a ele sempre.</p>
+    </div>
+    ${renderShareAndPromoBlock(leadId, r.nome)}
+  `;
+  document.getElementById('btnUpgrade').addEventListener('click', () => startCheckout(leadId, extra));
+  wireShareAndPromoButtons(leadId, r.nome);
+}
+
+function renderShareAndPromoBlock(leadId, nome){
+  let html = `
+    <div class="card" style="text-align:center;">
+      <h3 style="color:var(--gold-light);margin-bottom:8px;">💫 Gostou do que descobriu?</h3>
+      <p class="muted" style="margin-bottom:10px;">Partilhe com um amigo ou familiar — eles também merecem descobrir o seu Mapa.</p>
+      <button class="btn" id="btnShare">📤 Partilhar com amigos</button>
+      ${(SOCIAL_LINKS.instagram || SOCIAL_LINKS.facebook) ? `
+      <p class="muted" style="margin-top:12px;">E siga-nos para mais conteúdos como este:</p>
+      <div class="row" style="justify-content:center;gap:10px;margin-top:8px;">
+        ${SOCIAL_LINKS.instagram ? `<a class="btn-ghost btn" style="display:inline-block;width:auto;padding:10px 18px;text-decoration:none;" href="${escapeHtml(SOCIAL_LINKS.instagram)}" target="_blank">📷 Instagram</a>` : ''}
+        ${SOCIAL_LINKS.facebook ? `<a class="btn-ghost btn" style="display:inline-block;width:auto;padding:10px 18px;text-decoration:none;" href="${escapeHtml(SOCIAL_LINKS.facebook)}" target="_blank">👍 Facebook</a>` : ''}
+      </div>` : ''}
+    </div>
+  `;
+  if (LIMPEZA_TEXTO){
+    html += `
+    <div class="card" style="background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);">
+      <h3 style="color:var(--gold-light);margin-bottom:8px;">🛡️ Sente que algo mais pesa sobre si?</h3>
+      <p class="muted" style="white-space:pre-wrap;">${escapeHtml(LIMPEZA_TEXTO)}</p>
+      ${CONTACT_WHATSAPP ? `<a class="btn" style="display:block;text-decoration:none;margin-top:10px;" target="_blank" href="https://wa.me/${CONTACT_WHATSAPP}?text=${encodeURIComponent('Olá! Vi o Mapa da Alma e gostava de saber mais sobre o trabalho de limpeza energética.')}">📱 Falar com a Hikari Fafe</a>` : ''}
+    </div>`;
+  }
+  return html;
+}
+
+function wireShareAndPromoButtons(leadId, nome){
+  const shareBtn = document.getElementById('btnShare');
+  if (!shareBtn) return;
+  shareBtn.addEventListener('click', async () => {
+    const shareUrl = window.location.href;
+    const shareText = `Descobri o meu Mapa da Alma grátis — experimenta também!`;
+    if (navigator.share){
+      try{ await navigator.share({ title:'Mapa da Alma — Hikari Fafe', text:shareText, url:shareUrl }); }catch(e){}
+    } else {
+      openWhatsAppShare(shareText + ' ' + shareUrl);
+    }
+  });
+}
+function openWhatsAppShare(text){
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+}
+
+async function startCheckout(leadId, extra){
+  main.innerHTML = '<div class="loading">A preparar o pagamento…</div>';
+  try{
+    const res = await fetch(FUNCTION_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'createCheckout', tenantId: TENANT_ID, leadId, extra })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Erro desconhecido');
+    if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+    else renderManualPayment(leadId, data.paymentInfo || {});
+  }catch(e){
+    console.error(e);
+    main.innerHTML = `<div class="card"><div class="errorbox">Não foi possível preparar o pagamento. (${escapeHtml(e.message)})</div></div>`;
+  }
+}
+
+function renderManualPayment(leadId, info){
+  main.innerHTML = `
+    <div class="card">
+      <h3 style="color:var(--gold-light);margin-bottom:10px;">💳 Como pagar</h3>
+      <p class="price-tag">${info.price || '—'}€</p>
+      ${info.iban ? `<p class="muted">Transferência — IBAN: <strong>${escapeHtml(info.iban)}</strong></p>` : ''}
+      ${info.mbway ? `<p class="muted" style="margin-top:6px;">MB Way: <strong>${escapeHtml(info.mbway)}</strong></p>` : ''}
+      <p class="muted" style="margin-top:10px;">Depois de pagar, envie o comprovativo por WhatsApp para desbloquearmos o seu Mapa Diamante.</p>
+      ${info.whatsapp ? `<a class="btn btn-ghost" style="display:block;text-decoration:none;" href="https://wa.me/${info.whatsapp}?text=${encodeURIComponent('Olá! Já paguei o Mapa da Alma Diamante, o meu código é: ' + leadId)}" target="_blank">📱 Enviar comprovativo por WhatsApp</a>` : ''}
+      <p class="muted" style="margin-top:14px;">O seu código: <strong>${leadId}</strong> — guarde-o.</p>
+      <button class="btn btn-ghost" style="margin-top:14px;" onclick="location.reload()">🔄 Já fui confirmado — ver o meu Mapa</button>
+    </div>
+  `;
+}
+
+async function renderFullResult(leadId){
+  main.innerHTML = '<div class="loading">A abrir o seu Mapa…</div>';
+  try{
+    const res = await fetch(FUNCTION_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getResult', tenantId: TENANT_ID, leadId })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Não encontrado');
+    if (data.paymentStatus !== 'paid'){
+      renderFreeResult(leadId, data.freeResult, getSigno(data.freeResult.dataNascimento), data.extra);
+      return;
+    }
+    renderFullReport(data);
+  }catch(e){
+    console.error(e);
+    renderTypeSelector();
+  }
+}
+
+function renderFullReport(data){
+  const r = data.freeResult;
+  const full = data.fullResult || {};
+  const dom = DONS_NUMERICOS[r.caminhoDeVida] || {};
+  document.getElementById('heroTitle').textContent = 'Mapa da Alma Diamante';
+  document.getElementById('heroSub').textContent = `${escapeHtml(r.nome)} — leitura completa.`;
+  main.innerHTML = `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">💎 Assinatura Cósmica</h3>
+      <p class="muted" style="margin-top:6px;">Caminho de Vida <strong>${r.caminhoDeVida}</strong> — ${escapeHtml(dom.nome||'')}. Regido por ${escapeHtml(r.diaInfo.planeta)}, sob o Mestre Ascenso ${escapeHtml(r.diaInfo.mestre)}.</p>
+      <p class="muted" style="margin-top:8px;"><strong>Expressão:</strong> ${full.expressao} · <strong>Número da Alma:</strong> ${r.motivacao} · <strong>Impressão:</strong> ${full.impressao}</p>
+      <div style="margin-top:10px;padding:10px;background:rgba(212,175,55,.1);border-radius:10px;">
+        <p class="muted"><em>Oração de Conexão pessoal:</em> "${escapeHtml(full.oracao||'')}"</p>
+      </div>
+      <div style="margin-top:8px;padding:10px;background:rgba(212,175,55,.1);border-radius:10px;">
+        <p class="muted"><em>Oração ao seu Mestre Ascenso (${escapeHtml(r.diaInfo.mestre)}):</em> "${escapeHtml(full.oracaoMestre||'')}"</p>
+      </div>
+      <div style="margin-top:8px;padding:10px;background:rgba(212,175,55,.1);border-radius:10px;">
+        <p class="muted"><em>Afirmação EU SOU do seu número:</em> "${escapeHtml(full.euSou||'')}"</p>
+      </div>
+      <div style="margin-top:8px;">
+        <p class="muted" style="margin-bottom:4px;"><strong>Os 3 Decretos do EU SOU:</strong></p>
+        ${(full.decretos||[]).map(d => `<p class="muted" style="margin-top:4px;">• ${escapeHtml(d)}</p>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🔑 Lições Cármicas & Excessos</h3>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.carmicasTexto||'Sem lições cármicas marcantes detetadas — nome equilibrado.')}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.excessoTexto||'Sem excessos energéticos marcantes detetados.')}</p>
+      ${full.mediunidadeTexto ? `<p class="muted" style="margin-top:6px;">✨ ${escapeHtml(full.mediunidadeTexto)}</p>` : ''}
+    </div>
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🌗 Perfil Integral</h3>
+      <p class="muted" style="margin-top:6px;"><strong>💎 Luz:</strong> ${escapeHtml(full.luz||'')}</p>
+      <p class="muted" style="margin-top:6px;"><strong>🌑 Sombra:</strong> ${escapeHtml(full.sombra||'')}</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🧭 Leitura do Corpo (simbólica)</h3>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.corpoTexto||'')}</p>
+      <p class="muted" style="margin-top:8px;font-size:.78rem;opacity:.8;">⚠️ Leitura simbólica e espiritual — não substitui avaliação médica. Mantenha sempre acompanhamento/tratamento em curso.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--gold-light);">♈ O seu Signo, Aprofundado</h3>
+      <p class="muted" style="margin-top:6px;"><strong>${escapeHtml(r.signo)}</strong> · Elemento: ${escapeHtml(full.signoElemento||'')} · Regido por ${escapeHtml(full.signoRegente||'')}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.signoTexto||'')}</p>
+      <p class="muted" style="margin-top:6px;">Cristal do signo: <strong>${escapeHtml(full.cristalSigno||'')}</strong></p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--gold-light);">⚡ Leitura do Chakra em Foco: ${escapeHtml(r.diaInfo.chakra)}</h3>
+      <p class="muted" style="margin-top:6px;">Cor associada: <strong>${escapeHtml(full.chakraInfo?.cor||'')}</strong></p>
+      <p class="muted" style="margin-top:6px;"><strong>Significado:</strong> ${escapeHtml(full.chakraInfo?.significado||'')}</p>
+      <p class="muted" style="margin-top:6px;"><strong>Sinais de desequilíbrio:</strong> ${escapeHtml(full.chakraInfo?.desequilibrio||'')}</p>
+      <p class="muted" style="margin-top:6px;"><strong>Prática de equilíbrio:</strong> ${escapeHtml(full.chakraInfo?.pratica||'')}</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🏠 Engenharia Vibracional</h3>
+      ${full.vibMorada!=null ? `<p class="muted">Morada: vibração <strong>${full.vibMorada}</strong> — ${escapeHtml(full.vibMoradaTexto||'')}</p>` : ''}
+      ${full.vibTelemovel!=null ? `<p class="muted" style="margin-top:6px;">Telemóvel: vibração <strong>${full.vibTelemovel}</strong> — ${escapeHtml(full.vibTelemovelTexto||'')}</p>` : ''}
+      ${full.vibMatricula!=null ? `<p class="muted" style="margin-top:6px;">Matrícula: vibração <strong>${full.vibMatricula}</strong> — ${escapeHtml(full.vibMatriculaTexto||'')}</p>` : ''}
+    </div>
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🌿 Prescrição Alquímica</h3>
+      <p class="muted" style="margin-top:6px;"><strong>Banho de ervas (${escapeHtml(r.signo)}):</strong> ${escapeHtml(full.banhoErvas||'')}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.banhoModo||'')}</p>
+      <p class="muted" style="margin-top:6px;"><strong>Cristal do dia:</strong> ${escapeHtml(r.diaInfo.cristal)} · <strong>Mantra sugerido:</strong> ${escapeHtml(full.mantra||'')}</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🌊 Banho de Descarrego</h3>
+      <p class="muted" style="margin-top:6px;"><strong>${escapeHtml(full.banhoDescarrego?.ervas||'')}</strong></p>
+      <p class="muted" style="margin-top:6px;">Frequência de apoio: ${escapeHtml(full.banhoDescarrego?.hz||'')}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.banhoDescarrego?.modo||'')}</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🛡️ Banho de Proteção</h3>
+      <p class="muted" style="margin-top:6px;"><strong>${escapeHtml(full.banhoProtecao?.ervas||'')}</strong></p>
+      <p class="muted" style="margin-top:6px;">Frequência de apoio: ${escapeHtml(full.banhoProtecao?.hz||'')}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.banhoProtecao?.modo||'')}</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🗝️ Plano de Ativação (7–21 dias)</h3>
+      <p class="muted" style="margin-top:6px;white-space:pre-wrap;">${escapeHtml(full.planoAtivacao||'')}</p>
+    </div>
+    <div class="card" style="text-align:center;">
+      <button class="btn" id="btnDownloadPdf">📥 Descarregar o meu Mapa em PDF</button>
+      <p class="muted" style="margin-top:8px;">Guarde para reler sempre que precisar, ou imprima.</p>
+    </div>
+    ${renderShareAndPromoBlock(null, r.nome)}
+  `;
+  document.getElementById('btnDownloadPdf').addEventListener('click', () => downloadFullReportPDF(r, full, dom));
+  wireShareAndPromoButtons(null, r.nome);
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// PDF — Mapa da Alma Diamante, estilo "dossiê" da Hikari Fafe
+// ────────────────────────────────────────────────────────────────────────
+const NAVY = [20, 20, 45];
+const GOLD = [200, 160, 60];
+const GOLD_LIGHT = [230, 200, 120];
+const GREEN_BG = [232, 245, 236];
+const GREEN_BAR = [70, 150, 100];
+const RED_BG = [252, 235, 233];
+const RED_BAR = [190, 80, 70];
+const CREAM_BG = [246, 240, 226];
+const TEXT_DARK = [40, 30, 20];
+const MUTED = [100, 90, 110];
+
+function downloadFullReportPDF(r, full, dom){
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit:'pt', format:'a4' });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const marginX = 44;
+  const contentW = pageW - marginX*2;
+  let y = 0;
+  let pageNum = 1;
+
+  function drawSlimHeader(){
+    pdf.setFillColor(...NAVY);
+    pdf.rect(0, 0, pageW, 46, 'F');
+    pdf.setTextColor(...GOLD_LIGHT);
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(13);
+    pdf.text('HIKARI FAFE', marginX, 29);
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(9);
+    pdf.setTextColor(255,255,255);
+    pdf.text('Mapa da Alma Diamante', pageW-marginX, 29, { align:'right' });
+    y = 68;
+  }
+  function drawFooter(){
+    pdf.setDrawColor(220,220,220);
+    pdf.line(marginX, pageH-36, pageW-marginX, pageH-36);
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(8);
+    pdf.setTextColor(...MUTED);
+    pdf.text('Hikari Fafe — Desenvolvimento Pessoal & Terapia Holística', marginX, pageH-22);
+    pdf.text(`Página ${pageNum}`, pageW-marginX, pageH-22, { align:'right' });
+  }
+  function newPage(){
+    drawFooter();
+    pdf.addPage();
+    pageNum++;
+    drawSlimHeader();
+  }
+  function ensureSpace(h){
+    if (y + h > pageH - 50) newPage();
+  }
+  function heading(text, num){
+    ensureSpace(30);
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(12.5);
+    pdf.setTextColor(...NAVY);
+    pdf.text(`${num}. ${text}`, marginX, y);
+    pdf.setDrawColor(...GOLD);
+    pdf.setLineWidth(1.2);
+    pdf.line(marginX, y+5, pageW-marginX, y+5);
+    y += 20;
+  }
+  function paragraph(text, opts={}){
+    pdf.setFont('helvetica', opts.bold ? 'bold' : 'normal');
+    pdf.setFontSize(opts.size || 10);
+    pdf.setTextColor(...(opts.color || TEXT_DARK));
+    const lines = pdf.splitTextToSize(text, opts.width || contentW);
+    ensureSpace(lines.length * 13 + 6);
+    pdf.text(lines, marginX + (opts.indent||0), y);
+    y += lines.length * 13 + (opts.gap ?? 8);
+  }
+  function bullet(text){
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(9.5);
+    pdf.setTextColor(...TEXT_DARK);
+    const lines = pdf.splitTextToSize(text, contentW - 16);
+    ensureSpace(lines.length * 12 + 4);
+    pdf.text('•', marginX, y);
+    pdf.text(lines, marginX + 12, y);
+    y += lines.length * 12 + 5;
+  }
+  function calloutBox(title, items, bg, bar, textColor){
+    const lineTexts = items.map(it => pdf.splitTextToSize(it, contentW - 34));
+    const totalLines = lineTexts.reduce((a,l) => a + l.length, 0);
+    const boxH = 26 + totalLines*12 + items.length*4;
+    ensureSpace(boxH + 10);
+    pdf.setFillColor(...bg);
+    pdf.rect(marginX, y, contentW, boxH, 'F');
+    pdf.setFillColor(...bar);
+    pdf.rect(marginX, y, 4, boxH, 'F');
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(10.5);
+    pdf.setTextColor(...textColor);
+    pdf.text(title, marginX+14, y+17);
+    let iy = y+32;
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(9.5);
+    pdf.setTextColor(...TEXT_DARK);
+    lineTexts.forEach(lines => {
+      pdf.text('•', marginX+14, iy);
+      pdf.text(lines, marginX+26, iy);
+      iy += lines.length*12 + 4;
+    });
+    y += boxH + 12;
+  }
+
+  // ── Capa / Cabeçalho ──
+  pdf.setFillColor(...NAVY);
+  pdf.rect(0, 0, pageW, 100, 'F');
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(24);
+  pdf.setTextColor(...GOLD_LIGHT);
+  pdf.text('HIKARI FAFE', marginX, 48);
+  pdf.setFont('helvetica','italic'); pdf.setFontSize(11);
+  pdf.setTextColor(255,255,255);
+  pdf.text('Mapa da Alma Diamante — Dossiê Terapêutico', marginX, 68);
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(10);
+  pdf.setTextColor(...GOLD);
+  pdf.text('MAPA DIAMANTE', pageW-marginX, 40, { align:'right' });
+  pdf.setFont('helvetica','normal'); pdf.setFontSize(8);
+  pdf.setTextColor(220,220,230);
+  pdf.text('Consultoria Holística', pageW-marginX, 54, { align:'right' });
+
+  y = 122;
+  pdf.setFillColor(...CREAM_BG);
+  pdf.rect(marginX, y, contentW, 56, 'F');
+  pdf.setDrawColor(...GOLD); pdf.setLineWidth(2);
+  pdf.line(marginX, y, marginX, y+56);
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(9.5); pdf.setTextColor(...NAVY);
+  pdf.text('Cliente:', marginX+14, y+20);
+  pdf.text('Signo:', marginX+14, y+40);
+  pdf.text('Data Nasc.:', marginX+260, y+20);
+  pdf.text('Caminho de Vida:', marginX+260, y+40);
+  pdf.setFont('helvetica','normal'); pdf.setTextColor(...TEXT_DARK);
+  pdf.text(r.nome, marginX+70, y+20);
+  pdf.text(`${r.signo} (${full.signoElemento||''})`, marginX+55, y+40);
+  pdf.text(`${r.dataNascimento.split('-').reverse().join('/')} (${r.diaNome})`, marginX+335, y+20);
+  pdf.text(`${r.caminhoDeVida}${r.caminhoDeVida>=11?' (Número Mestre)':''}`, marginX+375, y+40);
+  y += 76;
+
+  paragraph(`Saudação de Luz, ${r.nome.split(' ')[0]}. Este Mapa da Alma Diamante foi gerado especialmente para si, cruzando Numerologia Pitagórica, Astrologia Terapêutica e Engenharia Vibracional do método Hikari Fafe.`, { size:9.5, color:MUTED });
+
+  heading('Assinatura Cósmica', 'I');
+  paragraph(`Caminho de Vida ${r.caminhoDeVida} — ${dom.nome}. ${dom.texto}`);
+  paragraph(`Expressão: ${full.expressao}  ·  Número da Alma: ${r.motivacao}  ·  Impressão: ${full.impressao}`, { bold:true, size:9.5 });
+
+  heading('Perfil Integral — Luz e Sombra', 'II');
+  calloutBox('💎 LADO LUZ (O SEU POTENCIAL)', [full.luz], GREEN_BG, GREEN_BAR, [40,90,60]);
+  calloutBox('⬤ LADO SOMBRA (A TRABALHAR)', [full.sombra], RED_BG, RED_BAR, [140,50,40]);
+
+  heading('Lições Cármicas & Excessos', 'III');
+  paragraph(full.carmicasTexto || '');
+  paragraph(full.excessoTexto || '');
+  if (full.mediunidadeTexto) paragraph('✨ ' + full.mediunidadeTexto);
+
+  heading('O Corpo e a Imunidade Energética', 'IV');
+  paragraph(full.corpoTexto || '');
+  paragraph('⚠️ Leitura simbólica e espiritual — não substitui avaliação médica. Mantenha sempre acompanhamento/tratamento em curso.', { size:8.5, color:MUTED });
+
+  heading('O Chakra em Foco', 'V');
+  paragraph(`${r.diaInfo.chakra} · Cor: ${full.chakraInfo?.cor||''}`, { bold:true });
+  bullet(`Significado: ${full.chakraInfo?.significado||''}`);
+  bullet(`Sinais de desequilíbrio: ${full.chakraInfo?.desequilibrio||''}`);
+  bullet(`Prática de equilíbrio: ${full.chakraInfo?.pratica||''}`);
+
+  heading('Regência dos Astros, Mestre Ascenso & Alquimia', 'VI');
+  paragraph(`Nascido(a) numa ${r.diaNome}, o seu planeta regente é ${r.diaInfo.planeta} e o seu Mestre Ascenso de conexão é ${r.diaInfo.mestre} (${r.diaInfo.raio}). Cristal do dia: ${r.diaInfo.cristal}. Cristal do signo: ${full.cristalSigno}.`);
+
+  ensureSpace(90);
+  pdf.setFillColor(...NAVY);
+  pdf.rect(marginX, y, contentW, 66, 'F');
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(9.5); pdf.setTextColor(...GOLD_LIGHT);
+  pdf.text(`🕊️ Oração de Conexão ao Mestre ${r.diaInfo.mestre}`, marginX+12, y+18);
+  pdf.setFont('helvetica','italic'); pdf.setFontSize(9); pdf.setTextColor(240,240,245);
+  const oracaoLines = pdf.splitTextToSize(full.oracaoMestre||'', contentW-24);
+  pdf.text(oracaoLines, marginX+12, y+34);
+  y += 66 + 12;
+
+  heading('Rituais de Alquimia', 'VII');
+  paragraph(`Banho de Ervas do Signo (${r.signo}): ${full.banhoErvas}`, { bold:true, gap:2 });
+  paragraph(full.banhoModo || '', { size:9 });
+  paragraph(`Banho de Descarrego: ${full.banhoDescarrego?.ervas} — ${full.banhoDescarrego?.hz}`, { bold:true, gap:2 });
+  paragraph(full.banhoDescarrego?.modo || '', { size:9 });
+  paragraph(`Banho de Proteção: ${full.banhoProtecao?.ervas} — ${full.banhoProtecao?.hz}`, { bold:true, gap:2 });
+  paragraph(full.banhoProtecao?.modo || '', { size:9 });
+  paragraph(`Mantra sugerido: ${full.mantra}`, { size:9 });
+
+  heading('Decretos "EU SOU" de Poder Pessoal', 'VIII');
+  paragraph(`Afirmação do seu número: "${full.euSou}"`, { bold:true, gap:10 });
+  (full.decretos||[]).forEach((d,i) => bullet(`${i+1}. ${d}`));
+
+  heading('Engenharia Vibracional (Ajuste Numpro)', 'IX');
+  if (full.vibMorada!=null) paragraph(`Morada: vibração ${full.vibMorada} — ${full.vibMoradaTexto}`);
+  if (full.vibTelemovel!=null) paragraph(`Telemóvel: vibração ${full.vibTelemovel} — ${full.vibTelemovelTexto}`);
+  if (full.vibMatricula!=null) paragraph(`Matrícula: vibração ${full.vibMatricula} — ${full.vibMatriculaTexto}`);
+
+  heading('Plano de Ativação (7–21 dias)', 'X');
+  paragraph(full.planoAtivacao || '', { size:9.5 });
+
+  ensureSpace(40);
+  pdf.setFont('helvetica','italic'); pdf.setFontSize(9); pdf.setTextColor(...GOLD);
+  paragraph('"O Mapa da Alma revela a sua frequência para que possa caminhar com clareza, verdade e poder pessoal."', { size:9 });
+
+  drawFooter();
+  pdf.save(`Mapa-da-Alma-Diamante-${r.nome.replace(/\s+/g,'-')}.pdf`);
+}
+
+(async function init(){
+  await loadOverrides();
+  if (existingToken) renderFullResult(existingToken);
+  else renderTypeSelector();
+})();
+</script>
+</body>
+</html>
