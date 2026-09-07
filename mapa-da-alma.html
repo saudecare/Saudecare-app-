@@ -273,6 +273,12 @@ function renderForm(){
         <label>Data de nascimento (2º elemento)</label>
         <input id="inpData2" type="date">
       </div>` : ''}
+      ${(selectedTipo === 'familia' || selectedTipo === 'empresa') ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(212,175,55,.3);">
+        <p class="muted" style="margin-bottom:6px;">${selectedTipo === 'familia' ? 'Outros elementos da família (opcional — cada um recebe a sua própria leitura)' : 'Outros sócios/elementos da empresa (opcional — cada um recebe a sua própria leitura)'}</p>
+        <div id="elementosExtraBox"></div>
+        <button type="button" class="btn-ghost btn" id="btnAddElemento" style="margin-top:4px;">+ Adicionar ${selectedTipo === 'familia' ? 'elemento da família' : 'sócio/elemento'}</button>
+      </div>` : ''}
       <label>O seu WhatsApp ou email (para lhe enviarmos este link, caso o perca)</label>
       <input id="inpContacto" placeholder="Telemóvel ou email">
 
@@ -320,6 +326,29 @@ function renderForm(){
   `;
   document.getElementById('btnCalcular').addEventListener('click', onCalcular);
   document.getElementById('btnVoltarTipo').addEventListener('click', renderTypeSelector);
+  wireElementosExtra();
+}
+
+let elementoExtraCount = 0;
+function wireElementosExtra(){
+  const btn = document.getElementById('btnAddElemento');
+  if (!btn) return;
+  elementoExtraCount = 0;
+  btn.addEventListener('click', () => {
+    if (elementoExtraCount >= 6){ alert('Pode adicionar até 6 elementos extra. Para mais, marque diretamente com a Hikari Fafe.'); return; }
+    elementoExtraCount++;
+    const box = document.getElementById('elementosExtraBox');
+    const row = document.createElement('div');
+    row.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px dotted rgba(212,175,55,.2);';
+    row.innerHTML = `
+      <label>Nome completo</label>
+      <input class="elementoExtraNome" placeholder="Nome completo">
+      <label>Data de nascimento (ou de fundação, se for outro sócio empresa)</label>
+      <input class="elementoExtraData" type="date">
+      <button type="button" class="btn-ghost btn" style="margin-top:4px;padding:8px;" onclick="this.parentElement.remove()">Remover</button>
+    `;
+    box.appendChild(row);
+  });
 }
 
 async function onCalcular(){
@@ -347,7 +376,29 @@ async function onCalcular(){
   let nome2 = '', data2 = '';
   if (selectedTipo === 'casal'){
     nome2 = g('inpNome2'); data2 = g('inpData2');
-    if (nome2 || data2){ extra.nome2 = nome2; extra.data2 = data2; }
+    if (nome2 && data2){
+      extra.nome2 = nome2; extra.data2 = data2;
+      // Calcula já aqui o essencial do 2º elemento (signo, dia da semana),
+      // porque o servidor não tem as tabelas de datas — só o nome/números.
+      extra.pessoa2 = {
+        nome: nome2, data: data2,
+        caminhoDeVida: caminhoDeVida(data2),
+        signo: getSigno(data2).nome,
+        diaInfo: getDiaSemanaInfo(data2)
+      };
+    }
+  }
+  if (selectedTipo === 'familia' || selectedTipo === 'empresa'){
+    const nomes = document.querySelectorAll('.elementoExtraNome');
+    const datas = document.querySelectorAll('.elementoExtraData');
+    const lista = [];
+    nomes.forEach((el, i) => {
+      const n = el.value.trim(), d = datas[i]?.value;
+      if (n && d){
+        lista.push({ nome: n, data: d, caminhoDeVida: caminhoDeVida(d), signo: getSigno(d).nome, diaInfo: getDiaSemanaInfo(d) });
+      }
+    });
+    if (lista.length) extra.elementosExtra = lista;
   }
 
   if (!nome || !data || !contacto){ alert('Preencha o nome, a data e um contacto (WhatsApp ou email).'); return; }
@@ -693,18 +744,47 @@ function renderFullReport(data){
       ${(full.vibContactos||[]).map(c => `<p class="muted" style="margin-top:6px;">Contacto ${escapeHtml(c.numero)}: vibração <strong>${c.vibracao}</strong> — ${escapeHtml(c.texto)}</p>`).join('')}
       ${(full.vibFrota||[]).map(f => `<p class="muted" style="margin-top:6px;">Matrícula ${escapeHtml(f.matricula)}: vibração <strong>${f.vibracao}</strong> — ${escapeHtml(f.texto)}</p>`).join('')}
     </div>
+    ${full.grupo ? `
+    <div class="card" style="background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);">
+      <h3 style="color:var(--gold-light);">👨‍👩‍👧 Leitura de Grupo</h3>
+      <p class="muted"><strong>Vibração conjunta:</strong> ${full.grupo.vibracaoGrupo} — ${escapeHtml(full.grupo.vibracaoGrupoTexto)}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.grupo.harmoniaTexto)}</p>
+      ${full.grupo.elementos.map(e => `
+      <div style="margin-top:10px;padding-top:8px;border-top:1px dotted rgba(212,175,55,.2);">
+        <p class="muted"><strong>${escapeHtml(e.nome)}</strong> — Caminho de Vida ${e.caminhoDeVida} · ${escapeHtml(e.signo)} (${escapeHtml(e.elemento)}, regido por ${escapeHtml(e.regente)})</p>
+        <p class="muted" style="margin-top:4px;">Dom natural: ${escapeHtml(e.dom)}</p>
+      </div>`).join('')}
+    </div>` : ''}
     ${full.avisoEmpresa ? `
     <div class="card">
       <h3 style="color:var(--gold-light);">🏢 Vibração do Negócio</h3>
       <p class="muted">${escapeHtml(full.avisoEmpresa)}</p>
     </div>` : ''}
-    ${full.casalCompatibilidade ? `
+    ${full.casal ? `
     <div class="card">
-      <h3 style="color:var(--gold-light);">💞 Compatibilidade do Casal</h3>
-      <p class="muted"><strong>Caminho de Vida do par:</strong> ${full.casalCompatibilidade.cvParceiro}</p>
-      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casalCompatibilidade.texto)}</p>
-      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casalCompatibilidade.conselho)}</p>
-      <p class="muted" style="margin-top:6px;"><strong>🕯️ ${escapeHtml(full.casalCompatibilidade.ritualCasal)}</strong></p>
+      <h3 style="color:var(--gold-light);">💞 O Casal — Perfil de ${escapeHtml(full.casal.perfil1.nome)}</h3>
+      <p class="muted"><strong>Caminho de Vida:</strong> ${full.casal.perfil1.caminhoDeVida} · <strong>Signo:</strong> ${escapeHtml(full.casal.perfil1.signo)} (${escapeHtml(full.casal.perfil1.elemento)}, regido por ${escapeHtml(full.casal.perfil1.regente)})</p>
+      <p class="muted" style="margin-top:6px;"><strong>Papel na relação:</strong> ${escapeHtml(full.casal.perfil1.papelRelacao)}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casal.perfil1.luzRelacao)}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casal.perfil1.sombraRelacao)}</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--gold-light);">💞 O Casal — Perfil de ${escapeHtml(full.casal.perfil2.nome)}</h3>
+      <p class="muted"><strong>Caminho de Vida:</strong> ${full.casal.perfil2.caminhoDeVida} · <strong>Signo:</strong> ${escapeHtml(full.casal.perfil2.signo)} (${escapeHtml(full.casal.perfil2.elemento)}, regido por ${escapeHtml(full.casal.perfil2.regente)})</p>
+      <p class="muted" style="margin-top:6px;"><strong>Papel na relação:</strong> ${escapeHtml(full.casal.perfil2.papelRelacao)}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casal.perfil2.luzRelacao)}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casal.perfil2.sombraRelacao)}</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);">
+      <h3 style="color:var(--gold-light);">✨ Compatibilidade do Casal</h3>
+      <p class="muted"><strong>Vibração do casal enquanto unidade:</strong> ${full.casal.vibracaoCasal} — ${escapeHtml(full.casal.vibracaoCasalTexto)}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casal.compatNumero.texto)}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casal.compatNumero.conselho)}</p>
+      ${full.casal.compatElemento ? `<p class="muted" style="margin-top:6px;"><strong>Elementos (${full.casal.compatElemento.nivel}):</strong> ${escapeHtml(full.casal.compatElemento.texto)}</p>` : ''}
+      ${full.casal.mediunidadeCasal ? `<p class="muted" style="margin-top:6px;">✨ Um de vocês (ou os dois) carrega o Número Mestre 11 — o casal tende a ter uma sensibilidade intuitiva acima da média. Vale a pena confiarem nos "pressentimentos" um do outro.</p>` : ''}
+      ${full.casal.moradaConjunta ? `<p class="muted" style="margin-top:6px;"><strong>Morada partilhada</strong> — vibração ${full.casal.moradaConjunta.vibracao} (${escapeHtml(full.casal.moradaConjunta.texto)}). ${full.casal.moradaConjunta.combinaBem ? 'Esta vibração combina bem com a energia dos dois.' : 'Esta vibração é diferente da vossa — não é um problema, mas é um bom motivo para reforçarem intencionalmente a energia da casa (ex: com os rituais abaixo).'}</p>` : ''}
+      <p class="muted" style="margin-top:10px;"><strong>🕯️ ${escapeHtml(full.casal.ajusteEnergia)}</strong></p>
+      <p class="muted" style="margin-top:6px;"><strong>🕯️ ${escapeHtml(full.casal.compatNumero.ritualCasal)}</strong></p>
     </div>` : ''}
     <div class="card">
       <h3 style="color:var(--gold-light);">🌿 Prescrição Alquímica</h3>
@@ -934,16 +1014,41 @@ function downloadFullReportPDF(r, full, dom){
   (full.vibContactos||[]).forEach(c => paragraph(`Contacto ${c.numero}: vibração ${c.vibracao} — ${c.texto}`));
   (full.vibFrota||[]).forEach(f => paragraph(`Matrícula ${f.matricula}: vibração ${f.vibracao} — ${f.texto}`));
 
+  if (full.grupo){
+    heading('Leitura de Grupo', 'IX.1');
+    paragraph(`Vibração conjunta: ${full.grupo.vibracaoGrupo} — ${full.grupo.vibracaoGrupoTexto}`, { bold:true, gap:2 });
+    paragraph(full.grupo.harmoniaTexto, { size:9.5 });
+    full.grupo.elementos.forEach(e => {
+      paragraph(`${e.nome} — Caminho de Vida ${e.caminhoDeVida} · ${e.signo} (${e.elemento}, regido por ${e.regente})`, { bold:true, gap:1 });
+      paragraph(`Dom natural: ${e.dom}`, { size:9 });
+    });
+  }
   if (full.avisoEmpresa){
     heading('Vibração do Negócio', 'IX.1');
     paragraph(full.avisoEmpresa, { size:9.5 });
   }
-  if (full.casalCompatibilidade){
-    heading('Compatibilidade do Casal', 'IX.2');
-    paragraph(`Caminho de Vida do par: ${full.casalCompatibilidade.cvParceiro}`, { bold:true, gap:2 });
-    paragraph(full.casalCompatibilidade.texto, { size:9.5 });
-    paragraph(full.casalCompatibilidade.conselho, { size:9.5 });
-    paragraph(full.casalCompatibilidade.ritualCasal, { size:9.5 });
+  if (full.casal){
+    heading('O Casal — Perfil de ' + full.casal.perfil1.nome, 'IX.2');
+    paragraph(`Caminho de Vida: ${full.casal.perfil1.caminhoDeVida} · Signo: ${full.casal.perfil1.signo} (${full.casal.perfil1.elemento}, regido por ${full.casal.perfil1.regente})`, { bold:true, gap:2 });
+    paragraph(`Papel na relação: ${full.casal.perfil1.papelRelacao}`, { size:9.5 });
+    paragraph(full.casal.perfil1.luzRelacao, { size:9.5 });
+    paragraph(full.casal.perfil1.sombraRelacao, { size:9.5 });
+
+    heading('O Casal — Perfil de ' + full.casal.perfil2.nome, 'IX.3');
+    paragraph(`Caminho de Vida: ${full.casal.perfil2.caminhoDeVida} · Signo: ${full.casal.perfil2.signo} (${full.casal.perfil2.elemento}, regido por ${full.casal.perfil2.regente})`, { bold:true, gap:2 });
+    paragraph(`Papel na relação: ${full.casal.perfil2.papelRelacao}`, { size:9.5 });
+    paragraph(full.casal.perfil2.luzRelacao, { size:9.5 });
+    paragraph(full.casal.perfil2.sombraRelacao, { size:9.5 });
+
+    heading('Compatibilidade do Casal', 'IX.4');
+    paragraph(`Vibração do casal enquanto unidade: ${full.casal.vibracaoCasal} — ${full.casal.vibracaoCasalTexto}`, { bold:true, gap:2 });
+    paragraph(full.casal.compatNumero.texto, { size:9.5 });
+    paragraph(full.casal.compatNumero.conselho, { size:9.5 });
+    if (full.casal.compatElemento) paragraph(`Elementos (${full.casal.compatElemento.nivel}): ${full.casal.compatElemento.texto}`, { size:9.5 });
+    if (full.casal.mediunidadeCasal) paragraph('Um de vocês (ou os dois) carrega o Número Mestre 11 — sensibilidade intuitiva acima da média como casal.', { size:9.5 });
+    if (full.casal.moradaConjunta) paragraph(`Morada partilhada — vibração ${full.casal.moradaConjunta.vibracao} (${full.casal.moradaConjunta.texto}).`, { size:9.5 });
+    paragraph(full.casal.ajusteEnergia, { size:9.5 });
+    paragraph(full.casal.compatNumero.ritualCasal, { size:9.5 });
   }
 
   heading('Plano de Ativação (7–21 dias)', 'X');
