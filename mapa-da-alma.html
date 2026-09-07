@@ -266,14 +266,31 @@ function renderForm(){
       <input id="inpNome" placeholder="Nome completo">
       <label>${t.dataLabel}</label>
       <input id="inpData" type="date">
+      ${selectedTipo === 'casal' ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(212,175,55,.3);">
+        <label>Nome completo (2º elemento do casal)</label>
+        <input id="inpNome2" placeholder="Nome completo do par">
+        <label>Data de nascimento (2º elemento)</label>
+        <input id="inpData2" type="date">
+      </div>` : ''}
       <label>O seu WhatsApp ou email (para lhe enviarmos este link, caso o perca)</label>
       <input id="inpContacto" placeholder="Telemóvel ou email">
 
       <details style="margin-top:14px;">
         <summary style="cursor:pointer;color:var(--gold-light);font-weight:700;">✦ Já agora, complete estes dados (opcional agora — só são usados se avançar para o Mapa Diamante)</summary>
         <div style="margin-top:10px;">
-          <label>Morada completa (rua, nº, andar)</label>
+          <label>${selectedTipo === 'empresa' ? 'Morada da sede' : 'Morada completa (rua, nº, andar)'}</label>
           <input id="inpMorada" placeholder="Opcional">
+          ${selectedTipo === 'empresa' ? `
+          <label>Denominação social (se for diferente do nome comercial acima)</label>
+          <input id="inpDenominacaoSocial" placeholder="Opcional — nome legalmente registado">
+          <label>Contactos (telemóvel/fixo — um por linha, pode pôr vários)</label>
+          <textarea id="inpTelemovel" rows="3" placeholder="Opcional — um número por linha"></textarea>
+          <label>Matrículas da frota (uma por linha, pode pôr várias)</label>
+          <textarea id="inpMatricula" rows="3" placeholder="Opcional — uma matrícula por linha"></textarea>
+          ` : selectedTipo === 'bebe' ? `
+          <p class="muted" style="font-size:.8rem;">(Para bebés/crianças pequenas, saltamos telemóvel, matrícula e lateralidade — ainda não se aplicam.)</p>
+          ` : `
           <label>Número de telemóvel (se diferente do contacto acima)</label>
           <input id="inpTelemovel" placeholder="Opcional">
           <label>Matrícula do carro</label>
@@ -285,6 +302,7 @@ function renderForm(){
           </select>
           <label>Há alguma zona do corpo que sinta pedir mais atenção? (opcional, sem termos médicos)</label>
           <input id="inpCorpo" placeholder="ex: 'zona do peito', 'costas' — opcional">
+          `}
         </div>
       </details>
 
@@ -310,13 +328,28 @@ async function onCalcular(){
   const contacto = document.getElementById('inpContacto').value.trim();
   const consentimento = document.getElementById('inpConsentimento').checked;
   const consentimentoMarketing = document.getElementById('inpConsentimentoMarketing').checked;
-  const extra = {
-    morada: document.getElementById('inpMorada').value.trim(),
-    telemovel: document.getElementById('inpTelemovel').value.trim() || contacto,
-    matricula: document.getElementById('inpMatricula').value.trim(),
-    lateralidade: document.getElementById('inpLateralidade').value,
-    corpoNota: document.getElementById('inpCorpo').value.trim()
-  };
+  const g = (id) => document.getElementById(id)?.value?.trim() || '';
+  const splitLines = (v) => v.split('\n').map(s => s.trim()).filter(Boolean);
+
+  const extra = { morada: g('inpMorada') };
+  if (selectedTipo === 'empresa'){
+    extra.denominacaoSocial = g('inpDenominacaoSocial');
+    extra.telemovelLista = splitLines(g('inpTelemovel'));
+    extra.matriculaLista = splitLines(g('inpMatricula'));
+  } else if (selectedTipo === 'bebe'){
+    // Sem telemóvel, matrícula ou lateralidade para bebés/crianças pequenas.
+  } else {
+    extra.telemovel = g('inpTelemovel') || contacto;
+    extra.matricula = g('inpMatricula');
+    extra.lateralidade = g('inpLateralidade') || 'destro';
+    extra.corpoNota = g('inpCorpo');
+  }
+  let nome2 = '', data2 = '';
+  if (selectedTipo === 'casal'){
+    nome2 = g('inpNome2'); data2 = g('inpData2');
+    if (nome2 || data2){ extra.nome2 = nome2; extra.data2 = data2; }
+  }
+
   if (!nome || !data || !contacto){ alert('Preencha o nome, a data e um contacto (WhatsApp ou email).'); return; }
   if (!consentimento){ alert('Precisa de aceitar o tratamento de dados para continuar.'); return; }
 
@@ -657,7 +690,22 @@ function renderFullReport(data){
       ${full.vibMorada!=null ? `<p class="muted">Morada: vibração <strong>${full.vibMorada}</strong> — ${escapeHtml(full.vibMoradaTexto||'')}</p>` : ''}
       ${full.vibTelemovel!=null ? `<p class="muted" style="margin-top:6px;">Telemóvel: vibração <strong>${full.vibTelemovel}</strong> — ${escapeHtml(full.vibTelemovelTexto||'')}</p>` : ''}
       ${full.vibMatricula!=null ? `<p class="muted" style="margin-top:6px;">Matrícula: vibração <strong>${full.vibMatricula}</strong> — ${escapeHtml(full.vibMatriculaTexto||'')}</p>` : ''}
+      ${(full.vibContactos||[]).map(c => `<p class="muted" style="margin-top:6px;">Contacto ${escapeHtml(c.numero)}: vibração <strong>${c.vibracao}</strong> — ${escapeHtml(c.texto)}</p>`).join('')}
+      ${(full.vibFrota||[]).map(f => `<p class="muted" style="margin-top:6px;">Matrícula ${escapeHtml(f.matricula)}: vibração <strong>${f.vibracao}</strong> — ${escapeHtml(f.texto)}</p>`).join('')}
     </div>
+    ${full.avisoEmpresa ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🏢 Vibração do Negócio</h3>
+      <p class="muted">${escapeHtml(full.avisoEmpresa)}</p>
+    </div>` : ''}
+    ${full.casalCompatibilidade ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">💞 Compatibilidade do Casal</h3>
+      <p class="muted"><strong>Caminho de Vida do par:</strong> ${full.casalCompatibilidade.cvParceiro}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casalCompatibilidade.texto)}</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casalCompatibilidade.conselho)}</p>
+      <p class="muted" style="margin-top:6px;"><strong>🕯️ ${escapeHtml(full.casalCompatibilidade.ritualCasal)}</strong></p>
+    </div>` : ''}
     <div class="card">
       <h3 style="color:var(--gold-light);">🌿 Prescrição Alquímica</h3>
       <p class="muted" style="margin-top:6px;"><strong>Banho de ervas (${escapeHtml(r.signo)}):</strong> ${escapeHtml(full.banhoErvas||'')}</p>
@@ -883,6 +931,20 @@ function downloadFullReportPDF(r, full, dom){
   if (full.vibMorada!=null) paragraph(`Morada: vibração ${full.vibMorada} — ${full.vibMoradaTexto}`);
   if (full.vibTelemovel!=null) paragraph(`Telemóvel: vibração ${full.vibTelemovel} — ${full.vibTelemovelTexto}`);
   if (full.vibMatricula!=null) paragraph(`Matrícula: vibração ${full.vibMatricula} — ${full.vibMatriculaTexto}`);
+  (full.vibContactos||[]).forEach(c => paragraph(`Contacto ${c.numero}: vibração ${c.vibracao} — ${c.texto}`));
+  (full.vibFrota||[]).forEach(f => paragraph(`Matrícula ${f.matricula}: vibração ${f.vibracao} — ${f.texto}`));
+
+  if (full.avisoEmpresa){
+    heading('Vibração do Negócio', 'IX.1');
+    paragraph(full.avisoEmpresa, { size:9.5 });
+  }
+  if (full.casalCompatibilidade){
+    heading('Compatibilidade do Casal', 'IX.2');
+    paragraph(`Caminho de Vida do par: ${full.casalCompatibilidade.cvParceiro}`, { bold:true, gap:2 });
+    paragraph(full.casalCompatibilidade.texto, { size:9.5 });
+    paragraph(full.casalCompatibilidade.conselho, { size:9.5 });
+    paragraph(full.casalCompatibilidade.ritualCasal, { size:9.5 });
+  }
 
   heading('Plano de Ativação (7–21 dias)', 'X');
   paragraph(full.planoAtivacao || '', { size:9.5 });
