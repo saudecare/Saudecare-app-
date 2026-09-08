@@ -444,6 +444,44 @@ function renderFreeResult(leadId, r, signo, extra){
   const dom = DONS_NUMEROS_M[r.caminhoDeVida] || {};
   const domAlma = DONS_NUMEROS_M[r.motivacao] || {};
   const t = TIPOS_MAPA[r.tipo || 'individual'];
+  const tipo = r.tipo || 'individual';
+
+  // Teaser específico por tipo — para o Espelho não ser sempre uma leitura
+  // individual disfarçada. Baseado em prática comum de leitores de
+  // numerologia lusófonos: casal cruza os números dos dois; família soma a
+  // vibração de todos os elementos; empresa lê o nome como "personalidade"
+  // do negócio, não da pessoa.
+  let profissoesLabel = '💼 <strong>Caminhos profissionais afinados consigo:</strong>';
+  let extraTeaserHTML = '';
+  if (tipo === 'bebe'){
+    profissoesLabel = '🌱 <strong>Talentos naturais a estimular desde já:</strong>';
+  } else if (tipo === 'empresa'){
+    profissoesLabel = '📈 <strong>Segmentos de negócio mais afinados com este número:</strong>';
+    extraTeaserHTML = `
+      <div class="result-block">
+        <h3>🏢 Nome vs. Atividade</h3>
+        <p class="muted">Todo o nome de negócio "fala" uma vibração — a de ${escapeHtml(r.nome)} é o número <strong>${r.caminhoDeVida}</strong>. <strong>O Mapa Diamante compara isto com a atividade real da empresa, e diz exatamente o que ajustar se houver desencontro.</strong></p>
+      </div>`;
+  } else if (tipo === 'casal' && extra?.pessoa2?.caminhoDeVida != null){
+    const cv2 = extra.pessoa2.caminhoDeVida;
+    const nome2Curto = (extra.pessoa2.nome||'').trim().split(/\s+/)[0] || extra.pessoa2.nome;
+    extraTeaserHTML = `
+      <div class="result-block">
+        <h3>💞 O Casal, em dois números</h3>
+        <p class="muted"><strong>${escapeHtml(r.nome.split(/\s+/)[0])}:</strong> Caminho de Vida ${r.caminhoDeVida} — ${escapeHtml((dom.nome||''))}<br>
+        <strong>${escapeHtml(nome2Curto)}:</strong> Caminho de Vida ${cv2} — ${escapeHtml((DONS_NUMEROS_M[cv2]?.nome)||'')}</p>
+        <p class="muted" style="margin-top:6px;"><strong>O Mapa Diamante revela o papel de cada um na relação, os pontos de força e de atrito, e um ritual para manterem a energia dos dois estável.</strong></p>
+      </div>`;
+  } else if (tipo === 'familia' && Array.isArray(extra?.elementosExtra) && extra.elementosExtra.length){
+    const todosCv = [r.caminhoDeVida, ...extra.elementosExtra.map(e => e.caminhoDeVida)];
+    const vibGrupo = todosCv.reduce((a,n) => a+n, 0);
+    const vibGrupoReduzida = (function(n){ while(n>9 && n!==11 && n!==22 && n!==33){ n = String(n).split('').reduce((a,d)=>a+(parseInt(d,10)||0),0);} return n; })(vibGrupo);
+    extraTeaserHTML = `
+      <div class="result-block">
+        <h3>👨‍👩‍👧 Vibração da Família</h3>
+        <p class="muted">Juntando ${todosCv.length} elementos desta família, a vibração conjunta é o número <strong>${vibGrupoReduzida}</strong> — ${escapeHtml((DONS_NUMEROS_M[vibGrupoReduzida]?.nome)||'')}. <strong>O Mapa Diamante detalha o papel de cada elemento no grupo e um "tema do ano" para todos trabalharem juntos.</strong></p>
+      </div>`;
+  }
 
   document.getElementById('heroTitle').textContent = 'Mapa da Alma Espelho';
   document.getElementById('heroSub').textContent = `${escapeHtml(r.nome)} — o seu primeiro reflexo cósmico.`;
@@ -460,7 +498,8 @@ function renderFreeResult(leadId, r, signo, extra){
         <h3>Caminho de Vida ${r.caminhoDeVida}</h3>
       </div>
       <p class="muted" style="margin-top:6px;"><strong>${escapeHtml(dom.nome||'')}:</strong> ${escapeHtml(dom.texto||'')}</p>
-      <p class="muted" style="margin-top:6px;">💼 <strong>Caminhos profissionais afinados consigo:</strong> ${escapeHtml(dom.profissoes||'')}.</p>
+      <p class="muted" style="margin-top:6px;">${profissoesLabel} ${escapeHtml(dom.profissoes||'')}.</p>
+      ${extraTeaserHTML}
 
       <div class="result-block">
         <h3>💠 Número da Alma: ${r.motivacao}</h3>
@@ -521,7 +560,7 @@ function renderFreeResult(leadId, r, signo, extra){
     </div>
     ${renderShareAndPromoBlock(leadId, r.nome, r)}
   `;
-  document.getElementById('btnUpgrade').addEventListener('click', () => startCheckout(leadId, extra));
+  document.getElementById('btnUpgrade').addEventListener('click', () => renderPaymentChoice(leadId, extra));
   wireShareAndPromoButtons(leadId, r.nome);
   loadAndShowPrice(leadId);
 }
@@ -628,12 +667,26 @@ function openWhatsAppShare(text){
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
 }
 
-async function startCheckout(leadId, extra){
+function renderPaymentChoice(leadId, extra){
+  main.innerHTML = `
+    <div class="card">
+      <h3 style="color:var(--gold-light);margin-bottom:10px;text-align:center;">Como prefere pagar?</h3>
+      <button class="btn" id="btnPagarCartao">💳 Cartão / Apple Pay / Google Pay — automático</button>
+      <p class="muted" style="text-align:center;margin:6px 0;">ou</p>
+      <button class="btn btn-ghost" id="btnPagarMbway">📱 MB Way / Transferência — envio o comprovativo</button>
+      <p class="muted" style="margin-top:10px;font-size:.8rem;text-align:center;">Com MB Way ou transferência, o Mapa Diamante é desbloqueado manualmente depois de confirmarmos o seu comprovativo.</p>
+    </div>
+  `;
+  document.getElementById('btnPagarCartao').addEventListener('click', () => startCheckout(leadId, extra, 'cartao'));
+  document.getElementById('btnPagarMbway').addEventListener('click', () => startCheckout(leadId, extra, 'mbway'));
+}
+
+async function startCheckout(leadId, extra, metodo){
   main.innerHTML = '<div class="loading">A preparar o pagamento…</div>';
   try{
     const res = await fetch(FUNCTION_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'createCheckout', tenantId: TENANT_ID, leadId, extra })
+      body: JSON.stringify({ action: 'createCheckout', tenantId: TENANT_ID, leadId, extra, metodo })
     });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || 'Erro desconhecido');
@@ -792,6 +845,7 @@ function renderFullReport(data){
       <p class="muted" style="margin-top:6px;">${escapeHtml(full.banhoModo||'')}</p>
       <p class="muted" style="margin-top:6px;"><strong>Cristal do dia:</strong> ${escapeHtml(r.diaInfo.cristal)} · <strong>Mantra sugerido:</strong> ${escapeHtml(full.mantra||'')}</p>
       ${full.avisoProfissional ? `<p class="muted" style="margin-top:10px;font-size:.78rem;background:rgba(212,175,55,.1);padding:8px;border-radius:8px;">⚠️ ${escapeHtml(full.avisoProfissional)}</p>` : ''}
+      ${full.avisoBebe ? `<p class="muted" style="margin-top:10px;font-size:.78rem;background:rgba(212,175,55,.1);padding:8px;border-radius:8px;">💗 ${escapeHtml(full.avisoBebe)}</p>` : ''}
     </div>
     <div class="card">
       <h3 style="color:var(--gold-light);">🌊 Banho de Descarrego</h3>
@@ -1002,6 +1056,7 @@ function downloadFullReportPDF(r, full, dom){
   paragraph(full.banhoProtecao?.modo || '', { size:9 });
   paragraph(`Mantra sugerido: ${full.mantra}`, { size:9 });
   if (full.avisoProfissional) paragraph(full.avisoProfissional, { size:8.5, color:MUTED });
+  if (full.avisoBebe) paragraph(full.avisoBebe, { size:8.5, color:MUTED });
 
   heading('Decretos "EU SOU" de Poder Pessoal', 'VIII');
   paragraph(`Afirmação do seu número: "${full.euSou}"`, { bold:true, gap:10 });
