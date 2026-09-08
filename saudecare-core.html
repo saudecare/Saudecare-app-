@@ -98,6 +98,26 @@
     nav button{flex-shrink:0;width:auto;margin-right:0;margin-bottom:0;padding:8px 10px;font-size:12.5px;white-space:nowrap;}
     main{padding:14px;}
   }
+  /* Ecrãs largos (computador/desktop) — o menu lateral já ficava bem à
+     esquerda, mas o conteúdo ficava sempre limitado a 900px, deixando
+     muito espaço vazio à direita em monitores maiores. Isto só alarga
+     progressivamente esse limite, e deixa vários cartões lado a lado
+     quando fazem parte de uma lista/grelha (ex: pacientes, serviços) —
+     sem tocar em HTML nem em nenhuma lógica, por isso não há risco de
+     partir nenhum ecrã específico. */
+  @media(min-width:1024px){
+    main{max-width:1100px;padding:28px 32px;}
+  }
+  @media(min-width:1440px){
+    main{max-width:1320px;padding:32px 40px;}
+    nav{width:250px;}
+  }
+  @media(min-width:1024px){
+    .grid-2-wide{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+    .grid-2-wide > .card{margin-bottom:0;}
+    .list-grid-wide{display:grid;grid-template-columns:1fr 1fr;gap:0 24px;}
+    .list-grid-wide > .appt-item{border-bottom:1px solid #eef2f0;}
+  }
 /* ── Assistente virtual (botão flutuante + janela de chat) ────────────── */
 #chatbotToggle{
   position:fixed; bottom:20px; right:20px; z-index:9999;
@@ -292,7 +312,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-130';
+const APP_VERSION = '2026-09-02-132';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -7803,6 +7823,13 @@ window.setMapaAlmaTab = function(id){ __mapaAlmaTab = id; renderMapaAlma(documen
 window.setMapaAlmaPedidosCat = function(id){ __mapaAlmaPedidosCat = id; renderMapaAlma(document.getElementById('mainView')); };
 
 async function renderMapaAlma(main){
+  // Bloqueio a sério, não só esconder o botão do menu — mesmo que alguém
+  // tente chegar aqui diretamente (ex: escrevendo na barra de endereço),
+  // esta ferramenta é exclusiva da conta da Hikari Fafe.
+  if (tenantId !== 'hikari-terapias'){
+    main.innerHTML = `<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">O Mapa da Alma é uma ferramenta exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>`;
+    return;
+  }
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'mapaAlmaLeads'));
   const leads = [];
   snap.forEach(d => leads.push({ id: d.id, ...d.data() }));
@@ -7877,7 +7904,7 @@ async function renderMapaAlma(main){
     <div class="card">
       <div class="row" style="flex-wrap:wrap;">${Object.keys(catLabels).map(catBtn).join('')}</div>
     </div>
-    <div class="card">
+    <div class="card list-grid-wide">
       ${lista.length ? lista.map(rowHtml).join('') : '<p class="muted">Nada nesta categoria.</p>'}
     </div>`;
   } else if (__mapaAlmaTab === 'contactos'){
@@ -7886,7 +7913,7 @@ async function renderMapaAlma(main){
       <p class="muted" style="margin-bottom:8px;">Todas as pessoas que autorizaram receber novidades/promoções, mesmo que não tenham comprado o Mapa Diamante. Nunca são apagadas automaticamente.</p>
       ${contacts.length ? `
       <button class="primary" onclick="copiarContactosMarketing()">📋 Copiar todos os contactos (${contacts.length})</button>
-      <div style="margin-top:10px;">
+      <div style="margin-top:10px;" class="list-grid-wide">
         ${contacts.map(c => `<div class="appt-item"><strong>${escapeHtml(c.nome||'')}</strong><div class="muted">${escapeHtml(c.contacto||'')} · ${escapeHtml(c.tipo||'')}</div></div>`).join('')}
       </div>` : '<p class="muted">Ainda ninguém autorizou receber novidades.</p>'}
     </div>`;
@@ -8132,6 +8159,11 @@ const CARTO_NAIPES = { paus:'♣ Paus', copas:'♥ Copas', espadas:'♠ Espadas'
 const CARTO_VALORES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 
 async function renderCartomancia(main){
+  // Mesmo bloqueio a sério do Mapa da Alma — exclusivo desta conta.
+  if (tenantId !== 'hikari-terapias'){
+    main.innerHTML = `<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">A Cartomancia é uma ferramenta exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>`;
+    return;
+  }
   const publicLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','cartomancia.html')}`;
 
   let leituras = [];
@@ -8151,7 +8183,7 @@ async function renderCartomancia(main){
   let bodyHtml = '';
   if (__cartoTab === 'leituras'){
     bodyHtml = `
-    <div class="card">
+    <div class="card list-grid-wide">
       ${leituras.length ? leituras.map(l => `
         <div class="appt-item">
           <strong>${escapeHtml(l.nome||'')}</strong>
