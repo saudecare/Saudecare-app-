@@ -77,9 +77,12 @@ function escapeHtml(s){ const d = document.createElement('div'); d.textContent =
 
 const FOCOS = {
   amor: { label: '💞 Amor', icon: '💞' },
-  trabalho: { label: '💼 Trabalho', icon: '💼' },
+  trabalho: { label: '💼 Trabalho/Dinheiro', icon: '💼' },
+  saude: { label: '🌿 Saúde', icon: '🌿' },
+  momento: { label: '🌙 Momento Atual', icon: '🌙' },
   decisao: { label: '⚡ Decisão Rápida', icon: '⚡' },
-  momento: { label: '🌙 Momento Atual', icon: '🌙' }
+  simnao: { label: '✅❌ Sim ou Não', icon: '✅' },
+  geral: { label: '🔮 Geral', icon: '🔮' }
 };
 
 let estado = { nome:'', contacto:'', foco:'momento', pergunta:'', tiragem:'3' };
@@ -89,6 +92,8 @@ function renderFormulario(){
     <div class="card">
       <label>O seu nome</label>
       <input id="inpNome" placeholder="Nome">
+      <label>A sua data de nascimento</label>
+      <input id="inpData" type="date">
       <label>O seu WhatsApp ou email</label>
       <input id="inpContacto" placeholder="Telemóvel ou email">
       <label>Qual é o foco da sua pergunta?</label>
@@ -114,6 +119,12 @@ function renderFormulario(){
     estado.foco = el.dataset.foco;
     document.querySelectorAll('[data-foco]').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
+    // "Sim ou Não" tradicionalmente usa só 1 carta — força isso automaticamente.
+    if (estado.foco === 'simnao'){
+      estado.tiragem = '1';
+      document.querySelectorAll('[data-tiragem]').forEach(t => t.classList.remove('active'));
+      document.querySelector('[data-tiragem="1"]')?.classList.add('active');
+    }
   }));
   document.querySelectorAll('[data-tiragem]').forEach(el => el.addEventListener('click', () => {
     estado.tiragem = el.dataset.tiragem;
@@ -125,22 +136,42 @@ function renderFormulario(){
 
 async function onContinuar(){
   const nome = document.getElementById('inpNome').value.trim();
+  const dataNascimento = document.getElementById('inpData').value;
   const contacto = document.getElementById('inpContacto').value.trim();
   const pergunta = document.getElementById('inpPergunta').value.trim();
   const consentimento = document.getElementById('inpConsentimento').checked;
   if (!nome || !contacto){ alert('Preencha o nome e um contacto (WhatsApp ou email).'); return; }
   if (!consentimento){ alert('Precisa de aceitar o tratamento de dados para continuar.'); return; }
-  estado.nome = nome; estado.contacto = contacto; estado.pergunta = pergunta;
+  estado.nome = nome; estado.dataNascimento = dataNascimento; estado.contacto = contacto; estado.pergunta = pergunta;
   renderMesa();
 }
 
 function renderMesa(){
   const n = parseInt(estado.tiragem, 10);
   main.innerHTML = `
-    <div class="card" style="text-align:center;">
-      <p class="teaser-tag">${FOCOS[estado.foco].icon} ${FOCOS[estado.foco].label}</p>
-      <p class="muted" style="margin:10px 0;">Feche os olhos um instante, pense na sua pergunta, e toque para virar ${n===1?'a carta':'as 3 cartas'}.</p>
-      <button class="btn" id="btnTirar">🎴 Tirar ${n===1?'a carta':'as cartas'}</button>
+    <div class="card">
+      <p class="teaser-tag" style="display:block;text-align:center;">${FOCOS[estado.foco].icon} ${FOCOS[estado.foco].label}</p>
+      <h3 style="color:var(--gold-light);margin-top:10px;margin-bottom:8px;text-align:center;">Antes de tirar as cartas</h3>
+      <p class="muted" style="margin-bottom:10px;">Uma pergunta bem mentalizada faz toda a diferença na leitura. Siga estes 4 passos:</p>
+      <div style="margin-top:6px;">
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+          <div style="color:var(--gold-light);font-weight:800;font-size:1.1rem;min-width:24px;">1</div>
+          <p class="muted">Respire fundo 3 vezes, devagar, para acalmar a mente.</p>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+          <div style="color:var(--gold-light);font-weight:800;font-size:1.1rem;min-width:24px;">2</div>
+          <p class="muted">Formule a pergunta de forma clara e específica — evite perguntas muito vagas ("vai correr tudo bem?") ou com "sim/não" forçado se escolheu um foco aberto. Prefira algo como "o que preciso de saber sobre X agora?".</p>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+          <div style="color:var(--gold-light);font-weight:800;font-size:1.1rem;min-width:24px;">3</div>
+          <p class="muted">Repita a pergunta mentalmente 2 a 3 vezes, com calma, como se a estivesse a "enviar" para as cartas.</p>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <div style="color:var(--gold-light);font-weight:800;font-size:1.1rem;min-width:24px;">4</div>
+          <p class="muted">Só depois toque para tirar ${n===1?'a carta':'as cartas'} — evite tirar com pressa ou a pensar noutra coisa.</p>
+        </div>
+      </div>
+      <button class="btn" id="btnTirar" style="margin-top:18px;">🎴 Tirar ${n===1?'a carta':'as cartas'}</button>
     </div>
   `;
   document.getElementById('btnTirar').addEventListener('click', tirarCartas);
@@ -154,7 +185,7 @@ async function tirarCartas(){
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'criarLeitura', tenantId: TENANT_ID, leadId,
-        nome: estado.nome, contacto: estado.contacto, foco: estado.foco,
+        nome: estado.nome, dataNascimento: estado.dataNascimento, contacto: estado.contacto, foco: estado.foco,
         pergunta: estado.pergunta, numCartas: parseInt(estado.tiragem, 10)
       })
     });

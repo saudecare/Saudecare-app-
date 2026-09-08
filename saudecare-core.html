@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-125';
+const APP_VERSION = '2026-09-02-127';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -8104,6 +8104,18 @@ async function renderCartomancia(main){
       <p class="muted" style="margin-bottom:8px;">Para uma consulta feita com o baralho físico, escolha as cartas que saíram na mesa. Para sortear na app, use o botão de sorteio.</p>
       <label>Nome do cliente</label>
       <input id="ctNome" placeholder="Nome">
+      <label>Data de nascimento (opcional, ajuda a personalizar)</label>
+      <input id="ctData" type="date">
+      <label>Tipo de leitura</label>
+      <select id="ctFoco">
+        <option value="geral">🔮 Geral</option>
+        <option value="amor">💞 Amor</option>
+        <option value="trabalho">💼 Trabalho/Dinheiro</option>
+        <option value="saude">🌿 Saúde</option>
+        <option value="momento">🌙 Momento Atual</option>
+        <option value="decisao">⚡ Decisão Rápida</option>
+        <option value="simnao">✅❌ Sim ou Não</option>
+      </select>
       <label>Pergunta / foco</label>
       <input id="ctPergunta" placeholder="ex: Como vai evoluir o novo trabalho?">
       <label>Número de cartas</label>
@@ -8166,10 +8178,11 @@ window.montarCamposCartas = function(){
 window.sortearCartasApp = async function(){
   const n = parseInt(document.getElementById('ctNumCartas').value, 10);
   const nome = document.getElementById('ctNome').value.trim() || 'Cliente';
+  const dataNascimento = document.getElementById('ctData').value;
   const pergunta = document.getElementById('ctPergunta').value.trim();
   const res = await fetch(CARTO_FUNCTION_URL, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'gerarConsultaProfissional', tenantId, nome, pergunta, foco:'momento', sortear:true, numCartas:n })
+    body: JSON.stringify({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, sortear:true, numCartas:n })
   });
   const data = await res.json();
   if (!data.ok){ toast('Erro ao sortear.', true); return; }
@@ -8178,6 +8191,7 @@ window.sortearCartasApp = async function(){
 
 window.gerarRelatorioCartomancia = async function(){
   const nome = document.getElementById('ctNome').value.trim() || 'Cliente';
+  const dataNascimento = document.getElementById('ctData').value;
   const pergunta = document.getElementById('ctPergunta').value.trim();
   const naipesEl = document.querySelectorAll('.ctCartaNaipe');
   const valoresEl = document.querySelectorAll('.ctCartaValor');
@@ -8187,7 +8201,7 @@ window.gerarRelatorioCartomancia = async function(){
 
   const res = await fetch(CARTO_FUNCTION_URL, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'gerarConsultaProfissional', tenantId, nome, pergunta, foco:'momento', cartasEscolhidas, cartaTempo })
+    body: JSON.stringify({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, cartasEscolhidas, cartaTempo })
   });
   const data = await res.json();
   if (!data.ok){ toast('Erro ao gerar relatório.', true); return; }
