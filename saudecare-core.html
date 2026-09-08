@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-127';
+const APP_VERSION = '2026-09-02-130';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1486,7 +1486,73 @@ function renderView(view){
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
   highlightActiveNavGroup(view);
+  renderOnboardingBanner(view);
 }
+
+// ── TUTORIAL DE BOAS-VINDAS ──────────────────────────────────────────
+// Lista simples de passos, por ordem. Para acrescentar um passo novo no
+// futuro (ex: quando sair uma funcionalidade nova), basta adicionar um
+// objeto a este array — não precisa de mexer em mais nada, e quem já
+// tiver avançado no tutorial não é afetado (o progresso é só um número).
+const ONBOARDING_STEPS = [
+  { view: 'myprofile', titulo: 'O seu Perfil Público', texto: 'Comece por preencher o nome, foto e descrição que os seus clientes vão ver.' },
+  { view: 'settings', secao: 'disponibilidade', titulo: 'Disponibilidade & Marcação', texto: 'Defina os seus horários (ou escolha "só por marcação") para os clientes poderem reservar.' },
+  { view: 'settings', secao: 'online', titulo: 'Modo de Atendimento', texto: 'Configure se atende online, presencial, ou os dois — e o link da videochamada, se usar.' },
+  { view: 'settings', secao: 'consentimento', titulo: 'Livro de Reclamações', texto: 'Obrigatório por lei em Portugal, e é grátis: registe-se em livroreclamacoes.pt, depois cole aqui o link — aparece sozinho na sua página pública.' },
+  { view: 'services', titulo: 'Os Seus Serviços', texto: 'Adicione os serviços que presta, com preço e duração.' },
+  { view: 'protocols', titulo: 'Os Seus Métodos', texto: 'Configure os protocolos/métodos de trabalho que usa nas suas consultas.' },
+  { view: 'forms', titulo: 'Fichas & Questionários', texto: 'Use as fichas prontas ou crie os seus próprios questionários de avaliação.' },
+  { view: 'team', titulo: 'Convidar a sua Equipa', texto: 'Se trabalha com outros profissionais, convide-os aqui — cada um tem o seu próprio acesso.' },
+  { view: 'patients', titulo: 'O Primeiro Paciente', texto: 'Experimente adicionar um paciente de teste, para ver como funciona a ficha.' },
+  { view: 'portalPaciente', titulo: 'Portal do Paciente', texto: 'Veja como os seus pacientes acedem aos dados deles, sem precisarem de criar conta.' },
+  { view: 'agenda', titulo: 'Agenda', texto: 'Experimente marcar uma consulta na agenda.' },
+  { view: 'knowledge', titulo: 'Biblioteca de Conhecimento', texto: 'Dê uma vista de olhos à Biblioteca — pode guardar documentos e materiais aqui.' }
+];
+
+async function renderOnboardingBanner(view){
+  const box = document.getElementById('onboardingBanner');
+  if (box) box.remove();
+  const ob = currentTenantDoc?.onboarding;
+  if (ob?.dismissed) return;
+  const step = ob?.step || 0;
+  if (step >= ONBOARDING_STEPS.length) return;
+  if (view.startsWith('group_') || view === 'home') return; // não sobrepõe o ecrã inicial
+
+  const s = ONBOARDING_STEPS[step];
+  const main = document.getElementById('mainView');
+  const banner = document.createElement('div');
+  banner.id = 'onboardingBanner';
+  banner.className = 'card';
+  banner.style.cssText = 'background:linear-gradient(135deg,#eef6ff,#f7fbff);border:1px solid #b9dcff;margin-bottom:14px;';
+  banner.innerHTML = `
+    <p class="muted" style="font-size:11.5px;margin-bottom:4px;">🎓 Tutorial de configuração — Passo ${step+1} de ${ONBOARDING_STEPS.length}</p>
+    <h3 style="margin-bottom:4px;">${escapeHtml(s.titulo)}</h3>
+    <p class="muted" style="margin-bottom:10px;">${escapeHtml(s.texto)}</p>
+    <div class="row" style="flex-wrap:wrap;gap:8px;">
+      ${view !== s.view ? `<button class="primary" onclick="${s.secao ? `openSettingsSection('${s.secao}')` : `renderView('${s.view}')`}">Ir para lá</button>` : ''}
+      <button class="ghost" onclick="avancarOnboarding()">✅ Concluí este passo</button>
+      <button class="ghost" onclick="saltarOnboarding()">Saltar tutorial</button>
+      <button class="ghost" onclick="renderView('supportContact')">🆘 Pedir ajuda</button>
+    </div>
+  `;
+  main.prepend(banner);
+}
+
+window.avancarOnboarding = async function(){
+  const step = (currentTenantDoc?.onboarding?.step || 0) + 1;
+  const onboarding = { ...(currentTenantDoc?.onboarding||{}), step };
+  await updateDoc(doc(db, 'tenants', tenantId), { onboarding });
+  currentTenantDoc.onboarding = onboarding;
+  renderOnboardingBanner(__currentView);
+  if (step >= ONBOARDING_STEPS.length) toast('Tutorial concluído! 🎉');
+};
+window.saltarOnboarding = async function(){
+  if (!confirm('Saltar o tutorial de configuração? Pode sempre pedir ajuda depois em "Apoio".')) return;
+  const onboarding = { ...(currentTenantDoc?.onboarding||{}), dismissed: true };
+  await updateDoc(doc(db, 'tenants', tenantId), { onboarding });
+  currentTenantDoc.onboarding = onboarding;
+  renderOnboardingBanner(__currentView);
+};
 // Exposta em window: onclick inline no HTML corre fora do módulo, por isso
 // precisa desta referência explícita para conseguir chamar a função.
 window.renderView = renderView;
@@ -8220,6 +8286,8 @@ function mostrarRelatorioCartomancia(r){
       ${r.bloqueios.length ? `<p class="muted" style="margin-top:8px;"><strong>Bloqueios:</strong> ${r.bloqueios.map(escapeHtml).join(' · ')}</p>` : ''}
       <p class="muted" style="margin-top:8px;"><strong>Conselho prático:</strong> ${escapeHtml(r.conselhoPratico)}</p>
       ${r.janelaTemporal ? `<p class="muted" style="margin-top:8px;"><strong>Janela temporal (${escapeHtml(r.janelaTemporal.carta)}):</strong> ${escapeHtml(r.janelaTemporal.texto)}</p>` : ''}
+      ${r.sinais?.avisoBloqueio ? `<p class="muted" style="margin-top:8px;background:rgba(212,175,55,.12);padding:8px;border-radius:8px;">🛡️ <strong>Sinal detetado:</strong> ${escapeHtml(r.sinais.avisoBloqueio)}</p>` : ''}
+      ${r.sinais?.avisoFavoravel ? `<p class="muted" style="margin-top:8px;background:rgba(212,175,55,.12);padding:8px;border-radius:8px;">🌱 <strong>Sinal favorável:</strong> ${escapeHtml(r.sinais.avisoFavoravel)}</p>` : ''}
       <button class="primary" style="margin-top:10px;" onclick="descarregarPDFCartomancia()">📥 Descarregar em PDF</button>
     </div>`;
 }
@@ -8258,7 +8326,17 @@ window.descarregarPDFCartomancia = function(){
   if (r.janelaTemporal){
     pdf.setFont('helvetica','bold'); pdf.text(`Janela temporal (${r.janelaTemporal.carta}):`, 15, y); y += 6;
     pdf.setFont('helvetica','normal');
-    linhas = pdf.splitTextToSize(r.janelaTemporal.texto, 175); pdf.text(linhas, 15, y);
+    linhas = pdf.splitTextToSize(r.janelaTemporal.texto, 175); pdf.text(linhas, 15, y); y += linhas.length*6+6;
+  }
+  if (r.sinais?.avisoBloqueio){
+    pdf.setFont('helvetica','bold'); pdf.text('Sinal detetado:', 15, y); y += 6;
+    pdf.setFont('helvetica','normal');
+    linhas = pdf.splitTextToSize(r.sinais.avisoBloqueio, 175); pdf.text(linhas, 15, y); y += linhas.length*6+6;
+  }
+  if (r.sinais?.avisoFavoravel){
+    pdf.setFont('helvetica','bold'); pdf.text('Sinal favorável:', 15, y); y += 6;
+    pdf.setFont('helvetica','normal');
+    linhas = pdf.splitTextToSize(r.sinais.avisoFavoravel, 175); pdf.text(linhas, 15, y);
   }
   pdf.save(`Cartomancia-${r.nome.replace(/\s+/g,'-')}.pdf`);
 };

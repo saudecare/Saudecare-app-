@@ -216,7 +216,22 @@ function renderResultado(leadId, leitura){
         <h3>💭 Primeira reflexão</h3>
         <p class="muted">${escapeHtml(leitura.primeiraReflexao)}</p>
       </div>
+      ${leitura.sinais?.avisoFavoravel ? `
+      <div class="result-block">
+        <h3>🌱 Sinal Favorável</h3>
+        <p class="muted">${escapeHtml(leitura.sinais.avisoFavoravel)}</p>
+      </div>` : ''}
     </div>
+    ${leitura.sinais?.avisoBloqueio ? `
+    <div class="card" style="background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);">
+      <h3 style="color:var(--gold-light);margin-bottom:8px;">🛡️ Sinal Detetado</h3>
+      <p class="muted">${escapeHtml(leitura.sinais.avisoBloqueio)}</p>
+      ${leitura.limpezaTexto ? `<p class="muted" style="margin-top:10px;white-space:pre-wrap;">${escapeHtml(leitura.limpezaTexto)}</p>
+      <div style="margin:12px 0;padding:12px;background:rgba(212,175,55,.1);border-radius:10px;text-align:left;">
+        <p class="muted"><strong>🔍 Consulta de Pesquisa Energética: ${leitura.limpezaPrecoConsulta ?? 35}€</strong><br>Avaliação completa com Pêndulo Hebreu.</p>
+      </div>` : ''}
+      ${leitura.whatsapp ? `<a class="btn" style="display:block;text-decoration:none;" target="_blank" href="https://wa.me/${leitura.whatsapp}?text=${encodeURIComponent('Olá! Fiz a leitura de cartas online (' + leitura.nome + ') e o resultado apontou um sinal que gostava de aprofundar numa Consulta de Pesquisa Energética.')}">📱 Marcar Consulta de Pesquisa Energética</a>` : ''}
+    </div>` : ''}
     <div class="card" style="text-align:center;background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);">
       <h3 style="color:var(--gold-light);margin-bottom:8px;">Quer aprofundar?</h3>
       <p class="muted" style="margin-bottom:14px;">Queres aprofundar a tua tiragem completa, ver bloqueios e prazos detalhados? Agenda agora a tua sessão presencial ou online com a Hikari Fafe.</p>
