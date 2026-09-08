@@ -312,7 +312,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-134';
+const APP_VERSION = '2026-09-02-136';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4329,6 +4329,11 @@ async function renderServices(main){
 
   main.innerHTML = `
     <div class="row"><h2>Serviços</h2></div>
+    ${categories.length === 0 && tenantId === 'hikari-terapias' ? `
+    <div class="card" style="background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.3);">
+      <p class="muted" style="margin-bottom:8px;">Ainda não tem categorias — quer importar já as terapias, preços e equipa da Hikari Fafe (Reiki, BioMicroHertz, Pêndulo Hebreu, Reflexologia Podal, Cone Hindu) de uma vez?</p>
+      <button class="primary" onclick="importarTerapiasHikariFafe(this)">🌱 Importar as minhas terapias</button>
+    </div>` : ''}
     ${renderServiceTemplatesSection()}
     ${hintBox('Organize por categorias (ex: Reiki, Fisioterapia) — cada categoria define a modalidade (presencial/online) e dentro dela cria sessões avulsas ou packs, com descrição e preço. Isto é o que o cliente vê na sua página pública. Diferente de "Os Meus Métodos" (como conduz a consulta) e "Fichas" (questionários avulsos).')}
     ${rows}
@@ -4337,6 +4342,107 @@ async function renderServices(main){
   `;
   renderCategoryForm(null, {});
 }
+
+window.importarTerapiasHikariFafe = async function(btn){
+  // Bloqueio a sério — este conteúdo é exclusivo da conta da Hikari Fafe,
+  // mesmo que alguém tente chamar esta função diretamente.
+  if (tenantId !== 'hikari-terapias'){
+    toast('Esta importação é exclusiva de uma conta específica.', true);
+    return;
+  }
+  if (!confirm('Isto vai criar as categorias, serviços, formações e perfis de equipa com base no que já tem na sua página atual. Depois de criado, pode editar ou apagar cada um livremente. Continuar?')) return;
+  btn.disabled = true; btn.textContent = 'A importar…';
+  try{
+    // Categorias + serviços — preços exatamente como já pratica.
+    const categorias = [
+      { cat: { name:'BioMicroHertz', icon:'🧠', modalidade:'presencial',
+          description:'Terapia inovadora, com base científica, que segue os parâmetros da microfisioterapia e da nova medicina germânica, integrando técnicas de reprogramação neuroplástica. Cada plano de tratamento é adaptado às necessidades específicas de cada paciente, com acompanhamento diário durante todo o processo.' },
+        servicos: [
+          { name:'Consulta avaliação', type:'single', price:0, durationMinutes:50, description:'Avaliação inicial, gratuita.' },
+          { name:'Consulta única', type:'single', price:65, durationMinutes:50 },
+          { name:'Pack Tratamento (4 consultas)', type:'pack', packSessions:4, price:250, durationMinutes:50 }
+        ]
+      },
+      { cat: { name:'Reiki', icon:'✨', modalidade:'ambos',
+          description:'Terapia Reiki para promover o bem-estar e o equilíbrio energético — presencial, à distância ou online, com meditação guiada.' },
+        servicos: [
+          { name:'Sessão única de Reiki', type:'single', price:35, durationMinutes:50, description:'Presencial, à distância ou online, com meditação guiada.' },
+          { name:'Pack 3 sessões', type:'pack', packSessions:3, price:90, durationMinutes:50 }
+        ]
+      },
+      { cat: { name:'Reflexologia Podal', icon:'🦶', modalidade:'presencial',
+          description:'Terapia holística que utiliza a aplicação de pressão em pontos específicos dos pés, correspondentes a diferentes órgãos e sistemas do corpo, promovendo equilíbrio físico e emocional.' },
+        servicos: [
+          { name:'Consulta única', type:'single', price:35, durationMinutes:50 },
+          { name:'Pack Tratamento (3 consultas)', type:'pack', packSessions:3, price:90, durationMinutes:50 }
+        ]
+      },
+      { cat: { name:'Pêndulo Hebreu', icon:'🔮', modalidade:'ambos',
+          description:'Técnica de limpeza energética que combina radiestesia com terapia vibracional, usando um pêndulo de madeira e etiquetas em hebraico para identificar e harmonizar desequilíbrios energéticos (miasmas, olho gordo, larvas astrais e influências negativas).' },
+        servicos: [
+          { name:'Consulta avaliação energética', type:'single', price:0, durationMinutes:50, description:'Avaliação inicial, gratuita.' },
+          { name:'Consulta única', type:'single', price:35, durationMinutes:50 },
+          { name:'Pack 3 consultas', type:'pack', packSessions:3, price:90, durationMinutes:50 }
+        ]
+      },
+      { cat: { name:'Cone Hindu', icon:'🔥', modalidade:'presencial',
+          description:'Técnica que utiliza a queima de cones específicos para promover a desobstrução das vias respiratórias, auditivas e do sistema linfático, e como instrumento de cura e transmutação através do elemento fogo.' },
+        servicos: [
+          { name:'Consulta única', type:'single', price:35, durationMinutes:50 },
+          { name:'Pack 3 consultas', type:'pack', packSessions:3, price:90, durationMinutes:50 }
+        ]
+      },
+      { cat: { name:'Aromaterapia', icon:'🌸', modalidade:'presencial',
+          description:'Prática terapêutica que utiliza óleos essenciais extraídos de plantas para promover o bem-estar físico, emocional e espiritual — usada como ferramenta complementar nos outros tratamentos.' },
+        servicos: []
+      }
+    ];
+
+    for (const { cat, servicos } of categorias){
+      const catRef = await addDoc(collection(db, 'tenants', tenantId, 'serviceCategories'), cat);
+      for (const s of servicos){
+        await addDoc(collection(db, 'tenants', tenantId, 'services'), {
+          ...s, categoryId: catRef.id, active: true,
+          description: s.description || '', bufferMinutes: 0
+        });
+      }
+    }
+
+    // Formações de Reiki (níveis) — coleção "trainings".
+    const formacoes = [
+      { title:'Nível 1 de Reiki', price:135 },
+      { title:'Nível 2 de Reiki', price:175 },
+      { title:'Nível 3A de Reiki', price:235 },
+      { title:'Nível 3B de Reiki', price:275 }
+    ];
+    for (const f of formacoes){
+      await addDoc(collection(db, 'tenants', tenantId, 'trainings'), {
+        title: f.title, price: f.price, description: 'Formação de Reiki — inscrições através da Hikari Fafe.',
+        date: '', capacity: null, createdAt: serverTimestamp()
+      });
+    }
+
+    // Perfis de equipa — sem foto (carregue depois em "O Meu Perfil" ou "Equipa").
+    const equipa = [
+      { name:'Natália Fernandes', role:'Terapeuta', category:'Terapeuta',
+        bio:'Nível 2 de Reiki. Terapeuta de Reflexologia Podal. Terapeuta BioMicroHertz, especialista no tratamento de ansiedade e depressão. Terapeuta de Aromaterapia.' },
+      { name:'Ricardo Correia', role:'Mestre/Terapeuta de Reiki', category:'Terapeuta',
+        bio:'Mestre/Terapeuta de Reiki. Facilitador de Reiki para jovens e adolescentes. Terapeuta de Pêndulo Hebreu. Terapeuta BioMicroHertz, especialista no tratamento de ansiedade e depressão. Terapeuta de Cone Hindu.' }
+    ];
+    for (const p of equipa){
+      await addDoc(collection(db, 'tenants', tenantId, 'teamMembers'), {
+        ...p, whatsappNumber:'', photoUrl:'', staffUid:'', createdAt: serverTimestamp()
+      });
+    }
+
+    toast('Importado! Agora pode editar cada categoria, serviço, formação e perfil livremente.');
+    renderView('services');
+  }catch(e){
+    console.error(e);
+    toast('Ocorreu um erro a importar — tente outra vez.', true);
+    btn.disabled = false; btn.textContent = '🌱 Importar as minhas terapias';
+  }
+};
 
 function renderCategoryForm(editId, c){
   document.getElementById('categoryFormContainer').innerHTML = `
