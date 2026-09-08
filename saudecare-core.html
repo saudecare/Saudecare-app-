@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-121';
+const APP_VERSION = '2026-09-02-122';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -7729,15 +7729,14 @@ window.submitSupportRequest = async function(){
 };
 
 // ── Mapa da Alma Diamante — isca gratuita + upsell (só para hikari-terapias) ──
+let __mapaAlmaTab = 'pedidos';
+let __mapaAlmaPedidosCat = 'novos';
+
 async function renderMapaAlma(main){
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'mapaAlmaLeads'));
   const leads = [];
   snap.forEach(d => leads.push({ id: d.id, ...d.data() }));
   leads.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
-
-  const pending = leads.filter(l => l.paymentStatus === 'manual_pending');
-  const paid = leads.filter(l => l.paymentStatus === 'paid');
-  const others = leads.filter(l => l.paymentStatus !== 'manual_pending' && l.paymentStatus !== 'paid');
 
   const contactsSnap = await getDocs(collection(db, 'tenants', tenantId, 'marketingContacts'));
   const contacts = [];
@@ -7750,6 +7749,24 @@ async function renderMapaAlma(main){
   const publicLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','mapa-da-alma.html')}`;
 
   const diasDesde = (iso) => iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : 0;
+  const pendentes = leads.filter(l => l.paymentStatus === 'manual_pending');
+  const categorias = {
+    novos: pendentes.filter(l => diasDesde(l.createdAt) <= 0),
+    dia2: pendentes.filter(l => diasDesde(l.createdAt) === 1),
+    dia3: pendentes.filter(l => diasDesde(l.createdAt) >= 2),
+    pagoAuto: leads.filter(l => l.paymentStatus === 'paid' && l.paymentMethod === 'automatico'),
+    pagoManual: leads.filter(l => l.paymentStatus === 'paid' && l.paymentMethod !== 'automatico'),
+    todos: leads
+  };
+  const catLabels = {
+    novos: `🆕 Novos (${categorias.novos.length})`,
+    dia2: `⏳ 2º dia (${categorias.dia2.length})`,
+    dia3: `🔴 3º dia — a expirar (${categorias.dia3.length})`,
+    pagoAuto: `✅ Pago automático (${categorias.pagoAuto.length})`,
+    pagoManual: `✅ Pago manual (${categorias.pagoManual.length})`,
+    todos: `Todos (${categorias.todos.length})`
+  };
+
   const rowHtml = (l) => {
     const leadLink = `${publicLink}?mapa=${l.id}`;
     const isPending = l.paymentStatus === 'manual_pending';
@@ -7763,13 +7780,16 @@ async function renderMapaAlma(main){
           <div class="muted">${escapeHtml(l.dataNascimento||'')} · ${escapeHtml(l.contacto||'sem contacto')} · ${l.createdAt ? new Date(l.createdAt).toLocaleDateString('pt-PT') : ''}</div>
           ${isPending ? `<div class="muted" style="font-size:11.5px;margin-top:2px;color:${diasRestantes<=1?'#c0392b':'#8a7a3a'};">⏳ ${diasRestantes>0 ? `Elimina-se sozinho em ${diasRestantes} dia(s) se não confirmar` : 'Prestes a ser eliminado automaticamente'}</div>` : ''}
         </div>
-        ${isPending ? '' : `<span class="badge ${l.paymentStatus==='paid'?'active':''}">${escapeHtml(l.paymentStatus||'')}</span>`}
+        ${isPending ? '' : `<span class="badge ${l.paymentStatus==='paid'?'active':''}">${escapeHtml(l.paymentStatus||'')}${l.paymentMethod ? ' · '+escapeHtml(l.paymentMethod) : ''}</span>`}
       </div>
       ${isPending ? `
       <div class="row" style="margin-top:8px;gap:8px;">
         <button class="primary" onclick="confirmMapaAlmaPayment('${l.id}')">✅ Confirmar pagamento</button>
         <button class="danger" onclick="rejectMapaAlmaLead('${l.id}')">🗑️ Recusar / Apagar já</button>
-      </div>` : ''}
+      </div>` : `
+      <div class="row" style="margin-top:8px;">
+        <button class="danger" onclick="rejectMapaAlmaLead('${l.id}')">🗑️ Apagar este pedido</button>
+      </div>`}
       <div class="row" style="margin-top:6px;flex-wrap:wrap;">
         <button class="ghost" onclick="navigator.clipboard.writeText('${leadLink}').then(()=>toast('Link copiado.'))">📋 Copiar link</button>
         ${l.contacto ? `<button class="ghost" onclick="resendMapaAlmaLink('${escapeAttrJs(l.contacto)}','${escapeAttrJs(l.nome||'')}','${leadLink}')">📱 Reenviar por WhatsApp</button>` : ''}
@@ -7777,16 +7797,48 @@ async function renderMapaAlma(main){
     </div>`;
   };
 
-  main.innerHTML = `
-    <h2>🔮 Mapa da Alma Diamante</h2>
-    ${hintBox('Página pública gratuita que gera o primeiro resultado do Mapa da Alma e convida a pessoa a comprar o Mapa Diamante completo. Partilhe o link abaixo nas redes sociais ou nos seus canais.')}
+  const tabBtn = (id, label) => `<button class="${__mapaAlmaTab===id?'primary':'ghost'}" onclick="window.__mapaAlmaTab='${id}';renderMapaAlma(document.getElementById('mainView'));" style="margin:2px;">${label}</button>`;
+  const catBtn = (id) => `<button class="${__mapaAlmaPedidosCat===id?'primary':'ghost'}" onclick="window.__mapaAlmaPedidosCat='${id}';renderMapaAlma(document.getElementById('mainView'));" style="margin:2px;font-size:12.5px;padding:8px 10px;">${catLabels[id]}</button>`;
+
+  let bodyHtml = '';
+  if (__mapaAlmaTab === 'pedidos'){
+    const lista = categorias[__mapaAlmaPedidosCat] || [];
+    bodyHtml = `
+    <div class="card">
+      <div class="row" style="flex-wrap:wrap;">${Object.keys(catLabels).map(catBtn).join('')}</div>
+    </div>
+    <div class="card">
+      ${lista.length ? lista.map(rowHtml).join('') : '<p class="muted">Nada nesta categoria.</p>'}
+    </div>`;
+  } else if (__mapaAlmaTab === 'contactos'){
+    bodyHtml = `
+    <div class="card">
+      <p class="muted" style="margin-bottom:8px;">Todas as pessoas que autorizaram receber novidades/promoções, mesmo que não tenham comprado o Mapa Diamante. Nunca são apagadas automaticamente.</p>
+      ${contacts.length ? `
+      <button class="primary" onclick="copiarContactosMarketing()">📋 Copiar todos os contactos (${contacts.length})</button>
+      <div style="margin-top:10px;">
+        ${contacts.map(c => `<div class="appt-item"><strong>${escapeHtml(c.nome||'')}</strong><div class="muted">${escapeHtml(c.contacto||'')} · ${escapeHtml(c.tipo||'')}</div></div>`).join('')}
+      </div>` : '<p class="muted">Ainda ninguém autorizou receber novidades.</p>'}
+    </div>`;
+  } else if (__mapaAlmaTab === 'definicoes'){
+    bodyHtml = `
     <div class="card">
       <label>🔗 Link público da isca gratuita</label>
       <input readonly value="${publicLink}" onclick="this.select()">
       <button class="primary" onclick="navigator.clipboard.writeText('${publicLink}').then(()=>toast('Link copiado.'))">Copiar link</button>
     </div>
 
-    <details class="card" open>
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">🔔 Notificações</summary>
+      <div style="margin-top:10px;">
+        <p class="muted" style="margin-bottom:8px;">Email ou nº de WhatsApp onde quer ser avisada quando chega um pedido novo por pagar.</p>
+        <label>Email ou WhatsApp para avisos</label>
+        <input id="maNotifContacto" value="${escapeHtml(settings.notificacaoContacto||'')}" placeholder="ex: 928122918 ou o.seu@email.com">
+        <button class="primary" onclick="saveMapaAlmaSettings()">Guardar</button>
+      </div>
+    </details>
+
+    <details class="card">
       <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">💶 Tabela de preços</summary>
       <div style="margin-top:10px;">
         <p class="muted" style="margin-bottom:8px;">Preço normal de cada tipo de mapa.</p>
@@ -7841,7 +7893,7 @@ async function renderMapaAlma(main){
     <details class="card">
       <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">💳 Forma de pagamento manual</summary>
       <div style="margin-top:10px;">
-        <p class="muted" style="margin-bottom:8px;">Usado quando não há deteção automática (SumUp) configurada — a pessoa vê estes dados e depois confirma consigo.</p>
+        <p class="muted" style="margin-bottom:8px;">Usado quando a pessoa escolhe MB Way/transferência (ou quando a SumUp ainda não está configurada) — a pessoa vê estes dados e depois confirma consigo.</p>
         <label>IBAN</label>
         <input id="maIban" value="${escapeHtml(settings.iban||'')}">
         <label>MB Way</label>
@@ -7873,52 +7925,37 @@ async function renderMapaAlma(main){
           <button class="danger" onclick="if(confirm('Apagar todas as suas edições e voltar aos textos predefinidos?')) { document.getElementById('maOverrides').value='{}'; saveMapaAlmaOverrides(); }">Repor predefinições</button>
         </div>
       </div>
-    </details>
+    </details>`;
+  }
 
-    <details class="card">
-      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">📣 Contactos de Marketing (${contacts.length})</summary>
-      <div style="margin-top:10px;">
-        <p class="muted" style="margin-bottom:8px;">Todas as pessoas que autorizaram receber novidades/promoções, mesmo que não tenham comprado o Mapa Diamante. Nunca são apagadas automaticamente.</p>
-        ${contacts.length ? `
-        <button class="primary" onclick="copiarContactosMarketing()">📋 Copiar todos os contactos</button>
-        <div style="margin-top:10px;max-height:300px;overflow-y:auto;">
-          ${contacts.map(c => `<div class="appt-item"><strong>${escapeHtml(c.nome||'')}</strong><div class="muted">${escapeHtml(c.contacto||'')} · ${escapeHtml(c.tipo||'')}</div></div>`).join('')}
-        </div>` : '<p class="muted">Ainda ninguém autorizou receber novidades.</p>'}
+  main.innerHTML = `
+    <h2>🔮 Mapa da Alma Diamante</h2>
+    <div class="card" style="padding:8px;">
+      <div class="row" style="flex-wrap:wrap;">
+        ${tabBtn('pedidos', '📋 Pedidos')}
+        ${tabBtn('contactos', `📣 Contactos (${contacts.length})`)}
+        ${tabBtn('definicoes', '⚙️ Definições')}
       </div>
-    </details>
-
-    ${pending.length ? `
-    <details class="card" open style="background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.35);">
-      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">🕓 Por confirmar — precisa da sua ação (${pending.length})</summary>
-      <p class="muted" style="margin-top:6px;font-size:11.5px;">Pagamentos por MB Way/transferência apagam-se sozinhos ao fim de 3 dias sem confirmação, para manter esta lista sempre limpa.</p>
-      <div style="margin-top:10px;">${pending.map(rowHtml).join('')}</div>
-    </details>` : ''}
-
-    <details class="card">
-      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">✅ Pagos (${paid.length})</summary>
-      <div style="margin-top:10px;">${paid.length ? paid.map(rowHtml).join('') : '<p class="muted">Ainda nenhum.</p>'}</div>
-    </details>
-
-    <details class="card">
-      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">Todos os pedidos (${leads.length})</summary>
-      <div style="margin-top:10px;">${leads.length ? leads.map(rowHtml).join('') : '<p class="muted">Ainda sem pedidos.</p>'}</div>
-    </details>
+    </div>
+    ${bodyHtml}
   `;
 }
 
 window.saveMapaAlmaSettings = async function(){
-  const iban = document.getElementById('maIban').value.trim();
-  const mbway = document.getElementById('maMbway').value.trim();
-  const limpezaTexto = document.getElementById('maLimpezaTexto').value.trim();
-  const limpezaPrecoConsulta = parseFloat(document.getElementById('maLimpezaPreco').value) || 35;
+  const iban = document.getElementById('maIban')?.value.trim() ?? currentTenantDoc?.mapaAlmaSettings?.iban ?? '';
+  const mbway = document.getElementById('maMbway')?.value.trim() ?? currentTenantDoc?.mapaAlmaSettings?.mbway ?? '';
+  const limpezaTexto = document.getElementById('maLimpezaTexto')?.value.trim() ?? currentTenantDoc?.mapaAlmaSettings?.limpezaTexto ?? '';
+  const limpezaPrecoConsulta = parseFloat(document.getElementById('maLimpezaPreco')?.value) || currentTenantDoc?.mapaAlmaSettings?.limpezaPrecoConsulta || 35;
+  const notificacaoContacto = document.getElementById('maNotifContacto')?.value.trim() ?? currentTenantDoc?.mapaAlmaSettings?.notificacaoContacto ?? '';
+  const pricesAtuais = currentTenantDoc?.mapaAlmaSettings?.pricesByType || {};
   const pricesByType = {
-    individual: parseFloat(document.getElementById('maPriceIndividual')?.value) || 27,
-    casal: parseFloat(document.getElementById('maPriceCasal')?.value) || 45,
-    familia: parseFloat(document.getElementById('maPriceFamilia')?.value) || 60,
-    bebe: parseFloat(document.getElementById('maPriceBebe')?.value) || 20,
-    empresa: parseFloat(document.getElementById('maPriceEmpresa')?.value) || 80
+    individual: parseFloat(document.getElementById('maPriceIndividual')?.value) || pricesAtuais.individual || 27,
+    casal: parseFloat(document.getElementById('maPriceCasal')?.value) || pricesAtuais.casal || 45,
+    familia: parseFloat(document.getElementById('maPriceFamilia')?.value) || pricesAtuais.familia || 60,
+    bebe: parseFloat(document.getElementById('maPriceBebe')?.value) || pricesAtuais.bebe || 20,
+    empresa: parseFloat(document.getElementById('maPriceEmpresa')?.value) || pricesAtuais.empresa || 80
   };
-  const merged = { ...(currentTenantDoc?.mapaAlmaSettings||{}), iban, mbway, limpezaTexto, limpezaPrecoConsulta, pricesByType };
+  const merged = { ...(currentTenantDoc?.mapaAlmaSettings||{}), iban, mbway, limpezaTexto, limpezaPrecoConsulta, notificacaoContacto, pricesByType };
   await updateDoc(doc(db, 'tenants', tenantId), { mapaAlmaSettings: merged });
   currentTenantDoc.mapaAlmaSettings = merged;
   toast('Preferências guardadas.');
@@ -7991,7 +8028,7 @@ window.rejectMapaAlmaLead = async function(leadId){
 
 window.confirmMapaAlmaPayment = async function(leadId){
   if (!confirm('Confirmar que este pagamento foi recebido? A pessoa vai poder ver o Mapa Diamante completo.')) return;
-  await updateDoc(doc(db, 'tenants', tenantId, 'mapaAlmaLeads', leadId), { paymentStatus: 'paid', paidAt: serverTimestamp() });
+  await updateDoc(doc(db, 'tenants', tenantId, 'mapaAlmaLeads', leadId), { paymentStatus: 'paid', paymentMethod: 'manual', paidAt: serverTimestamp() });
   // Se houver uma promoção por número de pedidos ativa, conta este como usado.
   const promo = currentTenantDoc?.mapaAlmaSettings?.promo;
   if (promo?.active && promo.mode === 'maxOrders'){
