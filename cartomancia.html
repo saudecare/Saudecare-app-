@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Cartomancia — Hikari Fafe</title>
+<style>
+  :root{
+    --bg1:#1a0f2e; --bg2:#2d1b4e; --gold:#d4af37; --gold-light:#f0d878;
+    --text:#f3ecff; --muted:#c9b8e8; --card:#241640;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{background:linear-gradient(160deg,var(--bg1),var(--bg2) 60%,#150a26);color:var(--text);min-height:100vh;padding-bottom:60px;}
+  .wrap{max-width:560px;margin:0 auto;padding:28px 18px;}
+  .hero{text-align:center;margin-bottom:26px;}
+  .hero .stars{font-size:28px;letter-spacing:8px;color:var(--gold);margin-bottom:6px;}
+  .hero h1{font-size:1.6rem;background:linear-gradient(90deg,var(--gold-light),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:8px;}
+  .hero p{color:var(--muted);font-size:.95rem;line-height:1.5;}
+  .card{background:var(--card);border:1px solid rgba(212,175,55,.25);border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 4px 24px rgba(0,0,0,.35);}
+  label{display:block;margin:12px 0 6px;font-size:.85rem;color:var(--muted);}
+  input, select, textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(212,175,55,.35);
+    background:rgba(255,255,255,.05);color:var(--text);font-size:1rem;font-family:inherit;}
+  input::placeholder, textarea::placeholder{color:#8874ac;}
+  .btn{display:block;width:100%;text-align:center;background:linear-gradient(90deg,var(--gold),var(--gold-light));
+    color:#2a1a00;font-weight:700;padding:14px;border:none;border-radius:12px;cursor:pointer;font-size:1rem;margin-top:16px;}
+  .btn:disabled{opacity:.6;}
+  .btn-ghost{background:none;border:1.5px solid var(--gold);color:var(--gold-light);}
+  .muted{color:var(--muted);font-size:.85rem;line-height:1.5;}
+  .teaser-tag{display:inline-block;background:rgba(212,175,55,.18);color:var(--gold-light);padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:700;margin-bottom:10px;}
+  .loading{text-align:center;padding:60px 20px;color:var(--muted);}
+  .hidden{display:none !important;}
+  .errorbox{background:rgba(200,60,60,.15);border:1px solid rgba(200,60,60,.4);border-radius:10px;padding:12px;margin-top:10px;font-size:.85rem;}
+  .focus-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+  .focus-tile{border:1.5px solid rgba(212,175,55,.35);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;font-size:.85rem;}
+  .focus-tile.active{border-color:var(--gold);background:rgba(212,175,55,.15);color:var(--gold-light);font-weight:700;}
+  .spread-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+  .card-face{background:linear-gradient(160deg,#2d1b4e,#1a0f2e);border:2px solid var(--gold);border-radius:12px;
+    aspect-ratio:2/3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;text-align:center;}
+  .card-face .naipe{font-size:1.8rem;}
+  .card-face .valor{font-size:1.1rem;font-weight:800;color:var(--gold-light);margin-top:4px;}
+  .cards-drawn{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;}
+  .result-block{border-top:1px solid rgba(212,175,55,.25);padding-top:14px;margin-top:14px;}
+  .result-block h3{color:var(--gold-light);font-size:1.05rem;margin-bottom:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="stars">✦ ✧ ✦</div>
+    <h1 id="heroTitle">Cartomancia — a sua pergunta, respondida</h1>
+    <p id="heroSub">Hikari Fafe — leitura com baralho de 52 cartas.</p>
+  </div>
+  <div id="mainContent"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const TENANT_ID = 'hikari-terapias';
+const FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/cartomancia';
+
+const main = document.getElementById('mainContent');
+function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+const FOCOS = {
+  amor: { label: '💞 Amor', icon: '💞' },
+  trabalho: { label: '💼 Trabalho', icon: '💼' },
+  decisao: { label: '⚡ Decisão Rápida', icon: '⚡' },
+  momento: { label: '🌙 Momento Atual', icon: '🌙' }
+};
+
+let estado = { nome:'', contacto:'', foco:'momento', pergunta:'', tiragem:'3' };
+
+function renderFormulario(){
+  main.innerHTML = `
+    <div class="card">
+      <label>O seu nome</label>
+      <input id="inpNome" placeholder="Nome">
+      <label>O seu WhatsApp ou email</label>
+      <input id="inpContacto" placeholder="Telemóvel ou email">
+      <label>Qual é o foco da sua pergunta?</label>
+      <div class="focus-grid">
+        ${Object.entries(FOCOS).map(([k,f]) => `<div class="focus-tile ${estado.foco===k?'active':''}" data-foco="${k}">${f.label}</div>`).join('')}
+      </div>
+      <label>A sua pergunta (opcional, mas ajuda a focar a leitura)</label>
+      <textarea id="inpPergunta" rows="2" placeholder="ex: Como vai evoluir esta situação?"></textarea>
+      <label>Quer tirar quantas cartas?</label>
+      <div class="spread-grid">
+        <div class="focus-tile ${estado.tiragem==='1'?'active':''}" data-tiragem="1">🎴 1 carta<br><span class="muted" style="font-size:.75rem;">resposta rápida</span></div>
+        <div class="focus-tile ${estado.tiragem==='3'?'active':''}" data-tiragem="3">🎴🎴🎴 3 cartas<br><span class="muted" style="font-size:.75rem;">tendência geral</span></div>
+      </div>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;margin-top:14px;">
+        <input type="checkbox" id="inpConsentimento" style="width:auto;margin-top:3px;">
+        <span>Concordo com o tratamento dos meus dados para receber esta leitura, nos termos da <a href="politica-privacidade.html" target="_blank" style="color:var(--gold-light);">Política de Privacidade</a>.</span>
+      </label>
+      <button class="btn" id="btnContinuar">✦ Sintonizar e tirar as cartas</button>
+    </div>
+    <p class="muted" style="text-align:center;">Ferramenta de reflexão espiritual — não substitui aconselhamento médico, psicológico, jurídico ou financeiro.</p>
+  `;
+  document.querySelectorAll('[data-foco]').forEach(el => el.addEventListener('click', () => {
+    estado.foco = el.dataset.foco;
+    document.querySelectorAll('[data-foco]').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }));
+  document.querySelectorAll('[data-tiragem]').forEach(el => el.addEventListener('click', () => {
+    estado.tiragem = el.dataset.tiragem;
+    document.querySelectorAll('[data-tiragem]').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }));
+  document.getElementById('btnContinuar').addEventListener('click', onContinuar);
+}
+
+async function onContinuar(){
+  const nome = document.getElementById('inpNome').value.trim();
+  const contacto = document.getElementById('inpContacto').value.trim();
+  const pergunta = document.getElementById('inpPergunta').value.trim();
+  const consentimento = document.getElementById('inpConsentimento').checked;
+  if (!nome || !contacto){ alert('Preencha o nome e um contacto (WhatsApp ou email).'); return; }
+  if (!consentimento){ alert('Precisa de aceitar o tratamento de dados para continuar.'); return; }
+  estado.nome = nome; estado.contacto = contacto; estado.pergunta = pergunta;
+  renderMesa();
+}
+
+function renderMesa(){
+  const n = parseInt(estado.tiragem, 10);
+  main.innerHTML = `
+    <div class="card" style="text-align:center;">
+      <p class="teaser-tag">${FOCOS[estado.foco].icon} ${FOCOS[estado.foco].label}</p>
+      <p class="muted" style="margin:10px 0;">Feche os olhos um instante, pense na sua pergunta, e toque para virar ${n===1?'a carta':'as 3 cartas'}.</p>
+      <button class="btn" id="btnTirar">🎴 Tirar ${n===1?'a carta':'as cartas'}</button>
+    </div>
+  `;
+  document.getElementById('btnTirar').addEventListener('click', tirarCartas);
+}
+
+async function tirarCartas(){
+  main.innerHTML = '<div class="loading">A sintonizar com as cartas…</div>';
+  const leadId = crypto.randomUUID();
+  try{
+    const res = await fetch(FUNCTION_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'criarLeitura', tenantId: TENANT_ID, leadId,
+        nome: estado.nome, contacto: estado.contacto, foco: estado.foco,
+        pergunta: estado.pergunta, numCartas: parseInt(estado.tiragem, 10)
+      })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Erro ao tirar as cartas.');
+    renderResultado(leadId, data.leitura);
+  }catch(e){
+    main.innerHTML = `<div class="card"><div class="errorbox">${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+function renderResultado(leadId, leitura){
+  main.innerHTML = `
+    <div class="card">
+      <p class="teaser-tag">${FOCOS[leitura.foco]?.icon||''} Leitura de ${leitura.nome.split(' ')[0]}</p>
+      <div class="cards-drawn">
+        ${leitura.cartas.map(c => `
+          <div class="card-face">
+            <div class="naipe">${c.simbolo}</div>
+            <div class="valor">${c.nomeCarta}</div>
+          </div>`).join('')}
+      </div>
+      <div class="result-block">
+        <h3>🔮 Tendência geral</h3>
+        <p class="muted">${escapeHtml(leitura.tendenciaGeral)}</p>
+      </div>
+      <div class="result-block">
+        <h3>💭 Primeira reflexão</h3>
+        <p class="muted">${escapeHtml(leitura.primeiraReflexao)}</p>
+      </div>
+    </div>
+    <div class="card" style="text-align:center;background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);">
+      <h3 style="color:var(--gold-light);margin-bottom:8px;">Quer aprofundar?</h3>
+      <p class="muted" style="margin-bottom:14px;">Queres aprofundar a tua tiragem completa, ver bloqueios e prazos detalhados? Agenda agora a tua sessão presencial ou online com a Hikari Fafe.</p>
+      ${leitura.whatsapp ? `<a class="btn" style="display:block;text-decoration:none;" target="_blank" href="https://wa.me/${leitura.whatsapp}?text=${encodeURIComponent('Olá! Fiz a leitura de cartas online (' + leitura.nome + ') e gostava de marcar uma sessão completa.')}">📱 Marcar sessão com a Hikari Fafe</a>` : ''}
+    </div>
+  `;
+}
+
+renderFormulario();
+</script>
+</body>
+</html>

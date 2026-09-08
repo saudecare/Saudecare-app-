@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-123';
+const APP_VERSION = '2026-09-02-125';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1409,7 +1409,8 @@ const NAV_GROUPS = {
     { view: 'forms', icon: '📝', label: 'Fichas' },
     { view: 'services', icon: '🩺', label: 'Serviços' },
     { view: 'knowledge', icon: '🧠', label: 'Conhecimento' },
-    { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', tenantOnly: 'hikari-terapias' }
+    { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', tenantOnly: 'hikari-terapias' },
+    { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1481,6 +1482,7 @@ function renderView(view){
   else if (view === 'settings') renderSettings(main);
   else if (view === 'supportContact') renderSupportContact(main);
   else if (view === 'mapaAlma') renderMapaAlma(main);
+  else if (view === 'cartomancia') renderCartomancia(main);
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
   highlightActiveNavGroup(view);
@@ -7828,6 +7830,11 @@ async function renderMapaAlma(main){
       <label>🔗 Link público da isca gratuita</label>
       <input readonly value="${publicLink}" onclick="this.select()">
       <button class="primary" onclick="navigator.clipboard.writeText('${publicLink}').then(()=>toast('Link copiado.'))">Copiar link</button>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:12px;">
+        <input type="checkbox" id="maVisivelPagina" style="width:auto;" ${settings.visivelNaPagina !== false ? 'checked' : ''}>
+        Mostrar destaque na minha página pública
+      </label>
+      <button class="primary" style="margin-top:8px;" onclick="toggleMapaAlmaVisivel()">Guardar</button>
     </div>
 
     <details class="card">
@@ -8021,6 +8028,14 @@ window.copiarContactosMarketing = async function(){
   toast(`${linhas.length} contactos copiados — cole numa lista de transmissão do WhatsApp ou no seu programa de email.`);
 };
 
+window.toggleMapaAlmaVisivel = async function(){
+  const visivelNaPagina = document.getElementById('maVisivelPagina').checked;
+  const merged = { ...(currentTenantDoc?.mapaAlmaSettings||{}), visivelNaPagina };
+  await updateDoc(doc(db, 'tenants', tenantId), { mapaAlmaSettings: merged });
+  currentTenantDoc.mapaAlmaSettings = merged;
+  toast(visivelNaPagina ? 'Agora aparece na sua página pública.' : 'Escondido da sua página pública.');
+};
+
 window.rejectMapaAlmaLead = async function(leadId){
   if (!confirm('Apagar este pedido? Não há pagamento confirmado, a pessoa terá de preencher tudo outra vez se quiser.')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'mapaAlmaLeads', leadId));
@@ -8041,6 +8056,212 @@ window.confirmMapaAlmaPayment = async function(leadId){
   }
   toast('Pagamento confirmado — o Mapa completo já está disponível para a pessoa.');
   renderMapaAlma(document.getElementById('mainView'));
+};
+
+let __cartoTab = 'leituras';
+window.setCartoTab = function(id){ __cartoTab = id; renderCartomancia(document.getElementById('mainView')); };
+
+const CARTO_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/cartomancia';
+const CARTO_NAIPES = { paus:'♣ Paus', copas:'♥ Copas', espadas:'♠ Espadas', ouros:'♦ Ouros' };
+const CARTO_VALORES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+
+async function renderCartomancia(main){
+  const publicLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','cartomancia.html')}`;
+
+  let leituras = [];
+  if (__cartoTab === 'leituras'){
+    try{
+      const res = await fetch(CARTO_FUNCTION_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'listarLeituras', tenantId })
+      });
+      const data = await res.json();
+      leituras = data.ok ? data.leituras : [];
+    }catch(e){ console.error(e); }
+  }
+
+  const tabBtn = (id, label) => `<button class="${__cartoTab===id?'primary':'ghost'}" onclick="setCartoTab('${id}')" style="margin:2px;">${label}</button>`;
+
+  let bodyHtml = '';
+  if (__cartoTab === 'leituras'){
+    bodyHtml = `
+    <div class="card">
+      ${leituras.length ? leituras.map(l => `
+        <div class="appt-item">
+          <strong>${escapeHtml(l.nome||'')}</strong>
+          <div class="muted">${escapeHtml(l.contacto||'')} · ${escapeHtml(l.foco||'')} · ${l.createdAt ? new Date(l.createdAt).toLocaleDateString('pt-PT') : ''}</div>
+          ${l.pergunta ? `<div class="muted" style="margin-top:4px;"><em>"${escapeHtml(l.pergunta)}"</em></div>` : ''}
+          <div class="muted" style="margin-top:4px;">Cartas: ${(l.cartas||[]).map(c=>escapeHtml(c.nomeCarta)).join(', ')}</div>
+          <div class="row" style="margin-top:8px;">
+            ${l.contacto ? `<button class="ghost" onclick="resendMapaAlmaLink('${escapeAttrJs(l.contacto)}','${escapeAttrJs(l.nome||'')}','${publicLink}')">📱 Contactar</button>` : ''}
+            <button class="danger" onclick="apagarLeituraCartomancia('${l.id}')">🗑️ Apagar</button>
+          </div>
+        </div>`).join('') : '<p class="muted">Ainda sem leituras públicas.</p>'}
+    </div>`;
+  } else if (__cartoTab === 'nova'){
+    bodyHtml = `
+    <div class="card">
+      <p class="muted" style="margin-bottom:8px;">Para uma consulta feita com o baralho físico, escolha as cartas que saíram na mesa. Para sortear na app, use o botão de sorteio.</p>
+      <label>Nome do cliente</label>
+      <input id="ctNome" placeholder="Nome">
+      <label>Pergunta / foco</label>
+      <input id="ctPergunta" placeholder="ex: Como vai evoluir o novo trabalho?">
+      <label>Número de cartas</label>
+      <select id="ctNumCartas" onchange="montarCamposCartas()">
+        <option value="1">1 carta</option>
+        <option value="3" selected>3 cartas (Linha Temporal)</option>
+        <option value="5">5 cartas (Cruz Prática)</option>
+      </select>
+      <div id="ctCamposCartas" style="margin-top:10px;"></div>
+      <label style="margin-top:10px;">Carta de Tempo (opcional — "quando vai acontecer?")</label>
+      <div class="row">
+        <select id="ctTempoNaipe" style="flex:1;"><option value="">— nenhuma —</option>${Object.entries(CARTO_NAIPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+        <select id="ctTempoValor" style="flex:1;">${CARTO_VALORES.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
+      </div>
+      <div class="row" style="margin-top:14px;gap:8px;">
+        <button class="ghost" onclick="sortearCartasApp()">🎲 Sortear na app</button>
+        <button class="primary" onclick="gerarRelatorioCartomancia()">✨ Gerar relatório</button>
+      </div>
+    </div>
+    <div id="ctResultado"></div>`;
+  }
+
+  main.innerHTML = `
+    <h2>🃏 Cartomancia</h2>
+    ${hintBox('Página pública gratuita que atrai pessoas com uma leitura rápida (1 ou 3 cartas) e convida a marcar uma sessão completa. Partilhe o link abaixo nas redes sociais.')}
+    <div class="card">
+      <label>🔗 Link público da isca gratuita</label>
+      <input readonly value="${publicLink}" onclick="this.select()">
+      <button class="primary" onclick="navigator.clipboard.writeText('${publicLink}').then(()=>toast('Link copiado.'))">Copiar link</button>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:12px;">
+        <input type="checkbox" id="ctVisivelPagina" style="width:auto;" ${(currentTenantDoc?.cartomanciaSettings?.visivelNaPagina !== false) ? 'checked' : ''}>
+        Mostrar destaque na minha página pública
+      </label>
+      <button class="primary" style="margin-top:8px;" onclick="toggleCartomanciaVisivel()">Guardar</button>
+    </div>
+    <div class="card" style="padding:8px;">
+      <div class="row" style="flex-wrap:wrap;">
+        ${tabBtn('leituras', `🎴 Leituras (${leituras.length})`)}
+        ${tabBtn('nova', '✨ Nova Consulta Profissional')}
+      </div>
+    </div>
+    ${bodyHtml}
+  `;
+  if (__cartoTab === 'nova') montarCamposCartas();
+}
+
+window.montarCamposCartas = function(){
+  const n = parseInt(document.getElementById('ctNumCartas').value, 10);
+  const box = document.getElementById('ctCamposCartas');
+  const labels = n === 5 ? ['Situação atual','Desafio/bloqueio','Passado recente','Futuro próximo','Conselho/resultado']
+    : n === 3 ? ['Passado','Presente','Futuro'] : ['Resposta'];
+  box.innerHTML = labels.map((lbl,i) => `
+    <label>${lbl}</label>
+    <div class="row">
+      <select class="ctCartaNaipe" style="flex:1;">${Object.entries(CARTO_NAIPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+      <select class="ctCartaValor" style="flex:1;">${CARTO_VALORES.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
+    </div>`).join('');
+};
+
+window.sortearCartasApp = async function(){
+  const n = parseInt(document.getElementById('ctNumCartas').value, 10);
+  const nome = document.getElementById('ctNome').value.trim() || 'Cliente';
+  const pergunta = document.getElementById('ctPergunta').value.trim();
+  const res = await fetch(CARTO_FUNCTION_URL, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'gerarConsultaProfissional', tenantId, nome, pergunta, foco:'momento', sortear:true, numCartas:n })
+  });
+  const data = await res.json();
+  if (!data.ok){ toast('Erro ao sortear.', true); return; }
+  mostrarRelatorioCartomancia(data.relatorio);
+};
+
+window.gerarRelatorioCartomancia = async function(){
+  const nome = document.getElementById('ctNome').value.trim() || 'Cliente';
+  const pergunta = document.getElementById('ctPergunta').value.trim();
+  const naipesEl = document.querySelectorAll('.ctCartaNaipe');
+  const valoresEl = document.querySelectorAll('.ctCartaValor');
+  const cartasEscolhidas = Array.from(naipesEl).map((el,i) => ({ naipeKey: el.value, valor: valoresEl[i].value }));
+  const tempoNaipe = document.getElementById('ctTempoNaipe').value;
+  const cartaTempo = tempoNaipe ? { naipeKey: tempoNaipe, valor: document.getElementById('ctTempoValor').value } : null;
+
+  const res = await fetch(CARTO_FUNCTION_URL, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'gerarConsultaProfissional', tenantId, nome, pergunta, foco:'momento', cartasEscolhidas, cartaTempo })
+  });
+  const data = await res.json();
+  if (!data.ok){ toast('Erro ao gerar relatório.', true); return; }
+  mostrarRelatorioCartomancia(data.relatorio);
+};
+
+let __ultimoRelatorioCarto = null;
+function mostrarRelatorioCartomancia(r){
+  __ultimoRelatorioCarto = r;
+  document.getElementById('ctResultado').innerHTML = `
+    <div class="card">
+      <h3>🔮 Relatório — ${escapeHtml(r.nome)}</h3>
+      ${r.pergunta ? `<p class="muted" style="margin-top:6px;"><em>"${escapeHtml(r.pergunta)}"</em></p>` : ''}
+      ${r.leituraPorPosicao.map(p => `<div class="appt-item"><strong>${escapeHtml(p.posicao)}:</strong> ${p.simbolo} ${escapeHtml(p.carta)}<div class="muted">${escapeHtml(p.significado)}</div></div>`).join('')}
+      <p class="muted" style="margin-top:10px;"><strong>Tendência geral:</strong> ${escapeHtml(r.tendenciaGeral)}</p>
+      ${r.bloqueios.length ? `<p class="muted" style="margin-top:8px;"><strong>Bloqueios:</strong> ${r.bloqueios.map(escapeHtml).join(' · ')}</p>` : ''}
+      <p class="muted" style="margin-top:8px;"><strong>Conselho prático:</strong> ${escapeHtml(r.conselhoPratico)}</p>
+      ${r.janelaTemporal ? `<p class="muted" style="margin-top:8px;"><strong>Janela temporal (${escapeHtml(r.janelaTemporal.carta)}):</strong> ${escapeHtml(r.janelaTemporal.texto)}</p>` : ''}
+      <button class="primary" style="margin-top:10px;" onclick="descarregarPDFCartomancia()">📥 Descarregar em PDF</button>
+    </div>`;
+}
+
+window.descarregarPDFCartomancia = function(){
+  const r = __ultimoRelatorioCarto;
+  if (!r) return;
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF();
+  let y = 20;
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(16);
+  pdf.text('Cartomancia — Hikari Fafe', 15, y); y += 10;
+  pdf.setFontSize(11); pdf.setFont('helvetica','normal');
+  pdf.text(`Cliente: ${r.nome}`, 15, y); y += 8;
+  if (r.pergunta){ pdf.text(`Pergunta: ${r.pergunta}`, 15, y); y += 8; }
+  y += 4;
+  r.leituraPorPosicao.forEach(p => {
+    pdf.setFont('helvetica','bold');
+    pdf.text(`${p.posicao}: ${p.carta}`, 15, y); y += 6;
+    pdf.setFont('helvetica','normal');
+    const linhas = pdf.splitTextToSize(p.significado, 175);
+    pdf.text(linhas, 15, y); y += linhas.length * 6 + 4;
+  });
+  y += 2;
+  pdf.setFont('helvetica','bold'); pdf.text('Tendência geral:', 15, y); y += 6;
+  pdf.setFont('helvetica','normal');
+  let linhas = pdf.splitTextToSize(r.tendenciaGeral, 175); pdf.text(linhas, 15, y); y += linhas.length*6+6;
+  if (r.bloqueios.length){
+    pdf.setFont('helvetica','bold'); pdf.text('Bloqueios:', 15, y); y += 6;
+    pdf.setFont('helvetica','normal');
+    linhas = pdf.splitTextToSize(r.bloqueios.join('; '), 175); pdf.text(linhas, 15, y); y += linhas.length*6+6;
+  }
+  pdf.setFont('helvetica','bold'); pdf.text('Conselho prático:', 15, y); y += 6;
+  pdf.setFont('helvetica','normal');
+  linhas = pdf.splitTextToSize(r.conselhoPratico, 175); pdf.text(linhas, 15, y); y += linhas.length*6+6;
+  if (r.janelaTemporal){
+    pdf.setFont('helvetica','bold'); pdf.text(`Janela temporal (${r.janelaTemporal.carta}):`, 15, y); y += 6;
+    pdf.setFont('helvetica','normal');
+    linhas = pdf.splitTextToSize(r.janelaTemporal.texto, 175); pdf.text(linhas, 15, y);
+  }
+  pdf.save(`Cartomancia-${r.nome.replace(/\s+/g,'-')}.pdf`);
+};
+
+window.toggleCartomanciaVisivel = async function(){
+  const visivelNaPagina = document.getElementById('ctVisivelPagina').checked;
+  const merged = { ...(currentTenantDoc?.cartomanciaSettings||{}), visivelNaPagina };
+  await updateDoc(doc(db, 'tenants', tenantId), { cartomanciaSettings: merged });
+  currentTenantDoc.cartomanciaSettings = merged;
+  toast(visivelNaPagina ? 'Agora aparece na sua página pública.' : 'Escondido da sua página pública.');
+};
+
+window.apagarLeituraCartomancia = async function(id){
+  if (!confirm('Apagar esta leitura?')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'cartomanciaLeads', id));
+  toast('Leitura apagada.');
+  renderCartomancia(document.getElementById('mainView'));
 };
 
 async function renderSettings(main){

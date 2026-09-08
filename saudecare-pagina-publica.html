@@ -56,6 +56,7 @@
 
 <div class="wrap">
   <section id="mapaAlmaSection"></section>
+  <section id="cartomanciaSection"></section>
   <section id="limpezaEnergeticaSection"></section>
   <section id="aboutSection"></section>
   <section id="servicesSection"></section>
@@ -115,28 +116,42 @@ async function load(){
   renderAbout(profile);
 
   // Destaque especial só na página da Hikari Fafe — link para o Mapa da
-  // Alma gratuito. Não aparece a mais ninguém (outros subscritores não
-  // têm esta funcionalidade ativa).
+  // Alma e para a Cartomancia. Não aparece a mais ninguém (outros
+  // subscritores não têm esta funcionalidade ativa), e cada um só aparece
+  // se a Hikari o deixar visível nas suas definições.
   if (tenantId === 'hikari-terapias'){
     const mapaUrl = window.location.href.replace('saudecare-pagina-publica.html', 'mapa-da-alma.html').split('?')[0];
-    document.getElementById('mapaAlmaSection').innerHTML = `
-      <div style="background:linear-gradient(135deg,#2d1b4e,#1a0f2e);border-radius:16px;padding:22px 18px;text-align:center;margin-top:-20px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.25);">
-        <div style="font-size:22px;letter-spacing:6px;color:#d4af37;margin-bottom:6px;">✦ ✧ ✦</div>
-        <h2 style="color:#f0d878;font-size:20px;margin-bottom:8px;">Descubra o seu Mapa da Alma — grátis</h2>
-        <p style="color:#c9b8e8;font-size:14px;line-height:1.5;margin-bottom:14px;">O seu nome e data de nascimento escondem mais do que imagina. Descubra gratuitamente o seu primeiro reflexo cósmico.</p>
-        <a href="${escapeHtml(mapaUrl)}" style="display:inline-block;background:linear-gradient(90deg,#d4af37,#f0d878);color:#2a1a00;font-weight:700;padding:12px 26px;border-radius:12px;text-decoration:none;">✦ Ver o meu Mapa da Alma</a>
-      </div>
-    `;
+    const cartoUrl = window.location.href.replace('saudecare-pagina-publica.html', 'cartomancia.html').split('?')[0];
 
-    // Destaque da Limpeza Energética — texto vem do painel da Hikari
-    // (o mesmo campo que já usa no Mapa da Alma), lido através da função
-    // porque a página pública não tem acesso direto aos dados privados do
-    // tenant. Só aparece se ela tiver escrito alguma coisa nesse campo.
     fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/mapaAlma', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'getOverrides', tenantId: 'hikari-terapias' })
     }).then(r => r.json()).then(data => {
-      if (!data.ok || !data.limpezaTexto) return;
+      if (!data.ok) return;
+
+      if (data.mapaAlmaVisivel !== false){
+        document.getElementById('mapaAlmaSection').innerHTML = `
+          <div style="background:linear-gradient(135deg,#2d1b4e,#1a0f2e);border-radius:16px;padding:22px 18px;text-align:center;margin-top:-20px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.25);">
+            <div style="font-size:22px;letter-spacing:6px;color:#d4af37;margin-bottom:6px;">✦ ✧ ✦</div>
+            <h2 style="color:#f0d878;font-size:20px;margin-bottom:8px;">Descubra o seu Mapa da Alma — grátis</h2>
+            <p style="color:#c9b8e8;font-size:14px;line-height:1.5;margin-bottom:14px;">O seu nome e data de nascimento escondem mais do que imagina. Descubra gratuitamente o seu primeiro reflexo cósmico.</p>
+            <a href="${escapeHtml(mapaUrl)}" style="display:inline-block;background:linear-gradient(90deg,#d4af37,#f0d878);color:#2a1a00;font-weight:700;padding:12px 26px;border-radius:12px;text-decoration:none;">✦ Ver o meu Mapa da Alma</a>
+          </div>
+        `;
+      }
+
+      if (data.cartomanciaVisivel !== false){
+        document.getElementById('cartomanciaSection').innerHTML = `
+          <div style="background:linear-gradient(135deg,#2d1b4e,#1a0f2e);border-radius:16px;padding:22px 18px;text-align:center;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.25);">
+            <div style="font-size:22px;margin-bottom:6px;">🃏</div>
+            <h2 style="color:#f0d878;font-size:20px;margin-bottom:8px;">Uma pergunta? Tire as cartas — grátis</h2>
+            <p style="color:#c9b8e8;font-size:14px;line-height:1.5;margin-bottom:14px;">Leitura rápida com baralho de 52 cartas, no momento, sobre o que estiver a sentir.</p>
+            <a href="${escapeHtml(cartoUrl)}" style="display:inline-block;background:linear-gradient(90deg,#d4af37,#f0d878);color:#2a1a00;font-weight:700;padding:12px 26px;border-radius:12px;text-decoration:none;">🎴 Tirar as minhas cartas</a>
+          </div>
+        `;
+      }
+
+      if (!data.limpezaTexto) return;
       document.getElementById('limpezaEnergeticaSection').innerHTML = `
         <div style="background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);border-radius:16px;padding:22px 18px;text-align:center;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.25);">
           <h2 style="color:#f0d878;font-size:19px;margin-bottom:8px;">🛡️ Deteção & Limpeza Energética</h2>
