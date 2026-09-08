@@ -312,7 +312,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-133';
+const APP_VERSION = '2026-09-02-134';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -8736,13 +8736,17 @@ async function tryChatbotPatientLookup(text){
 // literalmente o que foi escrito aqui. A responsabilidade pelo conteúdo
 // e pela decisão de o usar é sempre do profissional — daí o aviso e a
 // aceitação explícita antes de poder usar esta secção.
-const KB_DISCLAIMER_TEXT = `Tudo o que inserir aqui (texto, fotos, PDFs) é da sua exclusiva responsabilidade — o Vindora não verifica, valida nem garante a veracidade, atualidade ou segurança clínica desta informação.
+const KB_DISCLAIMER_TEXT = `TERMO DE RESPONSABILIDADE — BIBLIOTECA DE CONHECIMENTO
+
+Esta funcionalidade é de acesso exclusivo à sua conta de subscritor(a) — mais ninguém, além de si e da sua equipa autorizada, pode adicionar, editar ou consultar aqui informação sobre medicamentos, óleos, ervas ou qualquer produto químico ou natural.
+
+Tudo o que inserir aqui (texto, fotos, PDFs, ou rascunhos gerados por pesquisa com IA) é da sua exclusiva responsabilidade. O Vindora não verifica, valida nem garante a veracidade, atualidade ou segurança clínica desta informação, e isenta-se de qualquer responsabilidade pelo uso que fizer dela.
 
 O assistente virtual apenas devolve o que você escreveu — nunca cria, deduz ou avalia interações, doses ou segurança por conta própria.
 
-Antes de aconselhar qualquer suplemento, óleo essencial, erva ou produto natural a um paciente que esteja a tomar medicação, confirme sempre com o médico que o acompanha se existe alguma contraindicação.`;
+Como profissional, é sempre sua a decisão de aconselhar (ou não) um paciente com base nesta informação. Nunca envie ou sugira qualquer conteúdo daqui a um paciente sem que ele o tenha pedido ou sem que seja diretamente relevante para a consulta em curso — e, antes de aconselhar qualquer suplemento, óleo essencial, erva ou produto natural a alguém que esteja a tomar medicação, oriente-o(a) sempre a confirmar com o médico que o acompanha se existe alguma contraindicação.`;
 
-const KB_ANSWER_DISCLAIMER = '\n\n⚠️ Isto é conteúdo que você inseriu — não é uma avaliação clínica automática. Confirme sempre com o médico responsável pelo paciente antes de aconselhar.';
+const KB_ANSWER_DISCLAIMER = '\n\n⚠️ Isto é conteúdo que você inseriu — não é uma avaliação clínica automática. A decisão de partilhar (ou não) com o paciente é sempre sua, e deve orientá-lo a confirmar com o médico responsável antes de seguir qualquer conselho.';
 
 // ── Planos e limites ─────────────────────────────────────────────────
 // O campo tenants.plan já existe no painel de admin (start/grow/pro/
@@ -8806,7 +8810,7 @@ async function getKnowledgeUsageBytes(excludeId){
 }
 
 async function renderKnowledgeBase(main){
-  if (!currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt){
+  if (!currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt || currentTenantDoc?.knowledgeBaseDisclaimerVersion !== KB_DISCLAIMER_VERSION){
     main.innerHTML = `
       <h2>🧠 Biblioteca de Conhecimento</h2>
       <div class="card">
@@ -8866,12 +8870,14 @@ async function renderKnowledgeBase(main){
   `;
 }
 
+const KB_DISCLAIMER_VERSION = 2;
+
 window.acceptKnowledgeBaseDisclaimer = async function(){
   if (!document.getElementById('kbAcceptCheck').checked){
     toast('Tem de marcar a caixa para continuar.', true);
     return;
   }
-  await updateDoc(doc(db, 'tenants', tenantId), { knowledgeBaseDisclaimerAcceptedAt: serverTimestamp() });
+  await updateDoc(doc(db, 'tenants', tenantId), { knowledgeBaseDisclaimerAcceptedAt: serverTimestamp(), knowledgeBaseDisclaimerVersion: KB_DISCLAIMER_VERSION });
   const snap = await getDoc(doc(db, 'tenants', tenantId));
   currentTenantDoc = snap.data();
   renderView('knowledge');
