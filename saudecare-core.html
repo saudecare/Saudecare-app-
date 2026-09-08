@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-122';
+const APP_VERSION = '2026-09-02-123';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -7731,6 +7731,8 @@ window.submitSupportRequest = async function(){
 // ── Mapa da Alma Diamante — isca gratuita + upsell (só para hikari-terapias) ──
 let __mapaAlmaTab = 'pedidos';
 let __mapaAlmaPedidosCat = 'novos';
+window.setMapaAlmaTab = function(id){ __mapaAlmaTab = id; renderMapaAlma(document.getElementById('mainView')); };
+window.setMapaAlmaPedidosCat = function(id){ __mapaAlmaPedidosCat = id; renderMapaAlma(document.getElementById('mainView')); };
 
 async function renderMapaAlma(main){
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'mapaAlmaLeads'));
@@ -7797,8 +7799,8 @@ async function renderMapaAlma(main){
     </div>`;
   };
 
-  const tabBtn = (id, label) => `<button class="${__mapaAlmaTab===id?'primary':'ghost'}" onclick="window.__mapaAlmaTab='${id}';renderMapaAlma(document.getElementById('mainView'));" style="margin:2px;">${label}</button>`;
-  const catBtn = (id) => `<button class="${__mapaAlmaPedidosCat===id?'primary':'ghost'}" onclick="window.__mapaAlmaPedidosCat='${id}';renderMapaAlma(document.getElementById('mainView'));" style="margin:2px;font-size:12.5px;padding:8px 10px;">${catLabels[id]}</button>`;
+  const tabBtn = (id, label) => `<button class="${__mapaAlmaTab===id?'primary':'ghost'}" onclick="setMapaAlmaTab('${id}')" style="margin:2px;">${label}</button>`;
+  const catBtn = (id) => `<button class="${__mapaAlmaPedidosCat===id?'primary':'ghost'}" onclick="setMapaAlmaPedidosCat('${id}')" style="margin:2px;font-size:12.5px;padding:8px 10px;">${catLabels[id]}</button>`;
 
   let bodyHtml = '';
   if (__mapaAlmaTab === 'pedidos'){
