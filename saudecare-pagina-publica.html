@@ -46,6 +46,10 @@
   .contact-row{display:flex;flex-direction:column;gap:6px;font-size:14px;}
   footer{text-align:center;padding:24px 16px;color:var(--muted);font-size:12px;}
   .empty{color:var(--muted);font-size:13px;text-align:center;padding:14px;}
+  .quick-nav{display:flex;gap:8px;overflow-x:auto;padding:12px 14px;background:#fff;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.06);-webkit-overflow-scrolling:touch;}
+  .quick-nav a{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;background:#f2f6f4;color:var(--primary-dark,#1a2b26);text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;}
+  .quick-nav a:active{background:var(--primary,#2e7d5b);color:#fff;}
+  #servicesSection, #teamSection, #mapaAlmaSection, #cartomanciaSection, #trainingsSection, #testimonialsSection, #availabilitySection, #contactSection{scroll-margin-top:60px;}
 </style>
 </head>
 <body>
@@ -53,6 +57,8 @@
 <div class="hero" id="hero">
   <p class="muted" style="color:#fff;opacity:.8;">A carregar…</p>
 </div>
+
+<nav id="quickNav" class="quick-nav"></nav>
 
 <div class="wrap">
   <section id="aboutSection"></section>
@@ -106,7 +112,12 @@ async function load(){
     return;
   }
   const profile = profileSnap.data();
-  const tenantId = profile.tenantId;
+  // Se por algum motivo este perfil público ainda não tiver o campo
+  // tenantId gravado (ex: documentos criados antes deste campo existir),
+  // usa o próprio slug do URL como reserva — na grande maioria dos casos
+  // é o mesmo valor, e evita que Serviços/Equipa/Formações/Testemunhos
+  // desapareçam todos de uma vez só por faltar este campo.
+  const tenantId = profile.tenantId || tenantSlug;
 
   if (profile.branding?.primaryColor){
     document.documentElement.style.setProperty('--primary', profile.branding.primaryColor);
@@ -193,6 +204,26 @@ async function load(){
   renderTeam(teamSnap);
   renderTrainings(trainingsSnap, tenantSlug);
   renderTestimonials(testimonialsSnap);
+  renderQuickNav();
+}
+
+function renderQuickNav(){
+  const secoes = [
+    { id:'servicesSection', label:'Serviços', icon:'🩺' },
+    { id:'teamSection', label:'Equipa', icon:'🙋' },
+    { id:'mapaAlmaSection', label:'Mapa da Alma', icon:'🔮' },
+    { id:'cartomanciaSection', label:'Cartomancia', icon:'🃏' },
+    { id:'trainingsSection', label:'Formações', icon:'🎓' },
+    { id:'testimonialsSection', label:'Testemunhos', icon:'⭐' },
+    { id:'availabilitySection', label:'Horários', icon:'🗓️' },
+    { id:'contactSection', label:'Contactos', icon:'📍' }
+  ];
+  const links = secoes
+    .filter(s => document.getElementById(s.id)?.innerHTML.trim())
+    .map(s => `<a href="#${s.id}">${s.icon} ${s.label}</a>`)
+    .join('');
+  const nav = document.getElementById('quickNav');
+  if (links) nav.innerHTML = links; else nav.remove();
 }
 
 // ── "Adicionar ao ecrã principal" com identidade do subscritor ─────────
