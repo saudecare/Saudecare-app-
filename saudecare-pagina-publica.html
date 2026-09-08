@@ -55,12 +55,12 @@
 </div>
 
 <div class="wrap">
-  <section id="mapaAlmaSection"></section>
-  <section id="cartomanciaSection"></section>
-  <section id="limpezaEnergeticaSection"></section>
   <section id="aboutSection"></section>
   <section id="servicesSection"></section>
   <section id="teamSection"></section>
+  <section id="mapaAlmaSection"></section>
+  <section id="cartomanciaSection"></section>
+  <section id="limpezaEnergeticaSection"></section>
   <section id="trainingsSection"></section>
   <section id="testimonialsSection"></section>
   <section id="availabilitySection"></section>
@@ -131,7 +131,7 @@ async function load(){
 
       if (data.mapaAlmaVisivel !== false){
         document.getElementById('mapaAlmaSection').innerHTML = `
-          <div style="background:linear-gradient(135deg,#2d1b4e,#1a0f2e);border-radius:16px;padding:22px 18px;text-align:center;margin-top:-20px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.25);">
+          <div style="background:linear-gradient(135deg,#2d1b4e,#1a0f2e);border-radius:16px;padding:22px 18px;text-align:center;margin-top:20px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.25);">
             <div style="font-size:22px;letter-spacing:6px;color:#d4af37;margin-bottom:6px;">✦ ✧ ✦</div>
             <h2 style="color:#f0d878;font-size:20px;margin-bottom:8px;">Descubra o seu Mapa da Alma — grátis</h2>
             <p style="color:#c9b8e8;font-size:14px;line-height:1.5;margin-bottom:14px;">O seu nome e data de nascimento escondem mais do que imagina. Descubra gratuitamente o seu primeiro reflexo cósmico.</p>
@@ -168,7 +168,7 @@ async function load(){
   }
 
   renderContact(profile);
-  renderAvailability(profile, slug);
+  renderAvailability(profile, tenantSlug);
   applyDynamicManifest(profile);
 
   // Livro de Reclamações Eletrónico — obrigatório por lei em Portugal
