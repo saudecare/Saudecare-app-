@@ -292,7 +292,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-119';
+const APP_VERSION = '2026-09-02-121';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -7739,22 +7739,37 @@ async function renderMapaAlma(main){
   const paid = leads.filter(l => l.paymentStatus === 'paid');
   const others = leads.filter(l => l.paymentStatus !== 'manual_pending' && l.paymentStatus !== 'paid');
 
+  const contactsSnap = await getDocs(collection(db, 'tenants', tenantId, 'marketingContacts'));
+  const contacts = [];
+  contactsSnap.forEach(d => contacts.push({ id: d.id, ...d.data() }));
+  contacts.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
+
   const settings = currentTenantDoc?.mapaAlmaSettings || {};
   const prices = settings.pricesByType || {};
   const promo = settings.promo || {};
   const publicLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','mapa-da-alma.html')}`;
 
+  const diasDesde = (iso) => iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : 0;
   const rowHtml = (l) => {
     const leadLink = `${publicLink}?mapa=${l.id}`;
+    const isPending = l.paymentStatus === 'manual_pending';
+    const dias = diasDesde(l.createdAt);
+    const diasRestantes = 3 - dias;
     return `
-    <div class="appt-item">
+    <div class="appt-item" style="${isPending ? 'border-left:3px solid #d4af37;' : ''}">
       <div class="row">
         <div>
           <strong>${escapeHtml(l.nome||'Sem nome')}</strong>
           <div class="muted">${escapeHtml(l.dataNascimento||'')} · ${escapeHtml(l.contacto||'sem contacto')} · ${l.createdAt ? new Date(l.createdAt).toLocaleDateString('pt-PT') : ''}</div>
+          ${isPending ? `<div class="muted" style="font-size:11.5px;margin-top:2px;color:${diasRestantes<=1?'#c0392b':'#8a7a3a'};">⏳ ${diasRestantes>0 ? `Elimina-se sozinho em ${diasRestantes} dia(s) se não confirmar` : 'Prestes a ser eliminado automaticamente'}</div>` : ''}
         </div>
-        ${l.paymentStatus === 'manual_pending' ? `<button class="primary" onclick="confirmMapaAlmaPayment('${l.id}')">✅ Confirmar</button>` : `<span class="badge ${l.paymentStatus==='paid'?'active':''}">${escapeHtml(l.paymentStatus||'')}</span>`}
+        ${isPending ? '' : `<span class="badge ${l.paymentStatus==='paid'?'active':''}">${escapeHtml(l.paymentStatus||'')}</span>`}
       </div>
+      ${isPending ? `
+      <div class="row" style="margin-top:8px;gap:8px;">
+        <button class="primary" onclick="confirmMapaAlmaPayment('${l.id}')">✅ Confirmar pagamento</button>
+        <button class="danger" onclick="rejectMapaAlmaLead('${l.id}')">🗑️ Recusar / Apagar já</button>
+      </div>` : ''}
       <div class="row" style="margin-top:6px;flex-wrap:wrap;">
         <button class="ghost" onclick="navigator.clipboard.writeText('${leadLink}').then(()=>toast('Link copiado.'))">📋 Copiar link</button>
         ${l.contacto ? `<button class="ghost" onclick="resendMapaAlmaLink('${escapeAttrJs(l.contacto)}','${escapeAttrJs(l.nome||'')}','${leadLink}')">📱 Reenviar por WhatsApp</button>` : ''}
@@ -7860,9 +7875,22 @@ async function renderMapaAlma(main){
       </div>
     </details>
 
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">📣 Contactos de Marketing (${contacts.length})</summary>
+      <div style="margin-top:10px;">
+        <p class="muted" style="margin-bottom:8px;">Todas as pessoas que autorizaram receber novidades/promoções, mesmo que não tenham comprado o Mapa Diamante. Nunca são apagadas automaticamente.</p>
+        ${contacts.length ? `
+        <button class="primary" onclick="copiarContactosMarketing()">📋 Copiar todos os contactos</button>
+        <div style="margin-top:10px;max-height:300px;overflow-y:auto;">
+          ${contacts.map(c => `<div class="appt-item"><strong>${escapeHtml(c.nome||'')}</strong><div class="muted">${escapeHtml(c.contacto||'')} · ${escapeHtml(c.tipo||'')}</div></div>`).join('')}
+        </div>` : '<p class="muted">Ainda ninguém autorizou receber novidades.</p>'}
+      </div>
+    </details>
+
     ${pending.length ? `
-    <details class="card" open>
-      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">🕓 Por confirmar (${pending.length})</summary>
+    <details class="card" open style="background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.35);">
+      <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">🕓 Por confirmar — precisa da sua ação (${pending.length})</summary>
+      <p class="muted" style="margin-top:6px;font-size:11.5px;">Pagamentos por MB Way/transferência apagam-se sozinhos ao fim de 3 dias sem confirmação, para manter esta lista sempre limpa.</p>
       <div style="margin-top:10px;">${pending.map(rowHtml).join('')}</div>
     </details>` : ''}
 
@@ -7943,6 +7971,22 @@ window.resendMapaAlmaLink = function(contacto, nome, link){
   } else {
     openExternalLink(phoneToWaLink(contacto) + '?text=' + encodeURIComponent(text));
   }
+};
+
+window.copiarContactosMarketing = async function(){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'marketingContacts'));
+  const linhas = [];
+  snap.forEach(d => { const c = d.data(); linhas.push(`${c.nome||''} — ${c.contacto||''}`); });
+  if (!linhas.length){ toast('Ainda não há contactos guardados.', true); return; }
+  await navigator.clipboard.writeText(linhas.join('\n'));
+  toast(`${linhas.length} contactos copiados — cole numa lista de transmissão do WhatsApp ou no seu programa de email.`);
+};
+
+window.rejectMapaAlmaLead = async function(leadId){
+  if (!confirm('Apagar este pedido? Não há pagamento confirmado, a pessoa terá de preencher tudo outra vez se quiser.')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'mapaAlmaLeads', leadId));
+  toast('Pedido apagado.');
+  renderMapaAlma(document.getElementById('mainView'));
 };
 
 window.confirmMapaAlmaPayment = async function(leadId){

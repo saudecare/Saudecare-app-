@@ -434,6 +434,20 @@ async function onCalcular(){
     });
   }catch(e){ console.error(e); }
 
+  // Guarda o contacto separadamente, para nunca se perder — mesmo que o
+  // pedido em si seja mais tarde eliminado por falta de pagamento. Só
+  // guarda se a pessoa autorizou receber novidades/promoções.
+  if (consentimentoMarketing && contacto){
+    try{
+      const contactoId = contacto.trim().toLowerCase().replace(/[^a-z0-9@.]/g, '');
+      if (contactoId){
+        await setDoc(doc(db, 'tenants', TENANT_ID, 'marketingContacts', contactoId), {
+          nome, contacto, tipo: selectedTipo, createdAt: new Date().toISOString()
+        }, { merge: true });
+      }
+    }catch(e){ console.error(e); }
+  }
+
   window.history.replaceState({}, '', '?mapa=' + leadId);
   renderFreeResult(leadId, freeResult, signo, extra);
 }
@@ -735,6 +749,15 @@ async function renderFullResult(leadId){
   }
 }
 
+function renderPerfilCasalHTML(p){
+  return `
+    <div style="margin-top:10px;padding-top:10px;border-top:1px dotted rgba(212,175,55,.25);">
+      <h4 style="color:var(--gold-light);font-size:.95rem;">🔹 ${escapeHtml(p.nome)}</h4>
+      <p class="muted" style="margin-top:4px;">Caminho de Vida <strong>${p.caminhoDeVida}</strong> — ${escapeHtml(p.dom)}. Signo: ${escapeHtml(p.signo)} (${escapeHtml(p.elemento)}).</p>
+      <p class="muted" style="margin-top:4px;"><strong>Papel na relação:</strong> ${escapeHtml(p.papelRelacao)}</p>
+    </div>`;
+}
+
 function renderFullReport(data){
   const r = data.freeResult;
   const full = data.fullResult || {};
@@ -742,6 +765,7 @@ function renderFullReport(data){
   document.getElementById('heroTitle').textContent = 'Mapa da Alma Diamante';
   document.getElementById('heroSub').textContent = `${escapeHtml(r.nome)} — leitura completa.`;
   main.innerHTML = `
+    ${r.tipo !== 'casal' ? `
     <div class="card">
       <h3 style="color:var(--gold-light);">💎 Assinatura Cósmica</h3>
       <p class="muted" style="margin-top:6px;">Caminho de Vida <strong>${r.caminhoDeVida}</strong> — ${escapeHtml(dom.nome||'')}. Regido por ${escapeHtml(r.diaInfo.planeta)}, sob o Mestre Ascenso ${escapeHtml(r.diaInfo.mestre)}.</p>
@@ -788,7 +812,13 @@ function renderFullReport(data){
       <p class="muted" style="margin-top:6px;"><strong>Significado:</strong> ${escapeHtml(full.chakraInfo?.significado||'')}</p>
       <p class="muted" style="margin-top:6px;"><strong>Sinais de desequilíbrio:</strong> ${escapeHtml(full.chakraInfo?.desequilibrio||'')}</p>
       <p class="muted" style="margin-top:6px;"><strong>Prática de equilíbrio:</strong> ${escapeHtml(full.chakraInfo?.pratica||'')}</p>
-    </div>
+    </div>` : ''}
+    ${full.casal ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">💞 Os Dois, em Resumo</h3>
+      ${renderPerfilCasalHTML(full.casal.perfil1)}
+      ${renderPerfilCasalHTML(full.casal.perfil2)}
+    </div>` : ''}
     <div class="card">
       <h3 style="color:var(--gold-light);">🏠 Engenharia Vibracional</h3>
       ${full.vibMorada!=null ? `<p class="muted">Morada: vibração <strong>${full.vibMorada}</strong> — ${escapeHtml(full.vibMoradaTexto||'')}</p>` : ''}
@@ -814,20 +844,6 @@ function renderFullReport(data){
       <p class="muted">${escapeHtml(full.avisoEmpresa)}</p>
     </div>` : ''}
     ${full.casal ? `
-    <div class="card">
-      <h3 style="color:var(--gold-light);">💞 O Casal — Perfil de ${escapeHtml(full.casal.perfil1.nome)}</h3>
-      <p class="muted"><strong>Caminho de Vida:</strong> ${full.casal.perfil1.caminhoDeVida} · <strong>Signo:</strong> ${escapeHtml(full.casal.perfil1.signo)} (${escapeHtml(full.casal.perfil1.elemento)}, regido por ${escapeHtml(full.casal.perfil1.regente)})</p>
-      <p class="muted" style="margin-top:6px;"><strong>Papel na relação:</strong> ${escapeHtml(full.casal.perfil1.papelRelacao)}</p>
-      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casal.perfil1.luzRelacao)}</p>
-      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casal.perfil1.sombraRelacao)}</p>
-    </div>
-    <div class="card">
-      <h3 style="color:var(--gold-light);">💞 O Casal — Perfil de ${escapeHtml(full.casal.perfil2.nome)}</h3>
-      <p class="muted"><strong>Caminho de Vida:</strong> ${full.casal.perfil2.caminhoDeVida} · <strong>Signo:</strong> ${escapeHtml(full.casal.perfil2.signo)} (${escapeHtml(full.casal.perfil2.elemento)}, regido por ${escapeHtml(full.casal.perfil2.regente)})</p>
-      <p class="muted" style="margin-top:6px;"><strong>Papel na relação:</strong> ${escapeHtml(full.casal.perfil2.papelRelacao)}</p>
-      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casal.perfil2.luzRelacao)}</p>
-      <p class="muted" style="margin-top:6px;">${escapeHtml(full.casal.perfil2.sombraRelacao)}</p>
-    </div>
     <div class="card" style="background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);">
       <h3 style="color:var(--gold-light);">✨ Compatibilidade do Casal</h3>
       <p class="muted"><strong>Vibração do casal enquanto unidade:</strong> ${full.casal.vibracaoCasal} — ${escapeHtml(full.casal.vibracaoCasalTexto)}</p>
@@ -838,12 +854,16 @@ function renderFullReport(data){
       ${full.casal.moradaConjunta ? `<p class="muted" style="margin-top:6px;"><strong>Morada partilhada</strong> — vibração ${full.casal.moradaConjunta.vibracao} (${escapeHtml(full.casal.moradaConjunta.texto)}). ${full.casal.moradaConjunta.combinaBem ? 'Esta vibração combina bem com a energia dos dois.' : 'Esta vibração é diferente da vossa — não é um problema, mas é um bom motivo para reforçarem intencionalmente a energia da casa (ex: com os rituais abaixo).'}</p>` : ''}
       <p class="muted" style="margin-top:10px;"><strong>🕯️ ${escapeHtml(full.casal.ajusteEnergia)}</strong></p>
       <p class="muted" style="margin-top:6px;"><strong>🕯️ ${escapeHtml(full.casal.compatNumero.ritualCasal)}</strong></p>
+      ${full.casal.compatNumero.conhecerMelhor ? `<p class="muted" style="margin-top:10px;background:rgba(212,175,55,.12);padding:8px;border-radius:8px;">💬 ${escapeHtml(full.casal.compatNumero.conhecerMelhor)}</p>` : ''}
     </div>` : ''}
     <div class="card">
       <h3 style="color:var(--gold-light);">🌿 Prescrição Alquímica</h3>
+      ${r.tipo !== 'casal' ? `
       <p class="muted" style="margin-top:6px;"><strong>Banho de ervas (${escapeHtml(r.signo)}):</strong> ${escapeHtml(full.banhoErvas||'')}</p>
       <p class="muted" style="margin-top:6px;">${escapeHtml(full.banhoModo||'')}</p>
-      <p class="muted" style="margin-top:6px;"><strong>Cristal do dia:</strong> ${escapeHtml(r.diaInfo.cristal)} · <strong>Mantra sugerido:</strong> ${escapeHtml(full.mantra||'')}</p>
+      <p class="muted" style="margin-top:6px;"><strong>Cristal do dia:</strong> ${escapeHtml(r.diaInfo.cristal)} · <strong>Mantra sugerido:</strong> ${escapeHtml(full.mantra||'')}</p>` : `
+      <p class="muted" style="margin-top:6px;">${escapeHtml(full.banhoModo||'')}</p>
+      <p class="muted" style="margin-top:6px;">Cada um usa o banho de ervas e o mantra do seu próprio signo — ver nos perfis completos acima.</p>`}
       ${full.avisoProfissional ? `<p class="muted" style="margin-top:10px;font-size:.78rem;background:rgba(212,175,55,.1);padding:8px;border-radius:8px;">⚠️ ${escapeHtml(full.avisoProfissional)}</p>` : ''}
       ${full.avisoBebe ? `<p class="muted" style="margin-top:10px;font-size:.78rem;background:rgba(212,175,55,.1);padding:8px;border-radius:8px;">💗 ${escapeHtml(full.avisoBebe)}</p>` : ''}
     </div>
@@ -1011,6 +1031,7 @@ function downloadFullReportPDF(r, full, dom){
 
   paragraph(`Saudação de Luz, ${r.nome.split(' ')[0]}. Este Mapa da Alma Diamante foi gerado especialmente para si, cruzando Numerologia Pitagórica, Astrologia Terapêutica e Engenharia Vibracional do método Hikari Fafe.`, { size:9.5, color:MUTED });
 
+  if (r.tipo !== 'casal'){
   heading('Assinatura Cósmica', 'I');
   paragraph(`Caminho de Vida ${r.caminhoDeVida} — ${dom.nome}. ${dom.texto}`);
   paragraph(`Expressão: ${full.expressao}  ·  Número da Alma: ${r.motivacao}  ·  Impressão: ${full.impressao}`, { bold:true, size:9.5 });
@@ -1033,6 +1054,17 @@ function downloadFullReportPDF(r, full, dom){
   bullet(`Significado: ${full.chakraInfo?.significado||''}`);
   bullet(`Sinais de desequilíbrio: ${full.chakraInfo?.desequilibrio||''}`);
   bullet(`Prática de equilíbrio: ${full.chakraInfo?.pratica||''}`);
+  }
+
+  if (full.casal){
+    function pdfPerfilCasal(p, numero){
+      heading('Os Dois — ' + p.nome, numero);
+      paragraph(`Caminho de Vida ${p.caminhoDeVida} — ${p.dom}. Signo: ${p.signo} (${p.elemento}).`, { bold:true, gap:2 });
+      paragraph(`Papel na relação: ${p.papelRelacao}`, { size:9.5 });
+    }
+    pdfPerfilCasal(full.casal.perfil1, 'I');
+    pdfPerfilCasal(full.casal.perfil2, 'II');
+  }
 
   heading('Regência dos Astros, Mestre Ascenso & Alquimia', 'VI');
   paragraph(`Nascido(a) numa ${r.diaNome}, o seu planeta regente é ${r.diaInfo.planeta} e o seu Mestre Ascenso de conexão é ${r.diaInfo.mestre} (${r.diaInfo.raio}). Cristal do dia: ${r.diaInfo.cristal}. Cristal do signo: ${full.cristalSigno}.`);
@@ -1048,18 +1080,23 @@ function downloadFullReportPDF(r, full, dom){
   y += 66 + 12;
 
   heading('Rituais de Alquimia', 'VII');
+  if (r.tipo !== 'casal'){
   paragraph(`Banho de Ervas do Signo (${r.signo}): ${full.banhoErvas}`, { bold:true, gap:2 });
   paragraph(full.banhoModo || '', { size:9 });
+  } else {
+  paragraph(full.banhoModo || '', { size:9 });
+  paragraph('Cada um usa o banho de ervas e o mantra do seu próprio signo — ver nos perfis completos acima.', { size:9 });
+  }
   paragraph(`Banho de Descarrego: ${full.banhoDescarrego?.ervas} — ${full.banhoDescarrego?.hz}`, { bold:true, gap:2 });
   paragraph(full.banhoDescarrego?.modo || '', { size:9 });
   paragraph(`Banho de Proteção: ${full.banhoProtecao?.ervas} — ${full.banhoProtecao?.hz}`, { bold:true, gap:2 });
   paragraph(full.banhoProtecao?.modo || '', { size:9 });
-  paragraph(`Mantra sugerido: ${full.mantra}`, { size:9 });
+  if (r.tipo !== 'casal') paragraph(`Mantra sugerido: ${full.mantra}`, { size:9 });
   if (full.avisoProfissional) paragraph(full.avisoProfissional, { size:8.5, color:MUTED });
   if (full.avisoBebe) paragraph(full.avisoBebe, { size:8.5, color:MUTED });
 
   heading('Decretos "EU SOU" de Poder Pessoal', 'VIII');
-  paragraph(`Afirmação do seu número: "${full.euSou}"`, { bold:true, gap:10 });
+  if (r.tipo !== 'casal') paragraph(`Afirmação do seu número: "${full.euSou}"`, { bold:true, gap:10 });
   (full.decretos||[]).forEach((d,i) => bullet(`${i+1}. ${d}`));
 
   heading('Engenharia Vibracional (Ajuste Numpro)', 'IX');
