@@ -7851,8 +7851,8 @@ async function renderMapaAlma(main){
     <details class="card">
       <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">📚 Base de Conhecimento (editável)</summary>
       <div style="margin-top:10px;">
-        ${hintBox('Aqui consegue editar ou acrescentar qualquer texto usado no método — significados dos números, orações, banhos, chakras, etc. — sem precisar de mexer em código. Peça-me ajuda sempre que quiser adicionar algo novo (ex: um cristal extra, uma lição cármica diferente) — eu escrevo a estrutura certa para colar aqui.')}
-        <textarea id="maOverrides" rows="10" style="font-family:monospace;font-size:12px;" placeholder='{ "dons": { "7": { "texto": "novo texto..." } } }'>${escapeHtml(JSON.stringify(currentTenantDoc?.mapaAlmaOverrides || {}, null, 2))}</textarea>
+        ${hintBox('Aqui consegue editar ou acrescentar qualquer texto usado no método — significados dos números, orações, banhos, chakras, papéis na relação do casal, vibração de empresa, harmonia de família, etc. — sem precisar de mexer em código. Onde vir {{algo}} num texto, pode manter esse token — é substituído automaticamente pelo valor certo (nome, número, etc.). Peça-me ajuda sempre que quiser adicionar algo novo — eu escrevo a estrutura certa para colar aqui.')}
+        <textarea id="maOverrides" rows="10" style="font-family:monospace;font-size:12px;" placeholder='{ "dons": { "7": { "texto": "novo texto..." } }, "papeisRelacao": { "8": "novo papel na relação..." }, "compatibilidadeCasal": { "textoEspelho": "usar {{nome1}}, {{nome2}}, {{cv1}}, {{cv2}}" }, "vibracaoEmpresa": { "textoVibracaoEmpresa": "usar {{cv}} e {{dom}}" }, "harmoniaFamilia": "usar {{v}} e {{dom}}" }'>${escapeHtml(JSON.stringify(currentTenantDoc?.mapaAlmaOverrides || {}, null, 2))}</textarea>
         <div class="row" style="margin-top:8px;">
           <button class="primary" onclick="saveMapaAlmaOverrides()">Guardar edições</button>
           <button class="danger" onclick="if(confirm('Apagar todas as suas edições e voltar aos textos predefinidos?')) { document.getElementById('maOverrides').value='{}'; saveMapaAlmaOverrides(); }">Repor predefinições</button>
