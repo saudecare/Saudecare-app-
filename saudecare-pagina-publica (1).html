@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="manifest" id="dynamicManifest" href="manifest.json">
+<link rel="apple-touch-icon" id="appleTouchIcon" href="">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Vindora">
+<title>Vindora</title>
+<style>
+  :root{ --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#fff; --text:#1a2b26; --muted:#6b7d76; }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{background:var(--bg);color:var(--text);}
+  a{color:inherit;}
+  .hero{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:40px 20px 32px;text-align:center;}
+  .hero img.logo{width:72px;height:72px;border-radius:16px;object-fit:cover;margin-bottom:14px;background:#fff;}
+  .hero h1{font-size:26px;margin-bottom:8px;}
+  .hero p{opacity:.92;font-size:15px;max-width:420px;margin:0 auto;}
+  .cta{display:inline-block;background:#fff;color:var(--primary-dark);font-weight:700;padding:14px 28px;
+    border-radius:12px;text-decoration:none;margin-top:20px;font-size:15px;}
+  .wrap{max-width:560px;margin:0 auto;padding:16px;}
+  section{margin:22px 0;}
+  h2.section-title{font-size:18px;margin-bottom:12px;color:var(--primary-dark);}
+  .card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .service-card{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .service-card .price{font-weight:700;color:var(--primary-dark);white-space:nowrap;}
+  .cat-card{cursor:pointer;}
+  .cat-card .cat-head{display:flex;justify-content:space-between;align-items:center;}
+  .cat-card .cat-mod{font-size:12px;color:var(--primary-dark);font-weight:600;}
+  .cat-card .cat-items{margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,.08);}
+  .cat-card .cat-items.hidden{display:none;}
+  .cat-card .chevron{transition:transform .15s;}
+  .cat-card.open .chevron{transform:rotate(180deg);}
+  .muted{color:var(--muted);font-size:13px;}
+  .team-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .team-card{text-align:center;}
+  .team-card img{width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px;background:#e4ede9;}
+  .stars{color:#e0a83c;font-size:14px;margin-bottom:4px;}
+  .social-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
+  .social-row a{background:rgba(255,255,255,.18);padding:8px 14px;border-radius:20px;font-size:13px;text-decoration:none;color:#fff;}
+  .contact-row{display:flex;flex-direction:column;gap:6px;font-size:14px;}
+  footer{text-align:center;padding:24px 16px;color:var(--muted);font-size:12px;}
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:14px;}
+</style>
+</head>
+<body>
+
+<div class="hero" id="hero">
+  <p class="muted" style="color:#fff;opacity:.8;">A carregar…</p>
+</div>
+
+<div class="wrap">
+  <section id="aboutSection"></section>
+  <section id="servicesSection"></section>
+  <section id="teamSection"></section>
+  <section id="mapaAlmaSection"></section>
+  <section id="cartomanciaSection"></section>
+  <section id="limpezaEnergeticaSection"></section>
+  <section id="trainingsSection"></section>
+  <section id="testimonialsSection"></section>
+  <section id="availabilitySection"></section>
+  <section id="contactSection"></section>
+</div>
+
+<div id="livroReclamacoesLink" style="display:none;text-align:center;padding:0 16px;"></div>
+<footer>Powered by Vindora</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, collection, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const params = new URLSearchParams(window.location.search);
+const tenantSlug = params.get('t');
+
+function escapeHtml(str){
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+async function load(){
+  if (!tenantSlug){
+    document.getElementById('hero').innerHTML = '<h1>Ligação inválida</h1>';
+    return;
+  }
+  const profileSnap = await getDoc(doc(db, 'public_tenant_profiles', tenantSlug));
+  if (!profileSnap.exists()){
+    document.getElementById('hero').innerHTML = '<h1>Página não encontrada</h1>';
+    return;
+  }
+  const profile = profileSnap.data();
+  const tenantId = profile.tenantId;
+
+  if (profile.branding?.primaryColor){
+    document.documentElement.style.setProperty('--primary', profile.branding.primaryColor);
+  }
+
+  renderHero(profile, tenantSlug);
+  renderAbout(profile);
+
+  // Destaque especial só na página da Hikari Fafe — link para o Mapa da
+  // Alma e para a Cartomancia. Não aparece a mais ninguém (outros
+  // subscritores não têm esta funcionalidade ativa), e cada um só aparece
+  // se a Hikari o deixar visível nas suas definições.
+  if (tenantId === 'hikari-terapias'){
+    const mapaUrl = window.location.href.replace('saudecare-pagina-publica.html', 'mapa-da-alma.html').split('?')[0];
+    const cartoUrl = window.location.href.replace('saudecare-pagina-publica.html', 'cartomancia.html').split('?')[0];
+
+    fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/mapaAlma', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getOverrides', tenantId: 'hikari-terapias' })
+    }).then(r => r.json()).then(data => {
+      if (!data.ok) return;
+
+      if (data.mapaAlmaVisivel !== false){
+        document.getElementById('mapaAlmaSection').innerHTML = `
+          <div style="background:linear-gradient(135deg,#2d1b4e,#1a0f2e);border-radius:16px;padding:22px 18px;text-align:center;margin-top:20px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.25);">
+            <div style="font-size:22px;letter-spacing:6px;color:#d4af37;margin-bottom:6px;">✦ ✧ ✦</div>
+            <h2 style="color:#f0d878;font-size:20px;margin-bottom:8px;">Descubra o seu Mapa da Alma — grátis</h2>
+            <p style="color:#c9b8e8;font-size:14px;line-height:1.5;margin-bottom:14px;">O seu nome e data de nascimento escondem mais do que imagina. Descubra gratuitamente o seu primeiro reflexo cósmico.</p>
+            <a href="${escapeHtml(mapaUrl)}" style="display:inline-block;background:linear-gradient(90deg,#d4af37,#f0d878);color:#2a1a00;font-weight:700;padding:12px 26px;border-radius:12px;text-decoration:none;">✦ Ver o meu Mapa da Alma</a>
+          </div>
+        `;
+      }
+
+      if (data.cartomanciaVisivel !== false){
+        document.getElementById('cartomanciaSection').innerHTML = `
+          <div style="background:linear-gradient(135deg,#2d1b4e,#1a0f2e);border-radius:16px;padding:22px 18px;text-align:center;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.25);">
+            <div style="font-size:22px;margin-bottom:6px;">🃏</div>
+            <h2 style="color:#f0d878;font-size:20px;margin-bottom:8px;">Uma pergunta? Tire as cartas — grátis</h2>
+            <p style="color:#c9b8e8;font-size:14px;line-height:1.5;margin-bottom:14px;">Leitura rápida com baralho de 52 cartas, no momento, sobre o que estiver a sentir.</p>
+            <a href="${escapeHtml(cartoUrl)}" style="display:inline-block;background:linear-gradient(90deg,#d4af37,#f0d878);color:#2a1a00;font-weight:700;padding:12px 26px;border-radius:12px;text-decoration:none;">🎴 Tirar as minhas cartas</a>
+          </div>
+        `;
+      }
+
+      if (!data.limpezaTexto) return;
+      document.getElementById('limpezaEnergeticaSection').innerHTML = `
+        <div style="background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);border-radius:16px;padding:22px 18px;text-align:center;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.25);">
+          <h2 style="color:#f0d878;font-size:19px;margin-bottom:8px;">🛡️ Deteção & Limpeza Energética</h2>
+          <p style="color:#c9b8e8;font-size:14px;line-height:1.6;margin-bottom:14px;white-space:pre-wrap;">${escapeHtml(data.limpezaTexto)}</p>
+          <div style="background:rgba(212,175,55,.1);border-radius:10px;padding:12px;margin-bottom:14px;text-align:left;">
+            <p style="color:#f0d878;font-size:13px;font-weight:700;">🔍 Consulta de Pesquisa Energética: ${data.limpezaPrecoConsulta ?? 35}€</p>
+            <p style="color:#c9b8e8;font-size:12px;margin-top:4px;">Avaliação completa com Pêndulo Hebreu. A limpeza em si varia de caso para caso, conforme as sessões necessárias.</p>
+          </div>
+          <p style="color:#8874ac;font-size:12px;margin-bottom:14px;">À distância ou presencial.</p>
+          ${data.whatsapp ? `<a href="https://wa.me/${data.whatsapp}?text=${encodeURIComponent('Olá! Vi a página e gostava de saber mais sobre a Limpeza Energética.')}" target="_blank" style="display:inline-block;background:linear-gradient(90deg,#d4af37,#f0d878);color:#2a1a00;font-weight:700;padding:12px 26px;border-radius:12px;text-decoration:none;">📱 Falar com a Hikari Fafe</a>` : ''}
+        </div>
+      `;
+    }).catch(()=>{});
+  }
+
+  renderContact(profile);
+  renderAvailability(profile, tenantSlug);
+  applyDynamicManifest(profile);
+
+  // Livro de Reclamações Eletrónico — obrigatório por lei em Portugal
+  // para quem presta serviços a consumidores; link visível na página
+  // inicial, como a lei exige, sempre que o subscritor o tiver configurado.
+  if (profile.legalTexts?.livroReclamacoesUrl){
+    const linkEl = document.getElementById('livroReclamacoesLink');
+    linkEl.style.display = 'block';
+    linkEl.innerHTML =
+      `<a href="${escapeHtml(profile.legalTexts.livroReclamacoesUrl)}" target="_blank" rel="noopener" style="color:var(--muted);font-size:12px;">📕 Livro de Reclamações</a>`;
+  }
+
+  const [categoriesSnap, servicesSnap, teamSnap, trainingsSnap, testimonialsSnap] = await Promise.all([
+    getDocs(collection(db, 'tenants', tenantId, 'serviceCategories')),
+    getDocs(collection(db, 'tenants', tenantId, 'services')),
+    getDocs(collection(db, 'tenants', tenantId, 'teamMembers')),
+    getDocs(collection(db, 'tenants', tenantId, 'trainings')),
+    getDocs(collection(db, 'tenants', tenantId, 'testimonials'))
+  ]);
+
+  renderServices(categoriesSnap, servicesSnap, tenantSlug);
+  renderTeam(teamSnap);
+  renderTrainings(trainingsSnap, tenantSlug);
+  renderTestimonials(testimonialsSnap);
+}
+
+// ── "Adicionar ao ecrã principal" com identidade do subscritor ─────────
+// Sem servidor próprio, o manifest.json normal é fixo para toda a app.
+// Aqui construímos um manifest à medida, no próprio browser, assim que
+// sabemos o nome e o logótipo deste subscritor, e trocamos a hiperligação
+// do manifest para essa versão personalizada antes do utilizador poder
+// "instalar" a página. No iPhone/Safari o ícone depende também da tag
+// apple-touch-icon, que também é atualizada aqui.
+function applyDynamicManifest(profile){
+  document.title = profile.businessName || 'Vindora';
+  const logoUrl = profile.branding?.logoUrl || '';
+
+  if (logoUrl){
+    const appleIcon = document.getElementById('appleTouchIcon');
+    if (appleIcon) appleIcon.href = logoUrl;
+  }
+
+  const manifestObj = {
+    name: profile.businessName || 'Vindora',
+    short_name: (profile.businessName || 'Vindora').slice(0, 12),
+    start_url: window.location.href,
+    display: 'standalone',
+    background_color: '#f6f8f7',
+    theme_color: profile.branding?.primaryColor || '#2f6f5e',
+    icons: logoUrl ? [
+      { src: logoUrl, sizes: '192x192', type: 'image/png' },
+      { src: logoUrl, sizes: '512x512', type: 'image/png' }
+    ] : []
+  };
+  const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
+  const manifestLink = document.getElementById('dynamicManifest');
+  if (manifestLink) manifestLink.href = URL.createObjectURL(blob);
+}
+
+function renderHero(profile, slug){
+  const logoHtml = profile.branding?.logoUrl
+    ? `<img class="logo" src="${escapeHtml(profile.branding.logoUrl)}" alt="logo">` : '';
+  const social = profile.social || {};
+  let socialLinks = '';
+  if (social.facebook) socialLinks += `<a href="${escapeHtml(social.facebook)}" target="_blank">Facebook</a>`;
+  if (social.instagram) socialLinks += `<a href="${escapeHtml(social.instagram)}" target="_blank">Instagram</a>`;
+  if (social.whatsapp) socialLinks += `<a href="${escapeHtml(social.whatsapp)}" target="_blank">WhatsApp</a>`;
+  if (social.website) socialLinks += `<a href="${escapeHtml(social.website)}" target="_blank">Website</a>`;
+
+  document.getElementById('hero').innerHTML = `
+    ${logoHtml}
+    <h1>${escapeHtml(profile.businessName || '')}</h1>
+    <p>${escapeHtml(profile.tagline || '')}</p>
+    <a class="cta" href="saudecare-funil-publico.html?t=${encodeURIComponent(slug)}">Marcar Consulta</a>
+    ${socialLinks ? `<div class="social-row">${socialLinks}</div>` : ''}
+  `;
+}
+
+function renderAbout(profile){
+  if (!profile.about) return;
+  document.getElementById('aboutSection').innerHTML = `
+    <h2 class="section-title">Sobre</h2>
+    <div class="card"><p>${escapeHtml(profile.about)}</p></div>
+  `;
+}
+
+function renderServices(categoriesSnap, servicesSnap, slug){
+  if (servicesSnap.empty) return;
+  const services = [];
+  servicesSnap.forEach(d => services.push(d.data()));
+  const modLabel = { presencial: '📍 Presencial', online: '💻 Online', ambos: '📍 Presencial · 💻 Online' };
+
+  let categories = [];
+  categoriesSnap.forEach(d => categories.push({ id: d.id, ...d.data() }));
+
+  // Compatibilidade: serviços antigos sem categoryId (ainda não migrados
+  // no momento em que este perfil foi visto) — agrupa por nome de categoria.
+  if (categories.length === 0){
+    const byName = {};
+    services.forEach(s => { const n = s.category || 'Serviços'; if(!byName[n]) byName[n] = { name:n, icon: s.categoryIcon||'🩺', modalidade:'', id:n }; });
+    categories = Object.values(byName);
+    services.forEach(s => { s.categoryId = s.category || 'Serviços'; });
+  }
+
+  let html = '';
+  categories.sort((a,b) => (a.name||'').localeCompare(b.name||'')).forEach((cat, i) => {
+    const items = services.filter(s => s.categoryId === cat.id);
+    if (!items.length) return;
+    const itemsHtml = items.map(s => `
+      <div class="service-card" style="margin-top:8px;">
+        <div>
+          <strong>${escapeHtml(s.name)}</strong>
+          ${s.type === 'pack' ? `<div class="muted">Pack · ${s.packSessions||''} sessões</div>` : ''}
+          ${s.description ? `<div class="muted">${escapeHtml(s.description)}</div>` : ''}
+        </div>
+        <div class="price">${s.price}€</div>
+      </div>`).join('');
+    html += `<div class="card cat-card" id="catCard${i}" onclick="toggleCatCard(${i})">
+      <div class="cat-head">
+        <h3 style="margin:0;color:var(--primary-dark);">${cat.icon||'🩺'} ${escapeHtml(cat.name)}</h3>
+        <span class="chevron">▾</span>
+      </div>
+      ${cat.modalidade ? `<div class="cat-mod">${modLabel[cat.modalidade]||''}</div>` : ''}
+      ${cat.description ? `<div class="muted" style="margin-top:4px;">${escapeHtml(cat.description)}</div>` : ''}
+      <div class="cat-items hidden">${itemsHtml}</div>
+    </div>`;
+  });
+  document.getElementById('servicesSection').innerHTML = `
+    <h2 class="section-title">Serviços</h2>${html}
+  `;
+}
+
+window.toggleCatCard = function(i){
+  const card = document.getElementById('catCard' + i);
+  if (!card) return;
+  card.classList.toggle('open');
+  card.querySelector('.cat-items')?.classList.toggle('hidden');
+};
+
+function renderTeam(snap){
+  if (snap.empty) return;
+  let html = '<div class="team-grid">';
+  const teamData = {};
+  snap.forEach(d=>{
+    teamData[d.id] = d.data();
+    const m = d.data();
+    const photo = m.photoUrl
+      ? `<img src="${escapeHtml(m.photoUrl)}" alt="${escapeHtml(m.name)}">`
+      : `<div style="width:64px;height:64px;border-radius:50%;background:#e4ede9;margin:0 auto 8px;"></div>`;
+    html += `<div class="card team-card" style="cursor:pointer;" onclick="window.__showTeamDetail('${d.id}')">
+      ${photo}
+      <strong>${escapeHtml(m.name)}</strong>
+      <div class="muted">${escapeHtml(m.role||'')}</div>
+    </div>`;
+  });
+  html += '</div><div id="teamDetailArea"></div>';
+  document.getElementById('teamSection').innerHTML = `<h2 class="section-title">Equipa</h2>${html}`;
+  window.__teamData = teamData;
+}
+
+window.__showTeamDetail = function(memberId){
+  const m = window.__teamData[memberId];
+  const area = document.getElementById('teamDetailArea');
+  const photo = m.photoUrl
+    ? `<img src="${escapeHtml(m.photoUrl)}" alt="${escapeHtml(m.name)}" style="width:88px;height:88px;border-radius:50%;object-fit:cover;margin-bottom:10px;">`
+    : '';
+  area.innerHTML = `
+    <div class="card" style="text-align:center;">
+      ${photo}
+      <h3>${escapeHtml(m.name)}</h3>
+      <p class="muted">${escapeHtml(m.role||'')}</p>
+      ${m.bio ? `<p style="margin-top:10px;">${escapeHtml(m.bio)}</p>` : ''}
+    </div>`;
+  area.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
+function renderTrainings(snap, slug){
+  if (snap.empty) return;
+  let html = '';
+  snap.forEach(d=>{
+    const t = d.data();
+    const link = `saudecare-formacao-publica.html?t=${encodeURIComponent(slug)}&tr=${d.id}`;
+    html += `<div class="card">
+      <strong>${escapeHtml(t.title)}</strong>
+      <div class="muted">${escapeHtml(t.date||'')} ${t.price > 0 ? '· '+t.price+'€' : '· Gratuito'}</div>
+      <a class="cta" style="background:var(--primary);color:#fff;padding:8px 16px;font-size:13px;display:inline-block;margin-top:8px;" href="${link}">Inscrever-me</a>
+    </div>`;
+  });
+  document.getElementById('trainingsSection').innerHTML = `<h2 class="section-title">Formações e Eventos</h2>${html}`;
+}
+
+function renderTestimonials(snap){
+  if (snap.empty) return;
+  let html = '';
+  snap.forEach(d=>{
+    const t = d.data();
+    html += `<div class="card">
+      <div class="stars">${'★'.repeat(t.rating||5)}</div>
+      <p>"${escapeHtml(t.text)}"</p>
+      <div class="muted" style="margin-top:6px;">— ${escapeHtml(t.name)}</div>
+    </div>`;
+  });
+  document.getElementById('testimonialsSection').innerHTML = `<h2 class="section-title">O que dizem os clientes</h2>${html}`;
+}
+
+function renderContact(profile){
+  let rows = '';
+  if (profile.phone) rows += `<div>📞 ${escapeHtml(profile.phone)}</div>`;
+  if (profile.email) rows += `<div>✉️ ${escapeHtml(profile.email)}</div>`;
+  if (profile.address) rows += `<div>📍 ${escapeHtml(profile.address)}</div>`;
+  if (!rows) return;
+  document.getElementById('contactSection').innerHTML = `
+    <h2 class="section-title">Contactos</h2>
+    <div class="card contact-row">${rows}</div>
+  `;
+}
+
+const DAY_LABELS = { mon:'Segunda', tue:'Terça', wed:'Quarta', thu:'Quinta', fri:'Sexta', sat:'Sábado', sun:'Domingo' };
+
+function renderAvailability(profile, slug){
+  const avail = profile.availability || {};
+  const activeDays = Object.keys(DAY_LABELS).filter(k => avail[k]?.enabled);
+  const el = document.getElementById('availabilitySection');
+
+  if (avail.noFixedHours){
+    el.innerHTML = `
+      <h2 class="section-title">🗓️ Horários</h2>
+      <div class="card" style="text-align:center;">
+        <p class="muted">Sem horário fixo — atendimento só por marcação combinada.</p>
+        <a class="cta" style="margin-top:10px;display:inline-block;" href="saudecare-funil-publico.html?t=${encodeURIComponent(slug)}">📅 Marcar Consulta</a>
+      </div>
+    `;
+    return;
+  }
+  if (!activeDays.length){ el.innerHTML = ''; return; }
+
+  const scheduleHtml = activeDays.map(k => `<div>${DAY_LABELS[k]}: ${escapeHtml(avail[k].start)} – ${escapeHtml(avail[k].end)}</div>`).join('');
+  el.innerHTML = `
+    <h2 class="section-title">🗓️ Horários</h2>
+    <div class="card">${scheduleHtml}</div>
+  `;
+}
+
+load();
+</script>
+</body>
+</html>
