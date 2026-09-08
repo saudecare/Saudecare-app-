@@ -312,7 +312,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-132';
+const APP_VERSION = '2026-09-02-133';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -8889,10 +8889,12 @@ window.openNewKnowledgeEntry = function(entry){
   document.getElementById('knowledgeFormContainer').innerHTML = `
     <div class="card" style="margin-top:10px;">
       <h3 style="margin-bottom:8px;">${isEdit ? 'Editar conhecimento' : 'Novo conhecimento'}</h3>
-      <label>Tema (ex: Óleos Essenciais, Fitoterápicos, Probióticos, Ervas…)</label>
-      <input id="kbTopic" placeholder="Óleos Essenciais" value="${isEdit ? escapeHtml(entry.topic||'') : ''}">
-      <label>Título</label>
-      <input id="kbTitle" placeholder="ex: Lavanda" value="${isEdit ? escapeHtml(entry.title||'') : ''}">
+      <label>Tema (ex: Sintomas & Queixas, Óleos Essenciais, Fitoterápicos…)</label>
+      <input id="kbTopic" placeholder="Sintomas & Queixas" value="${isEdit ? escapeHtml(entry.topic||'') : ''}">
+      <label>Título (ex: um sintoma/queixa como "Insónia", ou um produto como "Lavanda")</label>
+      <input id="kbTitle" placeholder="ex: Insónia" value="${isEdit ? escapeHtml(entry.title||'') : ''}">
+      <button class="ghost" style="margin-top:6px;" onclick="pesquisarConhecimentoIA()">🔍 Pesquisar com IA (rascunho a rever)</button>
+      <p id="kbPesquisaMsg" class="muted hidden">A pesquisar, aguarde…</p>
       <div class="row" style="margin:8px 0;flex-wrap:wrap;">
         <label class="ghost" style="text-align:center;cursor:pointer;">
           📷 Tirar foto
@@ -8935,6 +8937,34 @@ window.openNewKnowledgeEntry = function(entry){
   if (!isEdit){
     ['kbContent','kbIngredientes','kbComoFazer','kbComoTomar','kbCuidados'].forEach(restoreAutosaveField);
   }
+};
+
+window.pesquisarConhecimentoIA = async function(){
+  const tema = document.getElementById('kbTopic').value.trim();
+  const titulo = document.getElementById('kbTitle').value.trim();
+  if (!titulo){ toast('Escreva primeiro o título (ex: o sintoma ou produto).', true); return; }
+  const msg = document.getElementById('kbPesquisaMsg');
+  msg.classList.remove('hidden'); msg.textContent = 'A pesquisar, aguarde…';
+  try{
+    const res = await fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/knowledgeResearch', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tema, titulo })
+    });
+    const data = await res.json();
+    if (!data.ok){ toast(data.error || 'Não foi possível pesquisar agora.', true); msg.classList.add('hidden'); return; }
+    document.getElementById('kbStructuredToggle').checked = true;
+    document.getElementById('kbStructuredFields').classList.remove('hidden');
+    document.getElementById('kbIngredientes').value = data.rascunho.ingredientes || '';
+    document.getElementById('kbComoFazer').value = data.rascunho.comoFazer || '';
+    document.getElementById('kbComoTomar').value = data.rascunho.comoTomar || '';
+    document.getElementById('kbCuidados').value = data.rascunho.cuidados || '';
+    document.getElementById('kbContent').value = `⚠️ RASCUNHO gerado por IA — leia com atenção e edite antes de guardar. Confirme sempre fontes e contraindicações antes de usar com um paciente.\n\n${data.rascunho.resumo || ''}`;
+    toast('Rascunho pronto — reveja tudo com atenção antes de guardar.');
+  }catch(e){
+    console.error(e);
+    toast('Erro ao pesquisar. Tente escrever manualmente.', true);
+  }
+  msg.classList.add('hidden');
 };
 
 window.runKnowledgeOcr = async function(input){
