@@ -312,7 +312,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-138';
+const APP_VERSION = '2026-09-02-139';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1529,7 +1529,7 @@ const ONBOARDING_STEPS = [
   { view: 'forms', titulo: 'Fichas & Questionários', texto: 'Use as fichas prontas ou crie os seus próprios questionários de avaliação.' },
   { view: 'team', titulo: 'Convidar a sua Equipa', texto: 'Se trabalha com outros profissionais, convide-os aqui — cada um tem o seu próprio acesso.' },
   { view: 'patients', titulo: 'O Primeiro Paciente', texto: 'Experimente adicionar um paciente de teste, para ver como funciona a ficha.' },
-  { view: 'portalPaciente', titulo: 'Portal do Paciente', texto: 'Veja como os seus pacientes acedem aos dados deles, sem precisarem de criar conta.' },
+  { view: 'portalPaciente', titulo: 'Portal de Acompanhamento', texto: 'Veja todos os seus pacientes, sigam pelo Portal digital, por WhatsApp ou outro meio, num único sítio.' },
   { view: 'agenda', titulo: 'Agenda', texto: 'Experimente marcar uma consulta na agenda.' },
   { view: 'knowledge', titulo: 'Biblioteca de Conhecimento', texto: 'Dê uma vista de olhos à Biblioteca — pode guardar documentos e materiais aqui.' }
 ];
@@ -2033,8 +2033,9 @@ async function renderHome(main){
   const SHORTCUTS = [
     { icon: '🩺', label: 'Nova Consulta', action: 'startNewConsultationFlow()' },
     { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
+    { icon: '🗓️', label: 'Disponibilidade', action: "openSettingsSection('disponibilidade')" },
     { icon: '🧑‍🤝‍🧑', label: 'Pacientes', action: "renderView('patients')" },
-    { icon: '💚', label: 'Portal do Paciente', action: "renderView('portalPaciente')" },
+    { icon: '💚', label: 'Acompanhamento', action: "renderView('portalPaciente')" },
     { icon: '💶', label: 'Finanças', action: "renderView('finances')" },
     { icon: '📋', label: 'Os Meus Métodos', action: "renderView('protocols')" },
     { icon: '🧠', label: 'Conhecimento', action: "renderView('knowledge')" },
@@ -3771,8 +3772,8 @@ async function renderPatientPortalOverview(main){
   const limitLabel = limits.portalPatients === Infinity ? `${activeCount} (ilimitado no seu plano)` : `${activeCount} / ${limits.portalPatients}`;
 
   main.innerHTML = `
-    <h2>💚 Portal do Paciente</h2>
-    ${hintBox('Aqui gere, num único sítio, o acesso de cada paciente ao portal (mensagens, relatórios, marcações e videochamada) — sem precisar de entrar na ficha de cada um. Toque num paciente para abrir as opções dele.')}
+    <h2>💚 Portal de Acompanhamento</h2>
+    ${hintBox('Visão de todos os pacientes, sigam ou não pelo Portal digital — inclui também quem acompanha por WhatsApp ou outro meio. Toque num paciente para abrir as opções dele.')}
     <div class="row" style="margin-bottom:8px;">
       <button class="ghost" onclick="renderView('patients')">🧑‍🤝‍🧑 Ver todos os pacientes (ficha completa)</button>
     </div>
@@ -3852,6 +3853,11 @@ function renderPortalOverviewList(patients){
         <div style="flex:1;">
           <strong>${escapeHtml(p.fullName||'Sem nome')}</strong>
           <div class="muted" style="font-size:12px;">${escapeHtml(p.phone||p.email||'')}</div>
+          <div style="margin-top:2px;">${
+            p.preferredChannel === 'whatsapp' ? '<span class="badge" style="background:#e7f6ec;color:#1a7a3c;">📱 Acompanhado por WhatsApp</span>'
+            : p.preferredChannel === 'other' ? '<span class="badge">📴 Fora da app</span>'
+            : '<span class="badge" style="background:#eef6f2;color:var(--primary-dark);">💚 Acompanhado pelo Portal</span>'
+          }</div>
         </div>
         ${statusBadge}
       </div>
