@@ -71,6 +71,25 @@
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a2b26;
     color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:999;}
   .hidden{display:none !important;}
+  /* Portal de Acompanhamento — estilo WhatsApp: lista + detalhe. No
+     telemóvel comporta-se como o WhatsApp também se comporta lá — só um
+     dos dois de cada vez, com um botão de voltar. Em ecrãs largos (a
+     partir de 900px), os dois ficam sempre lado a lado. */
+  .portal-split{display:flex;gap:0;align-items:flex-start;}
+  .portal-split-list{width:100%;}
+  .portal-split-detail{width:100%;display:none;}
+  .portal-split.detail-active .portal-split-list{display:none;}
+  .portal-split.detail-active .portal-split-detail{display:block;}
+  .portal-back-btn{display:inline-block;margin-bottom:10px;}
+  @media(min-width:900px){
+    .portal-split{gap:16px;}
+    .portal-split-list, .portal-split.detail-active .portal-split-list{display:block;width:340px;flex-shrink:0;max-height:calc(100vh - 220px);overflow-y:auto;}
+    .portal-split-detail, .portal-split.detail-active .portal-split-detail{display:block;flex:1;min-width:0;}
+    .portal-back-btn{display:none;}
+  }
+  .portal-row{cursor:pointer;padding:10px 12px;border-radius:10px;margin-bottom:4px;}
+  .portal-row:hover{background:#f2f6f4;}
+  .portal-row.active{background:#e3f0ea;border:1px solid var(--primary);}
   .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
   .profile-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
     background:var(--card,#fff);border:1px solid #e5e5e5;border-radius:14px;padding:16px 10px;
@@ -312,7 +331,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-139';
+const APP_VERSION = '2026-09-02-140';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3751,7 +3770,10 @@ window.savePreferredChannel = async function(patientId, channel){
   await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), { preferredChannel: channel });
   window.__currentPatientChannel = channel;
   toast('Preferência guardada.');
-  renderPatientMessages(patientId);
+  // Atualiza a caixa de mensagens certa, seja na ficha completa (sem
+  // sufixo) ou no painel do Portal de Acompanhamento (sufixo 'portalPane').
+  if (document.getElementById('patientMessagesBox')) renderPatientMessages(patientId);
+  if (document.getElementById('patientMessagesBoxportalPane')) renderPatientMessages(patientId, false, 'portalPane');
 };
 
 window.openPortalForPatient = function(patientId){
@@ -3773,27 +3795,30 @@ async function renderPatientPortalOverview(main){
 
   main.innerHTML = `
     <h2>💚 Portal de Acompanhamento</h2>
-    ${hintBox('Visão de todos os pacientes, sigam ou não pelo Portal digital — inclui também quem acompanha por WhatsApp ou outro meio. Toque num paciente para abrir as opções dele.')}
-    <div class="row" style="margin-bottom:8px;">
-      <button class="ghost" onclick="renderView('patients')">🧑‍🤝‍🧑 Ver todos os pacientes (ficha completa)</button>
-    </div>
-    <div class="card">
-      <div class="muted">Pacientes com Portal ativo: <strong>${limitLabel}</strong></div>
-    </div>
+    ${hintBox('Visão de todos os pacientes, sigam ou não pelo Portal digital — inclui também quem acompanha por WhatsApp ou outro meio. Toque num paciente para ver tudo sobre ele, ao lado.')}
     <div class="profile-grid">
       <button class="profile-tile" onclick="openProfileSection('online')"><span class="ptile-icon">💻</span><span>Consultório Online</span></button>
       <button class="profile-tile" onclick="openProfileSection('mensagens')"><span class="ptile-icon">💬</span><span>Modelos de Mensagens</span></button>
     </div>
-    <label style="margin-top:14px;">🔎 Pesquisar</label>
-    <input id="portalOverviewSearch" placeholder="Nome, telefone, email ou NIF…" oninput="filterPortalOverview(this.value)">
-    <div id="portalOverviewList" style="margin-top:10px;"></div>
+    <div class="card">
+      <div class="muted">Pacientes com Portal ativo: <strong>${limitLabel}</strong></div>
+    </div>
+    <div class="portal-split" id="portalSplit">
+      <div class="portal-split-list">
+        <label>🔎 Pesquisar</label>
+        <input id="portalOverviewSearch" placeholder="Nome, telefone, email ou NIF…" oninput="filterPortalOverview(this.value)">
+        <div id="portalOverviewList" style="margin-top:10px;"></div>
+      </div>
+      <div class="portal-split-detail" id="portalDetailPane">
+        <p class="muted" style="padding:20px;text-align:center;">👈 Selecione um paciente para ver tudo sobre ele.</p>
+      </div>
+    </div>
   `;
   renderPortalOverviewList(patients);
   if (window.__portalOverviewJumpTo){
     const jumpId = window.__portalOverviewJumpTo;
     window.__portalOverviewJumpTo = null;
-    document.getElementById('portalItemBody-' + jumpId)?.classList.remove('hidden');
-    document.getElementById('portalCard-' + jumpId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    selectPortalPatient(jumpId);
   }
 }
 
@@ -3813,10 +3838,9 @@ window.filterPortalOverview = function(term){
 function renderPortalOverviewList(patients){
   const listEl = document.getElementById('portalOverviewList');
   if (!listEl) return;
-  const linkFor = (p) => `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-portal-paciente.html')}?t=${tenantId}&p=${p.id}&k=${p.portalToken}`;
   const avatarFor = (p) => p.photoUrl
-    ? `<img src="${escapeAttrJs(p.photoUrl)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none';">`
-    : `<div style="width:44px;height:44px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">${escapeHtml((p.fullName||'?').trim()[0]||'?').toUpperCase()}</div>`;
+    ? `<img src="${escapeAttrJs(p.photoUrl)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none';">`
+    : `<div style="width:40px;height:40px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">${escapeHtml((p.fullName||'?').trim()[0]||'?').toUpperCase()}</div>`;
 
   if (!patients.length){
     listEl.innerHTML = '<p class="muted">Nenhum paciente encontrado.</p>';
@@ -3824,47 +3848,127 @@ function renderPortalOverviewList(patients){
   }
 
   listEl.innerHTML = patients.map(p => {
-    let statusBadge, actionsHtml;
-    if (p.portalToken && !p.portalRevoked){
-      statusBadge = p.portalFirstAccessedAt
-        ? `<span class="badge active">✅ Já acedeu</span>`
-        : `<span class="badge" style="background:#fff3cd;color:#7a5b00;">🕓 Pendente</span>`;
-      actionsHtml = `
-        <input readonly value="${linkFor(p)}" style="font-size:11px;margin-top:8px;" onclick="this.select()">
-        <div class="row" style="margin-top:6px;flex-wrap:wrap;">
-          <button class="ghost" onclick="navigator.clipboard.writeText('${linkFor(p)}').then(()=>toast('Link copiado.'))">Copiar</button>
-          <button class="primary" onclick="joinOnlineConsult('${p.id}')">💻 Chamada agora</button>
-          ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${p.id}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','${escapeAttrJs(p.portalToken||'')}','whatsapp')">📱 WhatsApp</button>` : ''}
-          ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${p.id}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','${escapeAttrJs(p.portalToken||'')}','sms')">💬 SMS</button>` : ''}
-          <button class="ghost" onclick="regeneratePortalLinkFromOverview('${p.id}')">Novo link</button>
-          <button class="danger" onclick="revokePortalLinkFromOverview('${p.id}','${escapeAttrJs(p.fullName||'')}')">Revogar</button>
-        </div>`;
-    } else if (p.portalToken && p.portalRevoked){
-      statusBadge = `<span class="badge" style="background:#f3d4d1;color:#7a2a20;">🚫 Revogado</span>`;
-      actionsHtml = `<div class="row" style="margin-top:6px;"><button class="ghost" onclick="generatePortalLinkFromOverview('${p.id}')">Reativar</button></div>`;
-    } else {
-      statusBadge = `<span class="badge">➕ Sem portal</span>`;
-      actionsHtml = `<div class="row" style="margin-top:6px;"><button class="ghost" onclick="generatePortalLinkFromOverview('${p.id}')">Gerar link</button></div>`;
-    }
-
-    return `<div class="card" id="portalCard-${p.id}" style="margin-bottom:8px;cursor:pointer;" onclick="togglePortalOverviewItem(event,'${p.id}')">
+    const channelBadge = p.preferredChannel === 'whatsapp' ? '📱'
+      : p.preferredChannel === 'other' ? '📴' : '💚';
+    const portalBadge = (p.portalToken && !p.portalRevoked)
+      ? (p.portalFirstAccessedAt ? '' : ' · 🕓')
+      : '';
+    return `<div class="portal-row" id="portalRow-${p.id}" onclick="selectPortalPatient('${p.id}')">
       <div class="row" style="align-items:center;gap:10px;">
         ${avatarFor(p)}
-        <div style="flex:1;">
-          <strong>${escapeHtml(p.fullName||'Sem nome')}</strong>
-          <div class="muted" style="font-size:12px;">${escapeHtml(p.phone||p.email||'')}</div>
-          <div style="margin-top:2px;">${
-            p.preferredChannel === 'whatsapp' ? '<span class="badge" style="background:#e7f6ec;color:#1a7a3c;">📱 Acompanhado por WhatsApp</span>'
-            : p.preferredChannel === 'other' ? '<span class="badge">📴 Fora da app</span>'
-            : '<span class="badge" style="background:#eef6f2;color:var(--primary-dark);">💚 Acompanhado pelo Portal</span>'
-          }</div>
+        <div style="flex:1;min-width:0;">
+          <strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.fullName||'Sem nome')}</strong>
+          <div class="muted" style="font-size:12px;">${channelBadge} ${escapeHtml(p.phone||p.email||'')}${portalBadge}</div>
         </div>
-        ${statusBadge}
       </div>
-      <div id="portalItemBody-${p.id}" class="hidden">
-        ${actionsHtml}
-        <button class="ghost" style="margin-top:6px;width:100%;" onclick="viewPatient('${p.id}')">🧑‍🤝‍🧑 Ver ficha completa →</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Ecrã de detalhe do paciente, ao estilo WhatsApp (lista + detalhe) ───
+window.selectPortalPatient = async function(patientId){
+  document.querySelectorAll('.portal-row').forEach(r => r.classList.remove('active'));
+  document.getElementById('portalRow-' + patientId)?.classList.add('active');
+  document.getElementById('portalSplit')?.classList.add('detail-active');
+
+  const pane = document.getElementById('portalDetailPane');
+  pane.innerHTML = '<p class="muted" style="padding:20px;">A carregar…</p>';
+
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
+  if (!snap.exists()){ pane.innerHTML = '<p class="muted">Paciente não encontrado.</p>'; return; }
+  const p = snap.data();
+
+  const avatarFor = p.photoUrl
+    ? `<img src="${escapeAttrJs(p.photoUrl)}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none';">`
+    : `<div style="width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;">${escapeHtml((p.fullName||'?').trim()[0]||'?').toUpperCase()}</div>`;
+
+  const linkFor = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-portal-paciente.html')}?t=${tenantId}&p=${patientId}&k=${p.portalToken||''}`;
+  let portalActionsHtml;
+  if (p.portalToken && !p.portalRevoked){
+    portalActionsHtml = `
+      <input readonly value="${linkFor}" style="font-size:11px;" onclick="this.select()">
+      <div class="row" style="margin-top:6px;flex-wrap:wrap;">
+        <button class="ghost" onclick="navigator.clipboard.writeText('${linkFor}').then(()=>toast('Link copiado.'))">Copiar</button>
+        <button class="primary" onclick="joinOnlineConsult('${patientId}')">💻 Chamada agora</button>
+        ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','${escapeAttrJs(p.portalToken||'')}','whatsapp')">📱 WhatsApp</button>` : ''}
+        <button class="danger" onclick="revokePortalLinkFromOverview('${patientId}','${escapeAttrJs(p.fullName||'')}')">Revogar</button>
+      </div>`;
+  } else {
+    portalActionsHtml = `<button class="ghost" onclick="generatePortalLinkFromOverview('${patientId}')">Gerar link do Portal</button>`;
+  }
+
+  pane.innerHTML = `
+    <button class="ghost portal-back-btn" onclick="closePortalDetail()">← Voltar à lista</button>
+    <div class="card">
+      <div class="row" style="align-items:center;gap:12px;">
+        ${avatarFor}
+        <div style="flex:1;">
+          <h2 style="margin:0;">${escapeHtml(p.fullName||'Sem nome')}</h2>
+          <p class="muted">${escapeHtml(p.phone||'')}${p.phone && p.email ? ' · ' : ''}${escapeHtml(p.email||'')}</p>
+        </div>
       </div>
+      <label style="margin-top:10px;">Como acompanha este paciente?</label>
+      <select onchange="savePreferredChannel('${patientId}', this.value)">
+        <option value="portal" ${(!p.preferredChannel || p.preferredChannel==='portal')?'selected':''}>💚 Mensagens do Portal (dentro da app)</option>
+        <option value="whatsapp" ${p.preferredChannel==='whatsapp'?'selected':''}>📱 WhatsApp (fora da app)</option>
+        <option value="other" ${p.preferredChannel==='other'?'selected':''}>📴 Não uso mensagens com este paciente</option>
+      </select>
+      <div class="row" style="margin-top:12px;flex-wrap:wrap;">
+        <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeAttrJs(p.fullName||'')}')">🧭 Consulta guiada</button>
+        <button class="ghost" onclick="viewPatientEvolution('${patientId}','${escapeAttrJs(p.fullName||'')}')">📈 Evolução</button>
+        <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeAttrJs(p.fullName||'')}')">📝 Enviar ficha</button>
+      </div>
+    </div>
+    <details class="card" open>
+      <summary style="cursor:pointer;font-weight:700;">💚 Portal do Paciente</summary>
+      <div style="margin-top:8px;">${portalActionsHtml}</div>
+    </details>
+    <details class="card" ${(!p.preferredChannel || p.preferredChannel==='portal') ? 'open' : ''}>
+      <summary style="cursor:pointer;font-weight:700;">💬 Mensagens</summary>
+      <div id="patientMessagesBoxportalPane" style="margin-top:8px;"></div>
+    </details>
+    <details class="card">
+      <summary style="cursor:pointer;font-weight:700;">🌱 Diário de Bem-Estar</summary>
+      <div id="portalPaneCheckins" style="margin-top:8px;"></div>
+    </details>
+    <button class="ghost" style="width:100%;margin-top:4px;" onclick="viewPatient('${patientId}')">🧑‍🤝‍🧑 Ver ficha completa (faturas, pacotes, relatórios…) →</button>
+  `;
+
+  window.__currentPatientChannel = p.preferredChannel || 'portal';
+  renderPatientMessages(patientId, false, 'portalPane');
+  renderPatientCheckinsInto('portalPaneCheckins', patientId);
+};
+
+window.closePortalDetail = function(){
+  document.getElementById('portalSplit')?.classList.remove('detail-active');
+};
+
+// Versão simples do diário de bem-estar, para o painel de detalhe do
+// Portal de Acompanhamento — reaproveita a mesma leitura de dados, só
+// muda o elemento onde escreve o resultado.
+async function renderPatientCheckinsInto(targetId, patientId){
+  const box = document.getElementById(targetId);
+  if (!box) return;
+  box.innerHTML = '<p class="muted">A carregar registos…</p>';
+  const snap = await getDocs(query(
+    collection(db, 'tenants', tenantId, 'patients', patientId, 'checkins'),
+    orderBy('createdAt', 'desc')
+  ));
+  if (snap.empty){
+    box.innerHTML = '<p class="muted">Este paciente ainda não fez nenhum registo no Portal.</p>';
+    return;
+  }
+  box.innerHTML = snap.docs.map(d => {
+    const c = d.data();
+    const date = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString('pt-PT', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+    const parts = [];
+    if (c.mood) parts.push(`${CHECKIN_MOOD_ICONS[c.mood-1]} Humor`);
+    if (c.sleepQuality) parts.push(`${CHECKIN_SLEEP_ICONS[c.sleepQuality-1]} Sono`);
+    if (c.energyLevel) parts.push(`${CHECKIN_ENERGY_ICONS[c.energyLevel-1]} Energia`);
+    return `<div class="appt-item" style="margin-bottom:6px;">
+      <strong>${date}</strong>
+      ${parts.length ? `<div class="muted">${parts.join(' &nbsp; ')}</div>` : ''}
+      ${c.notes ? `<div style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(c.notes)}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -3876,8 +3980,12 @@ window.togglePortalOverviewItem = function(ev, patientId){
   document.getElementById('portalItemBody-' + patientId)?.classList.toggle('hidden');
 };
 
-async function renderPatientMessages(patientId, isPoll){
-  const box = document.getElementById('patientMessagesBox');
+async function renderPatientMessages(patientId, isPoll, suffix){
+  suffix = suffix || '';
+  const boxId = 'patientMessagesBox' + suffix;
+  const listId = 'patientMsgList' + suffix;
+  const inputId = 'patientMsgInput' + suffix;
+  const box = document.getElementById(boxId);
   if (!box) return;
 
   if (window.__currentPatientChannel && window.__currentPatientChannel !== 'portal'){
@@ -3888,12 +3996,12 @@ async function renderPatientMessages(patientId, isPoll){
   if (!isPoll){
     box.innerHTML = `
       <h3 style="margin-bottom:6px;">💬 Mensagens</h3>
-      <div id="patientMsgList" style="max-height:220px;overflow-y:auto;background:#fafafa;border-radius:8px;padding:10px;">A carregar mensagens…</div>
+      <div id="${listId}" style="max-height:220px;overflow-y:auto;background:#fafafa;border-radius:8px;padding:10px;">A carregar mensagens…</div>
       <div class="row" style="margin-top:6px;">
-        <input id="patientMsgInput" placeholder="Escrever mensagem…" onkeydown="if(event.key==='Enter')sendPatientMessage('${patientId}')">
-        <button class="primary" onclick="sendPatientMessage('${patientId}')">Enviar</button>
+        <input id="${inputId}" placeholder="Escrever mensagem…" onkeydown="if(event.key==='Enter')sendPatientMessage('${patientId}','${suffix}')">
+        <button class="primary" onclick="sendPatientMessage('${patientId}','${suffix}')">Enviar</button>
       </div>`;
-    restoreAutosaveField('patientMsgInput');
+    restoreAutosaveField(inputId);
     window.__lastPatientMsgSig = null;
   }
 
@@ -3921,7 +4029,7 @@ async function renderPatientMessages(patientId, isPoll){
   // ficou lida) — evita "piscar" o ecrã a cada verificação automática.
   if (sig !== window.__lastPatientMsgSig){
     window.__lastPatientMsgSig = sig;
-    const listEl = document.getElementById('patientMsgList');
+    const listEl = document.getElementById(listId);
     if (listEl){
       listEl.innerHTML = msgsHtml;
       listEl.scrollTop = listEl.scrollHeight;
@@ -3934,22 +4042,23 @@ async function renderPatientMessages(patientId, isPoll){
   if (!isPoll){
     if (__patientMsgPollTimer) clearInterval(__patientMsgPollTimer);
     __patientMsgPollTimer = setInterval(() => {
-      if (document.getElementById('patientMessagesBox')) renderPatientMessages(patientId, true);
+      if (document.getElementById(boxId)) renderPatientMessages(patientId, true, suffix);
       else clearInterval(__patientMsgPollTimer);
     }, 5000);
   }
 }
 
-window.sendPatientMessage = async function(patientId){
-  const input = document.getElementById('patientMsgInput');
+window.sendPatientMessage = async function(patientId, suffix){
+  suffix = suffix || '';
+  const input = document.getElementById('patientMsgInput' + suffix);
   const text = input.value.trim();
   if (!text) return;
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'messages'), {
     sender: 'professional', text, createdAt: serverTimestamp(), readByPatient: false
   });
   input.value = '';
-  clearAutosaveField('patientMsgInput');
-  renderPatientMessages(patientId, true);
+  clearAutosaveField('patientMsgInput' + suffix);
+  renderPatientMessages(patientId, true, suffix);
 };
 
 // ── Evolução do paciente — linha do tempo de relatórios ─────────────────
