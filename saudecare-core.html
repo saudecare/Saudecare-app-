@@ -71,7 +71,7 @@
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a2b26;
     color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:999;}
   .hidden{display:none !important;}
-  /* Portal de Acompanhamento — estilo WhatsApp: lista + detalhe. No
+  /* Central do Paciente — estilo WhatsApp: lista + detalhe. No
      telemóvel comporta-se como o WhatsApp também se comporta lá — só um
      dos dois de cada vez, com um botão de voltar. Em ecrãs largos (a
      partir de 900px), os dois ficam sempre lado a lado. */
@@ -304,8 +304,9 @@
     </div>
     <button data-view="home" class="active">🏠 Início</button>
     <button onclick="startNewConsultationFlow()" style="background:var(--primary);color:#fff;font-weight:600;">🩺 Nova Consulta</button>
-    <button data-view="group_agenda">📅 Agenda & Pacientes</button>
-    <button data-view="group_tools">🧰 As Minhas Ferramentas</button>
+    <button data-view="portalPaciente" style="background:#e3f0ea;font-weight:600;">💚 Central do Paciente</button>
+    <button data-view="group_agenda">📅 Agenda & Marcações</button>
+    <button data-view="group_tools">🧰 Ferramentas</button>
     <button data-view="group_business">💼 O Meu Negócio</button>
     <button data-view="group_account">⚙️ Conta</button>
     <button onclick="installApp()" style="margin-top:20px;">📲 Instalar app no dispositivo</button>
@@ -331,7 +332,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-141';
+const APP_VERSION = '2026-09-02-142';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1443,24 +1444,23 @@ let __profileSection = null;
 // nível, o que ficava confuso. Agora só há 5 categorias visíveis; cada
 // uma abre uma grelha simples com as funcionalidades lá dentro.
 const NAV_GROUPS = {
-  agenda: { title: '📅 Agenda & Acompanhamento', items: [
+  agenda: { title: '📅 Agenda & Marcações', items: [
     { view: 'agenda', icon: '📅', label: 'Agenda' },
-    { view: 'portalPaciente', icon: '💚', label: 'Acompanhamento' },
     { view: 'waitlist', icon: '⏳', label: 'Lista de Espera' }
   ]},
-  tools: { title: '🧰 As Minhas Ferramentas', items: [
+  tools: { title: '🧰 Ferramentas', items: [
     { view: 'protocols', icon: '📋', label: 'Os Meus Métodos' },
+    { view: 'knowledge', icon: '🧠', label: 'Fonte de Conhecimento' },
     { view: 'forms', icon: '📝', label: 'Fichas' },
-    { view: 'services', icon: '🩺', label: 'Serviços' },
-    { view: 'knowledge', icon: '🧠', label: 'Conhecimento' },
+    { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
+    { view: 'trainings', icon: '🎓', label: 'Formações' },
     { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', tenantOnly: 'hikari-terapias' },
     { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
     { view: 'team', icon: '👥', label: 'Equipa', hideForRestricted: true },
-    { view: 'profile', icon: '🏥', label: 'Perfil do Negócio', ownerOnly: true },
-    { view: 'trainings', icon: '🎓', label: 'Formações' }
+    { view: 'profile', icon: '🏥', label: 'Perfil do Negócio', ownerOnly: true }
   ]},
   account: { title: '⚙️ Conta', items: [
     { view: 'myprofile', icon: '🙋', label: 'O Meu Perfil', hideForOwner: true },
@@ -1547,10 +1547,9 @@ const ONBOARDING_STEPS = [
   { view: 'protocols', titulo: 'Os Seus Métodos', texto: 'Configure os protocolos/métodos de trabalho que usa nas suas consultas.' },
   { view: 'forms', titulo: 'Fichas & Questionários', texto: 'Use as fichas prontas ou crie os seus próprios questionários de avaliação.' },
   { view: 'team', titulo: 'Convidar a sua Equipa', texto: 'Se trabalha com outros profissionais, convide-os aqui — cada um tem o seu próprio acesso.' },
-  { view: 'patients', titulo: 'O Primeiro Paciente', texto: 'Experimente adicionar um paciente de teste, para ver como funciona a ficha.' },
-  { view: 'portalPaciente', titulo: 'Portal de Acompanhamento', texto: 'Veja todos os seus pacientes, sigam pelo Portal digital, por WhatsApp ou outro meio, num único sítio.' },
+  { view: 'portalPaciente', titulo: 'Central do Paciente', texto: 'Experimente adicionar o seu primeiro paciente e veja tudo sobre ele: mensagens, consultas, fichas e mais, num único sítio.' },
   { view: 'agenda', titulo: 'Agenda', texto: 'Experimente marcar uma consulta na agenda.' },
-  { view: 'knowledge', titulo: 'Biblioteca de Conhecimento', texto: 'Dê uma vista de olhos à Biblioteca — pode guardar documentos e materiais aqui.' }
+  { view: 'knowledge', titulo: 'Fonte de Conhecimento', texto: 'Dê uma vista de olhos — pode guardar documentos e materiais aqui.' }
 ];
 
 async function renderOnboardingBanner(view){
@@ -1631,13 +1630,18 @@ async function renderTeam(main){
   // uma falha aqui impedir o resto da página de aparecer.
   let invitesSnap = { forEach: () => {} };
   let profileByUid = {};
+  let teamMembersNoAccount = [];
   if (tenantRole === 'owner'){
     try{
       invitesSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'staffInvites'), where('used','==', false)));
     }catch(e){ console.error(e); }
     try{
       const teamSnap = await getDocs(collection(db, 'tenants', tenantId, 'teamMembers'));
-      teamSnap.forEach(d => { const t = d.data(); if (t.staffUid) profileByUid[t.staffUid] = { id: d.id, ...t }; });
+      teamSnap.forEach(d => {
+        const t = d.data();
+        if (t.staffUid) profileByUid[t.staffUid] = { id: d.id, ...t };
+        else teamMembersNoAccount.push({ id: d.id, ...t }); // aparece na página pública, sem login próprio
+      });
     }catch(e){ console.error(e); }
   }
 
@@ -1732,6 +1736,28 @@ async function renderTeam(main){
     ` : ''}
     <h3 style="margin:16px 0 8px;">Membros</h3>
     <div class="card">${staffRows}</div>
+    ${tenantRole === 'owner' ? `
+    <h3 style="margin:16px 0 8px;">Pessoas só na página pública (sem acesso à app)</h3>
+    ${hintBox('Para alguém que quer mostrar na equipa da sua página pública, mas que não precisa de entrar na app (ex: uma pessoa em formação, ou um nome apenas decorativo).')}
+    <div class="card">
+      ${teamMembersNoAccount.length ? teamMembersNoAccount.map(m => `
+        <div class="appt-item row">
+          <div><strong>${escapeHtml(m.name)}</strong><div class="muted">${escapeHtml(m.role||'')}</div></div>
+          <div>
+            <button class="ghost" onclick="editTeamMember('${m.id}')">Editar</button>
+            <button class="danger" onclick="deleteTeamMember('${m.id}')">Remover</button>
+          </div>
+        </div>`).join('') : '<p class="muted">Ninguém aqui ainda.</p>'}
+      <div style="margin-top:12px;">
+        <label>Nome</label><input id="tmName" value="${escapeHtml(window.__editingTeamMember?.name||'')}">
+        <label>Função/especialidade</label><input id="tmRole" placeholder="ex: Fisioterapeuta, Nutricionista" value="${escapeHtml(window.__editingTeamMember?.role||'')}">
+        <label>Foto (opcional)</label><input id="tmPhotoUrl" value="${escapeHtml(window.__editingTeamMember?.photoUrl||'')}" placeholder="https://... (ou escolha uma foto abaixo)">
+        ${imageUploadFieldHTML('tmPhotoUrl', `tenants/${tenantId}/team`)}
+        <label>Breve bio</label><textarea id="tmBio" rows="2">${escapeHtml(window.__editingTeamMember?.bio||'')}</textarea>
+        <button class="primary" onclick="saveTeamMember('${window.__editingTeamMemberId||''}')">${window.__editingTeamMemberId?'Guardar alterações':'Adicionar'}</button>
+        ${window.__editingTeamMemberId ? `<button class="ghost" onclick="window.__editingTeamMemberId=null;window.__editingTeamMember=null;renderView('team')">Cancelar edição</button>` : ''}
+      </div>
+    </div>` : ''}
   `;
 }
 
@@ -2053,7 +2079,7 @@ async function renderHome(main){
     { icon: '🩺', label: 'Nova Consulta', action: 'startNewConsultationFlow()' },
     { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
     { icon: '🗓️', label: 'Disponibilidade', action: "openSettingsSection('disponibilidade')" },
-    { icon: '💚', label: 'Acompanhamento', action: "renderView('portalPaciente')" },
+    { icon: '💚', label: 'Central do Paciente', action: "renderView('portalPaciente')" },
     { icon: '💶', label: 'Finanças', action: "renderView('finances')" },
     { icon: '📋', label: 'Os Meus Métodos', action: "renderView('protocols')" },
     { icon: '🧠', label: 'Conhecimento', action: "renderView('knowledge')" },
@@ -3771,7 +3797,7 @@ window.savePreferredChannel = async function(patientId, channel){
   window.__currentPatientChannel = channel;
   toast('Preferência guardada.');
   // Atualiza a caixa de mensagens certa, seja na ficha completa (sem
-  // sufixo) ou no painel do Portal de Acompanhamento (sufixo 'portalPane').
+  // sufixo) ou no painel do Central do Paciente (sufixo 'portalPane').
   if (document.getElementById('patientMessagesBox')) renderPatientMessages(patientId);
   if (document.getElementById('patientMessagesBoxportalPane')) renderPatientMessages(patientId, false, 'portalPane');
 };
@@ -3794,7 +3820,7 @@ async function renderPatientPortalOverview(main){
   const limitLabel = limits.portalPatients === Infinity ? `${activeCount} (ilimitado no seu plano)` : `${activeCount} / ${limits.portalPatients}`;
 
   main.innerHTML = `
-    <h2>💚 Portal de Acompanhamento</h2>
+    <h2>💚 Central do Paciente</h2>
     ${hintBox('Visão de todos os pacientes, sigam ou não pelo Portal digital — inclui também quem acompanha por WhatsApp ou outro meio. Toque num paciente para ver tudo sobre ele, ao lado.')}
     <div class="profile-grid">
       <button class="profile-tile" onclick="openProfileSection('online')"><span class="ptile-icon">💻</span><span>Consultório Online</span></button>
@@ -3951,7 +3977,7 @@ window.closePortalDetail = function(){
 };
 
 // Atalho para marcar uma consulta a um paciente já conhecido, direto do
-// Portal de Acompanhamento — reaproveita o mesmo mecanismo de
+// Central do Paciente — reaproveita o mesmo mecanismo de
 // pré-preenchimento já usado para aceitar pedidos de marcação públicos.
 window.marcarConsultaParaPaciente = function(patientId){
   window.__pendingBookingPrefill = { patientId, serviceId: null, startLocal: '' };
@@ -3960,7 +3986,7 @@ window.marcarConsultaParaPaciente = function(patientId){
 };
 
 // Versão simples do diário de bem-estar, para o painel de detalhe do
-// Portal de Acompanhamento — reaproveita a mesma leitura de dados, só
+// Central do Paciente — reaproveita a mesma leitura de dados, só
 // muda o elemento onde escreve o resultado.
 async function renderPatientCheckinsInto(targetId, patientId){
   const box = document.getElementById(targetId);
@@ -7305,7 +7331,6 @@ function renderProfileMenu(main){
     { key: 'online', icon: '💻', label: 'Consultório Online' },
     { key: 'consentimento', icon: '📄', label: 'Consentimento Informado' },
     { key: 'mensagens', icon: '💬', label: 'Modelos de Mensagens' },
-    { key: 'equipa', icon: '🙋', label: 'Equipa (página pública)' },
     { key: 'testemunhos', icon: '⭐', label: 'Testemunhos' }
   ];
   main.innerHTML = `
@@ -7829,7 +7854,7 @@ window.editTeamMember = async function(id){
   if (!snap.exists()){ toast('Membro não encontrado.', true); return; }
   window.__editingTeamMemberId = id;
   window.__editingTeamMember = snap.data();
-  renderView('profile');
+  renderView('team');
 };
 
 window.saveTeamMember = async function(editId){
@@ -7850,13 +7875,13 @@ window.saveTeamMember = async function(editId){
   window.__editingTeamMemberId = null;
   window.__editingTeamMember = null;
   toast('Membro guardado.');
-  renderView('profile');
+  renderView('team');
 };
 
 window.deleteTeamMember = async function(id){
   if (!confirm('Remover este membro da equipa?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'teamMembers', id));
-  renderView('profile');
+  renderView('team');
 };
 
 window.editTestimonial = async function(id){
