@@ -334,7 +334,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-145';
+const APP_VERSION = '2026-09-09-146';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3905,11 +3905,20 @@ window.selectPortalPatient = async function(patientId){
   const pane = document.getElementById('portalDetailPane');
   pane.innerHTML = '<p class="muted" style="padding:20px;">A carregar…</p>';
 
-  const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
-  if (!snap.exists()){ pane.innerHTML = '<p class="muted">Paciente não encontrado.</p>'; return; }
-  window.__mirrorPatient = { id: patientId, data: snap.data() };
-  window.__currentPatientChannel = snap.data().preferredChannel || 'portal';
-  renderPatientMirrorMenu();
+  try {
+    const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
+    if (!snap.exists()){ pane.innerHTML = '<p class="muted">Paciente não encontrado.</p>'; return; }
+    window.__mirrorPatient = { id: patientId, data: snap.data() };
+    window.__currentPatientChannel = snap.data().preferredChannel || 'portal';
+    await renderPatientMirrorMenu();
+  } catch (err) {
+    console.error('selectPortalPatient falhou:', err);
+    pane.innerHTML = `<div class="card" style="border:2px solid #e74c3c;">
+      <p style="color:#e74c3c;font-weight:700;">⚠️ Ocorreu um erro ao abrir este paciente</p>
+      <p class="muted" style="word-break:break-word;">${escapeHtml(err?.message || String(err))}</p>
+      <button class="ghost" onclick="closePortalDetail()">← Voltar à lista</button>
+    </div>`;
+  }
 };
 
 // Menu principal do paciente, do lado do terapeuta — os mesmos 6
@@ -3924,10 +3933,21 @@ async function renderPatientMirrorMenu(){
     ? `<img src="${escapeAttrJs(p.photoUrl)}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none';">`
     : `<div style="width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;">${escapeHtml((p.fullName||'?').trim()[0]||'?').toUpperCase()}</div>`;
 
-  const [apptSnap, reportsSnap] = await Promise.all([
-    getDocs(query(collection(db, 'tenants', tenantId, 'appointments'), where('patientId','==',patientId))),
-    getDocs(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'))
-  ]);
+  let apptSnap, reportsSnap;
+  try {
+    [apptSnap, reportsSnap] = await Promise.all([
+      getDocs(query(collection(db, 'tenants', tenantId, 'appointments'), where('patientId','==',patientId))),
+      getDocs(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'))
+    ]);
+  } catch (err) {
+    console.error('renderPatientMirrorMenu falhou a ler dados:', err);
+    pane.innerHTML = `<div class="card" style="border:2px solid #e74c3c;">
+      <p style="color:#e74c3c;font-weight:700;">⚠️ Erro ao carregar marcações/relatórios deste paciente</p>
+      <p class="muted" style="word-break:break-word;">${escapeHtml(err?.message || String(err))}</p>
+      <button class="ghost" onclick="closePortalDetail()">← Voltar à lista</button>
+    </div>`;
+    return;
+  }
   const now = new Date();
   let upcomingCount = 0, hasOnlineUpcoming = false;
   apptSnap.forEach(d => {
