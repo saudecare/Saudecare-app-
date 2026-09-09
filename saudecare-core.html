@@ -334,7 +334,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-09-146';
+const APP_VERSION = '2026-09-09-147';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3808,21 +3808,37 @@ window.openPortalForPatient = function(patientId){
   renderView('portalPaciente');
 };
 
+// Chave usada para lembrar qual foi o último paciente visto na Central do
+// Paciente, para reabrir directamente nele da próxima vez (por conta).
+function portalLastPatientKey(){ return 'vindora_lastPortalPatient_' + tenantId; }
+
 async function renderPatientPortalOverview(main){
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
   const patients = [];
   snap.forEach(d => patients.push({ id: d.id, ...d.data() }));
   patients.sort((a,b) => (a.fullName||'').localeCompare(b.fullName||''));
 
-  window.__portalOverviewPatients = patients; // usado pela pesquisa, sem nova leitura à base de dados
+  window.__portalOverviewPatients = patients; // usado pelo filtro do seletor, sem nova leitura à base de dados
 
   const limits = getPlanLimits();
   const activeCount = patients.filter(p => p.portalToken && !p.portalRevoked).length;
   const limitLabel = limits.portalPatients === Infinity ? `${activeCount} (ilimitado no seu plano)` : `${activeCount} / ${limits.portalPatients}`;
 
+  // Decide já qual paciente vai abrir: veio de um "atalho" (openPortalForPatient),
+  // ou o último que tínhamos visto nesta conta, ou simplesmente o primeiro da lista.
+  let initialId = null;
+  if (window.__portalOverviewJumpTo && patients.some(p => p.id === window.__portalOverviewJumpTo)){
+    initialId = window.__portalOverviewJumpTo;
+  } else {
+    const remembered = localStorage.getItem(portalLastPatientKey());
+    if (remembered && patients.some(p => p.id === remembered)) initialId = remembered;
+  }
+  if (!initialId && patients.length) initialId = patients[0].id;
+  window.__portalOverviewJumpTo = null;
+
   main.innerHTML = `
     <h2>💚 Central do Paciente</h2>
-    ${hintBox('Visão de todos os pacientes, sigam ou não pelo Portal digital — inclui também quem acompanha por WhatsApp ou outro meio. Toque num paciente para ver tudo sobre ele, ao lado.')}
+    ${hintBox('Escolha um paciente no seletor abaixo e veja logo tudo sobre ele — exatamente o que ele próprio vê no seu Portal.')}
     <div class="profile-grid">
       <button class="profile-tile" onclick="openProfileSection('online')"><span class="ptile-icon">💻</span><span>Consultório Online</span></button>
       <button class="profile-tile" onclick="openProfileSection('mensagens')"><span class="ptile-icon">💬</span><span>Modelos de Mensagens</span></button>
@@ -3834,73 +3850,59 @@ async function renderPatientPortalOverview(main){
     <div class="card">
       <div class="muted">Pacientes com Portal ativo: <strong>${limitLabel}</strong></div>
     </div>
-    <div class="portal-split" id="portalSplit">
-      <div class="portal-split-list">
-        <label>🔎 Pesquisar</label>
-        <input id="portalOverviewSearch" placeholder="Nome, telefone, email ou NIF…" oninput="filterPortalOverview(this.value)">
-        <div id="portalOverviewList" style="margin-top:10px;"></div>
-      </div>
-      <div class="portal-split-detail" id="portalDetailPane">
-        <p class="muted" style="padding:20px;text-align:center;">👈 Selecione um paciente para ver tudo sobre ele.</p>
-      </div>
+    <div class="card" style="padding:12px;">
+      <label>👤 Paciente</label>
+      <input id="portalPatientSwitcherSearch" placeholder="Escreva para filtrar…" oninput="filterPortalPatientSwitcher(this.value)" style="margin-bottom:8px;">
+      <select id="portalPatientSwitcher" onchange="selectPortalPatient(this.value)" style="width:100%;">
+        ${buildPortalPatientOptions(patients, initialId)}
+      </select>
+    </div>
+    <div id="portalDetailPane">
+      ${patients.length
+        ? '<p class="muted" style="padding:20px;">A carregar…</p>'
+        : '<p class="muted" style="padding:20px;text-align:center;">Ainda não tem pacientes — comece por adicionar o primeiro.</p>'}
     </div>
   `;
-  renderPortalOverviewList(patients);
-  if (window.__portalOverviewJumpTo){
-    const jumpId = window.__portalOverviewJumpTo;
-    window.__portalOverviewJumpTo = null;
-    selectPortalPatient(jumpId);
-  }
+  if (initialId) selectPortalPatient(initialId);
 }
 
-window.filterPortalOverview = function(term){
+// Constrói as <option> do seletor de paciente, mantendo a seleção atual
+// quando possível (usado tanto no arranque como ao filtrar por texto).
+function buildPortalPatientOptions(patients, selectedId){
+  if (!patients.length) return '<option value="">Sem pacientes</option>';
+  return patients.map(p => {
+    const channelBadge = p.preferredChannel === 'whatsapp' ? '📱'
+      : p.preferredChannel === 'other' ? '📴' : '💚';
+    return `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${channelBadge} ${escapeHtml(p.fullName||'Sem nome')}</option>`;
+  }).join('');
+}
+
+// Filtra as opções do seletor por nome/telefone/email/NIF, sem nova leitura
+// à base de dados — usa a lista já carregada em __portalOverviewPatients.
+window.filterPortalPatientSwitcher = function(term){
+  const select = document.getElementById('portalPatientSwitcher');
+  if (!select) return;
   const q = term.trim().toLowerCase();
   const all = window.__portalOverviewPatients || [];
-  if (!q){ renderPortalOverviewList(all); return; }
-  const filtered = all.filter(p =>
+  const filtered = !q ? all : all.filter(p =>
     (p.fullName||'').toLowerCase().includes(q) ||
     (p.phone||'').toLowerCase().includes(q) ||
     (p.email||'').toLowerCase().includes(q) ||
     (p.nif||'').toLowerCase().includes(q)
   );
-  renderPortalOverviewList(filtered);
+  const currentId = select.value;
+  const keepSelected = filtered.some(p => p.id === currentId) ? currentId : (filtered[0]?.id || null);
+  select.innerHTML = buildPortalPatientOptions(filtered, keepSelected);
+  // Se a filtragem mudou qual paciente está selecionado, atualiza a área do portal também.
+  if (keepSelected && keepSelected !== currentId) selectPortalPatient(keepSelected);
 };
 
-function renderPortalOverviewList(patients){
-  const listEl = document.getElementById('portalOverviewList');
-  if (!listEl) return;
-  const avatarFor = (p) => p.photoUrl
-    ? `<img src="${escapeAttrJs(p.photoUrl)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none';">`
-    : `<div style="width:40px;height:40px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">${escapeHtml((p.fullName||'?').trim()[0]||'?').toUpperCase()}</div>`;
-
-  if (!patients.length){
-    listEl.innerHTML = '<p class="muted">Nenhum paciente encontrado.</p>';
-    return;
-  }
-
-  listEl.innerHTML = patients.map(p => {
-    const channelBadge = p.preferredChannel === 'whatsapp' ? '📱'
-      : p.preferredChannel === 'other' ? '📴' : '💚';
-    const portalBadge = (p.portalToken && !p.portalRevoked)
-      ? (p.portalFirstAccessedAt ? '' : ' · 🕓')
-      : '';
-    return `<div class="portal-row" id="portalRow-${p.id}" onclick="selectPortalPatient('${p.id}')">
-      <div class="row" style="align-items:center;gap:10px;">
-        ${avatarFor(p)}
-        <div style="flex:1;min-width:0;">
-          <strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.fullName||'Sem nome')}</strong>
-          <div class="muted" style="font-size:12px;">${channelBadge} ${escapeHtml(p.phone||p.email||'')}${portalBadge}</div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── Ecrã de detalhe do paciente, ao estilo WhatsApp (lista + detalhe) ───
+// ── Abre logo a área tipo-Portal do paciente escolhido no seletor ───────
 window.selectPortalPatient = async function(patientId){
-  document.querySelectorAll('.portal-row').forEach(r => r.classList.remove('active'));
-  document.getElementById('portalRow-' + patientId)?.classList.add('active');
-  document.getElementById('portalSplit')?.classList.add('detail-active');
+  if (!patientId) return;
+  const select = document.getElementById('portalPatientSwitcher');
+  if (select && select.value !== patientId) select.value = patientId;
+  localStorage.setItem(portalLastPatientKey(), patientId);
 
   const pane = document.getElementById('portalDetailPane');
   pane.innerHTML = '<p class="muted" style="padding:20px;">A carregar…</p>';
@@ -3916,7 +3918,6 @@ window.selectPortalPatient = async function(patientId){
     pane.innerHTML = `<div class="card" style="border:2px solid #e74c3c;">
       <p style="color:#e74c3c;font-weight:700;">⚠️ Ocorreu um erro ao abrir este paciente</p>
       <p class="muted" style="word-break:break-word;">${escapeHtml(err?.message || String(err))}</p>
-      <button class="ghost" onclick="closePortalDetail()">← Voltar à lista</button>
     </div>`;
   }
 };
@@ -3944,7 +3945,6 @@ async function renderPatientMirrorMenu(){
     pane.innerHTML = `<div class="card" style="border:2px solid #e74c3c;">
       <p style="color:#e74c3c;font-weight:700;">⚠️ Erro ao carregar marcações/relatórios deste paciente</p>
       <p class="muted" style="word-break:break-word;">${escapeHtml(err?.message || String(err))}</p>
-      <button class="ghost" onclick="closePortalDetail()">← Voltar à lista</button>
     </div>`;
     return;
   }
@@ -3957,7 +3957,6 @@ async function renderPatientMirrorMenu(){
   const materialsCount = (p.sharedMaterials || []).length;
 
   pane.innerHTML = `
-    <button class="ghost portal-back-btn" onclick="closePortalDetail()">← Voltar à lista</button>
     <div class="card">
       <div class="row" style="align-items:center;gap:12px;">
         ${avatarFor}
@@ -4086,10 +4085,6 @@ window.openPatientMirrorSection = async function(section){
       </div>
     `;
   }
-};
-
-window.closePortalDetail = function(){
-  document.getElementById('portalSplit')?.classList.remove('detail-active');
 };
 
 // Atalho para marcar uma consulta a um paciente já conhecido, direto do
