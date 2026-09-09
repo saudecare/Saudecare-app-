@@ -334,7 +334,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-144';
+const APP_VERSION = '2026-09-02-145';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3986,6 +3986,7 @@ async function renderPatientMirrorMenu(){
     <button class="ghost" style="width:100%;margin-top:8px;" onclick="viewPatient('${patientId}')">🧑‍🤝‍🧑 Ver ficha completa (faturas, pacotes…) →</button>
   `;
 }
+window.renderPatientMirrorMenu = renderPatientMirrorMenu;
 
 // Abre um dos 6 separadores — mesmo conteúdo, mesmo sítio que o paciente
 // vê, com um botão a enviar/editar sempre que fizer sentido do lado do
