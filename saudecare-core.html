@@ -312,7 +312,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-136';
+const APP_VERSION = '2026-09-02-138';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -619,6 +619,11 @@ function toast(msg, isError=false){
   t.style.display = 'block';
   setTimeout(()=> t.style.display='none', isError ? 6000 : 3200);
 }
+// Torna "toast" chamável a partir de onclick="..." inline (que corre em
+// contexto global) — sem isto, só funcionava quando chamado de dentro de
+// outra função já exposta em window.*, dando erro "toast is not a
+// function" nos botões de "copiar link/código" espalhados pela app.
+window.toast = toast;
 
 // ── Rede de segurança contra erros silenciosos ──────────────────────────
 // Até agora, se uma ação falhasse a meio (ex: não conseguir ler dados),
@@ -1551,6 +1556,7 @@ async function renderOnboardingBanner(view){
     <div class="row" style="flex-wrap:wrap;gap:8px;">
       ${view !== s.view ? `<button class="primary" onclick="${s.secao ? `openSettingsSection('${s.secao}')` : `renderView('${s.view}')`}">Ir para lá</button>` : ''}
       <button class="ghost" onclick="avancarOnboarding()">✅ Concluí este passo</button>
+      ${step > 0 ? `<button class="ghost" onclick="recuarOnboarding()">⬅️ Passo anterior</button>` : ''}
       <button class="ghost" onclick="saltarOnboarding()">Saltar tutorial</button>
       <button class="ghost" onclick="renderView('supportContact')">🆘 Pedir ajuda</button>
     </div>
@@ -1565,6 +1571,13 @@ window.avancarOnboarding = async function(){
   currentTenantDoc.onboarding = onboarding;
   renderOnboardingBanner(__currentView);
   if (step >= ONBOARDING_STEPS.length) toast('Tutorial concluído! 🎉');
+};
+window.recuarOnboarding = async function(){
+  const step = Math.max(0, (currentTenantDoc?.onboarding?.step || 0) - 1);
+  const onboarding = { ...(currentTenantDoc?.onboarding||{}), step };
+  await updateDoc(doc(db, 'tenants', tenantId), { onboarding });
+  currentTenantDoc.onboarding = onboarding;
+  renderOnboardingBanner(__currentView);
 };
 window.saltarOnboarding = async function(){
   if (!confirm('Saltar o tutorial de configuração? Pode sempre pedir ajuda depois em "Apoio".')) return;
@@ -2465,6 +2478,23 @@ window.openNewAppointment = async function(){
       <p id="apptConflictWarning" class="muted" style="color:var(--danger);"></p>
       <button class="primary" onclick="saveAppointment()">Guardar</button>
     </div>`;
+
+  // Se viemos de um pedido de marcação pública já aceite, pré-preenche
+  // tudo o que der — paciente (se já existir), serviço e data/hora — para
+  // não ser preciso procurar/reescrever nada à mão.
+  if (window.__pendingBookingPrefill){
+    const p = window.__pendingBookingPrefill;
+    if (p.patientId) document.getElementById('apptPatient').value = p.patientId;
+    if (p.serviceId) {
+      document.getElementById('apptService').value = p.serviceId;
+      const sel = document.getElementById('apptService');
+      document.getElementById('apptPrice').value = sel.selectedOptions[0]?.dataset.price || 0;
+    }
+    if (p.startLocal) document.getElementById('apptStart').value = p.startLocal;
+    updateApptPackageOptions();
+    window.__pendingBookingPrefill = null;
+  }
+
   scrollToEl('apptFormContainer');
 };
 
@@ -7398,10 +7428,61 @@ window.declineBookingRequest = async function(requestId){
 };
 
 window.acceptBookingRequest = async function(requestId){
-  toast('Abra "Nova marcação" na Agenda para criar a consulta com os dados deste pedido.');
+  const snap = await getDoc(doc(db, 'public_booking_requests', requestId));
+  if (!snap.exists()){ toast('Pedido não encontrado.', true); return; }
+  const r = snap.data();
   await updateDoc(doc(db, 'public_booking_requests', requestId), { status: 'processed' });
+
+  // Tenta encontrar automaticamente um paciente já existente pelo
+  // telefone/email do pedido, para não ser preciso procurar à mão.
+  const contact = (r.clientPhone || r.clientEmail || '').trim();
+  let matchedPatientId = null;
+  if (contact){
+    const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+    patientsSnap.forEach(d => {
+      if (matchedPatientId) return;
+      const p = d.data();
+      if ((p.phone && p.phone === r.clientPhone) || (p.email && r.clientEmail && p.email.toLowerCase() === r.clientEmail.toLowerCase())){
+        matchedPatientId = d.id;
+      }
+    });
+  }
+
+  // Encontra o serviço correspondente pelo nome, para poder pré-preencher.
+  let matchedServiceId = null;
+  if (r.serviceName){
+    const svcSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'services'), where('name','==', r.serviceName)));
+    if (!svcSnap.empty) matchedServiceId = svcSnap.docs[0].id;
+  }
+
+  let startLocal = '';
+  if (r.requestedStart){
+    const d = new Date(r.requestedStart);
+    startLocal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+
+  window.__pendingBookingPrefill = { patientId: matchedPatientId, serviceId: matchedServiceId, startLocal };
+
+  if (!matchedPatientId){
+    // Sem correspondência — abre "Novo paciente" já com nome/contacto
+    // preenchidos, para só faltar confirmar o consentimento.
+    toast('Não encontrei este cliente — crie o paciente com os dados já preenchidos, depois marque a consulta.');
+    renderView('patients');
+    setTimeout(() => {
+      openNewPatient();
+      setTimeout(() => {
+        const isEmail = (r.clientEmail||'').trim() !== '';
+        document.getElementById('pFullName').value = r.clientName || '';
+        document.getElementById('pPhone').value = r.clientPhone || '';
+        document.getElementById('pEmail').value = r.clientEmail || '';
+      }, 200);
+    }, 200);
+  } else {
+    toast('Cliente encontrado — a abrir a marcação já preenchida.');
+    renderView('agenda');
+    setTimeout(() => openNewAppointment(), 200);
+  }
   loadBookingRequests();
-  renderView('agenda');
 };
 
 window.toggleFixedHoursGrid = function(){
