@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Marcar Consulta — Vindora</title>
+<style>
+  :root{ --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#fff; --text:#1a2b26; --muted:#6b7d76; }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{background:var(--bg);color:var(--text);}
+  .hero{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:32px 20px 26px;text-align:center;}
+  .hero img.logo{width:64px;height:64px;border-radius:14px;object-fit:cover;margin-bottom:10px;background:#fff;}
+  .hero h1{font-size:22px;margin-bottom:4px;}
+  .hero p{opacity:.92;font-size:14px;}
+  .wrap{max-width:520px;margin:0 auto;padding:16px;}
+  .card{background:var(--card);border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  label{display:block;margin:12px 0 6px;font-size:13.5px;color:var(--muted);font-weight:600;}
+  label:first-child{margin-top:0;}
+  input, select, textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #dde5e1;
+    background:#fff;color:var(--text);font-size:15px;font-family:inherit;}
+  textarea{resize:vertical;}
+  .btn{display:block;width:100%;text-align:center;background:var(--primary);color:#fff;font-weight:700;
+    padding:14px;border:none;border-radius:12px;cursor:pointer;font-size:15px;margin-top:16px;}
+  .btn:disabled{opacity:.6;}
+  .muted{color:var(--muted);font-size:13.5px;line-height:1.5;}
+  .service-option{border:1.5px solid #dde5e1;border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;}
+  .service-option.active{border-color:var(--primary);background:#f0f7f4;}
+  .service-option strong{font-size:14.5px;}
+  .success{text-align:center;padding:30px 16px;}
+  .success .check{font-size:48px;margin-bottom:10px;}
+  .errorbox{background:#fdecea;color:#a33;border:1px solid #f5c6c0;border-radius:10px;padding:12px;margin-top:10px;font-size:13.5px;}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div class="hero" id="hero">
+  <p style="opacity:.85;">A carregar…</p>
+</div>
+<div class="wrap">
+  <div id="mainContent"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, collection, getDocs, addDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const params = new URLSearchParams(window.location.search);
+const tenantSlug = params.get('t');
+const main = document.getElementById('mainContent');
+
+function escapeHtml(str){
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+const DAY_LABELS = { mon:'Segunda', tue:'Terça', wed:'Quarta', thu:'Quinta', fri:'Sexta', sat:'Sábado', sun:'Domingo' };
+
+let profile, tenantId, services = [], categories = [], selectedService = null;
+
+async function load(){
+  if (!tenantSlug){
+    document.getElementById('hero').innerHTML = '<h1>Ligação inválida</h1>';
+    return;
+  }
+  const profileSnap = await getDoc(doc(db, 'public_tenant_profiles', tenantSlug));
+  if (!profileSnap.exists()){
+    document.getElementById('hero').innerHTML = '<h1>Página não encontrada</h1>';
+    return;
+  }
+  profile = profileSnap.data();
+  tenantId = profile.tenantId || tenantSlug;
+
+  document.getElementById('hero').innerHTML = `
+    ${profile.logoUrl ? `<img class="logo" src="${escapeHtml(profile.logoUrl)}">` : ''}
+    <h1>${escapeHtml(profile.businessName || 'Marcar Consulta')}</h1>
+    <p>Preencha os seus dados — a marcação fica pendente até ser confirmada.</p>
+  `;
+
+  const [catSnap, svcSnap] = await Promise.all([
+    getDocs(collection(db, 'tenants', tenantId, 'serviceCategories')),
+    getDocs(collection(db, 'tenants', tenantId, 'services'))
+  ]);
+  catSnap.forEach(d => categories.push({ id: d.id, ...d.data() }));
+  svcSnap.forEach(d => { if (d.data().active !== false) services.push({ id: d.id, ...d.data() }); });
+
+  renderForm();
+}
+
+function renderForm(){
+  const avail = profile.availability || {};
+  const semHorarioFixo = !!avail.noFixedHours;
+  const diasAtivos = Object.keys(DAY_LABELS).filter(k => avail[k]?.enabled);
+
+  main.innerHTML = `
+    <div class="card">
+      <label>O seu nome</label>
+      <input id="fNome" placeholder="Nome completo">
+      <label>WhatsApp ou email</label>
+      <input id="fContacto" placeholder="Telemóvel ou email">
+
+      ${services.length ? `
+      <label>Serviço pretendido</label>
+      <div id="serviceList">
+        ${services.map(s => {
+          const cat = categories.find(c => c.id === s.categoryId);
+          return `<div class="service-option" data-id="${s.id}">
+            <strong>${cat?.icon || '🩺'} ${escapeHtml(s.name)}</strong>
+            <div class="muted">${s.durationMinutes ? s.durationMinutes + ' min · ' : ''}${s.price ? s.price + '€' : 'Grátis'}</div>
+          </div>`;
+        }).join('')}
+      </div>` : ''}
+
+      ${semHorarioFixo ? `
+      <label>Quando prefere?</label>
+      <textarea id="fQuando" rows="2" placeholder="ex: Quinta-feira de manhã, ou o que for mais conveniente"></textarea>
+      <p class="muted" style="margin-top:4px;">Este profissional não tem horário fixo — combina o horário diretamente consigo.</p>
+      ` : `
+      <label>Dia preferido</label>
+      <select id="fDia">
+        ${diasAtivos.length ? diasAtivos.map(k => `<option value="${k}">${DAY_LABELS[k]} (${avail[k].start}–${avail[k].end})</option>`).join('') : `<option value="">Qualquer dia</option>`}
+      </select>
+      <label>Data</label>
+      <input id="fData" type="date">
+      <label>Hora aproximada</label>
+      <input id="fHora" type="time">
+      `}
+
+      <label>Mensagem (opcional)</label>
+      <textarea id="fMensagem" rows="2" placeholder="Alguma informação extra que queira partilhar"></textarea>
+
+      <button class="btn" id="btnEnviar">📅 Pedir Marcação</button>
+      <div id="formError"></div>
+    </div>
+  `;
+
+  document.querySelectorAll('.service-option').forEach(el => el.addEventListener('click', () => {
+    document.querySelectorAll('.service-option').forEach(o => o.classList.remove('active'));
+    el.classList.add('active');
+    selectedService = services.find(s => s.id === el.dataset.id);
+  }));
+
+  document.getElementById('btnEnviar').addEventListener('click', onSubmit);
+}
+
+async function onSubmit(){
+  const clientName = document.getElementById('fNome').value.trim();
+  const clientContacto = document.getElementById('fContacto').value.trim();
+  const mensagem = document.getElementById('fMensagem').value.trim();
+  const errorEl = document.getElementById('formError');
+  errorEl.innerHTML = '';
+
+  if (!clientName || !clientContacto){
+    errorEl.innerHTML = '<div class="errorbox">Preencha o nome e um contacto.</div>';
+    return;
+  }
+
+  const avail = profile.availability || {};
+  let requestedStart = null;
+  let quandoTexto = '';
+
+  if (avail.noFixedHours){
+    quandoTexto = document.getElementById('fQuando').value.trim();
+    if (!quandoTexto){
+      errorEl.innerHTML = '<div class="errorbox">Diga-nos quando prefere ser atendido.</div>';
+      return;
+    }
+  } else {
+    const data = document.getElementById('fData').value;
+    const hora = document.getElementById('fHora').value;
+    if (!data){
+      errorEl.innerHTML = '<div class="errorbox">Escolha uma data.</div>';
+      return;
+    }
+    requestedStart = new Date(`${data}T${hora || '09:00'}:00`).toISOString();
+  }
+
+  const btn = document.getElementById('btnEnviar');
+  btn.disabled = true; btn.textContent = 'A enviar…';
+
+  try{
+    const contactoIsEmail = clientContacto.includes('@');
+    await addDoc(collection(db, 'public_booking_requests'), {
+      tenantId, status: 'pending_review',
+      clientName,
+      clientPhone: contactoIsEmail ? '' : clientContacto,
+      clientEmail: contactoIsEmail ? clientContacto : '',
+      serviceName: selectedService?.name || '',
+      servicePrice: selectedService?.price ?? null,
+      serviceId: selectedService?.id || '',
+      requestedStart,
+      preferenciaLivre: quandoTexto || '',
+      message: mensagem,
+      createdAt: new Date().toISOString()
+    });
+
+    main.innerHTML = `
+      <div class="card success">
+        <div class="check">✅</div>
+        <h2>Pedido enviado!</h2>
+        <p class="muted" style="margin-top:8px;">Vamos rever o seu pedido e confirmar consigo em breve, através do contacto que deixou.</p>
+      </div>
+    `;
+  }catch(e){
+    console.error(e);
+    errorEl.innerHTML = '<div class="errorbox">Não foi possível enviar agora. Tente novamente.</div>';
+    btn.disabled = false; btn.textContent = '📅 Pedir Marcação';
+  }
+}
+
+load();
+</script>
+</body>
+</html>
