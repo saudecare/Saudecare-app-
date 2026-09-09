@@ -96,6 +96,8 @@
     box-shadow:0 1px 3px rgba(0,0,0,.06);cursor:pointer;text-align:center;font-size:13px;color:var(--text,#1a2b26);}
   .profile-tile:active{background:#eef6f2;}
   .profile-tile .ptile-icon{font-size:26px;}
+  .profile-tile{position:relative;}
+  .tile-badge{position:absolute;top:8px;right:8px;background:var(--primary);color:#fff;font-size:10.5px;padding:2px 7px;border-radius:20px;}
   .hintBox{background:#eef6f2;border:1px solid #d7ebe2;border-radius:10px;padding:10px 12px;
     font-size:12.5px;color:var(--primary-dark);margin-bottom:14px;line-height:1.4;}
   .mapFullscreenOverlay{position:fixed;inset:0;background:#0b1310;z-index:2000;display:flex;flex-direction:column;}
@@ -332,7 +334,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-143';
+const APP_VERSION = '2026-09-02-144';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3905,26 +3907,34 @@ window.selectPortalPatient = async function(patientId){
 
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
   if (!snap.exists()){ pane.innerHTML = '<p class="muted">Paciente não encontrado.</p>'; return; }
-  const p = snap.data();
+  window.__mirrorPatient = { id: patientId, data: snap.data() };
+  window.__currentPatientChannel = snap.data().preferredChannel || 'portal';
+  renderPatientMirrorMenu();
+};
+
+// Menu principal do paciente, do lado do terapeuta — os mesmos 6
+// separadores, com o mesmo nome e ordem, que o próprio paciente vê no seu
+// Portal. Ao tocar num, abre exatamente o conteúdo correspondente, para
+// nunca haver dúvida de "onde é que isto aparece ao paciente".
+async function renderPatientMirrorMenu(){
+  const { id: patientId, data: p } = window.__mirrorPatient;
+  const pane = document.getElementById('portalDetailPane');
 
   const avatarFor = p.photoUrl
     ? `<img src="${escapeAttrJs(p.photoUrl)}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none';">`
     : `<div style="width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;">${escapeHtml((p.fullName||'?').trim()[0]||'?').toUpperCase()}</div>`;
 
-  const linkFor = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-portal-paciente.html')}?t=${tenantId}&p=${patientId}&k=${p.portalToken||''}`;
-  let portalActionsHtml;
-  if (p.portalToken && !p.portalRevoked){
-    portalActionsHtml = `
-      <input readonly value="${linkFor}" style="font-size:11px;" onclick="this.select()">
-      <div class="row" style="margin-top:6px;flex-wrap:wrap;">
-        <button class="ghost" onclick="navigator.clipboard.writeText('${linkFor}').then(()=>toast('Link copiado.'))">Copiar</button>
-        <button class="primary" onclick="joinOnlineConsult('${patientId}')">💻 Chamada agora</button>
-        ${p.phone ? `<button class="ghost" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','${escapeAttrJs(p.portalToken||'')}','whatsapp')">📱 WhatsApp</button>` : ''}
-        <button class="danger" onclick="revokePortalLinkFromOverview('${patientId}','${escapeAttrJs(p.fullName||'')}')">Revogar</button>
-      </div>`;
-  } else {
-    portalActionsHtml = `<button class="ghost" onclick="generatePortalLinkFromOverview('${patientId}')">Gerar link do Portal</button>`;
-  }
+  const [apptSnap, reportsSnap] = await Promise.all([
+    getDocs(query(collection(db, 'tenants', tenantId, 'appointments'), where('patientId','==',patientId))),
+    getDocs(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'))
+  ]);
+  const now = new Date();
+  let upcomingCount = 0, hasOnlineUpcoming = false;
+  apptSnap.forEach(d => {
+    const a = d.data();
+    if (a.startsAt?.toDate && a.startsAt.toDate() >= now){ upcomingCount++; if (a.local === 'online') hasOnlineUpcoming = true; }
+  });
+  const materialsCount = (p.sharedMaterials || []).length;
 
   pane.innerHTML = `
     <button class="ghost portal-back-btn" onclick="closePortalDetail()">← Voltar à lista</button>
@@ -3942,33 +3952,119 @@ window.selectPortalPatient = async function(patientId){
         <option value="whatsapp" ${p.preferredChannel==='whatsapp'?'selected':''}>📱 WhatsApp (fora da app)</option>
         <option value="other" ${p.preferredChannel==='other'?'selected':''}>📴 Não uso mensagens com este paciente</option>
       </select>
-      <div class="row" style="margin-top:12px;flex-wrap:wrap;">
-        <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeAttrJs(p.fullName||'')}')">🧭 Consulta guiada</button>
-        <button class="primary" onclick="marcarConsultaParaPaciente('${patientId}')">📅 Marcar consulta</button>
-        <button class="ghost" onclick="viewPatientEvolution('${patientId}','${escapeAttrJs(p.fullName||'')}')">📈 Evolução</button>
-        <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeAttrJs(p.fullName||'')}')">📝 Enviar ficha</button>
-        <button class="ghost" onclick="showAddMaterialForm('${patientId}','addMaterialFormContainerPortal')">🎧 Enviar material</button>
-      </div>
-      <div id="addMaterialFormContainerPortal"></div>
     </div>
-    <details class="card" open>
-      <summary style="cursor:pointer;font-weight:700;">💚 Portal do Paciente</summary>
-      <div style="margin-top:8px;">${portalActionsHtml}</div>
-    </details>
-    <details class="card" ${(!p.preferredChannel || p.preferredChannel==='portal') ? 'open' : ''}>
-      <summary style="cursor:pointer;font-weight:700;">💬 Mensagens</summary>
-      <div id="patientMessagesBoxportalPane" style="margin-top:8px;"></div>
-    </details>
-    <details class="card">
-      <summary style="cursor:pointer;font-weight:700;">🌱 Diário de Bem-Estar</summary>
-      <div id="portalPaneCheckins" style="margin-top:8px;"></div>
-    </details>
-    <button class="ghost" style="width:100%;margin-top:4px;" onclick="viewPatient('${patientId}')">🧑‍🤝‍🧑 Ver ficha completa (faturas, pacotes, relatórios…) →</button>
-  `;
 
-  window.__currentPatientChannel = p.preferredChannel || 'portal';
-  renderPatientMessages(patientId, false, 'portalPane');
-  renderPatientCheckinsInto('portalPaneCheckins', patientId);
+    <p class="muted" style="margin:2px 0 8px;">👇 Exatamente o que este paciente vê no seu próprio Portal:</p>
+    <div class="profile-grid">
+      <button class="profile-tile" onclick="openPatientMirrorSection('appointments')">
+        ${hasOnlineUpcoming ? '<span class="tile-badge">Online</span>' : ''}
+        <span class="ptile-icon">📅</span><span>Marcações${upcomingCount ? ` (${upcomingCount})` : ''}</span>
+      </button>
+      <button class="profile-tile" onclick="openPatientMirrorSection('checkin')">
+        <span class="ptile-icon">🌱</span><span>Diário de Bem-Estar</span>
+      </button>
+      <button class="profile-tile" onclick="openPatientMirrorSection('messages')">
+        <span class="ptile-icon">💬</span><span>${p.preferredChannel && p.preferredChannel !== 'portal' ? 'Contacto' : 'Mensagens'}</span>
+      </button>
+      <button class="profile-tile" onclick="openPatientMirrorSection('reports')">
+        <span class="ptile-icon">📖</span><span>Relatórios${reportsSnap.size ? ` (${reportsSnap.size})` : ''}</span>
+      </button>
+      <button class="profile-tile" onclick="openPatientMirrorSection('myData')">
+        <span class="ptile-icon">📋</span><span>Os Dados Dele(a)</span>
+      </button>
+      <button class="profile-tile" onclick="openPatientMirrorSection('materials')">
+        ${materialsCount ? `<span class="tile-badge">${materialsCount}</span>` : ''}
+        <span class="ptile-icon">🎧</span><span>Materiais</span>
+      </button>
+    </div>
+
+    <div class="row" style="margin-top:4px;flex-wrap:wrap;">
+      <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeAttrJs(p.fullName||'')}')">🧭 Consulta guiada</button>
+      <button class="primary" onclick="marcarConsultaParaPaciente('${patientId}')">📅 Marcar consulta</button>
+      <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeAttrJs(p.fullName||'')}')">📝 Enviar ficha</button>
+    </div>
+    <button class="ghost" style="width:100%;margin-top:8px;" onclick="viewPatient('${patientId}')">🧑‍🤝‍🧑 Ver ficha completa (faturas, pacotes…) →</button>
+  `;
+}
+
+// Abre um dos 6 separadores — mesmo conteúdo, mesmo sítio que o paciente
+// vê, com um botão a enviar/editar sempre que fizer sentido do lado do
+// terapeuta. "← Voltar" regressa aos separadores deste paciente (não à
+// lista toda), tal como acontece no Portal do próprio paciente.
+window.openPatientMirrorSection = async function(section){
+  const { id: patientId, data: p } = window.__mirrorPatient;
+  const pane = document.getElementById('portalDetailPane');
+  const backBtn = `<button class="ghost" style="margin-bottom:10px;" onclick="renderPatientMirrorMenu()">← Voltar</button>`;
+
+  if (section === 'appointments'){
+    pane.innerHTML = backBtn + '<p class="muted">A carregar marcações…</p>';
+    const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'appointments'), where('patientId','==',patientId)));
+    const all = []; snap.forEach(d => all.push({ id: d.id, ...d.data() }));
+    all.sort((a,b) => (a.startsAt?.toDate?.()||0) - (b.startsAt?.toDate?.()||0));
+    const now = new Date();
+    const upcoming = all.filter(a => a.startsAt?.toDate && a.startsAt.toDate() >= now);
+    const past = all.filter(a => !a.startsAt?.toDate || a.startsAt.toDate() < now).reverse();
+    const row = (a) => `<div class="appt-item">
+      <strong>${a.startsAt?.toDate ? a.startsAt.toDate().toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}</strong>
+      <div class="muted">${escapeHtml(a.serviceName||'')}${a.local==='online' ? ' · 💻 Online' : ''}</div>
+      ${a.price ? `<div class="muted">${a.paymentStatus==='paid'?'✅ Pago':(a.paymentStatus==='partial'?'🟡 Parcial':'🔴 Pendente')} · ${a.price}€</div>` : ''}
+    </div>`;
+    pane.innerHTML = backBtn + `
+      <div class="card"><h3 style="margin-bottom:8px;">📅 Próximas marcações</h3>${upcoming.length ? upcoming.map(row).join('') : '<p class="muted">Sem marcações agendadas.</p>'}</div>
+      <div class="card"><h3 style="margin-bottom:8px;">🗓️ Histórico de consultas</h3>${past.length ? past.map(row).join('') : '<p class="muted">Ainda sem consultas anteriores.</p>'}</div>
+      <button class="primary" style="width:100%;" onclick="marcarConsultaParaPaciente('${patientId}')">📅 Marcar nova consulta</button>
+    `;
+
+  } else if (section === 'checkin'){
+    pane.innerHTML = backBtn + `<div class="card"><h3 style="margin-bottom:8px;">🌱 Diário de Bem-Estar</h3><div id="mirrorCheckins"></div></div>`;
+    renderPatientCheckinsInto('mirrorCheckins', patientId);
+
+  } else if (section === 'messages'){
+    pane.innerHTML = backBtn + `<div class="card" id="patientMessagesBoxmirror"></div>`;
+    renderPatientMessages(patientId, false, 'mirror');
+
+  } else if (section === 'reports'){
+    pane.innerHTML = backBtn + '<p class="muted">A carregar relatórios…</p>';
+    const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), orderBy('generatedAt','desc')));
+    const rows = [];
+    snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
+    pane.innerHTML = backBtn + `
+      <div class="card">
+        <h3 style="margin-bottom:8px;">📖 Relatórios de consultas anteriores</h3>
+        ${rows.length ? rows.map(r => `
+          <div class="appt-item" style="cursor:pointer;" onclick="document.getElementById('mirrorReport_${r.id}').classList.toggle('hidden')">
+            <div class="row"><strong>${escapeHtml(r.protocolName||'Relatório')}</strong><span class="muted">${r.generatedAt?.toDate ? r.generatedAt.toDate().toLocaleDateString('pt-PT') : ''}</span></div>
+            <div id="mirrorReport_${r.id}" class="hidden" style="margin-top:8px;white-space:pre-wrap;font-size:13px;background:#f6f8f7;border-radius:8px;padding:10px;">${escapeHtml(r.reportText||'Sem conteúdo disponível.')}</div>
+          </div>`).join('') : '<p class="muted">Ainda sem relatórios partilhados.</p>'}
+      </div>
+      <button class="ghost" style="width:100%;" onclick="viewPatientEvolution('${patientId}','${escapeAttrJs(p.fullName||'')}')">📈 Ver linha do tempo de evolução</button>
+    `;
+
+  } else if (section === 'myData'){
+    pane.innerHTML = backBtn + `
+      <div class="card">
+        <h3 style="margin-bottom:8px;">📋 Os Dados Dele(a)</h3>
+        <p class="muted" style="margin-bottom:10px;">É exatamente esta a ficha que o paciente vê do lado dele — só de leitura. Para corrigir algo, use "Ver ficha completa".</p>
+        <div class="appt-item"><strong>Nome completo</strong><div class="muted">${escapeHtml(p.fullName||'—')}</div></div>
+        <div class="appt-item"><strong>Telefone</strong><div class="muted">${escapeHtml(p.phone||'—')}</div></div>
+        <div class="appt-item"><strong>Email</strong><div class="muted">${escapeHtml(p.email||'—')}</div></div>
+        <div class="appt-item"><strong>NIF / Contribuinte</strong><div class="muted">${escapeHtml(p.nif||'—')}</div></div>
+        ${(p.customFields||[]).map(f => `<div class="appt-item"><strong>${escapeHtml(f.label||'')}</strong><div class="muted">${escapeHtml(f.value||'—')}</div></div>`).join('')}
+      </div>
+      <button class="ghost" style="width:100%;" onclick="viewPatient('${patientId}')">🖊 Editar dados na ficha completa →</button>
+    `;
+
+  } else if (section === 'materials'){
+    pane.innerHTML = backBtn + `
+      <div class="card">
+        <h3 style="margin-bottom:8px;">🎧 Materiais</h3>
+        <p class="muted" style="margin-bottom:10px;">Músicas, meditações, ficheiros e links que já enviou — exatamente o que o paciente vê do lado dele.</p>
+        <div id="mirrorMaterialsList">${renderSharedMaterialsList(patientId, p)}</div>
+        <div id="addMaterialFormContainerPortal" style="margin-top:10px;"></div>
+        <button class="primary" style="width:100%;margin-top:8px;" onclick="showAddMaterialForm('${patientId}','addMaterialFormContainerPortal')">➕ Enviar novo material</button>
+      </div>
+    `;
+  }
 };
 
 window.closePortalDetail = function(){
