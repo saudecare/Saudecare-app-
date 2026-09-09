@@ -111,10 +111,10 @@
   .mapFullscreenBody .mapDiagramWrap svg{max-height:calc(100vh - 90px);width:auto;margin:0 auto;display:block;}
   @media(max-width:640px){
     #app{flex-direction:column;}
-    nav{width:100%;display:flex;overflow-x:auto;padding:8px;gap:4px;}
+    nav{width:100%;display:flex;flex-wrap:wrap;overflow-x:visible;padding:8px;gap:6px;}
     nav .navBrand{display:none;}
     nav .navGroupLabel{display:none;}
-    nav button{flex-shrink:0;width:auto;margin-right:0;margin-bottom:0;padding:8px 10px;font-size:12.5px;white-space:nowrap;}
+    nav button{flex:1 1 30%;min-width:0;margin:0;padding:10px 4px;font-size:11.5px;white-space:normal;text-align:center;line-height:1.25;}
     main{padding:14px;}
   }
   /* Ecrãs largos (computador/desktop) — o menu lateral já ficava bem à
@@ -331,7 +331,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-02-140';
+const APP_VERSION = '2026-09-02-141';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1443,9 +1443,9 @@ let __profileSection = null;
 // nível, o que ficava confuso. Agora só há 5 categorias visíveis; cada
 // uma abre uma grelha simples com as funcionalidades lá dentro.
 const NAV_GROUPS = {
-  agenda: { title: '📅 Agenda & Pacientes', items: [
+  agenda: { title: '📅 Agenda & Acompanhamento', items: [
     { view: 'agenda', icon: '📅', label: 'Agenda' },
-    { view: 'patients', icon: '🧑\u200d🤝\u200d🧑', label: 'Pacientes' },
+    { view: 'portalPaciente', icon: '💚', label: 'Acompanhamento' },
     { view: 'waitlist', icon: '⏳', label: 'Lista de Espera' }
   ]},
   tools: { title: '🧰 As Minhas Ferramentas', items: [
@@ -2053,7 +2053,6 @@ async function renderHome(main){
     { icon: '🩺', label: 'Nova Consulta', action: 'startNewConsultationFlow()' },
     { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
     { icon: '🗓️', label: 'Disponibilidade', action: "openSettingsSection('disponibilidade')" },
-    { icon: '🧑‍🤝‍🧑', label: 'Pacientes', action: "renderView('patients')" },
     { icon: '💚', label: 'Acompanhamento', action: "renderView('portalPaciente')" },
     { icon: '💶', label: 'Finanças', action: "renderView('finances')" },
     { icon: '📋', label: 'Os Meus Métodos', action: "renderView('protocols')" },
@@ -3119,8 +3118,9 @@ function renderSharedMaterialsList(patientId, p){
     </div>`).join('');
 }
 
-window.showAddMaterialForm = function(patientId){
-  document.getElementById('addMaterialFormContainer').innerHTML = `
+window.showAddMaterialForm = function(patientId, containerId){
+  containerId = containerId || 'addMaterialFormContainer';
+  document.getElementById(containerId).innerHTML = `
     <div class="card" style="background:#f6f8f7;margin-top:8px;">
       <label>Título (ex: "Meditação para dormir", "Foto do mapa energético")</label>
       <input id="matLabel" placeholder="Título do material">
@@ -3800,6 +3800,10 @@ async function renderPatientPortalOverview(main){
       <button class="profile-tile" onclick="openProfileSection('online')"><span class="ptile-icon">💻</span><span>Consultório Online</span></button>
       <button class="profile-tile" onclick="openProfileSection('mensagens')"><span class="ptile-icon">💬</span><span>Modelos de Mensagens</span></button>
     </div>
+    <div class="row" style="margin-bottom:8px;">
+      <button class="primary" onclick="openNewPatient()">+ Novo Paciente</button>
+      <button class="ghost" onclick="renderView('patients')">📋 Lista simples</button>
+    </div>
     <div class="card">
       <div class="muted">Pacientes com Portal ativo: <strong>${limitLabel}</strong></div>
     </div>
@@ -3915,9 +3919,12 @@ window.selectPortalPatient = async function(patientId){
       </select>
       <div class="row" style="margin-top:12px;flex-wrap:wrap;">
         <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeAttrJs(p.fullName||'')}')">🧭 Consulta guiada</button>
+        <button class="primary" onclick="marcarConsultaParaPaciente('${patientId}')">📅 Marcar consulta</button>
         <button class="ghost" onclick="viewPatientEvolution('${patientId}','${escapeAttrJs(p.fullName||'')}')">📈 Evolução</button>
         <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeAttrJs(p.fullName||'')}')">📝 Enviar ficha</button>
+        <button class="ghost" onclick="showAddMaterialForm('${patientId}','addMaterialFormContainerPortal')">🎧 Enviar material</button>
       </div>
+      <div id="addMaterialFormContainerPortal"></div>
     </div>
     <details class="card" open>
       <summary style="cursor:pointer;font-weight:700;">💚 Portal do Paciente</summary>
@@ -3941,6 +3948,15 @@ window.selectPortalPatient = async function(patientId){
 
 window.closePortalDetail = function(){
   document.getElementById('portalSplit')?.classList.remove('detail-active');
+};
+
+// Atalho para marcar uma consulta a um paciente já conhecido, direto do
+// Portal de Acompanhamento — reaproveita o mesmo mecanismo de
+// pré-preenchimento já usado para aceitar pedidos de marcação públicos.
+window.marcarConsultaParaPaciente = function(patientId){
+  window.__pendingBookingPrefill = { patientId, serviceId: null, startLocal: '' };
+  renderView('agenda');
+  setTimeout(() => openNewAppointment(), 200);
 };
 
 // Versão simples do diário de bem-estar, para o painel de detalhe do
