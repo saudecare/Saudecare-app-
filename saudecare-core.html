@@ -334,7 +334,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-09-154';
+const APP_VERSION = '2026-09-09-155';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2080,7 +2080,7 @@ async function renderHome(main){
   const SHORTCUTS = [
     { icon: '🩺', label: 'Nova Consulta', action: 'startNewConsultationFlow()' },
     { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
-    { icon: '🗓️', label: 'Disponibilidade', action: "openSettingsSection('disponibilidade')" },
+    { icon: '🗓️', label: 'Disponibilidade e Marcações', action: "openSettingsSection('disponibilidade')" },
     { icon: '💚', label: 'Central do Paciente', action: "renderView('portalPaciente')" },
     { icon: '💶', label: 'Finanças', action: "renderView('finances')" },
     { icon: '📋', label: 'Os Meus Métodos', action: "renderView('protocols')" },
