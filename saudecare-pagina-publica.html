@@ -12,26 +12,34 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Vindora">
 <title>Vindora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{ --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#fff; --text:#1a2b26; --muted:#6b7d76; }
-  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
-  body{background:var(--bg);color:var(--text);}
+  :root{
+    --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#fff; --text:#1a2b26; --muted:#6b7d76;
+    --accent:#b3893f; --accent-soft:#f3ead7;
+    --font-display:'Fraunces',Georgia,serif; --font-body:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:var(--font-body);}
+  body{background:var(--bg);color:var(--text);line-height:1.5;}
   a{color:inherit;}
-  .hero{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:40px 20px 32px;text-align:center;}
-  .hero img.logo{width:72px;height:72px;border-radius:16px;object-fit:cover;margin-bottom:14px;background:#fff;}
-  .hero h1{font-size:26px;margin-bottom:8px;}
-  .hero p{opacity:.92;font-size:15px;max-width:420px;margin:0 auto;}
-  .cta{display:inline-block;background:#fff;color:var(--primary-dark);font-weight:700;padding:14px 28px;
-    border-radius:12px;text-decoration:none;margin-top:20px;font-size:15px;}
+  .hero{background:linear-gradient(150deg,var(--primary-dark),var(--primary) 65%);color:#fff;padding:44px 20px 36px;text-align:center;position:relative;overflow:hidden;}
+  .hero::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 82% 8%,rgba(255,255,255,.10),transparent 55%);pointer-events:none;}
+  .hero img.logo{width:76px;height:76px;border-radius:18px;object-fit:cover;margin-bottom:16px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.18);position:relative;}
+  .hero h1{font-family:var(--font-display);font-weight:600;font-size:29px;letter-spacing:-.01em;margin-bottom:9px;position:relative;}
+  .hero p{opacity:.9;font-size:15px;max-width:420px;margin:0 auto;position:relative;}
+  .cta{display:inline-block;background:#fff;color:var(--primary-dark);font-weight:600;padding:14px 30px;
+    border-radius:100px;text-decoration:none;margin-top:22px;font-size:15px;position:relative;box-shadow:0 6px 16px rgba(0,0,0,.14);}
   .wrap{max-width:560px;margin:0 auto;padding:16px;}
-  section{margin:22px 0;}
-  h2.section-title{font-size:18px;margin-bottom:12px;color:var(--primary-dark);}
-  .card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  section{margin:26px 0;}
+  h2.section-title{font-family:var(--font-display);font-weight:600;font-size:20px;margin-bottom:14px;color:var(--primary-dark);letter-spacing:-.005em;}
+  .card{background:var(--card);border:1px solid rgba(31,77,64,.07);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(20,40,34,.04);}
   .service-card{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
   .service-card .price{font-weight:700;color:var(--primary-dark);white-space:nowrap;}
   .cat-card{cursor:pointer;}
   .cat-card .cat-head{display:flex;justify-content:space-between;align-items:center;}
-  .cat-card .cat-mod{font-size:12px;color:var(--primary-dark);font-weight:600;}
+  .cat-card .cat-mod{font-size:12px;color:var(--accent);font-weight:600;}
   .cat-card .cat-items{margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,.08);}
   .cat-card .cat-items.hidden{display:none;}
   .cat-card .chevron{transition:transform .15s;}
@@ -39,15 +47,15 @@
   .muted{color:var(--muted);font-size:13px;}
   .team-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .team-card{text-align:center;}
-  .team-card img{width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px;background:#e4ede9;}
-  .stars{color:#e0a83c;font-size:14px;margin-bottom:4px;}
-  .social-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
-  .social-row a{background:rgba(255,255,255,.18);padding:8px 14px;border-radius:20px;font-size:13px;text-decoration:none;color:#fff;}
+  .team-card img{width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px;background:#e4ede9;border:2px solid var(--accent-soft);}
+  .stars{color:var(--accent);font-size:14px;margin-bottom:4px;}
+  .social-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px;}
+  .social-row a{background:rgba(255,255,255,.16);padding:9px 16px;border-radius:100px;font-size:13px;text-decoration:none;color:#fff;}
   .contact-row{display:flex;flex-direction:column;gap:6px;font-size:14px;}
-  footer{text-align:center;padding:24px 16px;color:var(--muted);font-size:12px;}
+  footer{text-align:center;padding:26px 16px;color:var(--muted);font-size:12px;}
   .empty{color:var(--muted);font-size:13px;text-align:center;padding:14px;}
   .quick-nav{display:flex;gap:8px;overflow-x:auto;padding:12px 14px;background:#fff;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.06);-webkit-overflow-scrolling:touch;}
-  .quick-nav a{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;background:#f2f6f4;color:var(--primary-dark,#1a2b26);text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;}
+  .quick-nav a{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:8px 15px;border-radius:100px;background:#f2f6f4;color:var(--primary-dark,#1a2b26);text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;transition:background .12s,color .12s;}
   .quick-nav a:active{background:var(--primary,#2e7d5b);color:#fff;}
   #servicesSection, #teamSection, #espiritualidadeSection, #trainingsSection, #testimonialsSection, #availabilitySection, #contactSection{scroll-margin-top:60px;}
   .spirit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
@@ -416,13 +424,34 @@ function renderContact(profile){
 }
 
 const DAY_LABELS = { mon:'Segunda', tue:'Terça', wed:'Quarta', thu:'Quinta', fri:'Sexta', sat:'Sábado', sun:'Domingo' };
+const DAY_KEYS_BY_JS_INDEX = ['sun','mon','tue','wed','thu','fri','sat'];
+
+// Devolve o horário aplicável a uma data concreta, já considerando
+// exceções (têm sempre prioridade) e alternância semana A/B quando o
+// modo é quinzenal. Devolve null se esse dia estiver fechado.
+function getScheduleForDate(avail, dateObj){
+  const dateStr = dateObj.toISOString().slice(0,10);
+  const exceptions = avail.exceptions || {};
+  if (exceptions[dateStr]){
+    const ex = exceptions[dateStr];
+    return ex.closed ? null : { enabled: true, start: ex.start, end: ex.end };
+  }
+  const dayKey = DAY_KEYS_BY_JS_INDEX[dateObj.getDay()];
+  if (avail.mode === 'biweekly' && avail.biweekly?.referenceMonday){
+    const ref = new Date(avail.biweekly.referenceMonday + 'T00:00:00');
+    const diffWeeks = Math.floor((dateObj - ref) / (7*86400000));
+    const isWeekB = (((diffWeeks % 2) + 2) % 2) === 1;
+    const src = isWeekB ? (avail.biweekly.weekB || {}) : avail;
+    return src[dayKey] || { enabled: false };
+  }
+  return avail[dayKey] || { enabled: false };
+}
 
 function renderAvailability(profile, slug){
   const avail = profile.availability || {};
-  const activeDays = Object.keys(DAY_LABELS).filter(k => avail[k]?.enabled);
   const el = document.getElementById('availabilitySection');
 
-  if (avail.noFixedHours){
+  if (avail.noFixedHours || avail.mode === 'none'){
     el.innerHTML = `
       <h2 class="section-title">🗓️ Horários</h2>
       <div class="card" style="text-align:center;">
@@ -432,9 +461,21 @@ function renderAvailability(profile, slug){
     `;
     return;
   }
-  if (!activeDays.length){ el.innerHTML = ''; return; }
 
-  const scheduleHtml = activeDays.map(k => `<div>${DAY_LABELS[k]}: ${escapeHtml(avail[k].start)} – ${escapeHtml(avail[k].end)}</div>`).join('');
+  let scheduleHtml;
+  if (avail.mode === 'biweekly'){
+    const weekB = avail.biweekly?.weekB || {};
+    const rowsFor = (src) => Object.keys(DAY_LABELS).filter(k => src[k]?.enabled)
+      .map(k => `<div>${DAY_LABELS[k]}: ${escapeHtml(src[k].start)} – ${escapeHtml(src[k].end)}</div>`).join('');
+    scheduleHtml = `
+      <p class="muted" style="margin-bottom:4px;"><strong>Semana A</strong></p>${rowsFor(avail) || '<p class="muted">Sem horário nesta semana.</p>'}
+      <p class="muted" style="margin:10px 0 4px;"><strong>Semana B</strong></p>${rowsFor(weekB) || '<p class="muted">Sem horário nesta semana.</p>'}
+      <p class="muted" style="margin-top:8px;">As semanas alternam quinzenalmente — confirme o dia certo ao pedir a marcação.</p>`;
+  } else {
+    const activeDays = Object.keys(DAY_LABELS).filter(k => avail[k]?.enabled);
+    if (!activeDays.length){ el.innerHTML = ''; return; }
+    scheduleHtml = activeDays.map(k => `<div>${DAY_LABELS[k]}: ${escapeHtml(avail[k].start)} – ${escapeHtml(avail[k].end)}</div>`).join('');
+  }
   el.innerHTML = `
     <h2 class="section-title">🗓️ Horários</h2>
     <div class="card">${scheduleHtml}</div>

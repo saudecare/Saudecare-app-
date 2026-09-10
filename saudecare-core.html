@@ -334,7 +334,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-09-149';
+const APP_VERSION = '2026-09-09-154';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2068,7 +2068,7 @@ async function renderHome(main){
       const d = list[0].startsAt.toDate();
       weekHtml += `<div class="appt-item" style="cursor:pointer;margin-bottom:8px;" onclick="goToAgendaDay('${key}')">
         <div class="row"><strong>${d.toLocaleDateString('pt-PT', { weekday:'long', day:'2-digit', month:'2-digit' })}</strong><div>›</div></div>
-        ${list.map(a => `<div class="muted">${a.startsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})} — ${escapeHtml(a.patientName||'?')} (${escapeHtml(a.serviceName||'')})</div>`).join('')}
+        ${list.map(a => `<div class="muted">${a.noFixedTime ? '🕐 A combinar' : a.startsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})} — ${escapeHtml(a.patientName||'?')} (${escapeHtml(a.serviceName||'')})</div>`).join('')}
       </div>`;
     });
   }
@@ -2197,7 +2197,7 @@ async function renderAgenda(main){
 
   const dayAppts = (byDay[window.__agendaSelectedDay] || []).sort((a,b) => a.startsAt.toDate() - b.startsAt.toDate());
   let itemsHtml = dayAppts.map(a => {
-    const time = a.startsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
+    const time = a.noFixedTime ? '🕐 A combinar' : a.startsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
     const statusClass = a.status === 'cancelled' ? 'cancelled' : '';
     const payBadge = a.price
       ? `<span class="badge ${a.paymentStatus==='paid'?'active':(a.paymentStatus==='partial'?'trial':'suspended')}">${a.paymentStatus==='paid'?'Pago':(a.paymentStatus==='partial'?'Parcial':'Pendente')} · ${a.price}€</span>`
@@ -2206,6 +2206,7 @@ async function renderAgenda(main){
       <div class="row">
         <div><strong>${time}</strong> — ${escapeHtml(a.patientName||'Paciente')}
           <div class="muted">${escapeHtml(a.serviceName||'')} ${a.staffName ? '· '+escapeHtml(a.staffName) : ''} ${a.local==='online' ? '· 💻 Online' : ''}</div>
+          ${a.googleSyncStatus === 'failed' ? `<div class="muted" style="color:var(--danger);margin-top:4px;">⚠️ Não sincronizou com o Google Calendar. <button class="ghost" onclick="retryGoogleSync('${a.id}')">🔄 Tentar novamente</button></div>` : ''}
         </div>
         <div style="text-align:right;">
           <span class="badge ${statusClass}">${escapeHtml(a.status)}</span>
@@ -2513,11 +2514,21 @@ window.openNewAppointment = async function(){
       <label>Serviço</label><select id="apptService" onchange="document.getElementById('apptPrice').value = this.selectedOptions[0].dataset.price || 0">${serviceOpts}</select>
       <label>Profissional</label><select id="apptStaff">${staffOpts}</select>
       <label>Local</label>
-      <select id="apptLocal">
+      <select id="apptLocal" onchange="toggleApptRoomField()">
         <option value="presencial">Presencial (ocupa a sala)</option>
         <option value="online">Online (só ocupa a agenda deste profissional)</option>
       </select>
-      <label>Data e hora</label><input id="apptStart" type="datetime-local" value="${window.__agendaSelectedDay ? window.__agendaSelectedDay + 'T09:00' : ''}">
+      ${roomFieldHTML(null)}
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:10px;">
+        <input type="checkbox" id="apptNoTime" style="width:auto;" onchange="toggleApptNoTime()"> Sem hora definida — só por marcação (combinar depois)
+      </label>
+      <div id="apptStartTimeWrap">
+        <label>Data e hora</label><input id="apptStart" type="datetime-local" value="${window.__agendaSelectedDay ? window.__agendaSelectedDay + 'T09:00' : ''}">
+      </div>
+      <div id="apptStartDateWrap" class="hidden">
+        <label>Dia (aproximado)</label><input id="apptStartDateOnly" type="date" value="${window.__agendaSelectedDay || ''}">
+        <p class="muted" style="margin-top:4px;">Fica arquivada nesse dia, mas sem sobrepor a agenda de ninguém — combine a hora depois, diretamente com o paciente.</p>
+      </div>
       <label>Pagamento desta marcação</label>
       <select id="apptPackage"><option value="">Pagamento normal (ver campos abaixo)</option></select>
       ${paymentFieldsHTML(null)}
@@ -2541,6 +2552,7 @@ window.openNewAppointment = async function(){
     window.__pendingBookingPrefill = null;
   }
 
+  toggleApptRoomField();
   scrollToEl('apptFormContainer');
 };
 
@@ -2571,6 +2583,34 @@ async function getStaffOptionsHTML(selectedUid){
   });
   return opts;
 }
+
+// Campo de seleção de sala — só aparece se o subscritor tiver configurado
+// alguma sala em "Salas de Atendimento". Sem isso, mantém-se o
+// comportamento simples de sempre (uma sala implícita para todos).
+function roomFieldHTML(selectedRoomId){
+  const rooms = currentTenantDoc?.rooms || [];
+  if (!rooms.length) return '';
+  return `
+    <div id="apptRoomField">
+      <label>Sala</label>
+      <select id="apptRoom">
+        ${rooms.map(r => `<option value="${r.id}" ${r.id===selectedRoomId?'selected':''}>${escapeHtml(r.name)}</option>`).join('')}
+      </select>
+    </div>`;
+}
+
+window.toggleApptRoomField = function(){
+  const field = document.getElementById('apptRoomField');
+  if (!field) return;
+  const local = document.getElementById('apptLocal')?.value;
+  field.classList.toggle('hidden', local !== 'presencial');
+};
+
+window.toggleApptNoTime = function(){
+  const noTime = document.getElementById('apptNoTime')?.checked;
+  document.getElementById('apptStartTimeWrap')?.classList.toggle('hidden', noTime);
+  document.getElementById('apptStartDateWrap')?.classList.toggle('hidden', !noTime);
+};
 
 // Campos de pagamento — reutilizados na criação e edição de marcações.
 function paymentFieldsHTML(a){
@@ -2622,6 +2662,10 @@ async function getAppointmentsForDay(dateObj){
 // ── Sincronização automática com o Google Calendar ──────────────────────
 // Não faz nada visível se o subscritor não tiver ligado a conta (a função
 // do Netlify devolve skipped:'not_connected' e seguimos em frente).
+// IMPORTANTE: antes, isto era "disparar e esquecer" — se falhasse, ninguém
+// ficava a saber. Agora aguardamos sempre a resposta, gravamos o estado
+// (googleSyncStatus/googleSyncError) na própria marcação, e devolvemos um
+// objeto claro para quem chamar poder avisar o utilizador.
 async function syncAppointmentToGoogle(action, appt, appointmentId, googleEventId){
   try{
     const idToken = await currentUser.getIdToken();
@@ -2634,19 +2678,52 @@ async function syncAppointmentToGoogle(action, appt, appointmentId, googleEventI
         description: `Marcação em ${currentTenantDoc?.businessName || 'Vindora'}${appt.local==='online' ? ' (online)' : ''}.`,
         location: currentTenantDoc?.businessName || '',
         startISO: appt.startsAt instanceof Date ? appt.startsAt.toISOString() : appt.startsAt,
-        endISO: appt.endsAt instanceof Date ? appt.endsAt.toISOString() : appt.endsAt
+        endISO: appt.endsAt instanceof Date ? appt.endsAt.toISOString() : appt.endsAt,
+        timeZone: 'Europe/Lisbon'
       })
     });
     const data = await res.json();
-    if (data.ok && data.googleEventId && appointmentId){
-      await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { googleEventId: data.googleEventId });
+    if (data.skipped === 'not_connected'){
+      return { ok: true, skipped: true };
     }
-    return data.ok !== false;
+    if (data.ok && appointmentId){
+      const patch = { googleSyncStatus: 'ok', googleSyncError: '' };
+      if (data.googleEventId) patch.googleEventId = data.googleEventId;
+      await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), patch);
+    } else if (!data.ok && appointmentId){
+      await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), {
+        googleSyncStatus: 'failed',
+        googleSyncError: data.error || 'Falha desconhecida ao sincronizar.'
+      });
+    }
+    return { ok: data.ok !== false, error: data.error || '' };
   }catch(e){
     console.error('Falha na sincronização com o Google Calendar:', e);
-    return false;
+    if (appointmentId){
+      try{
+        await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), {
+          googleSyncStatus: 'failed',
+          googleSyncError: 'Falha de ligação ao sincronizar.'
+        });
+      }catch(e2){ /* não bloqueia o resto se isto também falhar */ }
+    }
+    return { ok: false, error: 'Falha de ligação.' };
   }
 }
+
+window.retryGoogleSync = async function(appointmentId){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
+  if (!snap.exists()){ toast('Marcação não encontrada.', true); return; }
+  const a = snap.data();
+  const action = a.status === 'cancelled' ? 'delete' : (a.googleEventId ? 'update' : 'create');
+  const result = await syncAppointmentToGoogle(action, { ...a, startsAt: a.startsAt.toDate(), endsAt: a.endsAt?.toDate() }, appointmentId, a.googleEventId);
+  if (result.ok){
+    toast('Sincronizado com o Google Calendar.');
+  } else {
+    toast('Continua a falhar: ' + (result.error || 'erro desconhecido.'), true);
+  }
+  renderView('agenda');
+};
 
 window.connectGoogleCalendar = function(){
   // Envia a própria página atual como "state" (junto ao tenantId) — assim o
@@ -2674,8 +2751,9 @@ window.disconnectGoogleCalendar = async function(){
   renderView('profile');
 };
 
-async function checkAppointmentConflict({ staffUid, local, start, end, excludeId }){
+async function checkAppointmentConflict({ staffUid, local, start, end, excludeId, roomId }){
   const dayAppts = await getAppointmentsForDay(start);
+  const roomsConfigured = (currentTenantDoc?.rooms || []).length > 0;
   for (const a of dayAppts){
     if (a.id === excludeId || a.status === 'cancelled') continue;
     const aStart = a.startsAt.toDate();
@@ -2683,7 +2761,15 @@ async function checkAppointmentConflict({ staffUid, local, start, end, excludeId
     const aEnd = new Date((a.endsAt ? a.endsAt.toDate() : aStart).getTime() + bufferMs);
     const aLocal = a.local || 'presencial';
     const sameStaff = a.staffUid === staffUid;
-    const roomConflict = local === 'presencial' && aLocal === 'presencial' && rangesOverlap(start, end, aStart, aEnd);
+    let roomConflict = false;
+    const bothPresencialOverlapping = local === 'presencial' && aLocal === 'presencial' && rangesOverlap(start, end, aStart, aEnd);
+    if (bothPresencialOverlapping){
+      // Com salas configuradas, só há conflito de sala se for a MESMA sala
+      // — presenciais em salas diferentes já não bloqueiam um ao outro.
+      // Sem salas configuradas, mantém-se o comportamento simples de
+      // sempre: qualquer presencial ocupa "a sala" para todos.
+      roomConflict = roomsConfigured ? ((roomId || '') === (a.roomId || '')) : true;
+    }
     const personalConflict = sameStaff && rangesOverlap(start, end, aStart, aEnd);
     if (roomConflict || personalConflict){
       return { conflict: true, withAppt: a, reason: roomConflict ? 'sala' : 'profissional' };
@@ -2697,24 +2783,32 @@ window.saveAppointment = async function(){
   const serviceSel = document.getElementById('apptService');
   const staffSel = document.getElementById('apptStaff');
   const localSel = document.getElementById('apptLocal');
+  const roomSel = document.getElementById('apptRoom');
   const packageSel = document.getElementById('apptPackage');
-  const startInput = document.getElementById('apptStart').value;
+  const noFixedTime = document.getElementById('apptNoTime')?.checked;
+  const startInput = noFixedTime ? document.getElementById('apptStartDateOnly').value : document.getElementById('apptStart').value;
   if (!patientSel.value || !serviceSel.value || !startInput){
     toast('Preencha todos os campos.', true); return;
   }
   const duration = parseInt(serviceSel.selectedOptions[0].dataset.duration || '50', 10);
   const bufferMinutes = parseInt(serviceSel.selectedOptions[0].dataset.buffer || '0', 10);
-  const start = new Date(startInput);
+  const start = noFixedTime ? new Date(startInput + 'T00:00:00') : new Date(startInput);
   const end = new Date(start.getTime() + duration*60000);
+  const roomId = (localSel.value === 'presencial' && roomSel) ? roomSel.value : '';
+  const roomName = roomId ? roomSel.selectedOptions[0]?.text : '';
 
   const warnEl = document.getElementById('apptConflictWarning');
   warnEl.textContent = '';
-  const check = await checkAppointmentConflict({ staffUid: staffSel.value, local: localSel.value, start, end });
-  if (check.conflict){
-    warnEl.textContent = check.reason === 'sala'
-      ? '⚠️ A sala já está ocupada nesse horário por outra marcação presencial.'
-      : '⚠️ Esse profissional já tem outra marcação nesse horário.';
-    return;
+  // Sem hora definida não há nada concreto para verificar sobreposição —
+  // fica só arquivada nesse dia, para combinar a hora depois.
+  if (!noFixedTime){
+    const check = await checkAppointmentConflict({ staffUid: staffSel.value, local: localSel.value, start, end, roomId });
+    if (check.conflict){
+      warnEl.textContent = check.reason === 'sala'
+        ? `⚠️ ${roomName ? `A sala "${roomName}" já` : 'A sala já'} está ocupada nesse horário por outra marcação presencial.`
+        : '⚠️ Esse profissional já tem outra marcação nesse horário.';
+      return;
+    }
   }
 
   const usePackageIdx = packageSel.value !== '' ? parseInt(packageSel.value, 10) : null;
@@ -2726,6 +2820,9 @@ window.saveAppointment = async function(){
     staffUid: staffSel.value,
     staffName: staffSel.selectedOptions[0].text,
     local: localSel.value,
+    roomId,
+    roomName,
+    noFixedTime: !!noFixedTime,
     bufferMinutes,
     startsAt: Timestamp.fromDate(start),
     endsAt: Timestamp.fromDate(end),
@@ -2742,8 +2839,12 @@ window.saveAppointment = async function(){
     await consumePackageSession(patientSel.value, usePackageIdx);
   }
   const newRef = await addDoc(collection(db, 'tenants', tenantId, 'appointments'), data);
-  syncAppointmentToGoogle('create', { ...data, startsAt: start, endsAt: end }, newRef.id);
-  toast('Marcação criada.');
+  const syncResult = await syncAppointmentToGoogle('create', { ...data, startsAt: start, endsAt: end }, newRef.id);
+  if (!syncResult.ok && !syncResult.skipped){
+    toast('Marcação criada, mas falhou a sincronizar com o Google Calendar. Pode tentar novamente na própria marcação.', true);
+  } else {
+    toast('Marcação criada.');
+  }
   renderView('agenda');
 };
 
@@ -2783,15 +2884,26 @@ window.editAppointment = async function(appointmentId){
       <label>Serviço</label><select id="apptService">${serviceOpts}</select>
       <label>Profissional</label><select id="apptStaff">${staffOpts}</select>
       <label>Local</label>
-      <select id="apptLocal">
+      <select id="apptLocal" onchange="toggleApptRoomField()">
         <option value="presencial" ${(a.local||'presencial')==='presencial'?'selected':''}>Presencial (ocupa a sala)</option>
         <option value="online" ${a.local==='online'?'selected':''}>Online (só ocupa a agenda deste profissional)</option>
       </select>
-      <label>Data e hora</label><input id="apptStart" type="datetime-local" value="${startLocal}">
+      ${roomFieldHTML(a.roomId)}
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:10px;">
+        <input type="checkbox" id="apptNoTime" style="width:auto;" onchange="toggleApptNoTime()" ${a.noFixedTime?'checked':''}> Sem hora definida — só por marcação (combinar depois)
+      </label>
+      <div id="apptStartTimeWrap" class="${a.noFixedTime?'hidden':''}">
+        <label>Data e hora</label><input id="apptStart" type="datetime-local" value="${startLocal}">
+      </div>
+      <div id="apptStartDateWrap" class="${a.noFixedTime?'':'hidden'}">
+        <label>Dia (aproximado)</label><input id="apptStartDateOnly" type="date" value="${startLocal.slice(0,10)}">
+        <p class="muted" style="margin-top:4px;">Fica arquivada nesse dia, mas sem sobrepor a agenda de ninguém — combine a hora depois, diretamente com o paciente.</p>
+      </div>
       ${paymentFieldsHTML(a)}
       <p id="apptConflictWarning" class="muted" style="color:var(--danger);"></p>
       <button class="primary" onclick="updateAppointment('${appointmentId}')">Guardar alterações</button>
     </div>`;
+  toggleApptRoomField();
   scrollToEl('apptFormContainer');
 };
 
@@ -2800,23 +2912,29 @@ window.updateAppointment = async function(appointmentId){
   const serviceSel = document.getElementById('apptService');
   const staffSel = document.getElementById('apptStaff');
   const localSel = document.getElementById('apptLocal');
-  const startInput = document.getElementById('apptStart').value;
+  const roomSel = document.getElementById('apptRoom');
+  const noFixedTime = document.getElementById('apptNoTime')?.checked;
+  const startInput = noFixedTime ? document.getElementById('apptStartDateOnly').value : document.getElementById('apptStart').value;
   if (!patientSel.value || !serviceSel.value || !startInput){
     toast('Preencha todos os campos.', true); return;
   }
   const duration = parseInt(serviceSel.selectedOptions[0].dataset.duration || '50', 10);
   const bufferMinutes = parseInt(serviceSel.selectedOptions[0].dataset.buffer || '0', 10);
-  const start = new Date(startInput);
+  const start = noFixedTime ? new Date(startInput + 'T00:00:00') : new Date(startInput);
   const end = new Date(start.getTime() + duration*60000);
+  const roomId = (localSel.value === 'presencial' && roomSel) ? roomSel.value : '';
+  const roomName = roomId ? roomSel.selectedOptions[0]?.text : '';
 
   const warnEl = document.getElementById('apptConflictWarning');
   warnEl.textContent = '';
-  const check = await checkAppointmentConflict({ staffUid: staffSel.value, local: localSel.value, start, end, excludeId: appointmentId });
-  if (check.conflict){
-    warnEl.textContent = check.reason === 'sala'
-      ? '⚠️ A sala já está ocupada nesse horário por outra marcação presencial.'
-      : '⚠️ Esse profissional já tem outra marcação nesse horário.';
-    return;
+  if (!noFixedTime){
+    const check = await checkAppointmentConflict({ staffUid: staffSel.value, local: localSel.value, start, end, excludeId: appointmentId, roomId });
+    if (check.conflict){
+      warnEl.textContent = check.reason === 'sala'
+        ? `⚠️ ${roomName ? `A sala "${roomName}" já` : 'A sala já'} está ocupada nesse horário por outra marcação presencial.`
+        : '⚠️ Esse profissional já tem outra marcação nesse horário.';
+      return;
+    }
   }
 
   const existingSnap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
@@ -2833,6 +2951,9 @@ window.updateAppointment = async function(appointmentId){
     patientName: patientSel.selectedOptions[0].dataset.name,
     serviceId: serviceSel.value,
     serviceName: serviceSel.selectedOptions[0].dataset.name,
+    roomId,
+    roomName,
+    noFixedTime: !!noFixedTime,
     staffUid: staffSel.value,
     staffName: staffSel.selectedOptions[0].text,
     local: localSel.value,
@@ -2844,8 +2965,12 @@ window.updateAppointment = async function(appointmentId){
     paymentMethod: document.getElementById('apptPaymentMethod').value
   };
   await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), updateData);
-  syncAppointmentToGoogle('update', { ...updateData, startsAt: start, endsAt: end }, appointmentId, existingGoogleEventId);
-  toast('Marcação atualizada.');
+  const syncResult = await syncAppointmentToGoogle('update', { ...updateData, startsAt: start, endsAt: end }, appointmentId, existingGoogleEventId);
+  if (!syncResult.ok && !syncResult.skipped){
+    toast('Marcação atualizada, mas falhou a sincronizar com o Google Calendar. Pode tentar novamente na própria marcação.', true);
+  } else {
+    toast('Marcação atualizada.');
+  }
   renderView('agenda');
 };
 
@@ -4025,7 +4150,7 @@ window.openPatientMirrorSection = async function(section){
     const upcoming = all.filter(a => a.startsAt?.toDate && a.startsAt.toDate() >= now);
     const past = all.filter(a => !a.startsAt?.toDate || a.startsAt.toDate() < now).reverse();
     const row = (a) => `<div class="appt-item">
-      <strong>${a.startsAt?.toDate ? a.startsAt.toDate().toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}</strong>
+      <strong>${a.noFixedTime ? `${a.startsAt?.toDate ? a.startsAt.toDate().toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit',year:'numeric'}) : ''} · 🕐 A combinar` : (a.startsAt?.toDate ? a.startsAt.toDate().toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '')}</strong>
       <div class="muted">${escapeHtml(a.serviceName||'')}${a.local==='online' ? ' · 💻 Online' : ''}</div>
       ${a.price ? `<div class="muted">${a.paymentStatus==='paid'?'✅ Pago':(a.paymentStatus==='partial'?'🟡 Parcial':'🔴 Pendente')} · ${a.price}€</div>` : ''}
     </div>`;
@@ -5431,6 +5556,18 @@ const DEFAULT_MESSAGE_TEMPLATES = {
 };
 
 // ── Modelos prontos — termo de consentimento informado ──────────────────
+const LIVRO_RECLAMACOES_DISCLAIMER_VERSION = 1;
+const LIVRO_RECLAMACOES_DISCLAIMER_TEXT = `TERMO DE RESPONSABILIDADE — LIVRO DE RECLAMAÇÕES ELETRÓNICO
+
+O Livro de Reclamações Eletrónico é uma obrigação legal em Portugal (Decreto-Lei n.º 156/2005) para quem presta serviços diretamente a consumidores — incluindo quem atende só online.
+
+A Vindora disponibiliza apenas o espaço, na sua página pública, para colocar o link do seu próprio Livro de Reclamações, depois de se registar em livroreclamacoes.pt. A Vindora não regista, não gere, não monitoriza nem se responsabiliza pelo cumprimento desta obrigação legal — essa responsabilidade é inteiramente sua, enquanto prestador(a) de serviços.
+
+Ao aceitar este termo, confirma que:
+1) É sua responsabilidade registar-se em livroreclamacoes.pt e manter o link correto e atualizado;
+2) É sua responsabilidade cumprir os prazos e obrigações legais associados ao Livro de Reclamações;
+3) A Vindora não pode ser responsabilizada por coimas, sanções, ou prejuízos resultantes da falta de registo, de um link incorreto ou desatualizado, ou de qualquer incumprimento desta obrigação da sua parte.`;
+
 const DEFAULT_CONSENT_TEXT = `Declaro que fui informado(a) sobre a natureza, objetivos e método do atendimento que vou receber, e que tive oportunidade de esclarecer as minhas dúvidas antes de dar o meu consentimento.
 
 Autorizo o registo dos meus dados pessoais e de saúde necessários ao acompanhamento, sabendo que estes são tratados de forma confidencial, nos termos do RGPD, e que posso solicitar o seu acesso, retificação ou eliminação a qualquer momento.
@@ -7364,6 +7501,7 @@ function renderProfileMenu(main){
     { key: 'negocio', icon: '🏢', label: 'Dados do Negócio' },
     { key: 'contactos', icon: '📞', label: 'Contactos & Redes Sociais' },
     { key: 'disponibilidade', icon: '🗓️', label: 'Disponibilidade & Marcação' },
+    { key: 'salas', icon: '🚪', label: 'Salas de Atendimento' },
     { key: 'calendar', icon: '📅', label: 'Google Calendar' },
     { key: 'online', icon: '💻', label: 'Consultório Online' },
     { key: 'consentimento', icon: '📄', label: 'Consentimento Informado' },
@@ -7462,33 +7600,90 @@ async function renderProfileSection(main, section){
       </div>
       <button class="primary" style="margin-top:8px;" onclick="saveOnlineConsultSettings()">Guardar</button>
     `;
+  } else if (section === 'salas'){
+    const rooms = currentTenantDoc?.rooms || [];
+    const rows = rooms.map(r => `<div class="appt-item row">
+        <strong>${escapeHtml(r.name)}</strong>
+        <button class="danger" onclick="removeRoom('${r.id}')">Remover</button>
+      </div>`).join('') || '<p class="muted">Nenhuma sala configurada — comportamento padrão: qualquer marcação presencial ocupa "a sala" para todos (útil se só tiver um espaço físico).</p>';
+    inner = `
+      <h2>🚪 Salas de Atendimento</h2>
+      ${hintBox('Se atende em mais de um espaço presencial ao mesmo tempo (sozinho(a) ou com a sua equipa), registe aqui os nomes das salas — assim a app só avisa de sobreposição quando for mesmo a MESMA sala, no mesmo horário. Marcações "Online" nunca ocupam sala.')}
+      <div class="card">${rows}</div>
+      <div class="row" style="align-items:flex-end;gap:8px;margin-top:10px;">
+        <div style="flex:1;"><label>Nome da nova sala</label><input id="newRoomName" placeholder="ex: Sala 1, Consultório A…"></div>
+        <button class="primary" onclick="addRoom()">+ Adicionar</button>
+      </div>
+    `;
   } else if (section === 'disponibilidade'){
     const avail = currentTenantDoc?.availability || {};
     const days = [
       { key: 'mon', label: 'Segunda' }, { key: 'tue', label: 'Terça' }, { key: 'wed', label: 'Quarta' },
       { key: 'thu', label: 'Quinta' }, { key: 'fri', label: 'Sexta' }, { key: 'sat', label: 'Sábado' }, { key: 'sun', label: 'Domingo' }
     ];
+    const mode = avail.noFixedHours ? 'none' : (avail.mode || 'weekly');
+    const weekB = avail.biweekly?.weekB || {};
+    const refMonday = avail.biweekly?.referenceMonday || '';
+    const dayRow = (d, cfg, idPrefix) => `<div class="row" style="align-items:center;margin-bottom:8px;">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:600;width:110px;flex-shrink:0;">
+            <input type="checkbox" id="${idPrefix}_${d.key}_on" style="width:auto;" ${cfg?.enabled ? 'checked' : ''}> ${d.label}
+          </label>
+          <input type="time" id="${idPrefix}_${d.key}_start" value="${cfg?.start||'09:00'}" style="flex:1;">
+          <span class="muted">até</span>
+          <input type="time" id="${idPrefix}_${d.key}_end" value="${cfg?.end||'18:00'}" style="flex:1;">
+        </div>`;
+    const exceptions = avail.exceptions || {};
+    const exceptionRows = Object.keys(exceptions).sort().map(dateStr => {
+      const ex = exceptions[dateStr];
+      const dateLabel = new Date(dateStr+'T00:00:00').toLocaleDateString('pt-PT', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' });
+      return `<div class="appt-item row">
+        <div><strong>${escapeHtml(dateLabel)}</strong>
+          <div class="muted">${ex.closed ? '🚫 Fechado este dia' : `🕐 Horário especial: ${escapeHtml(ex.start)}–${escapeHtml(ex.end)}`}</div>
+        </div>
+        <button class="danger" onclick="removeAvailabilityException('${dateStr}')">Remover</button>
+      </div>`;
+    }).join('') || '<p class="muted">Sem exceções — todos os dias seguem o horário habitual.</p>';
+
     inner = `
       <h2>🗓️ Disponibilidade & Marcação</h2>
       ${hintBox('Defina os dias e horas em que atende. Isto aparece na sua página pública, e quem visitar pode pedir uma marcação dentro desses horários — a marcação só fica confirmada depois de você aceitar, para nunca haver reservas automáticas por engano.')}
-      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:10px;">
-        <input type="checkbox" id="availNoFixedHours" style="width:auto;" onchange="toggleFixedHoursGrid()" ${currentTenantDoc?.availability?.noFixedHours ? 'checked' : ''}>
-        Não tenho horário fixo — atendo só por marcação (avisam-me e combino a hora)
-      </label>
-      <div id="fixedHoursGrid" class="${currentTenantDoc?.availability?.noFixedHours ? 'hidden' : ''}">
-      ${days.map(d => {
-        const cfg = avail[d.key] || { enabled: false, start: '09:00', end: '18:00' };
-        return `<div class="row" style="align-items:center;margin-bottom:8px;">
-          <label style="display:flex;align-items:center;gap:6px;font-weight:600;width:110px;flex-shrink:0;">
-            <input type="checkbox" id="avail_${d.key}_on" style="width:auto;" ${cfg.enabled ? 'checked' : ''}> ${d.label}
-          </label>
-          <input type="time" id="avail_${d.key}_start" value="${cfg.start||'09:00'}" style="flex:1;">
-          <span class="muted">até</span>
-          <input type="time" id="avail_${d.key}_end" value="${cfg.end||'18:00'}" style="flex:1;">
-        </div>`;
-      }).join('')}
+      <label>Como funciona o seu horário?</label>
+      <select id="availMode" onchange="toggleAvailabilityMode()">
+        <option value="none" ${mode==='none'?'selected':''}>Sem horário fixo — atendo só por marcação combinada</option>
+        <option value="weekly" ${mode==='weekly'?'selected':''}>Semanal — mesmo horário todas as semanas</option>
+        <option value="biweekly" ${mode==='biweekly'?'selected':''}>Quinzenal — alterna entre duas semanas (A e B)</option>
+      </select>
+
+      <div id="fixedHoursGrid" class="${mode==='none'?'hidden':''}" style="margin-top:12px;">
+        <div id="weeklyGridA">
+          <p class="muted" style="margin-bottom:6px;">${mode==='biweekly' ? '<strong>Semana A</strong>' : ''}</p>
+          ${days.map(d => dayRow(d, avail[d.key], 'avail')).join('')}
+        </div>
+        <div id="weeklyGridB" class="${mode==='biweekly'?'':'hidden'}" style="margin-top:14px;">
+          <p class="muted" style="margin-bottom:6px;"><strong>Semana B</strong></p>
+          ${days.map(d => dayRow(d, weekB[d.key], 'availB')).join('')}
+          <label style="margin-top:8px;">A partir de que segunda-feira começa a "Semana A"? (para saber qual semana é qual)</label>
+          <input type="date" id="availBiweeklyRef" value="${refMonday}">
+        </div>
       </div>
-      <label style="margin-top:10px;">Como prefere ser avisado de um pedido novo?</label>
+
+      <hr style="margin:16px 0;border:none;border-top:1px solid #e5e5e5;">
+      <h3 style="margin-bottom:6px;">📌 Exceções (feriados, dias fechados, horário especial)</h3>
+      ${hintBox('Para um dia específico que fuja ao seu horário habitual — férias, um feriado, ou um dia com horário diferente. Tem sempre prioridade sobre o horário semanal/quinzenal.')}
+      <div class="row" style="align-items:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <div><label>Data</label><input type="date" id="excDate"></div>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
+          <input type="checkbox" id="excClosed" style="width:auto;" onchange="document.getElementById('excHoursFields').classList.toggle('hidden', this.checked)"> Fechado este dia
+        </label>
+        <div id="excHoursFields" class="row" style="gap:8px;">
+          <div><label>Início</label><input type="time" id="excStart" value="09:00"></div>
+          <div><label>Fim</label><input type="time" id="excEnd" value="18:00"></div>
+        </div>
+        <button class="ghost" onclick="addAvailabilityException()">+ Adicionar exceção</button>
+      </div>
+      <div class="card" id="exceptionsList">${exceptionRows}</div>
+
+      <label style="margin-top:16px;">Como prefere ser avisado de um pedido novo?</label>
       <select id="pfBookingNotifChannel">
         <option value="app" ${(!currentTenantDoc?.bookingNotificationChannel || currentTenantDoc?.bookingNotificationChannel==='app')?'selected':''}>Só dentro da app (grátis, tempo real, aparece já em "Agenda")</option>
         <option value="app_email" ${currentTenantDoc?.bookingNotificationChannel==='app_email'?'selected':''}>Dentro da app + email (em breve — ainda não envia sozinho)</option>
@@ -7508,9 +7703,28 @@ async function renderProfileSection(main, section){
       <hr style="margin:16px 0;border:none;border-top:1px solid #e5e5e5;">
       <h2>📕 Livro de Reclamações Eletrónico</h2>
       ${hintBox('Obrigatório por lei em Portugal para quem presta serviços a consumidores, mesmo só online. Registe-se primeiro em livroreclamacoes.pt (com os seus dados das Finanças) — é grátis para começar (25 reclamações incluídas). Depois, cole aqui o seu link — aparece automaticamente na sua página pública, como a lei exige.')}
+      <details style="margin-bottom:12px;">
+        <summary style="cursor:pointer;color:var(--primary);font-weight:600;padding:6px 0;">📖 Como me registar, passo a passo</summary>
+        <div class="card" style="margin-top:8px;">
+          <ol style="padding-left:18px;line-height:1.6;">
+            <li>Abra <strong>livroreclamacoes.pt</strong> (botão abaixo) e escolha "Registar Operador Económico".</li>
+            <li>Registe-se com o seu <strong>NIF</strong> e dados das Finanças (é o mesmo processo de autenticação usada noutros serviços do Estado).</li>
+            <li>Preencha os dados da sua atividade — pode indicar o endereço da sua página Vindora como "local de prestação do serviço", já que atende também online.</li>
+            <li>No fim do registo, o site dá-lhe um <strong>link do seu Livro de Reclamações</strong> (algo como livroreclamacoes.pt/Inicio/SinaleticaDigital?id=...).</li>
+            <li>Copie esse link e cole-o na caixa abaixo, depois toque em "Guardar" — aparece sozinho na sua página pública, como a lei exige.</li>
+          </ol>
+        </div>
+      </details>
       <label>O seu link do Livro de Reclamações</label>
       <input id="pfLivroReclamacoesUrl" value="${escapeHtml(currentTenantDoc?.legalTexts?.livroReclamacoesUrl || '')}" placeholder="https://www.livroreclamacoes.pt/...">
-      <button class="primary" onclick="saveLivroReclamacoesUrl()">Guardar</button>
+      <div class="card" style="margin-top:12px;background:#f6f8f7;">
+        <p style="white-space:pre-wrap;line-height:1.5;font-size:12.5px;">${escapeHtml(LIVRO_RECLAMACOES_DISCLAIMER_TEXT)}</p>
+        <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;margin-top:8px;">
+          <input type="checkbox" id="pfLivroReclamacoesAccept" style="width:auto;margin-top:3px;" ${currentTenantDoc?.legalTexts?.livroReclamacoesDisclaimerVersion === LIVRO_RECLAMACOES_DISCLAIMER_VERSION ? 'checked' : ''}>
+          <span>Li e aceito que sou o(a) único(a) responsável pelo registo e cumprimento desta obrigação legal.</span>
+        </label>
+      </div>
+      <button class="primary" style="margin-top:10px;" onclick="saveLivroReclamacoesUrl()">Guardar</button>
       <a href="#" onclick="window.open('https://www.livroreclamacoes.pt/Operador/RegistoOperadores','_blank');return false;" style="display:block;margin-top:10px;color:var(--primary);text-align:center;">Ainda não me registei — abrir livroreclamacoes.pt</a>
     `;
   } else if (section === 'mensagens'){
@@ -7678,14 +7892,51 @@ window.acceptBookingRequest = async function(requestId){
   loadBookingRequests();
 };
 
-window.toggleFixedHoursGrid = function(){
-  document.getElementById('fixedHoursGrid').classList.toggle('hidden', document.getElementById('availNoFixedHours').checked);
+window.toggleAvailabilityMode = function(){
+  const mode = document.getElementById('availMode').value;
+  document.getElementById('fixedHoursGrid').classList.toggle('hidden', mode === 'none');
+  document.getElementById('weeklyGridB').classList.toggle('hidden', mode !== 'biweekly');
+};
+
+window.addAvailabilityException = async function(){
+  const dateStr = document.getElementById('excDate').value;
+  if (!dateStr){ toast('Escolha uma data.', true); return; }
+  const closed = document.getElementById('excClosed').checked;
+  const exceptions = { ...(currentTenantDoc?.availability?.exceptions || {}) };
+  exceptions[dateStr] = closed
+    ? { closed: true }
+    : { closed: false, start: document.getElementById('excStart').value, end: document.getElementById('excEnd').value };
+  const availability = { ...(currentTenantDoc?.availability || {}), exceptions };
+  await updateDoc(doc(db, 'tenants', tenantId), { availability });
+  currentTenantDoc.availability = availability;
+  if (currentTenantDoc?.slug){
+    await setDoc(doc(db, 'public_tenant_profiles', currentTenantDoc.slug), { availability }, { merge: true });
+  }
+  toast('Exceção adicionada e publicada.');
+  openSettingsSection('disponibilidade');
+};
+
+window.removeAvailabilityException = async function(dateStr){
+  const exceptions = { ...(currentTenantDoc?.availability?.exceptions || {}) };
+  delete exceptions[dateStr];
+  const availability = { ...(currentTenantDoc?.availability || {}), exceptions };
+  await updateDoc(doc(db, 'tenants', tenantId), { availability });
+  currentTenantDoc.availability = availability;
+  if (currentTenantDoc?.slug){
+    await setDoc(doc(db, 'public_tenant_profiles', currentTenantDoc.slug), { availability }, { merge: true });
+  }
+  toast('Exceção removida.');
+  openSettingsSection('disponibilidade');
 };
 
 window.saveAvailability = async function(){
   const days = ['mon','tue','wed','thu','fri','sat','sun'];
-  const noFixedHours = document.getElementById('availNoFixedHours').checked;
-  const availability = { noFixedHours };
+  const mode = document.getElementById('availMode').value;
+  const availability = {
+    mode,
+    noFixedHours: mode === 'none', // mantido para compatibilidade com o que já lê este campo
+    exceptions: currentTenantDoc?.availability?.exceptions || {}
+  };
   days.forEach(k => {
     availability[k] = {
       enabled: document.getElementById(`avail_${k}_on`).checked,
@@ -7693,6 +7944,20 @@ window.saveAvailability = async function(){
       end: document.getElementById(`avail_${k}_end`).value
     };
   });
+  if (mode === 'biweekly'){
+    const weekB = {};
+    days.forEach(k => {
+      weekB[k] = {
+        enabled: document.getElementById(`availB_${k}_on`).checked,
+        start: document.getElementById(`availB_${k}_start`).value,
+        end: document.getElementById(`availB_${k}_end`).value
+      };
+    });
+    availability.biweekly = {
+      referenceMonday: document.getElementById('availBiweeklyRef').value || '',
+      weekB
+    };
+  }
   const bookingNotificationChannel = document.getElementById('pfBookingNotifChannel').value;
   await updateDoc(doc(db, 'tenants', tenantId), { availability, bookingNotificationChannel });
   currentTenantDoc.availability = availability;
@@ -7728,6 +7993,27 @@ window.saveOnlineConsultSettings = async function(){
   toast('Preferência de consultório online guardada.');
 };
 
+window.addRoom = async function(){
+  const nameInput = document.getElementById('newRoomName');
+  const name = nameInput.value.trim();
+  if (!name){ toast('Indique um nome para a sala.', true); return; }
+  const rooms = [...(currentTenantDoc?.rooms || [])];
+  rooms.push({ id: 'room_' + Date.now() + Math.random().toString(36).slice(2,6), name });
+  await updateDoc(doc(db, 'tenants', tenantId), { rooms });
+  currentTenantDoc.rooms = rooms;
+  toast('Sala adicionada.');
+  openProfileSection('salas');
+};
+
+window.removeRoom = async function(roomId){
+  if (!confirm('Remover esta sala? Marcações já feitas mantêm a referência, mas deixa de aparecer para escolher em novas marcações.')) return;
+  const rooms = (currentTenantDoc?.rooms || []).filter(r => r.id !== roomId);
+  await updateDoc(doc(db, 'tenants', tenantId), { rooms });
+  currentTenantDoc.rooms = rooms;
+  toast('Sala removida.');
+  openProfileSection('salas');
+};
+
 window.saveConsentText = async function(){
   const consentText = document.getElementById('pfConsentText').value.trim();
   await updateDoc(doc(db, 'tenants', tenantId), {
@@ -7741,7 +8027,21 @@ window.saveConsentText = async function(){
 
 window.saveLivroReclamacoesUrl = async function(){
   const url = document.getElementById('pfLivroReclamacoesUrl').value.trim();
-  await updateDoc(doc(db, 'tenants', tenantId), { 'legalTexts.livroReclamacoesUrl': url });
+  const accepted = document.getElementById('pfLivroReclamacoesAccept')?.checked;
+  if (url && !accepted){
+    toast('Precisa de aceitar o termo de responsabilidade antes de guardar o link.', true);
+    return;
+  }
+  const legalTexts = {
+    livroReclamacoesUrl: url,
+    livroReclamacoesDisclaimerVersion: accepted ? LIVRO_RECLAMACOES_DISCLAIMER_VERSION : (currentTenantDoc?.legalTexts?.livroReclamacoesDisclaimerVersion || null),
+    livroReclamacoesDisclaimerAcceptedAt: accepted ? serverTimestamp() : (currentTenantDoc?.legalTexts?.livroReclamacoesDisclaimerAcceptedAt || null)
+  };
+  await updateDoc(doc(db, 'tenants', tenantId), {
+    'legalTexts.livroReclamacoesUrl': legalTexts.livroReclamacoesUrl,
+    'legalTexts.livroReclamacoesDisclaimerVersion': legalTexts.livroReclamacoesDisclaimerVersion,
+    'legalTexts.livroReclamacoesDisclaimerAcceptedAt': legalTexts.livroReclamacoesDisclaimerAcceptedAt
+  });
   const snap = await getDoc(doc(db, 'tenants', tenantId));
   currentTenantDoc = snap.data();
   // Publica de imediato — sem isto, só ficaria visível na página pública

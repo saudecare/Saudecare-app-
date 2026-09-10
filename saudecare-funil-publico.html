@@ -5,26 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Marcar Consulta — Vindora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{ --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#fff; --text:#1a2b26; --muted:#6b7d76; }
-  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
-  body{background:var(--bg);color:var(--text);}
-  .hero{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:32px 20px 26px;text-align:center;}
-  .hero img.logo{width:64px;height:64px;border-radius:14px;object-fit:cover;margin-bottom:10px;background:#fff;}
-  .hero h1{font-size:22px;margin-bottom:4px;}
-  .hero p{opacity:.92;font-size:14px;}
+  :root{ --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#fff; --text:#1a2b26; --muted:#6b7d76; --accent:#b3893f;
+    --font-display:'Fraunces',Georgia,serif; --font-body:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:var(--font-body);}
+  body{background:var(--bg);color:var(--text);line-height:1.5;}
+  .hero{background:linear-gradient(150deg,var(--primary-dark),var(--primary) 65%);color:#fff;padding:34px 20px 28px;text-align:center;}
+  .hero img.logo{width:64px;height:64px;border-radius:14px;object-fit:cover;margin-bottom:12px;background:#fff;box-shadow:0 5px 14px rgba(0,0,0,.16);}
+  .hero h1{font-family:var(--font-display);font-weight:600;font-size:23px;letter-spacing:-.01em;margin-bottom:5px;}
+  .hero p{opacity:.9;font-size:14px;}
   .wrap{max-width:520px;margin:0 auto;padding:16px;}
-  .card{background:var(--card);border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .card{background:var(--card);border:1px solid rgba(31,77,64,.07);border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:0 1px 2px rgba(20,40,34,.04);}
   label{display:block;margin:12px 0 6px;font-size:13.5px;color:var(--muted);font-weight:600;}
   label:first-child{margin-top:0;}
   input, select, textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #dde5e1;
     background:#fff;color:var(--text);font-size:15px;font-family:inherit;}
   textarea{resize:vertical;}
-  .btn{display:block;width:100%;text-align:center;background:var(--primary);color:#fff;font-weight:700;
-    padding:14px;border:none;border-radius:12px;cursor:pointer;font-size:15px;margin-top:16px;}
-  .btn:disabled{opacity:.6;}
+  .btn{display:block;width:100%;text-align:center;background:var(--primary);color:#fff;font-weight:600;
+    padding:14px;border:none;border-radius:100px;cursor:pointer;font-size:15px;margin-top:16px;box-shadow:0 6px 16px rgba(31,77,64,.18);}
+  .btn:disabled{opacity:.6;box-shadow:none;}
   .muted{color:var(--muted);font-size:13.5px;line-height:1.5;}
-  .service-option{border:1.5px solid #dde5e1;border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;}
+  .service-option{border:1.5px solid #dde5e1;border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .12s,background .12s;}
   .service-option.active{border-color:var(--primary);background:#f0f7f4;}
   .service-option strong{font-size:14.5px;}
   .success{text-align:center;padding:30px 16px;}
@@ -68,6 +72,27 @@ function escapeHtml(str){
 }
 
 const DAY_LABELS = { mon:'Segunda', tue:'Terça', wed:'Quarta', thu:'Quinta', fri:'Sexta', sat:'Sábado', sun:'Domingo' };
+const DAY_KEYS_BY_JS_INDEX = ['sun','mon','tue','wed','thu','fri','sat'];
+
+// Mesma lógica usada na página pública de perfil: exceções têm sempre
+// prioridade, depois alterna semana A/B se o modo for quinzenal.
+function getScheduleForDate(avail, dateObj){
+  const dateStr = dateObj.toISOString().slice(0,10);
+  const exceptions = avail.exceptions || {};
+  if (exceptions[dateStr]){
+    const ex = exceptions[dateStr];
+    return ex.closed ? null : { enabled: true, start: ex.start, end: ex.end };
+  }
+  const dayKey = DAY_KEYS_BY_JS_INDEX[dateObj.getDay()];
+  if (avail.mode === 'biweekly' && avail.biweekly?.referenceMonday){
+    const ref = new Date(avail.biweekly.referenceMonday + 'T00:00:00');
+    const diffWeeks = Math.floor((dateObj - ref) / (7*86400000));
+    const isWeekB = (((diffWeeks % 2) + 2) % 2) === 1;
+    const src = isWeekB ? (avail.biweekly.weekB || {}) : avail;
+    return src[dayKey] || { enabled: false };
+  }
+  return avail[dayKey] || { enabled: false };
+}
 
 let profile, tenantId, services = [], categories = [], selectedService = null;
 
@@ -102,8 +127,7 @@ async function load(){
 
 function renderForm(){
   const avail = profile.availability || {};
-  const semHorarioFixo = !!avail.noFixedHours;
-  const diasAtivos = Object.keys(DAY_LABELS).filter(k => avail[k]?.enabled);
+  const semHorarioFixo = !!avail.noFixedHours || avail.mode === 'none';
 
   main.innerHTML = `
     <div class="card">
@@ -129,12 +153,9 @@ function renderForm(){
       <textarea id="fQuando" rows="2" placeholder="ex: Quinta-feira de manhã, ou o que for mais conveniente"></textarea>
       <p class="muted" style="margin-top:4px;">Este profissional não tem horário fixo — combina o horário diretamente consigo.</p>
       ` : `
-      <label>Dia preferido</label>
-      <select id="fDia">
-        ${diasAtivos.length ? diasAtivos.map(k => `<option value="${k}">${DAY_LABELS[k]} (${avail[k].start}–${avail[k].end})</option>`).join('') : `<option value="">Qualquer dia</option>`}
-      </select>
       <label>Data</label>
       <input id="fData" type="date">
+      <p class="muted" id="fDataInfo" style="margin-top:4px;"></p>
       <label>Hora aproximada</label>
       <input id="fHora" type="time">
       `}
@@ -153,7 +174,25 @@ function renderForm(){
     selectedService = services.find(s => s.id === el.dataset.id);
   }));
 
+  const fDataInput = document.getElementById('fData');
+  if (fDataInput) fDataInput.addEventListener('change', () => updateDateInfo(avail));
+
   document.getElementById('btnEnviar').addEventListener('click', onSubmit);
+}
+
+function updateDateInfo(avail){
+  const infoEl = document.getElementById('fDataInfo');
+  const dataVal = document.getElementById('fData').value;
+  if (!infoEl || !dataVal) return;
+  const dateObj = new Date(dataVal + 'T00:00:00');
+  const sched = getScheduleForDate(avail, dateObj);
+  if (!sched || !sched.enabled){
+    infoEl.innerHTML = '⚠️ Este profissional normalmente não atende neste dia — pode pedir na mesma, fica sujeito a confirmação.';
+    infoEl.style.color = '#a33';
+  } else {
+    infoEl.textContent = `Horário habitual neste dia: ${sched.start}–${sched.end}.`;
+    infoEl.style.color = '';
+  }
 }
 
 async function onSubmit(){
@@ -169,10 +208,11 @@ async function onSubmit(){
   }
 
   const avail = profile.availability || {};
+  const semHorarioFixo = !!avail.noFixedHours || avail.mode === 'none';
   let requestedStart = null;
   let quandoTexto = '';
 
-  if (avail.noFixedHours){
+  if (semHorarioFixo){
     quandoTexto = document.getElementById('fQuando').value.trim();
     if (!quandoTexto){
       errorEl.innerHTML = '<div class="errorbox">Diga-nos quando prefere ser atendido.</div>';

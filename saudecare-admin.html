@@ -36,21 +36,21 @@
     main{padding:16px;max-width:100%;}
   }
   main{flex:1;padding:24px;max-width:1000px;}
-  .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;
-    box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .card{background:var(--card);border:1px solid #eef0f5;border-radius:var(--radius);padding:18px;margin-bottom:14px;
+    box-shadow:0 1px 2px rgba(20,25,50,.04);}
   h2{margin-bottom:14px;font-size:20px;}
   input,select,textarea{width:100%;padding:12px;border:1px solid #dcdfe8;border-radius:8px;
     margin-bottom:10px;font-size:16px;}
   label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
-  button.primary{background:var(--primary);color:#fff;border:none;padding:10px 18px;
-    border-radius:8px;cursor:pointer;font-size:14px;}
-  button.danger{background:var(--danger);color:#fff;border:none;padding:8px 14px;
-    border-radius:8px;cursor:pointer;font-size:13px;}
-  button.ghost{background:none;border:1px solid #dcdfe8;padding:8px 14px;border-radius:8px;cursor:pointer;}
+  button.primary{background:var(--primary);color:#fff;border:none;padding:10px 20px;
+    border-radius:100px;cursor:pointer;font-size:14px;font-weight:600;}
+  button.danger{background:var(--danger);color:#fff;border:none;padding:8px 16px;
+    border-radius:100px;cursor:pointer;font-size:13px;font-weight:600;}
+  button.ghost{background:none;border:1px solid #dcdfe8;padding:8px 16px;border-radius:100px;cursor:pointer;}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;}
   .tenant-item{border-bottom:1px solid #eef0f5;padding:12px 0;}
   .tenant-item:last-child{border-bottom:none;}
-  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:#e4e6f2;color:var(--primary-dark);}
+  .badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#e4e6f2;color:var(--primary-dark);}
   .badge.active{background:#dcf0e4;color:#1f6d3f;}
   .badge.trial{background:#fff3cd;color:#8a5a00;}
   .badge.suspended,.badge.cancelled{background:#f6e2e0;color:var(--danger);}
@@ -62,8 +62,8 @@
   .plan-summary .muted{font-weight:400;}
   .muted{color:var(--muted);font-size:13px;}
   .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;}
-  .stat-card{background:var(--card);border-radius:12px;padding:14px;text-align:center;}
-  .stat-card .num{font-size:26px;font-weight:700;color:var(--primary);}
+  .stat-card{background:var(--card);border:1px solid #eef0f5;border-radius:12px;padding:16px 14px;text-align:center;}
+  .stat-card .num{font-size:28px;font-weight:700;color:var(--primary);letter-spacing:-.02em;}
   #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;padding:20px 16px;box-sizing:border-box;}
   .login-card{max-width:360px;width:100%;background:var(--card);border-radius:16px;padding:22px;box-shadow:0 4px 16px rgba(0,0,0,.1);}
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1d2b;
@@ -847,13 +847,60 @@ async function renderAnnouncements(main){
       <label>Mensagem</label>
       <textarea id="announcementText" rows="5" placeholder="Ex: A partir de 15/10/2026, a Vindora vai mudar de fornecedor de armazenamento de X para Y. Se se opuser a esta alteração, contacte-nos em vindoraportugal@gmail.com até essa data.">${current ? escapeHtml(current.text||'') : ''}</textarea>
       <div class="row">
-        <button class="primary" onclick="publishAnnouncement()">Publicar aviso</button>
+        <button class="primary" onclick="publishAnnouncement()">Publicar aviso (dentro da app)</button>
         ${current?.active ? `<button class="danger" onclick="deactivateAnnouncement()">Retirar aviso atual</button>` : ''}
       </div>
       ${current?.publishedAt ? `<p class="muted" style="margin-top:10px;">Publicado em: ${current.publishedAt.toDate ? current.publishedAt.toDate().toLocaleString('pt-PT') : ''}</p>` : ''}
     </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h3 style="margin-bottom:6px;">📧 Enviar por Email a Todos os Subscritores</h3>
+      <p class="muted" style="margin-bottom:10px;">Não temos (ainda) um serviço de envio automático de emails em massa — isto abre o SEU próprio email (Gmail) já com todos os subscritores em cópia oculta (Bcc), prontos a enviar com um toque. Funciona bem até algumas dezenas de destinatários; acima disso, o link pode ficar demasiado longo para o telemóvel abrir.</p>
+      <label>Assunto do email</label>
+      <input id="massEmailSubject" placeholder="Ex: Novidades na Vindora">
+      <label>Mensagem</label>
+      <textarea id="massEmailBody" rows="6" placeholder="Pode escrever aqui, ou tocar em \"Usar a mesma mensagem do aviso acima\"."></textarea>
+      <div class="row" style="margin-top:8px;">
+        <button class="ghost" onclick="copyAnnouncementToEmail()">Usar a mesma mensagem do aviso acima</button>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <button class="primary" onclick="prepareMassEmail('all')">📧 Preparar email — Todos os subscritores</button>
+        <button class="ghost" onclick="prepareMassEmail('active')">📧 Só ativos (não em teste/suspensos)</button>
+      </div>
+      <p id="massEmailStatus" class="muted" style="margin-top:8px;"></p>
+    </div>
   `;
 }
+
+window.copyAnnouncementToEmail = function(){
+  document.getElementById('massEmailBody').value = document.getElementById('announcementText').value;
+};
+
+window.prepareMassEmail = async function(scope){
+  const subject = document.getElementById('massEmailSubject').value.trim();
+  const body = document.getElementById('massEmailBody').value.trim();
+  const statusEl = document.getElementById('massEmailStatus');
+  if (!subject || !body){ toast('Preencha o assunto e a mensagem.', true); return; }
+
+  statusEl.textContent = 'A juntar os emails dos subscritores…';
+  const snap = await getDocs(collection(db, 'tenants'));
+  const emails = [];
+  snap.forEach(d => {
+    const t = d.data();
+    if (!t.ownerEmail) return;
+    if (scope === 'active' && t.status !== 'active') return;
+    emails.push(t.ownerEmail);
+  });
+  if (!emails.length){ statusEl.textContent = 'Não encontrei nenhum email de subscritor para esse filtro.'; return; }
+
+  const mailto = `mailto:vindoraportugal@gmail.com?bcc=${encodeURIComponent(emails.join(','))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if (mailto.length > 1800){
+    statusEl.textContent = `⚠️ ${emails.length} destinatários é demasiado para um link de email (o telemóvel pode não conseguir abrir). Considere dividir por grupos mais pequenos, ou pedir-nos um envio automático em massa.`;
+  } else {
+    statusEl.textContent = `A abrir o seu email com ${emails.length} destinatário(s) em cópia oculta (Bcc)…`;
+  }
+  window.location.href = mailto;
+};
 
 window.publishAnnouncement = async function(){
   const text = document.getElementById('announcementText').value.trim();
