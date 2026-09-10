@@ -334,7 +334,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-09-155';
+const APP_VERSION = '2026-09-09-156';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1542,9 +1542,9 @@ function renderView(view){
 // tiver avançado no tutorial não é afetado (o progresso é só um número).
 const ONBOARDING_STEPS = [
   { view: 'myprofile', titulo: 'O seu Perfil Público', texto: 'Comece por preencher o nome, foto e descrição que os seus clientes vão ver.' },
-  { view: 'settings', secao: 'disponibilidade', titulo: 'Disponibilidade & Marcação', texto: 'Defina os seus horários (ou escolha "só por marcação") para os clientes poderem reservar.' },
-  { view: 'settings', secao: 'online', titulo: 'Modo de Atendimento', texto: 'Configure se atende online, presencial, ou os dois — e o link da videochamada, se usar.' },
-  { view: 'settings', secao: 'consentimento', titulo: 'Livro de Reclamações', texto: 'Obrigatório por lei em Portugal, e é grátis: registe-se em livroreclamacoes.pt, depois cole aqui o link — aparece sozinho na sua página pública.' },
+  { view: 'profile', secao: 'disponibilidade', titulo: 'Disponibilidade & Marcação', texto: 'Defina os seus horários (ou escolha "só por marcação") para os clientes poderem reservar.' },
+  { view: 'profile', secao: 'online', titulo: 'Modo de Atendimento', texto: 'Configure se atende online, presencial, ou os dois — e o link da videochamada, se usar.' },
+  { view: 'profile', secao: 'consentimento', titulo: 'Livro de Reclamações', texto: 'Obrigatório por lei em Portugal, e é grátis: registe-se em livroreclamacoes.pt, depois cole aqui o link — aparece sozinho na sua página pública.' },
   { view: 'services', titulo: 'Os Seus Serviços', texto: 'Adicione os serviços que presta, com preço e duração.' },
   { view: 'protocols', titulo: 'Os Seus Métodos', texto: 'Configure os protocolos/métodos de trabalho que usa nas suas consultas.' },
   { view: 'forms', titulo: 'Fichas & Questionários', texto: 'Use as fichas prontas ou crie os seus próprios questionários de avaliação.' },
@@ -1553,6 +1553,18 @@ const ONBOARDING_STEPS = [
   { view: 'agenda', titulo: 'Agenda', texto: 'Experimente marcar uma consulta na agenda.' },
   { view: 'knowledge', titulo: 'Fonte de Conhecimento', texto: 'Dê uma vista de olhos — pode guardar documentos e materiais aqui.' }
 ];
+
+// Ponto único de navegação para um passo do tutorial — evita o erro de
+// mandar uma secção de "Perfil" (ex: disponibilidade) para o sítio de
+// "Conta", que é um menu completamente diferente.
+window.goToOnboardingStepTarget = function(view, secao){
+  if (secao){
+    if (view === 'profile') openProfileSection(secao);
+    else openSettingsSection(secao);
+  } else {
+    renderView(view);
+  }
+};
 
 async function renderOnboardingBanner(view){
   const box = document.getElementById('onboardingBanner');
@@ -1574,7 +1586,7 @@ async function renderOnboardingBanner(view){
     <h3 style="margin-bottom:4px;">${escapeHtml(s.titulo)}</h3>
     <p class="muted" style="margin-bottom:10px;">${escapeHtml(s.texto)}</p>
     <div class="row" style="flex-wrap:wrap;gap:8px;">
-      ${view !== s.view ? `<button class="primary" onclick="${s.secao ? `openSettingsSection('${s.secao}')` : `renderView('${s.view}')`}">Ir para lá</button>` : ''}
+      ${view !== s.view ? `<button class="primary" onclick="goToOnboardingStepTarget('${s.view}', ${s.secao ? `'${s.secao}'` : 'null'})">Ir para lá</button>` : ''}
       <button class="ghost" onclick="avancarOnboarding()">✅ Concluí este passo</button>
       ${step > 0 ? `<button class="ghost" onclick="recuarOnboarding()">⬅️ Passo anterior</button>` : ''}
       <button class="ghost" onclick="saltarOnboarding()">Saltar tutorial</button>
@@ -1972,7 +1984,7 @@ async function renderHome(main){
     if (pendingStaff) alerts.push({ icon: '👥', text: `${pendingStaff} pedido(s) de equipa por aprovar`, action: "renderView('team')" });
   }
   if (bookingReqSnap && bookingReqSnap.size){
-    alerts.push({ icon: '📩', text: `${bookingReqSnap.size} pedido(s) de marcação por rever`, action: "openSettingsSection('disponibilidade')" });
+    alerts.push({ icon: '📩', text: `${bookingReqSnap.size} pedido(s) de marcação por rever`, action: "openProfileSection('disponibilidade')" });
   }
   if (pendingFormsSnap.size){
     alerts.push({ icon: '📝', text: `${pendingFormsSnap.size} resposta(s) de ficha por associar a um paciente`, action: "renderView('forms')" });
@@ -2080,7 +2092,7 @@ async function renderHome(main){
   const SHORTCUTS = [
     { icon: '🩺', label: 'Nova Consulta', action: 'startNewConsultationFlow()' },
     { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
-    { icon: '🗓️', label: 'Disponibilidade e Marcações', action: "openSettingsSection('disponibilidade')" },
+    { icon: '🗓️', label: 'Disponibilidade e Marcações', action: "openProfileSection('disponibilidade')" },
     { icon: '💚', label: 'Central do Paciente', action: "renderView('portalPaciente')" },
     { icon: '💶', label: 'Finanças', action: "renderView('finances')" },
     { icon: '📋', label: 'Os Meus Métodos', action: "renderView('protocols')" },
@@ -7578,6 +7590,19 @@ async function renderProfileSection(main, section){
            <button class="primary" onclick="connectGoogleCalendar()">Ligar ao Google Calendar</button>`
       }
       ${hintBox('A sincronização funciona apenas num sentido: criar, editar ou apagar uma marcação aqui na app atualiza o Google Calendar automaticamente. O contrário não acontece — se apagar ou mudar um evento diretamente no Google Calendar, isso não volta a refletir-se aqui na app. Para manter tudo certo, faça sempre as alterações às marcações dentro da app.')}
+      <details style="margin-top:12px;">
+        <summary style="cursor:pointer;color:var(--primary);font-weight:600;padding:6px 0;">👥 Equipas grandes — como todos verem o mesmo Google Calendar</summary>
+        <div class="card" style="margin-top:8px;">
+          <p class="muted" style="margin-bottom:8px;">Só é possível ligar UMA conta Google à Vindora (a que ligou acima). As marcações vão sempre para esse único calendário. Para que outros membros da equipa o vejam no telemóvel deles:</p>
+          <ol style="padding-left:18px;line-height:1.6;">
+            <li>Abra o Google Calendar (no computador é mais fácil) com a conta que ligou aqui.</li>
+            <li>Vá a Definições → escolha esse calendário → <strong>"Partilhar com pessoas específicas"</strong>.</li>
+            <li>Adicione o email de cada colega, com permissão "Ver todos os detalhes do evento".</li>
+            <li>Cada um aceita o convite por email e passa a ver o calendário no telemóvel dele.</li>
+          </ol>
+          <p class="muted" style="margin-top:8px;">Isto faz-se uma vez só, diretamente no Google — não precisa de nada aqui na app. Dentro da Vindora, a Agenda já é sempre partilhada por toda a equipa, sem precisar disto.</p>
+        </div>
+      </details>
     `;
   } else if (section === 'online'){
     inner = `
@@ -7647,6 +7672,10 @@ async function renderProfileSection(main, section){
     inner = `
       <h2>🗓️ Disponibilidade & Marcação</h2>
       ${hintBox('Defina os dias e horas em que atende. Isto aparece na sua página pública, e quem visitar pode pedir uma marcação dentro desses horários — a marcação só fica confirmada depois de você aceitar, para nunca haver reservas automáticas por engano.')}
+      <div class="row" style="margin-bottom:14px;flex-wrap:wrap;">
+        <button class="ghost" onclick="openProfileSection('calendar')">📅 Google Calendar</button>
+        <button class="ghost" onclick="openProfileSection('salas')">🚪 Salas de Atendimento</button>
+      </div>
       <label>Como funciona o seu horário?</label>
       <select id="availMode" onchange="toggleAvailabilityMode()">
         <option value="none" ${mode==='none'?'selected':''}>Sem horário fixo — atendo só por marcação combinada</option>
@@ -7913,7 +7942,7 @@ window.addAvailabilityException = async function(){
     await setDoc(doc(db, 'public_tenant_profiles', currentTenantDoc.slug), { availability }, { merge: true });
   }
   toast('Exceção adicionada e publicada.');
-  openSettingsSection('disponibilidade');
+  openProfileSection('disponibilidade');
 };
 
 window.removeAvailabilityException = async function(dateStr){
@@ -7926,7 +7955,7 @@ window.removeAvailabilityException = async function(dateStr){
     await setDoc(doc(db, 'public_tenant_profiles', currentTenantDoc.slug), { availability }, { merge: true });
   }
   toast('Exceção removida.');
-  openSettingsSection('disponibilidade');
+  openProfileSection('disponibilidade');
 };
 
 window.saveAvailability = async function(){
@@ -8503,7 +8532,7 @@ window.restartOnboarding = async function(){
   currentTenantDoc.onboarding = onboarding;
   toast('Tutorial reiniciado.');
   const s = ONBOARDING_STEPS[0];
-  if (s.secao) openSettingsSection(s.secao); else renderView(s.view);
+  goToOnboardingStepTarget(s.view, s.secao);
 };
 
 window.jumpToOnboardingStep = async function(idx){
@@ -8511,7 +8540,7 @@ window.jumpToOnboardingStep = async function(idx){
   await updateDoc(doc(db, 'tenants', tenantId), { onboarding });
   currentTenantDoc.onboarding = onboarding;
   const s = ONBOARDING_STEPS[idx];
-  if (s.secao) openSettingsSection(s.secao); else renderView(s.view);
+  goToOnboardingStepTarget(s.view, s.secao);
 };
 
 window.switchSupportType = function(type){
