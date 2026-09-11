@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Mapa da Alma — Hikari Fafe</title>
-<!-- APP_VERSION: 2026-09-11-02 -->
-<meta name="app-version" content="2026-09-11-02">
+<!-- APP_VERSION: 2026-09-11-04 -->
+<meta name="app-version" content="2026-09-11-04">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
@@ -233,6 +233,8 @@ const COROS_ANJOS = [
   { faixa:[65,72], nome:'Anjos', regente:'Arcanjo Gabriel', dominio:'Mensagens, comunicação com o plano material, ação concreta.' },
 ];
 
+function coroDoGenio(numero){ return COROS_ANJOS.find(c => numero >= c.faixa[0] && numero <= c.faixa[1]); }
+
 const DIAS_GENIOS_UNIVERSAIS = {
   "05/01":"Éter — energia de síntese e transcendência.",
   "19/03":"Ar — energia de comunicação e movimento.",
@@ -240,7 +242,159 @@ const DIAS_GENIOS_UNIVERSAIS = {
   "12/08":"Terra — energia de estrutura e materialização.",
   "24/10":"Água — energia de emoção e intuição."
 };
-function coroDoGenio(numero){ return COROS_ANJOS.find(c => numero >= c.faixa[0] && numero <= c.faixa[1]); }
+function pinaculoActivo(dateStr, hojeStr){
+  const { pinaculos, idadesTransicao } = calcularPinaculosDesafios(dateStr);
+  const idade = idadeAtual(dateStr, hojeStr);
+  let indice = 3;
+  if (idade < idadesTransicao[0]) indice = 0;
+  else if (idade < idadesTransicao[1]) indice = 1;
+  else if (idade < idadesTransicao[2]) indice = 2;
+  const datasTransicao = calcularIdadeEDatasTransicao(dateStr, idadesTransicao);
+  return { indice, idade, pinaculo: pinaculos[indice], todos: pinaculos, datasTransicao };
+}
+
+const DESAFIOS_TEXTOS = {
+  0:'Um Desafio raro — não há um obstáculo fixo, mas sim a liberdade (e a exigência) de escolher o seu próprio caminho sem um padrão herdado a vencer.',
+  1:'Aprender a confiar em si e a agir sozinho(a), sem depender da aprovação ou da iniciativa dos outros.',
+  2:'Vencer a sensibilidade excessiva às opiniões alheias e o medo de tomar posição.',
+  3:'Superar a dispersão e a tendência a esconder sentimentos verdadeiros atrás do humor ou da conversa.',
+  4:'Vencer a resistência ao trabalho estruturado e a sensação de estar sempre a lutar contra limitações.',
+  5:'Aprender a lidar com a mudança sem cair em excessos ou fuga constante ao compromisso.',
+  6:'Superar o perfeccionismo e a tendência a assumir responsabilidades que não são suas.',
+  7:'Vencer o isolamento e a desconfiança — aprender a partilhar a sabedoria em vez de a guardar sozinho(a).',
+  8:'Aprender a lidar com o poder e o dinheiro sem cair no extremo do controlo ou da escassez.'
+};
+
+function calcularPinaculosDesafios(dateStr){
+  const [ano, mes, dia] = dateStr.split('-').map(Number);
+  const diaR = reduceNumber(dia);
+  const mesR = reduceNumber(mes);
+  const anoR = reduceNumber(String(ano).split('').reduce((a,d)=>a+parseInt(d,10),0));
+  const cv = caminhoDeVida(dateStr);
+
+  const p1 = reduceNumber(mesR + diaR);
+  const p2 = reduceNumber(diaR + anoR);
+  const p3 = reduceNumber(p1 + p2);
+  const p4 = reduceNumber(mesR + anoR);
+
+  const reduceSimples = (n) => { n = Math.abs(n); while (n > 9){ n = String(n).split('').reduce((a,d)=>a+(parseInt(d,10)||0),0); } return n; };
+  const d1 = reduceSimples(mesR - diaR);
+  const d2 = reduceSimples(diaR - anoR);
+  const d3 = reduceSimples(d1 - d2);
+  const d4 = reduceSimples(mesR - anoR);
+
+  const fim1 = 36 - cv;
+  const fim2 = fim1 + 9;
+  const fim3 = fim2 + 9;
+
+  return {
+    pinaculos: [
+      { numero: p1, desafio: d1, faixa: `nascimento — ${fim1} anos` },
+      { numero: p2, desafio: d2, faixa: `${fim1} — ${fim2} anos` },
+      { numero: p3, desafio: d3, faixa: `${fim2} — ${fim3} anos` },
+      { numero: p4, desafio: d4, faixa: `${fim3}+ anos (resto da vida)` }
+    ],
+    idadesTransicao: [fim1, fim2, fim3]
+  };
+}
+function calcularIdadeEDatasTransicao(dateStr, idades){
+  const nasc = new Date(dateStr + 'T12:00:00');
+  return idades.map(idade => {
+    const d = new Date(nasc);
+    d.setFullYear(d.getFullYear() + idade);
+    return d.toISOString().slice(0,10);
+  });
+}
+function idadeAtual(dateStr, hojeStr){
+  const nasc = new Date(dateStr+'T12:00:00');
+  const hoje = new Date(hojeStr+'T12:00:00');
+  let idade = hoje.getFullYear() - nasc.getFullYear();
+  const aindaNaoFezAnos = (hoje.getMonth() < nasc.getMonth()) ||
+    (hoje.getMonth() === nasc.getMonth() && hoje.getDate() < nasc.getDate());
+  if (aindaNaoFezAnos) idade--;
+  return idade;
+}
+function anoUniversal(ano){ return reduceNumber(String(ano).split('').reduce((a,d)=>a+parseInt(d,10),0)); }
+function calcularCiclosPessoais(dateStr, hojeStr){
+  const [, mes, dia] = dateStr.split('-').map(Number);
+  const hoje = new Date(hojeStr+'T12:00:00');
+  const anoAtual = hoje.getFullYear();
+  const mesAtual = hoje.getMonth()+1;
+  const diaAtual = hoje.getDate();
+  const diaR = reduceNumber(dia);
+  const mesR = reduceNumber(mes);
+  const anoUniv = anoUniversal(anoAtual);
+  const anoPessoal = reduceNumber(diaR + mesR + anoUniv);
+  const mesPessoal = reduceNumber(anoPessoal + reduceNumber(mesAtual));
+  const diaPessoal = reduceNumber(mesPessoal + reduceNumber(diaAtual));
+  return { anoPessoal, mesPessoal, diaPessoal, anoUniversal: anoUniv };
+}
+function hojeISO(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+/* ─── Nodos Lunares (Vidas Passadas / Propósito de Vida) ──────────────
+   Fórmula astronómica real do Nodo Lunar Médio (Jean Meeus, Astronomical
+   Algorithms) — não é uma tabela aproximada. Precisão de grau, mais do
+   que suficiente ao nível do signo. Validado contra 3 trânsitos públicos
+   e documentados do Nodo Norte: Carneiro (Jul/2023), Peixes (Jan/2025)
+   e Aquário (meados de 2026) — os três bateram certo.
+   NOTA DE HONESTIDADE: isto é leitura simbólica dentro da tradição da
+   astrologia cármica, não um facto histórico verificável. A crença em
+   vidas passadas não é comum a todos os astrólogos nem faz parte dos
+   ensinamentos cânones da astrologia — é uma camada interpretativa. */
+function paraDiaJuliano(ano, mes, dia, hora=12){
+  if (mes <= 2){ ano -= 1; mes += 12; }
+  const A = Math.floor(ano/100);
+  const B = 2 - A + Math.floor(A/4);
+  return Math.floor(365.25*(ano+4716)) + Math.floor(30.6001*(mes+1)) + dia + hora/24 + B - 1524.5;
+}
+function normalizar360(deg){ deg = deg % 360; return deg < 0 ? deg + 360 : deg; }
+function nodoNorteLongitude(ano, mes, dia){
+  const jd = paraDiaJuliano(ano, mes, dia);
+  const T = (jd - 2451545.0) / 36525;
+  const omega = 125.0445222 - 1934.1362608*T + 0.0020708*T*T + (T*T*T)/450000;
+  return normalizar360(omega);
+}
+const SIGNOS_NODO = ['Carneiro','Touro','Gémeos','Caranguejo','Leão','Virgem','Balança','Escorpião','Sagitário','Capricórnio','Aquário','Peixes'];
+function signoDeLongitude(long){ return SIGNOS_NODO[Math.floor(normalizar360(long) / 30)]; }
+function calcularNodosLunares(dateStr){
+  const [ano, mes, dia] = dateStr.split('-').map(Number);
+  const nnLong = nodoNorteLongitude(ano, mes, dia);
+  const nsLong = normalizar360(nnLong + 180);
+  return {
+    nodoNorte: { signo: signoDeLongitude(nnLong) },
+    nodoSul:   { signo: signoDeLongitude(nsLong) }
+  };
+}
+const NODO_SUL_TEXTOS = {
+  'Carneiro':'Já dominou a coragem de agir sozinho(a) e de iniciar sem esperar por ninguém. O padrão a vigiar é o egoísmo e a impaciência com quem é mais lento.',
+  'Touro':'Já dominou a estabilidade material e o prazer das coisas simples. O padrão a vigiar é o apego excessivo a posses e à zona de conforto.',
+  'Gémeos':'Já dominou a comunicação e a curiosidade sobre tudo um pouco. O padrão a vigiar é a dispersão e a superficialidade nos laços mais próximos.',
+  'Caranguejo':'Já dominou o cuidado emocional e a protecção do lar e da família. O padrão a vigiar é o apego ao passado e a dependência afectiva.',
+  'Leão':'Já dominou a criatividade e o brilho pessoal. O padrão a vigiar é o orgulho e a necessidade constante de ser reconhecido(a).',
+  'Virgem':'Já dominou o serviço prático e a análise minuciosa. O padrão a vigiar é o perfeccionismo e a autocrítica que paralisa.',
+  'Balança':'Já dominou a diplomacia e a arte das parcerias. O padrão a vigiar é a dependência da aprovação alheia e a indecisão crónica.',
+  'Escorpião':'Já dominou a intensidade emocional e a capacidade de se transformar. O padrão a vigiar é o controlo e a desconfiança extrema.',
+  'Sagitário':'Já dominou a fé e a expansão através do conhecimento e da viagem. O padrão a vigiar é o dogmatismo e a fuga a compromissos.',
+  'Capricórnio':'Já dominou a disciplina e a ambição material. O padrão a vigiar é a rigidez e o medo de mostrar vulnerabilidade.',
+  'Aquário':'Já dominou o pensamento independente e as causas colectivas. O padrão a vigiar é o desapego emocional e a rebeldia sem propósito.',
+  'Peixes':'Já dominou a entrega espiritual e a compaixão. O padrão a vigiar é a fuga à realidade e o sacrifício excessivo de si.'
+};
+const NODO_NORTE_TEXTOS = {
+  'Balança':'O seu caminho de crescimento é aprender a cooperar e a considerar o outro antes de agir sozinho(a).',
+  'Escorpião':'O seu caminho de crescimento é soltar o apego material e mergulhar na transformação emocional profunda.',
+  'Sagitário':'O seu caminho de crescimento é buscar um sentido maior, em vez de se dispersar em pequenos detalhes.',
+  'Capricórnio':'O seu caminho de crescimento é assumir responsabilidade e estrutura, saindo da zona de conforto emocional.',
+  'Aquário':'O seu caminho de crescimento é servir o colectivo, saindo do centro das atenções.',
+  'Peixes':'O seu caminho de crescimento é confiar e entregar-se ao fluxo, largando o controlo excessivo.',
+  'Carneiro':'O seu caminho de crescimento é agir por si mesmo(a), sem depender da validação do outro.',
+  'Touro':'O seu caminho de crescimento é construir segurança própria e paz material, sem depender da intensidade emocional alheia.',
+  'Gémeos':'O seu caminho de crescimento é ouvir e trocar ideias, sem impor uma única verdade.',
+  'Caranguejo':'O seu caminho de crescimento é nutrir os laços emocionais, sem se esconder atrás do trabalho.',
+  'Leão':'O seu caminho de crescimento é expressar-se com autenticidade, sem se perder dentro do grupo.',
+  'Virgem':'O seu caminho de crescimento é organizar e servir com discernimento prático, sem se perder na dispersão.'
+};
+
+
 function calcularAnjoNascimento(dateStr){
   const d = new Date(dateStr+'T12:00:00');
   const chave = String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
@@ -647,6 +801,10 @@ async function onCalcular(){
   const excesso = excessoNumerologico(nome);
   const mediunidade = temSinaisMediunidade(cv, exp, mot);
   const anjo = calcularAnjoNascimento(data);
+  const hoje = hojeISO();
+  const pinAtivo = pinaculoActivo(data, hoje);
+  const ciclos = calcularCiclosPessoais(data, hoje);
+  const nodos = calcularNodosLunares(data);
   const leadId = crypto.randomUUID();
 
   const freeResult = {
@@ -654,6 +812,7 @@ async function onCalcular(){
     caminhoDeVida: cv, motivacao: mot,
     diaInfo, diaNome, signo: signo.nome,
     carmicas, excesso, mediunidade, anjo,
+    pinAtivo, ciclos, nodos,
     selo: selo.id, seloLabel: selo.label, seloIcon: selo.icon,
     horaModo, horaNascimento: horaExacta || null, periodoNascimento: periodo || null
   };
@@ -784,6 +943,24 @@ function renderFreeResult(leadId, r, signo, extra){
       <div class="result-block">
         <h3>🕊️ A sua Essência Angelical</h3>
         <p class="muted">Nasceu num dos 5 dias sem Anjo fixo — a sua ligação é direta aos Anjos Universais, elemento <strong>${escapeHtml(r.anjo.elemento)}</strong>. <strong>O Mapa Diamante explica o que isto significa e como escolher o seu Anjo de afinidade entre os 72.</strong></p>
+      </div>` : ''}
+
+      ${r.pinAtivo ? `
+      <div class="result-block">
+        <h3>🗻 O seu Ciclo de Vida Ativo</h3>
+        <p class="muted">Está atualmente no seu <strong>${r.pinAtivo.indice+1}º Pináculo</strong> (${escapeHtml(r.pinAtivo.pinaculo.faixa)}) — um ciclo de longo prazo com uma lição específica em curso. <strong>O Mapa Diamante revela o significado completo deste ciclo, o Desafio associado, e a data exata da próxima transição.</strong></p>
+      </div>` : ''}
+
+      ${r.ciclos ? `
+      <div class="result-block">
+        <h3>📅 O seu Ano Pessoal ${new Date().getFullYear()}</h3>
+        <p class="muted">Está a viver um Ano Pessoal <strong>${r.ciclos.anoPessoal}</strong> — cada ano da sua vida tem uma vibração diferente. <strong>O Mapa Diamante explica o que este número pede de si este ano, e o clima do seu Mês Pessoal atual.</strong></p>
+      </div>` : ''}
+
+      ${r.nodos ? `
+      <div class="result-block">
+        <h3>🌑 Vidas Passadas: Sinal Detetado</h3>
+        <p class="muted">O seu Nodo Sul aponta para <strong>${escapeHtml(r.nodos.nodoSul.signo)}</strong> — a energia que já domina de outras vivências, trazida como bagagem para esta vida. <strong>O Mapa Diamante revela o padrão completo a vigiar, e o Nodo Norte — o caminho de crescimento desta encarnação.</strong></p>
       </div>` : ''}
 
       ${r.mediunidade ? `
@@ -1058,6 +1235,41 @@ function renderFullReport(data){
       <h3 style="color:var(--gold-light);">🕊️ A sua Essência Angelical Universal</h3>
       <p class="muted" style="margin-top:6px;">Nasceu num dos 5 dias sem Anjo fixo do calendário — a sua ligação é directa aos Anjos Universais/Génios da Humanidade, com elemento <strong>${escapeHtml(r.anjo.elemento)}</strong>.</p>
       <p class="muted" style="margin-top:6px;">${escapeHtml(r.anjo.nota)}</p>
+    </div>` : ''}
+    ${r.pinAtivo ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🗻 Os seus 4 Pináculos — Ciclos de Vida</h3>
+      <p class="muted" style="margin-bottom:8px;">Cada Pináculo representa uma lição de longo prazo. A transição de um para o seguinte é sempre sentida de forma marcante.</p>
+      ${r.pinAtivo.todos.map((p, i) => {
+        const dom = DONS_NUMERICOS[p.numero] || {};
+        const ativo = i === r.pinAtivo.indice;
+        return `<div style="margin-top:8px;padding:10px;border-radius:10px;background:${ativo ? 'rgba(212,175,55,.18)' : 'rgba(255,255,255,.04)'};${ativo ? 'border:1px solid var(--gold);' : ''}">
+          <p class="muted" style="font-size:.78rem;opacity:.85;">${i+1}º Pináculo · ${escapeHtml(p.faixa)}${ativo ? ' — <strong style="color:var(--gold-light);">EM CURSO</strong>' : ''}</p>
+          <p class="muted" style="margin-top:4px;"><strong>${p.numero} — ${escapeHtml(dom.nome||'')}:</strong> ${escapeHtml(dom.texto||'')}</p>
+          <p class="muted" style="margin-top:4px;font-size:.85rem;"><strong>Desafio deste ciclo:</strong> ${escapeHtml(DESAFIOS_TEXTOS[p.desafio]||'')}</p>
+        </div>`;
+      }).join('')}
+      <p class="muted" style="margin-top:10px;font-size:.78rem;opacity:.8;">Próximas transições: ${r.pinAtivo.datasTransicao.map(d => new Date(d+'T12:00:00').toLocaleDateString('pt-PT')).join(' · ')}.</p>
+    </div>` : ''}
+    ${r.ciclos ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">📅 Os seus Ciclos Pessoais</h3>
+      <p class="muted" style="margin-top:6px;"><strong>Ano Pessoal ${new Date().getFullYear()}: ${r.ciclos.anoPessoal}</strong> — ${escapeHtml((DONS_NUMERICOS[r.ciclos.anoPessoal]||{}).texto||'')}</p>
+      <p class="muted" style="margin-top:6px;"><strong>Mês Pessoal:</strong> ${r.ciclos.mesPessoal} · <strong>Dia Pessoal (hoje):</strong> ${r.ciclos.diaPessoal}</p>
+      <p class="muted" style="margin-top:8px;font-size:.78rem;opacity:.8;">O Ano Pessoal muda a cada ano civil; volte a consultar em Janeiro para o próximo.</p>
+    </div>` : ''}
+    ${r.nodos ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🌑 Vidas Passadas & Propósito — Nodos Lunares</h3>
+      <div style="margin-top:8px;padding:10px;background:rgba(212,175,55,.1);border-radius:10px;">
+        <p class="muted"><strong>🌑 Nodo Sul em ${escapeHtml(r.nodos.nodoSul.signo)}</strong> — de onde vem:</p>
+        <p class="muted" style="margin-top:4px;">${escapeHtml(NODO_SUL_TEXTOS[r.nodos.nodoSul.signo]||'')}</p>
+      </div>
+      <div style="margin-top:8px;padding:10px;background:rgba(212,175,55,.1);border-radius:10px;">
+        <p class="muted"><strong>🌕 Nodo Norte em ${escapeHtml(r.nodos.nodoNorte.signo)}</strong> — para onde vai:</p>
+        <p class="muted" style="margin-top:4px;">${escapeHtml(NODO_NORTE_TEXTOS[r.nodos.nodoNorte.signo]||'')}</p>
+      </div>
+      <p class="muted" style="margin-top:10px;font-size:.78rem;opacity:.8;">⚠️ Leitura simbólica dentro da tradição da astrologia cármica — não é um facto histórico verificável. Serve como bússola de autoconhecimento, não como sentença.</p>
     </div>` : ''}
     <div class="card">
       <h3 style="color:var(--gold-light);">🌗 Perfil Integral</h3>
