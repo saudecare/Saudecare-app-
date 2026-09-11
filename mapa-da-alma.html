@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Mapa da Alma — Hikari Fafe</title>
+<!-- APP_VERSION: 2026-09-11-01 -->
+<meta name="app-version" content="2026-09-11-01">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
@@ -20,6 +22,12 @@
   .hero p{color:var(--muted);font-size:.95rem;line-height:1.5;}
   .card{background:var(--card);border:1px solid rgba(212,175,55,.25);border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 4px 24px rgba(0,0,0,.35);}
   label{display:block;margin:12px 0 6px;font-size:.85rem;color:var(--muted);}
+  .hora-opts{display:flex;gap:8px;margin-top:6px;}
+  .hora-opt{flex:1;padding:11px 6px;border-radius:10px;font-size:.82rem;line-height:1.25;
+    border:1px solid rgba(212,175,55,.35);background:rgba(255,255,255,.05);color:var(--muted);cursor:pointer;text-align:center;}
+  .hora-opt.active{background:rgba(212,175,55,.18);border-color:var(--gold);color:var(--gold-light);font-weight:700;}
+  .selo-badge{display:inline-block;padding:6px 14px;border-radius:999px;font-size:.8rem;font-weight:700;
+    border:1px solid var(--gold);background:rgba(212,175,55,.14);color:var(--gold-light);}
   input, select{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(212,175,55,.35);
     background:rgba(255,255,255,.05);color:var(--text);font-size:1rem;}
   input::placeholder{color:#8874ac;}
@@ -130,6 +138,49 @@ function excessoNumerologico(nome){
   return max >= 3 ? tops.map(Number) : [];
 }
 function temSinaisMediunidade(cv, exp, mot){ return [cv, exp, mot].includes(11); }
+
+/* ─── Selos de Precisão ──────────────────────────────────────────────
+   O Método Hikari Fafe funciona sem hora de nascimento por desenho.
+   Nunca assumimos 12:00 nem inventamos Ascendente: o que não puder ser
+   calculado com rigor simplesmente não é mostrado. A hora é um bónus
+   que abre camadas extra, nunca um requisito para ter o mapa. */
+const SELOS = {
+  solar: {
+    id:'solar', icon:'💎', label:'Diamante Solar',
+    resumo:'Calculado a partir da data e do nome — sem qualquer estimativa.',
+    nota:'Este mapa foi construído para funcionar sem hora de nascimento. Nada aqui foi arredondado ou suposto.',
+    camadas:['numerologia','anjoNascimento','signoSolar','regenteCosmico','arcanos','pinaculos','ciclosPessoais']
+  },
+  lunar: {
+    id:'lunar', icon:'💎', label:'Diamante Lunar',
+    resumo:'Data, nome e período do dia — permite confirmar a sua Lua.',
+    nota:'O período indicado permite-nos confirmar a sua Lua em dias de passagem lunar.',
+    camadas:['numerologia','anjoNascimento','signoSolar','regenteCosmico','arcanos','pinaculos','ciclosPessoais','luaConfirmada','anjoCoracaoProvavel']
+  },
+  astral: {
+    id:'astral', icon:'💎✦', label:'Diamante Astral',
+    resumo:'Data, nome e hora exacta — a leitura completa, com Ascendente.',
+    nota:'Com a hora exacta conseguimos calcular o Ascendente, as casas reais e os três Anjos.',
+    camadas:['numerologia','anjoNascimento','signoSolar','regenteCosmico','arcanos','pinaculos','ciclosPessoais','luaConfirmada','anjoCoracao','anjoInteligencia','ascendente','casasReais']
+  }
+};
+
+const PERIODOS = {
+  madrugada:{ label:'Madrugada', intervalo:'00:00 — 06:00', meio:'03:00' },
+  manha:    { label:'Manhã',     intervalo:'06:00 — 12:00', meio:'09:00' },
+  tarde:    { label:'Tarde',     intervalo:'12:00 — 18:00', meio:'15:00' },
+  noite:    { label:'Noite',     intervalo:'18:00 — 24:00', meio:'21:00' }
+};
+
+function horaValida(h){ return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(h||'')); }
+
+function determinarSeloPrecisao(modo, hora, periodo){
+  if (modo === 'exacta' && horaValida(hora)) return SELOS.astral;
+  if (modo === 'periodo' && PERIODOS[periodo]) return SELOS.lunar;
+  return SELOS.solar;
+}
+
+function seloTemCamada(selo, camada){ return !!selo && selo.camadas.includes(camada); }
 
 const DONS_NUMERICOS = {
   1: { nome:'Pioneiro / Liderança', texto:'Empreendedorismo, iniciativa e coragem para abrir novos caminhos.', profissoes:'Empreendedorismo, Gestão de Projetos, Direção de Equipas, Desporto de Competição' },
@@ -266,6 +317,19 @@ function renderForm(){
       <input id="inpNome" placeholder="Nome completo">
       <label>${t.dataLabel}</label>
       <input id="inpData" type="date">
+
+      <label>Sabe a hora de nascimento?</label>
+      <div class="hora-opts">
+        <div class="hora-opt" data-modo="exacta">Sei a hora</div>
+        <div class="hora-opt" data-modo="periodo">Sei mais ou menos</div>
+        <div class="hora-opt active" data-modo="nenhuma">Não sei</div>
+      </div>
+      <div id="horaExtraBox"></div>
+      <p class="muted" id="horaNota" style="font-size:.78rem;margin-top:8px;line-height:1.45;">
+        O seu Mapa fica completo de qualquer forma. O Método Hikari Fafe foi construído
+        para funcionar sem hora de nascimento — nunca inventamos o que não sabemos.
+      </p>
+
       ${selectedTipo === 'casal' ? `
       <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(212,175,55,.3);">
         <label>Nome completo (2º elemento do casal)</label>
@@ -327,6 +391,44 @@ function renderForm(){
   document.getElementById('btnCalcular').addEventListener('click', onCalcular);
   document.getElementById('btnVoltarTipo').addEventListener('click', renderTypeSelector);
   wireElementosExtra();
+  wireHoraSelector();
+}
+
+let horaModo = 'nenhuma';
+function wireHoraSelector(){
+  const opts = document.querySelectorAll('.hora-opt');
+  const box = document.getElementById('horaExtraBox');
+  const nota = document.getElementById('horaNota');
+  if (!opts.length || !box) return;
+
+  function pintar(modo){
+    horaModo = modo;
+    opts.forEach(o => o.classList.toggle('active', o.dataset.modo === modo));
+
+    if (modo === 'exacta'){
+      box.innerHTML = `
+        <label style="margin-top:10px;">Hora de nascimento</label>
+        <input id="inpHora" type="time">
+        <p class="muted" style="font-size:.78rem;margin-top:6px;">
+          Vem no assento de nascimento. Pode pedir a certidão online no Civil Online, gratuitamente.
+        </p>`;
+      nota.textContent = 'Com a hora exacta desbloqueia o selo Diamante Astral — Ascendente, casas reais e os três Anjos.';
+    } else if (modo === 'periodo'){
+      box.innerHTML = `
+        <label style="margin-top:10px;">Em que altura do dia nasceu?</label>
+        <select id="inpPeriodo">
+          ${Object.entries(PERIODOS).map(([k,v]) =>
+            `<option value="${k}">${v.label} (${v.intervalo})</option>`).join('')}
+        </select>`;
+      nota.textContent = 'Com o período do dia desbloqueia o selo Diamante Lunar — confirmamos a sua Lua em dias de passagem.';
+    } else {
+      box.innerHTML = '';
+      nota.textContent = 'O seu Mapa fica completo de qualquer forma. O Método Hikari Fafe foi construído para funcionar sem hora de nascimento — nunca inventamos o que não sabemos.';
+    }
+  }
+
+  opts.forEach(o => o.addEventListener('click', () => pintar(o.dataset.modo)));
+  pintar('nenhuma');
 }
 
 let elementoExtraCount = 0;
@@ -360,7 +462,19 @@ async function onCalcular(){
   const g = (id) => document.getElementById(id)?.value?.trim() || '';
   const splitLines = (v) => v.split('\n').map(s => s.trim()).filter(Boolean);
 
+  const horaExacta = horaModo === 'exacta' ? g('inpHora') : '';
+  const periodo    = horaModo === 'periodo' ? g('inpPeriodo') : '';
+  const selo = determinarSeloPrecisao(horaModo, horaExacta, periodo);
+
+  if (horaModo === 'exacta' && !horaValida(horaExacta)){
+    alert('Indique a hora de nascimento, ou escolha "Não sei" — o Mapa fica completo de qualquer forma.'); return;
+  }
+
   const extra = { morada: g('inpMorada') };
+  extra.horaModo = horaModo;
+  extra.horaNascimento = horaExacta || null;
+  extra.periodoNascimento = periodo || null;
+  extra.selo = selo.id;
   if (selectedTipo === 'empresa'){
     extra.denominacaoSocial = g('inpDenominacaoSocial');
     extra.telemovelLista = splitLines(g('inpTelemovel'));
@@ -422,7 +536,9 @@ async function onCalcular(){
     tipo: selectedTipo, nome, dataNascimento: data,
     caminhoDeVida: cv, motivacao: mot,
     diaInfo, diaNome, signo: signo.nome,
-    carmicas, excesso, mediunidade
+    carmicas, excesso, mediunidade,
+    selo: selo.id, seloLabel: selo.label, seloIcon: selo.icon,
+    horaModo, horaNascimento: horaExacta || null, periodoNascimento: periodo || null
   };
 
   try{
@@ -503,6 +619,13 @@ function renderFreeResult(leadId, r, signo, extra){
   main.innerHTML = `
     <div class="card">
       <p class="teaser-tag">${t.icon} Mapa ${t.label} · Espelho (grátis)</p>
+      ${(() => {
+        const s = SELOS[r.selo] || SELOS.solar;
+        return `<div style="margin:4px 0 12px;">
+          <span class="selo-badge">${s.icon} ${escapeHtml(s.label)}</span>
+          <p class="muted" style="font-size:.78rem;margin-top:6px;line-height:1.45;">${escapeHtml(s.nota)}</p>
+        </div>`;
+      })()}
       <div class="result-block" style="border-top:none;padding-top:0;margin-top:8px;">
         <h3>🔮 O seu perfil, num relance</h3>
         <p class="muted">${escapeHtml(r.nome.split(/\s+/)[0])} carrega a vibração do número ${r.caminhoDeVida} (${escapeHtml((dom.nome||'').toLowerCase())}), com a alma a pedir ${escapeHtml((domAlma.nome||'').toLowerCase())} e um coração de ${escapeHtml(signo.nome)}. É alguém que, quando alinhado(a) com a sua própria energia, ${escapeHtml(dom.texto ? dom.texto.charAt(0).toLowerCase()+dom.texto.slice(1) : '')} Mas há mais três camadas por revelar — a sua Expressão pública, a sua Sombra escondida, e o que o seu corpo anda a tentar dizer-lhe.</p>
