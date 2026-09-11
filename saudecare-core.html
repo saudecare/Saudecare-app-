@@ -334,7 +334,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-09-157';
+const APP_VERSION = '2026-09-09-158';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2066,7 +2066,7 @@ async function renderHome(main){
   const alertsHtml = (visibleAlerts.length || unreadHtml)
     ? visibleAlerts.map(a => `<div class="appt-item row">
         <div style="cursor:pointer;flex:1;" onclick="${a.action}">${a.icon} ${escapeHtml(a.text)} ›</div>
-        <button class="ghost" style="padding:4px 10px;" onclick="event.stopPropagation();dismissHomeAlert('${a.id}', ${JSON.stringify(a.text)})" title="Dispensar">✕</button>
+        <button class="ghost" style="padding:4px 10px;" data-id="${escapeHtml(a.id)}" data-text="${escapeHtml(a.text)}" onclick="event.stopPropagation();dismissHomeAlert(this.dataset.id, this.dataset.text)" title="Dispensar">✕</button>
       </div>`).join('') + unreadHtml
     : '<p class="muted">Sem alertas — está tudo em dia. ✅</p>';
 
@@ -3678,6 +3678,12 @@ window.viewPatient = async function(patientId){
         <button class="ghost" onclick="editPatient('${patientId}')">✏️ Editar</button>
       </div>
       <p class="muted">${escapeHtml(p.phone||'')} · ${escapeHtml(p.email||'')}</p>
+      ${!p.consentGivenAt ? `
+      <div style="margin-top:10px;padding:12px;background:#fff8e6;border:1.5px solid #f0d078;border-radius:10px;">
+        <strong style="color:#8a5a00;">⚠️ Sem consentimento informado registado</strong>
+        <p class="muted" style="margin:4px 0 8px;">É obrigatório ter isto registado antes de guardar dados sensíveis deste paciente.</p>
+        <button class="primary" onclick="registerConsentForPatient('${patientId}','${escapeAttrJs(p.fullName)}')">📋 Registar consentimento agora</button>
+      </div>` : ''}
       ${totalOwed > 0 ? `
       <div style="margin-top:10px;padding:10px 12px;background:#fdf2f0;border:1px solid #f0c9c2;border-radius:10px;">
         <strong style="color:#b3413a;">💶 Valor em dívida: ${totalOwed.toFixed(2)}€</strong>
