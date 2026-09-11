@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Mapa da Alma — Hikari Fafe</title>
-<!-- APP_VERSION: 2026-09-11-01 -->
-<meta name="app-version" content="2026-09-11-01">
+<!-- APP_VERSION: 2026-09-11-02 -->
+<meta name="app-version" content="2026-09-11-02">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
@@ -138,6 +138,122 @@ function excessoNumerologico(nome){
   return max >= 3 ? tops.map(Number) : [];
 }
 function temSinaisMediunidade(cv, exp, mot){ return [cv, exp, mot].includes(11); }
+
+/* ─── Anjo do Nascimento (72 Génios / Shem HaMephorash) ──────────────
+   Tabela validada contra 4 exemplos confirmados no PDF de referência
+   (Livro de São Cipriano): Ricardo/Haamiah, Natália/Iah-Hel,
+   Beatriz/Achaiah, Lara/Ariel. Funciona apenas com a data — por isso
+   está disponível em todos os selos de precisão, incluindo o Solar.
+   Fontes: tradição cabalística clássica (Ambelain e derivados),
+   parafraseadas nas nossas próprias palavras. */
+const GENIOS_72 = [
+  { n:1, nome:'Vehuiah', datas:["20/03","01/06","13/08","25/10","06/01"], virtude:'Ilumina em assuntos difíceis e concede capacidade de cura pelas mãos.', sombra:'Agressividade e gastos excessivos.', planeta:'Marte' },
+  { n:2, nome:'Jeliel', datas:["21/03","02/06","14/08","26/10","07/01"], virtude:'Pacifica conflitos, favorece causas judiciais e a harmonia no lar.', sombra:'Desarmonia familiar e nas relações.', planeta:'Júpiter' },
+  { n:3, nome:'Sitael', datas:["22/03","03/06","15/08","27/10","08/01"], virtude:'Protege contra adversidades, assaltos e acidentes; favorece magnetismo pessoal e as ciências.', sombra:'Mentira e ingratidão.', planeta:'Sol' },
+  { n:4, nome:'Elemiah', datas:["23/03","04/06","16/08","28/10","09/01"], virtude:'Revela traições, alivia tormentos do espírito e favorece viagens.', sombra:'Desonestidade nos negócios.', planeta:'Mercúrio' },
+  { n:5, nome:'Mahasiah', datas:["24/03","05/06","17/08","29/10","10/01"], virtude:'Traz paz nas relações; favorece artes, filosofia e profissões liberais.', sombra:'Abuso da boa-fé alheia e excessos alimentares.', planeta:'Vénus' },
+  { n:6, nome:'Lelahel', datas:["25/03","06/06","18/08","30/10","11/01"], virtude:'Ilumina realizações, ajuda a curar e atrai amor e fé.', sombra:'Mau caráter e ambição descontrolada.', planeta:'Sol' },
+  { n:7, nome:'Achaiah', datas:["26/03","07/06","19/08","31/10","12/01"], virtude:'Rege a paciência, a descoberta dos segredos da natureza e o rigor do trabalho. Ajuda a desmascarar falsidades e concede discernimento.', sombra:'Desleixo.', planeta:'Mercúrio' },
+  { n:8, nome:'Cahethel', datas:["27/03","08/06","20/08","01/11","13/01"], virtude:'Ajuda a obter bênção, afasta energias negativas e favorece a prosperidade.', sombra:'Orgulho e corrupção.', planeta:'Saturno' },
+  { n:9, nome:'Haziel', datas:["28/03","09/06","21/08","02/11","14/01"], virtude:'Favorece reconciliação, bondade, justiça e o cumprimento de promessas.', sombra:'Arrogância e conflitos coletivos.', planeta:'Lua' },
+  { n:10, nome:'Aladiah', datas:["29/03","10/06","22/08","03/11","15/01"], virtude:'Auxilia a cura e a tomada de boas decisões; protege contra maldades.', sombra:'Vícios e desonestidade nos negócios.', planeta:'Júpiter' },
+  { n:11, nome:'Laoviah', datas:["30/03","11/06","23/08","04/11","16/01"], virtude:'Ajuda a obter vitória, protege em relacionamentos e contra pessoas desonestas.', sombra:'Vaidade.', planeta:'Saturno' },
+  { n:12, nome:'Hahahiah', datas:["31/03","12/06","24/08","05/11","17/01"], virtude:'Protege contra adversidades, revela mistérios através dos sonhos e traz equilíbrio.', sombra:'Libertinagem e violência.', planeta:'Neptuno' },
+  { n:13, nome:'Yesalel', datas:["01/04","13/06","25/08","06/11","18/01"], virtude:'Rege a amizade, a reconciliação e a fidelidade conjugal.', sombra:'Discórdia e desunião familiar.', planeta:'Saturno' },
+  { n:14, nome:'Mebahel', datas:["02/04","14/06","26/08","07/11","19/01"], virtude:'Favorece a justiça e protege contra a usurpação de bens.', sombra:'Falso testemunho e mentira.', planeta:'Júpiter' },
+  { n:15, nome:'Hariel', datas:["03/04","15/06","27/08","08/11","20/01"], virtude:'Favorece a fé, os estudos, as descobertas e protege as artes e a ciência.', sombra:'Vaidade e presunção.', planeta:'Marte' },
+  { n:16, nome:'Hekamiah', datas:["04/04","16/06","28/08","09/11","21/01"], virtude:'Ajuda a vencer inimigos, favorece a liderança e incentiva a coragem.', sombra:'Violência física e traição.', planeta:'Marte' },
+  { n:17, nome:'Lauviah', datas:["05/04","17/06","29/08","10/11","22/01"], virtude:'Combate a tristeza, favorece descobertas e inspira a expressão artística.', sombra:'Descrença e depressão.', planeta:'Sol' },
+  { n:18, nome:'Caliel', datas:["06/04","18/06","30/08","11/11","23/01"], virtude:'Traz socorro rápido, favorece a justiça e desmascara inimigos.', sombra:'Escândalos e inveja.', planeta:'Mercúrio' },
+  { n:19, nome:'Leuviah', datas:["07/04","19/06","31/08","12/11","24/01"], virtude:'Concede graça, memória e inteligência; ajuda a superar obstáculos.', sombra:'Sarcasmo e desespero.', planeta:'Vénus' },
+  { n:20, nome:'Pahaliah', datas:["08/04","20/06","01/09","13/11","25/01"], virtude:'Rege a fé, a religião e ajuda a encontrar a vocação certa.', sombra:'Orgulho, vaidade e libertinagem.', planeta:'Lua' },
+  { n:21, nome:'Nelchael', datas:["09/04","21/06","02/09","14/11","26/01"], virtude:'Protege contra calúnias e feitiços; favorece matemática, geografia e astronomia.', sombra:'Ignorância e preconceito.', planeta:'Mercúrio' },
+  { n:22, nome:'Ieiaiel', datas:["10/04","22/06","03/09","15/11","27/01"], virtude:'Rege fortuna, fama, comércio, viagens e a abertura de novos caminhos.', sombra:'Opressão e preconceito.', planeta:'Mercúrio' },
+  { n:23, nome:'Melahel', datas:["11/04","23/06","04/09","16/11","28/01"], virtude:'Protege em viagens e favorece o conhecimento de ervas curativas.', sombra:'Charlatanismo.', planeta:'Lua' },
+  { n:24, nome:'Haheuiah', datas:["12/04","24/06","05/09","17/11","29/01"], virtude:'Concede graça e misericórdia; protege presos e injustiçados.', sombra:'Tendência ao crime e à delinquência.', planeta:'Vénus' },
+  { n:25, nome:'Nith-Haiah', datas:["13/04","25/06","06/09","18/11","30/01"], virtude:'Concede sabedoria e ajuda a descobrir a verdade por trás de mistérios.', sombra:'Práticas de magia negra.', planeta:'Saturno' },
+  { n:26, nome:'Haaiah', datas:["14/04","26/06","07/09","19/11","31/01"], virtude:'Favorece sucesso em processos judiciais e a diplomacia; traz paz.', sombra:'Violência, desconfiança e conspirações.', planeta:'Lua' },
+  { n:27, nome:'Ierathel', datas:["15/04","27/06","08/09","20/11","01/02"], virtude:'Confunde caluniadores e favorece a justiça e a verdade.', sombra:'Injustiça e intolerância.', planeta:'Saturno' },
+  { n:28, nome:'Seheiah', datas:["16/04","28/06","09/09","21/11","02/02"], virtude:'Protege contra doenças e acidentes; favorece a longevidade.', sombra:'Preguiça e desleixo.', planeta:'Júpiter' },
+  { n:29, nome:'Reyel', datas:["17/04","29/06","10/09","22/11","03/02"], virtude:'Protege contra inimigos visíveis e invisíveis; favorece meditação e pureza.', sombra:'Falsidade e discriminação.', planeta:'Marte' },
+  { n:30, nome:'Omael', datas:["18/04","30/06","11/09","23/11","04/02"], virtude:'Traz paciência e alívio ao desespero; favorece a medicina.', sombra:'Comportamentos abusivos graves.', planeta:'Sol' },
+  { n:31, nome:'Lecabel', datas:["19/04","01/07","12/09","24/11","05/02"], virtude:'Inspira soluções para problemas complexos e protege o trabalho.', sombra:'Ganância e orgulho.', planeta:'Sol' },
+  { n:32, nome:'Vasariah', datas:["20/04","02/07","13/09","25/11","06/02"], virtude:'Favorece equilíbrio e justiça; protege em processos judiciais.', sombra:'Ressentimento e maldade.', planeta:'Mercúrio' },
+  { n:33, nome:'Iehuiah', datas:["21/04","03/07","14/09","26/11","07/02"], virtude:'Desfaz maquinações de traidores; favorece aprendizado e franqueza.', sombra:'Revoltas e uso indevido da palavra.', planeta:'Lua' },
+  { n:34, nome:'Lehahiah', datas:["22/04","04/07","15/09","27/11","08/02"], virtude:'Favorece harmonia entre líderes e liderados, paz e serenidade.', sombra:'Turbulência, possessividade e nervosismo.', planeta:'Saturno' },
+  { n:35, nome:'Chavakiah', datas:["23/04","05/07","16/09","28/11","09/02"], virtude:'Favorece reconciliação familiar e resolve heranças/partilhas com paz.', sombra:'Confusão e autoritarismo.', planeta:'Mercúrio' },
+  { n:36, nome:'Menadel', datas:["24/04","06/07","17/09","29/11","10/02"], virtude:'Ajuda a manter o emprego, protege contra calúnias e ajuda a reencontrar pessoas e objetos perdidos.', sombra:'Fuga de responsabilidades.', planeta:'Marte' },
+  { n:37, nome:'Aniel', datas:["25/04","07/07","18/09","30/11","11/02"], virtude:'Favorece vitória, ciências, artes e a busca de iluminação interior.', sombra:'Ambição e materialismo.', planeta:'Lua' },
+  { n:38, nome:'Haamiah', datas:["26/04","08/07","19/09","01/12","12/02"], virtude:'Rege a busca da verdade, a sabedoria e a proteção espiritual. Ajuda a desmascarar falsidades, concede discernimento e protege quem estuda a ciência sagrada, a filosofia e os mistérios do invisível.', sombra:'Ações contrárias aos princípios morais.', planeta:'Saturno' },
+  { n:39, nome:'Rehael', datas:["27/04","09/07","20/09","02/12","13/02"], virtude:'Favorece cura, misericórdia, paz interior e amor familiar.', sombra:'Crueldade e dependências.', planeta:'Saturno' },
+  { n:40, nome:'Ieiazel', datas:["28/04","10/07","21/09","03/12","14/02"], virtude:'Traz consolo, favorece literatura e comunicação, alivia angústia.', sombra:'Depressão e desânimo.', planeta:'Mercúrio' },
+  { n:41, nome:'Hahahael', datas:["29/04","11/07","22/09","04/12","15/02"], virtude:'Protege contra caluniadores e favorece a dedicação espiritual.', sombra:'Falsos profetas e aproveitadores da boa-fé.', planeta:'Júpiter' },
+  { n:42, nome:'Mikael', datas:["30/04","12/07","23/09","05/12","16/02"], virtude:'Favorece viagens seguras, sucesso empresarial e revela conspirações.', sombra:'Promiscuidade, traição e violência.', planeta:'Mercúrio' },
+  { n:43, nome:'Veuliah', datas:["01/05","13/07","24/09","06/12","17/02"], virtude:'Ajuda a libertar de vícios e fortalece quem ocupa posições de poder.', sombra:'Discórdia em negócios.', planeta:'Marte' },
+  { n:44, nome:'Yelaiah', datas:["02/05","14/07","25/09","07/12","18/02"], virtude:'Protege magistrados, favorece vitória em processos e sucesso em empreendimentos.', sombra:'Discussões e uso de substâncias.', planeta:'Mercúrio' },
+  { n:45, nome:'Sealiah', datas:["03/05","15/07","26/09","08/12","19/02"], virtude:'Confunde os orgulhosos e eleva os humildes; traz paz ligada à natureza.', sombra:'Orgulho e insensibilidade.', planeta:'Sol' },
+  { n:46, nome:'Ariel', datas:["04/05","16/07","27/09","09/12","20/02"], virtude:'Rege as revelações, os sonhos intuitivos e a gratidão. Associado à perceção subtil e à capacidade de receber intuições através do sentir.', sombra:'Turbulência e obsessão espiritual.', planeta:'Saturno' },
+  { n:47, nome:'Asaliah', datas:["05/05","17/07","28/09","10/12","21/02"], virtude:'Favorece a elevação espiritual e a luz interior.', sombra:'Escândalos.', planeta:'Vénus' },
+  { n:48, nome:'Mihael', datas:["06/05","18/07","29/09","11/12","22/02"], virtude:'Favorece a paz conjugal e a intuição sobre o que está para vir.', sombra:'Divórcio e separação.', planeta:'Vénus' },
+  { n:49, nome:'Vehuel', datas:["07/05","19/07","30/09","12/12","23/02"], virtude:'Traz conforto em desgostos e exaltação espiritual.', sombra:'Egoísmo e inveja.', planeta:'Mercúrio' },
+  { n:50, nome:'Daniel', datas:["08/05","20/07","01/10","13/12","24/02"], virtude:'Traz consolo, favorece a justiça e clareza em momentos de indecisão.', sombra:'Agressividade.', planeta:'Lua' },
+  { n:51, nome:'Hahasiah', datas:["09/05","21/07","02/10","14/12","25/02"], virtude:'Favorece a contemplação espiritual e a descoberta da sabedoria.', sombra:'Desleixo e dependência da caridade alheia.', planeta:'Lua' },
+  { n:52, nome:'Imamaiah', datas:["10/05","22/07","03/10","15/12","26/02"], virtude:'Ajuda a vencer resistências, favorece trabalho honesto e viagens seguras.', sombra:'Vaidade, má-educação e conflitos.', planeta:'Júpiter' },
+  { n:53, nome:'Nanael', datas:["11/05","23/07","04/10","16/12","27/02"], virtude:'Favorece estudos avançados; protege educadores e homens da lei.', sombra:'Autodestruição e autocrítica excessiva.', planeta:'Saturno' },
+  { n:54, nome:'Nithael', datas:["12/05","24/07","05/10","17/12","28/02"], virtude:'Favorece misericórdia, longevidade e protege quem está em posição de liderança.', sombra:'Agressividade, intrigas e preconceito social.', planeta:'Júpiter' },
+  { n:55, nome:'Mebahiah', datas:["13/05","25/07","06/10","18/12","01/03"], virtude:'Favorece consolo, fertilidade e a proteção das crianças.', sombra:'Mentira e falsas promessas.', planeta:'Júpiter' },
+  { n:56, nome:'Poiel', datas:["14/05","26/07","07/10","19/12","02/03"], virtude:'Ajuda a realizar desejos com fama e prestígio, quando as ações são para o bem.', sombra:'Agressividade, vaidade e corrupção.', planeta:'Sol' },
+  { n:57, nome:'Nemamiah', datas:["15/05","27/07","08/10","20/12","03/03"], virtude:'Favorece prosperidade e boas relações profissionais.', sombra:'Crítica e inveja.', planeta:'Marte' },
+  { n:58, nome:'Iealel', datas:["16/05","28/07","09/10","21/12","04/03"], virtude:'Afasta a tristeza, favorece a cura (especialmente da visão) e a paz interior.', sombra:'Vingança e sarcasmo.', planeta:'Marte' },
+  { n:59, nome:'Harahel', datas:["17/05","29/07","10/10","22/12","05/03"], virtude:'Ajuda em questões de fertilidade e favorece o comércio de livros e conhecimento.', sombra:'Má gestão de bens e falsificação.', planeta:'Sol' },
+  { n:60, nome:'Mitzrael', datas:["18/05","30/07","11/10","23/12","06/03"], virtude:'Conforta em opressões, favorece a cura do espírito e a fidelidade.', sombra:'Vícios, agressividade e impulsividade.', planeta:'Lua' },
+  { n:61, nome:'Umabel', datas:["19/05","31/07","12/10","24/12","07/03"], virtude:'Favorece amizades e o estudo da psicologia e das ciências esotéricas.', sombra:'Isolamento e dificuldade nos relacionamentos.', planeta:'Vénus' },
+  { n:62, nome:'Iah-Hel', datas:["20/05","01/08","13/10","25/12","08/03"], virtude:'Rege a sabedoria, a tranquilidade e a iluminação espiritual. Traz paz interior, moderação e harmonia — forte vibração de proteção para o lar e a estabilidade da família.', sombra:'Escândalos e inconsequência nas relações.', planeta:'Saturno' },
+  { n:63, nome:'Anauel', datas:["21/05","02/08","14/10","26/12","09/03"], virtude:'Confunde inimigos, protege em acidentes e traz novas ideias.', sombra:'Comportamento de maus pagadores.', planeta:'Mercúrio' },
+  { n:64, nome:'Mehiel', datas:["22/05","03/08","15/10","27/12","10/03"], virtude:'Protege nas adversidades, favorece o equilíbrio emocional.', sombra:'Vaidade e concorrência desleal.', planeta:'Mercúrio' },
+  { n:65, nome:'Damabiah', datas:["23/05","04/08","16/10","28/12","11/03"], virtude:'Protege contra sortilégios e favorece sucesso em empreendimentos, comércio e viagens.', sombra:'Emoções exageradas.', planeta:'Lua' },
+  { n:66, nome:'Manakel', datas:["24/05","05/08","17/10","29/12","12/03"], virtude:'Traz calma, favorece a longevidade e inspira música e poesia.', sombra:'Ingratidão e desânimo.', planeta:'Neptuno' },
+  { n:67, nome:'Ayel', datas:["25/05","06/08","18/10","30/12","13/03"], virtude:'Traz consolo, sabedoria e longevidade; favorece estudos religiosos.', sombra:'Excessos e frustração.', planeta:'Saturno' },
+  { n:68, nome:'Habuhiah', datas:["26/05","07/08","19/10","31/12","14/03"], virtude:'Favorece a saúde, a cura e a agricultura.', sombra:'Doenças e maus presságios.', planeta:'Lua' },
+  { n:69, nome:'Rochel', datas:["27/05","08/08","20/10","01/01","15/03"], virtude:'Ajuda a encontrar objetos perdidos e favorece a fortuna.', sombra:'Impulsividade e fraude.', planeta:'Júpiter' },
+  { n:70, nome:'Yabamiah', datas:["28/05","09/08","21/10","02/01","16/03"], virtude:'Favorece purificação, harmonia com a natureza e recuperação de vícios.', sombra:'Conflitos conjugais.', planeta:'Sol' },
+  { n:71, nome:'Haiaiel', datas:["29/05","10/08","22/10","03/01","17/03"], virtude:'Confunde os maus, traz serenidade, vitória e força.', sombra:'Deslealdade.', planeta:'Marte' },
+  { n:72, nome:'Mumiah', datas:["30/05","11/08","23/10","04/01","18/03"], virtude:'Favorece sucesso, saúde, longevidade e grandes descobertas; ligado à medicina.', sombra:'Ódio de si mesmo e revolta familiar.', planeta:'Neptuno' },
+];
+
+const COROS_ANJOS = [
+  { faixa:[1,8], nome:'Serafins', regente:'Arcanjo Metatron', dominio:'Purificação, iluminação, proximidade com o Divino.' },
+  { faixa:[9,16], nome:'Querubins', regente:'Arcanjo Raziel', dominio:'Conhecimento oculto, sabedoria profunda, mistérios.' },
+  { faixa:[17,24], nome:'Tronos', regente:'Arcanjo Tzafquiel', dominio:'Justiça, estabilidade, firmeza de decisão.' },
+  { faixa:[25,32], nome:'Dominações', regente:'Arcanjo Tzadquiel', dominio:'Ordem, liderança justa, equilíbrio de poder.' },
+  { faixa:[33,40], nome:'Potências', regente:'Arcanjo Camael', dominio:'Proteção espiritual, coragem, verdade, discernimento.' },
+  { faixa:[41,48], nome:'Virtudes', regente:'Arcanjo Haniel', dominio:'Graça, revelação, sonhos intuitivos, milagres.' },
+  { faixa:[49,56], nome:'Principados', regente:'Arcanjo Miguel', dominio:'Proteção de grupos, família, causas coletivas.' },
+  { faixa:[57,64], nome:'Arcanjos', regente:'Arcanjo Rafael', dominio:'Cura, sabedoria, tranquilidade, harmonia no lar.' },
+  { faixa:[65,72], nome:'Anjos', regente:'Arcanjo Gabriel', dominio:'Mensagens, comunicação com o plano material, ação concreta.' },
+];
+
+const DIAS_GENIOS_UNIVERSAIS = {
+  "05/01":"Éter — energia de síntese e transcendência.",
+  "19/03":"Ar — energia de comunicação e movimento.",
+  "31/05":"Fogo — energia de ação e transformação.",
+  "12/08":"Terra — energia de estrutura e materialização.",
+  "24/10":"Água — energia de emoção e intuição."
+};
+function coroDoGenio(numero){ return COROS_ANJOS.find(c => numero >= c.faixa[0] && numero <= c.faixa[1]); }
+function calcularAnjoNascimento(dateStr){
+  const d = new Date(dateStr+'T12:00:00');
+  const chave = String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+  if (DIAS_GENIOS_UNIVERSAIS[chave]){
+    return { tipo:'universal', elemento: DIAS_GENIOS_UNIVERSAIS[chave],
+      nota:'Não tem um Anjo fixo — a sua essência liga-se directamente aos Anjos Universais/Génios da Humanidade.' };
+  }
+  const g = GENIOS_72.find(g => g.datas.includes(chave));
+  if (!g) return null;
+  const coro = coroDoGenio(g.n);
+  return { tipo:'anjo', numero:g.n, nome:g.nome, coro:coro.nome, arcanjoRegente:coro.regente,
+    dominioDoCoro:coro.dominio, virtude:g.virtude, sombra:g.sombra, planeta:g.planeta };
+}
 
 /* ─── Selos de Precisão ──────────────────────────────────────────────
    O Método Hikari Fafe funciona sem hora de nascimento por desenho.
@@ -530,13 +646,14 @@ async function onCalcular(){
   const carmicas = licoesCarmicas(nome);
   const excesso = excessoNumerologico(nome);
   const mediunidade = temSinaisMediunidade(cv, exp, mot);
+  const anjo = calcularAnjoNascimento(data);
   const leadId = crypto.randomUUID();
 
   const freeResult = {
     tipo: selectedTipo, nome, dataNascimento: data,
     caminhoDeVida: cv, motivacao: mot,
     diaInfo, diaNome, signo: signo.nome,
-    carmicas, excesso, mediunidade,
+    carmicas, excesso, mediunidade, anjo,
     selo: selo.id, seloLabel: selo.label, seloIcon: selo.icon,
     horaModo, horaNascimento: horaExacta || null, periodoNascimento: periodo || null
   };
@@ -657,6 +774,17 @@ function renderFreeResult(leadId, r, signo, extra){
         <h3>♈ O seu Signo</h3>
         <p class="muted">${escapeHtml(signo.nome)}.</p>
       </div>
+
+      ${r.anjo && r.anjo.tipo === 'anjo' ? `
+      <div class="result-block">
+        <h3>🕊️ O seu Anjo do Nascimento</h3>
+        <p class="muted"><strong>${escapeHtml(r.anjo.nome)}</strong>, ${r.anjo.numero}º da hierarquia dos ${escapeHtml(r.anjo.coro)}, sob a regência do ${escapeHtml(r.anjo.arcanjoRegente)}. <strong>O Mapa Diamante revela a sua virtude completa, a sombra a vigiar e a hora exata de invocação.</strong></p>
+      </div>` : ''}
+      ${r.anjo && r.anjo.tipo === 'universal' ? `
+      <div class="result-block">
+        <h3>🕊️ A sua Essência Angelical</h3>
+        <p class="muted">Nasceu num dos 5 dias sem Anjo fixo — a sua ligação é direta aos Anjos Universais, elemento <strong>${escapeHtml(r.anjo.elemento)}</strong>. <strong>O Mapa Diamante explica o que isto significa e como escolher o seu Anjo de afinidade entre os 72.</strong></p>
+      </div>` : ''}
 
       ${r.mediunidade ? `
       <div class="result-block">
@@ -913,6 +1041,24 @@ function renderFullReport(data){
       <p class="muted" style="margin-top:6px;">${escapeHtml(full.excessoTexto||'Sem excessos energéticos marcantes detetados.')}</p>
       ${full.mediunidadeTexto ? `<p class="muted" style="margin-top:6px;">✨ ${escapeHtml(full.mediunidadeTexto)}</p>` : ''}
     </div>
+    ${r.anjo && r.anjo.tipo === 'anjo' ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🕊️ O seu Anjo do Nascimento — ${escapeHtml(r.anjo.nome)}</h3>
+      <p class="muted" style="margin-top:6px;"><strong>${r.anjo.numero}º da hierarquia dos ${escapeHtml(r.anjo.coro)}</strong>, sob a regência do ${escapeHtml(r.anjo.arcanjoRegente)}. Domínio do coro: ${escapeHtml(r.anjo.dominioDoCoro)}.</p>
+      <div style="margin-top:8px;padding:10px;background:rgba(212,175,55,.1);border-radius:10px;">
+        <p class="muted"><strong>💎 Virtude:</strong> ${escapeHtml(r.anjo.virtude)}</p>
+      </div>
+      <div style="margin-top:8px;padding:10px;background:rgba(212,175,55,.1);border-radius:10px;">
+        <p class="muted"><strong>🌑 Sombra a vigiar:</strong> ${escapeHtml(r.anjo.sombra)}</p>
+      </div>
+      <p class="muted" style="margin-top:8px;"><strong>Planeta regente:</strong> ${escapeHtml(r.anjo.planeta)} — o melhor horário de invocação alinha-se com o dia da semana deste planeta.</p>
+    </div>` : ''}
+    ${r.anjo && r.anjo.tipo === 'universal' ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🕊️ A sua Essência Angelical Universal</h3>
+      <p class="muted" style="margin-top:6px;">Nasceu num dos 5 dias sem Anjo fixo do calendário — a sua ligação é directa aos Anjos Universais/Génios da Humanidade, com elemento <strong>${escapeHtml(r.anjo.elemento)}</strong>.</p>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(r.anjo.nota)}</p>
+    </div>` : ''}
     <div class="card">
       <h3 style="color:var(--gold-light);">🌗 Perfil Integral</h3>
       <p class="muted" style="margin-top:6px;"><strong>💎 Luz:</strong> ${escapeHtml(full.luz||'')}</p>
