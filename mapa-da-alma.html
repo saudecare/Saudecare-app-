@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Mapa da Alma — Hikari Fafe</title>
-<!-- APP_VERSION: 2026-09-11-04 -->
-<meta name="app-version" content="2026-09-11-04">
+<!-- APP_VERSION: 2026-09-11-05 -->
+<meta name="app-version" content="2026-09-11-05">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
@@ -394,6 +394,115 @@ const NODO_NORTE_TEXTOS = {
   'Virgem':'O seu caminho de crescimento é organizar e servir com discernimento prático, sem se perder na dispersão.'
 };
 
+/* ─── Arcano Pessoal & Arcano do Ano (Tarot + Numerologia) ────────────
+   Convenção fixada (nunca misturar com outras): resultado sempre entre
+   1 e 22 — A Justiça = 11, A Força = 8, O Louco = 22. O Arcano do Ano
+   muda no aniversário da pessoa, não a 1 de Janeiro. */
+const ARCANOS_MAIORES = {
+  1:{ nome:'O Mago', texto:'Iniciativa, habilidade e o poder de manifestar ideias em ação concreta.' },
+  2:{ nome:'A Sacerdotisa', texto:'Intuição, mistério e sabedoria silenciosa que vem de dentro.' },
+  3:{ nome:'A Imperatriz', texto:'Fertilidade, criatividade e abundância — a energia de gerar e nutrir.' },
+  4:{ nome:'O Imperador', texto:'Estrutura, autoridade e a capacidade de construir com disciplina.' },
+  5:{ nome:'O Papa', texto:'Tradição, aprendizagem e orientação espiritual através do estudo.' },
+  6:{ nome:'Os Enamorados', texto:'Escolhas de coração, união e alinhamento entre valores e desejo.' },
+  7:{ nome:'O Carro', texto:'Determinação, avanço e vitória através do controlo de forças opostas.' },
+  8:{ nome:'A Força', texto:'Coragem serena, domínio de si e força que vem da compaixão, não da imposição.' },
+  9:{ nome:'O Eremita', texto:'Introspecção, busca interior e sabedoria que só se encontra sozinho(a).' },
+  10:{ nome:'A Roda da Fortuna', texto:'Ciclos, mudança de sorte e a aceitação do que está fora do controlo.' },
+  11:{ nome:'A Justiça', texto:'Equilíbrio, verdade e as consequências justas de cada escolha.' },
+  12:{ nome:'O Enforcado', texto:'Pausa, entrega e a sabedoria de ver a vida de um ângulo diferente.' },
+  13:{ nome:'A Morte', texto:'Transformação profunda — o fim de um ciclo que abre espaço a outro.' },
+  14:{ nome:'A Temperança', texto:'Moderação, cura e a arte de misturar opostos até encontrar equilíbrio.' },
+  15:{ nome:'O Diabo', texto:'Confronto com apegos, vícios e padrões que prendem — e a libertação possível.' },
+  16:{ nome:'A Torre', texto:'Ruptura súbita que derruba estruturas falsas para dar lugar à verdade.' },
+  17:{ nome:'A Estrela', texto:'Esperança, inspiração e renovação depois de um período difícil.' },
+  18:{ nome:'A Lua', texto:'Intuição, sonhos e o convite a navegar a incerteza sem medo.' },
+  19:{ nome:'O Sol', texto:'Vitalidade, clareza e alegria — sucesso que se sente e se vê.' },
+  20:{ nome:'O Julgamento', texto:'Chamado interior, renascimento e a chance de recomeçar com consciência.' },
+  21:{ nome:'O Mundo', texto:'Realização, conclusão de ciclo e sensação de plenitude alcançada.' },
+  22:{ nome:'O Louco', texto:'Liberdade, fé no desconhecido e coragem de dar o próximo passo sem garantias.' }
+};
+function reduzirParaArcano(soma){
+  while (soma > 22){ soma = String(soma).split('').reduce((a,d) => a + (parseInt(d,10)||0), 0); }
+  if (soma === 0) soma = 22;
+  return soma;
+}
+function calcularArcanoPessoal(dateStr){
+  const digits = dateStr.replace(/\D/g,'');
+  const soma = digits.split('').reduce((a,d) => a + parseInt(d,10), 0);
+  return reduzirParaArcano(soma);
+}
+function calcularArcanoDoAno(dateStr, hojeStr){
+  const [, mesN, diaN] = dateStr.split('-').map(Number);
+  const hoje = new Date(hojeStr+'T12:00:00');
+  const anoAtual = hoje.getFullYear();
+  const aindaNaoFezAnos = (hoje.getMonth()+1 < mesN) || (hoje.getMonth()+1 === mesN && hoje.getDate() < diaN);
+  const anoBase = aindaNaoFezAnos ? anoAtual - 1 : anoAtual;
+  return reduzirParaArcano(diaN + mesN + anoBase);
+}
+
+/* ─── Restantes Números Pitagóricos ────────────────────────────────── */
+function pedraAngular(nome){
+  const letras = nameLetters(nome);
+  return letras.length ? letterValue(letras[0]) : null;
+}
+function numeroMaturidade(dateStr, nome){
+  return reduceNumber(caminhoDeVida(dateStr) + expressao(nome));
+}
+function paixaoOculta(nome){
+  const counts = {};
+  nameLetters(nome).forEach(ch => { const v = letterValue(ch); counts[v] = (counts[v]||0) + 1; });
+  let max = 0, tops = [];
+  Object.entries(counts).forEach(([n,c]) => { if (c > max){ max = c; tops = [n]; } else if (c === max) tops.push(n); });
+  return max >= 2 ? tops.map(Number) : [];
+}
+function numeroSubconsciente(nome){
+  const presentes = new Set(nameLetters(nome).map(ch => letterValue(ch)));
+  return presentes.size;
+}
+function numeroAtitude(dateStr){
+  const [, mes, dia] = dateStr.split('-').map(Number);
+  return reduceNumber(reduceNumber(dia) + reduceNumber(mes));
+}
+function numeroEquilibrio(nome){
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  let total = 0;
+  for (const parte of partes){ const letras = nameLetters(parte); if (letras.length) total += letterValue(letras[0]); }
+  return reduceNumber(total);
+}
+
+/* ─── Grelha de Compatibilidade Vibracional (Casal/Família) ──────────
+   Baseada nos grupos de compatibilidade numerológica amplamente usados
+   (independentes 1/5/7, lar 2/4/6, expressivos 3/6/9) mais números
+   vizinhos e Números Mestre. É uma leitura simbólica de apoio, não uma
+   previsão de sucesso ou fracasso da relação. */
+const GRUPO_INDEPENDENTES = [1,5,7];
+const GRUPO_LAR = [2,4,6];
+const GRUPO_EXPRESSIVOS = [3,6,9];
+const NUMEROS_MESTRE = [11,22,33];
+function compatibilidadePar(cvA, cvB){
+  if (NUMEROS_MESTRE.includes(cvA) || NUMEROS_MESTRE.includes(cvB)){
+    const mestre = NUMEROS_MESTRE.includes(cvA) ? cvA : cvB;
+    return `A presença de um Número Mestre (${mestre}) eleva esta relação a um propósito mais espiritual — mas também traz mais intensidade emocional a gerir.`;
+  }
+  if (cvA === cvB) return `Vibração espelhada (ambos ${cvA}) — entendem-se depressa, mas podem repetir um no outro os mesmos erros, por partilharem o mesmo ponto cego.`;
+  if (Math.abs(cvA - cvB) === 1) return `Números vizinhos (${cvA} e ${cvB}) — combinação naturalmente complementar, cada um traz o que falta ao outro.`;
+  if (GRUPO_INDEPENDENTES.includes(cvA) && GRUPO_INDEPENDENTES.includes(cvB)) return `Ambos valorizam independência e liberdade de ação (${cvA} e ${cvB}) — funciona melhor com espaço próprio bem definido para cada um.`;
+  if (GRUPO_LAR.includes(cvA) && GRUPO_LAR.includes(cvB)) return `Ambos valorizam estabilidade e vida a dois (${cvA} e ${cvB}) — combinação naturalmente harmoniosa para construir uma base sólida.`;
+  if (GRUPO_EXPRESSIVOS.includes(cvA) && GRUPO_EXPRESSIVOS.includes(cvB)) return `Ambos valorizam expressão e vida social (${cvA} e ${cvB}) — boa energia criativa, com atenção a não competirem pelo protagonismo.`;
+  return `Combinação de aprendizagem mútua (${cvA} e ${cvB}) — os ritmos são diferentes; vale a pena investir conscientemente na comunicação sobre essas diferenças.`;
+}
+function calcularGrelhaCompatibilidade(membros){
+  const pares = [];
+  for (let i=0; i<membros.length; i++){
+    for (let j=i+1; j<membros.length; j++){
+      pares.push({ a: membros[i].nome, b: membros[j].nome,
+        cvA: membros[i].caminhoDeVida, cvB: membros[j].caminhoDeVida,
+        texto: compatibilidadePar(membros[i].caminhoDeVida, membros[j].caminhoDeVida) });
+    }
+  }
+  return pares;
+}
 
 function calcularAnjoNascimento(dateStr){
   const d = new Date(dateStr+'T12:00:00');
@@ -805,6 +914,27 @@ async function onCalcular(){
   const pinAtivo = pinaculoActivo(data, hoje);
   const ciclos = calcularCiclosPessoais(data, hoje);
   const nodos = calcularNodosLunares(data);
+  const arcanoP = calcularArcanoPessoal(data);
+  const arcanoA = calcularArcanoDoAno(data, hoje);
+  const numExtra = {
+    pedraAngular: pedraAngular(nome),
+    maturidade: numeroMaturidade(data, nome),
+    paixaoOculta: paixaoOculta(nome),
+    subconsciente: numeroSubconsciente(nome),
+    atitude: numeroAtitude(data),
+    equilibrio: numeroEquilibrio(nome)
+  };
+  let grelhaCompat = null;
+  if (selectedTipo === 'casal' && extra.pessoa2){
+    grelhaCompat = calcularGrelhaCompatibilidade([
+      { nome: nome.split(/\s+/)[0], caminhoDeVida: cv },
+      { nome: extra.pessoa2.nome.split(/\s+/)[0], caminhoDeVida: extra.pessoa2.caminhoDeVida }
+    ]);
+  } else if (selectedTipo === 'familia' && extra.elementosExtra && extra.elementosExtra.length){
+    const membros = [{ nome: nome.split(/\s+/)[0], caminhoDeVida: cv }]
+      .concat(extra.elementosExtra.map(e => ({ nome: e.nome.split(/\s+/)[0], caminhoDeVida: e.caminhoDeVida })));
+    grelhaCompat = calcularGrelhaCompatibilidade(membros);
+  }
   const leadId = crypto.randomUUID();
 
   const freeResult = {
@@ -812,7 +942,7 @@ async function onCalcular(){
     caminhoDeVida: cv, motivacao: mot,
     diaInfo, diaNome, signo: signo.nome,
     carmicas, excesso, mediunidade, anjo,
-    pinAtivo, ciclos, nodos,
+    pinAtivo, ciclos, nodos, arcanoP, arcanoA, numExtra, grelhaCompat,
     selo: selo.id, seloLabel: selo.label, seloIcon: selo.icon,
     horaModo, horaNascimento: horaExacta || null, periodoNascimento: periodo || null
   };
@@ -961,6 +1091,12 @@ function renderFreeResult(leadId, r, signo, extra){
       <div class="result-block">
         <h3>🌑 Vidas Passadas: Sinal Detetado</h3>
         <p class="muted">O seu Nodo Sul aponta para <strong>${escapeHtml(r.nodos.nodoSul.signo)}</strong> — a energia que já domina de outras vivências, trazida como bagagem para esta vida. <strong>O Mapa Diamante revela o padrão completo a vigiar, e o Nodo Norte — o caminho de crescimento desta encarnação.</strong></p>
+      </div>` : ''}
+
+      ${r.arcanoP ? `
+      <div class="result-block">
+        <h3>🃏 O seu Arcano Pessoal</h3>
+        <p class="muted">A sua data de nascimento aponta para <strong>${escapeHtml((ARCANOS_MAIORES[r.arcanoP]||{}).nome||'')}</strong> — o arquétipo que o(a) acompanha a vida inteira. <strong>O Mapa Diamante revela o significado completo, e o Arcano do Ano — a energia deste seu ciclo anual.</strong></p>
       </div>` : ''}
 
       ${r.mediunidade ? `
@@ -1270,6 +1406,39 @@ function renderFullReport(data){
         <p class="muted" style="margin-top:4px;">${escapeHtml(NODO_NORTE_TEXTOS[r.nodos.nodoNorte.signo]||'')}</p>
       </div>
       <p class="muted" style="margin-top:10px;font-size:.78rem;opacity:.8;">⚠️ Leitura simbólica dentro da tradição da astrologia cármica — não é um facto histórico verificável. Serve como bússola de autoconhecimento, não como sentença.</p>
+    </div>` : ''}
+    ${r.arcanoP ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🃏 Arcano Pessoal & Arcano do Ano</h3>
+      <div style="margin-top:8px;padding:10px;background:rgba(212,175,55,.1);border-radius:10px;">
+        <p class="muted"><strong>${r.arcanoP} — ${escapeHtml((ARCANOS_MAIORES[r.arcanoP]||{}).nome||'')}</strong> · o seu arquétipo de vida, fixo desde o nascimento.</p>
+        <p class="muted" style="margin-top:4px;">${escapeHtml((ARCANOS_MAIORES[r.arcanoP]||{}).texto||'')}</p>
+      </div>
+      ${r.arcanoA ? `
+      <div style="margin-top:8px;padding:10px;background:rgba(212,175,55,.1);border-radius:10px;">
+        <p class="muted"><strong>${r.arcanoA} — ${escapeHtml((ARCANOS_MAIORES[r.arcanoA]||{}).nome||'')}</strong> · a energia do seu ciclo anual atual (muda no seu aniversário).</p>
+        <p class="muted" style="margin-top:4px;">${escapeHtml((ARCANOS_MAIORES[r.arcanoA]||{}).texto||'')}</p>
+      </div>` : ''}
+    </div>` : ''}
+    ${r.numExtra ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🔢 Os Restantes Números do seu Mapa Pitagórico</h3>
+      <p class="muted" style="margin-top:6px;"><strong>Pedra Angular (${r.numExtra.pedraAngular}):</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.pedraAngular]||{}).texto||'')} — é assim que costuma iniciar projetos e desafios novos.</p>
+      <p class="muted" style="margin-top:6px;"><strong>Maturidade (${r.numExtra.maturidade}):</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.maturidade]||{}).texto||'')} — a síntese que tende a alcançar na segunda metade da vida.</p>
+      <p class="muted" style="margin-top:6px;"><strong>Atitude / Primeira Impressão (${r.numExtra.atitude}):</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.atitude]||{}).texto||'')} — a imagem que transmite antes de dizer uma palavra.</p>
+      <p class="muted" style="margin-top:6px;"><strong>Equilíbrio (${r.numExtra.equilibrio}):</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.equilibrio]||{}).texto||'')} — o recurso a que recorre para se recompor em momentos difíceis.</p>
+      ${r.numExtra.paixaoOculta.length ? `<p class="muted" style="margin-top:6px;"><strong>Paixão Oculta (${r.numExtra.paixaoOculta.join(', ')}):</strong> um talento que domina com tanta naturalidade que quase não repara nele — ${escapeHtml((DONS_NUMERICOS[r.numExtra.paixaoOculta[0]]||{}).texto||'')}</p>` : `<p class="muted" style="margin-top:6px;"><strong>Paixão Oculta:</strong> sem repetições marcantes no nome — os seus talentos distribuem-se de forma equilibrada, sem um único foco dominante.</p>`}
+      <p class="muted" style="margin-top:6px;"><strong>Subconsciente (${r.numExtra.subconsciente}/9):</strong> ${r.numExtra.subconsciente >= 7 ? 'Confiança elevada para reagir bem a crises e imprevistos — recorre a muitos recursos internos diferentes.' : r.numExtra.subconsciente >= 4 ? 'Confiança moderada perante crises — reage bem à maioria das situações, com alguns pontos cegos.' : 'Tende a sentir-se mais inseguro(a) perante crises súbitas — vale a pena desenvolver recursos fora da zona habitual.'}</p>
+    </div>` : ''}
+    ${r.grelhaCompat && r.grelhaCompat.length ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);">🕸️ Grelha de Compatibilidade Vibracional</h3>
+      <p class="muted" style="margin-bottom:8px;">Leitura simbólica de apoio a partir do Caminho de Vida de cada elemento — não é uma previsão de sucesso ou fracasso da relação.</p>
+      ${r.grelhaCompat.map(p => `
+      <div style="margin-top:8px;padding:10px;border-radius:10px;background:rgba(255,255,255,.04);">
+        <p class="muted" style="font-size:.85rem;"><strong>${escapeHtml(p.a)} (${p.cvA}) ⇄ ${escapeHtml(p.b)} (${p.cvB})</strong></p>
+        <p class="muted" style="margin-top:4px;">${escapeHtml(p.texto)}</p>
+      </div>`).join('')}
     </div>` : ''}
     <div class="card">
       <h3 style="color:var(--gold-light);">🌗 Perfil Integral</h3>
