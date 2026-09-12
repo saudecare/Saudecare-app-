@@ -543,7 +543,7 @@ function renderPortalSection(name){
             </div>
             <span class="muted">Toque para ver ▾</span>
           </div>
-          <div id="report_${r.id}" style="display:none;margin-top:8px;white-space:pre-wrap;font-size:.85rem;background:#fff;border-radius:8px;padding:10px;">${escapeHtml(r.reportText||'Sem conteúdo disponível.')}</div>
+          <div id="report_${r.id}" style="display:none;margin-top:8px;font-size:.9rem;background:#fff;border-radius:8px;padding:14px;">${r.reportHtml ? r.reportHtml : `<div style="white-space:pre-wrap;font-size:.85rem;">${escapeHtml(r.reportText||'Sem conteúdo disponível.')}</div>`}</div>
         </div>`).join('')
       : '<p class="muted">Ainda sem relatórios partilhados.</p>';
 
