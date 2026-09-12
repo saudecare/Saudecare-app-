@@ -1457,7 +1457,8 @@ const NAV_GROUPS = {
     { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
     { view: 'trainings', icon: '🎓', label: 'Formações' },
     { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', tenantOnly: 'hikari-terapias' },
-    { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', tenantOnly: 'hikari-terapias' }
+    { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', tenantOnly: 'hikari-terapias' },
+    { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem de Baixa Vibração', tenantOnly: 'hikari-terapias', openExternal: 'triagem-baixa-vibracao.html' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1490,7 +1491,7 @@ function renderGroupMenu(main, groupKey){
   main.innerHTML = `
     <h2>${group.title}</h2>
     <div class="profile-grid">
-      ${items.map(it => `<button class="profile-tile" onclick="${it.view === 'profile' ? 'closeProfileSection()' : (it.view === 'settings' ? 'closeSettingsSection()' : `renderView('${it.view}')`)}"><span class="ptile-icon">${it.icon}</span><span>${it.label}</span></button>`).join('')}
+      ${items.map(it => `<button class="profile-tile" onclick="${it.openExternal ? `openExternalLink('${it.openExternal}')` : (it.view === 'profile' ? 'closeProfileSection()' : (it.view === 'settings' ? 'closeSettingsSection()' : `renderView('${it.view}')`))}"><span class="ptile-icon">${it.icon}</span><span>${it.label}</span></button>`).join('')}
     </div>`;
 }
 
