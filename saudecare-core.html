@@ -2311,6 +2311,7 @@ window.notifyPatientForCall = function(patientId, phone, patientName, portalToke
 function openExternalLink(url){
   window.location.href = url;
 }
+window.openExternalLink = openExternalLink;
 
 window.joinOnlineConsult = async function(patientId){
   try{
@@ -4915,6 +4916,7 @@ function renderCategoryForm(editId, c){
     </div>`;
   if (editId) scrollToEl('categoryFormContainer');
 }
+window.renderCategoryForm = renderCategoryForm;
 
 window.editCategory = async function(id){
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'serviceCategories', id));
