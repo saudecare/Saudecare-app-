@@ -1458,7 +1458,7 @@ const NAV_GROUPS = {
     { view: 'trainings', icon: '🎓', label: 'Formações' },
     { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', tenantOnly: 'hikari-terapias' },
     { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', tenantOnly: 'hikari-terapias' },
-    { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem de Baixa Vibração', tenantOnly: 'hikari-terapias', openExternal: 'triagem-baixa-vibracao.html' }
+    { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem de Baixa Vibração', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1528,6 +1528,7 @@ function renderView(view){
   else if (view === 'supportContact') renderSupportContact(main);
   else if (view === 'mapaAlma') renderMapaAlma(main);
   else if (view === 'cartomancia') renderCartomancia(main);
+  else if (view === 'triagemBaixaVibracao') renderTriagemBaixaVibracao(main);
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
   highlightActiveNavGroup(view);
@@ -9032,6 +9033,525 @@ async function renderCartomancia(main){
     ${bodyHtml}
   `;
   if (__cartoTab === 'nova') montarCamposCartas();
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   TRIAGEM DE BAIXA VIBRAÇÃO — substituto do Pêndulo Hebreu por Arcanos
+   Maiores, ligado à ficha real do paciente (grava em patients/{id}/reports,
+   tal como os outros relatórios da app, para poder ver evolução ao longo
+   de várias sessões).
+   ══════════════════════════════════════════════════════════════════════ */
+const TRIAGEM_ARCANOS = [
+  {n:0, nome:"O Louco", tier:1, area:"caminho de vida em geral, decisões precipitadas", tema:"um recomeço ou um salto para o desconhecido"},
+  {n:1, nome:"O Mago", tier:1, area:"vontade pessoal, manipulação de energia", tema:"ter as ferramentas certas mas ainda não as ter usado"},
+  {n:2, nome:"A Sacerdotisa", tier:1, area:"intuição, segredos guardados", tema:"algo que sabe no íntimo mas ainda não verbalizou"},
+  {n:3, nome:"A Imperatriz", tier:1, area:"fertilidade, criação, maternidade", tema:"um projeto ou desejo a florescer"},
+  {n:4, nome:"O Imperador", tier:1, area:"estrutura, autoridade, trabalho", tema:"necessidade de pôr ordem e limites"},
+  {n:5, nome:"O Papa", tier:1, area:"tradição familiar, crenças herdadas", tema:"uma crença herdada que já não serve"},
+  {n:6, nome:"Os Enamorados", tier:2, area:"relações, escolhas do coração", tema:"uma escolha entre o coração e a razão"},
+  {n:7, nome:"O Carro", tier:2, area:"direção de vida, viagens, movimento", tema:"vontade de avançar mas com direções em conflito"},
+  {n:8, nome:"A Força", tier:1, area:"vitalidade, autocontrolo", tema:"força que vem da paciência, não da luta"},
+  {n:9, nome:"O Eremita", tier:2, area:"isolamento, introspeção excessiva", tema:"necessidade de se afastar para ver com clareza"},
+  {n:10, nome:"A Roda da Fortuna", tier:2, area:"ciclos de sorte, karma", tema:"uma virada de página a caminho"},
+  {n:11, nome:"A Justiça", tier:1, area:"causas judiciais, equilíbrio kármico", tema:"algo a ser resolvido com justiça, dentro ou fora"},
+  {n:12, nome:"O Enforcado", tier:2, area:"estagnação, sacrifício não resolvido", tema:"sensação de estar em pausa forçada"},
+  {n:13, nome:"A Morte", tier:3, area:"transição de vida, luto não fechado", tema:"um fecho de ciclo que ainda dói"},
+  {n:14, nome:"A Temperança", tier:0, area:"equilíbrio, cura em curso", tema:"uma cura lenta mas real, em curso"},
+  {n:15, nome:"O Diabo", tier:3, area:"vícios, amarrações, sexualidade, dinheiro", tema:"um padrão ou vício difícil de largar"},
+  {n:16, nome:"A Torre", tier:3, area:"casa, estruturas, eventos súbitos", tema:"uma mudança súbita que abalou uma estrutura"},
+  {n:17, nome:"A Estrela", tier:0, area:"esperança, proteção espiritual ativa", tema:"um fio de esperança depois de um período difícil"},
+  {n:18, nome:"A Lua", tier:3, area:"medos ocultos, inimigos escondidos, sono", tema:"algo que não está claro e gera ansiedade"},
+  {n:19, nome:"O Sol", tier:0, area:"vitalidade plena, campo limpo", tema:"um momento de clareza e vitalidade a chegar"},
+  {n:20, nome:"O Julgamento", tier:2, area:"chamado espiritual não atendido, culpa", tema:"um chamado interior a que ainda não respondeu"},
+  {n:21, nome:"O Mundo", tier:0, area:"ciclo completo, proteção total", tema:"um ciclo importante a fechar-se com sucesso"}
+];
+function triagemTierInfo(t){
+  return t===3 ? {label:'Forte', cor:'#c0392b'} : t===2 ? {label:'Moderado', cor:'#d4a017'}
+       : t===1 ? {label:'Leve', cor:'#7fae3a'} : {label:'Campo limpo', cor:'#3aa0d4'};
+}
+function triagemBovis(t){ return t===3?2:t===2?5:t===1?7:10; }
+function triagemTirarCarta(){ return TRIAGEM_ARCANOS[Math.floor(Math.random()*TRIAGEM_ARCANOS.length)]; }
+function triagemTirarVarias(n){
+  const copia = [...TRIAGEM_ARCANOS]; const saida = [];
+  for (let i=0;i<n && copia.length;i++){ const idx = Math.floor(Math.random()*copia.length); saida.push(copia.splice(idx,1)[0]); }
+  return saida;
+}
+
+const TRIAGEM_BAIXA_VIBRACAO = [
+  { n:1,  nome:"Miasma", temas:["Miasma","Purificar","Limpeza de impurezas"] },
+  { n:2,  nome:"Olho Gordo / Inveja", temas:["Olho Gordo","Proteção","Auto-estima"] },
+  { n:3,  nome:"Magia Consciente (feita de propósito por alguém)", temas:["Magia","Desfazer","Protecção Divina"] },
+  { n:4,  nome:"Magia Inconsciente (emitida sem intenção)", temas:["Magia","Desfazer","Limpeza emocional"] },
+  { n:5,  nome:"Trabalho Feito / Ritual", temas:["Magia","Purificar","Protecção Divina"] },
+  { n:6,  nome:"Bumerangue — magia/trabalho enviado que retrocedeu", temas:["Limpar Karma","Protecção Divina","Desfazer"] },
+  { n:7,  nome:"Obsessor / Entidade Agarrada", temas:["Purificar","Redentor de YHWH","Protecção Divina"] },
+  { n:8,  nome:"Possessão Parcial (interferência sem controlo total)", temas:["Redentor de YHWH","Protecção Divina","Purificar"] },
+  { n:9,  nome:"Larva Astral", temas:["Larva Astral","Purificar","Limpeza de impurezas"] },
+  { n:10, nome:"Ataque Psíquico Ativo", temas:["Protecção Divina","Força interior"] },
+  { n:11, nome:"Implante Energético", temas:["Desbloqueio","Limpeza de impurezas","Purificar"] },
+  { n:12, nome:"Chip Energético", temas:["Desbloqueio","Limpeza de impurezas","Purificar"] },
+  { n:13, nome:"Campo Electromagnético", temas:["Campo Electromagnético","Purificar"] },
+  { n:14, nome:"Geopatia", temas:["Geopatia","Purificar"] },
+  { n:15, nome:"Vínculo/Cordão Kármico Negativo", temas:["Limpar Karma","Desapego/Deixar ir","Libertação"] },
+  { n:16, nome:"Amarração", temas:["Desapego/Deixar ir","Vontade perfeita","Libertação"] },
+  { n:17, nome:"Ligação Energética a Pessoa Tóxica (fio de dreno)", temas:["Desapego/Deixar ir","Força interior"] },
+  { n:18, nome:"Herança Familiar Negativa (Miasma Ancestral)", temas:["Limpar Karma","Miasma","Responsabilidade"] },
+  { n:19, nome:"Praga/Maldição de Linhagem Familiar", temas:["Limpar Karma","Protecção Divina"] },
+  { n:20, nome:"Padrão Repetido na Família (ciclo geracional)", temas:["Limpar Karma","Libertação"] },
+  { n:21, nome:"Karma de Vidas Passadas (bloqueio individual)", temas:["Limpar Karma","Libertação"] },
+  { n:22, nome:"Voto de Pobreza (de vida passada)", temas:["Prosperidade","Abundância","Libertação"] },
+  { n:23, nome:"Voto de Solidão/Castidade (de vida passada)", temas:["Amor incondicional","Libertação"] },
+  { n:24, nome:"Voto de Silêncio (de vida passada)", temas:["Verdade","Libertação"] },
+  { n:25, nome:"Contrato Kármico de Dependência com Outra Pessoa", temas:["Desapego/Deixar ir","Libertação"] },
+  { n:26, nome:"Bloqueio Psicológico/Emocional Reprimido", temas:["Limpeza emocional","Libertar mágoas"] },
+  { n:27, nome:"Trauma Não Resolvido (desta vida)", temas:["Libertar memórias dolorosas do passado","Limpeza emocional"] },
+  { n:28, nome:"Padrão Mental Autossabotador", temas:["Pensamentos positivos","Força interior"] },
+  { n:29, nome:"Culpa Inconsciente", temas:["Não sentir culpa","Libertar mágoas"] },
+  { n:30, nome:"Medo Paralisante Enraizado", temas:["Libertar medos","Superar o medo"] },
+  { n:31, nome:"Ansiedade Energética Crónica", temas:["Silêncio mental","Tranquilidade"] },
+  { n:32, nome:"Memória Celular de Trauma", temas:["Regeneração Celular","Limpeza emocional"] },
+  { n:33, nome:"Interferência de Pensamento-Forma Alheio (egrégora negativa)", temas:["Protecção Divina","Desbloqueio"] },
+  { n:34, nome:"Fragmentação/Desconexão da Alma", temas:["Conexão com a fonte","Rendição ao Divino"] },
+  { n:35, nome:"Interferência de Baixo Astral em Sonhos", temas:["Protecção Divina","Purificar"] },
+  { n:36, nome:"Sobrecarga de Empatia (absorção de energia alheia)", temas:["Força interior","Segurança"] },
+  { n:37, nome:"Fadiga Energética Crónica sem causa física aparente", temas:["Força vital perfeita","Regeneração Celular"] },
+  { n:38, nome:"Bloqueio de Abundância por Crença Herdada", temas:["Prosperidade","Abundância"] },
+  { n:39, nome:"Autossabotagem por Medo do Sucesso", temas:["Auto-estima","Confiança"] },
+  { n:40, nome:"Bloqueio de Criatividade/Fertilidade", temas:["Fertilidade","Rejuvenescimento celular"] }
+];
+const TRIAGEM_CHAKRAS_9 = [
+  { n:1, nome:"Raiz", temas:["Segurança","Força vital perfeita","Poder pessoal"] },
+  { n:2, nome:"Sacro", temas:["Fertilidade","Equilíbrio Hormonal","Energia Sexual"] },
+  { n:3, nome:"Plexo Solar", temas:["Auto-estima","Coragem","Poder pessoal"] },
+  { n:4, nome:"Coração", temas:["Amor incondicional","Amor Próprio","Perdoar"] },
+  { n:5, nome:"Garganta", temas:["Verdade","Vontade"] },
+  { n:6, nome:"Terceiro Olho", temas:["Clareza","Silêncio mental"] },
+  { n:7, nome:"Coroa", temas:["Rendição ao Divino","Protecção Divina","Fé"] },
+  { n:8, nome:"Timo / Coração Superior", temas:["Compaixão","Perdoar","Amor Próprio"] },
+  { n:9, nome:"Estrela da Alma", temas:["Conexão com a fonte","Rendição ao Divino"] }
+];
+const TRIAGEM_TEMAS_ABERTURA = ["Desbloqueio","Vontade","Prosperidade","Abundância"];
+
+// Etiquetas de CURA — a folha "1º Nível" (Miasma/Olho Gordo/Magia/Campo
+// Eletromagnético/Geopatia/Larva Astral) fica de fora de propósito: essa
+// folha é só para pesquisar/calibrar, nunca para "usar" no protocolo.
+const TRIAGEM_ETQ_NOVAS01 = [
+  {heb:"לשחרר כאב",pt:"Libertar mágoas"},{heb:"לשחרר טינה",pt:"Libertar ressentimentos"},{heb:"לסלוח",pt:"Perdoar"},
+  {heb:"לנקות קארמה",pt:"Limpar Karma"},{heb:"לחסל פוביות",pt:"Eliminar fobias"},{heb:"סבלנות",pt:"Paciência"},
+  {heb:"לא מרגיש אשם",pt:"Não sentir culpa"},{heb:"לחסל זכרונות כואבים מן העבר",pt:"Libertar memórias dolorosas do passado"},
+  {heb:"לרצות",pt:"Vontade"},{heb:"חוכמה",pt:"Sabedoria"},{heb:"שחרור",pt:"Libertação"},{heb:"שגשוג",pt:"Prosperidade"},
+  {heb:"שפע",pt:"Abundância"},{heb:"התחדשות הסלולר",pt:"Rejuvenescimento celular"},{heb:"אומץ",pt:"Coragem"},
+  {heb:"סובלנות",pt:"Tolerância"},{heb:"מחשבות חיוביות",pt:"Pensamentos positivos"},{heb:"לאבד את הפחד",pt:"Libertar medos"},
+  {heb:"פיוס",pt:"Reconciliação"},{heb:"כוח פנימי",pt:"Força interior"},{heb:"אמונה",pt:"Confiança"},{heb:"חמלה",pt:"Compaixão"},
+  {heb:"הודיה",pt:"Gratidão"},{heb:"בטחון עצמי",pt:"Auto-estima"},{heb:"קבלה",pt:"Aceitação"},{heb:"כבוד",pt:"Respeito"},
+  {heb:"אחריות",pt:"Responsabilidade"},{heb:"התחדשות תאים",pt:"Regeneração Celular"},{heb:"בטחון",pt:"Segurança"},
+  {heb:"כוח אישי",pt:"Poder pessoal"},{heb:"בהירות",pt:"Clareza"},{heb:"יופי",pt:"Beleza"},{heb:"ריכוז",pt:"Concentração"},
+  {heb:"להכנע לאלוהי",pt:"Rendição ao Divino"},{heb:"אמונה",pt:"Fé"},{heb:"הלץ",pt:"Desbloqueio"},{heb:"נקוי שכרון",pt:"Desintoxicação"},
+  {heb:"נקוי רגשי",pt:"Limpeza emocional"},{heb:"אמת",pt:"Verdade"},{heb:"לא להאחז, לשחרר",pt:"Desapego/Deixar ir"},
+  {heb:"רצון תם",pt:"Vontade perfeita"},{heb:"שקט שכלי",pt:"Silêncio mental"},{heb:"עלה את הפחד",pt:"Superar o medo"},
+  {heb:"אהבה ללא תנאים",pt:"Amor incondicional"},{heb:"שלום",pt:"Paz"},{heb:"אהבה עצמית",pt:"Amor Próprio"},
+  {heb:"שלום פנימי",pt:"Paz Interior"},{heb:"רוגע",pt:"Tranquilidade"},{heb:"שלווה",pt:"Pacífico(a)"},{heb:"ענוה",pt:"Humildade"},
+  {heb:"איזון הורמונלי",pt:"Equilíbrio Hormonal"},{heb:"בגרות",pt:"Maturidade"},{heb:"הגנה אלהית",pt:"Protecção Divina"}
+];
+const TRIAGEM_ETQ_USAR_EM_NOS = [
+  {heb:"הנעים",pt:"Harmonizar"},{heb:"חסינות פגום",pt:"Imunidade"},{heb:"שלום פמימי",pt:"Paz interior"},
+  {heb:"שמחה",pt:"Alegria"},{heb:"קשר יהשוה",pt:"Unir"},{heb:"טחר יהשוה",pt:"Purificar"},
+  {heb:"כח חיוני תם",pt:"Força vital perfeita"},{heb:"התיר יהשוה",pt:"Desfazer"},{heb:"יהשוה",pt:"Redentor de YHWH"},
+  {heb:"אור",pt:"Luz, iluminação"},{heb:"נקיי",pt:"Limpeza de impurezas"},{heb:"תעלה מריהיה שלמה",pt:"Canal central perfeito"},
+  {heb:"חבור בהעין",pt:"Conexão com a fonte"},{heb:"אהבה",pt:"Amor"}
+];
+const TRIAGEM_NOMES_72 = [
+  {n:1,heb:"והו",pt:"Viagem no Tempo: Como consertar o passado"},{n:2,heb:"ילי",pt:"Resgate da Centelha Divina, Recuperar a energia"},
+  {n:4,heb:"עלם",pt:"Eliminando Pensamentos Negativos"},{n:5,heb:"מהש",pt:"Cura o Corpo, a Mente e a Alma"},
+  {n:8,heb:"כהת",pt:"Limpar toda negatividade interna e externa"},{n:9,heb:"הזי",pt:"Atraia Anjos de Luz e a Boa Sorte"},
+  {n:10,heb:"אלד",pt:"Regeneração de Órgãos Doentes ou Danificados e Proteção contra Inveja e Pesadelos"},
+  {n:11,heb:"לאו",pt:"Expulsar os Resíduos do Mal e Purificar os lugares"},{n:12,heb:"ההע",pt:"Ativar o Amor Incondicional e Trazer Alegria"},
+  {n:16,heb:"הקם",pt:"Livre-se da depressão e Anime-se completamente"},{n:18,heb:"כלי",pt:"Fertilidade – Bloqueios de criatividade"},
+  {n:20,heb:"פהל",pt:"Libertar-se dos vícios - Fortalecer a Consciência Espiritual"},
+  {n:22,heb:"ייי",pt:"Cura mental e psicológica e Para afastar pessoas negativas"},
+  {n:24,heb:"והו",pt:"Libertar-se do ciúme, inveja, dor, sofrimento e vícios"},
+  {n:29,heb:"ריי",pt:"Eliminar o Ódio e Para Aceitar a Cura Espiritual"},
+  {n:31,heb:"לכב",pt:"Para retirar o carma e a auto-obsessão e para terminar projetos inacabados"},
+  {n:36,heb:"מנד",pt:"Ativar a coragem e eliminar o medo"},{n:41,heb:"ההה",pt:"Atraia a Compaixão e a Misericórdia e Melhore a Auto-Estima"},
+  {n:44,heb:"ילה",pt:"Amenizando julgamentos cármicos"},
+  {n:53,heb:"ננא",pt:"Atraindo Proteção, Cura e Amizades Verdadeiras"},{n:60,heb:"מצר",pt:"Liberdade - Liberte-se da depressão e das limitações físicas e espirituais"},
+  {n:64,heb:"מוזי",pt:"Afastar a negatividade e Ativar o magnetismo físico e espiritual"},
+  {n:70,heb:"יבמ",pt:"Eliminar os bloqueios psíquicos do sucesso"},
+  {n:72,heb:"מום",pt:"Purificação Espiritual - Purifique seu espírito e ambientes limpando resíduos energéticos"}
+];
+function triagemBuscarEtiquetas(temas, maxResult=2){
+  const fontes = [["NOVAS_01", TRIAGEM_ETQ_NOVAS01], ["Usar em nós", TRIAGEM_ETQ_USAR_EM_NOS]];
+  let resultados = [];
+  temas.forEach(tema => {
+    fontes.forEach(([fonteNome, lista]) => {
+      lista.forEach(item => { if (item.pt.toLowerCase().includes(tema.toLowerCase())) resultados.push({fonte: fonteNome, item}); });
+    });
+  });
+  temas.forEach(tema => {
+    TRIAGEM_NOMES_72.forEach(item => {
+      if (item.pt.toLowerCase().includes(tema.toLowerCase().split(' ')[0]))
+        resultados.push({fonte:'72 Nomes', item:{heb:item.heb, pt:item.pt, numero:item.n}});
+    });
+  });
+  const vistos = new Set(); const final = [];
+  resultados.forEach(r => { const chave = r.item.pt+(r.item.numero||''); if (!vistos.has(chave)){ vistos.add(chave); final.push(r); } });
+  return final.slice(0, maxResult);
+}
+
+let __triagem = null;
+function __triagemReset(){
+  __triagem = {
+    passo: 0, patientId: null, patientNome: '', modo: 'auto',
+    dataNascimento: '', bovisIni: null, bovisIniReal: '', bovisFin: null, bovisFinReal: '',
+    baixaVibracao: TRIAGEM_BAIXA_VIBRACAO.map(() => false),
+    chakras: TRIAGEM_CHAKRAS_9.map(() => null),
+    aberturaCaminhos: null, leituraComplementar: null
+  };
+}
+
+async function renderTriagemBaixaVibracao(main){
+  __triagemReset();
+  if (!window.__allPatientsCache){
+    const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients'), orderBy('fullName')));
+    window.__allPatientsCache = [];
+    snap.forEach(d => window.__allPatientsCache.push({ id: d.id, ...d.data() }));
+  }
+  renderTriagemPasso(main);
+}
+
+function triagemProgressoHTML(){
+  const total = 8;
+  return `<div class="row" style="gap:4px;margin-bottom:12px;">${Array.from({length: total}).map((_,i) =>
+    `<div style="flex:1;height:5px;border-radius:3px;background:${i <= __triagem.passo ? 'var(--primary)' : '#e5e5e5'};"></div>`).join('')}</div>`;
+}
+
+function renderTriagemPasso(main){
+  const m = main || document.getElementById('mainView');
+  if (__triagem.passo === 0) return triagemPasso0Paciente(m);
+  if (__triagem.passo === 1) return triagemPassoModo(m);
+  if (__triagem.passo === 2) return triagemPassoBovis(m, 'ini');
+  if (__triagem.passo === 3) return triagemPassoBaixaVibracao(m);
+  if (__triagem.passo === 4) return triagemPassoChakras(m);
+  if (__triagem.passo === 5) return triagemPassoAbertura(m);
+  if (__triagem.passo === 6) return triagemPassoBovis(m, 'fin');
+  if (__triagem.passo === 7) return triagemPassoComplementar(m);
+}
+
+/* PASSO 0 — escolher paciente */
+function triagemPasso0Paciente(main){
+  main.innerHTML = `
+    <h2>🎴 Triagem de Baixa Vibração</h2>
+    ${triagemProgressoHTML()}
+    <div class="card">
+      <h3>1. Consulente</h3>
+      <input id="triagemBuscaPaciente" placeholder="🔍 Pesquisar paciente por nome…" oninput="window.__triagemFiltrarPacientes()">
+      <div id="triagemListaPacientes" style="max-height:240px;overflow-y:auto;margin-top:8px;"></div>
+      <p class="muted" style="margin-top:10px;">Não encontra o paciente? <button class="ghost" style="width:auto;display:inline;" onclick="openNewPatient()">+ Criar novo paciente</button></p>
+      ${__triagem.patientId ? `<div class="row" style="margin-top:10px;background:#eef7ee;padding:8px;border-radius:8px;"><strong>✓ Selecionado: ${escapeHtml(__triagem.patientNome)}</strong></div>` : ''}
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <button class="primary" ${__triagem.patientId ? '' : 'disabled'} onclick="window.__triagemAvancar()">Seguinte →</button>
+    </div>`;
+  window.__triagemFiltrarPacientes = function(){
+    const q = stripAccents(document.getElementById('triagemBuscaPaciente').value.trim());
+    const lista = !q ? window.__allPatientsCache : window.__allPatientsCache.filter(p => stripAccents(p.fullName||'').includes(q));
+    const box = document.getElementById('triagemListaPacientes');
+    box.innerHTML = lista.map(p => `<div class="row" style="padding:8px;cursor:pointer;border-bottom:1px solid #eee;" onclick="window.__triagemEscolherPaciente('${p.id}','${escapeAttrJs(p.fullName)}')"><span>${escapeHtml(p.fullName)}</span></div>`).join('') || '<p class="muted">Sem resultados.</p>';
+  };
+  window.__triagemEscolherPaciente = function(id, nome){
+    __triagem.patientId = id; __triagem.patientNome = nome;
+    renderTriagemPasso(main);
+  };
+  window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
+  window.__triagemFiltrarPacientes();
+}
+
+/* PASSO 1 — data de nascimento + modo */
+function triagemPassoModo(main){
+  main.innerHTML = `
+    <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
+    ${triagemProgressoHTML()}
+    <div class="card">
+      <h3>2. Data de nascimento e modo</h3>
+      <label>Data de nascimento</label>
+      <input id="triagemDataNasc" type="date" value="${__triagem.dataNascimento}">
+      <label style="margin-top:10px;">Modo de tiragem</label>
+      <div class="row">
+        <button class="${__triagem.modo==='auto'?'primary':'ghost'}" onclick="window.__triagemSetModo('auto')">🎴 Automática</button>
+        <button class="${__triagem.modo==='manual'?'primary':'ghost'}" onclick="window.__triagemSetModo('manual')">✋ Manual</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
+      <button class="primary" onclick="window.__triagemAvancarModo()">Seguinte →</button>
+    </div>`;
+  document.getElementById('triagemDataNasc').addEventListener('input', e => __triagem.dataNascimento = e.target.value);
+  window.__triagemSetModo = function(m){ __triagem.modo = m; renderTriagemPasso(main); };
+  window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
+  window.__triagemAvancarModo = function(){ __triagem.passo++; renderTriagemPasso(main); };
+}
+
+function triagemSlotCartaHTML(pathId, cartaAtual){
+  return `<div class="row" style="align-items:center;justify-content:space-between;padding:6px 0;">
+    <span class="muted">${cartaAtual ? `<span style="color:${triagemTierInfo(cartaAtual.tier).cor};">●</span> ${cartaAtual.n} — ${escapeHtml(cartaAtual.nome)} (${triagemTierInfo(cartaAtual.tier).label})` : '— por preencher —'}</span>
+    ${__triagem.modo === 'auto'
+      ? `<button class="ghost" style="width:auto;" onclick="window.__triagemTirar('${pathId}')">🎴 Tirar</button>`
+      : `<select style="width:150px;" onchange="window.__triagemManual('${pathId}', this.value)"><option value="">Escolher…</option>${TRIAGEM_ARCANOS.map(a => `<option value="${a.n}" ${cartaAtual&&cartaAtual.n===a.n?'selected':''}>${a.n} — ${escapeHtml(a.nome)}</option>`).join('')}</select>`}
+  </div>`;
+}
+
+/* PASSO 2/6 — Bovis inicial/final */
+function triagemPassoBovis(main, qual){
+  const carta = qual==='ini' ? __triagem.bovisIni : __triagem.bovisFin;
+  const real = qual==='ini' ? __triagem.bovisIniReal : __triagem.bovisFinReal;
+  main.innerHTML = `
+    <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
+    ${triagemProgressoHTML()}
+    <div class="card">
+      <h3>${qual==='ini' ? '3. Energia Vital — Bovis Inicial' : '7. Energia Vital — Bovis Final'}</h3>
+      <label>Valor real (Unidades Bovis) — se tiver biómetro</label>
+      <input id="triagemBovisReal" type="number" placeholder="ex: 6500" value="${escapeHtml(real)}">
+      <label style="margin-top:10px;">Ou carta simbólica (0-10)</label>
+      <div id="triagemSlotBovis">${triagemSlotCartaHTML('bovis-'+qual, carta)}</div>
+      ${carta ? `<p class="muted">Escala simbólica: <strong>${triagemBovis(carta.tier)}/10</strong></p>` : ''}
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
+      <button class="primary" onclick="window.__triagemAvancarBovis('${qual}')">Seguinte →</button>
+    </div>`;
+  document.getElementById('triagemBovisReal').addEventListener('input', e => {
+    if (qual==='ini') __triagem.bovisIniReal = e.target.value; else __triagem.bovisFinReal = e.target.value;
+  });
+  window.__triagemTirar = function(pathId){
+    const carta = triagemTirarCarta();
+    if (pathId === 'bovis-ini') __triagem.bovisIni = carta; else if (pathId === 'bovis-fin') __triagem.bovisFin = carta;
+    renderTriagemPasso(main);
+  };
+  window.__triagemManual = function(pathId, val){
+    const idx = parseInt(val, 10); const carta = isNaN(idx) ? null : TRIAGEM_ARCANOS.find(a => a.n === idx);
+    if (pathId === 'bovis-ini') __triagem.bovisIni = carta; else if (pathId === 'bovis-fin') __triagem.bovisFin = carta;
+  };
+  window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
+  window.__triagemAvancarBovis = function(){ __triagem.passo++; renderTriagemPasso(main); };
+}
+
+/* PASSO 3 — Baixa Vibração numerada */
+function triagemPassoBaixaVibracao(main){
+  main.innerHTML = `
+    <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
+    ${triagemProgressoHTML()}
+    <div class="card">
+      <h3>4. Baixa Vibração — Pesquisa Numerada (${TRIAGEM_BAIXA_VIBRACAO.length} causas)</h3>
+      <p class="muted">${__triagem.modo==='auto' ? 'Toque em 🎴 para simular a resposta, ou marque diretamente.' : 'Pesquise com o pêndulo/baralho e marque os confirmados.'}</p>
+      ${TRIAGEM_BAIXA_VIBRACAO.map(item => `
+        <div class="row" style="align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
+          <span style="width:26px;height:26px;border-radius:50%;background:#eef2ee;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${item.n}</span>
+          <input type="checkbox" id="triagem-bv-${item.n}" style="width:20px;height:20px;margin:0 8px;" ${__triagem.baixaVibracao[item.n-1]?'checked':''} onchange="window.__triagemToggleBV(${item.n}, this.checked)">
+          <label for="triagem-bv-${item.n}" style="flex:1;font-size:14px;">${escapeHtml(item.nome)}</label>
+          ${__triagem.modo==='auto' ? `<button class="ghost" style="width:auto;padding:4px 8px;" onclick="window.__triagemPesquisarBV(${item.n})">🎴</button>` : ''}
+        </div>`).join('')}
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
+      <button class="primary" onclick="window.__triagemAvancarSimples()">Seguinte →</button>
+    </div>`;
+  window.__triagemToggleBV = function(n, checked){ __triagem.baixaVibracao[n-1] = checked; };
+  window.__triagemPesquisarBV = function(n){
+    __triagem.baixaVibracao[n-1] = triagemTirarCarta().tier >= 2;
+    renderTriagemPasso(main);
+  };
+  window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
+  window.__triagemAvancarSimples = function(){ __triagem.passo++; renderTriagemPasso(main); };
+}
+
+/* PASSO 4 — Chakras 1-9 */
+function triagemPassoChakras(main){
+  main.innerHTML = `
+    <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
+    ${triagemProgressoHTML()}
+    <div class="card">
+      <h3>5. Chakras (1 a 9)</h3>
+      ${TRIAGEM_CHAKRAS_9.map((c,i) => `
+        <div style="margin-bottom:6px;">
+          <strong style="font-size:14px;">${c.n} — ${escapeHtml(c.nome)}</strong>
+          ${triagemSlotCartaHTML('chakra-'+i, __triagem.chakras[i])}
+        </div>`).join('')}
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
+      <button class="primary" onclick="window.__triagemAvancarSimples()">Seguinte →</button>
+    </div>`;
+  window.__triagemTirar = function(pathId){
+    const i = parseInt(pathId.split('-')[1], 10);
+    __triagem.chakras[i] = triagemTirarCarta();
+    renderTriagemPasso(main);
+  };
+  window.__triagemManual = function(pathId, val){
+    const i = parseInt(pathId.split('-')[1], 10);
+    const idx = parseInt(val, 10);
+    __triagem.chakras[i] = isNaN(idx) ? null : TRIAGEM_ARCANOS.find(a => a.n === idx);
+  };
+  window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
+  window.__triagemAvancarSimples = function(){ __triagem.passo++; renderTriagemPasso(main); };
+}
+
+/* PASSO 5 — Abertura de Caminhos */
+function triagemPassoAbertura(main){
+  main.innerHTML = `
+    <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
+    ${triagemProgressoHTML()}
+    <div class="card">
+      <h3>6. Nível de Abertura de Caminhos</h3>
+      ${triagemSlotCartaHTML('abertura', __triagem.aberturaCaminhos)}
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
+      <button class="primary" onclick="window.__triagemAvancarSimples()">Seguinte →</button>
+    </div>`;
+  window.__triagemTirar = function(){ __triagem.aberturaCaminhos = triagemTirarCarta(); renderTriagemPasso(main); };
+  window.__triagemManual = function(pathId, val){
+    const idx = parseInt(val, 10);
+    __triagem.aberturaCaminhos = isNaN(idx) ? null : TRIAGEM_ARCANOS.find(a => a.n === idx);
+  };
+  window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
+  window.__triagemAvancarSimples = function(){ __triagem.passo++; renderTriagemPasso(main); };
+}
+
+/* PASSO 7 — Leitura complementar (3 cartas) */
+function triagemPassoComplementar(main){
+  const lc = __triagem.leituraComplementar;
+  main.innerHTML = `
+    <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
+    ${triagemProgressoHTML()}
+    <div class="card">
+      <h3>8. Leitura Complementar — Momento de Vida</h3>
+      <p class="muted">Três cartas para complementar o diagnóstico com uma leitura sobre o momento atual.</p>
+      ${lc ? `
+        <p style="margin-top:8px;"><strong>Momento Atual:</strong> ${lc.momento.n} — ${escapeHtml(lc.momento.nome)}</p>
+        <p style="margin-top:6px;"><strong>Por Trás Disto:</strong> ${lc.porTras.n} — ${escapeHtml(lc.porTras.nome)}</p>
+        <p style="margin-top:6px;"><strong>Tendência:</strong> ${lc.tendencia.n} — ${escapeHtml(lc.tendencia.nome)}</p>
+      ` : '<p class="muted">— por preencher —</p>'}
+      ${__triagem.modo === 'auto'
+        ? `<button class="ghost" style="margin-top:10px;" onclick="window.__triagemTirar3()">🎴 Tirar as 3 cartas</button>`
+        : `<label style="margin-top:10px;">Momento Atual</label><select id="triSelM">${triagemOptsVazio()}</select>
+           <label>Por Trás Disto</label><select id="triSelP">${triagemOptsVazio()}</select>
+           <label>Tendência</label><select id="triSelT">${triagemOptsVazio()}</select>`}
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
+      <button class="primary" onclick="window.__triagemGerarRelatorio()">🔮 Gerar Relatório</button>
+    </div>`;
+  window.__triagemTirar3 = function(){
+    const [momento, porTras, tendencia] = triagemTirarVarias(3);
+    __triagem.leituraComplementar = { momento, porTras, tendencia };
+    renderTriagemPasso(main);
+  };
+  if (__triagem.modo !== 'auto'){
+    const aplicar = () => {
+      const m = TRIAGEM_ARCANOS.find(a => a.n === parseInt(document.getElementById('triSelM').value,10));
+      const p = TRIAGEM_ARCANOS.find(a => a.n === parseInt(document.getElementById('triSelP').value,10));
+      const t = TRIAGEM_ARCANOS.find(a => a.n === parseInt(document.getElementById('triSelT').value,10));
+      if (m && p && t) __triagem.leituraComplementar = { momento:m, porTras:p, tendencia:t };
+    };
+    ['triSelM','triSelP','triSelT'].forEach(id => document.getElementById(id).addEventListener('change', aplicar));
+  }
+  window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
+  window.__triagemGerarRelatorio = triagemGerarRelatorio;
+}
+function triagemOptsVazio(){ return `<option value="">Escolher…</option>` + TRIAGEM_ARCANOS.map(a => `<option value="${a.n}">${a.n} — ${escapeHtml(a.nome)}</option>`).join(''); }
+
+/* ─── Motor final + gravação na ficha do paciente ──────────────────────── */
+async function triagemGerarRelatorio(){
+  const achados = []; const protocolo = [];
+  TRIAGEM_BAIXA_VIBRACAO.forEach((item, i) => {
+    if (__triagem.baixaVibracao[i]){
+      achados.push(item.nome);
+      triagemBuscarEtiquetas(item.temas, 2).forEach(r => protocolo.push({...r, motivo: item.nome}));
+    }
+  });
+  const chakrasAfetados = [];
+  TRIAGEM_CHAKRAS_9.forEach((c, i) => {
+    const carta = __triagem.chakras[i];
+    if (carta && carta.tier >= 2){
+      chakrasAfetados.push(c.nome);
+      triagemBuscarEtiquetas(c.temas, 2).forEach(r => protocolo.push({...r, motivo: `Chakra ${c.nome}`}));
+    }
+  });
+  if (__triagem.aberturaCaminhos && __triagem.aberturaCaminhos.tier >= 2){
+    achados.push('caminhos bloqueados');
+    triagemBuscarEtiquetas(TRIAGEM_TEMAS_ABERTURA, 2).forEach(r => protocolo.push({...r, motivo: 'Abertura de Caminhos'}));
+  }
+  if (protocolo.length === 0) triagemBuscarEtiquetas(['Harmonizar','Paz interior','Força vital'], 3).forEach(r => protocolo.push({...r, motivo: 'Manutenção geral'}));
+  const vistos = new Set(); const protocoloFinal = [];
+  protocolo.forEach(p => { const k = p.item.pt+(p.item.numero||''); if (!vistos.has(k)){ vistos.add(k); protocoloFinal.push(p); } });
+
+  const bovisIniVal = __triagem.bovisIniReal ? parseFloat(__triagem.bovisIniReal) : (__triagem.bovisIni ? triagemBovis(__triagem.bovisIni.tier) : null);
+  const bovisFinVal = __triagem.bovisFinReal ? parseFloat(__triagem.bovisFinReal) : (__triagem.bovisFin ? triagemBovis(__triagem.bovisFin.tier) : null);
+
+  let reportText = `TRIAGEM DE BAIXA VIBRAÇÃO — ${__triagem.patientNome}\n`;
+  reportText += `Data de nascimento: ${__triagem.dataNascimento || '—'}\n\n`;
+  reportText += `Bovis inicial: ${bovisIniVal ?? '—'} · Bovis final: ${bovisFinVal ?? '—'}\n\n`;
+  reportText += `== Causas detetadas ==\n${achados.length ? achados.map(a=>'- '+a).join('\n') : 'Nenhuma — campo equilibrado.'}\n\n`;
+  reportText += `== Chakras afetados ==\n${chakrasAfetados.length ? chakrasAfetados.map(c=>'- '+c).join('\n') : 'Nenhum.'}\n\n`;
+  if (__triagem.leituraComplementar){
+    const { momento, porTras, tendencia } = __triagem.leituraComplementar;
+    reportText += `== Leitura Complementar ==\nMomento Atual: ${momento.nome} (${momento.tema})\nPor Trás Disto: ${porTras.nome} (${porTras.area})\nTendência: ${tendencia.nome} (${tendencia.tema})\n\n`;
+  }
+  reportText += `== Protocolo de Limpeza (etiquetas a usar) ==\n`;
+  protocoloFinal.forEach(p => { reportText += `${p.item.heb}  —  ${p.item.pt}${p.item.numero ? ' (Nome '+p.item.numero+' dos 72 Nomes de Deus)' : ''}  [${p.fonte} · ${p.motivo}]\n`; });
+
+  try{
+    await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
+      protocolName: 'Triagem de Baixa Vibração',
+      reportText,
+      bovisInicial: bovisIniVal, bovisFinal: bovisFinVal,
+      baixaVibracaoDetetada: achados, chakrasAfetados,
+      aberturaCaminhos: __triagem.aberturaCaminhos ? __triagem.aberturaCaminhos.nome : null,
+      leituraComplementar: __triagem.leituraComplementar ? {
+        momento: __triagem.leituraComplementar.momento.nome,
+        porTras: __triagem.leituraComplementar.porTras.nome,
+        tendencia: __triagem.leituraComplementar.tendencia.nome
+      } : null,
+      protocolo: protocoloFinal.map(p => ({ fonte:p.fonte, heb:p.item.heb, pt:p.item.pt, numero:p.item.numero||null, motivo:p.motivo })),
+      generatedAt: serverTimestamp()
+    });
+    toast('Triagem guardada na ficha do paciente ✓');
+  }catch(e){
+    console.warn('Não foi possível guardar na ficha:', e);
+    toast('Não foi possível guardar na ficha do paciente.', true);
+  }
+
+  triagemRenderRelatorioFinal(achados, chakrasAfetados, protocoloFinal, bovisIniVal, bovisFinVal);
+}
+
+function triagemRenderRelatorioFinal(achados, chakrasAfetados, protocoloFinal, bovisIniVal, bovisFinVal){
+  const main = document.getElementById('mainView');
+  const sintese = achados.length
+    ? `A triagem de ${escapeHtml(__triagem.patientNome)} detetou ${achados.length} causa(s): ${achados.map(escapeHtml).join(', ')}.`
+    : `A triagem de ${escapeHtml(__triagem.patientNome)} não revelou causas fortes — campo equilibrado.`;
+  main.innerHTML = `
+    <h2>🔮 Relatório — ${escapeHtml(__triagem.patientNome)}</h2>
+    <div class="card"><p>${sintese}</p></div>
+    ${chakrasAfetados.length ? `<div class="card"><h3>Chakras Afetados</h3><p class="muted">${chakrasAfetados.map(escapeHtml).join(', ')}</p></div>` : ''}
+    ${__triagem.leituraComplementar ? `<div class="card"><h3>🃏 Leitura Complementar</h3>
+      <p><strong>Momento Atual:</strong> ${escapeHtml(__triagem.leituraComplementar.momento.nome)} — ${escapeHtml(__triagem.leituraComplementar.momento.tema)}</p>
+      <p style="margin-top:6px;"><strong>Por Trás Disto:</strong> ${escapeHtml(__triagem.leituraComplementar.porTras.nome)}</p>
+      <p style="margin-top:6px;"><strong>Tendência:</strong> ${escapeHtml(__triagem.leituraComplementar.tendencia.nome)}</p>
+    </div>` : ''}
+    <div class="card">
+      <h3>🧴 Protocolo de Limpeza — Etiquetas a Usar</h3>
+      ${protocoloFinal.map(p => `<div class="row" style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
+        <span style="direction:rtl;min-width:70px;text-align:right;font-size:16px;">${p.item.heb}</span>
+        <span style="flex:1;margin-left:10px;">${escapeHtml(p.item.pt)}${p.item.numero ? ` <strong>(Nome ${p.item.numero} — 72 Nomes de Deus)</strong>` : ''} <em class="muted">· ${escapeHtml(p.motivo)}</em></span>
+        <span class="badge">${escapeHtml(p.fonte)}</span>
+      </div>`).join('')}
+    </div>
+    <p class="muted" style="margin-top:8px;">Guardado na ficha de ${escapeHtml(__triagem.patientNome)} — ferramenta de apoio profissional, não substitui diagnóstico médico, psicológico ou psiquiátrico.</p>
+    <div class="row" style="margin-top:10px;">
+      <button class="ghost" onclick="viewPatient('${__triagem.patientId}')">📋 Ver ficha do paciente</button>
+      <button class="primary" onclick="renderView('triagemBaixaVibracao')">↺ Nova Triagem</button>
+    </div>`;
 }
 
 window.montarCamposCartas = function(){
