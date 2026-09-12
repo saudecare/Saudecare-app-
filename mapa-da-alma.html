@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Mapa da Alma — Hikari Fafe</title>
-<!-- APP_VERSION: 2026-09-11-05 -->
-<meta name="app-version" content="2026-09-11-05">
+<!-- APP_VERSION: 2026-09-12-03 -->
+<meta name="app-version" content="2026-09-12-03">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
@@ -504,6 +504,125 @@ function calcularGrelhaCompatibilidade(membros){
   return pares;
 }
 
+/* ─── Leitura Integrada (geração determinística por sementes) ────────
+   Escreve UMA frase de abertura que cruza Caminho de Vida + Anjo +
+   Arcano + Nodo Sul, em vez de os listar em blocos separados. Usa uma
+   "semente" calculada a partir do nome+data (sem qualquer chamada a
+   IA, sem custo): a mesma pessoa vê sempre a mesma leitura, mas duas
+   pessoas com os mesmos números leem frases diferentes. */
+function hashSemente(str){
+  let h = 2166136261;
+  for (let i=0; i<str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function escolherVariante(rng, arr){ return arr[Math.floor(rng() * arr.length)]; }
+const ABERTURAS_CV_ANJO = [
+  (cvNome, anjoNome) => `Não é por acaso que o Anjo ${anjoNome} acompanha um Caminho de Vida de ${cvNome.toLowerCase()}`,
+  (cvNome, anjoNome) => `A combinação entre o Anjo ${anjoNome} e um percurso de ${cvNome.toLowerCase()} não é comum`,
+  (cvNome, anjoNome) => `Há uma conversa clara entre o Anjo ${anjoNome} e a sua energia de ${cvNome.toLowerCase()}`,
+  (cvNome, anjoNome) => `O Anjo ${anjoNome} reforça, de forma directa, a sua vibração de ${cvNome.toLowerCase()}`
+];
+const LIGACOES_ARCANO = [
+  (arcanoNome) => `e o Arcano ${arcanoNome} confirma esse desenho`,
+  (arcanoNome) => `e o Arcano ${arcanoNome} vem sublinhar exactamente isso`,
+  (arcanoNome) => `e não é surpresa que o seu Arcano Pessoal seja ${arcanoNome}`,
+  (arcanoNome) => `com o Arcano ${arcanoNome} a completar a imagem`
+];
+const FECHOS_NODO = [
+  (nodoSigno) => `— o Nodo Sul em ${nodoSigno} mostra de onde vem essa força.`,
+  (nodoSigno) => `. A raiz está no Nodo Sul em ${nodoSigno}, herdada de outras vivências.`,
+  (nodoSigno) => `, e o Nodo Sul em ${nodoSigno} explica porque isto já lhe é tão natural.`,
+  (nodoSigno) => `. Faz sentido: o Nodo Sul em ${nodoSigno} traz exactamente esse traço de outras vidas.`
+];
+function gerarLeituraIntegrada(nomeCompleto, dataStr, cvNome, anjoNome, arcanoNome, nodoSulSigno){
+  if (!cvNome || !anjoNome || !arcanoNome || !nodoSulSigno) return null;
+  const seed = hashSemente(nomeCompleto.trim().toLowerCase() + '|' + dataStr);
+  const rng = mulberry32(seed);
+  const abertura = escolherVariante(rng, ABERTURAS_CV_ANJO)(cvNome, anjoNome);
+  const ligacao = escolherVariante(rng, LIGACOES_ARCANO)(arcanoNome);
+  const fecho = escolherVariante(rng, FECHOS_NODO)(nodoSulSigno);
+  return `${abertura}, ${ligacao}${fecho}`;
+}
+
+/* ─── Variação por sementes — extensão aos restantes blocos ──────────
+   Mesmo princípio do parágrafo integrado: cada bloco usa a sua própria
+   sub-semente (nome+data+"|salt"), por isso a MESMA pessoa lê sempre o
+   mesmo texto em cada bloco, mas dois blocos diferentes da mesma pessoa
+   não "sincronizam" a escolha, e duas pessoas com o mesmo número
+   recebem frases diferentes. Zero custo, zero IA. */
+function variantePara(nomeCompleto, dataStr, salt, arr, ...args){
+  const seed = hashSemente(nomeCompleto.trim().toLowerCase() + '|' + dataStr + '|' + salt);
+  const rng = mulberry32(seed);
+  const fn = escolherVariante(rng, arr);
+  return typeof fn === 'function' ? fn(...args) : fn;
+}
+
+const INTRO_PINACULO = [
+  (n, faixa) => `Está a atravessar o seu ${n}º Pináculo (${faixa})`,
+  (n, faixa) => `O ciclo que vive agora é o ${n}º Pináculo (${faixa})`,
+  (n, faixa) => `Encontra-se dentro do ${n}º Pináculo (${faixa})`,
+  (n, faixa) => `A fase actual da sua vida corresponde ao ${n}º Pináculo (${faixa})`
+];
+const INTRO_ANO_PESSOAL = [
+  (ano, num) => `Este é um Ano Pessoal ${num} para si`,
+  (ano, num) => `${ano} traz-lhe uma vibração de Ano Pessoal ${num}`,
+  (ano, num) => `Está a viver um ciclo de Ano Pessoal ${num}`,
+  (ano, num) => `O número que rege o seu ${ano} é o ${num}`
+];
+const INTRO_NODO_SUL = [
+  (signo) => `O seu Nodo Sul está em ${signo}`,
+  (signo) => `Encontramos o seu Nodo Sul posicionado em ${signo}`,
+  (signo) => `A bagagem que traz consigo está marcada por ${signo}`,
+  (signo) => `Em ${signo} está o seu Nodo Sul`
+];
+const INTRO_NODO_NORTE = [
+  (signo) => `O Nodo Norte aponta para ${signo}`,
+  (signo) => `O caminho a seguir passa por ${signo}`,
+  (signo) => `${signo} é a direção do seu Nodo Norte`,
+  (signo) => `O seu Nodo Norte está em ${signo}`
+];
+const CONECTORES_COMPAT = [
+  '',
+  ' Vale a pena terem isto presente no dia a dia.',
+  ' É um padrão que costuma repetir-se ao longo da relação.',
+  ' Reparar nisto ajuda a evitar mal-entendidos desnecessários.'
+];
+const ABERTURAS_TRACO_NUMERICO = [
+  (traco, num) => `A sua ${traco} é o número ${num}`,
+  (traco, num) => `O número ${num} rege a sua ${traco}`,
+  (traco, num) => `Em ${traco}, o número que aparece é o ${num}`,
+  (traco, num) => `${traco}: o ${num} marca presença`
+];
+const INTRO_ARCANO_PESSOAL = [
+  (nome) => `A sua data de nascimento aponta para ${nome}`,
+  (nome) => `O arquétipo que o(a) acompanha desde sempre é ${nome}`,
+  (nome) => `${nome} é o Arcano que rege o seu Caminho de Vida`,
+  (nome) => `Encontramos ${nome} como o seu Arcano Pessoal`
+];
+const INTRO_ARCANO_ANO = [
+  (nome) => `A energia do seu ciclo actual chama-se ${nome}`,
+  (nome) => `Este ano vive sob a influência de ${nome}`,
+  (nome) => `${nome} é o Arcano que rege o seu ano actual`,
+  (nome) => `O seu Arcano do Ano é ${nome}`
+];
+// Bancos das chamadas para o Diamante — para os ~9 blocos do Espelho não
+// terminarem todos com a mesma frase repetida ("O Mapa Diamante revela...").
+const CTA_DIAMANTE = [
+  (oque) => `O Mapa Diamante revela ${oque}.`,
+  (oque) => `No Diamante, esta leitura destrincha ${oque}.`,
+  (oque) => `É no Mapa Diamante que se revela ${oque}.`,
+  (oque) => `A leitura completa — ${oque} — está no Diamante.`,
+  (oque) => `Desbloqueie o Diamante para conhecer ${oque}.`
+];
+
 function calcularAnjoNascimento(dateStr){
   const d = new Date(dateStr+'T12:00:00');
   const chave = String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
@@ -935,6 +1054,14 @@ async function onCalcular(){
       .concat(extra.elementosExtra.map(e => ({ nome: e.nome.split(/\s+/)[0], caminhoDeVida: e.caminhoDeVida })));
     grelhaCompat = calcularGrelhaCompatibilidade(membros);
   }
+  const anjoNomeParaLeitura = anjo && anjo.tipo === 'anjo' ? anjo.nome : (anjo ? `Universal (${anjo.elemento.split(' ')[0]})` : null);
+  const leituraIntegrada = gerarLeituraIntegrada(
+    nome, data,
+    (DONS_NUMERICOS[cv]||{}).nome,
+    anjoNomeParaLeitura,
+    (ARCANOS_MAIORES[arcanoP]||{}).nome,
+    nodos.nodoSul.signo
+  );
   const leadId = crypto.randomUUID();
 
   const freeResult = {
@@ -942,7 +1069,7 @@ async function onCalcular(){
     caminhoDeVida: cv, motivacao: mot,
     diaInfo, diaNome, signo: signo.nome,
     carmicas, excesso, mediunidade, anjo,
-    pinAtivo, ciclos, nodos, arcanoP, arcanoA, numExtra, grelhaCompat,
+    pinAtivo, ciclos, nodos, arcanoP, arcanoA, numExtra, grelhaCompat, leituraIntegrada,
     selo: selo.id, seloLabel: selo.label, seloIcon: selo.icon,
     horaModo, horaNascimento: horaExacta || null, periodoNascimento: periodo || null
   };
@@ -1034,7 +1161,9 @@ function renderFreeResult(leadId, r, signo, extra){
       })()}
       <div class="result-block" style="border-top:none;padding-top:0;margin-top:8px;">
         <h3>🔮 O seu perfil, num relance</h3>
-        <p class="muted">${escapeHtml(r.nome.split(/\s+/)[0])} carrega a vibração do número ${r.caminhoDeVida} (${escapeHtml((dom.nome||'').toLowerCase())}), com a alma a pedir ${escapeHtml((domAlma.nome||'').toLowerCase())} e um coração de ${escapeHtml(signo.nome)}. É alguém que, quando alinhado(a) com a sua própria energia, ${escapeHtml(dom.texto ? dom.texto.charAt(0).toLowerCase()+dom.texto.slice(1) : '')} Mas há mais três camadas por revelar — a sua Expressão pública, a sua Sombra escondida, e o que o seu corpo anda a tentar dizer-lhe.</p>
+        <p class="muted">${escapeHtml(r.nome.split(/\s+/)[0])} carrega a vibração do número ${r.caminhoDeVida} (${escapeHtml((dom.nome||'').toLowerCase())}), com a alma a pedir ${escapeHtml((domAlma.nome||'').toLowerCase())} e um coração de ${escapeHtml(signo.nome)}. É alguém que, quando alinhado(a) com a sua própria energia, ${escapeHtml(dom.texto ? dom.texto.charAt(0).toLowerCase()+dom.texto.slice(1) : '')}</p>
+        ${r.leituraIntegrada ? `<p class="muted" style="margin-top:8px;">${escapeHtml(r.leituraIntegrada)}</p>` : ''}
+        <p class="muted" style="margin-top:8px;">Mas há mais três camadas por revelar — a sua Expressão pública, a sua Sombra escondida, e o que o seu corpo anda a tentar dizer-lhe.</p>
       </div>
       <div style="text-align:center;margin-top:8px;">
         <div class="badge-num">${r.caminhoDeVida}</div>
@@ -1056,7 +1185,7 @@ function renderFreeResult(leadId, r, signo, extra){
 
       <div class="result-block">
         <h3>⚡ O seu Chakra em Foco: ${escapeHtml(r.diaInfo.chakra)}</h3>
-        <p class="muted">Ligado a ${escapeHtml(CHAKRA_TEASER[r.diaInfo.chakra] || '')} <strong>O Mapa Diamante revela a cor, o som e a prática exata para o equilibrar.</strong></p>
+        <p class="muted">Ligado a ${escapeHtml(CHAKRA_TEASER[r.diaInfo.chakra] || '')} <strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'cta-chakra', CTA_DIAMANTE, 'a cor, o som e a prática exata para o equilibrar'))}</strong></p>
       </div>
 
       <div class="result-block">
@@ -1067,54 +1196,54 @@ function renderFreeResult(leadId, r, signo, extra){
       ${r.anjo && r.anjo.tipo === 'anjo' ? `
       <div class="result-block">
         <h3>🕊️ O seu Anjo do Nascimento</h3>
-        <p class="muted"><strong>${escapeHtml(r.anjo.nome)}</strong>, ${r.anjo.numero}º da hierarquia dos ${escapeHtml(r.anjo.coro)}, sob a regência do ${escapeHtml(r.anjo.arcanjoRegente)}. <strong>O Mapa Diamante revela a sua virtude completa, a sombra a vigiar e a hora exata de invocação.</strong></p>
+        <p class="muted"><strong>${escapeHtml(r.anjo.nome)}</strong>, ${r.anjo.numero}º da hierarquia dos ${escapeHtml(r.anjo.coro)}, sob a regência do ${escapeHtml(r.anjo.arcanjoRegente)}. <strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'cta-anjo', CTA_DIAMANTE, 'a sua virtude completa, a sombra a vigiar e a hora exata de invocação'))}</strong></p>
       </div>` : ''}
       ${r.anjo && r.anjo.tipo === 'universal' ? `
       <div class="result-block">
         <h3>🕊️ A sua Essência Angelical</h3>
-        <p class="muted">Nasceu num dos 5 dias sem Anjo fixo — a sua ligação é direta aos Anjos Universais, elemento <strong>${escapeHtml(r.anjo.elemento)}</strong>. <strong>O Mapa Diamante explica o que isto significa e como escolher o seu Anjo de afinidade entre os 72.</strong></p>
+        <p class="muted">Nasceu num dos 5 dias sem Anjo fixo — a sua ligação é direta aos Anjos Universais, elemento <strong>${escapeHtml(r.anjo.elemento)}</strong>. <strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'cta-anjouniversal', CTA_DIAMANTE, 'o que isto significa e como escolher o seu Anjo de afinidade entre os 72'))}</strong></p>
       </div>` : ''}
 
       ${r.pinAtivo ? `
       <div class="result-block">
         <h3>🗻 O seu Ciclo de Vida Ativo</h3>
-        <p class="muted">Está atualmente no seu <strong>${r.pinAtivo.indice+1}º Pináculo</strong> (${escapeHtml(r.pinAtivo.pinaculo.faixa)}) — um ciclo de longo prazo com uma lição específica em curso. <strong>O Mapa Diamante revela o significado completo deste ciclo, o Desafio associado, e a data exata da próxima transição.</strong></p>
+        <p class="muted">Está atualmente no seu <strong>${r.pinAtivo.indice+1}º Pináculo</strong> (${escapeHtml(r.pinAtivo.pinaculo.faixa)}) — um ciclo de longo prazo com uma lição específica em curso. <strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'cta-pinaculo', CTA_DIAMANTE, 'o significado completo deste ciclo, o Desafio associado, e a data exata da próxima transição'))}</strong></p>
       </div>` : ''}
 
       ${r.ciclos ? `
       <div class="result-block">
         <h3>📅 O seu Ano Pessoal ${new Date().getFullYear()}</h3>
-        <p class="muted">Está a viver um Ano Pessoal <strong>${r.ciclos.anoPessoal}</strong> — cada ano da sua vida tem uma vibração diferente. <strong>O Mapa Diamante explica o que este número pede de si este ano, e o clima do seu Mês Pessoal atual.</strong></p>
+        <p class="muted">Está a viver um Ano Pessoal <strong>${r.ciclos.anoPessoal}</strong> — cada ano da sua vida tem uma vibração diferente. <strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'cta-anopessoal', CTA_DIAMANTE, 'o que este número pede de si este ano, e o clima do seu Mês Pessoal atual'))}</strong></p>
       </div>` : ''}
 
       ${r.nodos ? `
       <div class="result-block">
         <h3>🌑 Vidas Passadas: Sinal Detetado</h3>
-        <p class="muted">O seu Nodo Sul aponta para <strong>${escapeHtml(r.nodos.nodoSul.signo)}</strong> — a energia que já domina de outras vivências, trazida como bagagem para esta vida. <strong>O Mapa Diamante revela o padrão completo a vigiar, e o Nodo Norte — o caminho de crescimento desta encarnação.</strong></p>
+        <p class="muted">O seu Nodo Sul aponta para <strong>${escapeHtml(r.nodos.nodoSul.signo)}</strong> — a energia que já domina de outras vivências, trazida como bagagem para esta vida. <strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'cta-nodos', CTA_DIAMANTE, 'o padrão completo a vigiar, e o Nodo Norte — o caminho de crescimento desta encarnação'))}</strong></p>
       </div>` : ''}
 
       ${r.arcanoP ? `
       <div class="result-block">
         <h3>🃏 O seu Arcano Pessoal</h3>
-        <p class="muted">A sua data de nascimento aponta para <strong>${escapeHtml((ARCANOS_MAIORES[r.arcanoP]||{}).nome||'')}</strong> — o arquétipo que o(a) acompanha a vida inteira. <strong>O Mapa Diamante revela o significado completo, e o Arcano do Ano — a energia deste seu ciclo anual.</strong></p>
+        <p class="muted">${escapeHtml(variantePara(r.nome, r.dataNascimento, 'arcanopessoal', INTRO_ARCANO_PESSOAL, (ARCANOS_MAIORES[r.arcanoP]||{}).nome||''))}. <strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'cta-arcano', CTA_DIAMANTE, 'o significado completo, e o Arcano do Ano — a energia deste seu ciclo anual'))}</strong></p>
       </div>` : ''}
 
       ${r.mediunidade ? `
       <div class="result-block">
         <h3>✨ Sinal Detetado: Potencial Mediúnico</h3>
-        <p class="muted">Encontrámos um Número Mestre 11 na sua vibração principal — sinal de intuição elevada e possível dom de mediunidade/canalização. <strong>O Mapa Diamante revela exatamente onde este dom mora e como ativá-lo em segurança.</strong></p>
+        <p class="muted">Encontrámos um Número Mestre 11 na sua vibração principal — sinal de intuição elevada e possível dom de mediunidade/canalização. <strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'cta-mediunidade', CTA_DIAMANTE, 'exatamente onde este dom mora e como ativá-lo em segurança'))}</strong></p>
       </div>` : ''}
 
       ${r.carmicas.length ? `
       <div class="result-block">
         <h3>🔑 Lição Cármica Detetada</h3>
-        <p class="muted">O seu nome não contém o número <strong>${r.carmicas[0]}</strong> — isso indica uma lição desta vida ainda por desenvolver. <strong>No Mapa Diamante explicamos exatamente o que isso significa e como trabalhá-la.</strong></p>
+        <p class="muted">O seu nome não contém o número <strong>${r.carmicas[0]}</strong> — isso indica uma lição desta vida ainda por desenvolver. <strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'cta-carmica', CTA_DIAMANTE, 'exatamente o que isso significa e como trabalhá-la'))}</strong></p>
       </div>` : ''}
 
       ${r.excesso.length ? `
       <div class="result-block">
         <h3>⚡ Excesso Energético Detetado</h3>
-        <p class="muted">O número <strong>${r.excesso[0]}</strong> repete-se em excesso no seu nome — pode gerar desequilíbrio se não for canalizado. <strong>O Mapa Diamante ensina o ajuste exato para esta energia.</strong></p>
+        <p class="muted">O número <strong>${r.excesso[0]}</strong> repete-se em excesso no seu nome — pode gerar desequilíbrio se não for canalizado. <strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'cta-excesso', CTA_DIAMANTE, 'o ajuste exato para esta energia'))}</strong></p>
       </div>` : ''}
     </div>
 
@@ -1329,6 +1458,11 @@ function renderFullReport(data){
   document.getElementById('heroTitle').textContent = 'Mapa da Alma Diamante';
   document.getElementById('heroSub').textContent = `${escapeHtml(r.nome)} — leitura completa.`;
   main.innerHTML = `
+    ${r.leituraIntegrada ? `
+    <div class="card" style="border:1px solid var(--gold);">
+      <h3 style="color:var(--gold-light);">🔮 A sua Leitura</h3>
+      <p class="muted" style="margin-top:6px;line-height:1.6;">${escapeHtml(r.leituraIntegrada)}</p>
+    </div>` : ''}
     ${r.tipo !== 'casal' ? `
     <div class="card">
       <h3 style="color:var(--gold-light);">💎 Assinatura Cósmica</h3>
@@ -1380,7 +1514,7 @@ function renderFullReport(data){
         const dom = DONS_NUMERICOS[p.numero] || {};
         const ativo = i === r.pinAtivo.indice;
         return `<div style="margin-top:8px;padding:10px;border-radius:10px;background:${ativo ? 'rgba(212,175,55,.18)' : 'rgba(255,255,255,.04)'};${ativo ? 'border:1px solid var(--gold);' : ''}">
-          <p class="muted" style="font-size:.78rem;opacity:.85;">${i+1}º Pináculo · ${escapeHtml(p.faixa)}${ativo ? ' — <strong style="color:var(--gold-light);">EM CURSO</strong>' : ''}</p>
+          <p class="muted" style="font-size:.78rem;opacity:.85;">${ativo ? escapeHtml(variantePara(r.nome, r.dataNascimento, 'pinaculo', INTRO_PINACULO, i+1, p.faixa)) : (i+1)+'º Pináculo · '+escapeHtml(p.faixa)}${ativo ? ' — <strong style="color:var(--gold-light);">EM CURSO</strong>' : ''}</p>
           <p class="muted" style="margin-top:4px;"><strong>${p.numero} — ${escapeHtml(dom.nome||'')}:</strong> ${escapeHtml(dom.texto||'')}</p>
           <p class="muted" style="margin-top:4px;font-size:.85rem;"><strong>Desafio deste ciclo:</strong> ${escapeHtml(DESAFIOS_TEXTOS[p.desafio]||'')}</p>
         </div>`;
@@ -1390,7 +1524,7 @@ function renderFullReport(data){
     ${r.ciclos ? `
     <div class="card">
       <h3 style="color:var(--gold-light);">📅 Os seus Ciclos Pessoais</h3>
-      <p class="muted" style="margin-top:6px;"><strong>Ano Pessoal ${new Date().getFullYear()}: ${r.ciclos.anoPessoal}</strong> — ${escapeHtml((DONS_NUMERICOS[r.ciclos.anoPessoal]||{}).texto||'')}</p>
+      <p class="muted" style="margin-top:6px;"><strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'anopessoal', INTRO_ANO_PESSOAL, new Date().getFullYear(), r.ciclos.anoPessoal))}</strong> — ${escapeHtml((DONS_NUMERICOS[r.ciclos.anoPessoal]||{}).texto||'')}</p>
       <p class="muted" style="margin-top:6px;"><strong>Mês Pessoal:</strong> ${r.ciclos.mesPessoal} · <strong>Dia Pessoal (hoje):</strong> ${r.ciclos.diaPessoal}</p>
       <p class="muted" style="margin-top:8px;font-size:.78rem;opacity:.8;">O Ano Pessoal muda a cada ano civil; volte a consultar em Janeiro para o próximo.</p>
     </div>` : ''}
@@ -1398,11 +1532,11 @@ function renderFullReport(data){
     <div class="card">
       <h3 style="color:var(--gold-light);">🌑 Vidas Passadas & Propósito — Nodos Lunares</h3>
       <div style="margin-top:8px;padding:10px;background:rgba(212,175,55,.1);border-radius:10px;">
-        <p class="muted"><strong>🌑 Nodo Sul em ${escapeHtml(r.nodos.nodoSul.signo)}</strong> — de onde vem:</p>
+        <p class="muted"><strong>🌑 ${escapeHtml(variantePara(r.nome, r.dataNascimento, 'nodosul', INTRO_NODO_SUL, r.nodos.nodoSul.signo))}</strong> — de onde vem:</p>
         <p class="muted" style="margin-top:4px;">${escapeHtml(NODO_SUL_TEXTOS[r.nodos.nodoSul.signo]||'')}</p>
       </div>
       <div style="margin-top:8px;padding:10px;background:rgba(212,175,55,.1);border-radius:10px;">
-        <p class="muted"><strong>🌕 Nodo Norte em ${escapeHtml(r.nodos.nodoNorte.signo)}</strong> — para onde vai:</p>
+        <p class="muted"><strong>🌕 ${escapeHtml(variantePara(r.nome, r.dataNascimento, 'nodonorte', INTRO_NODO_NORTE, r.nodos.nodoNorte.signo))}</strong> — para onde vai:</p>
         <p class="muted" style="margin-top:4px;">${escapeHtml(NODO_NORTE_TEXTOS[r.nodos.nodoNorte.signo]||'')}</p>
       </div>
       <p class="muted" style="margin-top:10px;font-size:.78rem;opacity:.8;">⚠️ Leitura simbólica dentro da tradição da astrologia cármica — não é um facto histórico verificável. Serve como bússola de autoconhecimento, não como sentença.</p>
@@ -1423,11 +1557,11 @@ function renderFullReport(data){
     ${r.numExtra ? `
     <div class="card">
       <h3 style="color:var(--gold-light);">🔢 Os Restantes Números do seu Mapa Pitagórico</h3>
-      <p class="muted" style="margin-top:6px;"><strong>Pedra Angular (${r.numExtra.pedraAngular}):</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.pedraAngular]||{}).texto||'')} — é assim que costuma iniciar projetos e desafios novos.</p>
-      <p class="muted" style="margin-top:6px;"><strong>Maturidade (${r.numExtra.maturidade}):</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.maturidade]||{}).texto||'')} — a síntese que tende a alcançar na segunda metade da vida.</p>
-      <p class="muted" style="margin-top:6px;"><strong>Atitude / Primeira Impressão (${r.numExtra.atitude}):</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.atitude]||{}).texto||'')} — a imagem que transmite antes de dizer uma palavra.</p>
-      <p class="muted" style="margin-top:6px;"><strong>Equilíbrio (${r.numExtra.equilibrio}):</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.equilibrio]||{}).texto||'')} — o recurso a que recorre para se recompor em momentos difíceis.</p>
-      ${r.numExtra.paixaoOculta.length ? `<p class="muted" style="margin-top:6px;"><strong>Paixão Oculta (${r.numExtra.paixaoOculta.join(', ')}):</strong> um talento que domina com tanta naturalidade que quase não repara nele — ${escapeHtml((DONS_NUMERICOS[r.numExtra.paixaoOculta[0]]||{}).texto||'')}</p>` : `<p class="muted" style="margin-top:6px;"><strong>Paixão Oculta:</strong> sem repetições marcantes no nome — os seus talentos distribuem-se de forma equilibrada, sem um único foco dominante.</p>`}
+      <p class="muted" style="margin-top:6px;"><strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'pedraangular', ABERTURAS_TRACO_NUMERICO, 'Pedra Angular', r.numExtra.pedraAngular))}:</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.pedraAngular]||{}).texto||'')} — é assim que costuma iniciar projetos e desafios novos.</p>
+      <p class="muted" style="margin-top:6px;"><strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'maturidade', ABERTURAS_TRACO_NUMERICO, 'Maturidade', r.numExtra.maturidade))}:</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.maturidade]||{}).texto||'')} — a síntese que tende a alcançar na segunda metade da vida.</p>
+      <p class="muted" style="margin-top:6px;"><strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'atitude', ABERTURAS_TRACO_NUMERICO, 'Atitude / Primeira Impressão', r.numExtra.atitude))}:</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.atitude]||{}).texto||'')} — a imagem que transmite antes de dizer uma palavra.</p>
+      <p class="muted" style="margin-top:6px;"><strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'equilibrio', ABERTURAS_TRACO_NUMERICO, 'Equilíbrio', r.numExtra.equilibrio))}:</strong> ${escapeHtml((DONS_NUMERICOS[r.numExtra.equilibrio]||{}).texto||'')} — o recurso a que recorre para se recompor em momentos difíceis.</p>
+      ${r.numExtra.paixaoOculta.length ? `<p class="muted" style="margin-top:6px;"><strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'paixaooculta', ABERTURAS_TRACO_NUMERICO, 'Paixão Oculta', r.numExtra.paixaoOculta.join(', ')))}:</strong> um talento que domina com tanta naturalidade que quase não repara nele — ${escapeHtml((DONS_NUMERICOS[r.numExtra.paixaoOculta[0]]||{}).texto||'')}</p>` : `<p class="muted" style="margin-top:6px;"><strong>Paixão Oculta:</strong> sem repetições marcantes no nome — os seus talentos distribuem-se de forma equilibrada, sem um único foco dominante.</p>`}
       <p class="muted" style="margin-top:6px;"><strong>Subconsciente (${r.numExtra.subconsciente}/9):</strong> ${r.numExtra.subconsciente >= 7 ? 'Confiança elevada para reagir bem a crises e imprevistos — recorre a muitos recursos internos diferentes.' : r.numExtra.subconsciente >= 4 ? 'Confiança moderada perante crises — reage bem à maioria das situações, com alguns pontos cegos.' : 'Tende a sentir-se mais inseguro(a) perante crises súbitas — vale a pena desenvolver recursos fora da zona habitual.'}</p>
     </div>` : ''}
     ${r.grelhaCompat && r.grelhaCompat.length ? `
@@ -1437,7 +1571,7 @@ function renderFullReport(data){
       ${r.grelhaCompat.map(p => `
       <div style="margin-top:8px;padding:10px;border-radius:10px;background:rgba(255,255,255,.04);">
         <p class="muted" style="font-size:.85rem;"><strong>${escapeHtml(p.a)} (${p.cvA}) ⇄ ${escapeHtml(p.b)} (${p.cvB})</strong></p>
-        <p class="muted" style="margin-top:4px;">${escapeHtml(p.texto)}</p>
+        <p class="muted" style="margin-top:4px;">${escapeHtml(p.texto)}${escapeHtml(variantePara(p.a+p.b, p.cvA+'-'+p.cvB, 'compat', CONECTORES_COMPAT))}</p>
       </div>`).join('')}
     </div>` : ''}
     <div class="card">
