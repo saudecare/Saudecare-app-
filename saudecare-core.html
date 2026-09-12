@@ -306,9 +306,10 @@
     </div>
     <button data-view="home" class="active">🏠 Início</button>
     <button onclick="startNewConsultationFlow()" style="background:var(--primary);color:#fff;font-weight:600;">🩺 Nova Consulta</button>
-    <button data-view="portalPaciente" style="background:#e3f0ea;font-weight:600;">💚 Central do Paciente</button>
+    <button data-view="portalPaciente" style="background:#e3f0ea;color:#1a2b26;font-weight:600;">💚 Central do Paciente</button>
     <button data-view="group_agenda">📅 Agenda & Marcações</button>
     <button data-view="group_tools">🧰 Ferramentas</button>
+    <button id="navMisticaBtn" data-view="group_mistica" style="display:none;">🔮 Métodos Exclusivos</button>
     <button data-view="group_business">💼 O Meu Negócio</button>
     <button data-view="group_account">⚙️ Conta</button>
     <button onclick="installApp()" style="margin-top:20px;">📲 Instalar app no dispositivo</button>
@@ -1127,6 +1128,8 @@ onAuthStateChanged(auth, async (user) => {
   const tokenResult = await user.getIdTokenResult(true);
   tenantId = tokenResult.claims.tenantId || null;
   tenantRole = tokenResult.claims.role || null;
+  const navMisticaBtn = document.getElementById('navMisticaBtn');
+  if (navMisticaBtn) navMisticaBtn.style.display = (tenantId === 'hikari-terapias') ? '' : 'none';
 
   if (!tenantId){
     if (window.__justRegistered){
@@ -1455,10 +1458,12 @@ const NAV_GROUPS = {
     { view: 'knowledge', icon: '🧠', label: 'Fonte de Conhecimento' },
     { view: 'forms', icon: '📝', label: 'Fichas' },
     { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
-    { view: 'trainings', icon: '🎓', label: 'Formações' },
+    { view: 'trainings', icon: '🎓', label: 'Formações' }
+  ]},
+  mistica: { title: '🔮 Métodos Exclusivos Hikari Fafe', tenantOnly: 'hikari-terapias', items: [
     { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', tenantOnly: 'hikari-terapias' },
     { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', tenantOnly: 'hikari-terapias' },
-    { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem de Baixa Vibração', tenantOnly: 'hikari-terapias' }
+    { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem — Pêndulo Hebraico', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1502,7 +1507,8 @@ function highlightActiveNavGroup(view){
   });
 }
 
-function renderView(view){
+function renderView(view, opts){
+  opts = opts || {};
   const main = document.getElementById('mainView');
   main.innerHTML = '<p class="muted">A carregar…</p>';
   if (!__navigatingFromPopstate){
@@ -1528,7 +1534,7 @@ function renderView(view){
   else if (view === 'supportContact') renderSupportContact(main);
   else if (view === 'mapaAlma') renderMapaAlma(main);
   else if (view === 'cartomancia') renderCartomancia(main);
-  else if (view === 'triagemBaixaVibracao') renderTriagemBaixaVibracao(main);
+  else if (view === 'triagemBaixaVibracao') renderTriagemBaixaVibracao(main, opts);
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
   highlightActiveNavGroup(view);
@@ -3508,7 +3514,7 @@ window.savePatient = async function(){
 
   const portalToken = crypto.randomUUID().replace(/-/g, '');
 
-  await addDoc(collection(db, 'tenants', tenantId, 'patients'), {
+  const novoPatientRef = await addDoc(collection(db, 'tenants', tenantId, 'patients'), {
     fullName,
     phone: document.getElementById('pPhone').value.trim(),
     email: document.getElementById('pEmail').value.trim(),
@@ -3527,7 +3533,15 @@ window.savePatient = async function(){
   });
   toast('Paciente registado, com consentimento guardado.');
   closePatientOverlay();
-  renderView('patients');
+  window.__allPatientsCache = null; // força reler a lista com o novo paciente incluído
+  if (window.__triagemAVoltarDePaciente){
+    window.__triagemAVoltarDePaciente = false;
+    __triagem.patientId = novoPatientRef.id;
+    __triagem.patientNome = fullName;
+    renderView('triagemBaixaVibracao', { manterEstado: true });
+  } else {
+    renderView('patients');
+  }
 };
 
 // ── Janela dedicada da ficha do paciente (em vez de aparecer no fundo da lista) ──
@@ -3592,14 +3606,22 @@ window.viewPatient = async function(patientId){
     orderBy('generatedAt', 'desc')
   ));
   let reportsHtml = '';
+  const triagensDoPaciente = [];
   reportsSnap.forEach(rd => {
     const r = rd.data();
     const date = r.generatedAt?.toDate ? r.generatedAt.toDate().toLocaleDateString('pt-PT') : '';
+    if (r.protocolName === 'Triagem de Baixa Vibração') triagensDoPaciente.push({ id: rd.id, ...r });
     reportsHtml += `<div class="appt-item row">
       <div><strong>${escapeHtml(r.protocolName)}</strong><div class="muted">${date}</div></div>
       <button class="ghost" onclick="viewSavedReport('${patientId}','${rd.id}')">Ver</button>
     </div>`;
   });
+  if (triagensDoPaciente.length >= 2){
+    reportsHtml = `<div class="appt-item row" style="background:#eef4f0;">
+      <div><strong>📊 Evolução — Triagem de Baixa Vibração</strong><div class="muted">${triagensDoPaciente.length} sessões registadas</div></div>
+      <button class="primary" onclick="viewTriagemEvolucao('${patientId}')">Ver Evolução</button>
+    </div>` + reportsHtml;
+  }
   if (!reportsHtml) reportsHtml = '<p class="muted">Ainda sem relatórios para este paciente.</p>';
 
   // Fichas/questionários já associados a este paciente (antes ficavam
@@ -9290,6 +9312,401 @@ function triagemBuscarEtiquetas(temas, maxResult=2){
 /* ─── Estado da consulta (9 passos) ─────────────────────────────────────
    Passos 0-6 são PURA SELEÇÃO (o que o pêndulo detectou) — sem cartas.
    A Leitura Complementar (passo 7) é a ÚNICA parte com cartas. */
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOTOR DO MAPA DA ALMA — reaproveitado do mapa-da-alma.html (mesmas
+   fórmulas já validadas ali: Anjo do Nascimento, Arcano Pessoal/do Ano,
+   Nodo Sul/Norte, Pináculos, Ciclos Pessoais). Usado aqui para trazer
+   automaticamente o perfil da pessoa para dentro da Triagem — sem
+   pedir de novo os dados, já que nome+data de nascimento já foram
+   recolhidos no passo 1/2. stripAccents e escapeHtml já existem mais
+   acima neste ficheiro, por isso não são repetidos aqui.
+   ══════════════════════════════════════════════════════════════════════ */
+const PYTH_MAP = {A:1,B:2,C:3,D:4,E:5,F:6,G:7,H:8,I:9,J:1,K:2,L:3,M:4,N:5,O:6,P:7,Q:8,R:9,S:1,T:2,U:3,V:4,W:5,X:6,Y:7,Z:8};
+const VOWELS = 'AEIOU';
+
+
+function reduceNumber(n){
+  while (n > 9 && n !== 11 && n !== 22 && n !== 33){
+    n = String(n).split('').reduce((a,d) => a + (parseInt(d,10)||0), 0);
+  }
+  return n;
+}
+function letterValue(ch){ return PYTH_MAP[ch.toUpperCase()] || 0; }
+
+function nameLetters(str){ return stripAccents(str).toUpperCase().split('').filter(ch => /[A-Z]/.test(ch)); }
+
+function sumLetters(str, filter){
+  let total = 0;
+  for (const ch of nameLetters(str)){
+    if (filter === 'vowels' && !VOWELS.includes(ch)) continue;
+    if (filter === 'consonants' && VOWELS.includes(ch)) continue;
+    total += letterValue(ch);
+  }
+  return total;
+}
+
+function caminhoDeVida(dateStr){
+  const digits = dateStr.replace(/\D/g,'');
+  const sum = digits.split('').reduce((a,d) => a + parseInt(d,10), 0);
+  return reduceNumber(sum);
+}
+
+/* ─── Anjo do Nascimento (72 Génios / Shem HaMephorash) ──────────────
+   Tabela validada contra 4 exemplos confirmados no PDF de referência
+   (Livro de São Cipriano): Ricardo/Haamiah, Natália/Iah-Hel,
+   Beatriz/Achaiah, Lara/Ariel. Funciona apenas com a data — por isso
+   está disponível em todos os selos de precisão, incluindo o Solar.
+   Fontes: tradição cabalística clássica (Ambelain e derivados),
+   parafraseadas nas nossas próprias palavras. */
+const GENIOS_72 = [
+  { n:1, nome:'Vehuiah', datas:["20/03","01/06","13/08","25/10","06/01"], virtude:'Ilumina em assuntos difíceis e concede capacidade de cura pelas mãos.', sombra:'Agressividade e gastos excessivos.', planeta:'Marte' },
+  { n:2, nome:'Jeliel', datas:["21/03","02/06","14/08","26/10","07/01"], virtude:'Pacifica conflitos, favorece causas judiciais e a harmonia no lar.', sombra:'Desarmonia familiar e nas relações.', planeta:'Júpiter' },
+  { n:3, nome:'Sitael', datas:["22/03","03/06","15/08","27/10","08/01"], virtude:'Protege contra adversidades, assaltos e acidentes; favorece magnetismo pessoal e as ciências.', sombra:'Mentira e ingratidão.', planeta:'Sol' },
+  { n:4, nome:'Elemiah', datas:["23/03","04/06","16/08","28/10","09/01"], virtude:'Revela traições, alivia tormentos do espírito e favorece viagens.', sombra:'Desonestidade nos negócios.', planeta:'Mercúrio' },
+  { n:5, nome:'Mahasiah', datas:["24/03","05/06","17/08","29/10","10/01"], virtude:'Traz paz nas relações; favorece artes, filosofia e profissões liberais.', sombra:'Abuso da boa-fé alheia e excessos alimentares.', planeta:'Vénus' },
+  { n:6, nome:'Lelahel', datas:["25/03","06/06","18/08","30/10","11/01"], virtude:'Ilumina realizações, ajuda a curar e atrai amor e fé.', sombra:'Mau caráter e ambição descontrolada.', planeta:'Sol' },
+  { n:7, nome:'Achaiah', datas:["26/03","07/06","19/08","31/10","12/01"], virtude:'Rege a paciência, a descoberta dos segredos da natureza e o rigor do trabalho. Ajuda a desmascarar falsidades e concede discernimento.', sombra:'Desleixo.', planeta:'Mercúrio' },
+  { n:8, nome:'Cahethel', datas:["27/03","08/06","20/08","01/11","13/01"], virtude:'Ajuda a obter bênção, afasta energias negativas e favorece a prosperidade.', sombra:'Orgulho e corrupção.', planeta:'Saturno' },
+  { n:9, nome:'Haziel', datas:["28/03","09/06","21/08","02/11","14/01"], virtude:'Favorece reconciliação, bondade, justiça e o cumprimento de promessas.', sombra:'Arrogância e conflitos coletivos.', planeta:'Lua' },
+  { n:10, nome:'Aladiah', datas:["29/03","10/06","22/08","03/11","15/01"], virtude:'Auxilia a cura e a tomada de boas decisões; protege contra maldades.', sombra:'Vícios e desonestidade nos negócios.', planeta:'Júpiter' },
+  { n:11, nome:'Laoviah', datas:["30/03","11/06","23/08","04/11","16/01"], virtude:'Ajuda a obter vitória, protege em relacionamentos e contra pessoas desonestas.', sombra:'Vaidade.', planeta:'Saturno' },
+  { n:12, nome:'Hahahiah', datas:["31/03","12/06","24/08","05/11","17/01"], virtude:'Protege contra adversidades, revela mistérios através dos sonhos e traz equilíbrio.', sombra:'Libertinagem e violência.', planeta:'Neptuno' },
+  { n:13, nome:'Yesalel', datas:["01/04","13/06","25/08","06/11","18/01"], virtude:'Rege a amizade, a reconciliação e a fidelidade conjugal.', sombra:'Discórdia e desunião familiar.', planeta:'Saturno' },
+  { n:14, nome:'Mebahel', datas:["02/04","14/06","26/08","07/11","19/01"], virtude:'Favorece a justiça e protege contra a usurpação de bens.', sombra:'Falso testemunho e mentira.', planeta:'Júpiter' },
+  { n:15, nome:'Hariel', datas:["03/04","15/06","27/08","08/11","20/01"], virtude:'Favorece a fé, os estudos, as descobertas e protege as artes e a ciência.', sombra:'Vaidade e presunção.', planeta:'Marte' },
+  { n:16, nome:'Hekamiah', datas:["04/04","16/06","28/08","09/11","21/01"], virtude:'Ajuda a vencer inimigos, favorece a liderança e incentiva a coragem.', sombra:'Violência física e traição.', planeta:'Marte' },
+  { n:17, nome:'Lauviah', datas:["05/04","17/06","29/08","10/11","22/01"], virtude:'Combate a tristeza, favorece descobertas e inspira a expressão artística.', sombra:'Descrença e depressão.', planeta:'Sol' },
+  { n:18, nome:'Caliel', datas:["06/04","18/06","30/08","11/11","23/01"], virtude:'Traz socorro rápido, favorece a justiça e desmascara inimigos.', sombra:'Escândalos e inveja.', planeta:'Mercúrio' },
+  { n:19, nome:'Leuviah', datas:["07/04","19/06","31/08","12/11","24/01"], virtude:'Concede graça, memória e inteligência; ajuda a superar obstáculos.', sombra:'Sarcasmo e desespero.', planeta:'Vénus' },
+  { n:20, nome:'Pahaliah', datas:["08/04","20/06","01/09","13/11","25/01"], virtude:'Rege a fé, a religião e ajuda a encontrar a vocação certa.', sombra:'Orgulho, vaidade e libertinagem.', planeta:'Lua' },
+  { n:21, nome:'Nelchael', datas:["09/04","21/06","02/09","14/11","26/01"], virtude:'Protege contra calúnias e feitiços; favorece matemática, geografia e astronomia.', sombra:'Ignorância e preconceito.', planeta:'Mercúrio' },
+  { n:22, nome:'Ieiaiel', datas:["10/04","22/06","03/09","15/11","27/01"], virtude:'Rege fortuna, fama, comércio, viagens e a abertura de novos caminhos.', sombra:'Opressão e preconceito.', planeta:'Mercúrio' },
+  { n:23, nome:'Melahel', datas:["11/04","23/06","04/09","16/11","28/01"], virtude:'Protege em viagens e favorece o conhecimento de ervas curativas.', sombra:'Charlatanismo.', planeta:'Lua' },
+  { n:24, nome:'Haheuiah', datas:["12/04","24/06","05/09","17/11","29/01"], virtude:'Concede graça e misericórdia; protege presos e injustiçados.', sombra:'Tendência ao crime e à delinquência.', planeta:'Vénus' },
+  { n:25, nome:'Nith-Haiah', datas:["13/04","25/06","06/09","18/11","30/01"], virtude:'Concede sabedoria e ajuda a descobrir a verdade por trás de mistérios.', sombra:'Práticas de magia negra.', planeta:'Saturno' },
+  { n:26, nome:'Haaiah', datas:["14/04","26/06","07/09","19/11","31/01"], virtude:'Favorece sucesso em processos judiciais e a diplomacia; traz paz.', sombra:'Violência, desconfiança e conspirações.', planeta:'Lua' },
+  { n:27, nome:'Ierathel', datas:["15/04","27/06","08/09","20/11","01/02"], virtude:'Confunde caluniadores e favorece a justiça e a verdade.', sombra:'Injustiça e intolerância.', planeta:'Saturno' },
+  { n:28, nome:'Seheiah', datas:["16/04","28/06","09/09","21/11","02/02"], virtude:'Protege contra doenças e acidentes; favorece a longevidade.', sombra:'Preguiça e desleixo.', planeta:'Júpiter' },
+  { n:29, nome:'Reyel', datas:["17/04","29/06","10/09","22/11","03/02"], virtude:'Protege contra inimigos visíveis e invisíveis; favorece meditação e pureza.', sombra:'Falsidade e discriminação.', planeta:'Marte' },
+  { n:30, nome:'Omael', datas:["18/04","30/06","11/09","23/11","04/02"], virtude:'Traz paciência e alívio ao desespero; favorece a medicina.', sombra:'Comportamentos abusivos graves.', planeta:'Sol' },
+  { n:31, nome:'Lecabel', datas:["19/04","01/07","12/09","24/11","05/02"], virtude:'Inspira soluções para problemas complexos e protege o trabalho.', sombra:'Ganância e orgulho.', planeta:'Sol' },
+  { n:32, nome:'Vasariah', datas:["20/04","02/07","13/09","25/11","06/02"], virtude:'Favorece equilíbrio e justiça; protege em processos judiciais.', sombra:'Ressentimento e maldade.', planeta:'Mercúrio' },
+  { n:33, nome:'Iehuiah', datas:["21/04","03/07","14/09","26/11","07/02"], virtude:'Desfaz maquinações de traidores; favorece aprendizado e franqueza.', sombra:'Revoltas e uso indevido da palavra.', planeta:'Lua' },
+  { n:34, nome:'Lehahiah', datas:["22/04","04/07","15/09","27/11","08/02"], virtude:'Favorece harmonia entre líderes e liderados, paz e serenidade.', sombra:'Turbulência, possessividade e nervosismo.', planeta:'Saturno' },
+  { n:35, nome:'Chavakiah', datas:["23/04","05/07","16/09","28/11","09/02"], virtude:'Favorece reconciliação familiar e resolve heranças/partilhas com paz.', sombra:'Confusão e autoritarismo.', planeta:'Mercúrio' },
+  { n:36, nome:'Menadel', datas:["24/04","06/07","17/09","29/11","10/02"], virtude:'Ajuda a manter o emprego, protege contra calúnias e ajuda a reencontrar pessoas e objetos perdidos.', sombra:'Fuga de responsabilidades.', planeta:'Marte' },
+  { n:37, nome:'Aniel', datas:["25/04","07/07","18/09","30/11","11/02"], virtude:'Favorece vitória, ciências, artes e a busca de iluminação interior.', sombra:'Ambição e materialismo.', planeta:'Lua' },
+  { n:38, nome:'Haamiah', datas:["26/04","08/07","19/09","01/12","12/02"], virtude:'Rege a busca da verdade, a sabedoria e a proteção espiritual. Ajuda a desmascarar falsidades, concede discernimento e protege quem estuda a ciência sagrada, a filosofia e os mistérios do invisível.', sombra:'Ações contrárias aos princípios morais.', planeta:'Saturno' },
+  { n:39, nome:'Rehael', datas:["27/04","09/07","20/09","02/12","13/02"], virtude:'Favorece cura, misericórdia, paz interior e amor familiar.', sombra:'Crueldade e dependências.', planeta:'Saturno' },
+  { n:40, nome:'Ieiazel', datas:["28/04","10/07","21/09","03/12","14/02"], virtude:'Traz consolo, favorece literatura e comunicação, alivia angústia.', sombra:'Depressão e desânimo.', planeta:'Mercúrio' },
+  { n:41, nome:'Hahahael', datas:["29/04","11/07","22/09","04/12","15/02"], virtude:'Protege contra caluniadores e favorece a dedicação espiritual.', sombra:'Falsos profetas e aproveitadores da boa-fé.', planeta:'Júpiter' },
+  { n:42, nome:'Mikael', datas:["30/04","12/07","23/09","05/12","16/02"], virtude:'Favorece viagens seguras, sucesso empresarial e revela conspirações.', sombra:'Promiscuidade, traição e violência.', planeta:'Mercúrio' },
+  { n:43, nome:'Veuliah', datas:["01/05","13/07","24/09","06/12","17/02"], virtude:'Ajuda a libertar de vícios e fortalece quem ocupa posições de poder.', sombra:'Discórdia em negócios.', planeta:'Marte' },
+  { n:44, nome:'Yelaiah', datas:["02/05","14/07","25/09","07/12","18/02"], virtude:'Protege magistrados, favorece vitória em processos e sucesso em empreendimentos.', sombra:'Discussões e uso de substâncias.', planeta:'Mercúrio' },
+  { n:45, nome:'Sealiah', datas:["03/05","15/07","26/09","08/12","19/02"], virtude:'Confunde os orgulhosos e eleva os humildes; traz paz ligada à natureza.', sombra:'Orgulho e insensibilidade.', planeta:'Sol' },
+  { n:46, nome:'Ariel', datas:["04/05","16/07","27/09","09/12","20/02"], virtude:'Rege as revelações, os sonhos intuitivos e a gratidão. Associado à perceção subtil e à capacidade de receber intuições através do sentir.', sombra:'Turbulência e obsessão espiritual.', planeta:'Saturno' },
+  { n:47, nome:'Asaliah', datas:["05/05","17/07","28/09","10/12","21/02"], virtude:'Favorece a elevação espiritual e a luz interior.', sombra:'Escândalos.', planeta:'Vénus' },
+  { n:48, nome:'Mihael', datas:["06/05","18/07","29/09","11/12","22/02"], virtude:'Favorece a paz conjugal e a intuição sobre o que está para vir.', sombra:'Divórcio e separação.', planeta:'Vénus' },
+  { n:49, nome:'Vehuel', datas:["07/05","19/07","30/09","12/12","23/02"], virtude:'Traz conforto em desgostos e exaltação espiritual.', sombra:'Egoísmo e inveja.', planeta:'Mercúrio' },
+  { n:50, nome:'Daniel', datas:["08/05","20/07","01/10","13/12","24/02"], virtude:'Traz consolo, favorece a justiça e clareza em momentos de indecisão.', sombra:'Agressividade.', planeta:'Lua' },
+  { n:51, nome:'Hahasiah', datas:["09/05","21/07","02/10","14/12","25/02"], virtude:'Favorece a contemplação espiritual e a descoberta da sabedoria.', sombra:'Desleixo e dependência da caridade alheia.', planeta:'Lua' },
+  { n:52, nome:'Imamaiah', datas:["10/05","22/07","03/10","15/12","26/02"], virtude:'Ajuda a vencer resistências, favorece trabalho honesto e viagens seguras.', sombra:'Vaidade, má-educação e conflitos.', planeta:'Júpiter' },
+  { n:53, nome:'Nanael', datas:["11/05","23/07","04/10","16/12","27/02"], virtude:'Favorece estudos avançados; protege educadores e homens da lei.', sombra:'Autodestruição e autocrítica excessiva.', planeta:'Saturno' },
+  { n:54, nome:'Nithael', datas:["12/05","24/07","05/10","17/12","28/02"], virtude:'Favorece misericórdia, longevidade e protege quem está em posição de liderança.', sombra:'Agressividade, intrigas e preconceito social.', planeta:'Júpiter' },
+  { n:55, nome:'Mebahiah', datas:["13/05","25/07","06/10","18/12","01/03"], virtude:'Favorece consolo, fertilidade e a proteção das crianças.', sombra:'Mentira e falsas promessas.', planeta:'Júpiter' },
+  { n:56, nome:'Poiel', datas:["14/05","26/07","07/10","19/12","02/03"], virtude:'Ajuda a realizar desejos com fama e prestígio, quando as ações são para o bem.', sombra:'Agressividade, vaidade e corrupção.', planeta:'Sol' },
+  { n:57, nome:'Nemamiah', datas:["15/05","27/07","08/10","20/12","03/03"], virtude:'Favorece prosperidade e boas relações profissionais.', sombra:'Crítica e inveja.', planeta:'Marte' },
+  { n:58, nome:'Iealel', datas:["16/05","28/07","09/10","21/12","04/03"], virtude:'Afasta a tristeza, favorece a cura (especialmente da visão) e a paz interior.', sombra:'Vingança e sarcasmo.', planeta:'Marte' },
+  { n:59, nome:'Harahel', datas:["17/05","29/07","10/10","22/12","05/03"], virtude:'Ajuda em questões de fertilidade e favorece o comércio de livros e conhecimento.', sombra:'Má gestão de bens e falsificação.', planeta:'Sol' },
+  { n:60, nome:'Mitzrael', datas:["18/05","30/07","11/10","23/12","06/03"], virtude:'Conforta em opressões, favorece a cura do espírito e a fidelidade.', sombra:'Vícios, agressividade e impulsividade.', planeta:'Lua' },
+  { n:61, nome:'Umabel', datas:["19/05","31/07","12/10","24/12","07/03"], virtude:'Favorece amizades e o estudo da psicologia e das ciências esotéricas.', sombra:'Isolamento e dificuldade nos relacionamentos.', planeta:'Vénus' },
+  { n:62, nome:'Iah-Hel', datas:["20/05","01/08","13/10","25/12","08/03"], virtude:'Rege a sabedoria, a tranquilidade e a iluminação espiritual. Traz paz interior, moderação e harmonia — forte vibração de proteção para o lar e a estabilidade da família.', sombra:'Escândalos e inconsequência nas relações.', planeta:'Saturno' },
+  { n:63, nome:'Anauel', datas:["21/05","02/08","14/10","26/12","09/03"], virtude:'Confunde inimigos, protege em acidentes e traz novas ideias.', sombra:'Comportamento de maus pagadores.', planeta:'Mercúrio' },
+  { n:64, nome:'Mehiel', datas:["22/05","03/08","15/10","27/12","10/03"], virtude:'Protege nas adversidades, favorece o equilíbrio emocional.', sombra:'Vaidade e concorrência desleal.', planeta:'Mercúrio' },
+  { n:65, nome:'Damabiah', datas:["23/05","04/08","16/10","28/12","11/03"], virtude:'Protege contra sortilégios e favorece sucesso em empreendimentos, comércio e viagens.', sombra:'Emoções exageradas.', planeta:'Lua' },
+  { n:66, nome:'Manakel', datas:["24/05","05/08","17/10","29/12","12/03"], virtude:'Traz calma, favorece a longevidade e inspira música e poesia.', sombra:'Ingratidão e desânimo.', planeta:'Neptuno' },
+  { n:67, nome:'Ayel', datas:["25/05","06/08","18/10","30/12","13/03"], virtude:'Traz consolo, sabedoria e longevidade; favorece estudos religiosos.', sombra:'Excessos e frustração.', planeta:'Saturno' },
+  { n:68, nome:'Habuhiah', datas:["26/05","07/08","19/10","31/12","14/03"], virtude:'Favorece a saúde, a cura e a agricultura.', sombra:'Doenças e maus presságios.', planeta:'Lua' },
+  { n:69, nome:'Rochel', datas:["27/05","08/08","20/10","01/01","15/03"], virtude:'Ajuda a encontrar objetos perdidos e favorece a fortuna.', sombra:'Impulsividade e fraude.', planeta:'Júpiter' },
+  { n:70, nome:'Yabamiah', datas:["28/05","09/08","21/10","02/01","16/03"], virtude:'Favorece purificação, harmonia com a natureza e recuperação de vícios.', sombra:'Conflitos conjugais.', planeta:'Sol' },
+  { n:71, nome:'Haiaiel', datas:["29/05","10/08","22/10","03/01","17/03"], virtude:'Confunde os maus, traz serenidade, vitória e força.', sombra:'Deslealdade.', planeta:'Marte' },
+  { n:72, nome:'Mumiah', datas:["30/05","11/08","23/10","04/01","18/03"], virtude:'Favorece sucesso, saúde, longevidade e grandes descobertas; ligado à medicina.', sombra:'Ódio de si mesmo e revolta familiar.', planeta:'Neptuno' },
+];
+
+const COROS_ANJOS = [
+  { faixa:[1,8], nome:'Serafins', regente:'Arcanjo Metatron', dominio:'Purificação, iluminação, proximidade com o Divino.' },
+  { faixa:[9,16], nome:'Querubins', regente:'Arcanjo Raziel', dominio:'Conhecimento oculto, sabedoria profunda, mistérios.' },
+  { faixa:[17,24], nome:'Tronos', regente:'Arcanjo Tzafquiel', dominio:'Justiça, estabilidade, firmeza de decisão.' },
+  { faixa:[25,32], nome:'Dominações', regente:'Arcanjo Tzadquiel', dominio:'Ordem, liderança justa, equilíbrio de poder.' },
+  { faixa:[33,40], nome:'Potências', regente:'Arcanjo Camael', dominio:'Proteção espiritual, coragem, verdade, discernimento.' },
+  { faixa:[41,48], nome:'Virtudes', regente:'Arcanjo Haniel', dominio:'Graça, revelação, sonhos intuitivos, milagres.' },
+  { faixa:[49,56], nome:'Principados', regente:'Arcanjo Miguel', dominio:'Proteção de grupos, família, causas coletivas.' },
+  { faixa:[57,64], nome:'Arcanjos', regente:'Arcanjo Rafael', dominio:'Cura, sabedoria, tranquilidade, harmonia no lar.' },
+  { faixa:[65,72], nome:'Anjos', regente:'Arcanjo Gabriel', dominio:'Mensagens, comunicação com o plano material, ação concreta.' },
+];
+
+function coroDoGenio(numero){ return COROS_ANJOS.find(c => numero >= c.faixa[0] && numero <= c.faixa[1]); }
+
+const DIAS_GENIOS_UNIVERSAIS = {
+  "05/01":"Éter — energia de síntese e transcendência.",
+  "19/03":"Ar — energia de comunicação e movimento.",
+  "31/05":"Fogo — energia de ação e transformação.",
+  "12/08":"Terra — energia de estrutura e materialização.",
+  "24/10":"Água — energia de emoção e intuição."
+};
+function calcularAnjoNascimento(dateStr){
+  const d = new Date(dateStr+'T12:00:00');
+  const chave = String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+  if (DIAS_GENIOS_UNIVERSAIS[chave]){
+    return { tipo:'universal', elemento: DIAS_GENIOS_UNIVERSAIS[chave],
+      nota:'Não tem um Anjo fixo — a sua essência liga-se directamente aos Anjos Universais/Génios da Humanidade.' };
+  }
+  const g = GENIOS_72.find(g => g.datas.includes(chave));
+  if (!g) return null;
+  const coro = coroDoGenio(g.n);
+  return { tipo:'anjo', numero:g.n, nome:g.nome, coro:coro.nome, arcanjoRegente:coro.regente,
+    dominioDoCoro:coro.dominio, virtude:g.virtude, sombra:g.sombra, planeta:g.planeta };
+}
+
+function pinaculoActivo(dateStr, hojeStr){
+  const { pinaculos, idadesTransicao } = calcularPinaculosDesafios(dateStr);
+  const idade = idadeAtual(dateStr, hojeStr);
+  let indice = 3;
+  if (idade < idadesTransicao[0]) indice = 0;
+  else if (idade < idadesTransicao[1]) indice = 1;
+  else if (idade < idadesTransicao[2]) indice = 2;
+  const datasTransicao = calcularIdadeEDatasTransicao(dateStr, idadesTransicao);
+  return { indice, idade, pinaculo: pinaculos[indice], todos: pinaculos, datasTransicao };
+}
+
+const DESAFIOS_TEXTOS = {
+  0:'Um Desafio raro — não há um obstáculo fixo, mas sim a liberdade (e a exigência) de escolher o seu próprio caminho sem um padrão herdado a vencer.',
+  1:'Aprender a confiar em si e a agir sozinho(a), sem depender da aprovação ou da iniciativa dos outros.',
+  2:'Vencer a sensibilidade excessiva às opiniões alheias e o medo de tomar posição.',
+  3:'Superar a dispersão e a tendência a esconder sentimentos verdadeiros atrás do humor ou da conversa.',
+  4:'Vencer a resistência ao trabalho estruturado e a sensação de estar sempre a lutar contra limitações.',
+  5:'Aprender a lidar com a mudança sem cair em excessos ou fuga constante ao compromisso.',
+  6:'Superar o perfeccionismo e a tendência a assumir responsabilidades que não são suas.',
+  7:'Vencer o isolamento e a desconfiança — aprender a partilhar a sabedoria em vez de a guardar sozinho(a).',
+  8:'Aprender a lidar com o poder e o dinheiro sem cair no extremo do controlo ou da escassez.'
+};
+
+function calcularPinaculosDesafios(dateStr){
+  const [ano, mes, dia] = dateStr.split('-').map(Number);
+  const diaR = reduceNumber(dia);
+  const mesR = reduceNumber(mes);
+  const anoR = reduceNumber(String(ano).split('').reduce((a,d)=>a+parseInt(d,10),0));
+  const cv = caminhoDeVida(dateStr);
+
+  const p1 = reduceNumber(mesR + diaR);
+  const p2 = reduceNumber(diaR + anoR);
+  const p3 = reduceNumber(p1 + p2);
+  const p4 = reduceNumber(mesR + anoR);
+
+  const reduceSimples = (n) => { n = Math.abs(n); while (n > 9){ n = String(n).split('').reduce((a,d)=>a+(parseInt(d,10)||0),0); } return n; };
+  const d1 = reduceSimples(mesR - diaR);
+  const d2 = reduceSimples(diaR - anoR);
+  const d3 = reduceSimples(d1 - d2);
+  const d4 = reduceSimples(mesR - anoR);
+
+  const fim1 = 36 - cv;
+  const fim2 = fim1 + 9;
+  const fim3 = fim2 + 9;
+
+  return {
+    pinaculos: [
+      { numero: p1, desafio: d1, faixa: `nascimento — ${fim1} anos` },
+      { numero: p2, desafio: d2, faixa: `${fim1} — ${fim2} anos` },
+      { numero: p3, desafio: d3, faixa: `${fim2} — ${fim3} anos` },
+      { numero: p4, desafio: d4, faixa: `${fim3}+ anos (resto da vida)` }
+    ],
+    idadesTransicao: [fim1, fim2, fim3]
+  };
+}
+function calcularIdadeEDatasTransicao(dateStr, idades){
+  const nasc = new Date(dateStr + 'T12:00:00');
+  return idades.map(idade => {
+    const d = new Date(nasc);
+    d.setFullYear(d.getFullYear() + idade);
+    return d.toISOString().slice(0,10);
+  });
+}
+function idadeAtual(dateStr, hojeStr){
+  const nasc = new Date(dateStr+'T12:00:00');
+  const hoje = new Date(hojeStr+'T12:00:00');
+  let idade = hoje.getFullYear() - nasc.getFullYear();
+  const aindaNaoFezAnos = (hoje.getMonth() < nasc.getMonth()) ||
+    (hoje.getMonth() === nasc.getMonth() && hoje.getDate() < nasc.getDate());
+  if (aindaNaoFezAnos) idade--;
+  return idade;
+}
+function anoUniversal(ano){ return reduceNumber(String(ano).split('').reduce((a,d)=>a+parseInt(d,10),0)); }
+function calcularCiclosPessoais(dateStr, hojeStr){
+  const [, mes, dia] = dateStr.split('-').map(Number);
+  const hoje = new Date(hojeStr+'T12:00:00');
+  const anoAtual = hoje.getFullYear();
+  const mesAtual = hoje.getMonth()+1;
+  const diaAtual = hoje.getDate();
+  const diaR = reduceNumber(dia);
+  const mesR = reduceNumber(mes);
+  const anoUniv = anoUniversal(anoAtual);
+  const anoPessoal = reduceNumber(diaR + mesR + anoUniv);
+  const mesPessoal = reduceNumber(anoPessoal + reduceNumber(mesAtual));
+  const diaPessoal = reduceNumber(mesPessoal + reduceNumber(diaAtual));
+  return { anoPessoal, mesPessoal, diaPessoal, anoUniversal: anoUniv };
+}
+function hojeISO(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+
+/* ─── Nodos Lunares (Vidas Passadas / Propósito de Vida) ──────────────
+   Fórmula astronómica real do Nodo Lunar Médio (Jean Meeus, Astronomical
+   Algorithms) — não é uma tabela aproximada. Precisão de grau, mais do
+   que suficiente ao nível do signo. Validado contra 3 trânsitos públicos
+   e documentados do Nodo Norte: Carneiro (Jul/2023), Peixes (Jan/2025)
+   e Aquário (meados de 2026) — os três bateram certo.
+   NOTA DE HONESTIDADE: isto é leitura simbólica dentro da tradição da
+   astrologia cármica, não um facto histórico verificável. A crença em
+   vidas passadas não é comum a todos os astrólogos nem faz parte dos
+   ensinamentos cânones da astrologia — é uma camada interpretativa. */
+function paraDiaJuliano(ano, mes, dia, hora=12){
+  if (mes <= 2){ ano -= 1; mes += 12; }
+  const A = Math.floor(ano/100);
+  const B = 2 - A + Math.floor(A/4);
+  return Math.floor(365.25*(ano+4716)) + Math.floor(30.6001*(mes+1)) + dia + hora/24 + B - 1524.5;
+}
+function normalizar360(deg){ deg = deg % 360; return deg < 0 ? deg + 360 : deg; }
+function nodoNorteLongitude(ano, mes, dia){
+  const jd = paraDiaJuliano(ano, mes, dia);
+  const T = (jd - 2451545.0) / 36525;
+  const omega = 125.0445222 - 1934.1362608*T + 0.0020708*T*T + (T*T*T)/450000;
+  return normalizar360(omega);
+}
+const SIGNOS_NODO = ['Carneiro','Touro','Gémeos','Caranguejo','Leão','Virgem','Balança','Escorpião','Sagitário','Capricórnio','Aquário','Peixes'];
+function signoDeLongitude(long){ return SIGNOS_NODO[Math.floor(normalizar360(long) / 30)]; }
+function calcularNodosLunares(dateStr){
+  const [ano, mes, dia] = dateStr.split('-').map(Number);
+  const nnLong = nodoNorteLongitude(ano, mes, dia);
+  const nsLong = normalizar360(nnLong + 180);
+  return {
+    nodoNorte: { signo: signoDeLongitude(nnLong) },
+    nodoSul:   { signo: signoDeLongitude(nsLong) }
+  };
+}
+const NODO_SUL_TEXTOS = {
+  'Carneiro':'Já dominou a coragem de agir sozinho(a) e de iniciar sem esperar por ninguém. O padrão a vigiar é o egoísmo e a impaciência com quem é mais lento.',
+  'Touro':'Já dominou a estabilidade material e o prazer das coisas simples. O padrão a vigiar é o apego excessivo a posses e à zona de conforto.',
+  'Gémeos':'Já dominou a comunicação e a curiosidade sobre tudo um pouco. O padrão a vigiar é a dispersão e a superficialidade nos laços mais próximos.',
+  'Caranguejo':'Já dominou o cuidado emocional e a protecção do lar e da família. O padrão a vigiar é o apego ao passado e a dependência afectiva.',
+  'Leão':'Já dominou a criatividade e o brilho pessoal. O padrão a vigiar é o orgulho e a necessidade constante de ser reconhecido(a).',
+  'Virgem':'Já dominou o serviço prático e a análise minuciosa. O padrão a vigiar é o perfeccionismo e a autocrítica que paralisa.',
+  'Balança':'Já dominou a diplomacia e a arte das parcerias. O padrão a vigiar é a dependência da aprovação alheia e a indecisão crónica.',
+  'Escorpião':'Já dominou a intensidade emocional e a capacidade de se transformar. O padrão a vigiar é o controlo e a desconfiança extrema.',
+  'Sagitário':'Já dominou a fé e a expansão através do conhecimento e da viagem. O padrão a vigiar é o dogmatismo e a fuga a compromissos.',
+  'Capricórnio':'Já dominou a disciplina e a ambição material. O padrão a vigiar é a rigidez e o medo de mostrar vulnerabilidade.',
+  'Aquário':'Já dominou o pensamento independente e as causas colectivas. O padrão a vigiar é o desapego emocional e a rebeldia sem propósito.',
+  'Peixes':'Já dominou a entrega espiritual e a compaixão. O padrão a vigiar é a fuga à realidade e o sacrifício excessivo de si.'
+};
+const NODO_NORTE_TEXTOS = {
+  'Balança':'O seu caminho de crescimento é aprender a cooperar e a considerar o outro antes de agir sozinho(a).',
+  'Escorpião':'O seu caminho de crescimento é soltar o apego material e mergulhar na transformação emocional profunda.',
+  'Sagitário':'O seu caminho de crescimento é buscar um sentido maior, em vez de se dispersar em pequenos detalhes.',
+  'Capricórnio':'O seu caminho de crescimento é assumir responsabilidade e estrutura, saindo da zona de conforto emocional.',
+  'Aquário':'O seu caminho de crescimento é servir o colectivo, saindo do centro das atenções.',
+  'Peixes':'O seu caminho de crescimento é confiar e entregar-se ao fluxo, largando o controlo excessivo.',
+  'Carneiro':'O seu caminho de crescimento é agir por si mesmo(a), sem depender da validação do outro.',
+  'Touro':'O seu caminho de crescimento é construir segurança própria e paz material, sem depender da intensidade emocional alheia.',
+  'Gémeos':'O seu caminho de crescimento é ouvir e trocar ideias, sem impor uma única verdade.',
+  'Caranguejo':'O seu caminho de crescimento é nutrir os laços emocionais, sem se esconder atrás do trabalho.',
+  'Leão':'O seu caminho de crescimento é expressar-se com autenticidade, sem se perder dentro do grupo.',
+  'Virgem':'O seu caminho de crescimento é organizar e servir com discernimento prático, sem se perder na dispersão.'
+};
+
+
+/* ─── Arcano Pessoal & Arcano do Ano (Tarot + Numerologia) ────────────
+   Convenção fixada (nunca misturar com outras): resultado sempre entre
+   1 e 22 — A Justiça = 11, A Força = 8, O Louco = 22. O Arcano do Ano
+   muda no aniversário da pessoa, não a 1 de Janeiro. */
+const ARCANOS_MAIORES = {
+  1:{ nome:'O Mago', texto:'Iniciativa, habilidade e o poder de manifestar ideias em ação concreta.' },
+  2:{ nome:'A Sacerdotisa', texto:'Intuição, mistério e sabedoria silenciosa que vem de dentro.' },
+  3:{ nome:'A Imperatriz', texto:'Fertilidade, criatividade e abundância — a energia de gerar e nutrir.' },
+  4:{ nome:'O Imperador', texto:'Estrutura, autoridade e a capacidade de construir com disciplina.' },
+  5:{ nome:'O Papa', texto:'Tradição, aprendizagem e orientação espiritual através do estudo.' },
+  6:{ nome:'Os Enamorados', texto:'Escolhas de coração, união e alinhamento entre valores e desejo.' },
+  7:{ nome:'O Carro', texto:'Determinação, avanço e vitória através do controlo de forças opostas.' },
+  8:{ nome:'A Força', texto:'Coragem serena, domínio de si e força que vem da compaixão, não da imposição.' },
+  9:{ nome:'O Eremita', texto:'Introspecção, busca interior e sabedoria que só se encontra sozinho(a).' },
+  10:{ nome:'A Roda da Fortuna', texto:'Ciclos, mudança de sorte e a aceitação do que está fora do controlo.' },
+  11:{ nome:'A Justiça', texto:'Equilíbrio, verdade e as consequências justas de cada escolha.' },
+  12:{ nome:'O Enforcado', texto:'Pausa, entrega e a sabedoria de ver a vida de um ângulo diferente.' },
+  13:{ nome:'A Morte', texto:'Transformação profunda — o fim de um ciclo que abre espaço a outro.' },
+  14:{ nome:'A Temperança', texto:'Moderação, cura e a arte de misturar opostos até encontrar equilíbrio.' },
+  15:{ nome:'O Diabo', texto:'Confronto com apegos, vícios e padrões que prendem — e a libertação possível.' },
+  16:{ nome:'A Torre', texto:'Ruptura súbita que derruba estruturas falsas para dar lugar à verdade.' },
+  17:{ nome:'A Estrela', texto:'Esperança, inspiração e renovação depois de um período difícil.' },
+  18:{ nome:'A Lua', texto:'Intuição, sonhos e o convite a navegar a incerteza sem medo.' },
+  19:{ nome:'O Sol', texto:'Vitalidade, clareza e alegria — sucesso que se sente e se vê.' },
+  20:{ nome:'O Julgamento', texto:'Chamado interior, renascimento e a chance de recomeçar com consciência.' },
+  21:{ nome:'O Mundo', texto:'Realização, conclusão de ciclo e sensação de plenitude alcançada.' },
+  22:{ nome:'O Louco', texto:'Liberdade, fé no desconhecido e coragem de dar o próximo passo sem garantias.' }
+};
+function reduzirParaArcano(soma){
+  while (soma > 22){ soma = String(soma).split('').reduce((a,d) => a + (parseInt(d,10)||0), 0); }
+  if (soma === 0) soma = 22;
+  return soma;
+}
+function calcularArcanoPessoal(dateStr){
+  const digits = dateStr.replace(/\D/g,'');
+  const soma = digits.split('').reduce((a,d) => a + parseInt(d,10), 0);
+  return reduzirParaArcano(soma);
+}
+function calcularArcanoDoAno(dateStr, hojeStr){
+  const [, mesN, diaN] = dateStr.split('-').map(Number);
+  const hoje = new Date(hojeStr+'T12:00:00');
+  const anoAtual = hoje.getFullYear();
+  const aindaNaoFezAnos = (hoje.getMonth()+1 < mesN) || (hoje.getMonth()+1 === mesN && hoje.getDate() < diaN);
+  const anoBase = aindaNaoFezAnos ? anoAtual - 1 : anoAtual;
+  return reduzirParaArcano(diaN + mesN + anoBase);
+}
+
+
+const DONS_NUMERICOS = {
+  1: { nome:'Pioneiro / Liderança', texto:'Empreendedorismo, iniciativa e coragem para abrir novos caminhos.', profissoes:'Empreendedorismo, Gestão de Projetos, Direção de Equipas, Desporto de Competição' },
+  2: { nome:'Empata / Parceria', texto:'Mediação, sensibilidade e talento natural para terapia e cooperação.', profissoes:'Terapia, Mediação de Conflitos, Diplomacia, Trabalho em Parcerias/Duo' },
+  3: { nome:'Mensageiro / Comunicação', texto:'Vendas, artes, vida social — o dom de expressar e encantar.', profissoes:'Artes, Comunicação Social, Marketing, Vendas, Escrita' },
+  4: { nome:'Estrutura / Gestão', texto:'Segurança e organização — cuidado para não deixar a vibração pesar em bens materiais.', profissoes:'Engenharia, Contabilidade, Administração, Construção' },
+  5: { nome:'Viajante / Curador', texto:'Movimento, liberdade e talento comercial.', profissoes:'Turismo, Comércio Internacional, Jornalismo, Terapias de Movimento' },
+  6: { nome:'Cuidador / Amor e Cura', texto:'Saúde, estética, família — vocação natural para cuidar.', profissoes:'Saúde, Estética, Terapias Holísticas, Educação Infantil, Nutrição' },
+  7: { nome:'Místico / Sabedoria', texto:'Pesquisa, ensino, exigência interior — busca incessante de verdade.', profissoes:'Psicologia, Investigação Científica, Espiritualidade, Ensino Superior' },
+  8: { nome:'Alquimista da Matéria / Poder', texto:'Chefia e gestão financeira — talento para transformar esforço em resultado.', profissoes:'Gestão Financeira, Direção Executiva, Investimento, Empresariado' },
+  9: { nome:'Curador Universal', texto:'Humanitarismo, causas sociais e o dom de fechar ciclos com sabedoria.', profissoes:'Ação Social, Causas Humanitárias, Medicina, Aconselhamento' },
+  11: { nome:'Número Mestre — Visionário', texto:'Alta voltagem intuitiva, antena espiritual apurada. Cuidado com nervosismo e ansiedade extrema.', profissoes:'Canalização, Terapias Espirituais, Liderança Inspiracional, Arte Visionária' },
+  22: { nome:'Número Mestre — Grande Construtor', texto:'Capacidade prática fora do comum. Cuidado com a sobrecarga e o peso da responsabilidade.', profissoes:'Construção de Legados, Arquitetura, Fundação de Instituições/Empresas' },
+  33: { nome:'Número Mestre — Mestre do Amor', texto:'Amor incondicional em ação. Cuidado para não se sacrificar nem se esquecer de si.', profissoes:'Cura, Ensino Espiritual, Assistência Humanitária de Grande Escala' }
+};
+
+
+const SIGNOS = [
+  { nome:'Capricórnio', ini:[12,22], fim:[1,19] }, { nome:'Aquário', ini:[1,20], fim:[2,18] },
+  { nome:'Peixes', ini:[2,19], fim:[3,20] }, { nome:'Carneiro', ini:[3,21], fim:[4,19] },
+  { nome:'Touro', ini:[4,20], fim:[5,20] }, { nome:'Gémeos', ini:[5,21], fim:[6,20] },
+  { nome:'Caranguejo', ini:[6,21], fim:[7,22] }, { nome:'Leão', ini:[7,23], fim:[8,22] },
+  { nome:'Virgem', ini:[8,23], fim:[9,22] }, { nome:'Balança', ini:[9,23], fim:[10,22] },
+  { nome:'Escorpião', ini:[10,23], fim:[11,21] }, { nome:'Sagitário', ini:[11,22], fim:[12,21] }
+];
+
+
+function getSigno(dateStr){
+  const d = new Date(dateStr+'T12:00:00'); const m = d.getMonth()+1, day = d.getDate();
+  for (const s of SIGNOS){
+    const [im,id]=s.ini, [fm,fd]=s.fim;
+    if (im>fm){ if((m===im&&day>=id)||(m===fm&&day<=fd)) return s; }
+    else { if((m===im&&day>=id)||(m===fm&&day<=fd)||(m>im&&m<fm)) return s; }
+  }
+  return SIGNOS[0];
+}
+
 let __triagem = null;
 function __triagemReset(){
   __triagem = {
@@ -9305,8 +9722,9 @@ function __triagemReset(){
   };
 }
 
-async function renderTriagemBaixaVibracao(main){
-  __triagemReset();
+async function renderTriagemBaixaVibracao(main, opts){
+  opts = opts || {};
+  if (!opts.manterEstado || !__triagem) __triagemReset();
   if (!window.__allPatientsCache){
     const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients'), orderBy('fullName')));
     window.__allPatientsCache = [];
@@ -9343,7 +9761,7 @@ function triagemPasso0Paciente(main){
       <h3>1. Consulente</h3>
       <input id="triagemBuscaPaciente" placeholder="🔍 Pesquisar paciente por nome…" oninput="window.__triagemFiltrarPacientes()">
       <div id="triagemListaPacientes" style="max-height:240px;overflow-y:auto;margin-top:8px;"></div>
-      <p class="muted" style="margin-top:10px;">Não encontra o paciente? <button class="ghost" style="width:auto;display:inline;" onclick="openNewPatient()">+ Criar novo paciente</button></p>
+      <p class="muted" style="margin-top:10px;">Não encontra o paciente? <button class="ghost" style="width:auto;display:inline;" onclick="window.__triagemAVoltarDePaciente = true; openNewPatient();">+ Criar novo paciente</button></p>
       ${__triagem.patientId ? `<div class="row" style="margin-top:10px;background:#eef7ee;padding:8px;border-radius:8px;"><strong>✓ Selecionado: ${escapeHtml(__triagem.patientNome)}</strong></div>` : ''}
     </div>
     <div class="row" style="margin-top:12px;">
@@ -9545,26 +9963,118 @@ function triagemPassoSessoesPreco(main){
 }
 
 /* ─── Motor final + gravação na ficha do paciente ──────────────────────── */
+/* ─── Perfil do Mapa da Alma, trazido automaticamente para a Triagem ────
+   Calculado a partir de nome+data já recolhidos nos passos 1/2 — a
+   pessoa não repete nada. Na 1ª sessão mostra-se o perfil completo
+   (Anjo, Arcano, Nodo, Signo); nas sessões seguintes só a parte que
+   MUDA com o tempo (Ano/Dia Pessoal, Arcano do Ano, Pináculo), para
+   não repetir informação estática que já foi dada. */
+function calcularPerfilMapaAlma(nome, dataStr){
+  const hoje = hojeISO();
+  const cv = caminhoDeVida(dataStr);
+  const anjo = calcularAnjoNascimento(dataStr);
+  const arcanoP = calcularArcanoPessoal(dataStr);
+  const arcanoA = calcularArcanoDoAno(dataStr, hoje);
+  const nodos = calcularNodosLunares(dataStr);
+  const signo = getSigno(dataStr);
+  const pinAtivo = pinaculoActivo(dataStr, hoje);
+  const ciclos = calcularCiclosPessoais(dataStr, hoje);
+  return { cv, cvNome: (DONS_NUMERICOS[cv]||{}).nome, anjo, arcanoP, arcanoPNome: (ARCANOS_MAIORES[arcanoP]||{}).nome,
+    arcanoA, arcanoANome: (ARCANOS_MAIORES[arcanoA]||{}).nome, nodos, signo, pinAtivo, ciclos };
+}
+
+// Causas do pêndulo e arcanos das cartas ligados a temas de vidas passadas —
+// quando aparecem, cruza-se com o Nodo Sul do Mapa da Alma para enriquecer.
+const TRIAGEM_CAUSAS_VIDAS_PASSADAS = [6,19,20,21,22,23,24,25];
+const TRIAGEM_ARCANOS_VIDAS_PASSADAS = [10,12,13,20]; // Roda da Fortuna, Enforcado, Morte, Julgamento
+function triagemCruzarVidasPassadas(causasDetetadas, leituraComplementar, perfil){
+  const causaLigada = causasDetetadas.some(c => TRIAGEM_CAUSAS_VIDAS_PASSADAS.includes(c.n));
+  let cartaLigada = null;
+  if (leituraComplementar){
+    [leituraComplementar.momento, leituraComplementar.porTras, leituraComplementar.tendencia].forEach(carta => {
+      if (carta && TRIAGEM_ARCANOS_VIDAS_PASSADAS.includes(carta.n) && !cartaLigada) cartaLigada = carta;
+    });
+  }
+  if (!causaLigada && !cartaLigada) return null;
+  return {
+    motivo: causaLigada ? 'uma das causas detetadas' : `a carta ${cartaLigada.nome} na leitura complementar`,
+    nodoSulSigno: perfil.nodos.nodoSul.signo,
+    nodoSulTexto: NODO_SUL_TEXTOS[perfil.nodos.nodoSul.signo] || ''
+  };
+}
+
+// Leitura complementar em prosa corrida, em vez de 3 linhas soltas —
+// mesma lógica de "leitura de alguém experiente" já usada no Mapa da Alma.
+function triagemSintetizarLeitura(nome, leitura){
+  const { momento, porTras, tendencia } = leitura;
+  return `${nome} está, neste momento, a atravessar ${momento.tema} (${momento.nome}). Por trás disto está ${porTras.tema}, ligado a ${porTras.area} (${porTras.nome}). Se nada mudar, a tendência aponta para ${tendencia.tema} (${tendencia.nome}).`;
+}
+
+// Compara dois relatórios de Triagem no MESMO formato guardado
+// (baixaVibracaoDetetada: [nomes], chakras: [{nome,percentagem}],
+// bovisInicial/bovisFinal) — usada tanto ao gerar uma nova sessão
+// (comparando com a anterior) como na ficha do paciente, para comparar
+// quaisquer duas sessões já guardadas.
 function compararComAnterior(anterior, atual){
   const causasAnteriores = new Set(anterior.baixaVibracaoDetetada || []);
-  const causasAtuais = new Set(atual.causasDetetadas.map(c => c.nome));
+  const causasAtuais = new Set(atual.baixaVibracaoDetetada || []);
   const resolvidas = [...causasAnteriores].filter(c => !causasAtuais.has(c));
   const novas = [...causasAtuais].filter(c => !causasAnteriores.has(c));
   const persistentes = [...causasAtuais].filter(c => causasAnteriores.has(c));
 
   const chakrasAnteriores = {};
   (anterior.chakras || []).forEach(c => { chakrasAnteriores[c.nome] = c.percentagem; });
-  const chakrasComparados = atual.chakrasTodos.map(c => {
+  const chakrasComparados = (atual.chakras || []).map(c => {
     const antes = chakrasAnteriores[c.nome];
     return { nome: c.nome, antes: antes ?? null, agora: c.percentagem, delta: (antes != null) ? (c.percentagem - antes) : null };
   }).filter(c => c.delta !== null);
 
   const bovisFinalAnterior = anterior.bovisFinal ? parseFloat(anterior.bovisFinal) : null;
-  const bovisInicialAtual = atual.bovisIni ? parseFloat(atual.bovisIni) : null;
+  const bovisInicialAtual = atual.bovisInicial ? parseFloat(atual.bovisInicial) : null;
   const deltaEntreSessoes = (bovisFinalAnterior != null && bovisInicialAtual != null && !isNaN(bovisFinalAnterior) && !isNaN(bovisInicialAtual)) ? (bovisInicialAtual - bovisFinalAnterior) : null;
 
   return { resolvidas, novas, persistentes, chakrasComparados, deltaEntreSessoes, bovisFinalAnterior, bovisInicialAtual, dataAnterior: anterior.generatedAt };
 }
+
+// Vista de evolução na própria ficha do paciente — compara TODAS as
+// sessões de Triagem de Baixa Vibração já guardadas, sessão a sessão,
+// para se ver a tendência ao longo do tempo (não só a última vs a
+// anterior). Solução prática: reaproveita compararComAnterior,
+// aplicada a cada par consecutivo da linha do tempo.
+window.viewTriagemEvolucao = async function(patientId){
+  const snap = await getDocs(query(
+    collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'),
+    orderBy('generatedAt', 'asc')
+  ));
+  const sessoes = [];
+  snap.forEach(d => { const r = d.data(); if (r.protocolName === 'Triagem de Baixa Vibração') sessoes.push(r); });
+  if (sessoes.length < 2){ toast('É preciso pelo menos 2 sessões de Triagem para ver evolução.', true); return; }
+
+  const dataFmt = (ts) => ts?.toDate ? ts.toDate().toLocaleDateString('pt-PT') : '—';
+  let html = `<p class="muted">${sessoes.length} sessões, da mais antiga à mais recente.</p>`;
+
+  // Tendência do Bovis ao longo de todas as sessões, num relance.
+  const bovisPontos = sessoes.map(s => ({ data: dataFmt(s.generatedAt), ini: s.bovisInicial, fin: s.bovisFinal }));
+  html += `<div class="appt-item"><strong>📈 Bovis ao longo do tempo</strong>
+    ${bovisPontos.map(p => `<div class="muted" style="margin-top:2px;">${p.data}: ${p.ini ?? '—'} → ${p.fin ?? '—'}</div>`).join('')}
+  </div>`;
+
+  for (let i = 1; i < sessoes.length; i++){
+    const anterior = sessoes[i-1], atual = sessoes[i];
+    const comp = compararComAnterior(anterior, atual);
+    html += `<div class="appt-item" style="margin-top:10px;">
+      <strong>${dataFmt(anterior.generatedAt)} → ${dataFmt(atual.generatedAt)}</strong>
+      ${comp.resolvidas.length ? `<div style="margin-top:4px;">✅ Resolvidas: ${comp.resolvidas.map(escapeHtml).join(', ')}</div>` : ''}
+      ${comp.persistentes.length ? `<div style="margin-top:4px;">🔁 Persistentes: ${comp.persistentes.map(escapeHtml).join(', ')}</div>` : ''}
+      ${comp.novas.length ? `<div style="margin-top:4px;">🆕 Novas: ${comp.novas.map(escapeHtml).join(', ')}</div>` : ''}
+      ${comp.deltaEntreSessoes != null ? `<div class="muted" style="margin-top:4px;">Bovis entre sessões: ${comp.deltaEntreSessoes>=0?'+':''}${comp.deltaEntreSessoes}</div>` : ''}
+      ${comp.chakrasComparados.length ? comp.chakrasComparados.map(c => `<div class="muted" style="margin-top:2px;">Chakra ${escapeHtml(c.nome)}: ${c.antes}% → ${c.agora}% (${c.delta>=0?'+':''}${c.delta})</div>`).join('') : ''}
+      ${(!comp.resolvidas.length && !comp.persistentes.length && !comp.novas.length) ? '<div class="muted" style="margin-top:4px;">Sem alterações nas causas detetadas.</div>' : ''}
+    </div>`;
+  }
+
+  showPatientOverlay('📊 Evolução — Triagem de Baixa Vibração', html);
+};
 
 const TRIAGEM_LIMIAR_CHAKRA_ATENCAO = 70; // % abaixo do qual o chakra é sinalizado
 
@@ -9573,11 +10083,24 @@ const TRIAGEM_LIMIAR_CHAKRA_ATENCAO = 70; // % abaixo do qual o chakra é sinali
    subscritor (já definida pelo portal a partir do branding do tenant).
    Não mostra as etiquetas hebraicas (ferramenta interna da terapeuta) —
    fala só do que interessa ao paciente perceber. */
-function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, aberturaNivel, comparacao, sessoesNecessarias, preco, temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA }){
+function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, aberturaNivel, comparacao, sessoesNecessarias, preco, temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA, perfil, ehPrimeiraSessao, cruzamento, leituraComplementar }){
   const esc = (s) => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   let html = `<div style="font-family:-apple-system,sans-serif;color:#2a2a2a;line-height:1.55;">`;
   html += `<h2 style="color:var(--primary);margin:0 0 10px;">🌿 Olá, ${esc(primeiroNome)}</h2>`;
   html += `<p>Aqui fica o resumo da sua sessão de triagem energética.</p>`;
+
+  if (perfil){
+    if (ehPrimeiraSessao){
+      html += `<div style="background:#f2f0e8;border-radius:10px;padding:12px;margin-top:14px;">
+        <strong style="color:var(--primary);">✨ O seu perfil</strong>
+        <p style="margin-top:6px;">Caminho de Vida ${perfil.cv} — ${esc(perfil.cvNome||'')}. Signo de ${esc(perfil.signo.nome)}.</p>
+        ${perfil.anjo.tipo === 'anjo' ? `<p style="margin-top:4px;">Anjo do Nascimento: <strong>${esc(perfil.anjo.nome)}</strong>.</p>` : `<p style="margin-top:4px;">Ligação directa aos Anjos Universais (${esc(perfil.anjo.elemento)}).</p>`}
+        <p style="margin-top:4px;">Arcano Pessoal: <strong>${esc(perfil.arcanoPNome)}</strong>.</p>
+      </div>`;
+    } else {
+      html += `<p style="margin-top:10px;color:#777;font-size:.85rem;">📿 Perfil: Anjo ${esc(perfil.anjo.tipo==='anjo'?perfil.anjo.nome:'Universal')} · Arcano ${esc(perfil.arcanoPNome)} · Ano Pessoal ${perfil.ciclos.anoPessoal}</p>`;
+    }
+  }
 
   if (causasDetetadas.length){
     html += `<h3 style="color:var(--primary);margin-top:18px;">🔎 O que foi encontrado</h3>`;
@@ -9588,6 +10111,12 @@ function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, 
         <p style="margin-top:4px;color:#777;font-style:italic;">Ex: ${esc(c.exemplo)}</p>
       </div>`;
     });
+    if (cruzamento){
+      html += `<div style="background:#eef4f0;border-radius:10px;padding:12px;margin-top:10px;">
+        <strong>🔗 Ligação com o seu Mapa da Alma</strong>
+        <p style="margin-top:6px;color:#555;">O seu Nodo Sul em ${esc(cruzamento.nodoSulSigno)} pode estar ligado a isto — ${esc(cruzamento.nodoSulTexto)}</p>
+      </div>`;
+    }
   } else {
     html += `<p style="margin-top:14px;">✨ O seu campo energético está globalmente equilibrado neste momento.</p>`;
   }
@@ -9615,6 +10144,11 @@ function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, 
     </div>`;
   }
 
+  if (leituraComplementar){
+    html += `<h3 style="color:var(--primary);margin-top:18px;">🃏 O seu momento, pelas cartas</h3>
+      <p style="color:#555;">${esc(triagemSintetizarLeitura(primeiroNome, leituraComplementar))}</p>`;
+  }
+
   html += `<h3 style="color:var(--primary);margin-top:18px;">📅 Próximos passos</h3>
     <p><strong>${esc(sessoesNecessarias || '—')}</strong> sessão(ões) de limpeza recomendada(s)${preco ? ` · <strong>${esc(preco)}€</strong>` : ''}.</p>
     <p style="margin-top:6px;color:#777;">O protocolo de limpeza personalizado já foi preparado e será aplicado nas próximas sessões.</p>`;
@@ -9625,6 +10159,10 @@ function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, 
 }
 
 async function triagemGerarRelatorio(){
+  if (!__triagem.patientId){
+    alert('Não há nenhum paciente seleccionado — o relatório não pode ser gravado. Volte ao passo 1 e escolha o paciente.');
+    return;
+  }
   const causasDetetadas = [];
   const protocolo = [];
   TRIAGEM_BAIXA_VIBRACAO.forEach((item, i) => {
@@ -9655,6 +10193,7 @@ async function triagemGerarRelatorio(){
   // precisar de um índice composto no Firestore que não existe; filtra-se
   // no browser, tal como já se faz noutros sítios da app.
   let comparacao = null;
+  let ehPrimeiraSessao = true;
   try{
     const todosSnap = await getDocs(query(
       collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'),
@@ -9662,18 +10201,42 @@ async function triagemGerarRelatorio(){
     ));
     const anteriorDoc = todosSnap.docs.map(d => d.data()).find(r => r.protocolName === 'Triagem de Baixa Vibração');
     if (anteriorDoc){
-      comparacao = compararComAnterior(anteriorDoc, { causasDetetadas, chakrasTodos, bovisIni: __triagem.bovisIni });
+      ehPrimeiraSessao = false;
+      comparacao = compararComAnterior(anteriorDoc, {
+        baixaVibracaoDetetada: causasDetetadas.map(c => c.nome),
+        chakras: chakrasTodos.map(c => ({ nome:c.nome, percentagem:c.percentagem })),
+        bovisInicial: __triagem.bovisIni
+      });
     }
   }catch(e){ console.warn('Não foi possível carregar a sessão anterior para comparação:', e); }
+
+  // Perfil do Mapa da Alma, trazido automaticamente (nome+data já
+  // recolhidos) — completo na 1ª sessão, só a parte dinâmica depois.
+  const perfil = __triagem.dataNascimento ? calcularPerfilMapaAlma(__triagem.patientNome, __triagem.dataNascimento) : null;
+  const cruzamentoVidasPassadas = perfil ? triagemCruzarVidasPassadas(causasDetetadas, __triagem.leituraComplementar, perfil) : null;
 
   const NOTA_CRISE_DE_CURA = "É normal, nas 24 a 72 horas depois de uma limpeza energética, sentir-se mais cansado(a), emotivo(a), com sono alterado ou até sintomas físicos ligeiros (dor de cabeça, mal-estar passageiro). Isto costuma ser o corpo a processar e a libertar o que foi trabalhado — não significa que piorou, é o efeito normal da limpeza. Beber água, descansar e evitar julgar o resultado nestes primeiros dias.";
 
   let reportText = `TRIAGEM DE BAIXA VIBRAÇÃO — ${__triagem.patientNome}\n`;
   reportText += `Data de nascimento: ${__triagem.dataNascimento || '—'}\n\n`;
+  if (perfil){
+    if (ehPrimeiraSessao){
+      reportText += `== Perfil do Mapa da Alma (1ª sessão) ==\n`;
+      reportText += `Caminho de Vida ${perfil.cv} — ${perfil.cvNome||''}\n`;
+      reportText += perfil.anjo.tipo === 'anjo' ? `Anjo do Nascimento: ${perfil.anjo.nome} (virtude: ${perfil.anjo.virtude})\n` : `Ligação directa aos Anjos Universais (${perfil.anjo.elemento})\n`;
+      reportText += `Arcano Pessoal: ${perfil.arcanoPNome}\n`;
+      reportText += `Nodo Sul (vidas passadas): ${perfil.nodos.nodoSul.signo} — ${NODO_SUL_TEXTOS[perfil.nodos.nodoSul.signo]||''}\n`;
+      reportText += `Nodo Norte (propósito): ${perfil.nodos.nodoNorte.signo}\n`;
+      reportText += `Signo: ${perfil.signo.nome} · Pináculo ${perfil.pinAtivo.indice+1}º (${perfil.pinAtivo.pinaculo.faixa})\n\n`;
+    } else {
+      reportText += `== Perfil (dinâmico, actualizado) ==\nAno Pessoal ${perfil.ciclos.anoPessoal} · Dia Pessoal ${perfil.ciclos.diaPessoal} · Arcano do Ano: ${perfil.arcanoANome} · Pináculo ${perfil.pinAtivo.indice+1}º\n\n`;
+    }
+  }
   reportText += `Bovis inicial: ${__triagem.bovisIni || '—'} · Bovis final: ${__triagem.bovisFin || '—'}\n\n`;
   reportText += `== Causas detetadas (${causasDetetadas.length}) ==\n`;
   if (causasDetetadas.length){
     causasDetetadas.forEach(c => { reportText += `• ${c.n}. ${c.nome}\n   O que é: ${c.descricao}\n   Exemplo: ${c.exemplo}\n\n`; });
+    if (cruzamentoVidasPassadas) reportText += `🔗 Ligação com o Mapa da Alma: ${cruzamentoVidasPassadas.motivo} pode estar ligado ao Nodo Sul em ${cruzamentoVidasPassadas.nodoSulSigno} — ${cruzamentoVidasPassadas.nodoSulTexto}\n\n`;
   } else reportText += 'Nenhuma — campo equilibrado.\n\n';
   reportText += `== Chakras (percentagem de abertura) ==\n${chakrasTodos.map(c=>`• ${c.nome}: ${c.percentagem}%${c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO ? ' ⚠️ a vigiar' : ''}`).join('\n')}\n\n`;
   reportText += `== Abertura de Caminhos ==\n${aberturaNivel}\n\n`;
@@ -9687,8 +10250,7 @@ async function triagemGerarRelatorio(){
     reportText += `\n`;
   }
   if (__triagem.leituraComplementar){
-    const { momento, porTras, tendencia } = __triagem.leituraComplementar;
-    reportText += `== Leitura Complementar (Cartas) ==\nMomento Atual: ${momento.nome} — ${momento.tema}\nPor Trás Disto: ${porTras.nome} — ${porTras.area}\nTendência: ${tendencia.nome} — ${tendencia.tema}\n\n`;
+    reportText += `== Leitura Complementar (Cartas) ==\n${triagemSintetizarLeitura(__triagem.patientNome.split(/\s+/)[0], __triagem.leituraComplementar)}\n\n`;
   }
   reportText += `== Protocolo de Limpeza (etiquetas a usar) ==\n`;
   protocoloFinal.forEach(p => { reportText += `• ${p.item.heb}  —  ${p.item.pt}${p.item.numero ? ' (Nome '+p.item.numero+' dos 72 Nomes de Deus)' : ''}  [${p.fonte} · ${p.motivo}]\n`; });
@@ -9700,50 +10262,98 @@ async function triagemGerarRelatorio(){
     primeiroNome: __triagem.patientNome.split(/\s+/)[0],
     causasDetetadas, chakrasTodos, aberturaNivel, comparacao,
     sessoesNecessarias: __triagem.sessoesNecessarias, preco: __triagem.preco,
-    temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA
+    temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA,
+    perfil, ehPrimeiraSessao, cruzamento: cruzamentoVidasPassadas,
+    leituraComplementar: __triagem.leituraComplementar
   });
 
-  try{
-    await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
-      protocolName: 'Triagem de Baixa Vibração',
-      reportText, reportHtml,
-      bovisInicial: __triagem.bovisIni || null, bovisFinal: __triagem.bovisFin || null,
-      baixaVibracaoDetetada: causasDetetadas.map(c => c.nome),
-      chakras: chakrasTodos.map(c => ({ nome:c.nome, percentagem:c.percentagem })),
-      aberturaCaminhos: aberturaNivel,
-      leituraComplementar: __triagem.leituraComplementar ? {
-        momento: __triagem.leituraComplementar.momento.nome,
-        porTras: __triagem.leituraComplementar.porTras.nome,
-        tendencia: __triagem.leituraComplementar.tendencia.nome
-      } : null,
-      protocolo: protocoloFinal.map(p => ({ fonte:p.fonte, heb:p.item.heb, pt:p.item.pt, numero:p.item.numero||null, motivo:p.motivo })),
-      sessoesNecessarias: __triagem.sessoesNecessarias || null,
-      preco: __triagem.preco || null,
-      generatedAt: serverTimestamp()
-    });
-    toast('Triagem guardada na ficha do paciente ✓');
-  }catch(e){
-    console.warn('Não foi possível guardar na ficha:', e);
-    toast('Não foi possível guardar na ficha do paciente.', true);
-  }
+  const payloadParaGuardar = {
+    protocolName: 'Triagem de Baixa Vibração',
+    reportText, reportHtml,
+    bovisInicial: __triagem.bovisIni || null, bovisFinal: __triagem.bovisFin || null,
+    baixaVibracaoDetetada: causasDetetadas.map(c => c.nome),
+    chakras: chakrasTodos.map(c => ({ nome:c.nome, percentagem:c.percentagem })),
+    aberturaCaminhos: aberturaNivel,
+    leituraComplementar: __triagem.leituraComplementar ? {
+      momento: __triagem.leituraComplementar.momento.nome,
+      porTras: __triagem.leituraComplementar.porTras.nome,
+      tendencia: __triagem.leituraComplementar.tendencia.nome
+    } : null,
+    protocolo: protocoloFinal.map(p => ({ fonte:p.fonte, heb:p.item.heb, pt:p.item.pt, numero:p.item.numero||null, motivo:p.motivo })),
+    sessoesNecessarias: __triagem.sessoesNecessarias || null,
+    preco: __triagem.preco || null,
+    perfilMapaAlma: perfil ? {
+      caminhoDeVida: perfil.cv,
+      anjo: perfil.anjo.tipo === 'anjo' ? perfil.anjo.nome : ('Universal: '+perfil.anjo.elemento),
+      arcanoPessoal: perfil.arcanoPNome,
+      nodoSul: perfil.nodos.nodoSul.signo,
+      nodoNorte: perfil.nodos.nodoNorte.signo
+    } : null
+  };
 
-  triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfetados, aberturaNivel, protocoloFinal, comparacao, temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA);
+  const guardadoComSucesso = await triagemTentarGravar(payloadParaGuardar);
+  if (!guardadoComSucesso) window.__triagemPayloadPendente = payloadParaGuardar;
+
+  triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfetados, aberturaNivel, protocoloFinal, comparacao, temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA, perfil, ehPrimeiraSessao, cruzamentoVidasPassadas, guardadoComSucesso);
 }
 
-function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfetados, aberturaNivel, protocoloFinal, comparacao, temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA){
+// Tenta gravar o relatório na ficha do paciente. Devolve true/false —
+// nunca falha em silêncio: o ecrã final mostra sempre, de forma bem
+// visível, se ficou guardado ou não, com botão para repetir a gravação
+// sem ter de refazer a triagem toda.
+async function triagemTentarGravar(payload){
+  try{
+    await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
+      ...payload, generatedAt: serverTimestamp()
+    });
+    toast('Triagem guardada na ficha do paciente ✓');
+    return true;
+  }catch(e){
+    console.error('FALHA AO GRAVAR A TRIAGEM NA FICHA DO PACIENTE:', e);
+    toast('⚠️ Não foi possível guardar na ficha do paciente — ver aviso no relatório.', true);
+    return false;
+  }
+}
+window.__triagemTentarGravarNovamente = async function(){
+  if (!window.__triagemPayloadPendente){ alert('Nada para repetir — gere o relatório de novo.'); return; }
+  const ok = await triagemTentarGravar(window.__triagemPayloadPendente);
+  if (ok){ window.__triagemPayloadPendente = null; document.getElementById('triagemAvisoGravacao')?.remove(); }
+  else alert('Continua a falhar. Tire um print deste ecrã e do erro na consola (F12) e envie ao suporte.');
+};
+
+function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfetados, aberturaNivel, protocoloFinal, comparacao, temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA, perfil, ehPrimeiraSessao, cruzamentoVidasPassadas, guardadoComSucesso){
   const main = document.getElementById('mainView');
   const sintese = causasDetetadas.length
     ? `A triagem de ${escapeHtml(__triagem.patientNome)} detetou ${causasDetetadas.length} causa(s) — descritas abaixo em linguagem simples.`
     : `A triagem de ${escapeHtml(__triagem.patientNome)} não revelou causas — campo equilibrado.`;
   main.innerHTML = `
     <h2>🔮 Relatório — ${escapeHtml(__triagem.patientNome)}</h2>
+    ${guardadoComSucesso ? `<div class="card" style="background:#eef7ee;border:1px solid #7fae3a;"><p>✅ Guardado na ficha de ${escapeHtml(__triagem.patientNome)}.</p></div>` : `
+    <div class="card" id="triagemAvisoGravacao" style="background:#fdecea;border:2px solid #c0392b;">
+      <p><strong>⚠️ ESTE RELATÓRIO NÃO FICOU GUARDADO NA FICHA DO PACIENTE.</strong></p>
+      <p class="muted" style="margin-top:6px;">Pode continuar a ver o resultado abaixo, mas não vai aparecer na ficha até conseguir gravar. Tente novamente:</p>
+      <button class="primary" style="margin-top:8px;" onclick="window.__triagemTentarGravarNovamente()">🔄 Tentar gravar novamente</button>
+    </div>`}
     <div class="card"><p>${sintese}</p></div>
+    ${perfil ? (ehPrimeiraSessao ? `<div class="card" style="border:1px solid var(--primary);">
+      <h3>✨ Perfil do Mapa da Alma (1ª sessão)</h3>
+      <p class="muted">Caminho de Vida <strong>${perfil.cv}</strong> — ${escapeHtml(perfil.cvNome||'')} · Signo de <strong>${escapeHtml(perfil.signo.nome)}</strong></p>
+      <p class="muted" style="margin-top:4px;">${perfil.anjo.tipo==='anjo' ? `Anjo do Nascimento: <strong>${escapeHtml(perfil.anjo.nome)}</strong> — ${escapeHtml(perfil.anjo.virtude)}` : `Ligação directa aos Anjos Universais (${escapeHtml(perfil.anjo.elemento)})`}</p>
+      <p class="muted" style="margin-top:4px;">Arcano Pessoal: <strong>${escapeHtml(perfil.arcanoPNome)}</strong></p>
+      <p class="muted" style="margin-top:4px;">Nodo Sul (vidas passadas): <strong>${escapeHtml(perfil.nodos.nodoSul.signo)}</strong> — ${escapeHtml(NODO_SUL_TEXTOS[perfil.nodos.nodoSul.signo]||'')}</p>
+      <p class="muted" style="margin-top:4px;">Nodo Norte (propósito): <strong>${escapeHtml(perfil.nodos.nodoNorte.signo)}</strong></p>
+      <p class="muted" style="margin-top:4px;">Pináculo ${perfil.pinAtivo.indice+1}º (${escapeHtml(perfil.pinAtivo.pinaculo.faixa)})</p>
+    </div>` : `<div class="card"><p class="muted">📿 Perfil (já traçado na 1ª sessão) — actualização de hoje: Ano Pessoal <strong>${perfil.ciclos.anoPessoal}</strong> · Dia Pessoal <strong>${perfil.ciclos.diaPessoal}</strong> · Arcano do Ano: <strong>${escapeHtml(perfil.arcanoANome)}</strong> · Pináculo ${perfil.pinAtivo.indice+1}º</p></div>`) : ''}
     ${causasDetetadas.length ? `<div class="card"><h3>🔎 Causas Detetadas</h3>
       ${causasDetetadas.map(c => `<div style="margin-top:10px;padding:10px;background:#f7f7f5;border-radius:8px;">
         <strong>${c.n}. ${escapeHtml(c.nome)}</strong>
         <p class="muted" style="margin-top:4px;">${escapeHtml(c.descricao)}</p>
         <p class="muted" style="margin-top:4px;font-style:italic;">Exemplo: ${escapeHtml(c.exemplo)}</p>
       </div>`).join('')}
+      ${cruzamentoVidasPassadas ? `<div style="margin-top:10px;padding:10px;background:#eef4f0;border-radius:8px;">
+        <strong>🔗 Ligação com o Mapa da Alma</strong>
+        <p class="muted" style="margin-top:4px;">${escapeHtml(cruzamentoVidasPassadas.motivo)} pode estar ligado ao Nodo Sul em <strong>${escapeHtml(cruzamentoVidasPassadas.nodoSulSigno)}</strong> — ${escapeHtml(cruzamentoVidasPassadas.nodoSulTexto)}</p>
+      </div>` : ''}
     </div>` : ''}
     <div class="card"><h3>🌀 Chakras (percentagem de abertura)</h3>
       ${chakrasTodos.map(c => `<p class="muted">${escapeHtml(c.nome)}: <strong>${c.percentagem}%</strong>${c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO ? ' ⚠️ a vigiar' : ''}</p>`).join('')}
@@ -9758,9 +10368,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
       ${comparacao.chakrasComparados.length ? comparacao.chakrasComparados.map(c => `<p class="muted" style="margin-top:4px;">Chakra ${escapeHtml(c.nome)}: ${c.antes}% → ${c.agora}% (${c.delta>=0?'+':''}${c.delta})</p>`).join('') : ''}
     </div>` : ''}
     ${__triagem.leituraComplementar ? `<div class="card"><h3>🃏 Leitura Complementar</h3>
-      <p><strong>Momento Atual:</strong> ${escapeHtml(__triagem.leituraComplementar.momento.nome)} — ${escapeHtml(__triagem.leituraComplementar.momento.tema)}</p>
-      <p style="margin-top:6px;"><strong>Por Trás Disto:</strong> ${escapeHtml(__triagem.leituraComplementar.porTras.nome)} — ${escapeHtml(__triagem.leituraComplementar.porTras.area)}</p>
-      <p style="margin-top:6px;"><strong>Tendência:</strong> ${escapeHtml(__triagem.leituraComplementar.tendencia.nome)} — ${escapeHtml(__triagem.leituraComplementar.tendencia.tema)}</p>
+      <p>${escapeHtml(triagemSintetizarLeitura(__triagem.patientNome.split(/\s+/)[0], __triagem.leituraComplementar))}</p>
     </div>` : ''}
     <div class="card">
       <h3>🧴 Protocolo de Limpeza — Etiquetas a Usar</h3>
