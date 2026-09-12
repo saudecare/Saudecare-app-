@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Triagem de Baixa Vibração — Hikari Fafe</title>
+<!-- APP_VERSION: 2026-09-12-01 -->
+<meta name="app-version" content="2026-09-12-01">
+<style>
+  :root{
+    --bg1:#1a0f2e; --bg2:#2d1b4e; --gold:#d4af37; --gold-light:#f0d878;
+    --text:#f3ecff; --muted:#c9b8e8; --card:#241640;
+    --t3:#c0392b; --t2:#d4a017; --t1:#7fae3a; --t0:#3aa0d4;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{background:linear-gradient(160deg,var(--bg1),var(--bg2) 60%,#150a26);color:var(--text);min-height:100vh;padding-bottom:60px;}
+  .wrap{max-width:640px;margin:0 auto;padding:28px 18px;}
+  .hero{text-align:center;margin-bottom:22px;}
+  .hero .stars{font-size:24px;letter-spacing:8px;color:var(--gold);margin-bottom:6px;}
+  .hero h1{font-size:1.5rem;background:linear-gradient(90deg,var(--gold-light),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:6px;}
+  .hero p{color:var(--muted);font-size:.9rem;line-height:1.5;}
+  .card{background:var(--card);border:1px solid rgba(212,175,55,.25);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 4px 24px rgba(0,0,0,.35);}
+  label{display:block;margin:10px 0 6px;font-size:.85rem;color:var(--muted);}
+  input, select{width:100%;padding:11px 13px;border-radius:10px;border:1px solid rgba(212,175,55,.35);
+    background:rgba(255,255,255,.05);color:var(--text);font-size:1rem;font-family:inherit;}
+  .btn{display:block;width:100%;text-align:center;background:linear-gradient(90deg,var(--gold),var(--gold-light));
+    color:#2a1a00;font-weight:700;padding:13px;border:none;border-radius:12px;cursor:pointer;font-size:.95rem;margin-top:6px;}
+  .btn:disabled{opacity:.5;}
+  .btn-ghost{background:none;border:1.5px solid var(--gold);color:var(--gold-light);}
+  .btn-sm{padding:8px 10px;font-size:.8rem;margin-top:0;}
+  .muted{color:var(--muted);font-size:.85rem;line-height:1.5;}
+  .modo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;}
+  .modo-tile{border:1.5px solid rgba(212,175,55,.35);border-radius:12px;padding:12px 8px;text-align:center;cursor:pointer;font-size:.85rem;}
+  .modo-tile.active{border-color:var(--gold);background:rgba(212,175,55,.15);color:var(--gold-light);font-weight:700;}
+  .secao-titulo{color:var(--gold-light);font-size:1rem;margin:4px 0 10px;border-bottom:1px solid rgba(212,175,55,.25);padding-bottom:6px;}
+  .slot-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed rgba(212,175,55,.15);}
+  .slot-label{font-size:.85rem;color:var(--text);}
+  .slot-carta{font-size:.78rem;color:var(--gold-light);margin-top:2px;}
+  .tier-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;}
+  .chakra-block{margin-bottom:14px;padding-bottom:6px;}
+  .chakra-titulo{font-weight:700;color:var(--gold-light);font-size:.92rem;margin-bottom:4px;}
+  .result-block{border-top:1px solid rgba(212,175,55,.25);padding-top:12px;margin-top:12px;}
+  .result-block h3{color:var(--gold-light);font-size:1rem;margin-bottom:6px;}
+  .etiqueta-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,.04);border-radius:8px;margin-top:6px;}
+  .etiqueta-heb{font-size:1.1rem;color:var(--gold-light);min-width:80px;text-align:right;direction:rtl;}
+  .etiqueta-pt{font-size:.82rem;color:var(--muted);}
+  .badge-fonte{font-size:.65rem;background:rgba(212,175,55,.18);color:var(--gold-light);padding:2px 6px;border-radius:8px;margin-left:auto;white-space:nowrap;}
+  .loading{text-align:center;padding:40px 20px;color:var(--muted);}
+  @media print{ .no-print{display:none!important;} body{background:#fff;color:#000;} .card{background:#fff;border:1px solid #ccc;} .muted{color:#333;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="stars">✦ ✧ ✦</div>
+    <h1>Triagem de Baixa Vibração</h1>
+    <p>Substituto do Pêndulo Hebreu por Arcanos Maiores — Hikari Fafe</p>
+  </div>
+  <div id="mainContent"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const TENANT_ID = 'hikari-terapias';
+
+const main = document.getElementById('mainContent');
+function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+/* ─── Base: 22 Arcanos Maiores, classificados para efeitos DESTA triagem ──
+   (presença/intensidade de interferência energética — não é o significado
+   geral da carta). Fontes: correspondência tradicional Diabo/Torre/Lua/
+   Morte com magia e interferência; cartas de luz como campo limpo. */
+const ARCANOS = [
+  {n:0, nome:"O Louco", tier:1, area:"caminho de vida em geral, decisões precipitadas"},
+  {n:1, nome:"O Mago", tier:1, area:"vontade pessoal, manipulação de energia"},
+  {n:2, nome:"A Sacerdotisa", tier:1, area:"intuição, segredos guardados"},
+  {n:3, nome:"A Imperatriz", tier:1, area:"fertilidade, criação, maternidade"},
+  {n:4, nome:"O Imperador", tier:1, area:"estrutura, autoridade, trabalho"},
+  {n:5, nome:"O Papa", tier:1, area:"tradição familiar, crenças herdadas"},
+  {n:6, nome:"Os Enamorados", tier:2, area:"relações, escolhas do coração"},
+  {n:7, nome:"O Carro", tier:2, area:"direção de vida, viagens, movimento"},
+  {n:8, nome:"A Força", tier:1, area:"vitalidade, autocontrolo"},
+  {n:9, nome:"O Eremita", tier:2, area:"isolamento, introspeção excessiva"},
+  {n:10, nome:"A Roda da Fortuna", tier:2, area:"ciclos de sorte, karma"},
+  {n:11, nome:"A Justiça", tier:1, area:"causas judiciais, equilíbrio kármico"},
+  {n:12, nome:"O Enforcado", tier:2, area:"estagnação, sacrifício não resolvido"},
+  {n:13, nome:"A Morte", tier:3, area:"transição de vida, luto não fechado"},
+  {n:14, nome:"A Temperança", tier:0, area:"equilíbrio, cura em curso"},
+  {n:15, nome:"O Diabo", tier:3, area:"vícios, amarrações, sexualidade, dinheiro"},
+  {n:16, nome:"A Torre", tier:3, area:"casa, estruturas, eventos súbitos"},
+  {n:17, nome:"A Estrela", tier:0, area:"esperança, proteção espiritual ativa"},
+  {n:18, nome:"A Lua", tier:3, area:"medos ocultos, inimigos escondidos, sono"},
+  {n:19, nome:"O Sol", tier:0, area:"vitalidade plena, campo limpo"},
+  {n:20, nome:"O Julgamento", tier:2, area:"chamado espiritual não atendido, culpa"},
+  {n:21, nome:"O Mundo", tier:0, area:"ciclo completo, proteção total"}
+];
+function tierInfo(t){
+  return t===3 ? {label:'Forte', cor:'var(--t3)'} : t===2 ? {label:'Moderado', cor:'var(--t2)'}
+       : t===1 ? {label:'Leve', cor:'var(--t1)'} : {label:'Campo limpo', cor:'var(--t0)'};
+}
+function tierParaBovis(t){ return t===3?2:t===2?5:t===1?7:10; }
+function tirarCartaAleatoria(){ return ARCANOS[Math.floor(Math.random()*ARCANOS.length)]; }
+
+const CHAKRAS = [
+  {n:1, nome:"Raiz", temas:["Segurança","Força vital","Poder pessoal","Confiança"]},
+  {n:2, nome:"Sacro", temas:["Fertilidade","Equilíbrio Hormonal","Energia Sexual","Paixão"]},
+  {n:3, nome:"Plexo Solar", temas:["Auto-estima","Coragem","Poder pessoal","Confiança"]},
+  {n:4, nome:"Coração", temas:["Amor incondicional","Amor Próprio","Compaixão","Perdoar"]},
+  {n:5, nome:"Garganta", temas:["Verdade","Vontade"]},
+  {n:6, nome:"Terceira Visão", temas:["Clareza","profecia","Silêncio mental"]},
+  {n:7, nome:"Coroa", temas:["Rendição ao Divino","Protecção Divina","Conexão com a fonte","Fé"]}
+];
+
+/* ─── Base de etiquetas (das 4 folhas enviadas pela Hikari) ────────────── */
+const ETQ_NOVAS01 = [
+  {heb:"לשחרר כאב",pt:"Libertar mágoas"},{heb:"לשחרר טינה",pt:"Libertar ressentimentos"},{heb:"לסלוח",pt:"Perdoar"},
+  {heb:"לנקות קארמה",pt:"Limpar Karma"},{heb:"לחסל פוביות",pt:"Eliminar fobias"},{heb:"סבלנות",pt:"Paciência"},
+  {heb:"לא מרגיש אשם",pt:"Não sentir culpa"},{heb:"לחסל זכרונות כואבים מן העבר",pt:"Libertar memórias dolorosas do passado"},
+  {heb:"לרצות",pt:"Vontade"},{heb:"חוכמה",pt:"Sabedoria"},{heb:"שחרור",pt:"Libertação"},{heb:"שגשוג",pt:"Prosperidade"},
+  {heb:"שפע",pt:"Abundância"},{heb:"התחדשות הסלולר",pt:"Rejuvenescimento celular"},{heb:"אומץ",pt:"Coragem"},
+  {heb:"סובלנות",pt:"Tolerância"},{heb:"מחשבות חיוביות",pt:"Pensamentos positivos"},{heb:"לאבד את הפחד",pt:"Libertar medos"},
+  {heb:"פיוס",pt:"Reconciliação"},{heb:"כוח פנימי",pt:"Força interior"},{heb:"אמונה",pt:"Confiança"},{heb:"חמלה",pt:"Compaixão"},
+  {heb:"הודיה",pt:"Gratidão"},{heb:"בטחון עצמי",pt:"Auto-estima"},{heb:"קבלה",pt:"Aceitação"},{heb:"כבוד",pt:"Respeito"},
+  {heb:"אחריות",pt:"Responsabilidade"},{heb:"התחדשות תאים",pt:"Regeneração Celular"},{heb:"בטחון",pt:"Segurança"},
+  {heb:"כוח אישי",pt:"Poder pessoal"},{heb:"בהירות",pt:"Clareza"},{heb:"יופי",pt:"Beleza"},{heb:"ריכוז",pt:"Concentração"},
+  {heb:"להכנע לאלוהי",pt:"Rendição ao Divino"},{heb:"אמונה",pt:"Fé"},{heb:"הלץ",pt:"Desbloqueio"},{heb:"נקוי שכרון",pt:"Desintoxicação"},
+  {heb:"נקוי רגשי",pt:"Limpeza emocional"},{heb:"אמת",pt:"Verdade"},{heb:"לא להאחז, לשחרר",pt:"Desapego/Deixar ir"},
+  {heb:"רצון תם",pt:"Vontade perfeita"},{heb:"שקט שכלי",pt:"Silêncio mental"},{heb:"עלה את הפחד",pt:"Superar o medo"},
+  {heb:"אהבה ללא תנאים",pt:"Amor incondicional"},{heb:"שלום",pt:"Paz"},{heb:"אהבה עצמית",pt:"Amor Próprio"},
+  {heb:"שלום פנימי",pt:"Paz Interior"},{heb:"רוגע",pt:"Tranquilidade"},{heb:"שלווה",pt:"Pacífico(a)"},{heb:"ענוה",pt:"Humildade"},
+  {heb:"איזון הורמונלי",pt:"Equilíbrio Hormonal"},{heb:"בגרות",pt:"Maturidade"},{heb:"הגנה אלהית",pt:"Protecção Divina"}
+];
+const ETQ_NIVEL1 = [
+  {heb:"עין רעה",pt:"Olho Gordo"},{heb:"מאלח",pt:"Miasma"},{heb:"לילה",pt:"Campo Electromagnético"},
+  {heb:"כשף",pt:"Magia"},{heb:"אפר",pt:"Ve-"},{heb:"גיאו פתולוגיה",pt:"Geopatia"},
+  {heb:"גלמית כוכבי",pt:"Larva Astral"},{heb:"יהשוה",pt:"Redentor de YHWH"}
+];
+const ETQ_USAR_EM_NOS = [
+  {heb:"הנעים",pt:"Harmonizar"},{heb:"חסינות פגום",pt:"Imunidade"},{heb:"שלום פמימי",pt:"Paz interior"},
+  {heb:"שמחה",pt:"Alegria"},{heb:"קשר יהשוה",pt:"Unir"},{heb:"טחר יהשוה",pt:"Purificar"},
+  {heb:"כח חיוני תם",pt:"Força vital perfeita"},{heb:"התיר יהשוה",pt:"Desfazer"},{heb:"יהשוה",pt:"Redentor de YHWH"},
+  {heb:"אור",pt:"Luz, iluminação"},{heb:"נקיי",pt:"Limpeza de impurezas"},{heb:"תעלה מריהיה שלמה",pt:"Canal central perfeito"},
+  {heb:"חבור בהעין",pt:"Conexão com a fonte"},{heb:"אהבה",pt:"Amor"}
+];
+const NOMES_72 = [
+  {n:1,heb:"והו",pt:"Viagem no Tempo: Como consertar o passado"},{n:2,heb:"ילי",pt:"Resgate da Centelha Divina, Recuperar a energia"},
+  {n:4,heb:"עלם",pt:"Eliminando Pensamentos Negativos"},{n:5,heb:"מהש",pt:"Cura o Corpo, a Mente e a Alma"},
+  {n:8,heb:"כהת",pt:"Limpar toda negatividade interna e externa"},{n:9,heb:"הזי",pt:"Atraia Anjos de Luz e a Boa Sorte"},
+  {n:10,heb:"אלד",pt:"Regeneração de Órgãos Doentes ou Danificados e Proteção contra Inveja e Pesadelos"},
+  {n:11,heb:"לאו",pt:"Expulsar os Resíduos do Mal e Purificar os lugares"},{n:12,heb:"ההע",pt:"Ativar o Amor Incondicional e Trazer Alegria"},
+  {n:16,heb:"הקם",pt:"Livre-se da depressão e Anime-se completamente"},{n:18,heb:"כלי",pt:"Fertilidade – Bloqueios de criatividade"},
+  {n:20,heb:"פהל",pt:"Libertar-se dos vícios - Fortalecer a Consciência Espiritual"},
+  {n:22,heb:"ייי",pt:"Cura mental e psicológica e Para afastar pessoas negativas"},
+  {n:24,heb:"והו",pt:"Libertar-se do ciúme, inveja, dor, sofrimento e vícios"},
+  {n:29,heb:"ריי",pt:"Eliminar o Ódio e Para Aceitar a Cura Espiritual"},
+  {n:31,heb:"לכב",pt:"Para retirar o carma e a auto-obsessão e para terminar projetos inacabados"},
+  {n:36,heb:"מנד",pt:"Ativar a coragem e eliminar o medo"},{n:41,heb:"ההה",pt:"Atraia a Compaixão e a Misericórdia e Melhore a Auto-Estima"},
+  {n:53,heb:"ננא",pt:"Atraindo Proteção, Cura e Amizades Verdadeiras"},{n:60,heb:"מצר",pt:"Liberdade - Liberte-se da depressão e das limitações físicas e espirituais"},
+  {n:64,heb:"מוזי",pt:"Afastar a negatividade e Ativar o magnetismo físico e espiritual"},
+  {n:70,heb:"יבמ",pt:"Eliminar os bloqueios psíquicos do sucesso"},
+  {n:72,heb:"מום",pt:"Purificação Espiritual - Purifique seu espírito e ambientes limpando resíduos energéticos"}
+];
+
+function buscarEtiquetas(temas, maxResult=2){
+  const fontes = [["NOVAS_01", ETQ_NOVAS01], ["Usar em nós", ETQ_USAR_EM_NOS], ["1º Nível", ETQ_NIVEL1]];
+  let resultados = [];
+  temas.forEach(tema => {
+    fontes.forEach(([fonteNome, lista]) => {
+      lista.forEach(item => {
+        if (item.pt.toLowerCase().includes(tema.toLowerCase())) resultados.push({fonte: fonteNome, item});
+      });
+    });
+  });
+  temas.forEach(tema => {
+    NOMES_72.forEach(item => {
+      if (item.pt.toLowerCase().includes(tema.toLowerCase().split(' ')[0])){
+        resultados.push({fonte:'72 Nomes', item:{heb:item.heb, pt:`Nome ${item.n} — ${item.pt}`}});
+      }
+    });
+  });
+  const vistos = new Set(); const final = [];
+  resultados.forEach(r => { if (!vistos.has(r.item.pt)){ vistos.add(r.item.pt); final.push(r); } });
+  return final.slice(0, maxResult);
+}
+
+/* ─── Estado ─────────────────────────────────────────────────────────── */
+let estado = {
+  nome:'', data:'', modo:'auto',
+  chakras: CHAKRAS.map(c => ({ miasmaIni:null, miasmaFin:null, magiaIni:null, magiaFin:null })),
+  bovisIni:null, bovisFin:null,
+  larvaPresenca:null, larvaLocal:null,
+  campoEletro:null,
+  geopatiaPresenca:null, geopatiaLocal:null
+};
+
+function optionsCartas(){
+  return ARCANOS.map(a => `<option value="${a.n}">${a.n} — ${escapeHtml(a.nome)}</option>`).join('');
+}
+
+function slotHTML(path, label){
+  const valor = getPorPath(path);
+  return `
+  <div class="slot-row">
+    <div>
+      <div class="slot-label">${label}</div>
+      ${valor ? `<div class="slot-carta"><span class="tier-dot" style="background:${tierInfo(valor.tier).cor};"></span>${valor.n} — ${escapeHtml(valor.nome)} (${tierInfo(valor.tier).label})</div>` : `<div class="slot-carta" style="color:var(--muted);">— por preencher —</div>`}
+    </div>
+    ${estado.modo === 'auto'
+      ? `<button class="btn btn-ghost btn-sm" data-tirar="${path}">🎴 Tirar</button>`
+      : `<select data-manual="${path}" style="width:140px;"><option value="">Escolher…</option>${optionsCartas()}</select>`
+    }
+  </div>`;
+}
+function getPorPath(path){
+  const parts = path.split('.');
+  let obj = estado;
+  for (const p of parts){ if (obj == null) return null; obj = /^\d+$/.test(p) ? obj[parseInt(p,10)] : obj[p]; }
+  return obj;
+}
+function setPorPath(path, valor){
+  const parts = path.split('.');
+  let obj = estado;
+  for (let i=0; i<parts.length-1; i++){ const p = parts[i]; obj = /^\d+$/.test(p) ? obj[parseInt(p,10)] : obj[p]; }
+  const last = parts[parts.length-1];
+  if (/^\d+$/.test(last)) obj[parseInt(last,10)] = valor; else obj[last] = valor;
+}
+
+function renderFormulario(){
+  main.innerHTML = `
+    <div class="card no-print">
+      <label>Nome do consulente</label>
+      <input id="inpNome" value="${escapeHtml(estado.nome)}" placeholder="Nome completo">
+      <label>Data da sessão</label>
+      <input id="inpData" type="date" value="${estado.data}">
+      <label>Modo de tiragem</label>
+      <div class="modo-grid">
+        <div class="modo-tile ${estado.modo==='auto'?'active':''}" data-modo="auto">🎴 Automática<br><span class="muted" style="font-size:.72rem;">o site tira as cartas</span></div>
+        <div class="modo-tile ${estado.modo==='manual'?'active':''}" data-modo="manual">✋ Manual<br><span class="muted" style="font-size:.72rem;">baralho físico — regista o que saiu</span></div>
+      </div>
+    </div>
+
+    <div class="card no-print">
+      <h3 class="secao-titulo">🌀 Chakras — Miasma e Magia/Olho Gordo</h3>
+      ${CHAKRAS.map((c, i) => `
+        <div class="chakra-block">
+          <div class="chakra-titulo">${c.n} — ${escapeHtml(c.nome)}</div>
+          ${slotHTML(`chakras.${i}.miasmaIni`, 'Miasma — inicial')}
+          ${slotHTML(`chakras.${i}.miasmaFin`, 'Miasma — final')}
+          ${slotHTML(`chakras.${i}.magiaIni`, 'Magia/Olho Gordo — inicial')}
+          ${slotHTML(`chakras.${i}.magiaFin`, 'Magia/Olho Gordo — final')}
+        </div>`).join('')}
+    </div>
+
+    <div class="card no-print">
+      <h3 class="secao-titulo">📊 Energia Vital (Bovis)</h3>
+      ${slotHTML('bovisIni', 'Bovis — inicial')}
+      ${slotHTML('bovisFin', 'Bovis — final')}
+      <p class="muted" style="margin-top:8px;font-size:.75rem;">⚠️ Escala simbólica 0–10 traduzida da carta — não é a medição real em Unidades Bovis do biómetro/pêndulo.</p>
+    </div>
+
+    <div class="card no-print">
+      <h3 class="secao-titulo">👻 Larva Astral</h3>
+      ${slotHTML('larvaPresenca', 'Presença')}
+      ${slotHTML('larvaLocal', 'Localização/área afetada')}
+    </div>
+
+    <div class="card no-print">
+      <h3 class="secao-titulo">📡 Campo Electromagnético & Geopatia</h3>
+      ${slotHTML('campoEletro', 'Campo Electromagnético')}
+      ${slotHTML('geopatiaPresenca', 'Geopatia — presença')}
+      ${slotHTML('geopatiaLocal', 'Geopatia — localização')}
+      <p class="muted" style="margin-top:8px;font-size:.75rem;">⚠️ Campo Electromagnético e Geopatia são território da radiestesia/geobiologia, não do Tarot tradicional — esta secção é uma adaptação simbólica. Para medição real, use o pêndulo ou biómetro de Bovis sobre planta da casa.</p>
+    </div>
+
+    <button class="btn no-print" id="btnGerar">🔮 Gerar Relatório</button>
+    <p class="muted no-print" style="text-align:center;margin-top:10px;">Ferramenta profissional de apoio — não substitui diagnóstico médico, psicológico ou psiquiátrico.</p>
+  `;
+
+  document.getElementById('inpNome').addEventListener('input', e => estado.nome = e.target.value);
+  document.getElementById('inpData').addEventListener('input', e => estado.data = e.target.value);
+  document.querySelectorAll('[data-modo]').forEach(el => el.addEventListener('click', () => {
+    estado.modo = el.dataset.modo; renderFormulario();
+  }));
+  document.querySelectorAll('[data-tirar]').forEach(el => el.addEventListener('click', () => {
+    setPorPath(el.dataset.tirar, tirarCartaAleatoria()); renderFormulario();
+  }));
+  document.querySelectorAll('[data-manual]').forEach(el => el.addEventListener('change', () => {
+    const idx = parseInt(el.value, 10);
+    setPorPath(el.dataset.manual, isNaN(idx) ? null : ARCANOS[idx]);
+  }));
+  document.getElementById('btnGerar').addEventListener('click', gerarRelatorio);
+}
+
+/* ─── Motor de avaliação ─────────────────────────────────────────────── */
+function avaliarChakra(c, dados){
+  const { miasmaIni, miasmaFin, magiaIni, magiaFin } = dados;
+  return {
+    nome: c.nome, temas: c.temas,
+    miasma: miasmaIni && miasmaFin ? { inicial: miasmaIni, final: miasmaFin, melhoria: miasmaIni.tier - miasmaFin.tier, presente: miasmaFin.tier >= 2 } : null,
+    magia: magiaIni && magiaFin ? { inicial: magiaIni, final: magiaFin, melhoria: magiaIni.tier - magiaFin.tier, presente: magiaFin.tier >= 2 } : null
+  };
+}
+
+async function gerarRelatorio(){
+  if (!estado.nome){ alert('Preencha o nome do consulente.'); return; }
+  const avalChakras = CHAKRAS.map((c, i) => avaliarChakra(c, estado.chakras[i]));
+
+  const achados = []; // para o parágrafo de síntese
+  avalChakras.forEach(a => {
+    if (a.miasma && a.miasma.presente) achados.push(`miasma em ${a.nome}`);
+    if (a.magia && a.magia.presente) achados.push(`magia/olho gordo em ${a.nome}`);
+  });
+  if (estado.larvaPresenca && estado.larvaPresenca.tier >= 2) achados.push('sinal de larva astral');
+  if (estado.geopatiaPresenca && estado.geopatiaPresenca.tier >= 2) achados.push('sinal de geopatia');
+  if (estado.campoEletro && estado.campoEletro.tier >= 2) achados.push('interferência no campo electromagnético');
+
+  // Protocolo — junta etiquetas para cada chakra afectado + gerais
+  const protocolo = [];
+  avalChakras.forEach(a => {
+    if ((a.miasma && a.miasma.presente) || (a.magia && a.magia.presente)){
+      buscarEtiquetas(a.temas, 2).forEach(r => protocolo.push({...r, motivo: `Chakra ${a.nome}`}));
+    }
+  });
+  if (achados.some(x => x.includes('magia') || x.includes('olho gordo'))){
+    buscarEtiquetas(['Olho Gordo','Magia','Proteção'], 3).forEach(r => protocolo.push({...r, motivo: 'Magia/Olho Gordo'}));
+  }
+  if (estado.larvaPresenca && estado.larvaPresenca.tier >= 2){
+    buscarEtiquetas(['Larva Astral','Purificação','Limpar'], 3).forEach(r => protocolo.push({...r, motivo: 'Larva Astral'}));
+  }
+  if ((estado.campoEletro && estado.campoEletro.tier >= 2) || (estado.geopatiaPresenca && estado.geopatiaPresenca.tier >= 2)){
+    buscarEtiquetas(['Campo Electromagnético','Geopatia','Purificação'], 3).forEach(r => protocolo.push({...r, motivo: 'Ambiente'}));
+  }
+  if (protocolo.length === 0){
+    buscarEtiquetas(['Harmonizar','Paz interior','Força vital'], 3).forEach(r => protocolo.push({...r, motivo: 'Manutenção geral'}));
+  }
+  // dedupe protocolo
+  const vistosProt = new Set(); const protocoloFinal = [];
+  protocolo.forEach(p => { if (!vistosProt.has(p.item.pt)){ vistosProt.add(p.item.pt); protocoloFinal.push(p); } });
+
+  const bovisIniVal = estado.bovisIni ? tierParaBovis(estado.bovisIni.tier) : null;
+  const bovisFinVal = estado.bovisFin ? tierParaBovis(estado.bovisFin.tier) : null;
+
+  const leadId = crypto.randomUUID();
+  try{
+    await setDoc(doc(db, 'tenants', TENANT_ID, 'triagemBaixaVibracao', leadId), {
+      nome: estado.nome, data: estado.data || new Date().toISOString().slice(0,10),
+      chakras: avalChakras.map(a => ({ nome:a.nome, miasma:a.miasma, magia:a.magia })),
+      bovis: { inicial: bovisIniVal, final: bovisFinVal },
+      larva: { presenca: estado.larvaPresenca, local: estado.larvaLocal },
+      campoEletro: estado.campoEletro,
+      geopatia: { presenca: estado.geopatiaPresenca, local: estado.geopatiaLocal },
+      protocolo: protocoloFinal.map(p => ({ fonte:p.fonte, heb:p.item.heb, pt:p.item.pt, motivo:p.motivo })),
+      criadoEm: new Date().toISOString()
+    });
+  }catch(e){ console.warn('Não foi possível guardar a sessão:', e); }
+
+  renderRelatorio(avalChakras, achados, protocoloFinal, bovisIniVal, bovisFinVal);
+}
+
+function renderRelatorio(avalChakras, achados, protocoloFinal, bovisIniVal, bovisFinVal){
+  const primeiroNome = estado.nome.split(/\s+/)[0];
+  const sintese = achados.length
+    ? `A triagem de ${escapeHtml(primeiroNome)} detectou ${achados.length} sinal(is) a vigiar: ${achados.map(escapeHtml).join(', ')}. O protocolo abaixo foi montado especificamente para estes pontos.`
+    : `A triagem de ${escapeHtml(primeiroNome)} não revelou sinais fortes de interferência nas posições avaliadas — campo globalmente equilibrado. O protocolo abaixo é de manutenção.`;
+
+  main.innerHTML = `
+    <div class="card">
+      <p class="muted" style="font-size:.75rem;">Relatório de ${escapeHtml(estado.data || new Date().toLocaleDateString('pt-PT'))}</p>
+      <h3 style="color:var(--gold-light);margin:6px 0 10px;">🔮 Triagem de ${escapeHtml(estado.nome)}</h3>
+      <p class="muted">${sintese}</p>
+    </div>
+
+    <div class="card">
+      <h3 style="color:var(--gold-light);margin-bottom:8px;">🌀 Chakras</h3>
+      ${avalChakras.map(a => `
+        <div style="margin-top:8px;padding:8px 10px;background:rgba(255,255,255,.04);border-radius:8px;">
+          <p class="muted" style="font-weight:700;color:var(--text);">${escapeHtml(a.nome)}</p>
+          ${a.miasma ? `<p class="muted" style="margin-top:4px;"><span class="tier-dot" style="background:${tierInfo(a.miasma.final.tier).cor};"></span>Miasma: ${tierInfo(a.miasma.inicial.tier).label} → ${tierInfo(a.miasma.final.tier).label}${a.miasma.melhoria>0?' (melhorou)':a.miasma.melhoria<0?' (piorou)':' (igual)'}</p>` : ''}
+          ${a.magia ? `<p class="muted" style="margin-top:4px;"><span class="tier-dot" style="background:${tierInfo(a.magia.final.tier).cor};"></span>Magia/Olho Gordo: ${tierInfo(a.magia.inicial.tier).label} → ${tierInfo(a.magia.final.tier).label}${a.magia.melhoria>0?' (melhorou)':a.magia.melhoria<0?' (piorou)':' (igual)'}</p>` : ''}
+        </div>`).join('')}
+    </div>
+
+    ${(bovisIniVal!=null || bovisFinVal!=null) ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);margin-bottom:8px;">📊 Energia Vital (Bovis simbólico)</h3>
+      <p class="muted">Inicial: <strong>${bovisIniVal ?? '—'}/10</strong> · Final: <strong>${bovisFinVal ?? '—'}/10</strong></p>
+    </div>` : ''}
+
+    ${(estado.larvaPresenca || estado.campoEletro || estado.geopatiaPresenca) ? `
+    <div class="card">
+      <h3 style="color:var(--gold-light);margin-bottom:8px;">👻 Larva Astral, Campo & Geopatia</h3>
+      ${estado.larvaPresenca ? `<p class="muted"><span class="tier-dot" style="background:${tierInfo(estado.larvaPresenca.tier).cor};"></span>Larva Astral: ${tierInfo(estado.larvaPresenca.tier).label}${estado.larvaLocal ? ` — área: ${escapeHtml(estado.larvaLocal.area)}` : ''}</p>` : ''}
+      ${estado.campoEletro ? `<p class="muted" style="margin-top:4px;"><span class="tier-dot" style="background:${tierInfo(estado.campoEletro.tier).cor};"></span>Campo Electromagnético: ${tierInfo(estado.campoEletro.tier).label}</p>` : ''}
+      ${estado.geopatiaPresenca ? `<p class="muted" style="margin-top:4px;"><span class="tier-dot" style="background:${tierInfo(estado.geopatiaPresenca.tier).cor};"></span>Geopatia: ${tierInfo(estado.geopatiaPresenca.tier).label}${estado.geopatiaLocal ? ` — área: ${escapeHtml(estado.geopatiaLocal.area)}` : ''}</p>` : ''}
+      <p class="muted" style="margin-top:8px;font-size:.72rem;opacity:.8;">⚠️ Adaptação simbólica — para confirmação real use pêndulo/biómetro sobre a planta da casa.</p>
+    </div>` : ''}
+
+    <div class="card" style="border:1px solid var(--gold);">
+      <h3 style="color:var(--gold-light);margin-bottom:8px;">🧴 Protocolo de Limpeza — Etiquetas a Usar</h3>
+      ${protocoloFinal.map(p => `
+        <div class="etiqueta-item">
+          <span class="etiqueta-heb">${p.item.heb}</span>
+          <span class="etiqueta-pt">${escapeHtml(p.item.pt)} <em style="opacity:.7;">(${escapeHtml(p.motivo)})</em></span>
+          <span class="badge-fonte">${escapeHtml(p.fonte)}</span>
+        </div>`).join('')}
+    </div>
+
+    <p class="muted no-print" style="text-align:center;margin-top:10px;">Ferramenta de apoio profissional, baseada em correspondências tradicionais dos Arcanos — não substitui diagnóstico médico, psicológico ou psiquiátrico.</p>
+    <button class="btn btn-ghost no-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    <button class="btn no-print" id="btnNovaSessao">↺ Nova Sessão</button>
+  `;
+  document.getElementById('btnNovaSessao').addEventListener('click', () => {
+    estado = {
+      nome:'', data:'', modo: estado.modo,
+      chakras: CHAKRAS.map(() => ({ miasmaIni:null, miasmaFin:null, magiaIni:null, magiaFin:null })),
+      bovisIni:null, bovisFin:null, larvaPresenca:null, larvaLocal:null,
+      campoEletro:null, geopatiaPresenca:null, geopatiaLocal:null
+    };
+    renderFormulario();
+  });
+}
+
+renderFormulario();
+</script>
+</body>
+</html>
