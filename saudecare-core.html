@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-09-158';
+const APP_VERSION = '2026-09-13-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1463,7 +1463,8 @@ const NAV_GROUPS = {
   mistica: { title: '🔮 Métodos Exclusivos Hikari Fafe', tenantOnly: 'hikari-terapias', items: [
     { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', tenantOnly: 'hikari-terapias' },
     { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', tenantOnly: 'hikari-terapias' },
-    { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem — Pêndulo Hebraico', tenantOnly: 'hikari-terapias' }
+    { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem — Pêndulo Hebraico', tenantOnly: 'hikari-terapias' },
+    { view: 'reikiAlunos', icon: '🎓', label: 'Alunos Reiki', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1535,6 +1536,7 @@ function renderView(view, opts){
   else if (view === 'mapaAlma') renderMapaAlma(main);
   else if (view === 'cartomancia') renderCartomancia(main);
   else if (view === 'triagemBaixaVibracao') renderTriagemBaixaVibracao(main, opts);
+  else if (view === 'reikiAlunos') renderReikiAlunos(main);
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
   highlightActiveNavGroup(view);
@@ -10074,6 +10076,382 @@ window.viewTriagemEvolucao = async function(patientId){
   }
 
   showPatientOverlay('📊 Evolução — Triagem de Baixa Vibração', html);
+};
+
+/* ══════════════════════════════════════════════════════════════════════
+   ALUNOS REIKI — Hikari Fafe Escola de Reiki
+   Gestão de alunos por nível (Usui Reiki Ryoho: 1, 2, 3A, 3B) e emissão
+   do certificado em PDF sobre a imagem do modelo.
+
+   A subida de nível é SEMPRE manual e exige confirmação da Mestra: no
+   Reiki a progressão depende da sintonização presencial, não de um
+   teste automático. A estrutura de dados já fica preparada para os
+   testes e o chatbot por nível de uma fase seguinte.
+
+   Firestore:
+     tenants/{tenantId}/reikiStudents/{id}  — um documento por aluno
+     tenants/{tenantId}/reikiConfig/{nivel} — descrição editável do nível
+   ══════════════════════════════════════════════════════════════════════ */
+
+const REIKI_NIVEIS = [
+  { id:'1', nome:'Nível 1 — Shoden', certLabel:'Nível 1 — Shoden', subtitulo:'O Despertar',
+    descricao:'Primeira sintonização. O aluno abre o canal e aprende a aplicar Reiki a si próprio e a outras pessoas por imposição das mãos, com foco no corpo físico, na limpeza do campo e na prática diária do autotratamento.' },
+  { id:'2', nome:'Nível 2 — Okuden', certLabel:'Nível 2 — Okuden', subtitulo:'A Transformação',
+    descricao:'Sintonização com os três primeiros símbolos. O trabalho aprofunda-se no plano emocional e mental, e o aluno passa a poder enviar Reiki à distância, no tempo e no espaço.' },
+  { id:'3A', nome:'Nível 3A — Shinpiden (Aprofundamento)', certLabel:'Nível 3A — Shinpiden', subtitulo:'O Mestre Interior',
+    descricao:'Sintonização com o símbolo do Mestre. É um nível de amadurecimento pessoal e espiritual: o aluno aprofunda a sua própria prática e prepara-se para a responsabilidade de ensinar, mas ainda não sintoniza outras pessoas.' },
+  { id:'3B', nome:'Nível 3B — Shinpiden (Mestrado)', certLabel:'Nível 3B — Shinpiden', subtitulo:'O Mestrado',
+    descricao:'Habilitação para ensinar Usui Reiki Ryoho e sintonizar novos alunos, com a responsabilidade de manter a linhagem viva e íntegra.' }
+];
+
+function reikiNivelInfo(id){ return REIKI_NIVEIS.find(n => n.id === id) || null; }
+function reikiIndiceNivel(id){ return REIKI_NIVEIS.findIndex(n => n.id === id); }
+function reikiProximoNivel(idAtual){
+  if (!idAtual) return REIKI_NIVEIS[0];
+  const i = reikiIndiceNivel(idAtual);
+  return (i === -1 || i === REIKI_NIVEIS.length - 1) ? null : REIKI_NIVEIS[i + 1];
+}
+function reikiHojeISO(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function reikiDataPT(iso){
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '';
+  const [a, m, d] = iso.split('-');
+  return d + '/' + m + '/' + a;
+}
+function reikiCertId(nome, nivelId, iso){
+  const primeiro = String(nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim().split(/\s+/)[0].toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4) || 'ALNO';
+  return 'RK-' + nivelId + '-' + String(iso).replace(/-/g, '') + '-' + primeiro;
+}
+
+let __reikiAlunos = [];
+let __reikiDescricoes = {};
+let __reikiTab = 'alunos';
+
+async function renderReikiAlunos(main){
+  const m = main || document.getElementById('mainView');
+  m.innerHTML = '<p class="muted">A carregar alunos…</p>';
+  try {
+    const [alunosSnap, configSnap] = await Promise.all([
+      getDocs(collection(db, 'tenants', tenantId, 'reikiStudents')),
+      getDocs(collection(db, 'tenants', tenantId, 'reikiConfig'))
+    ]);
+    __reikiAlunos = [];
+    alunosSnap.forEach(d => __reikiAlunos.push({ id: d.id, ...d.data() }));
+    __reikiAlunos.sort((a, b) => String(a.nome||'').localeCompare(String(b.nome||''), 'pt'));
+    __reikiDescricoes = {};
+    configSnap.forEach(d => { __reikiDescricoes[d.id] = (d.data()||{}).descricao || ''; });
+  } catch(e){
+    m.innerHTML = `<div class="card" style="border:1px solid #e0b4b4;background:#fdf3f3;">
+      <strong>Não consegui carregar os alunos.</strong>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(e.message || String(e))}</p>
+      <button class="primary" style="margin-top:10px;" onclick="renderView('reikiAlunos')">Tentar outra vez</button>
+    </div>`;
+    return;
+  }
+  reikiRenderEcra(m);
+}
+
+function reikiRenderEcra(main){
+  const m = main || document.getElementById('mainView');
+  m.innerHTML = `
+    <h2>🎓 Alunos Reiki</h2>
+    <div class="row" style="gap:6px;margin:10px 0 14px;">
+      <button class="${__reikiTab==='alunos'?'primary':'ghost'}" onclick="reikiMudarTab('alunos')">Alunos</button>
+      <button class="${__reikiTab==='niveis'?'primary':'ghost'}" onclick="reikiMudarTab('niveis')">Níveis</button>
+    </div>
+    <div id="reikiConteudo"></div>`;
+  if (__reikiTab === 'alunos') reikiRenderListaAlunos();
+  else reikiRenderNiveis();
+}
+
+window.reikiMudarTab = function(tab){ __reikiTab = tab; reikiRenderEcra(); };
+
+function reikiRenderListaAlunos(){
+  const alvo = document.getElementById('reikiConteudo');
+  if (!alvo) return;
+  const contagem = REIKI_NIVEIS.map(n => ({
+    n, total: __reikiAlunos.filter(a => a.nivelAtual === n.id).length
+  }));
+  const semNivel = __reikiAlunos.filter(a => !a.nivelAtual).length;
+
+  const cartoes = __reikiAlunos.length === 0
+    ? `<p class="muted">Ainda não há alunos registados. Começa por adicionar o primeiro.</p>`
+    : __reikiAlunos.map(a => {
+        const nivel = reikiNivelInfo(a.nivelAtual);
+        const prox = reikiProximoNivel(a.nivelAtual);
+        const hist = Array.isArray(a.historico) ? a.historico : [];
+        return `
+        <div class="card" style="margin-bottom:10px;">
+          <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div>
+              <strong>${escapeHtml(a.nome || '(sem nome)')}</strong>
+              <p class="muted" style="margin-top:4px;">${nivel ? '📜 ' + escapeHtml(nivel.nome) : '🌱 Inscrito, ainda sem nível'}</p>
+              ${a.telefone ? `<p class="muted" style="margin-top:2px;">📞 ${escapeHtml(a.telefone)}</p>` : ''}
+              ${a.email ? `<p class="muted" style="margin-top:2px;">✉️ ${escapeHtml(a.email)}</p>` : ''}
+            </div>
+          </div>
+          ${hist.length ? `<p class="muted" style="margin-top:8px;font-size:.85rem;">Percurso: ${hist.map(h => escapeHtml((reikiNivelInfo(h.nivel)?.certLabel) || h.nivel) + ' (' + escapeHtml(reikiDataPT(h.data)) + ')').join(' · ')}</p>` : ''}
+          <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
+            ${prox ? `<button class="primary" onclick="reikiAbrirSubirNivel('${a.id}')">⬆️ ${escapeHtml(prox.certLabel)}</button>` : '<span class="badge">Mestrado concluído</span>'}
+            ${nivel ? `<button class="ghost" onclick="reikiAbrirCertificado('${a.id}')">📜 Certificado</button>` : ''}
+            <button class="ghost" onclick="reikiAbrirForm('${a.id}')">✏️ Editar</button>
+            <button class="danger" onclick="reikiApagarAluno('${a.id}')">🗑️</button>
+          </div>
+        </div>`;
+      }).join('');
+
+  alvo.innerHTML = `
+    <div class="card" style="margin-bottom:12px;">
+      <div class="row" style="gap:10px;flex-wrap:wrap;">
+        ${semNivel ? `<span class="badge">🌱 Inscritos: ${semNivel}</span>` : ''}
+        ${contagem.filter(c => c.total).map(c => `<span class="badge">${escapeHtml(c.n.certLabel)}: ${c.total}</span>`).join('')}
+        ${__reikiAlunos.length ? '' : '<span class="muted">Sem alunos.</span>'}
+      </div>
+      <button class="primary" style="margin-top:12px;" onclick="reikiAbrirForm()">➕ Novo aluno</button>
+    </div>
+    ${cartoes}`;
+}
+
+/* ─── Ficha do aluno ─────────────────────────────────────────────── */
+
+window.reikiAbrirForm = function(alunoId){
+  const a = alunoId ? __reikiAlunos.find(x => x.id === alunoId) : null;
+  showPatientOverlay(a ? '✏️ Editar aluno' : '➕ Novo aluno', `
+    <div class="card">
+      <label>Nome completo</label>
+      <input id="reikiNome" type="text" value="${escapeHtml(a?.nome || '')}" placeholder="Nome como vai sair no certificado">
+      <label style="margin-top:10px;">Telefone</label>
+      <input id="reikiTelefone" type="tel" value="${escapeHtml(a?.telefone || '')}">
+      <label style="margin-top:10px;">E-mail</label>
+      <input id="reikiEmail" type="email" value="${escapeHtml(a?.email || '')}">
+      <label style="margin-top:10px;">Notas</label>
+      <textarea id="reikiNotas" rows="3">${escapeHtml(a?.notas || '')}</textarea>
+      <p class="muted" style="margin-top:10px;font-size:.85rem;">O nome é escrito tal e qual no certificado — confirma acentos e maiúsculas.</p>
+      <div class="row" style="gap:8px;margin-top:12px;">
+        <button class="primary" onclick="reikiGuardarAluno('${alunoId || ''}')">Guardar</button>
+        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+      </div>
+    </div>`);
+};
+
+window.reikiGuardarAluno = async function(alunoId){
+  const nome = (document.getElementById('reikiNome')?.value || '').trim();
+  if (!nome){ toast('O nome do aluno é obrigatório.', true); return; }
+  const dados = {
+    nome,
+    telefone: (document.getElementById('reikiTelefone')?.value || '').trim(),
+    email: (document.getElementById('reikiEmail')?.value || '').trim(),
+    notas: (document.getElementById('reikiNotas')?.value || '').trim(),
+    atualizadoEm: serverTimestamp()
+  };
+  try {
+    if (alunoId){
+      await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId), dados);
+    } else {
+      await addDoc(collection(db, 'tenants', tenantId, 'reikiStudents'), {
+        ...dados, nivelAtual: null, historico: [], criadoEm: serverTimestamp()
+      });
+    }
+    closePatientOverlay();
+    toast('Aluno guardado.');
+    renderReikiAlunos();
+  } catch(e){
+    toast('Não consegui guardar: ' + (e.message || e), true);
+  }
+};
+
+window.reikiApagarAluno = async function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  if (!confirm('Apagar definitivamente o aluno "' + (a.nome||'') + '" e todo o seu percurso?\n\nEsta acção não pode ser desfeita.')) return;
+  try {
+    await deleteDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId));
+    toast('Aluno apagado.');
+    renderReikiAlunos();
+  } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
+};
+
+/* ─── Subida de nível (sempre manual) ────────────────────────────── */
+
+window.reikiAbrirSubirNivel = function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  const prox = reikiProximoNivel(a.nivelAtual);
+  if (!prox) return;
+  showPatientOverlay('⬆️ Subir de nível', `
+    <div class="card">
+      <p><strong>${escapeHtml(a.nome)}</strong> passa a <strong>${escapeHtml(prox.nome)}</strong>.</p>
+      <p class="muted" style="margin-top:8px;">${escapeHtml(__reikiDescricoes[prox.id] || prox.descricao)}</p>
+      <label style="margin-top:12px;">Data da sintonização</label>
+      <input id="reikiDataNivel" type="date" value="${reikiHojeISO()}">
+      <div class="card" style="background:#fff8ed;border:1px solid #f0d9a8;margin-top:12px;">
+        <label style="display:flex;gap:8px;align-items:flex-start;">
+          <input id="reikiConfirmaSint" type="checkbox" style="margin-top:3px;width:auto;">
+          <span>Confirmo que a sintonização deste nível foi realizada presencialmente por mim.</span>
+        </label>
+      </div>
+      <div class="row" style="gap:8px;margin-top:12px;">
+        <button class="primary" onclick="reikiConfirmarSubirNivel('${a.id}')">Confirmar subida</button>
+        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+      </div>
+    </div>`);
+};
+
+window.reikiConfirmarSubirNivel = async function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  const prox = reikiProximoNivel(a.nivelAtual);
+  if (!prox) return;
+  if (!document.getElementById('reikiConfirmaSint')?.checked){
+    toast('Tens de confirmar que a sintonização foi feita.', true); return;
+  }
+  const data = document.getElementById('reikiDataNivel')?.value || reikiHojeISO();
+  const entrada = { nivel: prox.id, data, certId: reikiCertId(a.nome, prox.id, data) };
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId), {
+      nivelAtual: prox.id,
+      historico: arrayUnion(entrada),
+      atualizadoEm: serverTimestamp()
+    });
+    closePatientOverlay();
+    toast('Nível actualizado.');
+    await renderReikiAlunos();
+    window.reikiAbrirCertificado(alunoId);
+  } catch(e){ toast('Não consegui actualizar: ' + (e.message || e), true); }
+};
+
+/* ─── Certificado em PDF ─────────────────────────────────────────── */
+
+const REIKI_CERT_TEMPLATE = 'certificado-reiki.png';
+
+/* Posições em milímetros, medidas sobre o modelo (1346×1920 px) colocado
+   a toda a altura de uma página A4. Se um dia mudares o modelo, é só
+   ajustar estes números — o resto do código não muda. */
+const REIKI_CERT_LAYOUT = {
+  imgX: 0.9, imgY: 0, imgW: 208.2, imgH: 297,
+  cor: [90, 62, 27],
+  nivel: { x: 96.5,  y: 185.6, size: 12, maxW: 58, align: 'left' },
+  nome:  { x: 124.3, y: 223.0, size: 13, maxW: 82, align: 'center' },
+  data:  { x: 112.5, y: 247.5, size: 12, maxW: 32, align: 'center' }
+};
+
+async function reikiCarregarModelo(){
+  if (window.__reikiCertDataUrl) return window.__reikiCertDataUrl;
+  const res = await fetch(REIKI_CERT_TEMPLATE, { cache: 'force-cache' });
+  if (!res.ok) throw new Error('Não encontrei a imagem "' + REIKI_CERT_TEMPLATE + '". Carrega o modelo para o repositório, na mesma pasta deste ficheiro.');
+  const blob = await res.blob();
+  window.__reikiCertDataUrl = await new Promise((ok, nok) => {
+    const r = new FileReader();
+    r.onload = () => ok(r.result);
+    r.onerror = () => nok(new Error('Não consegui ler a imagem do modelo.'));
+    r.readAsDataURL(blob);
+  });
+  return window.__reikiCertDataUrl;
+}
+
+function reikiEscreverCampo(pdf, texto, campo){
+  let size = campo.size;
+  pdf.setFontSize(size);
+  while (size > 7 && pdf.getTextWidth(texto) > campo.maxW){ size -= 0.5; pdf.setFontSize(size); }
+  pdf.text(texto, campo.x, campo.y, { align: campo.align || 'center' });
+}
+
+window.reikiAbrirCertificado = function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a || !a.nivelAtual) return;
+  const hist = Array.isArray(a.historico) ? a.historico : [];
+  const opcoes = REIKI_NIVEIS.filter(n => reikiIndiceNivel(n.id) <= reikiIndiceNivel(a.nivelAtual));
+  const dataDe = id => (hist.slice().reverse().find(h => h.nivel === id)?.data) || reikiHojeISO();
+  showPatientOverlay('📜 Emitir certificado', `
+    <div class="card">
+      <p><strong>${escapeHtml(a.nome)}</strong></p>
+      <label style="margin-top:10px;">Nível a certificar</label>
+      <select id="reikiCertNivel" onchange="reikiSincronizarDataCert('${a.id}')">
+        ${opcoes.map(n => `<option value="${n.id}" ${n.id===a.nivelAtual?'selected':''}>${escapeHtml(n.nome)}</option>`).join('')}
+      </select>
+      <label style="margin-top:10px;">Data no certificado</label>
+      <input id="reikiCertData" type="date" value="${dataDe(a.nivelAtual)}">
+      <p class="muted" style="margin-top:10px;font-size:.85rem;">O PDF é gerado no telemóvel/computador e descarregado directamente — nada é enviado para fora.</p>
+      <div class="row" style="gap:8px;margin-top:12px;">
+        <button class="primary" onclick="reikiGerarCertificado('${a.id}')">Gerar PDF</button>
+        <button class="ghost" onclick="closePatientOverlay()">Fechar</button>
+      </div>
+      <div id="reikiCertErro"></div>
+    </div>`);
+};
+
+window.reikiSincronizarDataCert = function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  const nivelId = document.getElementById('reikiCertNivel')?.value;
+  const hist = Array.isArray(a?.historico) ? a.historico : [];
+  const d = hist.slice().reverse().find(h => h.nivel === nivelId)?.data;
+  const campo = document.getElementById('reikiCertData');
+  if (campo && d) campo.value = d;
+};
+
+window.reikiGerarCertificado = async function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  const nivelId = document.getElementById('reikiCertNivel')?.value || a.nivelAtual;
+  const nivel = reikiNivelInfo(nivelId);
+  const iso = document.getElementById('reikiCertData')?.value || reikiHojeISO();
+  const erro = document.getElementById('reikiCertErro');
+  if (erro) erro.innerHTML = '<p class="muted" style="margin-top:10px;">A preparar o certificado…</p>';
+  try {
+    const modelo = await reikiCarregarModelo();
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const L = REIKI_CERT_LAYOUT;
+    pdf.addImage(modelo, 'PNG', L.imgX, L.imgY, L.imgW, L.imgH);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(L.cor[0], L.cor[1], L.cor[2]);
+    reikiEscreverCampo(pdf, nivel.certLabel, L.nivel);
+    reikiEscreverCampo(pdf, a.nome, L.nome);
+    reikiEscreverCampo(pdf, reikiDataPT(iso), L.data);
+    const ficheiro = 'Certificado-Reiki-' + nivelId + '-' + a.nome.replace(/[^\wÀ-ú]+/g, '-') + '.pdf';
+    pdf.save(ficheiro);
+    if (erro) erro.innerHTML = '<p class="muted" style="margin-top:10px;">✅ Certificado gerado. Procura-o nas Transferências.</p>';
+  } catch(e){
+    if (erro) erro.innerHTML = `<div class="card" style="border:1px solid #e0b4b4;background:#fdf3f3;margin-top:10px;">
+      <strong>Não consegui gerar o certificado.</strong>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(e.message || String(e))}</p></div>`;
+  }
+};
+
+/* ─── Descrições dos níveis (editáveis uma a uma) ─────────────────── */
+
+function reikiRenderNiveis(){
+  const alvo = document.getElementById('reikiConteudo');
+  if (!alvo) return;
+  alvo.innerHTML = REIKI_NIVEIS.map(n => `
+    <div class="card" style="margin-bottom:10px;">
+      <strong>${escapeHtml(n.nome)}</strong>
+      <p class="muted" style="margin-top:2px;">${escapeHtml(n.subtitulo)}</p>
+      <textarea id="reikiDesc_${n.id}" rows="4" style="margin-top:10px;">${escapeHtml(__reikiDescricoes[n.id] || n.descricao)}</textarea>
+      <div class="row" style="gap:8px;margin-top:10px;">
+        <button class="primary" onclick="reikiGuardarDescricao('${n.id}')">Guardar</button>
+        <button class="ghost" onclick="reikiReporDescricao('${n.id}')">Repor texto original</button>
+      </div>
+    </div>`).join('') + `<p class="muted">Estas descrições aparecem ao subir um aluno de nível e ficam prontas para os manuais e para o chatbot por nível.</p>`;
+}
+
+window.reikiGuardarDescricao = async function(nivelId){
+  const texto = (document.getElementById('reikiDesc_' + nivelId)?.value || '').trim();
+  try {
+    await setDoc(doc(db, 'tenants', tenantId, 'reikiConfig', nivelId),
+      { descricao: texto, atualizadoEm: serverTimestamp() }, { merge: true });
+    __reikiDescricoes[nivelId] = texto;
+    toast('Descrição guardada.');
+  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
+};
+
+window.reikiReporDescricao = function(nivelId){
+  const campo = document.getElementById('reikiDesc_' + nivelId);
+  const n = reikiNivelInfo(nivelId);
+  if (campo && n) campo.value = n.descricao;
 };
 
 const TRIAGEM_LIMIAR_CHAKRA_ATENCAO = 70; // % abaixo do qual o chakra é sinalizado

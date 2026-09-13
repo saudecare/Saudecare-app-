@@ -194,6 +194,35 @@ function toast(msg, isError=false){
   t.style.display = 'block';
   setTimeout(()=> t.style.display='none', 3200);
 }
+
+/* ── Erros visíveis ───────────────────────────────────────────────────
+   Quase nenhuma acção deste painel tinha try/catch. Quando o Firestore
+   recusava a gravação (regras, sessão expirada, campo em falta), a função
+   rebentava a meio, o toast de sucesso nunca chegava a aparecer e o botão
+   parecia simplesmente "não fazer nada". Esta caixa apanha qualquer erro
+   não tratado e mostra a razão, sem desaparecer ao fim de 3 segundos. */
+function adminErro(msg){
+  console.error('[admin]', msg);
+  let box = document.getElementById('adminErroBox');
+  if (!box){
+    box = document.createElement('div');
+    box.id = 'adminErroBox';
+    box.style.cssText = 'position:fixed;left:10px;right:10px;bottom:10px;z-index:99999;background:#fdf3f3;border:1px solid #e0b4b4;color:#7a2b26;border-radius:12px;padding:12px 14px;font-size:.9rem;line-height:1.4;box-shadow:0 6px 24px rgba(0,0,0,.18);';
+    document.body.appendChild(box);
+  }
+  box.innerHTML = '<strong>\u26A0\uFE0F A ac\u00e7\u00e3o n\u00e3o foi conclu\u00edda</strong>'
+    + '<p style="margin-top:6px;">' + escapeHtml(msg) + '</p>'
+    + '<p style="margin-top:6px;font-size:.82rem;opacity:.8;">Se disser <em>Missing or insufficient permissions</em>, o problema est\u00e1 nas regras do Firestore, n\u00e3o no bot\u00e3o.</p>'
+    + '<button onclick="document.getElementById(\'adminErroBox\').remove()" style="margin-top:10px;">Fechar</button>';
+}
+window.adminErro = adminErro;
+window.addEventListener('unhandledrejection', function(e){
+  const msg = (e.reason && e.reason.message) ? e.reason.message : String(e.reason || 'Erro inesperado.');
+  adminErro(msg);
+});
+window.addEventListener('error', function(e){
+  if (e && e.message) adminErro(e.message);
+});
 function escapeHtml(str){
   if (str == null) return '';
   return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
