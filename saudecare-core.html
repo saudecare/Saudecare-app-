@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-13-03';
+const APP_VERSION = '2026-09-13-04';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -8567,10 +8567,47 @@ function renderSupportContact(main){
       <label>Mensagem</label>
       <textarea id="supportMessage" rows="5" placeholder="Descreva com o máximo de detalhe possível…"></textarea>
       <button class="primary" style="margin-top:8px;" onclick="submitSupportRequest()">Enviar à administração</button>
-      <p class="muted" style="margin-top:8px;">Responderemos pelo email associado à sua conta (${escapeHtml(currentUser?.email||'')}).</p>
+      <p class="muted" style="margin-top:8px;">A resposta aparece aqui mesmo, neste ecrã. Também pode chegar pelo email da sua conta (${escapeHtml(currentUser?.email||'')}).</p>
     </div>
+    <div id="supportHistorico"><p class="muted">A carregar os seus pedidos…</p></div>
   `;
   switchSupportType('support');
+  carregarPedidosApoio();
+}
+
+/* Histórico dos pedidos deste subscritor, com as respostas da
+   administração. Sem isto, quem escreve fica sem saber se foi lido. */
+async function carregarPedidosApoio(){
+  const alvo = document.getElementById('supportHistorico');
+  if (!alvo) return;
+  let lista = [];
+  try {
+    const snap = await getDocs(query(collection(db, 'platform_support_requests'), where('tenantId','==', tenantId)));
+    snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
+  } catch(e){
+    alvo.innerHTML = '<p class="muted">Não consegui carregar os seus pedidos anteriores.</p>';
+    return;
+  }
+  if (!lista.length){ alvo.innerHTML = ''; return; }
+  lista.sort((a,b) => (b.createdAt?.toMillis?.()||0) - (a.createdAt?.toMillis?.()||0));
+
+  alvo.innerHTML = `
+    <h3 style="margin:18px 0 10px;">Os seus pedidos</h3>
+    ${lista.map(r => `
+      <div class="card" style="margin-bottom:10px;">
+        <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
+          <span>${r.type === 'incident' ? '🚨 Incidente' : '💬 Apoio'}</span>
+          <span class="badge">${r.status === 'resolved' ? 'resolvido' : 'em aberto'}</span>
+        </div>
+        <p class="muted" style="margin:6px 0;font-size:.85rem;">${r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString('pt-PT') : ''}</p>
+        <p style="white-space:pre-wrap;">${escapeHtml(r.message || '')}</p>
+        ${r.reply ? `
+          <div class="card" style="background:#f2f7f3;border:1px solid #cfe3d2;margin-top:10px;">
+            <strong style="font-size:.9rem;">Resposta da administração</strong>
+            <p class="muted" style="margin:4px 0 6px;font-size:.82rem;">${r.repliedAt?.toDate ? r.repliedAt.toDate().toLocaleString('pt-PT') : ''}</p>
+            <p style="white-space:pre-wrap;">${escapeHtml(r.reply)}</p>
+          </div>` : '<p class="muted" style="margin-top:8px;font-size:.85rem;">Ainda sem resposta.</p>'}
+      </div>`).join('')}`;
 }
 
 // Vista geral do tutorial de configuração — permite reiniciar do zero a

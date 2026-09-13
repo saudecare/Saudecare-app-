@@ -360,6 +360,7 @@ async function renderSupportList(main, type){
   const list = [];
   snap.forEach(d => list.push({ id: d.id, ...d.data() }));
   list.sort((a,b) => (b.createdAt?.toMillis?.()||0) - (a.createdAt?.toMillis?.()||0));
+  __supportCache = list;
   const open = list.filter(r => r.status !== 'resolved');
   const resolved = list.filter(r => r.status === 'resolved');
 
@@ -371,7 +372,16 @@ async function renderSupportList(main, type){
       </div>
       <p class="muted" style="margin:6px 0;">${escapeHtml(r.ownerEmail||'')} · ${r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString('pt-PT') : ''}</p>
       <p style="white-space:pre-wrap;">${escapeHtml(r.message||'')}</p>
-      ${r.status!=='resolved' ? `<button class="primary" style="margin-top:8px;" onclick="markSupportResolved('${r.id}', '${type}')">✓ Marcar como resolvido</button>` : ''}
+      ${r.reply ? `
+        <div class="card" style="background:#eef6ef;border:1px solid #cfe3d2;margin-top:10px;">
+          <strong style="font-size:.9rem;">A tua resposta</strong>
+          <p class="muted" style="margin:4px 0 6px;font-size:.82rem;">${r.repliedAt?.toDate ? r.repliedAt.toDate().toLocaleString('pt-PT') : ''}</p>
+          <p style="white-space:pre-wrap;">${escapeHtml(r.reply)}</p>
+        </div>` : ''}
+      <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <button class="primary" onclick="openSupportReply('${r.id}', '${type}')">✉️ ${r.reply ? 'Editar resposta' : 'Responder'}</button>
+        ${r.status!=='resolved' ? `<button class="ghost" onclick="markSupportResolved('${r.id}', '${type}')">✓ Marcar como resolvido</button>` : ''}
+      </div>
     </div>`;
 
   main.innerHTML = `
@@ -383,6 +393,56 @@ async function renderSupportList(main, type){
     ${resolved.length ? `<details style="margin-top:14px;"><summary class="muted" style="cursor:pointer;">Ver ${resolved.length} resolvido(s)</summary>${resolved.map(rowHtml).join('')}</details>` : ''}
   `;
 }
+
+/* Resposta ao subscritor. Fica gravada no próprio pedido: o subscritor
+   passa a vê-la dentro da app, no ecrã onde enviou a mensagem. O email
+   continua a ser uma opção, mas já não é o único caminho. */
+let __supportCache = [];
+
+window.openSupportReply = function(id, type){
+  const r = __supportCache.find(x => x.id === id);
+  if (!r) return;
+  const fundo = document.createElement('div');
+  fundo.id = 'supportReplyOverlay';
+  fundo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto;';
+  fundo.innerHTML = `
+    <div class="card" style="max-width:540px;width:100%;background:#fff;">
+      <h3 style="margin-top:0;">✉️ Responder a ${escapeHtml(r.businessName || r.tenantId || 'subscritor')}</h3>
+      <p class="muted" style="margin:6px 0 10px;white-space:pre-wrap;">${escapeHtml(r.message || '')}</p>
+      <label>A tua resposta</label>
+      <textarea id="supportReplyText" rows="6" placeholder="Escreve aqui a resposta…">${escapeHtml(r.reply || '')}</textarea>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;">
+        <input id="supportReplyResolve" type="checkbox" style="width:auto;margin-top:3px;" ${r.status==='resolved'?'checked':''}>
+        <span>Marcar também como resolvido</span>
+      </label>
+      <div class="row" style="gap:8px;margin-top:12px;">
+        <button class="primary" onclick="saveSupportReply('${id}', '${type}')">Enviar resposta</button>
+        <button class="ghost" onclick="closeSupportReply()">Cancelar</button>
+      </div>
+      <p class="muted" style="margin-top:10px;font-size:.82rem;">O subscritor vê a resposta em <strong>Reportar / Pedir Apoio</strong>, dentro da app dele.</p>
+    </div>`;
+  document.body.appendChild(fundo);
+};
+
+window.closeSupportReply = function(){
+  document.getElementById('supportReplyOverlay')?.remove();
+};
+
+window.saveSupportReply = async function(id, type){
+  const texto = (document.getElementById('supportReplyText')?.value || '').trim();
+  if (!texto){ toast('Escreve a resposta antes de enviar.', true); return; }
+  const resolver = !!document.getElementById('supportReplyResolve')?.checked;
+  try {
+    const dados = { reply: texto, repliedAt: serverTimestamp(), replyRead: false };
+    if (resolver){ dados.status = 'resolved'; dados.resolvedAt = serverTimestamp(); }
+    await updateDoc(doc(db, 'platform_support_requests', id), dados);
+    closeSupportReply();
+    toast('Resposta enviada.');
+    renderSupportList(document.getElementById('mainView'), type);
+  } catch(e){
+    adminErro('Não consegui enviar a resposta: ' + (e.message || e));
+  }
+};
 
 window.markSupportResolved = async function(id, type){
   await updateDoc(doc(db, 'platform_support_requests', id), { status: 'resolved', resolvedAt: serverTimestamp() });
