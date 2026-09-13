@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-13-02';
+const APP_VERSION = '2026-09-13-03';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10157,16 +10157,25 @@ function reikiCertId(nome, nivelId, iso){
 
 let __reikiAlunos = [];
 let __reikiDescricoes = {};
+let __reikiRecursos = [];
 let __reikiTab = 'alunos';
 
 async function renderReikiAlunos(main){
   const m = main || document.getElementById('mainView');
   m.innerHTML = '<p class="muted">A carregar alunos…</p>';
   try {
-    const [alunosSnap, configSnap] = await Promise.all([
+    const [alunosSnap, configSnap, bibSnap] = await Promise.all([
       getDocs(collection(db, 'tenants', tenantId, 'reikiStudents')),
-      getDocs(collection(db, 'tenants', tenantId, 'reikiConfig'))
+      getDocs(collection(db, 'tenants', tenantId, 'reikiConfig')),
+      getDocs(collection(db, 'tenants', tenantId, 'reikiLibrary'))
     ]);
+    __reikiRecursos = [];
+    bibSnap.forEach(d => __reikiRecursos.push({ id: d.id, ...d.data() }));
+    __reikiRecursos.sort((a, b) => {
+      const na = reikiIndiceNivelBib(a.nivel), nb = reikiIndiceNivelBib(b.nivel);
+      if (na !== nb) return na - nb;
+      return String(a.titulo||'').localeCompare(String(b.titulo||''), 'pt');
+    });
     __reikiAlunos = [];
     alunosSnap.forEach(d => __reikiAlunos.push({ id: d.id, ...d.data() }));
     __reikiAlunos.sort((a, b) => String(a.nome||'').localeCompare(String(b.nome||''), 'pt'));
@@ -10190,13 +10199,236 @@ function reikiRenderEcra(main){
     <div class="row" style="gap:6px;margin:10px 0 14px;">
       <button class="${__reikiTab==='alunos'?'primary':'ghost'}" onclick="reikiMudarTab('alunos')">Alunos</button>
       <button class="${__reikiTab==='niveis'?'primary':'ghost'}" onclick="reikiMudarTab('niveis')">Níveis</button>
+      <button class="${__reikiTab==='biblioteca'?'primary':'ghost'}" onclick="reikiMudarTab('biblioteca')">Biblioteca</button>
     </div>
     <div id="reikiConteudo"></div>`;
   if (__reikiTab === 'alunos') reikiRenderListaAlunos();
+  else if (__reikiTab === 'biblioteca') reikiRenderBiblioteca();
   else reikiRenderNiveis();
 }
 
 window.reikiMudarTab = function(tab){ __reikiTab = tab; reikiRenderEcra(); };
+
+/* ─── Biblioteca do aluno ────────────────────────────────────────────
+   Os ficheiros vivem no Drive (manuais, vídeos, áudios). Aqui guardamos
+   só o título, o tipo, o nível e o link. Cada aluno recebe um código e
+   um link pessoal que abre a biblioteca já filtrada pelo seu nível.
+
+   Firestore:
+     tenants/{tenantId}/reikiLibrary/{id}   — um documento por recurso
+     tenants/{tenantId}/reikiAccess/{codigo} — cartão de acesso do aluno
+   ────────────────────────────────────────────────────────────────── */
+
+const REIKI_TIPOS = [
+  { id:'manual',   rotulo:'Manual',    icone:'📘' },
+  { id:'video',    rotulo:'Vídeo',     icone:'🎬' },
+  { id:'audio',    rotulo:'Áudio',     icone:'🎧' },
+  { id:'documento',rotulo:'Documento', icone:'📄' },
+  { id:'link',     rotulo:'Ligação',   icone:'🔗' }
+];
+function reikiTipoInfo(id){ return REIKI_TIPOS.find(t => t.id === id) || REIKI_TIPOS[4]; }
+
+/* '0' = visível a todos os alunos, independentemente do nível. */
+const REIKI_NIVEIS_BIB = [{ id:'0', certLabel:'Todos os níveis' }].concat(REIKI_NIVEIS);
+function reikiIndiceNivelBib(id){
+  const i = REIKI_NIVEIS_BIB.findIndex(n => n.id === String(id));
+  return i === -1 ? 99 : i;
+}
+function reikiNivelBibLabel(id){
+  const n = REIKI_NIVEIS_BIB.find(x => x.id === String(id));
+  return n ? n.certLabel : 'Todos os níveis';
+}
+
+/* Um recurso é visível se for geral ou se o aluno já tiver chegado
+   àquele nível. Quem está no 3A vê o 1, o 2 e o 3A. */
+function reikiRecursoVisivel(recurso, nivelAluno){
+  const alvo = String(recurso.nivel || '0');
+  if (alvo === '0') return true;
+  if (!nivelAluno) return false;
+  return reikiIndiceNivel(alvo) <= reikiIndiceNivel(nivelAluno);
+}
+
+function reikiRenderBiblioteca(){
+  const alvo = document.getElementById('reikiConteudo');
+  if (!alvo) return;
+
+  const lista = __reikiRecursos.length === 0
+    ? `<p class="muted">A biblioteca está vazia. Adiciona o primeiro manual ou vídeo.</p>`
+    : REIKI_NIVEIS_BIB.map(n => {
+        const doNivel = __reikiRecursos.filter(r => String(r.nivel||'0') === n.id);
+        if (!doNivel.length) return '';
+        return `
+        <h3 style="margin:16px 0 8px;">${escapeHtml(n.certLabel)}</h3>
+        ${doNivel.map(r => {
+          const t = reikiTipoInfo(r.tipo);
+          return `
+          <div class="card" style="margin-bottom:8px;">
+            <strong>${t.icone} ${escapeHtml(r.titulo || '(sem título)')}</strong>
+            ${r.descricao ? `<p class="muted" style="margin-top:4px;">${escapeHtml(r.descricao)}</p>` : ''}
+            <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
+              ${r.url ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">👁️ Abrir</a>` : ''}
+              <button class="ghost" onclick="reikiAbrirRecurso('${r.id}')">✏️ Editar</button>
+              <button class="danger" onclick="reikiApagarRecurso('${r.id}')">🗑️</button>
+            </div>
+          </div>`;
+        }).join('')}`;
+      }).join('');
+
+  alvo.innerHTML = `
+    <div class="card" style="margin-bottom:12px;">
+      <p class="muted">Os ficheiros ficam no teu Drive. Aqui guardas só o link, e escolhes a partir de que nível é que o aluno o vê.</p>
+      <p class="muted" style="margin-top:6px;font-size:.85rem;">No Drive, partilha cada ficheiro como <strong>"Qualquer pessoa com o link"</strong>, senão o aluno não consegue abrir.</p>
+      <button class="primary" style="margin-top:12px;" onclick="reikiAbrirRecurso()">➕ Novo recurso</button>
+    </div>
+    ${lista}`;
+}
+
+window.reikiAbrirRecurso = function(recursoId){
+  const r = recursoId ? __reikiRecursos.find(x => x.id === recursoId) : null;
+  showPatientOverlay(r ? '✏️ Editar recurso' : '➕ Novo recurso', `
+    <div class="card">
+      <label>Título</label>
+      <input id="reikiRecTitulo" type="text" value="${escapeHtml(r?.titulo || '')}" placeholder="Manual do Nível 1 — Shoden">
+      <label style="margin-top:10px;">Tipo</label>
+      <select id="reikiRecTipo">
+        ${REIKI_TIPOS.map(t => `<option value="${t.id}" ${ (r?.tipo||'manual')===t.id ? 'selected':'' }>${t.icone} ${escapeHtml(t.rotulo)}</option>`).join('')}
+      </select>
+      <label style="margin-top:10px;">Visível a partir de</label>
+      <select id="reikiRecNivel">
+        ${REIKI_NIVEIS_BIB.map(n => `<option value="${n.id}" ${ String(r?.nivel||'0')===n.id ? 'selected':'' }>${escapeHtml(n.certLabel)}</option>`).join('')}
+      </select>
+      <label style="margin-top:10px;">Link do Drive</label>
+      <input id="reikiRecUrl" type="url" value="${escapeHtml(r?.url || '')}" placeholder="https://drive.google.com/...">
+      <label style="margin-top:10px;">Descrição (opcional)</label>
+      <textarea id="reikiRecDesc" rows="3">${escapeHtml(r?.descricao || '')}</textarea>
+      <div class="row" style="gap:8px;margin-top:12px;">
+        <button class="primary" onclick="reikiGuardarRecurso('${recursoId || ''}')">Guardar</button>
+        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+      </div>
+    </div>`);
+};
+
+window.reikiGuardarRecurso = async function(recursoId){
+  const titulo = (document.getElementById('reikiRecTitulo')?.value || '').trim();
+  const url = (document.getElementById('reikiRecUrl')?.value || '').trim();
+  if (!titulo){ toast('O título é obrigatório.', true); return; }
+  if (!url){ toast('Falta o link do ficheiro.', true); return; }
+  if (!/^https?:\/\//i.test(url)){ toast('O link tem de começar por https://', true); return; }
+  const dados = {
+    titulo,
+    url,
+    tipo: document.getElementById('reikiRecTipo')?.value || 'manual',
+    nivel: document.getElementById('reikiRecNivel')?.value || '0',
+    descricao: (document.getElementById('reikiRecDesc')?.value || '').trim(),
+    atualizadoEm: serverTimestamp()
+  };
+  try {
+    if (recursoId){
+      await updateDoc(doc(db, 'tenants', tenantId, 'reikiLibrary', recursoId), dados);
+    } else {
+      await addDoc(collection(db, 'tenants', tenantId, 'reikiLibrary'), { ...dados, criadoEm: serverTimestamp() });
+    }
+    closePatientOverlay();
+    toast('Recurso guardado.');
+    __reikiTab = 'biblioteca';
+    renderReikiAlunos();
+  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
+};
+
+window.reikiApagarRecurso = async function(recursoId){
+  const r = __reikiRecursos.find(x => x.id === recursoId);
+  if (!r) return;
+  if (!confirm('Retirar "' + (r.titulo||'') + '" da biblioteca?\n\nO ficheiro no Drive não é apagado.')) return;
+  try {
+    await deleteDoc(doc(db, 'tenants', tenantId, 'reikiLibrary', recursoId));
+    toast('Recurso retirado.');
+    __reikiTab = 'biblioteca';
+    renderReikiAlunos();
+  } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
+};
+
+/* ─── Link pessoal do aluno ──────────────────────────────────────── */
+
+/* Sem I, O, 0 e 1, para ninguém se enganar a ditar o código ao telefone. */
+const REIKI_ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function reikiGerarCodigo(){
+  const a = new Uint32Array(10);
+  crypto.getRandomValues(a);
+  return Array.from(a).map(n => REIKI_ALFABETO[n % REIKI_ALFABETO.length]).join('');
+}
+
+function reikiUrlBiblioteca(codigo){
+  const base = window.location.href.replace(/[^/]*$/, '');
+  return base + 'reiki-biblioteca.html?t=' + encodeURIComponent(tenantId) + '&c=' + encodeURIComponent(codigo);
+}
+
+/* Grava o cartão de acesso. É o único sítio onde o nome e o nível do
+   aluno ficam legíveis de fora, e só para quem souber o código. */
+async function reikiGravarAcesso(codigo, aluno){
+  await setDoc(doc(db, 'tenants', tenantId, 'reikiAccess', codigo), {
+    alunoId: aluno.id,
+    nome: aluno.nome || '',
+    nivel: aluno.nivelAtual || null,
+    atualizadoEm: serverTimestamp()
+  });
+}
+
+window.reikiAbrirLinkAluno = async function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  showPatientOverlay('🔗 Link do aluno', '<div class="card"><p class="muted">A preparar…</p></div>');
+  try {
+    let codigo = a.codigoAcesso;
+    if (!codigo){
+      codigo = reikiGerarCodigo();
+      await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId), { codigoAcesso: codigo });
+      a.codigoAcesso = codigo;
+    }
+    await reikiGravarAcesso(codigo, a);
+    const url = reikiUrlBiblioteca(codigo);
+    const nivel = reikiNivelInfo(a.nivelAtual);
+    showPatientOverlay('🔗 Link do aluno', `
+      <div class="card">
+        <strong>${escapeHtml(a.nome || '')}</strong>
+        <p class="muted" style="margin-top:4px;">${nivel ? escapeHtml(nivel.nome) : 'Ainda sem nível — só vê o material geral.'}</p>
+        <label style="margin-top:12px;">Link pessoal</label>
+        <input id="reikiLinkCampo" type="text" readonly value="${escapeHtml(url)}" onclick="this.select()">
+        <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;">
+          <button class="primary" onclick="reikiCopiarLink()">📋 Copiar</button>
+          ${a.telefone ? `<a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/${encodeURIComponent(String(a.telefone).replace(/[^0-9]/g,''))}?text=${encodeURIComponent('Olá ' + (a.nome||'') + ', aqui tens a tua biblioteca de Reiki: ' + url)}">💬 WhatsApp</a>` : ''}
+          <button class="ghost" onclick="reikiRenovarCodigo('${a.id}')">🔄 Novo código</button>
+        </div>
+        <p class="muted" style="margin-top:12px;font-size:.85rem;">Quem tiver este link vê a biblioteca deste aluno. Se ele o partilhar, gera um código novo — o antigo deixa de funcionar.</p>
+      </div>`);
+  } catch(e){
+    showPatientOverlay('🔗 Link do aluno', `<div class="card"><p>Não consegui preparar o link.</p><p class="muted" style="margin-top:6px;">${escapeHtml(e.message || String(e))}</p></div>`);
+  }
+};
+
+window.reikiCopiarLink = function(){
+  const c = document.getElementById('reikiLinkCampo');
+  if (!c) return;
+  c.select();
+  navigator.clipboard?.writeText(c.value)
+    .then(() => toast('Link copiado.'))
+    .catch(() => { try { document.execCommand('copy'); toast('Link copiado.'); } catch(_){ toast('Copia à mão o texto do campo.', true); } });
+};
+
+window.reikiRenovarCodigo = async function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  if (!confirm('Gerar um código novo para ' + (a.nome||'') + '?\n\nO link antigo deixa de funcionar.')) return;
+  try {
+    const antigo = a.codigoAcesso;
+    const codigo = reikiGerarCodigo();
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId), { codigoAcesso: codigo });
+    a.codigoAcesso = codigo;
+    await reikiGravarAcesso(codigo, a);
+    if (antigo) await deleteDoc(doc(db, 'tenants', tenantId, 'reikiAccess', antigo)).catch(()=>{});
+    toast('Código novo gerado.');
+    window.reikiAbrirLinkAluno(alunoId);
+  } catch(e){ toast('Não consegui gerar: ' + (e.message || e), true); }
+};
 
 function reikiRenderListaAlunos(){
   const alvo = document.getElementById('reikiConteudo');
@@ -10226,6 +10458,7 @@ function reikiRenderListaAlunos(){
           <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
             ${prox ? `<button class="primary" onclick="reikiAbrirSubirNivel('${a.id}')">⬆️ ${escapeHtml(prox.certLabel)}</button>` : '<span class="badge">Mestrado concluído</span>'}
             ${nivel ? `<button class="ghost" onclick="reikiAbrirCertificado('${a.id}')">📜 Certificado</button>` : ''}
+            <button class="ghost" onclick="reikiAbrirLinkAluno('${a.id}')">🔗 Link do aluno</button>
             <button class="ghost" onclick="reikiAbrirForm('${a.id}')">✏️ Editar</button>
             <button class="danger" onclick="reikiApagarAluno('${a.id}')">🗑️</button>
           </div>
@@ -10298,6 +10531,7 @@ window.reikiApagarAluno = async function(alunoId){
   if (!confirm('Apagar definitivamente o aluno "' + (a.nome||'') + '" e todo o seu percurso?\n\nEsta acção não pode ser desfeita.')) return;
   try {
     await deleteDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId));
+    if (a.codigoAcesso) await deleteDoc(doc(db, 'tenants', tenantId, 'reikiAccess', a.codigoAcesso)).catch(()=>{});
     toast('Aluno apagado.');
     renderReikiAlunos();
   } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
@@ -10345,6 +10579,9 @@ window.reikiConfirmarSubirNivel = async function(alunoId){
       historico: arrayUnion(entrada),
       atualizadoEm: serverTimestamp()
     });
+    if (a.codigoAcesso){
+      await reikiGravarAcesso(a.codigoAcesso, { id: alunoId, nome: a.nome, nivelAtual: prox.id }).catch(()=>{});
+    }
     closePatientOverlay();
     toast('Nível actualizado.');
     await renderReikiAlunos();

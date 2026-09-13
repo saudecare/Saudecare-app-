@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Biblioteca do Aluno — Hikari Fafe Escola de Reiki</title>
+<style>
+  :root{
+    --fundo:#faf6ef; --papel:#fffdf9; --linha:#e6d9c3;
+    --texto:#3b2f1e; --suave:#8a7a63; --destaque:#b8893b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px 14px 40px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--fundo); color:var(--texto); line-height:1.55;
+  }
+  .envolve{max-width:640px;margin:0 auto;}
+  header{text-align:center;padding:18px 0 22px;}
+  header h1{font-size:1.25rem;margin:0;letter-spacing:.04em;}
+  header p{margin:6px 0 0;color:var(--suave);font-size:.9rem;}
+  .cartao{
+    background:var(--papel); border:1px solid var(--linha);
+    border-radius:14px; padding:16px; margin-bottom:12px;
+  }
+  .saudacao{text-align:center;}
+  .saudacao strong{font-size:1.1rem;}
+  .selo{
+    display:inline-block; margin-top:8px; padding:4px 12px;
+    border:1px solid var(--destaque); border-radius:999px;
+    color:var(--destaque); font-size:.85rem;
+  }
+  h2{
+    font-size:.95rem; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--suave); margin:24px 0 10px; font-weight:600;
+  }
+  .recurso{display:flex;gap:12px;align-items:flex-start;}
+  .icone{font-size:1.5rem;line-height:1;flex-shrink:0;}
+  .recurso strong{display:block;}
+  .recurso p{margin:4px 0 0;color:var(--suave);font-size:.9rem;}
+  a.abrir{
+    display:inline-block;margin-top:10px;padding:9px 16px;
+    background:var(--destaque);color:#fff;text-decoration:none;
+    border-radius:9px;font-size:.9rem;
+  }
+  .vazio{text-align:center;color:var(--suave);padding:28px 12px;}
+  .nota{
+    text-align:center;color:var(--suave);font-size:.8rem;
+    margin-top:26px;padding-top:16px;border-top:1px solid var(--linha);
+  }
+</style>
+</head>
+<body>
+<div class="envolve">
+  <header>
+    <h1>Hikari Fafe · Escola de Reiki</h1>
+    <p>Biblioteca do Aluno</p>
+  </header>
+  <div id="conteudo"><div class="cartao vazio">A abrir a tua biblioteca…</div></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, collection, getDocs }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+
+const db = getFirestore(initializeApp(firebaseConfig));
+const alvo = document.getElementById('conteudo');
+
+const NIVEIS = ['1','2','3A','3B'];
+const ROTULOS = {
+  '0':'Para todos os alunos',
+  '1':'Nível 1 — Shoden',
+  '2':'Nível 2 — Okuden',
+  '3A':'Nível 3A — Shinpiden',
+  '3B':'Nível 3B — Shinpiden'
+};
+const ICONES = { manual:'📘', video:'🎬', audio:'🎧', documento:'📄', link:'🔗' };
+
+function esc(t){
+  return String(t == null ? '' : t)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function aviso(texto){
+  alvo.innerHTML = '<div class="cartao vazio">' + esc(texto) + '</div>';
+}
+
+/* O aluno vê o material geral e tudo até ao nível em que está. */
+function visivel(recurso, nivelAluno){
+  const alvoNivel = String(recurso.nivel || '0');
+  if (alvoNivel === '0') return true;
+  if (!nivelAluno) return false;
+  return NIVEIS.indexOf(alvoNivel) <= NIVEIS.indexOf(String(nivelAluno));
+}
+
+async function arrancar(){
+  const p = new URLSearchParams(location.search);
+  const tenant = (p.get('t') || '').trim();
+  const codigo = (p.get('c') || '').trim().toUpperCase();
+
+  if (!tenant || !codigo){
+    aviso('Este endereço está incompleto. Usa o link pessoal que recebeste da tua Mestra.');
+    return;
+  }
+
+  let aluno;
+  try {
+    const cartao = await getDoc(doc(db, 'tenants', tenant, 'reikiAccess', codigo));
+    if (!cartao.exists()){
+      aviso('Este link já não é válido. Pede um novo à tua Mestra.');
+      return;
+    }
+    aluno = cartao.data();
+  } catch(e){
+    aviso('Não consegui abrir a biblioteca. Tenta daqui a pouco.');
+    return;
+  }
+
+  let recursos = [];
+  try {
+    const snap = await getDocs(collection(db, 'tenants', tenant, 'reikiLibrary'));
+    snap.forEach(d => recursos.push(d.data()));
+  } catch(e){
+    aviso('Não consegui carregar os materiais. Tenta daqui a pouco.');
+    return;
+  }
+
+  recursos = recursos.filter(r => visivel(r, aluno.nivel));
+  recursos.sort((a,b) => {
+    const ia = ['0'].concat(NIVEIS).indexOf(String(a.nivel||'0'));
+    const ib = ['0'].concat(NIVEIS).indexOf(String(b.nivel||'0'));
+    if (ia !== ib) return ia - ib;
+    return String(a.titulo||'').localeCompare(String(b.titulo||''), 'pt');
+  });
+
+  const primeiro = String(aluno.nome || '').trim().split(/\s+/)[0] || '';
+
+  let html = '<div class="cartao saudacao">'
+    + '<strong>' + esc(primeiro ? 'Bem-vindo, ' + primeiro : 'Bem-vindo') + '</strong>'
+    + (aluno.nivel
+        ? '<div><span class="selo">' + esc(ROTULOS[aluno.nivel] || aluno.nivel) + '</span></div>'
+        : '<div><span class="selo">Percurso a começar</span></div>')
+    + '</div>';
+
+  if (!recursos.length){
+    html += '<div class="cartao vazio">Ainda não há materiais disponíveis para ti. Assim que a tua Mestra os publicar, aparecem aqui.</div>';
+  } else {
+    let nivelAnterior = null;
+    for (const r of recursos){
+      const n = String(r.nivel || '0');
+      if (n !== nivelAnterior){
+        html += '<h2>' + esc(ROTULOS[n] || n) + '</h2>';
+        nivelAnterior = n;
+      }
+      html += '<div class="cartao"><div class="recurso">'
+        + '<div class="icone">' + (ICONES[r.tipo] || '🔗') + '</div>'
+        + '<div><strong>' + esc(r.titulo || 'Sem título') + '</strong>'
+        + (r.descricao ? '<p>' + esc(r.descricao) + '</p>' : '')
+        + (r.url ? '<a class="abrir" href="' + esc(r.url) + '" target="_blank" rel="noopener">Abrir</a>' : '')
+        + '</div></div></div>';
+    }
+  }
+
+  html += '<p class="nota">Material de uso pessoal, partilhado no âmbito da tua formação.<br>'
+    + 'O Reiki é uma prática complementar e não substitui acompanhamento médico.</p>';
+
+  alvo.innerHTML = html;
+}
+
+arrancar();
+</script>
+</body>
+</html>
