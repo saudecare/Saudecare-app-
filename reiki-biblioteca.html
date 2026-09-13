@@ -189,8 +189,10 @@ const primeiro = String(aluno.nome || '').trim().split(/\s+/)[0] || '';
       html += '<div class="cartao"><div class="recurso">'
         + '<div class="icone">' + (ICONES[r.tipo] || '🔗') + '</div>'
         + '<div><strong>' + esc(r.titulo || 'Sem título') + '</strong>'
+        + (r.pago ? '<p style="color:var(--destaque);font-size:.82rem;margin:2px 0 0;">Conteúdo extra, à venda</p>' : '')
         + (r.descricao ? '<p>' + esc(r.descricao) + '</p>' : '')
-        + (r.url ? '<a class="abrir" href="' + esc(r.url) + '" target="_blank" rel="noopener">Abrir</a>' : '')
+        + (r.url ? '<a class="abrir" href="' + esc(r.url) + '" target="_blank" rel="noopener">'
+             + (r.pago ? 'Ver oferta' : 'Abrir') + '</a>' : '')
         + '</div></div></div>';
     }
   }

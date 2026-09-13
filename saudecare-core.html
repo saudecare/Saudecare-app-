@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-13-07';
+const APP_VERSION = '2026-09-13-09';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10252,6 +10252,33 @@ function reikiRenderEcra(main){
 
 window.reikiMudarTab = function(tab){ __reikiTab = tab; reikiRenderEcra(); };
 
+/* ─── Confirmação própria ────────────────────────────────────────────
+   O confirm() do browser é bloqueado em várias janelas embutidas (a que
+   abre dentro de outra app, por exemplo). Quando isso acontece devolve
+   "não" sem mostrar nada, e o botão parece morto. Esta caixa é nossa e
+   funciona em todo o lado.
+   ────────────────────────────────────────────────────────────────── */
+function reikiConfirmar(titulo, texto, rotuloSim){
+  return new Promise(resolve => {
+    const fundo = document.createElement('div');
+    fundo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;';
+    fundo.innerHTML = `
+      <div class="card" style="max-width:420px;width:100%;background:#fff;">
+        <strong>${escapeHtml(titulo)}</strong>
+        <p class="muted" style="margin-top:8px;white-space:pre-wrap;">${escapeHtml(texto)}</p>
+        <div class="row" style="gap:8px;margin-top:14px;">
+          <button class="danger" data-sim>${escapeHtml(rotuloSim || 'Apagar')}</button>
+          <button class="ghost" data-nao>Cancelar</button>
+        </div>
+      </div>`;
+    const fecha = v => { fundo.remove(); resolve(v); };
+    fundo.querySelector('[data-sim]').onclick = () => fecha(true);
+    fundo.querySelector('[data-nao]').onclick = () => fecha(false);
+    fundo.onclick = e => { if (e.target === fundo) fecha(false); };
+    document.body.appendChild(fundo);
+  });
+}
+
 /* ─── Turmas ─────────────────────────────────────────────────────────
    Uma turma agrupa alunos e guarda os links da comunidade: o grupo de
    WhatsApp e a sala Jitsi dos encontros ao vivo. Nada disto passa pelo
@@ -10370,7 +10397,7 @@ window.reikiApagarTurma = async function(turmaId){
   const t = __reikiTurmas.find(x => x.id === turmaId);
   if (!t) return;
   const quantos = __reikiAlunos.filter(a => a.turmaId === turmaId).length;
-  if (!confirm('Apagar a turma "' + (t.nome||'') + '"?\n\n' + (quantos ? quantos + ' aluno(s) ficam sem turma. Os alunos não são apagados.' : 'Não tem alunos.'))) return;
+  if (!await reikiConfirmar('Apagar turma', 'Apagar a turma "' + (t.nome||'') + '"?\n\n' + (quantos ? quantos + ' aluno(s) ficam sem turma. Os alunos não são apagados.' : 'Não tem alunos.'))) return;
   try {
     await deleteDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId));
     toast('Turma apagada.');
@@ -10442,7 +10469,7 @@ function reikiRenderBiblioteca(){
           const t = reikiTipoInfo(r.tipo);
           return `
           <div class="card" style="margin-bottom:8px;">
-            <strong>${t.icone} ${escapeHtml(r.titulo || '(sem título)')}</strong>
+            <strong>${t.icone} ${escapeHtml(r.titulo || '(sem título)')}</strong>${r.pago ? ' <span class="badge">pago</span>' : ''}
             ${r.descricao ? `<p class="muted" style="margin-top:4px;">${escapeHtml(r.descricao)}</p>` : ''}
             <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
               ${r.url ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">👁️ Abrir</a>` : ''}
@@ -10478,6 +10505,10 @@ window.reikiAbrirRecurso = function(recursoId){
       </select>
       <label style="margin-top:10px;">Link do Drive</label>
       <input id="reikiRecUrl" type="url" value="${escapeHtml(r?.url || '')}" placeholder="https://drive.google.com/...">
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;">
+        <input id="reikiRecPago" type="checkbox" style="width:auto;margin-top:3px;" ${r?.pago ? 'checked' : ''}>
+        <span>Conteúdo pago (ebook, módulo extra) — o aluno vê que é uma oferta, não material do curso</span>
+      </label>
       <label style="margin-top:10px;">Descrição (opcional)</label>
       <textarea id="reikiRecDesc" rows="3">${escapeHtml(r?.descricao || '')}</textarea>
       <div class="row" style="gap:8px;margin-top:12px;">
@@ -10498,6 +10529,7 @@ window.reikiGuardarRecurso = async function(recursoId){
     url,
     tipo: document.getElementById('reikiRecTipo')?.value || 'manual',
     nivel: document.getElementById('reikiRecNivel')?.value || '0',
+    pago: !!document.getElementById('reikiRecPago')?.checked,
     descricao: (document.getElementById('reikiRecDesc')?.value || '').trim(),
     atualizadoEm: serverTimestamp()
   };
@@ -10517,7 +10549,7 @@ window.reikiGuardarRecurso = async function(recursoId){
 window.reikiApagarRecurso = async function(recursoId){
   const r = __reikiRecursos.find(x => x.id === recursoId);
   if (!r) return;
-  if (!confirm('Retirar "' + (r.titulo||'') + '" da biblioteca?\n\nO ficheiro no Drive não é apagado.')) return;
+  if (!await reikiConfirmar('Retirar da biblioteca', 'Retirar "' + (r.titulo||'') + '"?\n\nO ficheiro no Drive não é apagado.', 'Retirar')) return;
   try {
     await deleteDoc(doc(db, 'tenants', tenantId, 'reikiLibrary', recursoId));
     toast('Recurso retirado.');
@@ -10600,7 +10632,7 @@ window.reikiCopiarLink = function(){
 window.reikiRenovarCodigo = async function(alunoId){
   const a = __reikiAlunos.find(x => x.id === alunoId);
   if (!a) return;
-  if (!confirm('Gerar um código novo para ' + (a.nome||'') + '?\n\nO link antigo deixa de funcionar.')) return;
+  if (!await reikiConfirmar('Novo código', 'Gerar um código novo para ' + (a.nome||'') + '?\n\nO link antigo deixa de funcionar.', 'Gerar')) return;
   try {
     const antigo = a.codigoAcesso;
     const codigo = reikiGerarCodigo();
@@ -10717,7 +10749,7 @@ window.reikiGuardarAluno = async function(alunoId){
 window.reikiApagarAluno = async function(alunoId){
   const a = __reikiAlunos.find(x => x.id === alunoId);
   if (!a) return;
-  if (!confirm('Apagar definitivamente o aluno "' + (a.nome||'') + '" e todo o seu percurso?\n\nEsta acção não pode ser desfeita.')) return;
+  if (!await reikiConfirmar('Apagar aluno', 'Apagar definitivamente "' + (a.nome||'') + '" e todo o seu percurso?\n\nEsta acção não pode ser desfeita.')) return;
   try {
     await deleteDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId));
     if (a.codigoAcesso) await deleteDoc(doc(db, 'tenants', tenantId, 'reikiAccess', a.codigoAcesso)).catch(()=>{});
