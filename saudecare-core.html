@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-13-01';
+const APP_VERSION = '2026-09-13-02';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -686,6 +686,7 @@ const GOOGLE_OAUTH_REDIRECT_URI = 'https://effortless-entremet-7de9ef.netlify.ap
 const SYNC_CALENDAR_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/syncCalendarEvent';
 const STAFF_JOIN_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/staffJoinRequest';
 const SELF_ACTIVATE_TRIAL_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/selfActivateTrial';
+const RENEW_TRIAL_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/renewTrial';
 
 // Sobe um ficheiro para uma pasta do próprio subscritor e devolve o link
 // público, para usar exatamente como se fosse um link colado à mão.
@@ -1181,10 +1182,15 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   if (currentTenantDoc.status === 'trial' && currentTenantDoc.trialEndsAt && currentTenantDoc.trialEndsAt.toDate() < new Date()){
-    // Já não expulsa logo — deixa entrar, para poder ver o aviso na
-    // página inicial e escolher "Quero subscrever" ou "Preciso de mais
-    // tempo", em vez de ficar sem forma nenhuma de reagir.
-    toast('O seu período de teste terminou — veja as opções na página inicial.', true);
+    // Durante a fase de testes da plataforma, o período pode renovar-se
+    // sozinho — mas só se a administradora tiver ligado essa opção nas
+    // definições. Se não renovar, o comportamento é o de sempre: deixa
+    // entrar para poder ver o aviso na página inicial e reagir, em vez
+    // de ficar sem forma nenhuma de o fazer.
+    const renovado = await tentarRenovarPeriodoTeste();
+    if (!renovado){
+      toast('O seu período de teste terminou — veja as opções na página inicial.', true);
+    }
   }
 
   document.getElementById('loginScreen').classList.add('hidden');
@@ -3559,6 +3565,29 @@ function showPatientOverlay(title, bodyHtml){
     </div>
     <div class="patientOverlayBody">${bodyHtml}<div id="patientFormContainer"></div></div>`;
   document.body.appendChild(overlay);
+}
+
+// Pede ao servidor para prolongar o período de teste já expirado. Toda a
+// decisão é do lado do servidor (está ligado? já chegou ao tecto de
+// renovações?) — aqui só se pergunta. Se a função ainda não existir, ou
+// falhar, segue-se em frente como antes: nada rebenta por causa disto.
+async function tentarRenovarPeriodoTeste(){
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(RENEW_TRIAL_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok || !data.renewed) return false;
+    const snap = await getDoc(doc(db, 'tenants', tenantId));
+    if (snap.exists()) currentTenantDoc = snap.data();
+    toast('Período de teste prolongado por mais ' + data.days + ' dias.');
+    return true;
+  } catch(e){
+    console.warn('Não foi possível renovar o período de teste:', e);
+    return false;
+  }
 }
 
 let __patientMsgPollTimer = null;

@@ -216,6 +216,14 @@ function adminErro(msg){
     + '<button onclick="document.getElementById(\'adminErroBox\').remove()" style="margin-top:10px;">Fechar</button>';
 }
 window.adminErro = adminErro;
+
+/* Usada na vista de Pedidos de apoio / Incidentes. Existia no painel
+   principal mas nunca foi copiada para aqui — por isso essa vista
+   rebentava com "hintBox is not defined" e ficava em "A carregar…". */
+function hintBox(text){
+  return '<div style="background:#eef6f2;border:1px solid #d7ebe2;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#1f4d3f;margin-bottom:14px;line-height:1.4;">\uD83D\uDCA1 ' + text + '</div>';
+}
+window.hintBox = hintBox;
 window.addEventListener('unhandledrejection', function(e){
   const msg = (e.reason && e.reason.message) ? e.reason.message : String(e.reason || 'Erro inesperado.');
   adminErro(msg);
@@ -959,6 +967,9 @@ async function renderPlatformSettings(main){
   const cfg = snap.exists() ? snap.data() : {};
   const trialDays = cfg.trialDays ?? 7;
   const trialEnabled = cfg.trialEnabled !== false; // por omissão, ativo
+  const trialAutoRenew = cfg.trialAutoRenew === true; // por omissão, DESLIGADO
+  const trialRenewDays = cfg.trialRenewDays ?? 7;
+  const trialMaxRenewals = cfg.trialMaxRenewals ?? 4;
 
   main.innerHTML = `
     <h2>⚙️ Definições da Plataforma</h2>
@@ -977,19 +988,50 @@ async function renderPlatformSettings(main){
       <button class="primary" onclick="savePlatformConfig()">Guardar</button>
       <p class="muted" style="margin-top:10px;">Estado atual: ${trialEnabled ? `período de teste ativo, ${trialDays} dias` : 'período de teste desligado — novos registos ficam por ativar até aprovar manualmente'}</p>
     </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:6px;">Renovação automática (fase de testes)</h3>
+      <p class="muted" style="margin-bottom:10px;">Enquanto está a testar a plataforma com pessoas reais, isto evita que alguém fique bloqueado ao fim dos dias do período de teste. Quando o período expira, prolonga-se sozinho no primeiro acesso seguinte. <strong>Desligue isto antes de começar a cobrar</strong> — caso contrário ninguém chega a precisar de subscrever.</p>
+
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-bottom:12px;">
+        <input type="checkbox" id="trialAutoRenewCheckbox" style="width:auto;" ${trialAutoRenew ? 'checked' : ''}>
+        Renovar automaticamente o período de teste quando expirar
+      </label>
+
+      <label>Dias acrescentados em cada renovação</label>
+      <input id="trialRenewDaysInput" type="number" min="1" value="${trialRenewDays}" ${trialAutoRenew ? '' : 'disabled'}>
+
+      <label style="margin-top:10px;">Máximo de renovações por subscritor</label>
+      <input id="trialMaxRenewalsInput" type="number" min="0" value="${trialMaxRenewals}" ${trialAutoRenew ? '' : 'disabled'}>
+      <p class="muted" style="margin-top:6px;">Chegado a este número, a conta expira normalmente e a decisão volta a ser sua. Com ${trialRenewDays} dias e ${trialMaxRenewals} renovações, dá no máximo ${trialRenewDays * trialMaxRenewals} dias extra.</p>
+
+      <button class="primary" onclick="savePlatformConfig()">Guardar</button>
+    </div>
   `;
 
   document.getElementById('trialEnabledCheckbox').addEventListener('change', (e) => {
     document.getElementById('trialDaysInput').disabled = !e.target.checked;
   });
+  document.getElementById('trialAutoRenewCheckbox').addEventListener('change', (e) => {
+    document.getElementById('trialRenewDaysInput').disabled = !e.target.checked;
+    document.getElementById('trialMaxRenewalsInput').disabled = !e.target.checked;
+  });
 }
 
 window.savePlatformConfig = async function(){
-  const trialEnabled = document.getElementById('trialEnabledCheckbox').checked;
-  const trialDays = Math.max(0, parseInt(document.getElementById('trialDaysInput').value || '14', 10));
-  await setDoc(doc(db, 'settings', 'platformConfig'), { trialEnabled, trialDays }, { merge: true });
-  toast('Definições guardadas.');
-  renderView('platformSettings');
+  try {
+    const trialEnabled = document.getElementById('trialEnabledCheckbox').checked;
+    const trialDays = Math.max(0, parseInt(document.getElementById('trialDaysInput').value || '7', 10));
+    const trialAutoRenew = document.getElementById('trialAutoRenewCheckbox').checked;
+    const trialRenewDays = Math.max(1, parseInt(document.getElementById('trialRenewDaysInput').value || '7', 10));
+    const trialMaxRenewals = Math.max(0, parseInt(document.getElementById('trialMaxRenewalsInput').value || '4', 10));
+    await setDoc(doc(db, 'settings', 'platformConfig'),
+      { trialEnabled, trialDays, trialAutoRenew, trialRenewDays, trialMaxRenewals }, { merge: true });
+    toast('Definições guardadas.');
+    renderView('platformSettings');
+  } catch(e){
+    adminErro(e.message || String(e));
+  }
 };
 
 // ── MÉTODOS PRIVADOS (protocolos com direitos de autor de terceiros) ───
