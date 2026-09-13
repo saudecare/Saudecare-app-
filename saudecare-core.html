@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-13-04';
+const APP_VERSION = '2026-09-13-05';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10160,13 +10160,13 @@ window.viewTriagemEvolucao = async function(patientId){
    ══════════════════════════════════════════════════════════════════════ */
 
 const REIKI_NIVEIS = [
-  { id:'1', nome:'Nível 1 — Shoden', certLabel:'Nível 1 — Shoden', subtitulo:'O Despertar',
+  { id:'1', nome:'Nível 1 — Shoden', certLabel:'Nível 1 — Shoden', certCampo:'1 — Shoden', cor:[178,134,50], subtitulo:'O Despertar',
     descricao:'Primeira sintonização. O aluno abre o canal e aprende a aplicar Reiki a si próprio e a outras pessoas por imposição das mãos, com foco no corpo físico, na limpeza do campo e na prática diária do autotratamento.' },
-  { id:'2', nome:'Nível 2 — Okuden', certLabel:'Nível 2 — Okuden', subtitulo:'A Transformação',
+  { id:'2', nome:'Nível 2 — Okuden', certLabel:'Nível 2 — Okuden', certCampo:'2 — Okuden', cor:[148,94,38], subtitulo:'A Transformação',
     descricao:'Sintonização com os três primeiros símbolos. O trabalho aprofunda-se no plano emocional e mental, e o aluno passa a poder enviar Reiki à distância, no tempo e no espaço.' },
-  { id:'3A', nome:'Nível 3A — Shinpiden (Aprofundamento)', certLabel:'Nível 3A — Shinpiden', subtitulo:'O Mestre Interior',
+  { id:'3A', nome:'Nível 3A — Shinpiden (Aprofundamento)', certLabel:'Nível 3A — Shinpiden', certCampo:'3A — Shinpiden', cor:[122,66,62], subtitulo:'O Mestre Interior',
     descricao:'Sintonização com o símbolo do Mestre. É um nível de amadurecimento pessoal e espiritual: o aluno aprofunda a sua própria prática e prepara-se para a responsabilidade de ensinar, mas ainda não sintoniza outras pessoas.' },
-  { id:'3B', nome:'Nível 3B — Shinpiden (Mestrado)', certLabel:'Nível 3B — Shinpiden', subtitulo:'O Mestrado',
+  { id:'3B', nome:'Nível 3B — Shinpiden (Mestrado)', certLabel:'Nível 3B — Shinpiden', certCampo:'3B — Shinpiden', cor:[96,40,44], subtitulo:'O Mestrado',
     descricao:'Habilitação para ensinar Usui Reiki Ryoho e sintonizar novos alunos, com a responsabilidade de manter a linhagem viva e íntegra.' }
 ];
 
@@ -10636,8 +10636,8 @@ const REIKI_CERT_TEMPLATE = 'certificado-reiki.png';
 const REIKI_CERT_LAYOUT = {
   imgX: 0.9, imgY: 0, imgW: 208.2, imgH: 297,
   cor: [90, 62, 27],
-  nivel: { x: 96.5,  y: 185.6, size: 12, maxW: 58, align: 'left' },
-  nome:  { x: 124.3, y: 223.0, size: 13, maxW: 82, align: 'center' },
+  nivel: { x: 96.5,  y: 185.6, size: 13.5, maxW: 58, align: 'left' },
+  nome:  { x: 124.3, y: 223.0, size: 16, maxW: 82, align: 'center' },
   data:  { x: 112.5, y: 247.5, size: 12, maxW: 32, align: 'center' }
 };
 
@@ -10710,8 +10710,12 @@ window.reikiGerarCertificado = async function(alunoId){
     const L = REIKI_CERT_LAYOUT;
     pdf.addImage(modelo, 'PNG', L.imgX, L.imgY, L.imgW, L.imgH);
     pdf.setFont('helvetica', 'bold');
+    // Cada nível leva a sua cor, para se distinguir de relance qual é
+    // o certificado. O resto do texto mantém o tom do modelo.
+    const corNivel = Array.isArray(nivel.cor) ? nivel.cor : L.cor;
+    pdf.setTextColor(corNivel[0], corNivel[1], corNivel[2]);
+    reikiEscreverCampo(pdf, nivel.certCampo || nivel.certLabel, L.nivel);
     pdf.setTextColor(L.cor[0], L.cor[1], L.cor[2]);
-    reikiEscreverCampo(pdf, nivel.certLabel, L.nivel);
     reikiEscreverCampo(pdf, a.nome, L.nome);
     reikiEscreverCampo(pdf, reikiDataPT(iso), L.data);
     const ficheiro = 'Certificado-Reiki-' + nivelId + '-' + a.nome.replace(/[^\wÀ-ú]+/g, '-') + '.pdf';
