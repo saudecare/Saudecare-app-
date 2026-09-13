@@ -45,6 +45,13 @@
     border-radius:9px;font-size:.9rem;
   }
   .vazio{text-align:center;color:var(--suave);padding:28px 12px;}
+  .comunidade{text-align:center;}
+  .comunidade .turma{font-size:.9rem;color:var(--suave);margin:0 0 12px;}
+  a.botao{
+    display:inline-block;margin:4px 5px;padding:10px 18px;
+    border:1px solid var(--destaque);color:var(--destaque);
+    text-decoration:none;border-radius:9px;font-size:.9rem;
+  }
   .nota{
     text-align:center;color:var(--suave);font-size:.8rem;
     margin-top:26px;padding-top:16px;border-top:1px solid var(--linha);
@@ -145,7 +152,20 @@ async function arrancar(){
     return String(a.titulo||'').localeCompare(String(b.titulo||''), 'pt');
   });
 
-  const primeiro = String(aluno.nome || '').trim().split(/\s+/)[0] || '';
+const primeiro = String(aluno.nome || '').trim().split(/\s+/)[0] || '';
+
+  /* Comunidade: grupo da turma e sala de encontros. São links externos —
+     não guardamos nem alojamos nada. */
+  function blocoComunidade(){
+    const temGrupo = /^https:\/\/chat\.whatsapp\.com\//.test(String(aluno.turmaWhatsapp||''));
+    const temSala  = /^https:\/\/meet\.jit\.si\//.test(String(aluno.turmaJitsi||''));
+    if (!temGrupo && !temSala) return '';
+    return '<div class="cartao comunidade">'
+      + (aluno.turmaNome ? '<p class="turma">' + esc(aluno.turmaNome) + '</p>' : '')
+      + (temGrupo ? '<a class="botao" href="' + esc(aluno.turmaWhatsapp) + '" target="_blank" rel="noopener">Grupo da turma</a>' : '')
+      + (temSala ? '<a class="botao" href="' + esc(aluno.turmaJitsi) + '" target="_blank" rel="noopener">Entrar na sala</a>' : '')
+      + '</div>';
+  }
 
   let html = '<div class="cartao saudacao">'
     + '<strong>' + esc(primeiro ? 'Bem-vindo, ' + primeiro : 'Bem-vindo') + '</strong>'
@@ -153,6 +173,8 @@ async function arrancar(){
         ? '<div><span class="selo">' + esc(ROTULOS[aluno.nivel] || aluno.nivel) + '</span></div>'
         : '<div><span class="selo">Percurso a começar</span></div>')
     + '</div>';
+
+  html += blocoComunidade();
 
   if (!recursos.length){
     html += '<div class="cartao vazio">Ainda não há materiais disponíveis para ti. Assim que a tua Mestra os publicar, aparecem aqui.</div>';

@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-13-06';
+const APP_VERSION = '2026-09-13-07';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10201,11 +10201,15 @@ async function renderReikiAlunos(main){
   const m = main || document.getElementById('mainView');
   m.innerHTML = '<p class="muted">A carregar alunos…</p>';
   try {
-    const [alunosSnap, configSnap, bibSnap] = await Promise.all([
+    const [alunosSnap, configSnap, bibSnap, turmasSnap] = await Promise.all([
       getDocs(collection(db, 'tenants', tenantId, 'reikiStudents')),
       getDocs(collection(db, 'tenants', tenantId, 'reikiConfig')),
-      getDocs(collection(db, 'tenants', tenantId, 'reikiLibrary'))
+      getDocs(collection(db, 'tenants', tenantId, 'reikiLibrary')),
+      getDocs(collection(db, 'tenants', tenantId, 'reikiClasses'))
     ]);
+    __reikiTurmas = [];
+    turmasSnap.forEach(d => __reikiTurmas.push({ id: d.id, ...d.data() }));
+    __reikiTurmas.sort((a, b) => String(a.nome||'').localeCompare(String(b.nome||''), 'pt'));
     __reikiRecursos = [];
     bibSnap.forEach(d => __reikiRecursos.push({ id: d.id, ...d.data() }));
     __reikiRecursos.sort((a, b) => {
@@ -10237,14 +10241,152 @@ function reikiRenderEcra(main){
       <button class="${__reikiTab==='alunos'?'primary':'ghost'}" onclick="reikiMudarTab('alunos')">Alunos</button>
       <button class="${__reikiTab==='niveis'?'primary':'ghost'}" onclick="reikiMudarTab('niveis')">Níveis</button>
       <button class="${__reikiTab==='biblioteca'?'primary':'ghost'}" onclick="reikiMudarTab('biblioteca')">Biblioteca</button>
+      <button class="${__reikiTab==='turmas'?'primary':'ghost'}" onclick="reikiMudarTab('turmas')">Turmas</button>
     </div>
     <div id="reikiConteudo"></div>`;
   if (__reikiTab === 'alunos') reikiRenderListaAlunos();
   else if (__reikiTab === 'biblioteca') reikiRenderBiblioteca();
+  else if (__reikiTab === 'turmas') reikiRenderTurmas();
   else reikiRenderNiveis();
 }
 
 window.reikiMudarTab = function(tab){ __reikiTab = tab; reikiRenderEcra(); };
+
+/* ─── Turmas ─────────────────────────────────────────────────────────
+   Uma turma agrupa alunos e guarda os links da comunidade: o grupo de
+   WhatsApp e a sala Jitsi dos encontros ao vivo. Nada disto passa pelo
+   Firebase — são links externos, por isso não há custos de alojamento.
+
+   Firestore: tenants/{tenantId}/reikiClasses/{id}
+   ────────────────────────────────────────────────────────────────── */
+
+let __reikiTurmas = [];
+
+function reikiTurmaInfo(id){ return __reikiTurmas.find(t => t.id === id) || null; }
+
+/* Só aceitamos convites de grupo, nunca conversas individuais. */
+function reikiUrlWhatsappValida(u){
+  return /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+/.test(String(u||'').trim());
+}
+function reikiUrlJitsi(sala){
+  const s = String(sala||'').trim().replace(/\s+/g, '-').replace(/[^A-Za-z0-9\-]/g, '');
+  return s ? 'https://meet.jit.si/' + s : '';
+}
+
+function reikiRenderTurmas(){
+  const alvo = document.getElementById('reikiConteudo');
+  if (!alvo) return;
+
+  const cartoes = __reikiTurmas.length === 0
+    ? `<p class="muted">Ainda não há turmas. Cria a primeira para começares a organizar os alunos.</p>`
+    : __reikiTurmas.map(t => {
+        const nivel = reikiNivelInfo(t.nivel);
+        const quantos = __reikiAlunos.filter(a => a.turmaId === t.id).length;
+        const jitsi = reikiUrlJitsi(t.jitsiSala);
+        return `
+        <div class="card" style="margin-bottom:10px;">
+          <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div>
+              <strong>${escapeHtml(t.nome || '(sem nome)')}</strong>
+              <p class="muted" style="margin-top:4px;">${nivel ? escapeHtml(nivel.certLabel) : 'Sem nível definido'} · ${quantos} aluno(s)</p>
+            </div>
+            ${t.ativa === false ? '<span class="badge">encerrada</span>' : ''}
+          </div>
+          <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
+            ${t.whatsappUrl ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(t.whatsappUrl)}" target="_blank" rel="noopener">💬 Grupo</a>` : '<span class="muted" style="font-size:.85rem;">sem grupo</span>'}
+            ${jitsi ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(jitsi)}" target="_blank" rel="noopener">🎥 Sala</a>` : ''}
+            <button class="ghost" onclick="reikiAbrirTurma('${t.id}')">✏️ Editar</button>
+            <button class="danger" onclick="reikiApagarTurma('${t.id}')">🗑️</button>
+          </div>
+        </div>`;
+      }).join('');
+
+  alvo.innerHTML = `
+    <div class="card" style="margin-bottom:12px;">
+      <p class="muted">Cada turma tem o seu grupo de WhatsApp e a sua sala de encontros. Os alunos chegam lá pelo link pessoal que lhes dás — não precisam de conta nenhuma.</p>
+      <p class="muted" style="margin-top:6px;font-size:.85rem;">No WhatsApp, cria o grupo e usa <strong>Convidar através de link</strong>. A sala Jitsi é só um nome à tua escolha, e abre sem instalar nada.</p>
+      <button class="primary" style="margin-top:12px;" onclick="reikiAbrirTurma()">➕ Nova turma</button>
+    </div>
+    ${cartoes}`;
+}
+
+window.reikiAbrirTurma = function(turmaId){
+  const t = turmaId ? __reikiTurmas.find(x => x.id === turmaId) : null;
+  showPatientOverlay(t ? '✏️ Editar turma' : '➕ Nova turma', `
+    <div class="card">
+      <label>Nome da turma</label>
+      <input id="reikiTurmaNome" type="text" value="${escapeHtml(t?.nome || '')}" placeholder="Nível 1 — Outono 2026">
+      <label style="margin-top:10px;">Nível</label>
+      <select id="reikiTurmaNivel">
+        <option value="">— sem nível definido —</option>
+        ${REIKI_NIVEIS.map(n => `<option value="${n.id}" ${t?.nivel===n.id?'selected':''}>${escapeHtml(n.nome)}</option>`).join('')}
+      </select>
+      <label style="margin-top:10px;">Link do grupo de WhatsApp</label>
+      <input id="reikiTurmaWhats" type="url" value="${escapeHtml(t?.whatsappUrl || '')}" placeholder="https://chat.whatsapp.com/...">
+      <label style="margin-top:10px;">Nome da sala de encontros (Jitsi)</label>
+      <input id="reikiTurmaJitsi" type="text" value="${escapeHtml(t?.jitsiSala || '')}" placeholder="hikari-nivel1-outono">
+      <p class="muted" style="margin-top:6px;font-size:.85rem;">Escolhe um nome difícil de adivinhar — quem souber o nome entra na sala.</p>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;">
+        <input id="reikiTurmaAtiva" type="checkbox" style="width:auto;margin-top:3px;" ${t?.ativa === false ? '' : 'checked'}>
+        <span>Turma a decorrer (desliga quando terminar)</span>
+      </label>
+      <div class="row" style="gap:8px;margin-top:12px;">
+        <button class="primary" onclick="reikiGuardarTurma('${turmaId || ''}')">Guardar</button>
+        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+      </div>
+    </div>`);
+};
+
+window.reikiGuardarTurma = async function(turmaId){
+  const nome = (document.getElementById('reikiTurmaNome')?.value || '').trim();
+  if (!nome){ toast('A turma precisa de um nome.', true); return; }
+  const whats = (document.getElementById('reikiTurmaWhats')?.value || '').trim();
+  if (whats && !reikiUrlWhatsappValida(whats)){
+    toast('O link do WhatsApp tem de ser um convite de grupo (chat.whatsapp.com).', true); return;
+  }
+  const dados = {
+    nome,
+    nivel: document.getElementById('reikiTurmaNivel')?.value || '',
+    whatsappUrl: whats,
+    jitsiSala: (document.getElementById('reikiTurmaJitsi')?.value || '').trim(),
+    ativa: !!document.getElementById('reikiTurmaAtiva')?.checked,
+    atualizadoEm: serverTimestamp()
+  };
+  try {
+    if (turmaId){
+      await updateDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId), dados);
+    } else {
+      await addDoc(collection(db, 'tenants', tenantId, 'reikiClasses'), { ...dados, criadoEm: serverTimestamp() });
+    }
+    closePatientOverlay();
+    toast('Turma guardada.');
+    __reikiTab = 'turmas';
+    await renderReikiAlunos();
+    if (turmaId) reikiSincronizarAcessosDaTurma(turmaId);
+  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
+};
+
+window.reikiApagarTurma = async function(turmaId){
+  const t = __reikiTurmas.find(x => x.id === turmaId);
+  if (!t) return;
+  const quantos = __reikiAlunos.filter(a => a.turmaId === turmaId).length;
+  if (!confirm('Apagar a turma "' + (t.nome||'') + '"?\n\n' + (quantos ? quantos + ' aluno(s) ficam sem turma. Os alunos não são apagados.' : 'Não tem alunos.'))) return;
+  try {
+    await deleteDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId));
+    toast('Turma apagada.');
+    __reikiTab = 'turmas';
+    renderReikiAlunos();
+  } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
+};
+
+/* Quando os links da turma mudam, os cartões de acesso dos alunos dela
+   ficam desactualizados. Actualizamos em silêncio, sem travar o ecrã. */
+async function reikiSincronizarAcessosDaTurma(turmaId){
+  const alunos = __reikiAlunos.filter(a => a.turmaId === turmaId && a.codigoAcesso);
+  for (const a of alunos){
+    await reikiGravarAcesso(a.codigoAcesso, a).catch(()=>{});
+  }
+}
 
 /* ─── Biblioteca do aluno ────────────────────────────────────────────
    Os ficheiros vivem no Drive (manuais, vídeos, áudios). Aqui guardamos
@@ -10402,10 +10544,14 @@ function reikiUrlBiblioteca(codigo){
 /* Grava o cartão de acesso. É o único sítio onde o nome e o nível do
    aluno ficam legíveis de fora, e só para quem souber o código. */
 async function reikiGravarAcesso(codigo, aluno){
+  const t = aluno.turmaId ? reikiTurmaInfo(aluno.turmaId) : null;
   await setDoc(doc(db, 'tenants', tenantId, 'reikiAccess', codigo), {
     alunoId: aluno.id,
     nome: aluno.nome || '',
     nivel: aluno.nivelAtual || null,
+    turmaNome: (t && t.ativa !== false) ? (t.nome || '') : '',
+    turmaWhatsapp: (t && t.ativa !== false) ? (t.whatsappUrl || '') : '',
+    turmaJitsi: (t && t.ativa !== false) ? reikiUrlJitsi(t.jitsiSala) : '',
     atualizadoEm: serverTimestamp()
   });
 }
@@ -10526,6 +10672,11 @@ window.reikiAbrirForm = function(alunoId){
       <input id="reikiTelefone" type="tel" value="${escapeHtml(a?.telefone || '')}">
       <label style="margin-top:10px;">E-mail</label>
       <input id="reikiEmail" type="email" value="${escapeHtml(a?.email || '')}">
+      <label style="margin-top:10px;">Turma</label>
+      <select id="reikiTurma">
+        <option value="">— sem turma —</option>
+        ${__reikiTurmas.map(t => `<option value="${t.id}" ${a?.turmaId===t.id?'selected':''}>${escapeHtml(t.nome||'')}</option>`).join('')}
+      </select>
       <label style="margin-top:10px;">Notas</label>
       <textarea id="reikiNotas" rows="3">${escapeHtml(a?.notas || '')}</textarea>
       <p class="muted" style="margin-top:10px;font-size:.85rem;">O nome é escrito tal e qual no certificado — confirma acentos e maiúsculas.</p>
@@ -10543,6 +10694,7 @@ window.reikiGuardarAluno = async function(alunoId){
     nome,
     telefone: (document.getElementById('reikiTelefone')?.value || '').trim(),
     email: (document.getElementById('reikiEmail')?.value || '').trim(),
+    turmaId: document.getElementById('reikiTurma')?.value || '',
     notas: (document.getElementById('reikiNotas')?.value || '').trim(),
     atualizadoEm: serverTimestamp()
   };
@@ -10617,7 +10769,7 @@ window.reikiConfirmarSubirNivel = async function(alunoId){
       atualizadoEm: serverTimestamp()
     });
     if (a.codigoAcesso){
-      await reikiGravarAcesso(a.codigoAcesso, { id: alunoId, nome: a.nome, nivelAtual: prox.id }).catch(()=>{});
+      await reikiGravarAcesso(a.codigoAcesso, { id: alunoId, nome: a.nome, nivelAtual: prox.id, turmaId: a.turmaId }).catch(()=>{});
     }
     closePatientOverlay();
     toast('Nível actualizado.');
