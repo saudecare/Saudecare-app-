@@ -69,7 +69,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, collection, getDocs }
+import { getFirestore, doc, getDoc, collection, getDocs, addDoc, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -135,6 +135,14 @@ async function arrancar(){
     return;
   }
 
+  let testes = [];
+  try {
+    const snapT = await getDocs(collection(db, 'tenants', tenant, 'reikiQuizzes'));
+    snapT.forEach(d => testes.push({ id: d.id, ...d.data() }));
+  } catch(e){ testes = []; }
+  testes = testes.filter(t => visivel({ nivel: t.nivel }, aluno.nivel));
+  window.__ctx = { tenant, codigo, aluno, testes };
+
   let recursos = [];
   try {
     const snap = await getDocs(collection(db, 'tenants', tenant, 'reikiLibrary'));
@@ -197,11 +205,87 @@ const primeiro = String(aluno.nome || '').trim().split(/\s+/)[0] || '';
     }
   }
 
+  if (testes.length){
+    html += '<h2>Avaliação</h2>';
+    for (const t of testes){
+      html += '<div class="cartao"><div class="recurso">'
+        + '<div class="icone">📝</div>'
+        + '<div><strong>' + esc(t.titulo || 'Teste') + '</strong>'
+        + '<p>' + (t.perguntas||[]).length + ' perguntas · mínimo ' + (t.notaMinima||70) + '%</p>'
+        + '<a class="abrir" href="#" onclick="abrirTeste(\'' + t.id + '\');return false;">Fazer o teste</a>'
+        + '</div></div></div>';
+    }
+  }
+
   html += '<p class="nota">Material de uso pessoal, partilhado no âmbito da tua formação.<br>'
     + 'O Reiki é uma prática complementar e não substitui acompanhamento médico.</p>';
 
   alvo.innerHTML = html;
 }
+
+window.abrirTeste = function(testeId){
+  const c = window.__ctx;
+  const t = c.testes.find(x => x.id === testeId);
+  if (!t) return;
+  const qs = t.perguntas || [];
+  alvo.innerHTML = '<div class="cartao"><strong>' + esc(t.titulo) + '</strong>'
+    + '<p style="color:var(--suave);font-size:.88rem;margin-top:4px;">Responde a todas. Precisas de '
+    + (t.notaMinima||70) + '% para passar.</p></div>'
+    + qs.map(function(q, i){
+        return '<div class="cartao"><strong>' + (i+1) + '. ' + esc(q.texto) + '</strong>'
+          + (q.opcoes||[]).map(function(o, j){
+              return '<label style="display:flex;gap:9px;align-items:flex-start;margin-top:9px;">'
+                + '<input type="radio" name="q' + i + '" value="' + j + '" style="margin-top:4px;">'
+                + '<span>' + esc(o) + '</span></label>';
+            }).join('')
+          + '</div>';
+      }).join('')
+    + '<div class="cartao" style="text-align:center;">'
+    + '<a class="abrir" href="#" onclick="entregarTeste(\'' + testeId + '\');return false;">Entregar</a></div>';
+  window.scrollTo(0, 0);
+};
+
+window.entregarTeste = async function(testeId){
+  const c = window.__ctx;
+  const t = c.testes.find(x => x.id === testeId);
+  const qs = t.perguntas || [];
+  let certas = 0, respondidas = 0;
+  const respostas = [];
+  for (let i = 0; i < qs.length; i++){
+    const sel = document.querySelector('input[name="q' + i + '"]:checked');
+    const v = sel ? parseInt(sel.value) : -1;
+    respostas.push(v);
+    if (v >= 0) respondidas++;
+    if (v === (qs[i].correta || 0)) certas++;
+  }
+  if (respondidas < qs.length){
+    alert('Faltam ' + (qs.length - respondidas) + ' pergunta(s) por responder.');
+    return;
+  }
+  const pct = Math.round(certas / qs.length * 100);
+  const aprovado = pct >= (t.notaMinima || 70);
+  try {
+    await addDoc(collection(db, 'tenants', c.tenant, 'reikiQuizResults'), {
+      testeId: testeId,
+      codigo: c.codigo,
+      alunoId: c.aluno.alunoId || '',
+      alunoNome: c.aluno.nome || '',
+      percentagem: pct,
+      aprovado: aprovado,
+      respostas: respostas,
+      entregueEm: serverTimestamp()
+    });
+  } catch(e){ /* o resultado mostra-se na mesma */ }
+  alvo.innerHTML = '<div class="cartao vazio">'
+    + '<strong style="font-size:1.2rem;">' + pct + '%</strong>'
+    + '<p style="margin-top:8px;">' + (aprovado
+        ? 'Passaste. A tua Mestra recebeu o resultado.'
+        : 'Ficaste abaixo do mínimo. Revê o manual e fala com a tua Mestra — podes repetir.')
+    + '</p></div>'
+    + '<div class="cartao" style="text-align:center;">'
+    + '<a class="abrir" href="' + location.href + '">Voltar à biblioteca</a></div>';
+  window.scrollTo(0, 0);
+};
 
 arrancar();
 </script>
