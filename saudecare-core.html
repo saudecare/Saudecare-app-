@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-13-10';
+const APP_VERSION = '2026-09-15-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12444,5 +12444,10 @@ window.sendChatbotMessage = async function(){
 };
 
 </script>
+
+<!-- Percurso interativo de Reiki — Nível 1 (módulos ler → praticar → responder).
+     Ficheiro separado, na raiz do repositório. Corre seedReikiNivel1() na
+     consola, uma vez, para criar os 6 módulos em tenants/hikari-terapias/reikiModules. -->
+<script type="module" src="./reiki-percurso-nivel1.js"></script>
 </body>
 </html>
