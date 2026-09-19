@@ -129,11 +129,12 @@ const MODULOS_NIVEL_1 = [
         tipo: 'lista',
         titulo: 'Os cinco princípios — para repetir de manhã e à noite, de mãos juntas',
         itens: [
-          'Só por hoje, não te zangues',
-          'Só por hoje, não te preocupes',
-          'Só por hoje, sê grato',
-          'Só por hoje, trabalha com honestidade',
-          'Só por hoje, sê bondoso para com todos os seres'
+          'Só por hoje',
+          'Sou calmo',
+          'Confio',
+          'Sou grato',
+          'Trabalho honestamente',
+          'Sou bondoso'
         ]
       },
       {
@@ -142,7 +143,7 @@ const MODULOS_NIVEL_1 = [
       },
       {
         tipo: 'texto',
-        conteudo: 'Não te zangues: a raiva não se proíbe, observa-se — muitas vezes o que está por baixo é medo ou cansaço. Não te preocupes: pergunta-te se há alguma coisa que possas fazer agora; se há, faz; se não há, pousa. Sê grato: não é positividade forçada, é treinar o olhar. Trabalha com honestidade: serve para o Reiki e serve para varrer a casa. Sê bondoso: para com todos os seres, o que te inclui a ti.'
+        conteudo: 'Sou calmo: a raiva não se proíbe, observa-se — muitas vezes o que está por baixo é medo ou cansaço. Confio: pergunta-te se há alguma coisa que possas fazer agora; se há, faz; se não há, pousa e confia. Sou grato: não é positividade forçada, é treinar o olhar. Trabalho honestamente: serve para o Reiki e serve para varrer a casa. Sou bondoso: para com todos os seres, o que te inclui a ti.'
       },
       {
         tipo: 'lista',
@@ -479,13 +480,14 @@ const MODULOS_NIVEL_1 = [
     ler: [
       {
         tipo: 'texto',
-        conteudo: 'A pergunta que toda a gente faz nesta altura: posso aplicar a outras pessoas? A resposta da nossa escola é clara — o Nível 1 é para uso próprio. Aplicar Reiki a outras pessoas faz parte do Nível 2. Não é regra burocrática nem forma de te obrigar a pagar mais formação: é uma questão de ordem.'
+        conteudo: 'A pergunta que toda a gente faz nesta altura: posso aplicar a outras pessoas? A resposta da nossa escola é clara — o Nível 1 é para uso próprio, com uma excepção: a família de casa e os animais. Atender pessoas de fora, marcar sessões e cobrar é do Nível 2 em diante. Não é regra burocrática nem forma de te obrigar a pagar mais formação: é uma questão de ordem.'
       },
       {
         tipo: 'lista',
         titulo: 'O que já podes fazer',
         itens: [
           'Autotratamento diário, que é o essencial deste nível',
+          'Aplicar à família de casa e aos animais — foi com a Preta que tudo começou para mim',
           'Usar o Cho Ku Rei em ti, no teu espaço e nas tuas coisas',
           'Energizar a tua água, a tua comida, os teus objectos',
           'Reiki a plantas e a animais de casa',
@@ -532,14 +534,14 @@ const MODULOS_NIVEL_1 = [
     },
     responder: [
       {
-        pergunta: 'Alguém lá de casa fica a saber que andas nisto e pede-te para lhe pores as mãos. O que fazes?',
+        pergunta: 'Uma vizinha fica a saber que andas nisto e pede-te uma sessão. O que fazes?',
         opcoes: [
-          'Faço, é só uma vez e é da família',
-          'Digo com tranquilidade que estou no primeiro nível, que este é o tempo de praticar em mim, e que terei todo o gosto quando avançar',
+          'Faço, é só uma vez',
+          'Digo com tranquilidade que estou no primeiro nível, que aqui trato de mim, da família de casa e dos animais, e que terei todo o gosto quando avançar',
           'Faço, mas sem lhe dizer que ainda não estou habilitado'
         ],
         correta: 1,
-        feedback: 'Ninguém leva a mal — e tu ficas a ganhar em honestidade. O Nível 1 é para uso próprio, e ter o símbolo não muda essa regra.'
+        feedback: 'A excepção que abro é família de casa e animais — foi com a minha cadela que tudo começou para mim. O que fica de fora é atender pessoas de fora, marcar, cobrar e apresentares-te como terapeuta. Isso é do Nível 2 em diante.'
       },
       {
         pergunta: 'Sentiste calor prolongado sobre o fígado de alguém durante uma prática. Podes dizer-lhe que tem um problema no fígado?',
