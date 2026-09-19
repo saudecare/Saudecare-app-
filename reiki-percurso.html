@@ -3,16 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>O meu percurso — Hikari Fafe Escola de Reiki</title>
+<title>A minha formação — Hikari Fafe Escola de Reiki</title>
 <style>
   :root{ --papel:#fdfaf1; --linha:#d9cbae; --bronze:#a8681f; --bronze2:#b8873a;
          --tinta:#332f29; --suave:#8d8375; --caixa:#fcf4e2; --verde:#2f6f5e; }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--papel);color:var(--tinta);line-height:1.6;padding-bottom:70px;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
-  header{background:linear-gradient(160deg,#8a5518,var(--bronze));color:#fff;padding:24px 18px 20px;}
+  header{background:linear-gradient(160deg,#8a5518,var(--bronze));color:#fff;padding:22px 18px 14px;}
   header h1{font-size:19px;margin-bottom:3px;}
   header p{opacity:.92;font-size:13.5px;}
+  .abas{display:flex;gap:6px;padding:14px 18px 0;}
+  .abas button{flex:1;padding:9px 8px;border:none;border-radius:9px;font-size:13.5px;cursor:pointer;
+    background:rgba(255,255,255,.18);color:#fff;}
+  .abas button.on{background:#fff;color:var(--bronze);font-weight:600;}
   main{max-width:640px;margin:0 auto;padding:16px;}
   .card{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:16px;margin-bottom:12px;}
   .modulo{cursor:pointer;}
@@ -54,16 +58,21 @@
   .aviso{background:#fff8ed;border:1px solid #f0d9a8;border-radius:12px;padding:14px;font-size:14px;}
   .comunidade a{display:block;padding:12px;border:1px solid var(--linha);border-radius:10px;
     margin-bottom:8px;text-decoration:none;color:var(--tinta);font-size:14.5px;background:#fff;}
-  footer{text-align:center;color:var(--suave);font-size:12px;padding:22px 16px;}
+  .recurso{margin-bottom:8px;}
   .hidden{display:none!important;}
+  footer{text-align:center;color:var(--suave);font-size:12px;padding:22px 16px;}
 </style>
 </head>
 <body>
 
 <header>
-  <h1 id="cab">O meu percurso</h1>
+  <h1 id="cab">A minha formação</h1>
   <p id="subcab">Hikari Fafe · Escola de Reiki</p>
 </header>
+<div class="abas hidden" id="barraAbas">
+  <button id="abaPercurso" class="on" onclick="mudarAba('percurso')">📖 Percurso</button>
+  <button id="abaBiblioteca" onclick="mudarAba('biblioteca')">📚 Biblioteca</button>
+</div>
 
 <main id="palco">
   <div class="card"><p class="nota">A carregar…</p></div>
@@ -93,58 +102,57 @@ const params  = new URLSearchParams(location.search);
 const TENANT  = params.get('t') || 'hikari-terapias';
 const CODIGO  = (params.get('c') || '').trim();
 
-let ALUNO = null, MODULOS = [], PROGRESSO = {};
+const ORDEM_NIVEIS = ['1','2','3A','3B'];
+let ALUNO = null, MODULOS = [], PROGRESSO = {}, RECURSOS = [];
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
   .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const palco = () => document.getElementById('palco');
 
-/* ── Arranque ─────────────────────────────────────────────────────── */
 async function arrancar(){
   if (!CODIGO){
-    palco().innerHTML = `<div class="card"><h3>Falta o teu código</h3>
-      <p class="nota">Usa o link pessoal que a escola te enviou. Se o perdeste, pede outro.</p></div>`;
+    palco().innerHTML = `<div class="card"><h3>Falta o teu código</h3><p class="nota">Usa o link pessoal que a escola te enviou. Se o perdeste, pede outro.</p></div>`;
     return;
   }
   try {
     const cartao = await getDoc(doc(db, 'tenants', TENANT, 'reikiAccess', CODIGO));
     if (!cartao.exists()){
-      palco().innerHTML = `<div class="card"><h3>Código não reconhecido</h3>
-        <p class="nota">Confirma o link com a escola.</p></div>`;
+      palco().innerHTML = `<div class="card"><h3>Código não reconhecido</h3><p class="nota">Confirma o link com a escola.</p></div>`;
       return;
     }
     ALUNO = cartao.data();
   } catch(e){
-    palco().innerHTML = `<div class="card"><h3>Não consegui ligar-me</h3>
-      <p class="nota">${esc(e.message)}</p></div>`;
+    palco().innerHTML = `<div class="card"><h3>Não consegui ligar-me</h3><p class="nota">${esc(e.message)}</p></div>`;
     return;
   }
 
   document.getElementById('cab').textContent = 'Olá, ' + (ALUNO.nome || '').split(' ')[0];
-  document.getElementById('subcab').textContent = ALUNO.nivel
-    ? 'Percurso do Nível ' + ALUNO.nivel : 'Ainda sem nível atribuído';
+
+  if (ALUNO.suspenso){
+    document.getElementById('subcab').textContent = 'Acesso suspenso';
+    palco().innerHTML = `<div class="card"><h3>O teu acesso está suspenso</h3><p class="nota">Fala com a escola para perceberes o que se passa.</p></div>`;
+    return;
+  }
+
+  document.getElementById('subcab').textContent = ALUNO.nivel ? 'Percurso do Nível ' + ALUNO.nivel : 'Ainda sem nível atribuído';
+  document.getElementById('barraAbas').classList.remove('hidden');
 
   if (!ALUNO.nivel){
-    palco().innerHTML = `<div class="card"><h3>Ainda não tens nível atribuído</h3>
-      <p class="nota">Assim que a escola registar o teu nível, os módulos aparecem aqui.</p></div>`;
+    palco().innerHTML = `<div class="card"><h3>Ainda não tens nível atribuído</h3><p class="nota">Assim que a escola registar o teu nível, os módulos aparecem aqui.</p></div>`;
     return;
   }
 
   try {
     const [mods, prog] = await Promise.all([
-      getDocs(query(collection(db, 'tenants', TENANT, 'reikiModules'),
-                    where('nivel', '==', String(ALUNO.nivel)))),
-      getDocs(query(collection(db, 'tenants', TENANT, 'reikiProgress'),
-                    where('codigo', '==', CODIGO))).catch(() => null)
+      getDocs(query(collection(db, 'tenants', TENANT, 'reikiModules'), where('nivel', '==', String(ALUNO.nivel)))),
+      getDocs(query(collection(db, 'tenants', TENANT, 'reikiProgress'), where('codigo', '==', CODIGO)))
     ]);
     MODULOS = [];
     mods.forEach(d => { const m = { id: d.id, ...d.data() }; if (m.publicado) MODULOS.push(m); });
     MODULOS.sort((a,b) => (a.ordem||0) - (b.ordem||0));
-    if (prog) prog.forEach(d => { PROGRESSO[d.data().moduloId] = d.data(); });
-  } catch(e){
-    console.warn('progresso indisponível', e);
-  }
-  // Se a lista de progresso estiver fechada por regras, lê-se um a um.
+    prog.forEach(d => { PROGRESSO[d.data().moduloId] = d.data(); });
+  } catch(e){ console.warn('percurso indisponível', e); }
+
   if (!Object.keys(PROGRESSO).length && MODULOS.length){
     await Promise.all(MODULOS.map(async m => {
       try {
@@ -153,66 +161,217 @@ async function arrancar(){
       } catch(e){}
     }));
   }
+
+  try {
+    const snap = await getDocs(collection(db, 'tenants', TENANT, 'reikiLibrary'));
+    RECURSOS = [];
+    snap.forEach(d => RECURSOS.push({ id: d.id, ...d.data() }));
+  } catch(e){ console.warn('biblioteca indisponível', e); }
+
   desenharLista();
 }
 
-/* ── Lista dos módulos ────────────────────────────────────────────── */
+window.mudarAba = function(qual){
+  document.getElementById('abaPercurso').classList.toggle('on', qual==='percurso');
+  document.getElementById('abaBiblioteca').classList.toggle('on', qual==='biblioteca');
+  if (qual === 'biblioteca') desenharBiblioteca(); else desenharLista();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+const B = '#a8681f', B2 = '#b8873a', T = '#332f29', L = '#d9cbae', C = '#fcf4e2';
+
+const ILUSTRACOES = {
+
+  'cho-ku-rei': `
+    <svg viewBox="0 0 220 150" style="width:100%;max-width:240px;display:block;margin:0 auto;">
+      <line x1="80" y1="25" x2="130" y2="25" stroke="${B}" stroke-width="3"/>
+      <line x1="130" y1="25" x2="130" y2="65" stroke="${B}" stroke-width="3"/>
+      <path d="M130 65 a24 24 0 1 1 -24 24" fill="none" stroke="${B}" stroke-width="3"/>
+      <text x="105" y="115" font-size="13" fill="${B}" text-anchor="middle" font-weight="bold">Cho Ku Rei</text>
+      <text x="105" y="133" font-size="10" fill="${T}" text-anchor="middle">Traço simplificado — confirma com a tua sintonização</text>
+    </svg>`,
+
+  'simbolos-n2': `
+    <svg viewBox="0 0 300 150" style="width:100%;max-width:340px;display:block;margin:0 auto;">
+      <line x1="55" y1="20" x2="85" y2="20" stroke="${B}" stroke-width="2.5"/>
+      <line x1="85" y1="20" x2="85" y2="45" stroke="${B}" stroke-width="2.5"/>
+      <path d="M85 45 a16 16 0 1 1 -16 16" fill="none" stroke="${B}" stroke-width="2.5"/>
+      <text x="70" y="80" font-size="11" fill="${T}" text-anchor="middle">Cho Ku Rei</text>
+
+      <path d="M120 25 q15 -15 30 0 q15 15 30 0" fill="none" stroke="${B2}" stroke-width="2.5"/>
+      <path d="M120 40 q15 15 30 0 q15 -15 30 0" fill="none" stroke="${B2}" stroke-width="2.5"/>
+      <text x="165" y="80" font-size="11" fill="${T}" text-anchor="middle">Sei He Ki</text>
+
+      <line x1="235" y1="15" x2="235" y2="55" stroke="#8a5a2b" stroke-width="2"/>
+      <line x1="222" y1="22" x2="248" y2="22" stroke="#8a5a2b" stroke-width="2"/>
+      <line x1="222" y1="32" x2="248" y2="32" stroke="#8a5a2b" stroke-width="2"/>
+      <line x1="222" y1="42" x2="248" y2="42" stroke="#8a5a2b" stroke-width="2"/>
+      <text x="235" y="80" font-size="10.5" fill="${T}" text-anchor="middle">Hon Sha Ze Sho Nen</text>
+
+      <text x="150" y="115" font-size="10.5" fill="${T}" text-anchor="middle">Traço simplificado, só para memorizares a forma geral.</text>
+      <text x="150" y="132" font-size="10.5" fill="${T}" text-anchor="middle">Confirma sempre com o que recebeste na sintonização.</text>
+    </svg>`,
+
+  'corpo-tratamento': `
+    <svg viewBox="0 0 300 130" style="width:100%;max-width:360px;display:block;margin:0 auto;">
+      <ellipse cx="35" cy="65" rx="16" ry="18" fill="#f7ece0" stroke="${L}" stroke-width="1.2"/>
+      <rect x="50" y="50" width="170" height="30" rx="14" fill="#f7ece0" stroke="${L}" stroke-width="1.2"/>
+      <rect x="215" y="55" width="55" height="20" rx="9" fill="#f7ece0" stroke="${L}" stroke-width="1.2"/>
+      ${[[35,'1'],[75,'2'],[120,'3'],[160,'4'],[205,'5'],[245,'6']].map(([x,n]) =>
+        `<circle cx="${x}" cy="65" r="8" fill="#fff" stroke="${B}" stroke-width="1.4"/>
+         <text x="${x}" y="68.5" font-size="8.5" fill="${B}" text-anchor="middle">${n}</text>`).join('')}
+      <text x="150" y="112" font-size="10" fill="${T}" text-anchor="middle">
+        1 cabeça · 2 laríngeo · 3 cardíaco · 4 plexo solar · 5 raiz · 6 pés
+      </text>
+    </svg>`,
+
+  'dai-ko-myo': `
+    <svg viewBox="0 0 200 160" style="width:100%;max-width:220px;display:block;margin:0 auto;">
+      <rect x="60" y="15" width="80" height="30" rx="4" fill="${C}" stroke="${B}" stroke-width="1.4"/>
+      <text x="100" y="34" font-size="14" fill="${B}" text-anchor="middle">dai</text>
+      <rect x="60" y="55" width="80" height="30" rx="4" fill="${C}" stroke="${B2}" stroke-width="1.4"/>
+      <text x="100" y="74" font-size="14" fill="${B2}" text-anchor="middle">ko</text>
+      <rect x="60" y="95" width="80" height="30" rx="4" fill="${C}" stroke="#8a5a2b" stroke-width="1.4"/>
+      <text x="100" y="114" font-size="14" fill="#8a5a2b" text-anchor="middle">myo</text>
+      <line x1="30" y1="20" x2="30" y2="120" stroke="${T}" stroke-width="1.4" marker-end="url(#seta1)"/>
+      <defs><marker id="seta1" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8 Z" fill="${T}"/></marker></defs>
+      <text x="30" y="140" font-size="9.5" fill="${T}" text-anchor="middle">de cima</text>
+      <text x="30" y="152" font-size="9.5" fill="${T}" text-anchor="middle">para baixo</text>
+    </svg>`,
+
+  'raku-tibetano': `
+    <svg viewBox="0 0 160 200" style="width:100%;max-width:200px;display:block;margin:0 auto;">
+      <circle cx="80" cy="25" r="16" fill="#f7ece0" stroke="${L}" stroke-width="1.2"/>
+      <line x1="80" y1="41" x2="80" y2="150" stroke="${L}" stroke-width="1.4"/>
+      <path d="M80 45 Q100 65 80 85 Q60 105 80 125 Q100 145 85 165" fill="none" stroke="${B}" stroke-width="2.2"/>
+      <path d="M85 165 a10 10 0 1 0 -10 10" fill="none" stroke="${B}" stroke-width="2.2"/>
+      <line x1="80" y1="10" x2="80" y2="0" stroke="${T}" stroke-width="1.2" marker-end="url(#seta2)"/>
+      <defs><marker id="seta2" markerWidth="7" markerHeight="7" refX="3.5" refY="6" orient="auto">
+        <path d="M0,7 L3.5,0 L7,7 Z" fill="${T}"/></marker></defs>
+      <text x="80" y="190" font-size="10" fill="${T}" text-anchor="middle">Do topo da cabeça até à base da coluna</text>
+    </svg>`,
+
+  'sintonizacao-4partes': `
+    <svg viewBox="0 0 320 100" style="width:100%;max-width:380px;display:block;margin:0 auto;">
+      ${[
+        ['I','Abertura', `<circle cx="0" cy="-6" r="10" fill="none" stroke="${B}" stroke-width="2"/><line x1="0" y1="-16" x2="0" y2="-26" stroke="${B}" stroke-width="2"/>`],
+        ['II','Transmissão', `<rect x="-14" y="-14" width="28" height="20" rx="3" fill="none" stroke="${B}" stroke-width="2"/><line x1="0" y1="-14" x2="0" y2="6" stroke="${B}" stroke-width="1.4"/>`],
+        ['III','Fecho', `<rect x="-11" y="-16" width="22" height="24" rx="3" fill="none" stroke="${B}" stroke-width="2"/><circle cx="0" cy="-2" r="2" fill="${B}"/>`],
+        ['IV','Bênção', `<path d="M-14,4 Q0,-16 14,4" fill="none" stroke="${B}" stroke-width="2"/><line x1="-14" y1="4" x2="14" y2="4" stroke="${B}" stroke-width="2"/>`],
+      ].map(([n,rot,shape],i) => `
+        <g transform="translate(${40+i*80},45)">
+          ${shape}
+          <text y="35" font-size="12" fill="${B}" text-anchor="middle" font-weight="bold">${n}</text>
+          <text y="48" font-size="9.5" fill="${T}" text-anchor="middle">${rot}</text>
+        </g>`).join('')}
+    </svg>`,
+};
+
+function textoParaHtml(t){
+  const linhas = String(t||'').split('\n');
+  let html = '', emLista = false;
+  linhas.forEach(l => {
+    const li = l.trim();
+    if (li.startsWith('- ')){
+      if (!emLista){ html += '<ul style="margin:6px 0 6px 18px;">'; emLista = true; }
+      html += '<li style="margin-bottom:4px;">' + esc(li.slice(2)) + '</li>';
+    } else {
+      if (emLista){ html += '</ul>'; emLista = false; }
+      if (li) html += '<p style="margin-bottom:8px;">' + esc(li) + '</p>';
+    }
+  });
+  if (emLista) html += '</ul>';
+  return html;
+}
+
+let RECURSO_ABERTO = null;
+
+function desenharBiblioteca(){
+  const meuIndice = ORDEM_NIVEIS.indexOf(String(ALUNO.nivel));
+  const visiveis = RECURSOS.filter(r => {
+    if (!r.url && !r.conteudo) return false;   // ainda por preencher — não se mostra a ninguém
+    const nv = String(r.nivel || '0');
+    if (nv === '0') return true;
+    const i = ORDEM_NIVEIS.indexOf(nv);
+    return i >= 0 && i <= meuIndice;
+  }).sort((a,b) => ORDEM_NIVEIS.indexOf(String(a.nivel||'0')) - ORDEM_NIVEIS.indexOf(String(b.nivel||'0')));
+
+  if (!visiveis.length){
+    palco().innerHTML = `<div class="card"><p class="nota">Ainda não há materiais disponíveis para o teu nível.</p></div>`;
+    return;
+  }
+
+  const categorias = [...new Set(visiveis.map(r => r.categoria || 'Materiais'))];
+  palco().innerHTML = `<div class="card"><p class="nota">Manuais e materiais do teu percurso, até ao nível em que estás.</p></div>` +
+    categorias.map(cat => `<h4 style="margin:14px 4px 6px;color:var(--bronze);">${esc(cat)}</h4>` +
+      visiveis.filter(r => (r.categoria || 'Materiais') === cat).map(r => {
+        if (r.conteudo){
+          return `<div class="card recurso modulo" onclick="abrirRecursoTexto('${r.id}')">
+            <strong>📝 ${esc(r.titulo || '(sem título)')}</strong>
+            <p class="nota">Guia de estudo — toca para ler</p></div>`;
+        }
+        return `<div class="card recurso"><strong>${esc(r.titulo || '(sem título)')}</strong>${r.descricao ? `<p class="nota">${esc(r.descricao)}</p>` : ''}<a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="${esc(r.url)}" target="_blank" rel="noopener">Abrir</a></div>`;
+      }).join('')
+    ).join('');
+}
+
+window.abrirRecursoTexto = function(id){
+  RECURSO_ABERTO = RECURSOS.find(r => r.id === id);
+  if (!RECURSO_ABERTO) return;
+  const ilustracao = ILUSTRACOES[RECURSO_ABERTO.ilustracao] || '';
+  palco().innerHTML = `<button class="leve" onclick="mudarAba('biblioteca')">← Voltar</button>
+    <div class="card" style="margin-top:12px;">
+      <h3 style="color:var(--bronze);">${esc(RECURSO_ABERTO.titulo)}</h3>
+      ${ilustracao ? `<div style="margin:14px 0;">${ilustracao}</div>` : ''}
+      <div style="margin-top:10px;">${textoParaHtml(RECURSO_ABERTO.conteudo)}</div>
+      ${RECURSO_ABERTO.url ? `<a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="${esc(RECURSO_ABERTO.url)}" target="_blank" rel="noopener">🎧 Ouvir / Ver também</a>` : ''}
+    </div>`;
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
 function desenharLista(){
   if (!MODULOS.length){
-    palco().innerHTML = `<div class="card"><h3>Ainda não há módulos publicados</h3>
-      <p class="nota">A escola está a preparar o teu percurso. Volta daqui a uns dias.</p></div>`;
+    palco().innerHTML = `<div class="card"><h3>Ainda não há módulos publicados</h3><p class="nota">A escola está a preparar o teu percurso. Volta daqui a uns dias.</p></div>`;
     return;
   }
   const concluidos = MODULOS.filter(m => (PROGRESSO[m.id]||{}).concluido).length;
   const pct = Math.round(concluidos / MODULOS.length * 100);
   const tudoFeito = concluidos === MODULOS.length;
 
-  palco().innerHTML = `
-    <div class="card">
-      <strong>${concluidos} de ${MODULOS.length} módulos concluídos</strong>
-      <div class="barra"><i style="width:${pct}%"></i></div>
-      <p class="nota">Faz um módulo de cada vez, sem pressa. O que escreveres fica guardado e a escola acompanha o teu percurso.</p>
-    </div>
+  const listaModulos = MODULOS.map((m, i) => {
+    const p = PROGRESSO[m.id] || {};
+    const anterior = i === 0 ? { concluido: true } : (PROGRESSO[MODULOS[i-1].id] || {});
+    const trancado = !anterior.concluido;
+    const onclickAttr = trancado ? '' : `onclick="abrirModulo('${m.id}')"`;
+    return `<div class="card modulo" ${onclickAttr} style="${trancado ? 'opacity:.55;' : ''}">
+      <div class="topo"><div><h3>${m.ordem}. ${esc(m.titulo)}</h3>
+      ${m.subtitulo ? `<p>${esc(m.subtitulo)}</p>` : ''}
+      ${m.duracao ? `<p>⏱️ ${esc(m.duracao)}</p>` : ''}</div>
+      <span class="selo ${p.concluido ? 'feito' : ''}">${p.concluido ? '✓ feito' : (trancado ? '🔒' : (p.lido ? 'a meio' : 'por começar'))}</span></div></div>`;
+  }).join('');
 
-    ${MODULOS.map((m, i) => {
-      const p = PROGRESSO[m.id] || {};
-      const anterior = i === 0 ? { concluido: true } : (PROGRESSO[MODULOS[i-1].id] || {});
-      const trancado = !anterior.concluido;
-      return `<div class="card modulo" ${trancado ? '' : `onclick="abrirModulo('${m.id}')"`}
-                   style="${trancado ? 'opacity:.55;' : ''}">
-        <div class="topo">
-          <div>
-            <h3>${m.ordem}. ${esc(m.titulo)}</h3>
-            ${m.subtitulo ? `<p>${esc(m.subtitulo)}</p>` : ''}
-            ${m.duracao ? `<p>⏱️ ${esc(m.duracao)}</p>` : ''}
-          </div>
-          <span class="selo ${p.concluido ? 'feito' : ''}">
-            ${p.concluido ? '✓ feito' : (trancado ? '🔒' : (p.lido ? 'a meio' : 'por começar'))}
-          </span>
-        </div>
-      </div>`;
-    }).join('')}
+  const blocoTreino = MODULOS.some(m => (PROGRESSO[m.id]||{}).lido)
+    ? `<div class="card"><h4>🎯 Treino livre</h4><p class="nota">Perguntas à sorte dos módulos que já leste. Não conta para o percurso — serve para veres o que ficou.</p><button class="principal" onclick="abrirTreino()">Começar treino</button></div>`
+    : '';
 
-    ${MODULOS.some(m => (PROGRESSO[m.id]||{}).lido) ? `<div class="card">
-      <h4>🎯 Treino livre</h4>
-      <p class="nota">Perguntas à sorte dos módulos que já leste. Não conta para o percurso — serve para veres o que ficou.</p>
-      <button class="principal" onclick="abrirTreino()">Começar treino</button>
-    </div>` : ''}
+  const blocoFeito = tudoFeito
+    ? `<div class="card aviso"><strong>Concluíste o percurso do Nível ${esc(ALUNO.nivel)}.</strong><p style="margin-top:6px;">Fala com a escola para marcares o teste final. Depois disso, o certificado.</p></div>`
+    : '';
 
-    ${tudoFeito ? `<div class="card aviso">
-      <strong>Concluíste o percurso do Nível ${esc(ALUNO.nivel)}.</strong>
-      <p style="margin-top:6px;">Fala com a escola para marcares o teste final. Depois disso, o certificado.</p>
-    </div>` : ''}
+  const blocoTurma = (ALUNO.turmaWhatsapp || ALUNO.turmaJitsi)
+    ? `<div class="card comunidade"><h4>A tua turma${ALUNO.turmaNome ? ' · ' + esc(ALUNO.turmaNome) : ''}</h4>
+       ${ALUNO.turmaWhatsapp ? `<a href="${esc(ALUNO.turmaWhatsapp)}" target="_blank" rel="noopener">💬 Grupo de conversa</a>` : ''}
+       ${ALUNO.turmaJitsi ? `<a href="${esc(ALUNO.turmaJitsi)}" target="_blank" rel="noopener">🎥 Sala de encontros</a>` : ''}
+       <p class="nota">Traz as dúvidas ao grupo. Nenhuma é demasiado básica.</p></div>`
+    : '';
 
-    ${(ALUNO.turmaWhatsapp || ALUNO.turmaJitsi) ? `<div class="card comunidade">
-      <h4>A tua turma${ALUNO.turmaNome ? ' · ' + esc(ALUNO.turmaNome) : ''}</h4>
-      ${ALUNO.turmaWhatsapp ? `<a href="${esc(ALUNO.turmaWhatsapp)}" target="_blank" rel="noopener">💬 Grupo de conversa</a>` : ''}
-      ${ALUNO.turmaJitsi ? `<a href="${esc(ALUNO.turmaJitsi)}" target="_blank" rel="noopener">🎥 Sala de encontros</a>` : ''}
-      <p class="nota">Traz as dúvidas ao grupo. Nenhuma é demasiado básica.</p>
-    </div>` : ''}`;
+  palco().innerHTML = `<div class="card"><strong>${concluidos} de ${MODULOS.length} módulos concluídos</strong>
+    <div class="barra"><i style="width:${pct}%"></i></div>
+    <p class="nota">Faz um módulo de cada vez, sem pressa. O que escreveres fica guardado e a escola acompanha o teu percurso.</p></div>
+    ${listaModulos}${blocoTreino}${blocoFeito}${blocoTurma}`;
 }
 
-/* ── Um módulo, em três passos ────────────────────────────────────── */
 let ABERTO = null, PASSO = 'ler', RESPOSTAS = {};
 
 window.abrirModulo = function(id){
@@ -220,95 +379,80 @@ window.abrirModulo = function(id){
   if (!ABERTO) return;
   const p = PROGRESSO[id] || {};
   PASSO = !p.lido ? 'ler' : (!p.praticaFeita ? 'praticar' : 'responder');
-  RESPOSTAS = { ...(p.respostas || {}) };
+  RESPOSTAS = Object.assign({}, p.respostas || {});
   desenharModulo();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 function blocoHtml(b){
   if (b.tipo === 'destaque') return `<div class="bloco destaque">${esc(b.conteudo)}</div>`;
-  if (b.tipo === 'lista') return `<div class="bloco">
-      ${b.titulo ? `<h4>${esc(b.titulo)}</h4>` : ''}
-      <ul>${(b.itens||[]).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`;
+  if (b.tipo === 'lista') return `<div class="bloco">${b.titulo ? `<h4>${esc(b.titulo)}</h4>` : ''}<ul>${(b.itens||[]).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`;
+  if (b.tipo === 'imagem') return b.url ? `<div class="bloco" style="text-align:center;">
+      <img src="${esc(b.url)}" style="max-width:100%;border-radius:10px;border:1px solid var(--linha);">
+      ${b.legenda ? `<p class="nota">${esc(b.legenda)}</p>` : ''}</div>` : '';
   return `<div class="bloco" style="white-space:pre-line;">${esc(b.conteudo)}</div>`;
 }
 
 function desenharModulo(){
   const m = ABERTO, p = PROGRESSO[m.id] || {};
-  const cab = `
-    <button class="leve" onclick="desenharLista();window.scrollTo(0,0)">← Voltar</button>
-    <div class="card" style="margin-top:12px;">
-      <h3 style="color:var(--bronze);">${m.ordem}. ${esc(m.titulo)}</h3>
-      ${m.subtitulo ? `<p class="nota">${esc(m.subtitulo)}</p>` : ''}
-      <div class="passos">
-        <div class="${PASSO==='ler'?'on':(p.lido?'ok':'')}">📖 Ler</div>
-        <div class="${PASSO==='praticar'?'on':(p.praticaFeita?'ok':'')}">🤲 Praticar</div>
-        <div class="${PASSO==='responder'?'on':(p.concluido?'ok':'')}">✍️ Responder</div>
-      </div>
-    </div>`;
+  const cab = `<button class="leve" onclick="desenharLista();window.scrollTo(0,0)">← Voltar</button>
+    <div class="card" style="margin-top:12px;"><h3 style="color:var(--bronze);">${m.ordem}. ${esc(m.titulo)}</h3>
+    ${m.subtitulo ? `<p class="nota">${esc(m.subtitulo)}</p>` : ''}
+    <div class="passos"><div class="${PASSO==='ler'?'on':(p.lido?'ok':'')}">📖 Ler</div>
+    <div class="${PASSO==='praticar'?'on':(p.praticaFeita?'ok':'')}">🤲 Praticar</div>
+    <div class="${PASSO==='responder'?'on':(p.concluido?'ok':'')}">✍️ Responder</div></div></div>`;
 
   if (PASSO === 'ler'){
-    palco().innerHTML = cab + `<div class="card">
-      ${(m.ler||[]).map(blocoHtml).join('')}
-      <button class="principal" onclick="marcarLido()">Li — seguir para a prática</button>
-    </div>`;
+    palco().innerHTML = cab + `<div class="card">${(m.ler||[]).map(blocoHtml).join('')}
+      <button class="principal" onclick="marcarLido()">Li — seguir para a prática</button></div>`;
     return;
   }
 
   if (PASSO === 'praticar'){
     const pr = m.praticar || {};
-    palco().innerHTML = cab + `<div class="card">
-      <h4>${esc(pr.titulo || 'Prática')}</h4>
+    const blocoDesafio = m.desafio ? `<div class="card aviso" style="margin-top:12px;">
+      <h4>🎯 Desafio para levar para a vida</h4>
+      <p style="white-space:pre-line;">${esc(m.desafio)}</p>
+      <label class="nota" style="display:block;margin:10px 0 5px;">Se o experimentares, conta aqui o que aconteceu (opcional)</label>
+      <textarea id="desafioTexto" rows="3" placeholder="Não é obrigatório — só se quiseres registar.">${esc(p.desafioRegisto || '')}</textarea>
+    </div>` : '';
+    palco().innerHTML = cab + `<div class="card"><h4>${esc(pr.titulo || 'Prática')}</h4>
       <div class="bloco" style="white-space:pre-line;">${esc(pr.instrucoes || '')}</div>
-      ${pr.registo ? `
-        <label class="nota" style="display:block;margin:10px 0 5px;">${esc(pr.registoPergunta || 'O que notaste?')}</label>
-        <textarea id="registo" rows="5" placeholder="Escreve sem pensar muito. É para ti — e a escola lê.">${esc(p.registo || '')}</textarea>` : ''}
+      ${pr.registo !== false ? `<label class="nota" style="display:block;margin:10px 0 5px;">${esc(pr.registoPergunta || 'O que notaste?')}</label>
+      <textarea id="registo" rows="5" placeholder="Escreve sem pensar muito. É para ti — e a escola lê.">${esc(p.registo || '')}</textarea>` : ''}
       <button class="principal" onclick="marcarPratica()">Fiz — seguir para as perguntas</button>
-      <p class="nota">Faz mesmo a prática antes de avançares. É ela que ensina; o resto é conversa.</p>
-    </div>`;
+      <p class="nota">Faz mesmo a prática antes de avançares. É ela que ensina; o resto é conversa.</p></div>
+      ${blocoDesafio}`;
     return;
   }
 
   const qs = m.responder || [];
-  palco().innerHTML = cab + `<div class="card">
-    ${qs.map((q, i) => {
-      const dada = RESPOSTAS[i];
-      const respondida = dada !== undefined;
-      return `<div style="margin-bottom:18px;">
-        <h4>${i+1}. ${esc(q.pergunta)}</h4>
-        ${(q.opcoes||[]).map((o, oi) => {
-          let cls = '';
-          if (respondida){
-            if (oi === q.correta) cls = 'certa';
-            else if (oi === dada) cls = 'errada';
-          }
-          return `<button class="opcao ${cls}" ${respondida ? 'disabled' : `onclick="responder(${i},${oi})"`}>
-            ${respondida && oi === q.correta ? '✓ ' : ''}${esc(o)}</button>`;
-        }).join('')}
-        ${respondida && q.feedback ? `<div class="feedback">💬 ${esc(q.feedback)}</div>` : ''}
-      </div>`;
-    }).join('')}
-    <button class="principal" onclick="concluirModulo()"
-      ${Object.keys(RESPOSTAS).length < qs.length ? 'disabled' : ''}>
-      ${Object.keys(RESPOSTAS).length < qs.length
-        ? `Faltam ${qs.length - Object.keys(RESPOSTAS).length} resposta(s)` : 'Concluir este módulo'}
-    </button>
-  </div>`;
+  const perguntasHtml = qs.map((q, i) => {
+    const dada = RESPOSTAS[i];
+    const respondida = dada !== undefined;
+    const opcoesHtml = (q.opcoes||[]).map((o, oi) => {
+      let cls = '';
+      if (respondida){ if (oi === q.correta) cls = 'certa'; else if (oi === dada) cls = 'errada'; }
+      const attr = respondida ? 'disabled' : `onclick="responder(${i},${oi})"`;
+      return `<button class="opcao ${cls}" ${attr}>${respondida && oi === q.correta ? '✓ ' : ''}${esc(o)}</button>`;
+    }).join('');
+    return `<div style="margin-bottom:18px;"><h4>${i+1}. ${esc(q.pergunta)}</h4>${opcoesHtml}
+      ${respondida && q.feedback ? `<div class="feedback">💬 ${esc(q.feedback)}</div>` : ''}</div>`;
+  }).join('');
+  const faltam = qs.length - Object.keys(RESPOSTAS).length;
+  palco().innerHTML = cab + `<div class="card">${perguntasHtml}
+    <button class="principal" onclick="concluirModulo()" ${faltam > 0 ? 'disabled' : ''}>
+      ${faltam > 0 ? `Faltam ${faltam} resposta(s)` : 'Concluir este módulo'}
+    </button></div>`;
 }
 
-window.responder = function(i, oi){
-  RESPOSTAS[i] = oi;
-  desenharModulo();
-};
+window.responder = function(i, oi){ RESPOSTAS[i] = oi; desenharModulo(); };
 
 async function gravar(dados){
   const id = CODIGO + '_' + ABERTO.id;
-  const base = {
-    codigo: CODIGO, moduloId: ABERTO.id, nivel: String(ALUNO.nivel),
-    alunoNome: ALUNO.nome || '', moduloTitulo: ABERTO.titulo || '',
-    actualizadoEm: new Date().toISOString()
-  };
-  const junto = { ...(PROGRESSO[ABERTO.id] || {}), ...base, ...dados };
+  const base = { codigo: CODIGO, moduloId: ABERTO.id, nivel: String(ALUNO.nivel),
+    alunoNome: ALUNO.nome || '', moduloTitulo: ABERTO.titulo || '', actualizadoEm: new Date().toISOString() };
+  const junto = Object.assign({}, PROGRESSO[ABERTO.id] || {}, base, dados);
   PROGRESSO[ABERTO.id] = junto;
   try { await setDoc(doc(db, 'tenants', TENANT, 'reikiProgress', id), junto, { merge: true }); }
   catch(e){ console.warn('não consegui gravar', e); }
@@ -318,32 +462,27 @@ window.marcarLido = async function(){
   await gravar({ lido: true, lidoEm: new Date().toISOString() });
   PASSO = 'praticar'; desenharModulo(); window.scrollTo({top:0,behavior:'smooth'});
 };
-
 window.marcarPratica = async function(){
   const t = document.getElementById('registo');
+  const d = document.getElementById('desafioTexto');
   await gravar({ praticaFeita: true, registo: t ? t.value.trim() : '',
-                 praticaEm: new Date().toISOString() });
+                 desafioRegisto: d ? d.value.trim() : '', praticaEm: new Date().toISOString() });
   PASSO = 'responder'; desenharModulo(); window.scrollTo({top:0,behavior:'smooth'});
 };
-
 window.concluirModulo = async function(){
   const qs = ABERTO.responder || [];
   const acertos = qs.reduce((n, q, i) => n + (RESPOSTAS[i] === q.correta ? 1 : 0), 0);
-  await gravar({ respostas: RESPOSTAS, acertos, totalPerguntas: qs.length,
-                 concluido: true, concluidoEm: new Date().toISOString() });
+  await gravar({ respostas: RESPOSTAS, acertos, totalPerguntas: qs.length, concluido: true, concluidoEm: new Date().toISOString() });
   desenharLista(); window.scrollTo({top:0,behavior:'smooth'});
 };
 
-/* ── Treino livre ─────────────────────────────────────────────────
-   Perguntas à sorte dos módulos já lidos. Não toca no progresso:
-   é só para o aluno medir-se a si próprio, as vezes que quiser. */
 let TREINO = [], TI = 0, TACERTOS = 0, TRESP = null;
 
 window.abrirTreino = function(){
   const banco = [];
   MODULOS.forEach(m => {
     if (!(PROGRESSO[m.id]||{}).lido) return;
-    (m.responder||[]).forEach(q => banco.push({ ...q, modulo: m.titulo }));
+    (m.responder||[]).forEach(q => banco.push(Object.assign({}, q, { modulo: m.titulo })));
   });
   if (!banco.length) return;
   TREINO = banco.sort(() => Math.random() - 0.5).slice(0, Math.min(10, banco.length));
@@ -355,51 +494,34 @@ window.abrirTreino = function(){
 function desenharTreino(){
   if (TI >= TREINO.length){
     const pct = Math.round(TACERTOS / TREINO.length * 100);
-    const msg = pct === 100 ? 'Sem falhas. Isto está assente.'
-      : pct >= 70 ? 'Bom. Relê os módulos das que falhaste.'
-      : 'Vale a pena voltar aos módulos com calma — e não faz mal nenhum.';
-    palco().innerHTML = `
-      <div class="card" style="text-align:center;">
-        <h3 style="color:var(--bronze);">${TACERTOS} de ${TREINO.length}</h3>
-        <div class="barra" style="margin:12px 0;"><i style="width:${pct}%"></i></div>
-        <p>${pct}% certas</p>
-        <p class="nota" style="margin-top:8px;">${msg}</p>
-        <button class="principal" onclick="abrirTreino()">Treinar outra vez</button>
-        <button class="leve" style="width:100%;margin-top:8px;" onclick="desenharLista();window.scrollTo(0,0)">Voltar ao percurso</button>
-      </div>`;
+    const msg = pct === 100 ? 'Sem falhas. Isto está assente.' :
+      pct >= 70 ? 'Bom. Relê os módulos das que falhaste.' :
+      'Vale a pena voltar aos módulos com calma — e não faz mal nenhum.';
+    palco().innerHTML = `<div class="card" style="text-align:center;"><h3 style="color:var(--bronze);">${TACERTOS} de ${TREINO.length}</h3>
+      <div class="barra" style="margin:12px 0;"><i style="width:${pct}%"></i></div>
+      <p>${pct}% certas</p><p class="nota" style="margin-top:8px;">${msg}</p>
+      <button class="principal" onclick="abrirTreino()">Treinar outra vez</button>
+      <button class="leve" style="width:100%;margin-top:8px;" onclick="desenharLista();window.scrollTo(0,0)">Voltar ao percurso</button></div>`;
     return;
   }
   const q = TREINO[TI];
-  palco().innerHTML = `
-    <button class="leve" onclick="desenharLista();window.scrollTo(0,0)">← Sair do treino</button>
-    <div class="card" style="margin-top:12px;">
-      <p class="nota">Pergunta ${TI+1} de ${TREINO.length} · ${TACERTOS} certa(s) até agora</p>
-      <div class="barra" style="margin:8px 0 14px;"><i style="width:${Math.round(TI/TREINO.length*100)}%"></i></div>
-      <h4>${esc(q.pergunta)}</h4>
-      ${(q.opcoes||[]).map((o, oi) => {
-        let cls = '';
-        if (TRESP !== null){
-          if (oi === q.correta) cls = 'certa';
-          else if (oi === TRESP) cls = 'errada';
-        }
-        return `<button class="opcao ${cls}" ${TRESP !== null ? 'disabled' : `onclick="treinoResponder(${oi})"`}>${esc(o)}</button>`;
-      }).join('')}
-      ${TRESP !== null ? `
-        ${q.feedback ? `<div class="feedback">💬 ${esc(q.feedback)}</div>` : ''}
-        <p class="nota">Do módulo: ${esc(q.modulo)}</p>
-        <button class="principal" onclick="treinoSeguinte()">Seguinte</button>` : ''}
-    </div>`;
+  const opcoesHtml = (q.opcoes||[]).map((o, oi) => {
+    let cls = '';
+    if (TRESP !== null){ if (oi === q.correta) cls = 'certa'; else if (oi === TRESP) cls = 'errada'; }
+    const attr = TRESP !== null ? 'disabled' : `onclick="treinoResponder(${oi})"`;
+    return `<button class="opcao ${cls}" ${attr}>${esc(o)}</button>`;
+  }).join('');
+  palco().innerHTML = `<button class="leve" onclick="desenharLista();window.scrollTo(0,0)">← Sair do treino</button>
+    <div class="card" style="margin-top:12px;"><p class="nota">Pergunta ${TI+1} de ${TREINO.length} · ${TACERTOS} certa(s) até agora</p>
+    <div class="barra" style="margin:8px 0 14px;"><i style="width:${Math.round(TI/TREINO.length*100)}%"></i></div>
+    <h4>${esc(q.pergunta)}</h4>${opcoesHtml}
+    ${TRESP !== null ? `${q.feedback ? `<div class="feedback">💬 ${esc(q.feedback)}</div>` : ''}
+      <p class="nota">Do módulo: ${esc(q.modulo)}</p>
+      <button class="principal" onclick="treinoSeguinte()">Seguinte</button>` : ''}</div>`;
 }
 
-window.treinoResponder = function(oi){
-  TRESP = oi;
-  if (oi === TREINO[TI].correta) TACERTOS++;
-  desenharTreino();
-};
-window.treinoSeguinte = function(){
-  TI++; TRESP = null; desenharTreino();
-  window.scrollTo({top:0,behavior:'smooth'});
-};
+window.treinoResponder = function(oi){ TRESP = oi; if (oi === TREINO[TI].correta) TACERTOS++; desenharTreino(); };
+window.treinoSeguinte = function(){ TI++; TRESP = null; desenharTreino(); window.scrollTo({top:0,behavior:'smooth'}); };
 
 arrancar();
 </script>

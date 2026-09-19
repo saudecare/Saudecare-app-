@@ -49,6 +49,7 @@ const MODULOS_NIVEL_1 = [
     subtitulo: 'A energia, a linhagem e o lugar desta prática',
     manual: 'Capítulos 1 a 4',
     duracao: '20 min',
+    desafio: 'Fala hoje com alguém sobre o que é realmente o Reiki, sem usares a palavra «energia». Repara nas palavras que encontras.',
     ler: [
       {
         tipo: 'texto',
@@ -124,6 +125,7 @@ const MODULOS_NIVEL_1 = [
     subtitulo: 'O chão sobre o qual assenta tudo o resto',
     manual: 'Capítulos 5 a 7',
     duracao: '25 min',
+    desafio: 'Escolhe um dos cinco princípios e escreve-o num papel que vejas todos os dias esta semana.',
     ler: [
       {
         tipo: 'lista',
@@ -210,6 +212,7 @@ const MODULOS_NIVEL_1 = [
     subtitulo: 'Chakras, o circuito da energia, e aprender a sentir',
     manual: 'Capítulos 8 a 10',
     duracao: '25 min',
+    desafio: 'Faz o exercício da bola de energia em três momentos diferentes do dia e compara o que sentiste em cada um.',
     ler: [
       {
         tipo: 'texto',
@@ -303,6 +306,7 @@ const MODULOS_NIVEL_1 = [
     subtitulo: 'O canal abre-se — e o que vem a seguir',
     manual: 'Capítulo 11',
     duracao: '15 min + 21 dias',
+    desafio: 'Marca no calendário cada dia em que fizeres o autotratamento nos próximos 21 dias — nem que seja só um risco.',
     ler: [
       {
         tipo: 'texto',
@@ -375,6 +379,7 @@ const MODULOS_NIVEL_1 = [
     subtitulo: 'A prática diária e o teu primeiro símbolo',
     manual: 'Capítulos 12 e 12B',
     duracao: '35 min',
+    desafio: 'Desenha o Cho Ku Rei de memória, sem olhar para nenhum exemplo, e só depois compara com o que aprendeste.',
     ler: [
       {
         tipo: 'texto',
@@ -429,6 +434,7 @@ const MODULOS_NIVEL_1 = [
           'Como protecção, antes de entrares num ambiente pesado'
         ]
       }
+          { tipo: 'destaque', conteudo: 'Exemplo de uso: chegaste a casa depois de um dia difícil e sentes o corpo pesado. Antes de mais nada, desenha o Cho Ku Rei nas duas palmas, diz o mantra três vezes, e pousa as mãos no peito. Não precisas de fazer o autotratamento completo — só isto já muda o ambiente à tua volta e dentro de ti.' },
     ],
     praticar: {
       titulo: 'A prática dos 30 dias',
@@ -477,6 +483,7 @@ const MODULOS_NIVEL_1 = [
     subtitulo: 'O que já podes fazer, o que fica para o Nível 2',
     manual: 'Capítulos 13 a 17',
     duracao: '25 min',
+    desafio: 'Encontra uma situação em que possas praticar em família ou nos animais esta semana, e regista o que aconteceu.',
     ler: [
       {
         tipo: 'texto',

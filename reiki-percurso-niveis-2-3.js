@@ -63,6 +63,7 @@ const MODULOS_NIVEL_2 = [
     subtitulo: 'O que muda agora — e o que continua igual',
     manual: 'Capítulos 1 e 2',
     duracao: '20 min',
+    desafio: 'Relê o teu manual de Nível 1 esta semana e escreve uma frase que agora leias de forma diferente.',
     ler: [
       { tipo: 'texto', conteudo: 'Okuden quer dizer «o ensinamento profundo», ou «os segundos ensinamentos». É a continuação do trabalho que começaste no Nível 1: a sensibilidade à energia, o autotratamento, a filosofia de vida através dos cinco princípios.' },
       { tipo: 'lista', titulo: 'O que muda neste nível', itens: [
@@ -111,6 +112,7 @@ const MODULOS_NIVEL_2 = [
     subtitulo: 'Kotodama, jumon, mantra — e os três pressupostos',
     manual: 'Capítulos 3 e 4',
     duracao: '25 min',
+    desafio: 'Passa um dia inteiro com um só princípio, sem desenhares símbolo nenhum — só a intenção.',
     ler: [
       { tipo: 'texto', conteudo: 'Apesar de neste nível nos focarmos muito nos símbolos, não te podes esquecer do que é fundamental no Reiki: os seus princípios. Sem eles, o Reiki perde o significado e passa a ser mais uma terapia energética entre tantas.' },
       { tipo: 'lista', titulo: 'De manhã e à noite, de mãos em Gassho', itens: [
@@ -150,6 +152,7 @@ const MODULOS_NIVEL_2 = [
     subtitulo: 'O interruptor, e tudo o que ele faz',
     manual: 'Capítulo 5',
     duracao: '30 min',
+    desafio: 'Usa o Cho Ku Rei numa situação nova esta semana — no carro, numa cadeira, num objecto — e regista o que notaste.',
     ler: [
       { tipo: 'texto', conteudo: 'Um chokurei é um édito imperial: uma ordem, um mandamento, um decreto. Cho liga; Ku é poder, energia; Rei é espírito, universo. Já o conheces do Nível 1 — aqui passas a trabalhá-lo a sério.' },
       { tipo: 'lista', titulo: 'Para que serve', itens: [
@@ -169,6 +172,7 @@ const MODULOS_NIVEL_2 = [
         'Nos chakras, da raiz à coroa'
       ]},
       { tipo: 'destaque', conteudo: 'Protecção nas seis direcções: à frente, atrás, à direita, à esquerda, em cima e em baixo. O símbolo deve ter o tamanho do corpo que vai proteger. Mas não vivas com medo do exterior — a tua luz interior é a protecção mais eficaz que existe. Quem anda a proteger-se de tudo, o que está a fazer é a alimentar o medo.' }
+          { tipo: 'destaque', conteudo: 'Exemplo de uso: vais dormir a um sítio novo e sentes o ambiente estranho. Desenha um Cho Ku Rei do teu tamanho à tua frente, com o mantra três vezes, e outro por baixo da cama antes de te deitares. Não precisas de mais nada — é o suficiente para mudares a energia do espaço.' },
     ],
     praticar: {
       titulo: 'Os 30 dias do traço',
@@ -199,6 +203,7 @@ const MODULOS_NIVEL_2 = [
     subtitulo: 'Onde as mãos não chegam',
     manual: 'Capítulo 6',
     duracao: '25 min',
+    desafio: 'Faz um dia inteiro de autotratamento só com o Sei He Ki, sem os outros símbolos, e repara na diferença.',
     ler: [
       { tipo: 'texto', conteudo: 'Seiheki significa os atributos emocionais e intelectuais que formam uma pessoa. Lembra-te do conceito japonês de kokoro: mente e coração estão unidos, e não dissociados como no ocidente. Quando pensares no Sei He Ki, pensa em harmonia.' },
       { tipo: 'texto', conteudo: 'Tem origem numa palavra-semente que representa um aspecto de Buda: Hrih, que em japonês se traduz para Kiriku. Representa Avalokiteshvara, o buda da compaixão, mais conhecido entre nós como Kuan Yin.' },
@@ -212,6 +217,7 @@ const MODULOS_NIVEL_2 = [
       ]},
       { tipo: 'destaque', conteudo: 'Um mito que convém desfazer: dizia-se que o Sei He Ki não podia ser usado sozinho, por ser muito forte. O melhor conselho que te dou é experimentares. Se sentires que a energia dele é necessária mas forte de mais para a pessoa, usa-o com o Cho Ku Rei — é como usar a Terra e o Céu, harmoniosamente.' },
       { tipo: 'texto', conteudo: 'Para limpar a casa: um Sei He Ki em cada canto, por cima das janelas e das portas. Ou, em cada divisão, um Sei He Ki em cada canto superior e um Cho Ku Rei ao centro — a harmonia vem para o espaço e o Cho Ku Rei envia a energia mais densa para a terra.' }
+          { tipo: 'destaque', conteudo: 'Exemplo de uso: alguém te conta uma mágoa antiga e tu sentes que as palavras não chegam. Desenha o Sei He Ki nas tuas palmas antes de pousares as mãos nela, com o mantra três vezes. Não precisas de dizer nada de especial — o símbolo trabalha o emocional enquanto tu só escutas.' },
     ],
     praticar: {
       titulo: 'Um dia inteiro só com o Sei He Ki',
@@ -242,6 +248,7 @@ const MODULOS_NIVEL_2 = [
     subtitulo: 'A ponte, o caderno e a caixa',
     manual: 'Capítulos 7 a 11',
     duracao: '35 min',
+    desafio: 'Envia Reiki à distância a alguém, com autorização, e pede-lhe depois que te diga o que sentiu — sem lhe dizeres a que horas foi.',
     ler: [
       { tipo: 'texto', conteudo: 'Tipicamente considera-se este o símbolo da distância, mas o seu uso vai muito além disso. A leitura mais correcta e contemporânea é: «pensamento correcto é a essência do Ser». Ou, kanji a kanji: esta (Hon) pessoa (Sha) justamente (Ze) corrige (Sho) os pensamentos (Nen).' },
       { tipo: 'texto', conteudo: 'A caligrafia japonesa é uma escrita inspirada pelo Céu, pelos kami — logo, sagrada. Um mestre calígrafo eleva primeiro o pincel ao céu, e deve ele próprio estar cheio de ki e em equilíbrio, porque a energia reflecte-se no que faz. É uma lição interessante para um praticante de Reiki.' },
@@ -261,6 +268,7 @@ const MODULOS_NIVEL_2 = [
         'Podem tratar-se várias pessoas ao mesmo tempo',
         'Pede sempre permissão; se não for possível, pede ao Eu Superior da pessoa'
       ]}
+          { tipo: 'destaque', conteudo: 'Exemplo de uso: um amigo tem uma entrevista de emprego amanhã e está longe de ti. Escreve o nome dele num papel, desenha o Hon Sha Ze Sho Nen e depois o Sei He Ki, com o mantra em cada um. Fica dez minutos com o papel entre as mãos, pedindo que a energia flua para o Bem Supremo dele.' },
     ],
     praticar: {
       titulo: 'O envio cego',
@@ -291,6 +299,7 @@ const MODULOS_NIVEL_2 = [
     subtitulo: 'O que muda quando há alguém na marquesa',
     manual: 'Capítulos 12 a 16',
     duracao: '35 min',
+    desafio: 'Trata um familiar ou amigo pela primeira vez com a sequência completa, e escreve o que aprendeste sobre ti a fazê-lo.',
     ler: [
       { tipo: 'texto', conteudo: 'Antes de começares, coloca os símbolos na palma das mãos para os activar: desenha do último para o primeiro e diz sempre o mantra. A prática de Reiki não é mecânica — deves sentir o que a energia te pede.' },
       { tipo: 'lista', titulo: 'As técnicas do Okuden, pelo nome', itens: [
@@ -345,6 +354,7 @@ const MODULOS_NIVEL_3A = [
     subtitulo: 'Mistério e realização — e o que este nível vai mexer',
     manual: 'Capítulos 1 e 2',
     duracao: '20 min',
+    desafio: 'Escreve, sem consultar nada, o que o Reiki significa para ti hoje — e guarda para releres no fim deste nível.',
     ler: [
       { tipo: 'texto', conteudo: 'Shinpiden significa «mistérios» e «realização». O mistério não é um segredo escondido — é o que só se conhece vivendo. Podes ler o manual todo numa tarde e não teres aprendido nada. O 3A aprende-se com o tempo, e o tempo aqui não se acelera.' },
       { tipo: 'texto', conteudo: 'Muita gente confunde 3A com ser Mestre. Não é — e essa confusão faz mal a quem a tem, porque leva pessoas a ensinarem sem estarem preparadas. O 3A é o aprofundamento; o 3B é o mestrado.' },
@@ -386,6 +396,7 @@ const MODULOS_NIVEL_3A = [
     subtitulo: 'A stupa, os cinco elementos e a história das alterações',
     manual: 'Capítulos 3 a 5',
     duracao: '30 min',
+    desafio: 'Escolhe um poema do imperador Meiji e senta-te com ele quinze minutos, sem pressa de perceber tudo.',
     ler: [
       { tipo: 'texto', conteudo: 'Neste nível aplicas os cinco princípios às tuas questões de vida, observas como as pessoas interagem contigo e como podes mudar o teu comportamento perante elas — e observas o mundo, e qual é o teu papel na mudança dele.' },
       { tipo: 'texto', conteudo: 'Trabalha também com os poemas do imperador Meiji e observa a tua verdadeira transformação da consciência: é a isso que se chama kensho, «ver a própria natureza».' },
@@ -429,6 +440,7 @@ const MODULOS_NIVEL_3A = [
     subtitulo: 'Origem, traço e mantra',
     manual: 'Capítulos 6 a 8',
     duracao: '30 min',
+    desafio: 'Faz a meditação com o Dai Ko Myo três dias seguidos e regista a diferença entre o primeiro e o terceiro dia.',
     ler: [
       { tipo: 'texto', conteudo: 'O nome costuma traduzir-se por «grande luz brilhante». Dai é o que é grande — divindade, sabedoria da cabeça, luz de um iluminado. Koo é o brilho, a luz do Sol. Myo são o Sol e a Lua juntos: a eterna luz.' },
       { tipo: 'texto', conteudo: 'Parece estar ligado à divindade Fudo Myo, guardião da luz, que usa um medalhão que significa «chave para a luz». E também a Dainichi Nyorai, o grande buda da iluminação universal, que representa o universo na sua totalidade.' },
@@ -442,6 +454,7 @@ const MODULOS_NIVEL_3A = [
       ]},
       { tipo: 'texto', conteudo: 'São três caracteres japoneses uns por baixo dos outros, dezassete traços ao todo. De cima para baixo, e dentro de cada carácter da esquerda para a direita. Horizontais antes de verticais, exterior antes de interior, e a base fecha-se no fim.' },
       { tipo: 'texto', conteudo: 'Há vários Dai Ko Myo: o tradicional, que recebes aqui; o tibetano, criado por Arthur Robertson e divulgado por William Rand, que só se ensina no 3B; e derivações rodadas à direita, muito usadas no sistema Essencial. Nenhum é melhor — mas não são a mesma coisa, e não devem ser apresentados como se fossem.' }
+          { tipo: 'destaque', conteudo: 'Exemplo de uso: sentes-te perdido sobre uma decisão importante. Desenha um grande Dai Ko Myo à tua frente, mantra três vezes, e pede clareza — não uma resposta, só clareza. Depois faz silêncio dez minutos, sem tentares forçar conclusão nenhuma.' },
     ],
     praticar: {
       titulo: 'As quatro semanas do desenho',
@@ -472,6 +485,7 @@ const MODULOS_NIVEL_3A = [
     subtitulo: 'Na sessão, na meditação e no dia a dia',
     manual: 'Capítulos 9 e 10',
     duracao: '30 min',
+    desafio: 'Da próxima vez que trates alguém, repara se sentes que é altura de usar o Dai Ko Myo — e confia nesse sentido, mesmo sem saberes explicar porquê.',
     ler: [
       { tipo: 'lista', titulo: 'A ordem dos símbolos, conforme o caso', itens: [
         'Problemas físicos: Dai Ko Myo, depois Cho Ku Rei',
@@ -513,6 +527,7 @@ const MODULOS_NIVEL_3A = [
     subtitulo: 'Os princípios como ferramenta de cura, o Jaki Kiri e o Antahkarana',
     manual: 'Capítulos 11 a 14',
     duracao: '35 min',
+    desafio: 'Escreve a carta que não se envia a alguém com quem tens uma questão por resolver, e queima-a no fim.',
     ler: [
       { tipo: 'texto', conteudo: 'A partir deste nível vais notar que muitas situações começam a surgir em ti — bloqueios, traumas, lembranças dolorosas. Não é porque estejas a fazer algo errado: é a tua prática a levar-te a conhecer-te melhor.' },
       { tipo: 'lista', titulo: 'Os cinco princípios aplicados a um trauma', itens: [
@@ -558,6 +573,7 @@ const MODULOS_NIVEL_3A = [
     subtitulo: 'O que muda em ti, e o que ainda não podes fazer',
     manual: 'Capítulos 15 a 19',
     duracao: '30 min',
+    desafio: 'Nomeia, só para ti, uma coisa em ti que preferes não ver — sem a resolveres agora, só a nomeando.',
     ler: [
       { tipo: 'texto', conteudo: 'A técnica não muda muito em relação ao Nível 2. O que muda és tu — e nota-se na qualidade do silêncio que consegues sustentar. Fala menos do que falavas. Confia mais no silêncio.' },
       { tipo: 'destaque', conteudo: 'Alunos deste nível dizem-me muitas vezes a mesma coisa: «faço exactamente o mesmo e as pessoas saem de lá diferentes». É isso. O que mudou não foi a técnica — foi quem está a segurar as mãos.' },
@@ -605,6 +621,7 @@ const MODULOS_NIVEL_3B = [
     subtitulo: 'E os seis símbolos com que passas a trabalhar',
     manual: 'Capítulos 1 e 4',
     duracao: '25 min',
+    desafio: 'Escreve porque queres mesmo o 3B, com toda a honestidade, ainda que a resposta te incomode um pouco.',
     ler: [
       { tipo: 'texto', conteudo: 'A palavra assusta e devia assustar. Em português, «Mestre» soa a quem sabe tudo. No Reiki quer dizer outra coisa: quem está habilitado a transmitir. Nada mais, e já é muito.' },
       { tipo: 'texto', conteudo: 'Não passas a ser melhor pessoa por teres o 3B. Não deixas de ter dias maus, dúvidas ou zangas. O que ganhas é a capacidade de abrir em alguém aquilo que um dia abriram em ti — e a obrigação de o fazer com cuidado.' },
@@ -654,6 +671,7 @@ const MODULOS_NIVEL_3B = [
     subtitulo: 'Os dois símbolos que só existem neste nível',
     manual: 'Capítulos 2 e 3',
     duracao: '25 min',
+    desafio: 'Desenha o Raku de memória, do topo para a base, e confirma se ainda te esqueces do fecho.',
     ler: [
       { tipo: 'texto', conteudo: 'Estes dois vêm do mestrado em Reiki Essencial e não pertencem ao núcleo original do Usui Reiki Ryoho. Diz isto aos teus alunos com naturalidade: escolas que apresentam acrescentos como se fossem tradição perdem credibilidade quando alguém descobre — e alguém descobre sempre.' },
       { tipo: 'texto', conteudo: 'O Dai Ko Myo tibetano é outro desenho, com o mesmo nome do que recebeste no 3A, que entrou pela via ocidental e tibetana. São duas versões e ambas funcionam, desde que tenhas sido sintonizado com elas. A tibetana é mais simples de memorizar, e é a que se usa no momento da sintonização — vai no sopro violeta.' },
@@ -666,6 +684,7 @@ const MODULOS_NIVEL_3B = [
       ]},
       { tipo: 'texto', conteudo: 'No budismo tibetano este símbolo usa-se de baixo para cima. No Reiki usa-se de cima para baixo — do topo da cabeça em direcção aos pés — porque o que queremos é trazer a energia universal para dentro do corpo e ancorá-la.' },
       { tipo: 'destaque', conteudo: 'Não te esqueças do Raku. É o erro mais comum de quem começa a sintonizar: fazer tudo bem e esquecer o fecho. O aluno fica ligado ao Mestre e ambos saem de lá estranhos. O Raku é o ponto final da frase.' }
+          { tipo: 'destaque', conteudo: 'Exemplo de uso: vais sintonizar o teu primeiro aluno e sentes o nervoso miudinho a subir. Antes de começares, desenha o Raku à tua volta, do topo da cabeça aos pés, com a intenção de te centrares. Não é para o aluno — é para ti, para chegares à sintonização já enraizado.' },
     ],
     praticar: {
       titulo: 'O traço dos dois símbolos',
@@ -696,6 +715,7 @@ const MODULOS_NIVEL_3B = [
     subtitulo: 'Hui Yin, língua, respiração violeta — e as quatro partes',
     manual: 'Capítulos 5 a 7',
     duracao: '30 min',
+    desafio: 'Pratica a respiração violeta cinco minutos por dia esta semana, antes de dormir.',
     ler: [
       { tipo: 'texto', conteudo: 'Durante uma sintonização a energia tem de circular em circuito fechado no teu corpo, sem se dispersar. Três gestos garantem isso, e mantêm-se do princípio ao fim: o Hui Yin contraído, a língua no palato, e a respiração violeta.' },
       { tipo: 'texto', conteudo: 'O Hui Yin é o ponto do períneo. Contrai-o suavemente, como quem segura a urina, e mantém — é uma contracção leve e sustentada, não um aperto. Se te cansares e soltares, volta a contrair sem drama. A língua pousa no céu da boca, atrás dos dentes de cima. Juntos, fecham o circuito entre os canais da frente e das costas.' },
@@ -745,6 +765,7 @@ const MODULOS_NIVEL_3B = [
     subtitulo: 'As quatro partes, em detalhe',
     manual: 'Capítulos 8 a 12',
     duracao: '40 min',
+    desafio: 'Faz o ensaio completo das quatro partes com uma almofada sentada numa cadeira, do princípio ao fim, sem olhar para o manual da segunda vez em diante.',
     ler: [
       { tipo: 'texto', conteudo: 'Prepara a sala arejada e em silêncio, eleva o espaço com os seis símbolos, e explica ao aluno o que vai acontecer: que vai sentir toques na cabeça, nos ombros, nas mãos e nos pés, e que não tem de fazer nada. Ele senta-se de costas direitas, mãos em prece ao peito, olhos fechados, sem sapatos.' },
       { tipo: 'lista', titulo: 'Parte I — Abertura, por trás do aluno', itens: [
@@ -812,6 +833,7 @@ const MODULOS_NIVEL_3B = [
     subtitulo: 'As três formas, a meditação guiada e as duas metodologias',
     manual: 'Capítulos 13 a 14C',
     duracao: '35 min',
+    desafio: 'Combina com um colega já sintonizado um ensaio de sintonização à distância, sem transmitir nada — só para treinares a ligação e o fecho.',
     ler: [
       { tipo: 'texto', conteudo: 'Muita gente é contra a sintonização à distância. Eu também era. O que me fez mudar foi isto: se aceitamos que se envia Reiki a alguém do outro lado do país — e aceitamos, porque o praticamos desde o Nível 2 — não há razão coerente para recusar o mesmo numa sintonização. Dizer que é possível enviar tratamentos mas não iniciações seria limitar a acção do Reiki por uma regra que inventámos nós.' },
       { tipo: 'lista', titulo: 'As três formas de o fazer à distância', itens: [
@@ -857,6 +879,7 @@ const MODULOS_NIVEL_3B = [
     subtitulo: 'A sala, o aluno que quer desistir, e a ética do Mestre',
     manual: 'Capítulos 15 a 20',
     duracao: '35 min',
+    desafio: 'Prepara e dá uma aula de vinte minutos sobre um único tema deste manual, a alguém que não saiba nada de Reiki.',
     ler: [
       { tipo: 'lista', titulo: 'No dia da formação', itens: [
         'Chega cedo. Areja, arruma, prepara a água',

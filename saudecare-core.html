@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-19-06';
+const APP_VERSION = '2026-09-19-09';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10618,6 +10618,7 @@ async function reikiSincronizarAcessosDaTurma(turmaId){
    ────────────────────────────────────────────────────────────────── */
 
 const REIKI_TIPOS = [
+  { id:'estudo',   rotulo:'Guia de estudo (texto)', icone:'📝' },
   { id:'manual',   rotulo:'Manual',    icone:'📘' },
   { id:'video',    rotulo:'Vídeo',     icone:'🎬' },
   { id:'audio',    rotulo:'Áudio',     icone:'🎧' },
@@ -10650,36 +10651,58 @@ function reikiRenderBiblioteca(){
   const alvo = document.getElementById('reikiConteudo');
   if (!alvo) return;
 
+  const temRecursos = id => __reikiRecursos.some(r => String(r.nivel||'0') === id);
+
   const lista = __reikiRecursos.length === 0
-    ? `<p class="muted">A biblioteca está vazia. Adiciona o primeiro manual ou vídeo.</p>`
+    ? `<p class="muted">A biblioteca está vazia. Cria a estrutura de um nível, ou adiciona um recurso avulso.</p>`
     : REIKI_NIVEIS_BIB.map(n => {
         const doNivel = __reikiRecursos.filter(r => String(r.nivel||'0') === n.id);
         if (!doNivel.length) return '';
+        const categorias = [...new Set(doNivel.map(r => r.categoria || 'Sem categoria'))];
         return `
         <h3 style="margin:16px 0 8px;">${escapeHtml(n.certLabel)}</h3>
-        ${doNivel.map(r => {
-          const t = reikiTipoInfo(r.tipo);
-          return `
-          <div class="card" style="margin-bottom:8px;">
-            <strong>${t.icone} ${escapeHtml(r.titulo || '(sem título)')}</strong>${r.pago ? ' <span class="badge">pago</span>' : ''}
-            ${r.descricao ? `<p class="muted" style="margin-top:4px;">${escapeHtml(r.descricao)}</p>` : ''}
-            <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
-              ${r.url ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">👁️ Abrir</a>` : ''}
-              <button class="ghost" onclick="reikiAbrirRecurso('${r.id}')">✏️ Editar</button>
-              <button class="danger" onclick="reikiApagarRecurso('${r.id}')">🗑️</button>
-            </div>
-          </div>`;
-        }).join('')}`;
+        ${categorias.map(cat => `
+          <p class="muted" style="font-weight:600;margin:10px 0 4px;">${escapeHtml(cat)}</p>
+          ${doNivel.filter(r => (r.categoria || 'Sem categoria') === cat).map(r => {
+            const t = reikiTipoInfo(r.tipo);
+            return `
+            <div class="card" style="margin-bottom:8px;">
+              <strong>${t.icone} ${escapeHtml(r.titulo || '(sem título)')}</strong>${r.pago ? ' <span class="badge">pago</span>' : ''}${(!r.url && r.tipo !== 'estudo') ? ' <span class="badge" style="background:#fdf3f3;color:#a83a3a;">sem link</span>' : ''}
+              ${r.descricao ? `<p class="muted" style="margin-top:4px;">${escapeHtml(r.descricao)}</p>` : ''}
+              <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
+                ${r.url ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">👁️ Abrir</a>` : ''}
+                <button class="ghost" onclick="reikiAbrirRecurso('${r.id}')">✏️ ${r.url ? 'Editar' : 'Colar o link'}</button>
+                <button class="danger" onclick="reikiApagarRecurso('${r.id}')">🗑️</button>
+              </div>
+            </div>`;
+          }).join('')}`).join('')}`;
       }).join('');
 
   alvo.innerHTML = `
     <div class="card" style="margin-bottom:12px;">
       <p class="muted">Os ficheiros ficam no teu Drive. Aqui guardas só o link, e escolhes a partir de que nível é que o aluno o vê.</p>
       <p class="muted" style="margin-top:6px;font-size:.85rem;">No Drive, partilha cada ficheiro como <strong>"Qualquer pessoa com o link"</strong>, senão o aluno não consegue abrir.</p>
-      <button class="primary" style="margin-top:12px;" onclick="reikiAbrirRecurso()">➕ Novo recurso</button>
+      <div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap;">
+        ${REIKI_NIVEIS.map(n => temRecursos(n.id) ? '' :
+          `<button class="primary" onclick="reikiCriarBiblioteca('${n.id}', this)">➕ Estrutura do Nível ${n.id}</button>`).join('')}
+        <button class="ghost" onclick="reikiAbrirRecurso()">➕ Recurso avulso</button>
+      </div>
     </div>
     ${lista}`;
 }
+
+/* Cria os títulos e categorias de um nível, sem link — ficam por preencher. */
+window.reikiCriarBiblioteca = async function(nivel, btn){
+  const nome = 'seedReikiBiblioteca' + nivel;
+  if (typeof window[nome] !== 'function'){
+    toast('O ficheiro reiki-biblioteca-seed.js não está a ser carregado — confirme que está na raiz do repositório.', true);
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'A criar…';
+  try { await window[nome](); }
+  catch(e){ toast('Não consegui criar: ' + (e.message || e), true); }
+  reikiRenderBiblioteca();
+};
 
 window.reikiAbrirRecurso = function(recursoId){
   const r = recursoId ? __reikiRecursos.find(x => x.id === recursoId) : null;
@@ -10687,16 +10710,33 @@ window.reikiAbrirRecurso = function(recursoId){
     <div class="card">
       <label>Título</label>
       <input id="reikiRecTitulo" type="text" value="${escapeHtml(r?.titulo || '')}" placeholder="Manual do Nível 1 — Shoden">
+      <label style="margin-top:10px;">Categoria</label>
+      <input id="reikiRecCategoria" type="text" value="${escapeHtml(r?.categoria || '')}" placeholder="ex: Vídeos de introdução, Técnicas na prática, Símbolos do nível" list="reikiCategoriasExistentes">
+      <datalist id="reikiCategoriasExistentes">
+        ${[...new Set(__reikiRecursos.map(x => x.categoria).filter(Boolean))].map(c => `<option value="${escapeHtml(c)}">`).join('')}
+      </datalist>
       <label style="margin-top:10px;">Tipo</label>
-      <select id="reikiRecTipo">
+      <select id="reikiRecTipo" onchange="reikiAlternarCampoRecurso()">
         ${REIKI_TIPOS.map(t => `<option value="${t.id}" ${ (r?.tipo||'manual')===t.id ? 'selected':'' }>${t.icone} ${escapeHtml(t.rotulo)}</option>`).join('')}
       </select>
       <label style="margin-top:10px;">Visível a partir de</label>
       <select id="reikiRecNivel">
         ${REIKI_NIVEIS_BIB.map(n => `<option value="${n.id}" ${ String(r?.nivel||'0')===n.id ? 'selected':'' }>${escapeHtml(n.certLabel)}</option>`).join('')}
       </select>
-      <label style="margin-top:10px;">Link do Drive</label>
-      <input id="reikiRecUrl" type="url" value="${escapeHtml(r?.url || '')}" placeholder="https://drive.google.com/...">
+      <div id="reikiRecCampoUrl" class="${r && r.tipo === 'estudo' ? 'hidden' : ''}">
+        <label style="margin-top:10px;">Link do Drive</label>
+        <input id="reikiRecUrl" type="url" value="${escapeHtml(r?.url || '')}" placeholder="https://drive.google.com/...">
+        <p class="muted" style="margin-top:4px;font-size:.82rem;">Podes deixar em branco por agora e voltar aqui depois de subires o vídeo ou a imagem ao Drive.</p>
+      </div>
+      <div id="reikiRecCampoConteudo" class="${r && r.tipo === 'estudo' ? '' : 'hidden'}">
+        <label style="margin-top:10px;">Texto do guia — o aluno lê isto directamente na app</label>
+        <textarea id="reikiRecConteudo" rows="10" placeholder="Escreve aqui o texto. Linhas que comecem por &quot;- &quot; viram lista.">${escapeHtml(r?.conteudo || '')}</textarea>
+        <p class="muted" style="margin-top:4px;font-size:.82rem;">Não precisa de link nenhum — este texto é o material em si.</p>
+        <label style="margin-top:10px;">Imagem do símbolo (opcional) — substitui o esquema automático</label>
+        <input id="reikiRecImagem" type="url" value="${escapeHtml(r?.imagemUrl || '')}" placeholder="https://drive.google.com/...">
+        ${r?.imagemUrl ? `<img src="${escapeHtml(r.imagemUrl)}" style="max-width:100%;border-radius:8px;margin-top:8px;border:1px solid #eee;" onerror="this.style.display='none'">` : ''}
+        <p class="muted" style="margin-top:4px;font-size:.82rem;">Cola aqui o traço real do símbolo, tirado do teu manual, para substituir o esquema simplificado que a app desenha.</p>
+      </div>
       <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;">
         <input id="reikiRecPago" type="checkbox" style="width:auto;margin-top:3px;" ${r?.pago ? 'checked' : ''}>
         <span>Conteúdo pago (ebook, módulo extra) — o aluno vê que é uma oferta, não material do curso</span>
@@ -10710,16 +10750,27 @@ window.reikiAbrirRecurso = function(recursoId){
     </div>`);
 };
 
+window.reikiAlternarCampoRecurso = function(){
+  const ehEstudo = document.getElementById('reikiRecTipo')?.value === 'estudo';
+  document.getElementById('reikiRecCampoUrl')?.classList.toggle('hidden', ehEstudo);
+  document.getElementById('reikiRecCampoConteudo')?.classList.toggle('hidden', !ehEstudo);
+};
+
 window.reikiGuardarRecurso = async function(recursoId){
   const titulo = (document.getElementById('reikiRecTitulo')?.value || '').trim();
   const url = (document.getElementById('reikiRecUrl')?.value || '').trim();
+  const tipo = document.getElementById('reikiRecTipo')?.value || 'manual';
+  const conteudo = (document.getElementById('reikiRecConteudo')?.value || '').trim();
   if (!titulo){ toast('O título é obrigatório.', true); return; }
-  if (!url){ toast('Falta o link do ficheiro.', true); return; }
-  if (!/^https?:\/\//i.test(url)){ toast('O link tem de começar por https://', true); return; }
+  if (tipo === 'estudo' && !conteudo){ toast('Falta o texto do guia.', true); return; }
+  if (url && !/^https?:\/\//i.test(url)){ toast('O link tem de começar por https://', true); return; }
   const dados = {
     titulo,
     url,
-    tipo: document.getElementById('reikiRecTipo')?.value || 'manual',
+    conteudo,
+    imagemUrl: (document.getElementById('reikiRecImagem')?.value || '').trim(),
+    categoria: (document.getElementById('reikiRecCategoria')?.value || '').trim(),
+    tipo,
     nivel: document.getElementById('reikiRecNivel')?.value || '0',
     pago: !!document.getElementById('reikiRecPago')?.checked,
     descricao: (document.getElementById('reikiRecDesc')?.value || '').trim(),
@@ -10778,6 +10829,7 @@ async function reikiGravarAcesso(codigo, aluno){
     alunoId: aluno.id,
     nome: aluno.nome || '',
     nivel: aluno.nivelAtual || null,
+    suspenso: !!aluno.suspenso,
     turmaNome: (t && t.ativa !== false) ? (t.nome || '') : '',
     turmaWhatsapp: (t && t.ativa !== false) ? (t.whatsappUrl || '') : '',
     turmaJitsi: (t && t.ativa !== false) ? reikiUrlJitsi(t.jitsiSala) : '',
@@ -10803,11 +10855,9 @@ window.reikiAbrirLinkAluno = async function(alunoId){
       <div class="card">
         <strong>${escapeHtml(a.nome || '')}</strong>
         <p class="muted" style="margin-top:4px;">${nivel ? escapeHtml(nivel.nome) : 'Ainda sem nível — só vê o material geral.'}</p>
-        <label style="margin-top:12px;">Link da biblioteca</label>
-        <input id="reikiLinkCampo" type="text" readonly value="${escapeHtml(url)}" onclick="this.select()">
-        <label style="margin-top:12px;">Link do percurso — os módulos passo a passo</label>
-        <input type="text" readonly value="${escapeHtml(reikiUrlPercurso(codigo))}" onclick="this.select()">
-        <button class="ghost" style="margin-top:6px;" onclick="navigator.clipboard.writeText('${escapeAttrJs(reikiUrlPercurso(codigo))}').then(()=>toast('Link do percurso copiado.'))">Copiar link do percurso</button>
+        <label style="margin-top:12px;">Link pessoal do aluno</label>
+        <input id="reikiLinkCampo" type="text" readonly value="${escapeHtml(reikiUrlPercurso(codigo))}" onclick="this.select()">
+        <p class="muted" style="margin-top:4px;font-size:.82rem;">Um único link: percurso, biblioteca e turma ficam todos lá dentro, em separadores.</p>
         <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="primary" onclick="reikiCopiarLink()">📋 Copiar</button>
           ${a.telefone ? `<a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/${encodeURIComponent(String(a.telefone).replace(/[^0-9]/g,''))}?text=${encodeURIComponent('Olá ' + (a.nome||'') + ', aqui tens a tua biblioteca de Reiki: ' + url)}">💬 WhatsApp</a>` : ''}
@@ -10863,7 +10913,7 @@ function reikiRenderListaAlunos(){
         <div class="card" style="margin-bottom:10px;">
           <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
             <div>
-              <strong>${escapeHtml(a.nome || '(sem nome)')}</strong>
+              <strong>${escapeHtml(a.nome || '(sem nome)')}</strong>${a.suspenso ? ' <span class="badge">suspenso</span>' : ''}
               <p class="muted" style="margin-top:4px;">${nivel ? '📜 ' + escapeHtml(nivel.nome) : '🌱 Inscrito, ainda sem nível'}</p>
               ${a.telefone ? `<p class="muted" style="margin-top:2px;">📞 ${escapeHtml(a.telefone)}</p>` : ''}
               ${a.email ? `<p class="muted" style="margin-top:2px;">✉️ ${escapeHtml(a.email)}</p>` : ''}
@@ -10875,6 +10925,7 @@ function reikiRenderListaAlunos(){
             ${nivel ? `<button class="ghost" onclick="reikiAbrirCertificado('${a.id}')">📜 Certificado</button>` : ''}
             <button class="ghost" onclick="reikiAbrirLinkAluno('${a.id}')">🔗 Link do aluno</button>
             <button class="ghost" onclick="reikiAbrirForm('${a.id}')">✏️ Editar</button>
+            <button class="ghost" onclick="reikiAlternarSuspensao('${a.id}')">${a.suspenso ? '▶️ Reativar' : '⏸️ Suspender'}</button>
             <button class="danger" onclick="reikiApagarAluno('${a.id}')">🗑️</button>
           </div>
         </div>`;
@@ -10944,6 +10995,22 @@ window.reikiGuardarAluno = async function(alunoId){
   } catch(e){
     toast('Não consegui guardar: ' + (e.message || e), true);
   }
+};
+
+window.reikiAlternarSuspensao = async function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  const vaiSuspender = !a.suspenso;
+  if (vaiSuspender && !await reikiConfirmar('Suspender aluno',
+      'Suspender "' + (a.nome||'') + '"?\n\nO link do percurso deixa de funcionar para ele até reativares.')) return;
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId), { suspenso: vaiSuspender });
+    if (a.codigoAcesso){
+      await updateDoc(doc(db, 'tenants', tenantId, 'reikiAccess', a.codigoAcesso), { suspenso: vaiSuspender }).catch(()=>{});
+    }
+    toast(vaiSuspender ? 'Aluno suspenso.' : 'Aluno reativado.');
+    renderReikiAlunos();
+  } catch(e){ toast('Não consegui alterar: ' + (e.message || e), true); }
 };
 
 window.reikiApagarAluno = async function(alunoId){
@@ -11271,7 +11338,7 @@ window.reikiEditarModulo = function(moduloId){
     id: m.id, titulo: m.titulo || '', subtitulo: m.subtitulo || '',
     duracao: m.duracao || '', manual: m.manual || '',
     ler: m.ler || [], praticar: m.praticar || { titulo:'', instrucoes:'', registo:true, registoPergunta:'' },
-    responder: m.responder || []
+    responder: m.responder || [], desafio: m.desafio || ''
   }));
   desenharEditor();
 };
@@ -11299,12 +11366,13 @@ function desenharEditor(){
           <button class="ghost" onclick="edAddBloco('texto')">+ Texto</button>
           <button class="ghost" onclick="edAddBloco('destaque')">+ Destaque</button>
           <button class="ghost" onclick="edAddBloco('lista')">+ Lista</button>
+          <button class="ghost" onclick="edAddBloco('imagem')">+ Imagem</button>
         </div>
       </div>
       ${e.ler.map((b, i) => `
         <div style="border:1px solid #eee;border-radius:10px;padding:10px;margin-top:10px;">
           <div class="row" style="justify-content:space-between;align-items:center;">
-            <span class="badge">${b.tipo === 'destaque' ? 'destaque' : (b.tipo === 'lista' ? 'lista' : 'texto')}</span>
+            <span class="badge">${b.tipo === 'destaque' ? 'destaque' : (b.tipo === 'lista' ? 'lista' : (b.tipo === 'imagem' ? 'imagem' : 'texto'))}</span>
             <div class="row" style="gap:4px;">
               ${i > 0 ? `<button class="ghost" onclick="edMover('ler',${i},-1)">↑</button>` : ''}
               ${i < e.ler.length - 1 ? `<button class="ghost" onclick="edMover('ler',${i},1)">↓</button>` : ''}
@@ -11316,6 +11384,13 @@ function desenharEditor(){
             <input value="${escapeHtml(b.titulo || '')}" oninput="__modEdit.ler[${i}].titulo=this.value">
             <label style="margin-top:8px;">Itens — um por linha</label>
             <textarea rows="5" oninput="__modEdit.ler[${i}].itens=this.value.split('\n').map(x=>x.trim()).filter(Boolean)">${escapeHtml((b.itens||[]).join('\n'))}</textarea>`
+          : b.tipo === 'imagem' ? `
+            <label style="margin-top:8px;">Link da imagem (Drive, ou qualquer imagem pública)</label>
+            <input value="${escapeHtml(b.url || '')}" oninput="__modEdit.ler[${i}].url=this.value" placeholder="https://...">
+            <label style="margin-top:8px;">Legenda (opcional)</label>
+            <input value="${escapeHtml(b.legenda || '')}" oninput="__modEdit.ler[${i}].legenda=this.value" placeholder="Cho Ku Rei, traçado completo">
+            ${b.url ? `<img src="${escapeHtml(b.url)}" style="max-width:100%;border-radius:8px;margin-top:8px;border:1px solid #eee;" onerror="this.style.display='none'">` : ''}
+            <p class="muted" style="margin-top:4px;font-size:.8rem;">No Drive: partilha a imagem como "Qualquer pessoa com o link", senão não aparece.</p>`
           : `
             <textarea rows="4" style="margin-top:8px;" oninput="__modEdit.ler[${i}].conteudo=this.value">${escapeHtml(b.conteudo || '')}</textarea>`}
         </div>`).join('')}
@@ -11333,6 +11408,12 @@ function desenharEditor(){
         <input type="checkbox" style="width:auto;" ${e.praticar.registo !== false ? 'checked' : ''}
           onchange="__modEdit.praticar.registo=this.checked"> Pedir registo escrito ao aluno
       </label>
+    </div>
+
+    <div class="card">
+      <strong>🎯 Desafio para levar para a vida</strong>
+      <p class="muted" style="margin-top:4px;font-size:.85rem;">Aparece ao aluno a seguir à prática. Não é obrigatório — é um convite, e o que ele escrever fica visível para ti em Acompanhar.</p>
+      <textarea rows="3" style="margin-top:8px;" oninput="__modEdit.desafio=this.value" placeholder="ex: Usa o Cho Ku Rei numa situação nova esta semana e regista o que notaste.">${escapeHtml(e.desafio || '')}</textarea>
     </div>
 
     <div class="card">
@@ -11374,7 +11455,10 @@ function desenharEditor(){
 }
 
 window.edAddBloco = function(tipo){
-  __modEdit.ler.push(tipo === 'lista' ? { tipo, titulo:'', itens:[] } : { tipo, conteudo:'' });
+  __modEdit.ler.push(
+    tipo === 'lista'  ? { tipo, titulo:'', itens:[] } :
+    tipo === 'imagem' ? { tipo, url:'', legenda:'' } :
+    { tipo, conteudo:'' });
   desenharEditor();
 };
 window.edAddPergunta = function(){
@@ -11419,6 +11503,7 @@ window.edGuardar = async function(){
       titulo: e.titulo.trim(), subtitulo: e.subtitulo.trim(),
       duracao: e.duracao.trim(), manual: e.manual.trim(),
       ler: e.ler, praticar: e.praticar, responder: e.responder,
+      desafio: (e.desafio || '').trim(),
       actualizadoEm: serverTimestamp()
     });
     closePatientOverlay();
@@ -11444,6 +11529,12 @@ window.reikiVerModulo = function(moduloId){
           ${(b.itens||[]).map(i => `<li>${escapeHtml(i)}</li>`).join('')}
         </ul></div>`;
     }
+    if (b.tipo === 'imagem'){
+      return b.url ? `<div style="margin-bottom:10px;text-align:center;">
+        <img src="${escapeHtml(b.url)}" style="max-width:100%;border-radius:10px;border:1px solid #eee;">
+        ${b.legenda ? `<p class="muted" style="margin-top:6px;font-size:.85rem;">${escapeHtml(b.legenda)}</p>` : ''}
+      </div>` : `<p class="muted">(imagem por colar)</p>`;
+    }
     return `<p style="margin-bottom:10px;white-space:pre-wrap;line-height:1.6;">${escapeHtml(b.conteudo || '')}</p>`;
   };
 
@@ -11468,6 +11559,9 @@ window.reikiVerModulo = function(moduloId){
       ${m.praticar.registo ? `
       <label style="margin-top:10px;">${escapeHtml(m.praticar.registoPergunta || 'O que notou?')}</label>
       <textarea rows="3" disabled placeholder="(aqui o aluno escreve o seu registo)"></textarea>` : ''}
+    ${m.desafio ? `<div class="card" style="background:#fff8ed;border:1px solid #f0d9a8;margin-top:10px;">
+        <strong>🎯 Desafio</strong>
+        <p style="margin-top:4px;white-space:pre-wrap;">${escapeHtml(m.desafio)}</p></div>` : ''}
     </div>` : ''}
 
     ${(m.responder||[]).length ? `
@@ -11592,6 +11686,10 @@ window.reikiVerTrabalho = function(codigo){
         <label style="margin-top:10px;">O que escreveu na prática</label>
         <div style="background:#fcf8f0;border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:10px 12px;white-space:pre-wrap;font-size:.95rem;">${escapeHtml(r.registo)}</div>`
       : (r.praticaFeita ? '<p class="muted" style="margin-top:10px;">Marcou a prática como feita, sem registo escrito.</p>' : '')}
+
+      ${r.desafioRegisto ? `
+        <label style="margin-top:10px;">🎯 O que escreveu sobre o desafio</label>
+        <div style="background:#fff8ed;border-left:3px solid #d9a52a;border-radius:0 8px 8px 0;padding:10px 12px;white-space:pre-wrap;font-size:.95rem;">${escapeHtml(r.desafioRegisto)}</div>` : ''}
 
       ${(r.respostas && perguntas.length) ? `
         <label style="margin-top:12px;">Respostas — ${r.acertos || 0} de ${r.totalPerguntas || perguntas.length}</label>
@@ -13203,5 +13301,6 @@ window.sendChatbotMessage = async function(){
 <script type="module" src="./reiki-percurso-nivel1.js"></script>
 <script type="module" src="./reiki-percurso-niveis-2-3.js"></script>
 <script type="module" src="./reiki-poemas-seed.js"></script>
+<script type="module" src="./reiki-biblioteca-seed.js"></script>
 </body>
 </html>
