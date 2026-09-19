@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-19-01';
+const APP_VERSION = '2026-09-19-02';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11428,15 +11428,18 @@ window.reikiAbrirImportador = function(){
   showPatientOverlay('📋 Importar vários poemas', `
     <div class="card">
       <p class="muted">Cola os poemas assim — o número, um ponto, e o texto. Deixa uma linha em branco entre cada um:</p>
-      <pre style="background:#f6f8f7;border-radius:8px;padding:10px;font-size:12px;overflow-x:auto;">19. Bola de cristal
-Mesmo a bola de cristal sem riscos
-pode perder brilho com o pó.
-Ninguém é perfeito.
+      <pre style="background:#f6f8f7;border-radius:8px;padding:10px;font-size:11.5px;overflow-x:auto;">19. A Tolerância (Tama)
+Mesmo a esfera de cristal mais límpida acumula pó;
+nenhum ser humano caminha isento de falhas.
+Princípio: sou calmo
+Leitura: Liberta a cobrança excessiva da perfeição.
 
-20. Aprendiz
-Não te esqueças de trabalhar arduamente,
-em vez de te apressares para o progresso.</pre>
-      <p class="muted" style="margin-top:8px;">A primeira linha de cada bloco é o número e, se quiseres, o título. O resto é o poema.</p>
+25. A Resiliência (Taki)
+Ninguém contemplaria a força da cascata
+se as rochas duras não estreitassem o curso do rio.
+Princípio: confio
+Leitura: É o obstáculo que revela a tua força.</pre>
+      <p class="muted" style="margin-top:8px;">A primeira linha é o número e o título, com o japonês entre parênteses. Depois o poema, uma linha por verso. As linhas <b>Princípio:</b> e <b>Leitura:</b> são opcionais — mas sem o princípio o poema não aparece no sorteio por «só por hoje».</p>
       <textarea id="poemasEmMassa" rows="12" placeholder="Cola aqui…" style="font-family:monospace;font-size:13px;"></textarea>
       <div class="row" style="gap:8px;margin-top:12px;">
         <button class="primary" onclick="reikiImportarPoemas()">Importar</button>
@@ -11449,48 +11452,82 @@ em vez de te apressares para o progresso.</pre>
 window.reikiImportarPoemas = async function(){
   const bruto = (document.getElementById('poemasEmMassa')?.value || '').trim();
   if (!bruto){ toast('Cola os poemas primeiro.', true); return; }
-  const blocos = bruto.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
   const aviso = document.getElementById('importaAviso');
 
-  const novos = [];
-  const recusados = [];
-  blocos.forEach(b => {
-    const linhas = b.split('\n');
-    const cabeca = linhas[0].match(/^\s*(\d{1,3})\s*[.\-–·)]?\s*(.*)$/);
-    if (!cabeca){ recusados.push(linhas[0].slice(0, 40)); return; }
+  /* Formato aceite, por bloco separado por linha em branco:
+       19. A Tolerância (Tama)      ← número, título e, entre parênteses, o japonês
+       verso                         ← o poema, uma linha por verso
+       verso
+       Princípio: sou calmo          ← opcional
+       Leitura: ...                  ← opcional
+     As linhas de cabeçalho de um documento (sem número à frente) são ignoradas. */
+  const PRINCIPIOS = ['sou calmo','confio','sou grato','trabalho honestamente','sou bondoso'];
+  const semAcentos = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
+  const novos = [], recusados = [];
+  bruto.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean).forEach(bloco => {
+    const linhas = bloco.split('\n').map(l => l.trim()).filter(Boolean);
+    const cabeca = (linhas[0] || '').match(/^(\d{1,3})\s*[.\-–·)]?\s*(.*)$/);
+    if (!cabeca){ return; }                       // linha de cabeçalho do documento
     const numero = parseInt(cabeca[1], 10);
-    if (!numero || numero < 1 || numero > 125){ recusados.push(linhas[0].slice(0, 40)); return; }
-    const titulo = (cabeca[2] || '').trim();
-    const texto = linhas.slice(1).join('\n').trim();
-    if (!texto){ recusados.push(linhas[0].slice(0, 40)); return; }
-    novos.push({ numero, titulo, texto });
+    if (!numero || numero < 1 || numero > 125){ recusados.push(linhas[0].slice(0,40)); return; }
+
+    let titulo = (cabeca[2] || '').trim(), japones = '';
+    const comJaponês = titulo.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
+    if (comJaponês){ titulo = comJaponês[1].trim(); japones = comJaponês[2].trim(); }
+
+    const versos = [];
+    let principio = '', interpretacao = '';
+    linhas.slice(1).forEach(l => {
+      const mp = l.match(/^Princ[íi]pio\s*:?\s*(.*)$/i);
+      const ml = l.match(/^Leitura\s*:?\s*(.*)$/i);
+      if (mp){
+        const valor = semAcentos(mp[1]);
+        principio = PRINCIPIOS.find(x => valor.includes(semAcentos(x))) || '';
+      } else if (ml){
+        interpretacao = ml[1].trim();
+      } else if (interpretacao){
+        interpretacao += ' ' + l;                 // leitura que continua na linha seguinte
+      } else {
+        versos.push(l);
+      }
+    });
+
+    const texto = versos.join('\n').trim();
+    if (!texto){ recusados.push(linhas[0].slice(0,40)); return; }
+    novos.push({ numero, titulo, japones, texto, principio, interpretacao });
   });
 
   if (!novos.length){ aviso.textContent = 'Não consegui ler nenhum poema. Confirma o formato.'; return; }
-
   aviso.textContent = 'A guardar ' + novos.length + ' poema(s)…';
-  const existentesPorNumero = {};
-  __reikiPoemas.forEach(p => { existentesPorNumero[Number(p.numero)] = p.id; });
+
+  const porNumero = {};
+  __reikiPoemas.forEach(x => { porNumero[Number(x.numero)] = x.id; });
 
   let criados = 0, actualizados = 0;
   try {
     for (const n of novos){
-      const jaExiste = existentesPorNumero[n.numero];
+      const jaExiste = porNumero[n.numero];
       if (jaExiste){
         await updateDoc(doc(db, 'tenants', tenantId, 'reikiPoems', jaExiste),
-          { ...n, japones: '', atualizadoEm: serverTimestamp() });
+          { ...n, atualizadoEm: serverTimestamp() });
         actualizados++;
       } else {
         await addDoc(collection(db, 'tenants', tenantId, 'reikiPoems'),
-          { ...n, japones: '', criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp() });
+          { ...n, criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp() });
         criados++;
+      }
+      if (criados + actualizados === 25 || (criados + actualizados) % 50 === 0){
+        aviso.textContent = 'A guardar… ' + (criados + actualizados) + ' de ' + novos.length;
       }
     }
   } catch(e){ toast('Erro a meio da importação: ' + (e.message || e), true); }
 
+  const semPrincipio = novos.filter(x => !x.principio).length;
   closePatientOverlay();
   toast(criados + ' novo(s), ' + actualizados + ' actualizado(s)' +
-        (recusados.length ? ' · ' + recusados.length + ' bloco(s) por ler' : ''));
+        (semPrincipio ? ' · ' + semPrincipio + ' sem princípio' : '') +
+        (recusados.length ? ' · ' + recusados.length + ' por ler' : ''));
   reikiRenderPoemas();
 };
 
