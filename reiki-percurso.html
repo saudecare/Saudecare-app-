@@ -193,6 +193,12 @@ function desenharLista(){
       </div>`;
     }).join('')}
 
+    ${MODULOS.some(m => (PROGRESSO[m.id]||{}).lido) ? `<div class="card">
+      <h4>🎯 Treino livre</h4>
+      <p class="nota">Perguntas à sorte dos módulos que já leste. Não conta para o percurso — serve para veres o que ficou.</p>
+      <button class="principal" onclick="abrirTreino()">Começar treino</button>
+    </div>` : ''}
+
     ${tudoFeito ? `<div class="card aviso">
       <strong>Concluíste o percurso do Nível ${esc(ALUNO.nivel)}.</strong>
       <p style="margin-top:6px;">Fala com a escola para marcares o teste final. Depois disso, o certificado.</p>
@@ -326,6 +332,73 @@ window.concluirModulo = async function(){
   await gravar({ respostas: RESPOSTAS, acertos, totalPerguntas: qs.length,
                  concluido: true, concluidoEm: new Date().toISOString() });
   desenharLista(); window.scrollTo({top:0,behavior:'smooth'});
+};
+
+/* ── Treino livre ─────────────────────────────────────────────────
+   Perguntas à sorte dos módulos já lidos. Não toca no progresso:
+   é só para o aluno medir-se a si próprio, as vezes que quiser. */
+let TREINO = [], TI = 0, TACERTOS = 0, TRESP = null;
+
+window.abrirTreino = function(){
+  const banco = [];
+  MODULOS.forEach(m => {
+    if (!(PROGRESSO[m.id]||{}).lido) return;
+    (m.responder||[]).forEach(q => banco.push({ ...q, modulo: m.titulo }));
+  });
+  if (!banco.length) return;
+  TREINO = banco.sort(() => Math.random() - 0.5).slice(0, Math.min(10, banco.length));
+  TI = 0; TACERTOS = 0; TRESP = null;
+  desenharTreino();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+function desenharTreino(){
+  if (TI >= TREINO.length){
+    const pct = Math.round(TACERTOS / TREINO.length * 100);
+    const msg = pct === 100 ? 'Sem falhas. Isto está assente.'
+      : pct >= 70 ? 'Bom. Relê os módulos das que falhaste.'
+      : 'Vale a pena voltar aos módulos com calma — e não faz mal nenhum.';
+    palco().innerHTML = `
+      <div class="card" style="text-align:center;">
+        <h3 style="color:var(--bronze);">${TACERTOS} de ${TREINO.length}</h3>
+        <div class="barra" style="margin:12px 0;"><i style="width:${pct}%"></i></div>
+        <p>${pct}% certas</p>
+        <p class="nota" style="margin-top:8px;">${msg}</p>
+        <button class="principal" onclick="abrirTreino()">Treinar outra vez</button>
+        <button class="leve" style="width:100%;margin-top:8px;" onclick="desenharLista();window.scrollTo(0,0)">Voltar ao percurso</button>
+      </div>`;
+    return;
+  }
+  const q = TREINO[TI];
+  palco().innerHTML = `
+    <button class="leve" onclick="desenharLista();window.scrollTo(0,0)">← Sair do treino</button>
+    <div class="card" style="margin-top:12px;">
+      <p class="nota">Pergunta ${TI+1} de ${TREINO.length} · ${TACERTOS} certa(s) até agora</p>
+      <div class="barra" style="margin:8px 0 14px;"><i style="width:${Math.round(TI/TREINO.length*100)}%"></i></div>
+      <h4>${esc(q.pergunta)}</h4>
+      ${(q.opcoes||[]).map((o, oi) => {
+        let cls = '';
+        if (TRESP !== null){
+          if (oi === q.correta) cls = 'certa';
+          else if (oi === TRESP) cls = 'errada';
+        }
+        return `<button class="opcao ${cls}" ${TRESP !== null ? 'disabled' : `onclick="treinoResponder(${oi})"`}>${esc(o)}</button>`;
+      }).join('')}
+      ${TRESP !== null ? `
+        ${q.feedback ? `<div class="feedback">💬 ${esc(q.feedback)}</div>` : ''}
+        <p class="nota">Do módulo: ${esc(q.modulo)}</p>
+        <button class="principal" onclick="treinoSeguinte()">Seguinte</button>` : ''}
+    </div>`;
+}
+
+window.treinoResponder = function(oi){
+  TRESP = oi;
+  if (oi === TREINO[TI].correta) TACERTOS++;
+  desenharTreino();
+};
+window.treinoSeguinte = function(){
+  TI++; TRESP = null; desenharTreino();
+  window.scrollTo({top:0,behavior:'smooth'});
 };
 
 arrancar();

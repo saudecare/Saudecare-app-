@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-19-04';
+const APP_VERSION = '2026-09-19-06';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10251,6 +10251,7 @@ function reikiRenderEcra(main){
       <button class="${__reikiTab==='testes'?'primary':'ghost'}" onclick="reikiMudarTab('testes')">Testes</button>
       <button class="${__reikiTab==='percurso'?'primary':'ghost'}" onclick="reikiMudarTab('percurso')">Percurso</button>
       <button class="${__reikiTab==='poemas'?'primary':'ghost'}" onclick="reikiMudarTab('poemas')">Poemas</button>
+      <button class="${__reikiTab==='acompanhar'?'primary':'ghost'}" onclick="reikiMudarTab('acompanhar')">Acompanhar</button>
     </div>
     <div id="reikiConteudo"></div>`;
   if (__reikiTab === 'alunos') reikiRenderListaAlunos();
@@ -10259,6 +10260,7 @@ function reikiRenderEcra(main){
   else if (__reikiTab === 'testes') reikiRenderTestes();
   else if (__reikiTab === 'percurso') reikiRenderPercurso();
   else if (__reikiTab === 'poemas') reikiRenderPoemas();
+  else if (__reikiTab === 'acompanhar') reikiRenderAcompanhar();
   else reikiRenderNiveis();
 }
 
@@ -11171,6 +11173,7 @@ async function reikiRenderPercurso(){
             </div>
             <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
               <button class="ghost" onclick="reikiVerModulo('${m.id}')">👁️ Ver</button>
+              <button class="ghost" onclick="reikiEditarModulo('${m.id}')">✏️ Editar</button>
               <button class="ghost" onclick="reikiAlternarPublicacaoModulo('${m.id}')">${m.publicado ? '🙈 Despublicar' : '✅ Publicar'}</button>
               <button class="danger" onclick="reikiApagarModulo('${m.id}')">🗑️</button>
             </div>
@@ -11251,6 +11254,179 @@ window.reikiApagarModulo = async function(moduloId){
   } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
 };
 
+/* ─── Editor de módulos ──────────────────────────────────────────────
+   Tudo o que o aluno lê, pratica e responde é editável aqui: acrescentar,
+   alterar e apagar blocos, a prática e as perguntas.
+
+   A resposta certa marca-se com um botão de rádio, nunca por número —
+   assim a pontuação não se desalinha quando mexes na ordem das opções.
+   ────────────────────────────────────────────────────────────────── */
+
+let __modEdit = null;
+
+window.reikiEditarModulo = function(moduloId){
+  const m = __reikiModulos.find(x => x.id === moduloId);
+  if (!m) return;
+  __modEdit = JSON.parse(JSON.stringify({
+    id: m.id, titulo: m.titulo || '', subtitulo: m.subtitulo || '',
+    duracao: m.duracao || '', manual: m.manual || '',
+    ler: m.ler || [], praticar: m.praticar || { titulo:'', instrucoes:'', registo:true, registoPergunta:'' },
+    responder: m.responder || []
+  }));
+  desenharEditor();
+};
+
+function desenharEditor(){
+  const e = __modEdit;
+  showPatientOverlay('✏️ ' + (e.titulo || 'Módulo'), `
+    <div class="card">
+      <label>Título</label>
+      <input id="edTitulo" value="${escapeHtml(e.titulo)}" oninput="__modEdit.titulo=this.value">
+      <label style="margin-top:10px;">Subtítulo</label>
+      <input id="edSub" value="${escapeHtml(e.subtitulo)}" oninput="__modEdit.subtitulo=this.value">
+      <div class="row" style="gap:8px;margin-top:10px;">
+        <div style="flex:1;"><label>Duração</label>
+          <input value="${escapeHtml(e.duracao)}" oninput="__modEdit.duracao=this.value" placeholder="25 min"></div>
+        <div style="flex:1;"><label>Referência do manual</label>
+          <input value="${escapeHtml(e.manual)}" oninput="__modEdit.manual=this.value" placeholder="Capítulos 1 a 4"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center;">
+        <strong>📖 Ler</strong>
+        <div class="row" style="gap:5px;">
+          <button class="ghost" onclick="edAddBloco('texto')">+ Texto</button>
+          <button class="ghost" onclick="edAddBloco('destaque')">+ Destaque</button>
+          <button class="ghost" onclick="edAddBloco('lista')">+ Lista</button>
+        </div>
+      </div>
+      ${e.ler.map((b, i) => `
+        <div style="border:1px solid #eee;border-radius:10px;padding:10px;margin-top:10px;">
+          <div class="row" style="justify-content:space-between;align-items:center;">
+            <span class="badge">${b.tipo === 'destaque' ? 'destaque' : (b.tipo === 'lista' ? 'lista' : 'texto')}</span>
+            <div class="row" style="gap:4px;">
+              ${i > 0 ? `<button class="ghost" onclick="edMover('ler',${i},-1)">↑</button>` : ''}
+              ${i < e.ler.length - 1 ? `<button class="ghost" onclick="edMover('ler',${i},1)">↓</button>` : ''}
+              <button class="danger" onclick="edApagar('ler',${i})">🗑️</button>
+            </div>
+          </div>
+          ${b.tipo === 'lista' ? `
+            <label style="margin-top:8px;">Título da lista</label>
+            <input value="${escapeHtml(b.titulo || '')}" oninput="__modEdit.ler[${i}].titulo=this.value">
+            <label style="margin-top:8px;">Itens — um por linha</label>
+            <textarea rows="5" oninput="__modEdit.ler[${i}].itens=this.value.split('\n').map(x=>x.trim()).filter(Boolean)">${escapeHtml((b.itens||[]).join('\n'))}</textarea>`
+          : `
+            <textarea rows="4" style="margin-top:8px;" oninput="__modEdit.ler[${i}].conteudo=this.value">${escapeHtml(b.conteudo || '')}</textarea>`}
+        </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <strong>🤲 Praticar</strong>
+      <label style="margin-top:10px;">Título do exercício</label>
+      <input value="${escapeHtml(e.praticar.titulo || '')}" oninput="__modEdit.praticar.titulo=this.value">
+      <label style="margin-top:10px;">Instruções</label>
+      <textarea rows="5" oninput="__modEdit.praticar.instrucoes=this.value">${escapeHtml(e.praticar.instrucoes || '')}</textarea>
+      <label style="margin-top:10px;">Pergunta do registo</label>
+      <input value="${escapeHtml(e.praticar.registoPergunta || '')}" oninput="__modEdit.praticar.registoPergunta=this.value">
+      <label style="margin-top:10px;">
+        <input type="checkbox" style="width:auto;" ${e.praticar.registo !== false ? 'checked' : ''}
+          onchange="__modEdit.praticar.registo=this.checked"> Pedir registo escrito ao aluno
+      </label>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center;">
+        <strong>✍️ Responder</strong>
+        <button class="ghost" onclick="edAddPergunta()">+ Pergunta</button>
+      </div>
+      ${e.responder.map((q, i) => `
+        <div style="border:1px solid #eee;border-radius:10px;padding:10px;margin-top:10px;">
+          <div class="row" style="justify-content:space-between;align-items:center;">
+            <span class="badge">${i + 1}</span>
+            <div class="row" style="gap:4px;">
+              ${i > 0 ? `<button class="ghost" onclick="edMover('responder',${i},-1)">↑</button>` : ''}
+              ${i < e.responder.length - 1 ? `<button class="ghost" onclick="edMover('responder',${i},1)">↓</button>` : ''}
+              <button class="danger" onclick="edApagar('responder',${i})">🗑️</button>
+            </div>
+          </div>
+          <label style="margin-top:8px;">Pergunta</label>
+          <textarea rows="2" oninput="__modEdit.responder[${i}].pergunta=this.value">${escapeHtml(q.pergunta || '')}</textarea>
+          <label style="margin-top:8px;">Opções — marca a certa</label>
+          ${(q.opcoes || []).map((o, oi) => `
+            <div class="row" style="gap:7px;align-items:center;margin-bottom:6px;">
+              <input type="radio" name="certa${i}" style="width:auto;" ${oi === q.correta ? 'checked' : ''}
+                onchange="__modEdit.responder[${i}].correta=${oi}">
+              <input style="flex:1;" value="${escapeHtml(o)}" oninput="__modEdit.responder[${i}].opcoes[${oi}]=this.value">
+              <button class="danger" onclick="edApagarOpcao(${i},${oi})">✕</button>
+            </div>`).join('')}
+          <button class="ghost" onclick="edAddOpcao(${i})">+ Opção</button>
+          <label style="margin-top:10px;">Comentário depois de responder</label>
+          <textarea rows="3" oninput="__modEdit.responder[${i}].feedback=this.value">${escapeHtml(q.feedback || '')}</textarea>
+        </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <button class="primary" style="width:100%;" onclick="edGuardar()">Guardar alterações</button>
+      <button class="ghost" style="width:100%;margin-top:8px;" onclick="closePatientOverlay()">Cancelar</button>
+      <p class="muted" style="margin-top:8px;font-size:.82rem;">O que já estiver publicado passa a mostrar esta versão aos alunos. O trabalho que eles já entregaram não se perde.</p>
+    </div>`);
+}
+
+window.edAddBloco = function(tipo){
+  __modEdit.ler.push(tipo === 'lista' ? { tipo, titulo:'', itens:[] } : { tipo, conteudo:'' });
+  desenharEditor();
+};
+window.edAddPergunta = function(){
+  __modEdit.responder.push({ pergunta:'', opcoes:['', ''], correta:0, feedback:'' });
+  desenharEditor();
+};
+window.edAddOpcao = function(i){
+  __modEdit.responder[i].opcoes.push('');
+  desenharEditor();
+};
+window.edApagarOpcao = function(i, oi){
+  const q = __modEdit.responder[i];
+  if (q.opcoes.length <= 2){ toast('Uma pergunta precisa de pelo menos duas opções.', true); return; }
+  q.opcoes.splice(oi, 1);
+  /* A resposta certa acompanha a remoção, para a pontuação não desalinhar. */
+  if (q.correta === oi) q.correta = 0;
+  else if (q.correta > oi) q.correta--;
+  desenharEditor();
+};
+window.edApagar = function(lista, i){
+  __modEdit[lista].splice(i, 1);
+  desenharEditor();
+};
+window.edMover = function(lista, i, d){
+  const a = __modEdit[lista];
+  [a[i], a[i + d]] = [a[i + d], a[i]];
+  desenharEditor();
+};
+
+window.edGuardar = async function(){
+  const e = __modEdit;
+  if (!e.titulo.trim()){ toast('O módulo precisa de título.', true); return; }
+  for (const q of e.responder){
+    if (!q.pergunta.trim()){ toast('Há uma pergunta sem texto.', true); return; }
+    if ((q.opcoes || []).some(o => !String(o).trim())){ toast('Há uma opção vazia.', true); return; }
+    if (q.correta == null || q.correta < 0 || q.correta >= q.opcoes.length){
+      toast('Há uma pergunta sem resposta certa marcada.', true); return;
+    }
+  }
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiModules', e.id), {
+      titulo: e.titulo.trim(), subtitulo: e.subtitulo.trim(),
+      duracao: e.duracao.trim(), manual: e.manual.trim(),
+      ler: e.ler, praticar: e.praticar, responder: e.responder,
+      actualizadoEm: serverTimestamp()
+    });
+    closePatientOverlay();
+    toast('Módulo guardado.');
+    reikiRenderPercurso();
+  } catch(err){ toast('Não consegui guardar: ' + (err.message || err), true); }
+};
+
 /* Pré-visualização — vê-se o módulo como o aluno o vai ver. */
 window.reikiVerModulo = function(moduloId){
   const m = __reikiModulos.find(x => x.id === moduloId);
@@ -11312,6 +11488,127 @@ window.reikiVerModulo = function(moduloId){
     <div class="card">
       <button class="ghost" style="width:100%;" onclick="closePatientOverlay()">Fechar</button>
     </div>`);
+};
+
+/* ─── Acompanhamento dos alunos ──────────────────────────────────────
+   Tudo o que cada aluno escreveu e respondeu no percurso. É esta a
+   avaliação contínua: eles estudam, praticam e registam, e a escola lê.
+
+   Firestore: tenants/{tenantId}/reikiProgress/{codigo_moduloId}
+   ────────────────────────────────────────────────────────────────── */
+
+let __reikiProgresso = [];
+
+async function reikiRenderAcompanhar(){
+  const alvo = document.getElementById('reikiConteudo');
+  if (!alvo) return;
+  alvo.innerHTML = '<p class="muted">A carregar o trabalho dos alunos…</p>';
+  try {
+    const [snapP, snapM] = await Promise.all([
+      getDocs(collection(db, 'tenants', tenantId, 'reikiProgress')),
+      getDocs(collection(db, 'tenants', tenantId, 'reikiModules'))
+    ]);
+    __reikiProgresso = [];
+    snapP.forEach(d => __reikiProgresso.push({ id: d.id, ...d.data() }));
+    __reikiModulos = [];
+    snapM.forEach(d => __reikiModulos.push({ id: d.id, ...d.data() }));
+  } catch(e){
+    alvo.innerHTML = `<div class="card" style="border:1px solid #e0b4b4;background:#fdf3f3;">
+      <strong>Não consegui carregar.</strong>
+      <p class="muted" style="margin-top:6px;">${escapeHtml(e.message || String(e))}</p></div>`;
+    return;
+  }
+
+  if (!__reikiProgresso.length){
+    alvo.innerHTML = `<div class="card"><strong>Ainda ninguém começou o percurso.</strong>
+      <p class="muted" style="margin-top:6px;">Assim que um aluno abrir o link do percurso e concluir o primeiro passo, aparece aqui tudo o que ele escrever e responder.</p></div>`;
+    return;
+  }
+
+  /* Agrupa por aluno (o código é a chave do cartão de acesso). */
+  const porAluno = {};
+  __reikiProgresso.forEach(r => {
+    const k = r.codigo || '?';
+    if (!porAluno[k]) porAluno[k] = { nome: r.alunoNome || '(sem nome)', nivel: r.nivel || '', registos: [] };
+    if (r.alunoNome) porAluno[k].nome = r.alunoNome;
+    porAluno[k].registos.push(r);
+  });
+
+  const linhas = Object.entries(porAluno).map(([codigo, a]) => {
+    const totalNivel = __reikiModulos.filter(m => String(m.nivel) === String(a.nivel) && m.publicado).length;
+    const feitos = a.registos.filter(r => r.concluido).length;
+    const certos = a.registos.reduce((n, r) => n + (r.acertos || 0), 0);
+    const perguntas = a.registos.reduce((n, r) => n + (r.totalPerguntas || 0), 0);
+    const pct = perguntas ? Math.round(certos / perguntas * 100) : null;
+    const ultimo = a.registos.map(r => r.actualizadoEm || '').sort().pop() || '';
+    const completo = totalNivel && feitos >= totalNivel;
+    return { codigo, ...a, totalNivel, feitos, certos, perguntas, pct, ultimo, completo };
+  }).sort((x, y) => (y.ultimo || '').localeCompare(x.ultimo || ''));
+
+  alvo.innerHTML = `
+    <div class="card" style="margin-bottom:12px;">
+      <strong>${linhas.length} aluno(s) em percurso</strong>
+      <p class="muted" style="margin-top:6px;">Cada aluno estuda, pratica e regista — e é isso que avalias. As respostas certas contam, mas o que escrevem na prática conta mais.</p>
+    </div>
+    ${linhas.map(a => `
+      <div class="card" style="margin-bottom:8px;">
+        <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <strong>${escapeHtml(a.nome)}</strong>
+            <p class="muted" style="margin-top:3px;">Nível ${escapeHtml(a.nivel)} · ${a.feitos}${a.totalNivel ? ' de ' + a.totalNivel : ''} módulos concluídos</p>
+            ${a.pct !== null ? `<p class="muted" style="margin-top:2px;">Respostas certas: ${a.certos} de ${a.perguntas} (${a.pct}%)</p>` : ''}
+          </div>
+          <span class="badge ${a.completo ? 'active' : ''}">${a.completo ? 'completo' : 'a decorrer'}</span>
+        </div>
+        <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
+          <button class="ghost" onclick="reikiVerTrabalho('${a.codigo}')">📖 Ver o trabalho</button>
+          ${a.completo ? `<button class="primary" onclick="reikiMudarTab('alunos')">🎓 Certificado e nível seguinte</button>` : ''}
+        </div>
+      </div>`).join('')}`;
+}
+
+/* Tudo o que um aluno escreveu, módulo a módulo. */
+window.reikiVerTrabalho = function(codigo){
+  const regs = __reikiProgresso.filter(r => r.codigo === codigo)
+    .sort((a, b) => {
+      const ma = __reikiModulos.find(m => m.id === a.moduloId) || {};
+      const mb = __reikiModulos.find(m => m.id === b.moduloId) || {};
+      return (ma.ordem || 0) - (mb.ordem || 0);
+    });
+  if (!regs.length) return;
+  const nome = regs.find(r => r.alunoNome)?.alunoNome || 'Aluno';
+
+  showPatientOverlay('📖 ' + nome, regs.map(r => {
+    const m = __reikiModulos.find(x => x.id === r.moduloId) || {};
+    const perguntas = m.responder || [];
+    return `
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
+        <strong>${escapeHtml(String(m.ordem || '?'))}. ${escapeHtml(r.moduloTitulo || m.titulo || '')}</strong>
+        <span class="badge ${r.concluido ? 'active' : ''}">${r.concluido ? 'concluído' : (r.praticaFeita ? 'a responder' : (r.lido ? 'a praticar' : 'a ler'))}</span>
+      </div>
+
+      ${r.registo ? `
+        <label style="margin-top:10px;">O que escreveu na prática</label>
+        <div style="background:#fcf8f0;border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:10px 12px;white-space:pre-wrap;font-size:.95rem;">${escapeHtml(r.registo)}</div>`
+      : (r.praticaFeita ? '<p class="muted" style="margin-top:10px;">Marcou a prática como feita, sem registo escrito.</p>' : '')}
+
+      ${(r.respostas && perguntas.length) ? `
+        <label style="margin-top:12px;">Respostas — ${r.acertos || 0} de ${r.totalPerguntas || perguntas.length}</label>
+        ${perguntas.map((q, i) => {
+          const dada = r.respostas[i];
+          const certo = dada === q.correta;
+          if (dada === undefined) return '';
+          return `<p style="margin-top:6px;font-size:.92rem;">
+            ${certo ? '✅' : '❌'} <strong>${escapeHtml(q.pergunta)}</strong><br>
+            <span class="muted">Respondeu: ${escapeHtml(String(q.opcoes?.[dada] ?? ''))}</span>
+            ${certo ? '' : `<br><span style="color:var(--primary);">Certa: ${escapeHtml(String(q.opcoes?.[q.correta] ?? ''))}</span>`}
+          </p>`;
+        }).join('')}` : ''}
+
+      ${r.concluidoEm ? `<p class="muted" style="margin-top:10px;font-size:.8rem;">Concluído em ${new Date(r.concluidoEm).toLocaleDateString('pt-PT')}</p>` : ''}
+    </div>`;
+  }).join('') + `<div class="card"><button class="ghost" style="width:100%;" onclick="closePatientOverlay()">Fechar</button></div>`);
 };
 
 /* ─── Poemas do imperador Meiji ──────────────────────────────────────
