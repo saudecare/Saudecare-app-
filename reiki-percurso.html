@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>O meu percurso — Hikari Fafe Escola de Reiki</title>
+<style>
+  :root{ --papel:#fdfaf1; --linha:#d9cbae; --bronze:#a8681f; --bronze2:#b8873a;
+         --tinta:#332f29; --suave:#8d8375; --caixa:#fcf4e2; --verde:#2f6f5e; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--papel);color:var(--tinta);line-height:1.6;padding-bottom:70px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  header{background:linear-gradient(160deg,#8a5518,var(--bronze));color:#fff;padding:24px 18px 20px;}
+  header h1{font-size:19px;margin-bottom:3px;}
+  header p{opacity:.92;font-size:13.5px;}
+  main{max-width:640px;margin:0 auto;padding:16px;}
+  .card{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:16px;margin-bottom:12px;}
+  .modulo{cursor:pointer;}
+  .modulo .topo{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .modulo h3{font-size:15.5px;color:var(--bronze);}
+  .modulo p{font-size:13.5px;color:var(--suave);margin-top:3px;}
+  .selo{font-size:11px;padding:4px 10px;border-radius:20px;white-space:nowrap;
+    background:#efe6d5;color:#8a5518;}
+  .selo.feito{background:#e6eee8;color:var(--verde);}
+  .barra{height:6px;background:#efe6d5;border-radius:6px;margin-top:10px;overflow:hidden;}
+  .barra i{display:block;height:100%;background:var(--bronze2);border-radius:6px;transition:width .4s;}
+  .passos{display:flex;gap:6px;margin:14px 0;}
+  .passos div{flex:1;text-align:center;font-size:12px;padding:8px 4px;border-radius:9px;
+    background:#f3ece0;color:var(--suave);}
+  .passos div.on{background:var(--bronze);color:#fff;}
+  .passos div.ok{background:#e6eee8;color:var(--verde);}
+  .bloco{margin-bottom:12px;}
+  .bloco.destaque{background:var(--caixa);border:1px solid var(--linha);
+    border-radius:12px;padding:14px;font-size:15px;}
+  .bloco ul{margin:6px 0 0 18px;}
+  .bloco li{margin-bottom:5px;}
+  .bloco b{color:var(--bronze);}
+  h4{color:var(--bronze2);font-size:14px;margin-bottom:6px;}
+  textarea,input{width:100%;padding:11px;border:1px solid var(--linha);border-radius:9px;
+    font-size:16px;font-family:inherit;background:#fff;color:var(--tinta);}
+  button{font-family:inherit;cursor:pointer;}
+  .principal{width:100%;background:var(--bronze);color:#fff;border:none;padding:14px;
+    border-radius:11px;font-size:15.5px;margin-top:12px;}
+  .principal:disabled{background:#d8cbb4;}
+  .leve{background:none;border:1px solid var(--linha);color:var(--tinta);
+    padding:10px 15px;border-radius:9px;font-size:14px;}
+  .opcao{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--linha);
+    border-radius:10px;padding:12px;margin-bottom:7px;font-size:14.5px;color:var(--tinta);}
+  .opcao.certa{border-color:var(--verde);background:#f0f7f3;}
+  .opcao.errada{border-color:#c98b8b;background:#fdf3f3;}
+  .feedback{background:var(--caixa);border-left:3px solid var(--bronze2);border-radius:0 10px 10px 0;
+    padding:12px 14px;margin:8px 0 4px;font-size:14px;}
+  .nota{font-size:12.5px;color:var(--suave);margin-top:8px;}
+  .aviso{background:#fff8ed;border:1px solid #f0d9a8;border-radius:12px;padding:14px;font-size:14px;}
+  .comunidade a{display:block;padding:12px;border:1px solid var(--linha);border-radius:10px;
+    margin-bottom:8px;text-decoration:none;color:var(--tinta);font-size:14.5px;background:#fff;}
+  footer{text-align:center;color:var(--suave);font-size:12px;padding:22px 16px;}
+  .hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="cab">O meu percurso</h1>
+  <p id="subcab">Hikari Fafe · Escola de Reiki</p>
+</header>
+
+<main id="palco">
+  <div class="card"><p class="nota">A carregar…</p></div>
+</main>
+
+<footer>
+  Hikari Fafe Escola de Reiki · Mestre Ricardo Correia<br>
+  O Reiki é uma prática complementar de bem-estar e não substitui acompanhamento médico.
+</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const db = getFirestore(initializeApp(firebaseConfig));
+
+const params  = new URLSearchParams(location.search);
+const TENANT  = params.get('t') || 'hikari-terapias';
+const CODIGO  = (params.get('c') || '').trim();
+
+let ALUNO = null, MODULOS = [], PROGRESSO = {};
+
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const palco = () => document.getElementById('palco');
+
+/* ── Arranque ─────────────────────────────────────────────────────── */
+async function arrancar(){
+  if (!CODIGO){
+    palco().innerHTML = `<div class="card"><h3>Falta o teu código</h3>
+      <p class="nota">Usa o link pessoal que a escola te enviou. Se o perdeste, pede outro.</p></div>`;
+    return;
+  }
+  try {
+    const cartao = await getDoc(doc(db, 'tenants', TENANT, 'reikiAccess', CODIGO));
+    if (!cartao.exists()){
+      palco().innerHTML = `<div class="card"><h3>Código não reconhecido</h3>
+        <p class="nota">Confirma o link com a escola.</p></div>`;
+      return;
+    }
+    ALUNO = cartao.data();
+  } catch(e){
+    palco().innerHTML = `<div class="card"><h3>Não consegui ligar-me</h3>
+      <p class="nota">${esc(e.message)}</p></div>`;
+    return;
+  }
+
+  document.getElementById('cab').textContent = 'Olá, ' + (ALUNO.nome || '').split(' ')[0];
+  document.getElementById('subcab').textContent = ALUNO.nivel
+    ? 'Percurso do Nível ' + ALUNO.nivel : 'Ainda sem nível atribuído';
+
+  if (!ALUNO.nivel){
+    palco().innerHTML = `<div class="card"><h3>Ainda não tens nível atribuído</h3>
+      <p class="nota">Assim que a escola registar o teu nível, os módulos aparecem aqui.</p></div>`;
+    return;
+  }
+
+  try {
+    const [mods, prog] = await Promise.all([
+      getDocs(query(collection(db, 'tenants', TENANT, 'reikiModules'),
+                    where('nivel', '==', String(ALUNO.nivel)))),
+      getDocs(query(collection(db, 'tenants', TENANT, 'reikiProgress'),
+                    where('codigo', '==', CODIGO))).catch(() => null)
+    ]);
+    MODULOS = [];
+    mods.forEach(d => { const m = { id: d.id, ...d.data() }; if (m.publicado) MODULOS.push(m); });
+    MODULOS.sort((a,b) => (a.ordem||0) - (b.ordem||0));
+    if (prog) prog.forEach(d => { PROGRESSO[d.data().moduloId] = d.data(); });
+  } catch(e){
+    console.warn('progresso indisponível', e);
+  }
+  // Se a lista de progresso estiver fechada por regras, lê-se um a um.
+  if (!Object.keys(PROGRESSO).length && MODULOS.length){
+    await Promise.all(MODULOS.map(async m => {
+      try {
+        const d = await getDoc(doc(db, 'tenants', TENANT, 'reikiProgress', CODIGO + '_' + m.id));
+        if (d.exists()) PROGRESSO[m.id] = d.data();
+      } catch(e){}
+    }));
+  }
+  desenharLista();
+}
+
+/* ── Lista dos módulos ────────────────────────────────────────────── */
+function desenharLista(){
+  if (!MODULOS.length){
+    palco().innerHTML = `<div class="card"><h3>Ainda não há módulos publicados</h3>
+      <p class="nota">A escola está a preparar o teu percurso. Volta daqui a uns dias.</p></div>`;
+    return;
+  }
+  const concluidos = MODULOS.filter(m => (PROGRESSO[m.id]||{}).concluido).length;
+  const pct = Math.round(concluidos / MODULOS.length * 100);
+  const tudoFeito = concluidos === MODULOS.length;
+
+  palco().innerHTML = `
+    <div class="card">
+      <strong>${concluidos} de ${MODULOS.length} módulos concluídos</strong>
+      <div class="barra"><i style="width:${pct}%"></i></div>
+      <p class="nota">Faz um módulo de cada vez, sem pressa. O que escreveres fica guardado e a escola acompanha o teu percurso.</p>
+    </div>
+
+    ${MODULOS.map((m, i) => {
+      const p = PROGRESSO[m.id] || {};
+      const anterior = i === 0 ? { concluido: true } : (PROGRESSO[MODULOS[i-1].id] || {});
+      const trancado = !anterior.concluido;
+      return `<div class="card modulo" ${trancado ? '' : `onclick="abrirModulo('${m.id}')"`}
+                   style="${trancado ? 'opacity:.55;' : ''}">
+        <div class="topo">
+          <div>
+            <h3>${m.ordem}. ${esc(m.titulo)}</h3>
+            ${m.subtitulo ? `<p>${esc(m.subtitulo)}</p>` : ''}
+            ${m.duracao ? `<p>⏱️ ${esc(m.duracao)}</p>` : ''}
+          </div>
+          <span class="selo ${p.concluido ? 'feito' : ''}">
+            ${p.concluido ? '✓ feito' : (trancado ? '🔒' : (p.lido ? 'a meio' : 'por começar'))}
+          </span>
+        </div>
+      </div>`;
+    }).join('')}
+
+    ${tudoFeito ? `<div class="card aviso">
+      <strong>Concluíste o percurso do Nível ${esc(ALUNO.nivel)}.</strong>
+      <p style="margin-top:6px;">Fala com a escola para marcares o teste final. Depois disso, o certificado.</p>
+    </div>` : ''}
+
+    ${(ALUNO.turmaWhatsapp || ALUNO.turmaJitsi) ? `<div class="card comunidade">
+      <h4>A tua turma${ALUNO.turmaNome ? ' · ' + esc(ALUNO.turmaNome) : ''}</h4>
+      ${ALUNO.turmaWhatsapp ? `<a href="${esc(ALUNO.turmaWhatsapp)}" target="_blank" rel="noopener">💬 Grupo de conversa</a>` : ''}
+      ${ALUNO.turmaJitsi ? `<a href="${esc(ALUNO.turmaJitsi)}" target="_blank" rel="noopener">🎥 Sala de encontros</a>` : ''}
+      <p class="nota">Traz as dúvidas ao grupo. Nenhuma é demasiado básica.</p>
+    </div>` : ''}`;
+}
+
+/* ── Um módulo, em três passos ────────────────────────────────────── */
+let ABERTO = null, PASSO = 'ler', RESPOSTAS = {};
+
+window.abrirModulo = function(id){
+  ABERTO = MODULOS.find(m => m.id === id);
+  if (!ABERTO) return;
+  const p = PROGRESSO[id] || {};
+  PASSO = !p.lido ? 'ler' : (!p.praticaFeita ? 'praticar' : 'responder');
+  RESPOSTAS = { ...(p.respostas || {}) };
+  desenharModulo();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+function blocoHtml(b){
+  if (b.tipo === 'destaque') return `<div class="bloco destaque">${esc(b.conteudo)}</div>`;
+  if (b.tipo === 'lista') return `<div class="bloco">
+      ${b.titulo ? `<h4>${esc(b.titulo)}</h4>` : ''}
+      <ul>${(b.itens||[]).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`;
+  return `<div class="bloco" style="white-space:pre-line;">${esc(b.conteudo)}</div>`;
+}
+
+function desenharModulo(){
+  const m = ABERTO, p = PROGRESSO[m.id] || {};
+  const cab = `
+    <button class="leve" onclick="desenharLista();window.scrollTo(0,0)">← Voltar</button>
+    <div class="card" style="margin-top:12px;">
+      <h3 style="color:var(--bronze);">${m.ordem}. ${esc(m.titulo)}</h3>
+      ${m.subtitulo ? `<p class="nota">${esc(m.subtitulo)}</p>` : ''}
+      <div class="passos">
+        <div class="${PASSO==='ler'?'on':(p.lido?'ok':'')}">📖 Ler</div>
+        <div class="${PASSO==='praticar'?'on':(p.praticaFeita?'ok':'')}">🤲 Praticar</div>
+        <div class="${PASSO==='responder'?'on':(p.concluido?'ok':'')}">✍️ Responder</div>
+      </div>
+    </div>`;
+
+  if (PASSO === 'ler'){
+    palco().innerHTML = cab + `<div class="card">
+      ${(m.ler||[]).map(blocoHtml).join('')}
+      <button class="principal" onclick="marcarLido()">Li — seguir para a prática</button>
+    </div>`;
+    return;
+  }
+
+  if (PASSO === 'praticar'){
+    const pr = m.praticar || {};
+    palco().innerHTML = cab + `<div class="card">
+      <h4>${esc(pr.titulo || 'Prática')}</h4>
+      <div class="bloco" style="white-space:pre-line;">${esc(pr.instrucoes || '')}</div>
+      ${pr.registo ? `
+        <label class="nota" style="display:block;margin:10px 0 5px;">${esc(pr.registoPergunta || 'O que notaste?')}</label>
+        <textarea id="registo" rows="5" placeholder="Escreve sem pensar muito. É para ti — e a escola lê.">${esc(p.registo || '')}</textarea>` : ''}
+      <button class="principal" onclick="marcarPratica()">Fiz — seguir para as perguntas</button>
+      <p class="nota">Faz mesmo a prática antes de avançares. É ela que ensina; o resto é conversa.</p>
+    </div>`;
+    return;
+  }
+
+  const qs = m.responder || [];
+  palco().innerHTML = cab + `<div class="card">
+    ${qs.map((q, i) => {
+      const dada = RESPOSTAS[i];
+      const respondida = dada !== undefined;
+      return `<div style="margin-bottom:18px;">
+        <h4>${i+1}. ${esc(q.pergunta)}</h4>
+        ${(q.opcoes||[]).map((o, oi) => {
+          let cls = '';
+          if (respondida){
+            if (oi === q.correta) cls = 'certa';
+            else if (oi === dada) cls = 'errada';
+          }
+          return `<button class="opcao ${cls}" ${respondida ? 'disabled' : `onclick="responder(${i},${oi})"`}>
+            ${respondida && oi === q.correta ? '✓ ' : ''}${esc(o)}</button>`;
+        }).join('')}
+        ${respondida && q.feedback ? `<div class="feedback">💬 ${esc(q.feedback)}</div>` : ''}
+      </div>`;
+    }).join('')}
+    <button class="principal" onclick="concluirModulo()"
+      ${Object.keys(RESPOSTAS).length < qs.length ? 'disabled' : ''}>
+      ${Object.keys(RESPOSTAS).length < qs.length
+        ? `Faltam ${qs.length - Object.keys(RESPOSTAS).length} resposta(s)` : 'Concluir este módulo'}
+    </button>
+  </div>`;
+}
+
+window.responder = function(i, oi){
+  RESPOSTAS[i] = oi;
+  desenharModulo();
+};
+
+async function gravar(dados){
+  const id = CODIGO + '_' + ABERTO.id;
+  const base = {
+    codigo: CODIGO, moduloId: ABERTO.id, nivel: String(ALUNO.nivel),
+    alunoNome: ALUNO.nome || '', moduloTitulo: ABERTO.titulo || '',
+    actualizadoEm: new Date().toISOString()
+  };
+  const junto = { ...(PROGRESSO[ABERTO.id] || {}), ...base, ...dados };
+  PROGRESSO[ABERTO.id] = junto;
+  try { await setDoc(doc(db, 'tenants', TENANT, 'reikiProgress', id), junto, { merge: true }); }
+  catch(e){ console.warn('não consegui gravar', e); }
+}
+
+window.marcarLido = async function(){
+  await gravar({ lido: true, lidoEm: new Date().toISOString() });
+  PASSO = 'praticar'; desenharModulo(); window.scrollTo({top:0,behavior:'smooth'});
+};
+
+window.marcarPratica = async function(){
+  const t = document.getElementById('registo');
+  await gravar({ praticaFeita: true, registo: t ? t.value.trim() : '',
+                 praticaEm: new Date().toISOString() });
+  PASSO = 'responder'; desenharModulo(); window.scrollTo({top:0,behavior:'smooth'});
+};
+
+window.concluirModulo = async function(){
+  const qs = ABERTO.responder || [];
+  const acertos = qs.reduce((n, q, i) => n + (RESPOSTAS[i] === q.correta ? 1 : 0), 0);
+  await gravar({ respostas: RESPOSTAS, acertos, totalPerguntas: qs.length,
+                 concluido: true, concluidoEm: new Date().toISOString() });
+  desenharLista(); window.scrollTo({top:0,behavior:'smooth'});
+};
+
+arrancar();
+</script>
+</body>
+</html>
