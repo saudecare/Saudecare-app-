@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-19-03';
+const APP_VERSION = '2026-09-19-04';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10758,6 +10758,11 @@ function reikiGerarCodigo(){
   return Array.from(a).map(n => REIKI_ALFABETO[n % REIKI_ALFABETO.length]).join('');
 }
 
+function reikiUrlPercurso(codigo){
+  const base = window.location.href.replace(/[^/]*$/, '');
+  return base + 'reiki-percurso.html?t=' + encodeURIComponent(tenantId) + '&c=' + encodeURIComponent(codigo);
+}
+
 function reikiUrlBiblioteca(codigo){
   const base = window.location.href.replace(/[^/]*$/, '');
   return base + 'reiki-biblioteca.html?t=' + encodeURIComponent(tenantId) + '&c=' + encodeURIComponent(codigo);
@@ -10796,8 +10801,11 @@ window.reikiAbrirLinkAluno = async function(alunoId){
       <div class="card">
         <strong>${escapeHtml(a.nome || '')}</strong>
         <p class="muted" style="margin-top:4px;">${nivel ? escapeHtml(nivel.nome) : 'Ainda sem nível — só vê o material geral.'}</p>
-        <label style="margin-top:12px;">Link pessoal</label>
+        <label style="margin-top:12px;">Link da biblioteca</label>
         <input id="reikiLinkCampo" type="text" readonly value="${escapeHtml(url)}" onclick="this.select()">
+        <label style="margin-top:12px;">Link do percurso — os módulos passo a passo</label>
+        <input type="text" readonly value="${escapeHtml(reikiUrlPercurso(codigo))}" onclick="this.select()">
+        <button class="ghost" style="margin-top:6px;" onclick="navigator.clipboard.writeText('${escapeAttrJs(reikiUrlPercurso(codigo))}').then(()=>toast('Link do percurso copiado.'))">Copiar link do percurso</button>
         <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="primary" onclick="reikiCopiarLink()">📋 Copiar</button>
           ${a.telefone ? `<a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/${encodeURIComponent(String(a.telefone).replace(/[^0-9]/g,''))}?text=${encodeURIComponent('Olá ' + (a.nome||'') + ', aqui tens a tua biblioteca de Reiki: ' + url)}">💬 WhatsApp</a>` : ''}
