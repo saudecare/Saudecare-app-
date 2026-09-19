@@ -17,6 +17,7 @@
   .abas button{flex:1;padding:9px 8px;border:none;border-radius:9px;font-size:13.5px;cursor:pointer;
     background:rgba(255,255,255,.18);color:#fff;}
   .abas button.on{background:#fff;color:var(--bronze);font-weight:600;}
+  .selo-nivel{display:inline-block;margin-top:2px;padding:3px 12px;border:1px solid rgba(255,255,255,.5);border-radius:999px;font-size:12.5px;}
   main{max-width:640px;margin:0 auto;padding:16px;}
   .card{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:16px;margin-bottom:12px;}
   .modulo{cursor:pointer;}
@@ -72,6 +73,8 @@
 <div class="abas hidden" id="barraAbas">
   <button id="abaPercurso" class="on" onclick="mudarAba('percurso')">📖 Percurso</button>
   <button id="abaBiblioteca" onclick="mudarAba('biblioteca')">📚 Biblioteca</button>
+  <button id="abaTestes" onclick="mudarAba('testes')">📝 Testes</button>
+  <button id="abaPoemas" onclick="mudarAba('poemas')">🎴 Poemas</button>
 </div>
 
 <main id="palco">
@@ -103,7 +106,7 @@ const TENANT  = params.get('t') || 'hikari-terapias';
 const CODIGO  = (params.get('c') || '').trim();
 
 const ORDEM_NIVEIS = ['1','2','3A','3B'];
-let ALUNO = null, MODULOS = [], PROGRESSO = {}, RECURSOS = [];
+let ALUNO = null, MODULOS = [], PROGRESSO = {}, RECURSOS = [], TESTES = [];
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
   .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -134,7 +137,9 @@ async function arrancar(){
     return;
   }
 
-  document.getElementById('subcab').textContent = ALUNO.nivel ? 'Percurso do Nível ' + ALUNO.nivel : 'Ainda sem nível atribuído';
+  document.getElementById('subcab').innerHTML = ALUNO.nivel
+    ? '<span class="selo-nivel">Nível ' + esc(ALUNO.nivel) + '</span>'
+    : '<span class="selo-nivel">Percurso a começar</span>';
   document.getElementById('barraAbas').classList.remove('hidden');
 
   if (!ALUNO.nivel){
@@ -168,13 +173,29 @@ async function arrancar(){
     snap.forEach(d => RECURSOS.push({ id: d.id, ...d.data() }));
   } catch(e){ console.warn('biblioteca indisponível', e); }
 
+  try {
+    const snapT = await getDocs(collection(db, 'tenants', TENANT, 'reikiQuizzes'));
+    TESTES = [];
+    snapT.forEach(d => TESTES.push({ id: d.id, ...d.data() }));
+    TESTES = TESTES.filter(t => {
+      const nv = String(t.nivel || '0');
+      if (nv === '0') return true;
+      const i = ORDEM_NIVEIS.indexOf(nv);
+      return i >= 0 && i <= meuIndice;
+    });
+  } catch(e){ console.warn('testes indisponíveis', e); }
+
   desenharLista();
 }
 
 window.mudarAba = function(qual){
-  document.getElementById('abaPercurso').classList.toggle('on', qual==='percurso');
-  document.getElementById('abaBiblioteca').classList.toggle('on', qual==='biblioteca');
-  if (qual === 'biblioteca') desenharBiblioteca(); else desenharLista();
+  ['Percurso','Biblioteca','Testes','Poemas'].forEach(nome => {
+    document.getElementById('aba'+nome)?.classList.toggle('on', qual === nome.toLowerCase());
+  });
+  if (qual === 'biblioteca') desenharBiblioteca();
+  else if (qual === 'testes') desenharTestes();
+  else if (qual === 'poemas') desenharPoemas();
+  else desenharLista();
   window.scrollTo({top:0,behavior:'smooth'});
 };
 
@@ -370,6 +391,81 @@ function desenharLista(){
     <div class="barra"><i style="width:${pct}%"></i></div>
     <p class="nota">Faz um módulo de cada vez, sem pressa. O que escreveres fica guardado e a escola acompanha o teu percurso.</p></div>
     ${listaModulos}${blocoTreino}${blocoFeito}${blocoTurma}`;
+}
+
+function desenharTestes(){
+  if (!TESTES.length){
+    palco().innerHTML = `<div class="card"><p class="nota">Ainda não há testes disponíveis para o teu nível.</p></div>`;
+    return;
+  }
+  palco().innerHTML = `<div class="card"><p class="nota">Corrigido na hora. Precisas da nota mínima para passar — se não conseguires, podes repetir.</p></div>` +
+    TESTES.map(t => `<div class="card">
+      <strong>${esc(t.titulo || 'Teste')}</strong>
+      <p class="nota">${(t.perguntas||[]).length} perguntas · mínimo ${t.notaMinima || 70}%</p>
+      <button class="principal" onclick="abrirTeste('${t.id}')">Fazer o teste</button>
+    </div>`).join('');
+}
+
+let TESTE_ABERTO = null;
+
+window.abrirTeste = function(testeId){
+  TESTE_ABERTO = TESTES.find(t => t.id === testeId);
+  if (!TESTE_ABERTO) return;
+  const qs = TESTE_ABERTO.perguntas || [];
+  palco().innerHTML = `<div class="card">
+      <strong>${esc(TESTE_ABERTO.titulo)}</strong>
+      <p class="nota">Responde a todas. Precisas de ${TESTE_ABERTO.notaMinima || 70}% para passar.</p>
+    </div>` +
+    qs.map((q, i) => `<div class="card"><h4>${i+1}. ${esc(q.texto)}</h4>
+      ${(q.opcoes||[]).map((o, j) => `<label style="display:flex;gap:9px;align-items:flex-start;margin-top:9px;font-size:14.5px;">
+        <input type="radio" name="q${i}" value="${j}" style="width:auto;margin-top:3px;">
+        <span>${esc(o)}</span></label>`).join('')}
+    </div>`).join('') +
+    `<div class="card"><button class="principal" onclick="entregarTeste()">Entregar</button></div>`;
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+window.entregarTeste = async function(){
+  const t = TESTE_ABERTO;
+  const qs = t.perguntas || [];
+  let certas = 0, respondidas = 0;
+  const respostas = [];
+  for (let i = 0; i < qs.length; i++){
+    const sel = document.querySelector(`input[name="q${i}"]:checked`);
+    const v = sel ? parseInt(sel.value) : -1;
+    respostas.push(v);
+    if (v >= 0) respondidas++;
+    if (v === (qs[i].correta || 0)) certas++;
+  }
+  if (respondidas < qs.length){
+    alert('Faltam ' + (qs.length - respondidas) + ' pergunta(s) por responder.');
+    return;
+  }
+  const pct = Math.round(certas / qs.length * 100);
+  const aprovado = pct >= (t.notaMinima || 70);
+  try {
+    await setDoc(doc(collection(db, 'tenants', TENANT, 'reikiQuizResults')), {
+      testeId: t.id, codigo: CODIGO, alunoId: ALUNO.alunoId || '', alunoNome: ALUNO.nome || '',
+      percentagem: pct, aprovado, respostas, entregueEm: new Date().toISOString()
+    });
+  } catch(e){ console.warn('não consegui entregar', e); }
+  palco().innerHTML = `<div class="card" style="text-align:center;">
+      <h3 style="color:var(--bronze);">${pct}%</h3>
+      <p style="margin-top:8px;">${aprovado
+        ? 'Passaste. A tua Mestra recebeu o resultado.'
+        : 'Ficaste abaixo do mínimo. Revê o manual e fala com a tua Mestra — podes repetir.'}</p>
+    </div>
+    <button class="leve" style="width:100%;" onclick="mudarAba('testes')">← Voltar aos testes</button>`;
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+function desenharPoemas(){
+  const url = 'poemas-meiji.html?t=' + encodeURIComponent(TENANT);
+  palco().innerHTML = `<div class="card" style="text-align:center;">
+      <h4>🎴 Os poemas do imperador Meiji</h4>
+      <p class="nota" style="margin-top:6px;">Tira um poema com uma intenção para meditar, ou consulta-os um a um.</p>
+      <a class="principal" style="display:block;text-decoration:none;box-sizing:border-box;" href="${url}" target="_blank" rel="noopener">Abrir os poemas</a>
+    </div>`;
 }
 
 let ABERTO = null, PASSO = 'ler', RESPOSTAS = {};
