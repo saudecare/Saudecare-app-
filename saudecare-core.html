@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-19-12';
+const APP_VERSION = '2026-09-19-13';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10866,7 +10866,7 @@ window.reikiAbrirLinkAluno = async function(alunoId){
       a.codigoAcesso = codigo;
     }
     await reikiGravarAcesso(codigo, a);
-    const url = reikiUrlBiblioteca(codigo);
+    const url = reikiUrlPercurso(codigo);
     const nivel = reikiNivelInfo(a.nivelAtual);
     showPatientOverlay('🔗 Link do aluno', `
       <div class="card">
@@ -10877,7 +10877,7 @@ window.reikiAbrirLinkAluno = async function(alunoId){
         <p class="muted" style="margin-top:4px;font-size:.82rem;">Um único link: percurso, biblioteca e turma ficam todos lá dentro, em separadores.</p>
         <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="primary" onclick="reikiCopiarLink()">📋 Copiar</button>
-          ${a.telefone ? `<a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/${encodeURIComponent(String(a.telefone).replace(/[^0-9]/g,''))}?text=${encodeURIComponent('Olá ' + (a.nome||'') + ', aqui tens a tua biblioteca de Reiki: ' + url)}">💬 WhatsApp</a>` : ''}
+          ${a.telefone ? `<a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/${encodeURIComponent(String(a.telefone).replace(/[^0-9]/g,''))}?text=${encodeURIComponent('Olá ' + (a.nome||'') + ', aqui tens a tua formação de Reiki: ' + url)}">💬 WhatsApp</a>` : ''}
           <button class="ghost" onclick="reikiRenovarCodigo('${a.id}')">🔄 Novo código</button>
         </div>
         <p class="muted" style="margin-top:12px;font-size:.85rem;">Quem tiver este link vê a biblioteca deste aluno. Se ele o partilhar, gera um código novo — o antigo deixa de funcionar.</p>

@@ -368,11 +368,15 @@ function desenharBiblioteca(){
 window.abrirRecursoTexto = function(id){
   RECURSO_ABERTO = RECURSOS.find(r => r.id === id);
   if (!RECURSO_ABERTO) return;
-  const ilustracao = ILUSTRACOES[RECURSO_ABERTO.ilustracao] || '';
+  // A imagem real, colada pela Mestra, tem sempre prioridade sobre o
+  // esquema simplificado que a app desenha por defeito.
+  const imagem = RECURSO_ABERTO.imagemUrl
+    ? `<div style="text-align:center;margin:14px 0;"><img src="${esc(RECURSO_ABERTO.imagemUrl)}" style="max-width:100%;border-radius:10px;border:1px solid var(--linha);" onerror="this.parentElement.style.display='none'"></div>`
+    : (ILUSTRACOES[RECURSO_ABERTO.ilustracao] ? `<div style="margin:14px 0;">${ILUSTRACOES[RECURSO_ABERTO.ilustracao]}</div>` : '');
   palco().innerHTML = `<button class="leve" onclick="mudarAba('biblioteca')">← Voltar</button>
     <div class="card" style="margin-top:12px;">
       <h3 style="color:var(--bronze);">${esc(RECURSO_ABERTO.titulo)}</h3>
-      ${ilustracao ? `<div style="margin:14px 0;">${ilustracao}</div>` : ''}
+      ${imagem}
       <div style="margin-top:10px;">${textoParaHtml(RECURSO_ABERTO.conteudo)}</div>
       ${RECURSO_ABERTO.url ? `<a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="${esc(RECURSO_ABERTO.url)}" target="_blank" rel="noopener">🎧 Ouvir / Ver também</a>` : ''}
     </div>`;
