@@ -143,17 +143,33 @@ const POEMAS_BASE = [
 let POEMAS = [...POEMAS_BASE];
 
 async function carregar(){
+  /* Os 125 poemas vêm do ficheiro da escola. É o que manda: só se
+     recorre ao servidor se esse ficheiro não carregar. */
   try{
-    const snap = await getDocs(collection(db, 'tenants', TENANT, 'reikiPoems'));
-    const doFirestore = [];
-    snap.forEach(d => doFirestore.push({ id: d.id, ...d.data() }));
-    if (doFirestore.length){
-      // O que está no Firestore manda; os de base só preenchem o que faltar.
-      const nums = new Set(doFirestore.map(p => Number(p.numero)));
-      POEMAS = doFirestore.concat(POEMAS_BASE.filter(p => !nums.has(p.numero)));
+    window.firebaseConfig = firebaseConfig;
+    await import('./reiki-poemas-seed.js');
+    const lista = window.POEMAS_HIKARI || [];
+    if (lista.length){
+      POEMAS = lista.map(x => ({
+        numero: x.n, titulo: x.t || '', japones: x.jp || '',
+        texto: x.p || '', principio: x.g || '', interpretacao: x.i || ''
+      }));
     }
   }catch(e){
-    console.warn('Sem ligação ao servidor — a usar só os poemas de base.', e);
+    console.warn('Ficheiro dos poemas indisponível — a tentar o servidor.', e);
+  }
+  if (POEMAS.length <= POEMAS_BASE.length){
+    try{
+      const snap = await getDocs(collection(db, 'tenants', TENANT, 'reikiPoems'));
+      const doFirestore = [];
+      snap.forEach(d => doFirestore.push({ id: d.id, ...d.data() }));
+      if (doFirestore.length){
+        const nums = new Set(doFirestore.map(p => Number(p.numero)));
+        POEMAS = doFirestore.concat(POEMAS_BASE.filter(p => !nums.has(p.numero)));
+      }
+    }catch(e){
+      console.warn('Sem ligação ao servidor — a usar só os poemas de base.', e);
+    }
   }
   POEMAS.sort((a,b) => (Number(a.numero)||0) - (Number(b.numero)||0));
   desenharLista();
