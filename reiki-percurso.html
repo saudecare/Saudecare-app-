@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>A minha formação — Hikari Fafe Escola de Reiki</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{ --papel:#fdfaf1; --linha:#d9cbae; --bronze:#a8681f; --bronze2:#b8873a;
          --tinta:#332f29; --suave:#8d8375; --caixa:#fcf4e2; --verde:#2f6f5e; }
@@ -11,7 +12,7 @@
   body{background:var(--papel);color:var(--tinta);line-height:1.6;padding-bottom:70px;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
   header{background:linear-gradient(160deg,#8a5518,var(--bronze));color:#fff;padding:22px 18px 14px;}
-  header h1{font-size:19px;margin-bottom:3px;}
+  header h1{font-size:19px;margin-bottom:3px;text-align:center;}
   header p{opacity:.92;font-size:13.5px;}
   .abas{display:flex;gap:6px;padding:14px 18px 0;}
   .abas button{flex:1;padding:9px 8px;border:none;border-radius:9px;font-size:13.5px;cursor:pointer;
@@ -67,8 +68,13 @@
 <body>
 
 <header>
-  <h1 id="cab">A minha formação</h1>
-  <p id="subcab">Hikari Fafe · Escola de Reiki</p>
+  <div style="display:flex;align-items:center;gap:12px;justify-content:center;">
+    <img id="avatarAluno" class="hidden" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.6);" onerror="this.classList.add('hidden')">
+    <div>
+      <h1 id="cab" style="text-align:left;">A minha formação</h1>
+      <p id="subcab" style="text-align:left;">Hikari Fafe · Escola de Reiki</p>
+    </div>
+  </div>
 </header>
 <div class="abas hidden" id="barraAbas">
   <button id="abaPercurso" class="on" onclick="mudarAba('percurso')">📖 Percurso</button>
@@ -106,6 +112,23 @@ const TENANT  = params.get('t') || 'hikari-terapias';
 const CODIGO  = (params.get('c') || '').trim();
 
 const ORDEM_NIVEIS = ['1','2','3A','3B'];
+
+/* O mesmo modelo e as mesmas coordenadas do certificado que a escola
+   emite manualmente — para o aluno receber exactamente a mesma peça. */
+const CERT_TEMPLATE = 'certificado-reiki.png';
+const CERT_LAYOUT = {
+  imgX: 0.9, imgY: 0, imgW: 208.2, imgH: 297,
+  cor: [90, 62, 27],
+  nivel: { x: 112.9, y: 185.6, size: 13.5, maxW: 31, align: 'center' },
+  nome:  { x: 124.3, y: 223.0, size: 16, maxW: 82, align: 'center' },
+  data:  { x: 112.5, y: 247.5, size: 12, maxW: 32, align: 'center' }
+};
+const CERT_NIVEIS = {
+  '1':  { campo: '1 — Shoden',     cor: [178,134,50] },
+  '2':  { campo: '2 — Okuden',     cor: [148,94,38] },
+  '3A': { campo: '3A — Shinpiden', cor: [122,66,62] },
+  '3B': { campo: '3B — Gokukaiden',cor: [96,40,44] },
+};
 let ALUNO = null, MODULOS = [], PROGRESSO = {}, RECURSOS = [], TESTES = [];
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
@@ -130,6 +153,11 @@ async function arrancar(){
   }
 
   document.getElementById('cab').textContent = 'Olá, ' + (ALUNO.nome || '').split(' ')[0];
+  if (ALUNO.foto){
+    const av = document.getElementById('avatarAluno');
+    av.src = ALUNO.foto;
+    av.classList.remove('hidden');
+  }
 
   if (ALUNO.suspenso){
     document.getElementById('subcab').textContent = 'Acesso suspenso';
@@ -377,7 +405,12 @@ function desenharLista(){
     : '';
 
   const blocoFeito = tudoFeito
-    ? `<div class="card aviso"><strong>Concluíste o percurso do Nível ${esc(ALUNO.nivel)}.</strong><p style="margin-top:6px;">Fala com a escola para marcares o teste final. Depois disso, o certificado.</p></div>`
+    ? `<div class="card aviso">
+        <strong>🎉 Parabéns — concluíste o percurso do Nível ${esc(ALUNO.nivel)}.</strong>
+        <p style="margin-top:6px;">Antes do teste final, vale a pena rever com calma o que já leste — usa o Treino livre acima quantas vezes quiseres, até te sentires seguro.</p>
+        <p style="margin-top:6px;">Quando te sentires à vontade, faz o teste final na aba Testes. Se passares, o teu certificado fica pronto ali mesmo, para descarregares.</p>
+        <button class="principal" onclick="mudarAba('testes')">Ir para os Testes</button>
+      </div>`
     : '';
 
   const blocoTurma = (ALUNO.turmaWhatsapp || ALUNO.turmaJitsi)
@@ -392,6 +425,52 @@ function desenharLista(){
     <p class="nota">Faz um módulo de cada vez, sem pressa. O que escreveres fica guardado e a escola acompanha o teu percurso.</p></div>
     ${listaModulos}${blocoTreino}${blocoFeito}${blocoTurma}`;
 }
+
+async function carregarModeloCert(){
+  if (window.__certDataUrl) return window.__certDataUrl;
+  const res = await fetch(CERT_TEMPLATE, { cache: 'force-cache' });
+  if (!res.ok) throw new Error('Modelo do certificado não encontrado.');
+  const blob = await res.blob();
+  window.__certDataUrl = await new Promise((ok, nok) => {
+    const r = new FileReader();
+    r.onload = () => ok(r.result);
+    r.onerror = () => nok(new Error('Não consegui ler o modelo.'));
+    r.readAsDataURL(blob);
+  });
+  return window.__certDataUrl;
+}
+
+function escreverCampoCert(pdf, texto, campo){
+  let size = campo.size;
+  pdf.setFontSize(size);
+  while (size > 7 && pdf.getTextWidth(texto) > campo.maxW){ size -= 0.5; pdf.setFontSize(size); }
+  pdf.text(texto, campo.x, campo.y, { align: campo.align || 'center' });
+}
+
+window.descarregarCertificado = async function(nivel, btn){
+  const info = CERT_NIVEIS[nivel];
+  if (!info) return;
+  const antes = btn.textContent;
+  btn.disabled = true; btn.textContent = 'A preparar…';
+  try {
+    const modelo = await carregarModeloCert();
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const L = CERT_LAYOUT;
+    pdf.addImage(modelo, 'PNG', L.imgX, L.imgY, L.imgW, L.imgH);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(info.cor[0], info.cor[1], info.cor[2]);
+    escreverCampoCert(pdf, info.campo, L.nivel);
+    pdf.setTextColor(L.cor[0], L.cor[1], L.cor[2]);
+    escreverCampoCert(pdf, ALUNO.nome || '', L.nome);
+    const hoje = new Date().toLocaleDateString('pt-PT', { day:'2-digit', month:'long', year:'numeric' });
+    escreverCampoCert(pdf, hoje, L.data);
+    pdf.save('Certificado-Reiki-Nivel-' + nivel + '.pdf');
+  } catch(e){
+    alert('Não consegui gerar o certificado: ' + e.message + '\n\nFala com a tua Mestra — ela consegue emiti-lo do lado dela.');
+  }
+  btn.disabled = false; btn.textContent = antes;
+};
 
 function desenharTestes(){
   if (!TESTES.length){
@@ -452,9 +531,14 @@ window.entregarTeste = async function(){
   palco().innerHTML = `<div class="card" style="text-align:center;">
       <h3 style="color:var(--bronze);">${pct}%</h3>
       <p style="margin-top:8px;">${aprovado
-        ? 'Passaste. A tua Mestra recebeu o resultado.'
-        : 'Ficaste abaixo do mínimo. Revê o manual e fala com a tua Mestra — podes repetir.'}</p>
+        ? '🎉 Passaste! Parabéns pelo teu percurso até aqui.'
+        : 'Ficaste abaixo do mínimo. Revê o manual e o Treino livre, e fala com a tua Mestra — podes repetir.'}</p>
     </div>
+    ${aprovado ? `<div class="card" style="text-align:center;">
+      <h4>🎓 O teu certificado está pronto</h4>
+      <p class="nota" style="margin-top:6px;">Descarrega e guarda. Se precisares de outra via mais tarde, a tua Mestra também o pode emitir.</p>
+      <button class="principal" onclick="descarregarCertificado('${t.nivel}', this)">Descarregar certificado (PDF)</button>
+    </div>` : ''}
     <button class="leve" style="width:100%;" onclick="mudarAba('testes')">← Voltar aos testes</button>`;
   window.scrollTo({top:0,behavior:'smooth'});
 };

@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-19-10';
+const APP_VERSION = '2026-09-19-12';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10166,7 +10166,7 @@ const REIKI_NIVEIS = [
     descricao:'Sintonização com os três primeiros símbolos. O trabalho aprofunda-se no plano emocional e mental, e o aluno passa a poder enviar Reiki à distância, no tempo e no espaço.' },
   { id:'3A', nome:'Nível 3A — Shinpiden (Aprofundamento)', certLabel:'Nível 3A — Shinpiden', certCampo:'3A — Shinpiden', cor:[122,66,62], subtitulo:'O Mestre Interior',
     descricao:'Sintonização com o símbolo do Mestre. É um nível de amadurecimento pessoal e espiritual: o aluno aprofunda a sua própria prática e prepara-se para a responsabilidade de ensinar, mas ainda não sintoniza outras pessoas.' },
-  { id:'3B', nome:'Nível 3B — Shinpiden (Mestrado)', certLabel:'Nível 3B — Shinpiden', certCampo:'3B — Shinpiden', cor:[96,40,44], subtitulo:'O Mestrado',
+  { id:'3B', nome:'Nível 3B — Gokukaiden', certLabel:'Nível 3B — Gokukaiden', certCampo:'3B — Gokukaiden', cor:[96,40,44], subtitulo:'O Mestrado',
     descricao:'Habilitação para ensinar Usui Reiki Ryoho e sintonizar novos alunos, com a responsabilidade de manter a linhagem viva e íntegra.' }
 ];
 
@@ -10844,6 +10844,7 @@ async function reikiGravarAcesso(codigo, aluno){
   await setDoc(doc(db, 'tenants', tenantId, 'reikiAccess', codigo), {
     alunoId: aluno.id,
     nome: aluno.nome || '',
+    foto: aluno.foto || '',
     nivel: aluno.nivelAtual || null,
     suspenso: !!aluno.suspenso,
     turmaNome: (t && t.ativa !== false) ? (t.nome || '') : '',
@@ -10928,11 +10929,16 @@ function reikiRenderListaAlunos(){
         return `
         <div class="card" style="margin-bottom:10px;">
           <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div class="row" style="gap:10px;align-items:flex-start;">
+            ${a.foto
+              ? `<img src="${escapeHtml(a.foto)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid #eee;" onerror="this.style.display='none'">`
+              : `<div style="width:40px;height:40px;border-radius:50%;background:#f3ece0;color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:600;flex-shrink:0;">${escapeHtml((a.nome||'?').trim()[0]||'?').toUpperCase()}</div>`}
             <div>
               <strong>${escapeHtml(a.nome || '(sem nome)')}</strong>${a.suspenso ? ' <span class="badge">suspenso</span>' : ''}
               <p class="muted" style="margin-top:4px;">${nivel ? '📜 ' + escapeHtml(nivel.nome) : '🌱 Inscrito, ainda sem nível'}</p>
               ${a.telefone ? `<p class="muted" style="margin-top:2px;">📞 ${escapeHtml(a.telefone)}</p>` : ''}
               ${a.email ? `<p class="muted" style="margin-top:2px;">✉️ ${escapeHtml(a.email)}</p>` : ''}
+            </div>
             </div>
           </div>
           ${hist.length ? `<p class="muted" style="margin-top:8px;font-size:.85rem;">Percurso: ${hist.map(h => escapeHtml((reikiNivelInfo(h.nivel)?.certLabel) || h.nivel) + ' (' + escapeHtml(reikiDataPT(h.data)) + ')').join(' · ')}</p>` : ''}
@@ -10967,6 +10973,12 @@ window.reikiAbrirForm = function(alunoId){
     <div class="card">
       <label>Nome completo</label>
       <input id="reikiNome" type="text" value="${escapeHtml(a?.nome || '')}" placeholder="Nome como vai sair no certificado">
+      <label style="margin-top:10px;">Foto (link) — opcional</label>
+      <div class="row" style="gap:10px;align-items:center;">
+        ${a?.foto ? `<img src="${escapeHtml(a.foto)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid #eee;" onerror="this.style.display='none'">` : ''}
+        <input id="reikiFoto" type="url" style="flex:1;" value="${escapeHtml(a?.foto || '')}" placeholder="https://drive.google.com/...">
+      </div>
+      <p class="muted" style="margin-top:4px;font-size:.82rem;">Cola o link de uma foto do Drive, partilhada como "qualquer pessoa com o link". Aparece no teu painel e na formação dele.</p>
       <label style="margin-top:10px;">Telefone</label>
       <input id="reikiTelefone" type="tel" value="${escapeHtml(a?.telefone || '')}">
       <label style="margin-top:10px;">E-mail</label>
@@ -10991,6 +11003,7 @@ window.reikiGuardarAluno = async function(alunoId){
   if (!nome){ toast('O nome do aluno é obrigatório.', true); return; }
   const dados = {
     nome,
+    foto: (document.getElementById('reikiFoto')?.value || '').trim(),
     telefone: (document.getElementById('reikiTelefone')?.value || '').trim(),
     email: (document.getElementById('reikiEmail')?.value || '').trim(),
     turmaId: document.getElementById('reikiTurma')?.value || '',
@@ -11084,7 +11097,7 @@ window.reikiConfirmarSubirNivel = async function(alunoId){
       atualizadoEm: serverTimestamp()
     });
     if (a.codigoAcesso){
-      await reikiGravarAcesso(a.codigoAcesso, { id: alunoId, nome: a.nome, nivelAtual: prox.id, turmaId: a.turmaId }).catch(()=>{});
+      await reikiGravarAcesso(a.codigoAcesso, { id: alunoId, nome: a.nome, foto: a.foto, suspenso: a.suspenso, nivelAtual: prox.id, turmaId: a.turmaId }).catch(()=>{});
     }
     closePatientOverlay();
     toast('Nível actualizado.');
