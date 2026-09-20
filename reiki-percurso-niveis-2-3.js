@@ -171,7 +171,7 @@ const MODULOS_NIVEL_2 = [
         'Nas palmas antes de qualquer tratamento, e a reforçar onde sentires',
         'Nos chakras, da raiz à coroa'
       ]},
-      { tipo: 'destaque', conteudo: 'Protecção nas seis direcções: à frente, atrás, à direita, à esquerda, em cima e em baixo. O símbolo deve ter o tamanho do corpo que vai proteger. Mas não vivas com medo do exterior — a tua luz interior é a protecção mais eficaz que existe. Quem anda a proteger-se de tudo, o que está a fazer é a alimentar o medo.' }
+      { tipo: 'destaque', conteudo: 'Protecção nas seis direcções: à frente, atrás, à direita, à esquerda, em cima e em baixo. O símbolo deve ter o tamanho do corpo que vai proteger. Mas não vivas com medo do exterior — a tua luz interior é a protecção mais eficaz que existe. Quem anda a proteger-se de tudo, o que está a fazer é a alimentar o medo.' },
           { tipo: 'destaque', conteudo: 'Exemplo de uso: vais dormir a um sítio novo e sentes o ambiente estranho. Desenha um Cho Ku Rei do teu tamanho à tua frente, com o mantra três vezes, e outro por baixo da cama antes de te deitares. Não precisas de mais nada — é o suficiente para mudares a energia do espaço.' },
     ],
     praticar: {
@@ -216,7 +216,7 @@ const MODULOS_NIVEL_2 = [
         'Limpeza de espaços e de energia'
       ]},
       { tipo: 'destaque', conteudo: 'Um mito que convém desfazer: dizia-se que o Sei He Ki não podia ser usado sozinho, por ser muito forte. O melhor conselho que te dou é experimentares. Se sentires que a energia dele é necessária mas forte de mais para a pessoa, usa-o com o Cho Ku Rei — é como usar a Terra e o Céu, harmoniosamente.' },
-      { tipo: 'texto', conteudo: 'Para limpar a casa: um Sei He Ki em cada canto, por cima das janelas e das portas. Ou, em cada divisão, um Sei He Ki em cada canto superior e um Cho Ku Rei ao centro — a harmonia vem para o espaço e o Cho Ku Rei envia a energia mais densa para a terra.' }
+      { tipo: 'texto', conteudo: 'Para limpar a casa: um Sei He Ki em cada canto, por cima das janelas e das portas. Ou, em cada divisão, um Sei He Ki em cada canto superior e um Cho Ku Rei ao centro — a harmonia vem para o espaço e o Cho Ku Rei envia a energia mais densa para a terra.' },
           { tipo: 'destaque', conteudo: 'Exemplo de uso: alguém te conta uma mágoa antiga e tu sentes que as palavras não chegam. Desenha o Sei He Ki nas tuas palmas antes de pousares as mãos nela, com o mantra três vezes. Não precisas de dizer nada de especial — o símbolo trabalha o emocional enquanto tu só escutas.' },
     ],
     praticar: {
@@ -267,7 +267,7 @@ const MODULOS_NIVEL_2 = [
         'Pode tratar-se uma situação do passado, do presente ou do futuro',
         'Podem tratar-se várias pessoas ao mesmo tempo',
         'Pede sempre permissão; se não for possível, pede ao Eu Superior da pessoa'
-      ]}
+      ]},
           { tipo: 'destaque', conteudo: 'Exemplo de uso: um amigo tem uma entrevista de emprego amanhã e está longe de ti. Escreve o nome dele num papel, desenha o Hon Sha Ze Sho Nen e depois o Sei He Ki, com o mantra em cada um. Fica dez minutos com o papel entre as mãos, pedindo que a energia flua para o Bem Supremo dele.' },
     ],
     praticar: {
@@ -453,7 +453,7 @@ const MODULOS_NIVEL_3A = [
         'Meditação no caminho interior, à procura do teu próprio Eu'
       ]},
       { tipo: 'texto', conteudo: 'São três caracteres japoneses uns por baixo dos outros, dezassete traços ao todo. De cima para baixo, e dentro de cada carácter da esquerda para a direita. Horizontais antes de verticais, exterior antes de interior, e a base fecha-se no fim.' },
-      { tipo: 'texto', conteudo: 'Há vários Dai Ko Myo: o tradicional, que recebes aqui; o tibetano, criado por Arthur Robertson e divulgado por William Rand, que só se ensina no 3B; e derivações rodadas à direita, muito usadas no sistema Essencial. Nenhum é melhor — mas não são a mesma coisa, e não devem ser apresentados como se fossem.' }
+      { tipo: 'texto', conteudo: 'Há vários Dai Ko Myo: o tradicional, que recebes aqui; o tibetano, criado por Arthur Robertson e divulgado por William Rand, que só se ensina no 3B; e derivações rodadas à direita, muito usadas no sistema Essencial. Nenhum é melhor — mas não são a mesma coisa, e não devem ser apresentados como se fossem.' },
           { tipo: 'destaque', conteudo: 'Exemplo de uso: sentes-te perdido sobre uma decisão importante. Desenha um grande Dai Ko Myo à tua frente, mantra três vezes, e pede clareza — não uma resposta, só clareza. Depois faz silêncio dez minutos, sem tentares forçar conclusão nenhuma.' },
     ],
     praticar: {
@@ -683,7 +683,7 @@ const MODULOS_NIVEL_3B = [
         'Limpar o canal ao longo da coluna e desbloquear o topo da cabeça'
       ]},
       { tipo: 'texto', conteudo: 'No budismo tibetano este símbolo usa-se de baixo para cima. No Reiki usa-se de cima para baixo — do topo da cabeça em direcção aos pés — porque o que queremos é trazer a energia universal para dentro do corpo e ancorá-la.' },
-      { tipo: 'destaque', conteudo: 'Não te esqueças do Raku. É o erro mais comum de quem começa a sintonizar: fazer tudo bem e esquecer o fecho. O aluno fica ligado ao Mestre e ambos saem de lá estranhos. O Raku é o ponto final da frase.' }
+      { tipo: 'destaque', conteudo: 'Não te esqueças do Raku. É o erro mais comum de quem começa a sintonizar: fazer tudo bem e esquecer o fecho. O aluno fica ligado ao Mestre e ambos saem de lá estranhos. O Raku é o ponto final da frase.' },
           { tipo: 'destaque', conteudo: 'Exemplo de uso: vais sintonizar o teu primeiro aluno e sentes o nervoso miudinho a subir. Antes de começares, desenha o Raku à tua volta, do topo da cabeça aos pés, com a intenção de te centrares. Não é para o aluno — é para ti, para chegares à sintonização já enraizado.' },
     ],
     praticar: {

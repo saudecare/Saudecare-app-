@@ -78,8 +78,7 @@
 </header>
 <div class="abas hidden" id="barraAbas">
   <button id="abaPercurso" class="on" onclick="mudarAba('percurso')">📖 Percurso</button>
-  <button id="abaBiblioteca" onclick="mudarAba('biblioteca')">📚 Biblioteca</button>
-  <button id="abaTestes" onclick="mudarAba('testes')">📝 Testes</button>
+  <button onclick="voltarSala()">← Sala de estudo</button>
   <button id="abaPoemas" onclick="mudarAba('poemas')">🎴 Poemas</button>
 </div>
 
@@ -129,6 +128,24 @@ const CERT_NIVEIS = {
   '3A': { campo: '3A — Shinpiden', cor: [122,66,62] },
   '3B': { campo: '3B — Gokukaiden',cor: [96,40,44] },
 };
+/* Nível que o aluno está a ESTUDAR: o seguinte ao último concluído.
+   Sem nível concluído, estuda o 1. Com o 3B concluído, revê o 3B. */
+let NIVEL = '1';
+function nivelEmEstudo(concluido){
+  if (!concluido) return '1';
+  const i = ORDEM_NIVEIS.indexOf(String(concluido));
+  return i >= 0 && i < ORDEM_NIVEIS.length - 1 ? ORDEM_NIVEIS[i+1] : String(concluido);
+}
+/* Os módulos vêm dos ficheiros do percurso, escritos a partir dos
+   manuais da escola. Não é preciso gravá-los no Firestore. */
+async function carregarModulos(nivel){
+  window.firebaseConfig = firebaseConfig;
+  const f = nivel === '1' ? './reiki-percurso-nivel1.js' : './reiki-percurso-niveis-2-3.js';
+  await import(f);
+  const lista = window['MODULOS_NIVEL_' + nivel] || [];
+  return lista.map(m => Object.assign({}, m, { id: nivel + '-' + m.ordem, publicado: true }))
+              .sort((a,b) => (a.ordem||0) - (b.ordem||0));
+}
 let ALUNO = null, MODULOS = [], PROGRESSO = {}, RECURSOS = [], TESTES = [];
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
@@ -165,35 +182,28 @@ async function arrancar(){
     return;
   }
 
-  document.getElementById('subcab').innerHTML = ALUNO.nivel
-    ? '<span class="selo-nivel">Nível ' + esc(ALUNO.nivel) + '</span>'
+  NIVEL = nivelEmEstudo(ALUNO.nivel);
+  document.getElementById('subcab').innerHTML = NIVEL
+    ? '<span class="selo-nivel">A estudar o Nível ' + esc(NIVEL) + '</span>'
     : '<span class="selo-nivel">Percurso a começar</span>';
   document.getElementById('barraAbas').classList.remove('hidden');
 
-  if (!ALUNO.nivel){
+  if (!NIVEL){
     palco().innerHTML = `<div class="card"><h3>Ainda não tens nível atribuído</h3><p class="nota">Assim que a escola registar o teu nível, os módulos aparecem aqui.</p></div>`;
     return;
   }
 
-  try {
-    const [mods, prog] = await Promise.all([
-      getDocs(query(collection(db, 'tenants', TENANT, 'reikiModules'), where('nivel', '==', String(ALUNO.nivel)))),
-      getDocs(query(collection(db, 'tenants', TENANT, 'reikiProgress'), where('codigo', '==', CODIGO)))
-    ]);
-    MODULOS = [];
-    mods.forEach(d => { const m = { id: d.id, ...d.data() }; if (m.publicado) MODULOS.push(m); });
-    MODULOS.sort((a,b) => (a.ordem||0) - (b.ordem||0));
-    prog.forEach(d => { PROGRESSO[d.data().moduloId] = d.data(); });
-  } catch(e){ console.warn('percurso indisponível', e); }
+  try { MODULOS = await carregarModulos(NIVEL); }
+  catch(e){ console.warn('módulos indisponíveis', e); MODULOS = []; }
 
-  if (!Object.keys(PROGRESSO).length && MODULOS.length){
-    await Promise.all(MODULOS.map(async m => {
-      try {
-        const d = await getDoc(doc(db, 'tenants', TENANT, 'reikiProgress', CODIGO + '_' + m.id));
-        if (d.exists()) PROGRESSO[m.id] = d.data();
-      } catch(e){}
-    }));
-  }
+  /* O progresso fica na conversa privada do aluno — é onde a sala de
+     estudo tem licença para escrever. */
+  try {
+    const t = await getDoc(doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO));
+    const p = (t.exists() && t.data().percurso) || {};
+    PROGRESSO = {};
+    MODULOS.forEach(m => { if (p[m.id]) PROGRESSO[m.id] = p[m.id]; });
+  } catch(e){ console.warn('progresso indisponível', e); }
 
   try {
     const snap = await getDocs(collection(db, 'tenants', TENANT, 'reikiLibrary'));
@@ -216,6 +226,9 @@ async function arrancar(){
   desenharLista();
 }
 
+window.voltarSala = function(){
+  location.href = 'reiki-biblioteca.html?t=' + encodeURIComponent(TENANT) + '&c=' + encodeURIComponent(CODIGO);
+};
 window.mudarAba = function(qual){
   ['Percurso','Biblioteca','Testes','Poemas'].forEach(nome => {
     document.getElementById('aba'+nome)?.classList.toggle('on', qual === nome.toLowerCase());
@@ -368,7 +381,7 @@ function desenharBiblioteca(){
 window.abrirRecursoTexto = function(id){
   RECURSO_ABERTO = RECURSOS.find(r => r.id === id);
   if (!RECURSO_ABERTO) return;
-  // A imagem real, colada pela Mestra, tem sempre prioridade sobre o
+  // A imagem real, colada pelo Mestre, tem sempre prioridade sobre o
   // esquema simplificado que a app desenha por defeito.
   const imagem = RECURSO_ABERTO.imagemUrl
     ? `<div style="text-align:center;margin:14px 0;"><img src="${esc(RECURSO_ABERTO.imagemUrl)}" style="max-width:100%;border-radius:10px;border:1px solid var(--linha);" onerror="this.parentElement.style.display='none'"></div>`
@@ -410,10 +423,10 @@ function desenharLista(){
 
   const blocoFeito = tudoFeito
     ? `<div class="card aviso">
-        <strong>🎉 Parabéns — concluíste o percurso do Nível ${esc(ALUNO.nivel)}.</strong>
+        <strong>🎉 Parabéns — concluíste o percurso do Nível ${esc(NIVEL)}.</strong>
         <p style="margin-top:6px;">Antes do teste final, vale a pena rever com calma o que já leste — usa o Treino livre acima quantas vezes quiseres, até te sentires seguro.</p>
-        <p style="margin-top:6px;">Quando te sentires à vontade, faz o teste final na aba Testes. Se passares, o teu certificado fica pronto ali mesmo, para descarregares.</p>
-        <button class="principal" onclick="mudarAba('testes')">Ir para os Testes</button>
+        <p style="margin-top:6px;">Quando te sentires à vontade, o teste final já está aberto na tua sala de estudo. A subida de nível e o certificado são dados pelo teu Mestre.</p>
+        <button class="principal" onclick="voltarSala()">Ir para a sala de estudo</button>
       </div>`
     : '';
 
@@ -471,7 +484,7 @@ window.descarregarCertificado = async function(nivel, btn){
     escreverCampoCert(pdf, hoje, L.data);
     pdf.save('Certificado-Reiki-Nivel-' + nivel + '.pdf');
   } catch(e){
-    alert('Não consegui gerar o certificado: ' + e.message + '\n\nFala com a tua Mestra — ela consegue emiti-lo do lado dela.');
+    alert('Não consegui gerar o certificado: ' + e.message + '\n\nFala com o teu Mestre — ele consegue emiti-lo do lado dele.');
   }
   btn.disabled = false; btn.textContent = antes;
 };
@@ -536,11 +549,11 @@ window.entregarTeste = async function(){
       <h3 style="color:var(--bronze);">${pct}%</h3>
       <p style="margin-top:8px;">${aprovado
         ? '🎉 Passaste! Parabéns pelo teu percurso até aqui.'
-        : 'Ficaste abaixo do mínimo. Revê o manual e o Treino livre, e fala com a tua Mestra — podes repetir.'}</p>
+        : 'Ficaste abaixo do mínimo. Revê o manual e o Treino livre, e fala com o teu Mestre — podes repetir.'}</p>
     </div>
     ${aprovado ? `<div class="card" style="text-align:center;">
       <h4>🎓 O teu certificado está pronto</h4>
-      <p class="nota" style="margin-top:6px;">Descarrega e guarda. Se precisares de outra via mais tarde, a tua Mestra também o pode emitir.</p>
+      <p class="nota" style="margin-top:6px;">Descarrega e guarda. Se precisares de outra via mais tarde, o teu Mestre também o pode emitir.</p>
       <button class="principal" onclick="descarregarCertificado('${t.nivel}', this)">Descarregar certificado (PDF)</button>
     </div>` : ''}
     <button class="leve" style="width:100%;" onclick="mudarAba('testes')">← Voltar aos testes</button>`;
@@ -634,11 +647,12 @@ window.responder = function(i, oi){ RESPOSTAS[i] = oi; desenharModulo(); };
 
 async function gravar(dados){
   const id = CODIGO + '_' + ABERTO.id;
-  const base = { codigo: CODIGO, moduloId: ABERTO.id, nivel: String(ALUNO.nivel),
+  const base = { codigo: CODIGO, moduloId: ABERTO.id, nivel: String(NIVEL),
     alunoNome: ALUNO.nome || '', moduloTitulo: ABERTO.titulo || '', actualizadoEm: new Date().toISOString() };
   const junto = Object.assign({}, PROGRESSO[ABERTO.id] || {}, base, dados);
   PROGRESSO[ABERTO.id] = junto;
-  try { await setDoc(doc(db, 'tenants', TENANT, 'reikiProgress', id), junto, { merge: true }); }
+  try { await setDoc(doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO),
+    { codigo: CODIGO, alunoNome: ALUNO.nome || '', percurso: { [ABERTO.id]: junto } }, { merge: true }); }
   catch(e){ console.warn('não consegui gravar', e); }
 }
 

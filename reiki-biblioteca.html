@@ -263,8 +263,24 @@ async function carregarDados(){
       const d = s.data();
       if (Array.isArray(d.resultados) && d.resultados.length) C.resultados = d.resultados;
       porLer = (d.ultimaDe === 'mestre' && d.lidoAluno === false) ? 1 : 0;
+      C.percurso = d.percurso || {};
+      C.vistos = d.vistos || {};
     }
   } catch(e){}
+
+  /* Módulos do percurso do nível em estudo: quantos há e quantos feitos.
+     O teste final desse nível só abre com todos feitos. */
+  C.modTotal = 0; C.modFeitos = 0;
+  if (emEstudo){
+    try {
+      window.firebaseConfig = firebaseConfig;
+      await import(emEstudo === '1' ? './reiki-percurso-nivel1.js' : './reiki-percurso-niveis-2-3.js');
+      const lista = window['MODULOS_NIVEL_' + emEstudo] || [];
+      const p = C.percurso || {};
+      C.modTotal = lista.length;
+      C.modFeitos = lista.filter(m => (p[emEstudo + '-' + m.ordem] || {}).concluido).length;
+    } catch(e){ console.warn('percurso indisponível', e); }
+  }
 }
 
 const ABAS = [
@@ -326,6 +342,16 @@ function verInicio(){
       + '<strong>✉️ O teu Mestre deixou-te uma mensagem</strong><br>'
       + '<button class="abrir" onclick="__mostrar(\'mensagens\')">Ler agora</button></div>';
   }
+  if (C.modTotal){
+    const pm = Math.round(C.modFeitos / C.modTotal * 100);
+    h += '<div class="cartao" style="text-align:center;">'
+      + '<strong>📖 Estudo passo a passo</strong>'
+      + '<p style="margin:6px 0;color:var(--suave);font-size:.9rem;">' + C.modFeitos + ' de ' + C.modTotal
+      + ' módulos feitos (' + pm + '%). Em cada módulo: ler, praticar e responder.</p>'
+      + '<a class="abrir" href="reiki-percurso.html?t=' + encodeURIComponent(C.tenant)
+      + '&c=' + encodeURIComponent(C.codigo) + '">'
+      + (C.modFeitos === 0 ? 'Começar' : (C.modFeitos === C.modTotal ? 'Rever os módulos' : 'Continuar')) + '</a></div>';
+  }
   h += '<h2>Onde continuar</h2><div class="cartao">'
     + '<button class="botao" onclick="__mostrar(\'biblioteca\')">📚 Materiais (' + recursos.length + ')</button>'
     + '<button class="botao" onclick="__mostrar(\'testes\')">📝 Testes</button>'
@@ -358,13 +384,29 @@ function ordenar(lista, campo){
   });
 }
 
+/* Materiais de apoio que contam para o teste final: os do nível em
+   estudo, sem os extras pagos. */
+function materiaisObrigatorios(){
+  return (C.recursos || []).filter(r => String(r.nivel || '0') === String(C.emEstudo) && !r.pago);
+}
+function materiaisPorVer(){
+  const v = C.vistos || {};
+  return materiaisObrigatorios().filter(r => !v[r.id]);
+}
+
 function htmlMaterial(r){
+  const conta = String(r.nivel || '0') === String(C.emEstudo) && !r.pago;
+  const visto = (C.vistos || {})[r.id];
+  const marca = !conta ? ''
+    : (visto ? '<p class="etiqueta">✓ Visto até ao fim</p>'
+             : '<button class="botao" data-visto="' + esc(r.id) + '" style="margin-top:8px;">✓ Já vi até ao fim</button>');
   return '<div class="cartao"><div class="recurso">'
     + '<div class="icone">' + (ICONES[r.tipo] || '📄') + '</div><div>'
     + '<strong>' + esc(r.titulo || 'Material') + '</strong>'
     + (r.pago ? ' <span class="etiqueta mau">extra</span>' : '')
     + (r.descricao ? '<p>' + esc(r.descricao) + '</p>' : '')
     + (r.url ? '<a class="abrir" href="' + esc(r.url) + '" target="_blank" rel="noopener">Abrir</a>' : '')
+    + marca
     + '</div></div></div>';
 }
 
@@ -419,6 +461,17 @@ function verBiblioteca(){
     }
   }
   alvo.innerHTML = h;
+  alvo.querySelectorAll('button[data-visto]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.visto;
+    C.vistos = C.vistos || {};
+    C.vistos[id] = true;
+    b.disabled = true;
+    try {
+      await setDoc(doc(db, 'tenants', C.tenant, 'reikiThreads', C.codigo),
+        { codigo: C.codigo, alunoNome: C.aluno.nome || '', vistos: { [id]: true } }, { merge: true });
+    } catch(e){ delete C.vistos[id]; aviso('Não consegui guardar. Tenta outra vez.'); }
+    verBiblioteca();
+  });
 }
 
 function verTestes(){
@@ -441,6 +494,27 @@ function verTestes(){
     const r = resultados.filter(x => x.testeId === t.id)
                         .sort((a,b) => String(b.quando||'').localeCompare(String(a.quando||'')))[0];
     const passou = r && r.aprovado;
+    // O teste do nível em estudo espera pelos módulos do percurso.
+    // O teste do nível em estudo espera pelos módulos do percurso e
+    // por todos os materiais de apoio vistos até ao fim.
+    const doNivel = String(t.nivel || '0') === String(emEstudo);
+    const faltaModulos = doNivel && C.modTotal && C.modFeitos < C.modTotal;
+    const porVer = doNivel ? materiaisPorVer() : [];
+    if (!passou && (faltaModulos || porVer.length)){
+      const totalMat = materiaisObrigatorios().length;
+      h += '<div class="cartao"><div class="recurso"><div class="icone">🔒</div><div style="flex:1;">'
+        + '<strong>' + esc(t.titulo || 'Teste') + '</strong>'
+        + '<p>Abre quando terminares:</p>'
+        + (C.modTotal ? '<p>' + (faltaModulos ? '◻️' : '✅') + ' Módulos do Estudo passo a passo ('
+            + C.modFeitos + ' de ' + C.modTotal + ')</p>' : '')
+        + (totalMat ? '<p>' + (porVer.length ? '◻️' : '✅') + ' Materiais de apoio vistos até ao fim ('
+            + (totalMat - porVer.length) + ' de ' + totalMat + ')</p>' : '')
+        + (faltaModulos ? '<a class="abrir" href="reiki-percurso.html?t=' + encodeURIComponent(C.tenant)
+            + '&c=' + encodeURIComponent(C.codigo) + '">Ir para os módulos</a>'
+          : '<button class="abrir" onclick="__mostrar(\'biblioteca\')">Ir para os materiais</button>')
+        + '</div></div></div>';
+      continue;
+    }
     h += '<div class="cartao' + (passou ? ' fechado' : '') + '"><div class="recurso">'
       + '<div class="icone">' + (passou ? '✅' : '📝') + '</div><div style="flex:1;">'
       + '<strong>' + esc(t.titulo || 'Teste') + '</strong>'

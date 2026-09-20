@@ -433,7 +433,7 @@ const MODULOS_NIVEL_1 = [
           'Para energizar a água, a comida, um objecto teu',
           'Como protecção, antes de entrares num ambiente pesado'
         ]
-      }
+      },
           { tipo: 'destaque', conteudo: 'Exemplo de uso: chegaste a casa depois de um dia difícil e sentes o corpo pesado. Antes de mais nada, desenha o Cho Ku Rei nas duas palmas, diz o mantra três vezes, e pousa as mãos no peito. Não precisas de fazer o autotratamento completo — só isto já muda o ambiente à tua volta e dentro de ti.' },
     ],
     praticar: {
