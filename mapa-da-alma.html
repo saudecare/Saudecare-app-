@@ -57,6 +57,40 @@
 </style>
 </head>
 <body>
+
+<!-- Quando a página abre dentro do Facebook, do Instagram ou do WhatsApp,
+     os links e os descarregamentos falham. Damos um caminho para o
+     navegador do telemóvel. -->
+<div id="avisoAppBrowser" style="display:none;background:#2d1b4e;color:#f0d878;padding:12px 14px;font:600 14px/1.4 -apple-system,Roboto,sans-serif;text-align:center;">
+  Estás a ver isto dentro de outra aplicação. Para funcionar bem, abre no teu navegador.
+  <div style="margin-top:8px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+    <a id="abrirNoNavegador" href="#" style="background:#f0d878;color:#2d1b4e;padding:8px 14px;border-radius:999px;text-decoration:none;">Abrir no navegador</a>
+    <button id="copiarEndereco" style="background:none;border:1px solid #f0d878;color:#f0d878;padding:8px 14px;border-radius:999px;">Copiar link</button>
+  </div>
+</div>
+<script>
+(function(){
+  var ua = navigator.userAgent || '';
+  var dentro = /FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|WhatsApp|WebView|; wv\)/i.test(ua);
+  if (!dentro) return;
+  var url = location.href;
+  var caixa = document.getElementById('avisoAppBrowser');
+  caixa.style.display = 'block';
+  var ir = document.getElementById('abrirNoNavegador');
+  if (/Android/i.test(ua)){
+    ir.href = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;action=android.intent.action.VIEW;end';
+  } else {
+    ir.href = url; ir.target = '_blank'; ir.rel = 'noopener';
+  }
+  document.getElementById('copiarEndereco').onclick = function(){
+    var b = this;
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+      .then(function(){ b.textContent = 'Link copiado ✓'; })
+      .catch(function(){ b.textContent = url; });
+  };
+})();
+</script>
+
 <div class="wrap" id="app">
   <div class="hero">
     <div class="stars">✦ ✧ ✦</div>
