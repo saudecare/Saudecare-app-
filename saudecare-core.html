@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-13-10';
+const APP_VERSION = '2026-09-13-12';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -8763,9 +8763,21 @@ async function renderMapaAlma(main){
   const catBtn = (id) => `<button class="${__mapaAlmaPedidosCat===id?'primary':'ghost'}" onclick="setMapaAlmaPedidosCat('${id}')" style="margin:2px;font-size:12.5px;padding:8px 10px;">${catLabels[id]}</button>`;
 
   let bodyHtml = '';
+  const blocoInterno = `
+    <div class="card" style="margin-bottom:12px;">
+      <h3 style="margin:0;">🔮 Fazer um mapa agora</h3>
+      <p class="muted" style="margin-top:6px;">Para clientes que atende presencialmente
+      ou por telefone, e que não passam pela página pública. Preenche os dados do
+      cliente e o mapa sai completo de imediato, sem ecrã de pagamento.</p>
+      <button class="primary" style="margin-top:10px;"
+        onclick="window.open('${publicLink}?interno=1','_blank')">➕ Novo mapa para cliente</button>
+      <p class="muted" style="margin-top:8px;font-size:.82rem;">O pedido fica registado
+      aqui em <b>Pagos</b>, marcado como presencial, e pode reabrir o mapa quando quiser.</p>
+    </div>`;
+
   if (__mapaAlmaTab === 'pedidos'){
     const lista = categorias[__mapaAlmaPedidosCat] || [];
-    bodyHtml = `
+    bodyHtml = blocoInterno + `
     <div class="card">
       <div class="row" style="flex-wrap:wrap;">${Object.keys(catLabels).map(catBtn).join('')}</div>
     </div>
@@ -10201,14 +10213,18 @@ async function renderReikiAlunos(main){
   const m = main || document.getElementById('mainView');
   m.innerHTML = '<p class="muted">A carregar alunos…</p>';
   try {
-    const [alunosSnap, configSnap, bibSnap, turmasSnap, testesSnap, resSnap] = await Promise.all([
+    const [alunosSnap, configSnap, bibSnap, turmasSnap, testesSnap, resSnap, convSnap] = await Promise.all([
       getDocs(collection(db, 'tenants', tenantId, 'reikiStudents')),
       getDocs(collection(db, 'tenants', tenantId, 'reikiConfig')),
       getDocs(collection(db, 'tenants', tenantId, 'reikiLibrary')),
       getDocs(collection(db, 'tenants', tenantId, 'reikiClasses')),
       getDocs(collection(db, 'tenants', tenantId, 'reikiQuizzes')),
-      getDocs(collection(db, 'tenants', tenantId, 'reikiQuizResults'))
+      getDocs(collection(db, 'tenants', tenantId, 'reikiQuizResults')),
+      getDocs(collection(db, 'tenants', tenantId, 'reikiThreads'))
     ]);
+    __reikiConversas = [];
+    convSnap.forEach(d => __reikiConversas.push({ id: d.id, ...d.data() }));
+    __reikiConversas.sort((a,b) => (b.atualizadoEm?.toMillis?.()||0) - (a.atualizadoEm?.toMillis?.()||0));
     __reikiTestes = [];
     testesSnap.forEach(d => __reikiTestes.push({ id: d.id, ...d.data() }));
     __reikiResultados = [];
@@ -10249,12 +10265,14 @@ function reikiRenderEcra(main){
       <button class="${__reikiTab==='biblioteca'?'primary':'ghost'}" onclick="reikiMudarTab('biblioteca')">Biblioteca</button>
       <button class="${__reikiTab==='turmas'?'primary':'ghost'}" onclick="reikiMudarTab('turmas')">Turmas</button>
       <button class="${__reikiTab==='testes'?'primary':'ghost'}" onclick="reikiMudarTab('testes')">Testes</button>
+      <button class="${__reikiTab==='mensagens'?'primary':'ghost'}" onclick="reikiMudarTab('mensagens')">Mensagens</button>
     </div>
     <div id="reikiConteudo"></div>`;
   if (__reikiTab === 'alunos') reikiRenderListaAlunos();
   else if (__reikiTab === 'biblioteca') reikiRenderBiblioteca();
   else if (__reikiTab === 'turmas') reikiRenderTurmas();
   else if (__reikiTab === 'testes') reikiRenderTestes();
+  else if (__reikiTab === 'mensagens') reikiRenderMensagens();
   else reikiRenderNiveis();
 }
 
@@ -10286,6 +10304,141 @@ function reikiConfirmar(titulo, texto, rotuloSim){
     document.body.appendChild(fundo);
   });
 }
+
+/* ─── Mensagens da escola ────────────────────────────────────────────
+   Conversas privadas com cada aluno, e as salas de grupo.
+     tenants/{t}/reikiThreads/{codigo}/mensagens/{id}
+     tenants/{t}/reikiChat/{sala}/mensagens/{id}
+   ────────────────────────────────────────────────────────────────── */
+
+let __reikiConversas = [];
+let __reikiMsgAberta = null;
+let __reikiMsgEscuta = null;
+
+function reikiPararEscuta(){
+  if (__reikiMsgEscuta){ try{ __reikiMsgEscuta(); }catch(e){} __reikiMsgEscuta = null; }
+}
+
+function reikiRenderMensagens(){
+  const alvo = document.getElementById('reikiConteudo');
+  if (!alvo) return;
+
+  const salas = [{ id:'geral', nome:'🌍 Toda a escola' }]
+    .concat(REIKI_NIVEIS.map(n => ({ id:'nivel-'+n.id, nome:'💬 '+n.certLabel })));
+
+  const conversas = __reikiConversas.length === 0
+    ? '<p class="muted">Ainda nenhum aluno escreveu. Assim que escreverem, a conversa aparece aqui.</p>'
+    : __reikiConversas.map(c => `
+        <div class="appt-item" style="cursor:pointer;" onclick="reikiAbrirConversa('${c.id}','${escapeAttrJs(c.alunoNome||'')}')">
+          <strong>${escapeHtml(c.alunoNome || c.codigo)}</strong>
+          ${c.ultimaDe === 'aluno' ? '<span class="badge" style="margin-left:6px;">novo</span>' : ''}
+          <div class="muted" style="margin-top:3px;font-size:.86rem;">${escapeHtml(c.ultima || '')}</div>
+        </div>`).join('');
+
+  alvo.innerHTML = `
+    <div class="card" style="margin-bottom:12px;">
+      <p class="muted">Aqui falas com cada aluno em privado, e escreves nas salas de
+      grupo da escola. Os alunos veem isto na Sala de Estudo.</p>
+    </div>
+    <div class="card" style="margin-bottom:12px;">
+      <h3 style="margin:0 0 8px;">Salas de grupo</h3>
+      <div class="row" style="flex-wrap:wrap;gap:6px;">
+        ${salas.map(s => `<button class="ghost" onclick="reikiAbrirSala('${s.id}','${escapeAttrJs(s.nome)}')">${escapeHtml(s.nome)}</button>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 8px;">Conversas com alunos</h3>
+      ${conversas}
+    </div>`;
+}
+
+function reikiCaixaHtml(titulo, aviso){
+  return `
+    <div class="card">
+      ${aviso ? `<p class="muted" style="margin:0 0 10px;font-size:.86rem;">${escapeHtml(aviso)}</p>` : ''}
+      <div id="reikiMsgCaixa" style="max-height:52vh;overflow-y:auto;padding:2px;">
+        <p class="muted">A abrir…</p>
+      </div>
+      <div class="row" style="gap:8px;margin-top:12px;align-items:flex-end;">
+        <textarea id="reikiMsgTexto" rows="2" placeholder="Escreve aqui…" style="flex:1;"></textarea>
+        <button class="primary" id="reikiMsgEnviar">Enviar</button>
+      </div>
+    </div>`;
+}
+
+function reikiDesenharMensagens(lista, souEu){
+  const caixa = document.getElementById('reikiMsgCaixa');
+  if (!caixa) return;
+  if (!lista.length){
+    caixa.innerHTML = '<p class="muted">Ainda sem mensagens.</p>';
+    return;
+  }
+  caixa.innerHTML = lista.map(x => {
+    const meu = souEu(x);
+    return `<div style="margin-bottom:11px;text-align:${meu?'right':'left'};">
+      <div class="muted" style="font-size:.76rem;margin-bottom:2px;">${escapeHtml(x.de === 'mestre' ? 'Eu' : (x.nome || 'Aluno'))}</div>
+      <div style="display:inline-block;padding:9px 13px;border-radius:13px;max-width:88%;
+        white-space:pre-wrap;word-break:break-word;text-align:left;
+        background:${meu?'#b8893b':'#f2ebdd'};color:${meu?'#fff':'inherit'};">${escapeHtml(x.texto || '')}</div>
+    </div>`;
+  }).join('');
+  caixa.scrollTop = caixa.scrollHeight;
+}
+
+window.reikiAbrirConversa = function(codigo, nome){
+  reikiPararEscuta();
+  __reikiMsgAberta = { tipo:'privada', codigo };
+  showPatientOverlay('✉️ ' + (nome || codigo),
+    reikiCaixaHtml(nome, 'Só tu e este aluno leem esta conversa.'));
+
+  const ref = collection(db, 'tenants', tenantId, 'reikiThreads', codigo, 'mensagens');
+  __reikiMsgEscuta = onSnapshot(query(ref, orderBy('criadoEm')), snap => {
+    const m = []; snap.forEach(d => m.push(d.data()));
+    reikiDesenharMensagens(m, x => x.de === 'mestre');
+  }, () => {
+    const c = document.getElementById('reikiMsgCaixa');
+    if (c) c.innerHTML = '<p class="muted">Não consegui abrir esta conversa.</p>';
+  });
+
+  document.getElementById('reikiMsgEnviar').onclick = async () => {
+    const ta = document.getElementById('reikiMsgTexto');
+    const texto = (ta.value || '').trim();
+    if (!texto) return;
+    ta.value = '';
+    try {
+      await addDoc(ref, { de:'mestre', texto, criadoEm: serverTimestamp() });
+      await setDoc(doc(db, 'tenants', tenantId, 'reikiThreads', codigo),
+        { ultima: texto.slice(0,120), ultimaDe: 'mestre', atualizadoEm: serverTimestamp() },
+        { merge: true });
+    } catch(e){ toast('Não consegui enviar: ' + (e.message || e), true); ta.value = texto; }
+  };
+};
+
+window.reikiAbrirSala = function(sala, nome){
+  reikiPararEscuta();
+  __reikiMsgAberta = { tipo:'sala', sala };
+  showPatientOverlay(nome || 'Sala',
+    reikiCaixaHtml(nome, 'Todos os alunos desta sala leem o que escreveres.'));
+
+  const ref = collection(db, 'tenants', tenantId, 'reikiChat', sala, 'mensagens');
+  __reikiMsgEscuta = onSnapshot(query(ref, orderBy('criadoEm')), snap => {
+    const m = []; snap.forEach(d => m.push({ id: d.id, ...d.data() }));
+    reikiDesenharMensagens(m.slice(-150), x => x.de === 'mestre');
+  }, () => {
+    const c = document.getElementById('reikiMsgCaixa');
+    if (c) c.innerHTML = '<p class="muted">Não consegui abrir esta sala.</p>';
+  });
+
+  document.getElementById('reikiMsgEnviar').onclick = async () => {
+    const ta = document.getElementById('reikiMsgTexto');
+    const texto = (ta.value || '').trim();
+    if (!texto) return;
+    ta.value = '';
+    try {
+      await addDoc(ref, { de:'mestre', nome:'Mestra', texto, criadoEm: serverTimestamp() });
+    } catch(e){ toast('Não consegui enviar: ' + (e.message || e), true); ta.value = texto; }
+  };
+};
 
 /* ─── Testes de avaliação ────────────────────────────────────────────
    Um teste por nível. O aluno responde a partir do seu link pessoal, e

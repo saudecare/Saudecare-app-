@@ -1,0 +1,348 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // — Helpers
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isPlatformAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid));
+    }
+
+    function tokenTenantId() {
+      return request.auth.token.tenantId;
+    }
+
+    function isTenantMember(tenantId) {
+      return isSignedIn() && tokenTenantId() == tenantId;
+    }
+
+    function isTenantOwner(tenantId) {
+      return isTenantMember(tenantId) && request.auth.token.role == "owner";
+    }
+
+    function tenantIsActive(tenantId) {
+      let t = get(/databases/$(database)/documents/tenants/$(tenantId)).data;
+      return t.status == "active" ||
+        (t.status == "trial" && (!("trialEndsAt" in t) || request.time < t.trialEndsAt));
+    }
+
+    match /platform_admins/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /settings/{settingId} {
+      allow read: if isSignedIn() || settingId == 'platformConfig';
+      allow write: if isPlatformAdmin();
+    }
+
+    match /tenants/{tenantId} {
+      allow read: if isTenantMember(tenantId) || isPlatformAdmin();
+
+      allow create: if isPlatformAdmin() ||
+        (isSignedIn() &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.status == "pending_activation");
+
+      allow update: if isTenantOwner(tenantId) &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.plan == resource.data.plan
+        || isPlatformAdmin();
+
+      allow delete: if isPlatformAdmin();
+
+      match /staff/{uid} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || isPlatformAdmin();
+      }
+
+      match /staffInvites/{inviteId} {
+        allow read: if isTenantOwner(tenantId) || isPlatformAdmin();
+        allow create, delete: if isTenantOwner(tenantId) || isPlatformAdmin();
+        allow update: if false;
+      }
+
+      match /services/{serviceId} {
+        allow read: if true;
+        allow write: if isTenantOwner(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /serviceCategories/{categoryId} {
+        allow read: if true;
+        allow write: if isTenantOwner(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /patients/{patientId} {
+        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow delete: if isTenantMember(tenantId);
+
+        match /reports/{reportId} {
+          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow update, delete: if false;
+        }
+
+        match /formResponses/{responseId} {
+          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow update, delete: if false;
+        }
+
+        match /messages/{messageId} {
+          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow update: if isTenantMember(tenantId) && tenantIsActive(tenantId) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readByProfessional', 'readByPatient']);
+          allow delete: if false;
+        }
+
+        match /checkins/{checkinId} {
+          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow update, delete: if false;
+        }
+
+        match /healingProtocols/{protocolId} {
+          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow update, delete: if false;
+        }
+      }
+
+      match /mapaAlmaLeads/{leadId} {
+        allow create: if request.resource.data.nome is string &&
+          request.resource.data.dataNascimento is string &&
+          request.resource.data.paymentStatus == 'unpaid';
+        allow read: if isTenantMember(tenantId) || isPlatformAdmin();
+        allow update: if isTenantOwner(tenantId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentStatus','paidAt']);
+      }
+
+      match /marketingContacts/{contactId} {
+        allow create, update: if request.resource.data.nome is string &&
+          request.resource.data.contacto is string;
+        allow read: if isTenantMember(tenantId) || isPlatformAdmin();
+        allow delete: if isTenantOwner(tenantId) || isPlatformAdmin();
+      }
+
+      match /cartomanciaLeads/{leituraId} {
+        allow create: if request.resource.data.nome is string &&
+                        request.resource.data.contacto is string;
+        allow read, delete: if isTenantMember(tenantId) || isPlatformAdmin();
+      }
+
+      // Triagem de Baixa Vibração — Pêndulo Hebraico
+      match /triagemBaixaVibracao/{triagemId} {
+        allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow update, delete: if false;
+      }
+
+      // Escola de Reiki — configuração (modelo de certificado, níveis)
+      match /reikiConfig/{configId} {
+        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+      }
+
+      // Escola de Reiki — alunos e respectivos certificados
+      match /reikiStudents/{studentId} {
+        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow delete: if isTenantMember(tenantId);
+
+        match /certificados/{certId} {
+          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow update, delete: if false;
+        }
+      }
+
+      // Escola de Reiki — biblioteca de materiais.
+      // Leitura aberta porque o aluno não tem conta: são títulos e links
+      // do Drive, e é a partilha do próprio Drive que protege o ficheiro.
+      match /reikiLibrary/{recursoId} {
+        allow read: if true;
+        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+      }
+
+      // Escola de Reiki — turmas, com os links de comunidade
+      // (grupo de WhatsApp e sala Jitsi). São links externos.
+      match /reikiClasses/{turmaId} {
+        allow read: if true;
+        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+      }
+
+      // Escola de Reiki — testes de avaliação
+      match /reikiQuizzes/{testeId} {
+        allow read: if true;
+        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+      }
+
+      // Escola de Reiki — entregas dos alunos.
+      // Só se cria, nunca se altera nem se apaga: uma nota entregue fica
+      // como ficou. Ler, só a escola.
+      match /reikiQuizResults/{resultadoId} {
+        allow create: if request.resource.data.codigo is string &&
+                        request.resource.data.testeId is string;
+        allow read: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow update, delete: if false;
+      }
+
+      // Escola de Reiki — conversa privada entre a escola e cada aluno.
+      // O documento tem o nome do código do aluno, e a lista de conversas
+      // só é acessível a quem está autenticado na escola: um aluno que
+      // saiba o seu código chega às suas mensagens e a mais nenhumas.
+      match /reikiThreads/{codigo} {
+        allow get: if true;
+        allow list: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow write: if true;
+
+        match /mensagens/{msgId} {
+          allow read: if true;
+          allow create: if request.resource.data.texto is string &&
+                          request.resource.data.texto.size() > 0 &&
+                          request.resource.data.texto.size() < 4000;
+          allow update: if false;
+          allow delete: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        }
+      }
+
+      // Escola de Reiki — salas de conversa em grupo (geral e por nível).
+      // São grupos de turma: quem tiver o link da sala de estudo lê e
+      // escreve. Apagar mensagens é só da escola.
+      match /reikiChat/{sala} {
+        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+
+        match /mensagens/{msgId} {
+          allow read: if true;
+          allow create: if request.resource.data.texto is string &&
+                          request.resource.data.texto.size() > 0 &&
+                          request.resource.data.texto.size() < 4000 &&
+                          request.resource.data.nome is string;
+          allow update: if false;
+          allow delete: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        }
+      }
+
+      // Escola de Reiki — cartão de acesso do aluno.
+      // "get" sim, "list" não: só abre quem souber o código exacto,
+      // e ninguém consegue percorrer a lista de alunos.
+      match /reikiAccess/{codigo} {
+        allow get: if true;
+        allow list: if false;
+        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /protocols/{protocolId} {
+        allow read, write: if (isTenantMember(tenantId) && tenantIsActive(tenantId)) || isPlatformAdmin();
+      }
+
+      match /forms/{formId} {
+        allow read: if true;
+        allow write: if (isTenantMember(tenantId) && tenantIsActive(tenantId)) || isPlatformAdmin();
+      }
+
+      match /teamMembers/{memberId} {
+        allow read: if true;
+        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /trainings/{trainingId} {
+        allow read: if true;
+        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /testimonials/{testimonialId} {
+        allow read: if true;
+        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /appointments/{appointmentId} {
+        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /waitlist/{waitlistId} {
+        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /knowledgeBase/{entryId} {
+        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /auditLog/{logId} {
+        allow read: if isTenantOwner(tenantId) || isPlatformAdmin();
+        allow create: if isTenantMember(tenantId);
+        allow update, delete: if false;
+      }
+    }
+
+    match /platformProtocolTemplates/{templateId} {
+      allow read, write: if isPlatformAdmin();
+    }
+
+    match /platformFormTemplates/{templateId} {
+      allow read, write: if isPlatformAdmin();
+    }
+
+    match /privateMethodRequests/{requestId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.tenantId == request.auth.token.tenantId;
+      allow read: if isPlatformAdmin() || (isSignedIn() && resource.data.tenantId == request.auth.token.tenantId);
+      allow update, delete: if isPlatformAdmin();
+    }
+
+    match /inviteCodes/{code} {
+      allow read: if false;
+      allow create: if isSignedIn() &&
+        request.resource.data.tenantId == request.auth.token.tenantId &&
+        request.auth.token.role == "owner";
+      allow update, delete: if isSignedIn() &&
+        resource.data.tenantId == request.auth.token.tenantId;
+    }
+
+    match /public_tenant_profiles/{profileId} {
+      allow read: if true;
+      allow write: if isSignedIn() &&
+        request.resource.data.tenantId == request.auth.token.tenantId &&
+        (resource == null || resource.data.tenantId == request.auth.token.tenantId);
+    }
+
+    match /public_booking_requests/{requestId} {
+      allow create: if request.resource.data.tenantId is string &&
+                      request.resource.data.status == "pending_review";
+      allow read, update: if isSignedIn() &&
+        resource.data.tenantId == request.auth.token.tenantId;
+      allow delete: if false;
+    }
+
+    match /public_form_responses/{responseId} {
+      allow create: if request.resource.data.tenantId is string &&
+                      request.resource.data.formId is string &&
+                      request.resource.data.status == "pending_review";
+      allow read, update: if isSignedIn() &&
+        resource.data.tenantId == request.auth.token.tenantId;
+      allow delete: if false;
+    }
+
+    match /public_training_signups/{signupId} {
+      allow create: if request.resource.data.tenantId is string &&
+                      request.resource.data.trainingId is string;
+      allow read, update: if isSignedIn() &&
+        resource.data.tenantId == request.auth.token.tenantId;
+      allow delete: if false;
+    }
+
+    match /platform_support_requests/{requestId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.tenantId == request.auth.token.tenantId;
+      // O subscritor passa a poder ler os próprios pedidos, para ver a
+      // resposta da administração dentro da app. Escrever a resposta
+      // continua a ser só da administração.
+      allow read: if isPlatformAdmin() ||
+        (isSignedIn() && resource.data.tenantId == request.auth.token.tenantId);
+      allow update: if isPlatformAdmin();
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
