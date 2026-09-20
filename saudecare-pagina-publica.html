@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="manifest" id="dynamicManifest" href="manifest.json">
+<link rel="apple-touch-icon" id="appleTouchIcon" href="">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Vindora">
+<title>Vindora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#2f6f5e; --primary-dark:#1f4d40; --bg:#f6f8f7; --card:#fff; --text:#1a2b26; --muted:#6b7d76;
+    --accent:#b3893f; --accent-soft:#f3ead7;
+    --font-display:'Fraunces',Georgia,serif; --font-body:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:var(--font-body);}
+  body{background:var(--bg);color:var(--text);line-height:1.5;}
+  a{color:inherit;}
+  .hero{background:linear-gradient(150deg,var(--primary-dark),var(--primary) 65%);color:#fff;padding:44px 20px 36px;text-align:center;position:relative;overflow:hidden;}
+  .hero::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 82% 8%,rgba(255,255,255,.10),transparent 55%);pointer-events:none;}
+  .hero img.logo{width:76px;height:76px;border-radius:18px;object-fit:cover;margin-bottom:16px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.18);position:relative;}
+  .hero h1{font-family:var(--font-display);font-weight:600;font-size:29px;letter-spacing:-.01em;margin-bottom:9px;position:relative;}
+  .hero p{opacity:.9;font-size:15px;max-width:420px;margin:0 auto;position:relative;}
+  .cta{display:inline-block;background:#fff;color:var(--primary-dark);font-weight:600;padding:14px 30px;
+    border-radius:100px;text-decoration:none;margin-top:22px;font-size:15px;position:relative;box-shadow:0 6px 16px rgba(0,0,0,.14);}
+  .wrap{max-width:560px;margin:0 auto;padding:16px;}
+  section{margin:26px 0;}
+  h2.section-title{font-family:var(--font-display);font-weight:600;font-size:20px;margin-bottom:14px;color:var(--primary-dark);letter-spacing:-.005em;}
+  .card{background:var(--card);border:1px solid rgba(31,77,64,.07);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(20,40,34,.04);}
+  .service-card{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .service-card .price{font-weight:700;color:var(--primary-dark);white-space:nowrap;}
+  .cat-card{cursor:pointer;}
+  .cat-card .cat-head{display:flex;justify-content:space-between;align-items:center;}
+  .cat-card .cat-mod{font-size:12px;color:var(--accent);font-weight:600;}
+  .cat-card .cat-items{margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,.08);}
+  .cat-card .cat-items.hidden{display:none;}
+  .cat-card .chevron{transition:transform .15s;}
+  .cat-card.open .chevron{transform:rotate(180deg);}
+  .muted{color:var(--muted);font-size:13px;}
+  .team-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .team-card{text-align:center;}
+  .team-card img{width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px;background:#e4ede9;border:2px solid var(--accent-soft);}
+  .stars{color:var(--accent);font-size:14px;margin-bottom:4px;}
+  .social-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px;}
+  .social-row a{background:rgba(255,255,255,.16);padding:9px 16px;border-radius:100px;font-size:13px;text-decoration:none;color:#fff;}
+  .contact-row{display:flex;flex-direction:column;gap:6px;font-size:14px;}
+  footer{text-align:center;padding:26px 16px;color:var(--muted);font-size:12px;}
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:14px;}
+  .quick-nav{display:flex;gap:8px;overflow-x:auto;padding:12px 14px;background:#fff;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.06);-webkit-overflow-scrolling:touch;}
+  .quick-nav a{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:8px 15px;border-radius:100px;background:#f2f6f4;color:var(--primary-dark,#1a2b26);text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;transition:background .12s,color .12s;}
+  .quick-nav a:active{background:var(--primary,#2e7d5b);color:#fff;}
+  #servicesSection, #teamSection, #espiritualidadeSection, #trainingsSection, #testimonialsSection, #availabilitySection, #contactSection{scroll-margin-top:60px;}
+  .spirit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .spirit-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;aspect-ratio:1;background:linear-gradient(135deg,#2d1b4e,#1a0f2e);border-radius:14px;text-decoration:none;padding:8px;box-shadow:0 3px 10px rgba(0,0,0,.2);}
+  .spirit-icon{font-size:22px;}
+  .spirit-label{color:#f0d878;font-size:11.5px;font-weight:700;text-align:center;line-height:1.2;}
+  .spirit-tag{color:#c9b8e8;font-size:10px;}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<div class="hero" id="hero">
+  <p class="muted" style="color:#fff;opacity:.8;">A carregar…</p>
+</div>
+
+<nav id="quickNav" class="quick-nav"></nav>
+
+<div class="wrap">
+  <section id="espiritualidadeSection"></section>
+  <section id="aboutSection"></section>
+  <section id="servicesSection"></section>
+  <section id="teamSection"></section>
+  <section id="trainingsSection"></section>
+  <section id="testimonialsSection"></section>
+  <section id="availabilitySection"></section>
+  <section id="contactSection"></section>
+</div>
+
+<div id="livroReclamacoesLink" style="display:none;text-align:center;padding:0 16px;"></div>
+<footer>Powered by Vindora</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, collection, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const params = new URLSearchParams(window.location.search);
+const tenantSlug = params.get('t');
+
+function escapeHtml(str){
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+async function load(){
+  if (!tenantSlug){
+    document.getElementById('hero').innerHTML = '<h1>Ligação inválida</h1>';
+    return;
+  }
+  const profileSnap = await getDoc(doc(db, 'public_tenant_profiles', tenantSlug));
+  if (!profileSnap.exists()){
+    document.getElementById('hero').innerHTML = '<h1>Página não encontrada</h1>';
+    return;
+  }
+  const profile = profileSnap.data();
+  // Se por algum motivo este perfil público ainda não tiver o campo
+  // tenantId gravado (ex: documentos criados antes deste campo existir),
+  // usa o próprio slug do URL como reserva — na grande maioria dos casos
+  // é o mesmo valor, e evita que Serviços/Equipa/Formações/Testemunhos
+  // desapareçam todos de uma vez só por faltar este campo.
+  const tenantId = profile.tenantId || tenantSlug;
+
+  if (profile.branding?.primaryColor){
+    document.documentElement.style.setProperty('--primary', profile.branding.primaryColor);
+  }
+
+  renderHero(profile, tenantSlug);
+  renderAbout(profile);
+
+  // Destaque especial só na página da Hikari Fafe — link para o Mapa da
+  // Alma e para a Cartomancia. Não aparece a mais ninguém (outros
+  // subscritores não têm esta funcionalidade ativa), e cada um só aparece
+  // se a Hikari o deixar visível nas suas definições.
+  if (tenantId === 'hikari-terapias'){
+    const mapaUrl = window.location.href.replace('saudecare-pagina-publica.html', 'mapa-da-alma.html').split('?')[0];
+    const cartoUrl = window.location.href.replace('saudecare-pagina-publica.html', 'cartomancia.html').split('?')[0];
+    const poemasUrl = window.location.href.replace('saudecare-pagina-publica.html', 'poemas-meiji.html').split('?')[0] + '?t=hikari-terapias';
+
+    fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/mapaAlma', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getOverrides', tenantId: 'hikari-terapias' })
+    }).then(r => r.json()).then(data => {
+      if (!data.ok) return;
+
+      const tiles = [];
+      if (data.mapaAlmaVisivel !== false){
+        tiles.push(`<a href="${escapeHtml(mapaUrl)}" class="spirit-tile" target="_blank" rel="noopener">
+          <div class="spirit-icon">✦</div><div class="spirit-label">Mapa da Alma</div><div class="spirit-tag">grátis</div>
+        </a>`);
+      }
+      if (data.cartomanciaVisivel !== false){
+        tiles.push(`<a href="${escapeHtml(cartoUrl)}" class="spirit-tile" target="_blank" rel="noopener">
+          <div class="spirit-icon">🃏</div><div class="spirit-label">Tarot</div><div class="spirit-tag">grátis</div>
+        </a>`);
+      }
+      tiles.push(`<a href="${escapeHtml(poemasUrl)}" class="spirit-tile" target="_blank" rel="noopener">
+        <div class="spirit-icon">🎴</div><div class="spirit-label">Poemas Meiji</div><div class="spirit-tag">grátis</div>
+      </a>`);
+      if (data.limpezaTexto){
+        tiles.push(`<a href="#limpezaDetalhe" class="spirit-tile" onclick="document.getElementById('limpezaDetalhe').classList.toggle('hidden');return false;">
+          <div class="spirit-icon">🛡️</div><div class="spirit-label">Limpeza Energética</div><div class="spirit-tag">${data.limpezaPrecoConsulta ?? 35}€</div>
+        </a>`);
+      }
+      if (!tiles.length) return;
+
+      document.getElementById('espiritualidadeSection').innerHTML = `
+        <h2 class="section-title">✨ Serviços Espirituais</h2>
+        <div class="spirit-grid">${tiles.join('')}</div>
+        ${data.limpezaTexto ? `
+        <div id="limpezaDetalhe" class="card hidden" style="margin-top:10px;background:#1a0f2e;border:1px solid rgba(212,175,55,.4);">
+          <h3 style="color:#f0d878;font-size:16px;margin-bottom:8px;">🛡️ Deteção & Limpeza Energética</h3>
+          <p style="color:#c9b8e8;font-size:13.5px;line-height:1.6;margin-bottom:10px;white-space:pre-wrap;">${escapeHtml(data.limpezaTexto)}</p>
+          <p style="color:#c9b8e8;font-size:12.5px;">Avaliação completa com Pêndulo Hebreu. A limpeza em si varia de caso para caso. À distância ou presencial.</p>
+          ${data.whatsapp ? `<a href="https://wa.me/${data.whatsapp}?text=${encodeURIComponent('Olá! Vi a página e gostava de saber mais sobre a Limpeza Energética.')}" target="_blank" style="display:inline-block;margin-top:10px;background:linear-gradient(90deg,#d4af37,#f0d878);color:#2a1a00;font-weight:700;padding:10px 20px;border-radius:12px;text-decoration:none;font-size:13.5px;">📱 Falar com a Hikari Fafe</a>` : ''}
+        </div>` : ''}
+      `;
+      renderQuickNav();
+    }).catch(()=>{});
+  }
+
+  renderContact(profile);
+  renderAvailability(profile, tenantSlug);
+  applyDynamicManifest(profile);
+
+  // Livro de Reclamações Eletrónico — obrigatório por lei em Portugal
+  // para quem presta serviços a consumidores; link visível na página
+  // inicial, como a lei exige, sempre que o subscritor o tiver configurado.
+  if (profile.legalTexts?.livroReclamacoesUrl){
+    const linkEl = document.getElementById('livroReclamacoesLink');
+    linkEl.style.display = 'block';
+    linkEl.innerHTML =
+      `<a href="${escapeHtml(profile.legalTexts.livroReclamacoesUrl)}" target="_blank" rel="noopener" style="color:var(--muted);font-size:12px;">📕 Livro de Reclamações</a>`;
+  }
+
+  const [categoriesSnap, servicesSnap, teamSnap, trainingsSnap, testimonialsSnap] = await Promise.all([
+    getDocs(collection(db, 'tenants', tenantId, 'serviceCategories')),
+    getDocs(collection(db, 'tenants', tenantId, 'services')),
+    getDocs(collection(db, 'tenants', tenantId, 'teamMembers')),
+    getDocs(collection(db, 'tenants', tenantId, 'trainings')),
+    getDocs(collection(db, 'tenants', tenantId, 'testimonials'))
+  ]);
+
+  renderServices(categoriesSnap, servicesSnap, tenantSlug);
+  renderTeam(teamSnap);
+  renderTrainings(trainingsSnap, tenantSlug);
+  renderTestimonials(testimonialsSnap);
+  renderQuickNav();
+}
+
+function renderQuickNav(){
+  const secoes = [
+    { id:'espiritualidadeSection', label:'Espiritual', icon:'✨' },
+    { id:'servicesSection', label:'Serviços', icon:'🩺' },
+    { id:'teamSection', label:'Equipa', icon:'🙋' },
+    { id:'trainingsSection', label:'Formações', icon:'🎓' },
+    { id:'testimonialsSection', label:'Testemunhos', icon:'⭐' },
+    { id:'availabilitySection', label:'Horários', icon:'🗓️' },
+    { id:'contactSection', label:'Contactos', icon:'📍' }
+  ];
+  const links = secoes
+    .filter(s => document.getElementById(s.id)?.innerHTML.trim())
+    .map(s => `<a href="#${s.id}">${s.icon} ${s.label}</a>`)
+    .join('');
+  const nav = document.getElementById('quickNav');
+  if (links) nav.innerHTML = links; else nav.remove();
+}
+
+// ── "Adicionar ao ecrã principal" com identidade do subscritor ─────────
+// Sem servidor próprio, o manifest.json normal é fixo para toda a app.
+// Aqui construímos um manifest à medida, no próprio browser, assim que
+// sabemos o nome e o logótipo deste subscritor, e trocamos a hiperligação
+// do manifest para essa versão personalizada antes do utilizador poder
+// "instalar" a página. No iPhone/Safari o ícone depende também da tag
+// apple-touch-icon, que também é atualizada aqui.
+function applyDynamicManifest(profile){
+  document.title = profile.businessName || 'Vindora';
+  const logoUrl = profile.branding?.logoUrl || '';
+
+  if (logoUrl){
+    const appleIcon = document.getElementById('appleTouchIcon');
+    if (appleIcon) appleIcon.href = logoUrl;
+  }
+
+  const manifestObj = {
+    name: profile.businessName || 'Vindora',
+    short_name: (profile.businessName || 'Vindora').slice(0, 12),
+    start_url: window.location.href,
+    display: 'standalone',
+    background_color: '#f6f8f7',
+    theme_color: profile.branding?.primaryColor || '#2f6f5e',
+    icons: logoUrl ? [
+      { src: logoUrl, sizes: '192x192', type: 'image/png' },
+      { src: logoUrl, sizes: '512x512', type: 'image/png' }
+    ] : []
+  };
+  const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
+  const manifestLink = document.getElementById('dynamicManifest');
+  if (manifestLink) manifestLink.href = URL.createObjectURL(blob);
+}
+
+function renderHero(profile, slug){
+  const logoHtml = profile.branding?.logoUrl
+    ? `<img class="logo" src="${escapeHtml(profile.branding.logoUrl)}" alt="logo">` : '';
+  const social = profile.social || {};
+  let socialLinks = '';
+  if (social.facebook) socialLinks += `<a href="${escapeHtml(social.facebook)}" target="_blank">Facebook</a>`;
+  if (social.instagram) socialLinks += `<a href="${escapeHtml(social.instagram)}" target="_blank">Instagram</a>`;
+  if (social.whatsapp) socialLinks += `<a href="${escapeHtml(social.whatsapp)}" target="_blank">WhatsApp</a>`;
+  if (social.website) socialLinks += `<a href="${escapeHtml(social.website)}" target="_blank">Website</a>`;
+
+  document.getElementById('hero').innerHTML = `
+    ${logoHtml}
+    <h1>${escapeHtml(profile.businessName || '')}</h1>
+    <p>${escapeHtml(profile.tagline || '')}</p>
+    <a class="cta" href="saudecare-funil-publico.html?t=${encodeURIComponent(slug)}">Marcar Consulta</a>
+    ${socialLinks ? `<div class="social-row">${socialLinks}</div>` : ''}
+  `;
+}
+
+function renderAbout(profile){
+  if (!profile.about) return;
+  document.getElementById('aboutSection').innerHTML = `
+    <h2 class="section-title">Sobre</h2>
+    <div class="card"><p>${escapeHtml(profile.about)}</p></div>
+  `;
+}
+
+function renderServices(categoriesSnap, servicesSnap, slug){
+  if (servicesSnap.empty) return;
+  const services = [];
+  servicesSnap.forEach(d => services.push(d.data()));
+  const modLabel = { presencial: '📍 Presencial', online: '💻 Online', ambos: '📍 Presencial · 💻 Online' };
+
+  let categories = [];
+  categoriesSnap.forEach(d => categories.push({ id: d.id, ...d.data() }));
+
+  // Compatibilidade: serviços antigos sem categoryId (ainda não migrados
+  // no momento em que este perfil foi visto) — agrupa por nome de categoria.
+  if (categories.length === 0){
+    const byName = {};
+    services.forEach(s => { const n = s.category || 'Serviços'; if(!byName[n]) byName[n] = { name:n, icon: s.categoryIcon||'🩺', modalidade:'', id:n }; });
+    categories = Object.values(byName);
+    services.forEach(s => { s.categoryId = s.category || 'Serviços'; });
+  }
+
+  let html = '';
+  categories.sort((a,b) => (a.name||'').localeCompare(b.name||'')).forEach((cat, i) => {
+    const items = services.filter(s => s.categoryId === cat.id);
+    if (!items.length) return;
+    const itemsHtml = items.map(s => `
+      <div class="service-card" style="margin-top:8px;">
+        <div>
+          <strong>${escapeHtml(s.name)}</strong>
+          ${s.type === 'pack' ? `<div class="muted">Pack · ${s.packSessions||''} sessões</div>` : ''}
+          ${s.description ? `<div class="muted">${escapeHtml(s.description)}</div>` : ''}
+        </div>
+        <div class="price">${s.price}€</div>
+      </div>`).join('');
+    html += `<div class="card cat-card" id="catCard${i}" onclick="toggleCatCard(${i})">
+      <div class="cat-head">
+        <h3 style="margin:0;color:var(--primary-dark);">${cat.icon||'🩺'} ${escapeHtml(cat.name)}</h3>
+        <span class="chevron">▾</span>
+      </div>
+      ${cat.modalidade ? `<div class="cat-mod">${modLabel[cat.modalidade]||''}</div>` : ''}
+      ${cat.description ? `<div class="muted" style="margin-top:4px;">${escapeHtml(cat.description)}</div>` : ''}
+      <div class="cat-items hidden">${itemsHtml}</div>
+    </div>`;
+  });
+  document.getElementById('servicesSection').innerHTML = `
+    <h2 class="section-title">Serviços</h2>${html}
+  `;
+}
+
+window.toggleCatCard = function(i){
+  const card = document.getElementById('catCard' + i);
+  if (!card) return;
+  card.classList.toggle('open');
+  card.querySelector('.cat-items')?.classList.toggle('hidden');
+};
+
+function renderTeam(snap){
+  if (snap.empty) return;
+  let html = '<div class="team-grid">';
+  const teamData = {};
+  snap.forEach(d=>{
+    teamData[d.id] = d.data();
+    const m = d.data();
+    const photo = m.photoUrl
+      ? `<img src="${escapeHtml(m.photoUrl)}" alt="${escapeHtml(m.name)}">`
+      : `<div style="width:64px;height:64px;border-radius:50%;background:#e4ede9;margin:0 auto 8px;"></div>`;
+    html += `<div class="card team-card" style="cursor:pointer;" onclick="window.__showTeamDetail('${d.id}')">
+      ${photo}
+      <strong>${escapeHtml(m.name)}</strong>
+      <div class="muted">${escapeHtml(m.role||'')}</div>
+    </div>`;
+  });
+  html += '</div><div id="teamDetailArea"></div>';
+  document.getElementById('teamSection').innerHTML = `<h2 class="section-title">Equipa</h2>${html}`;
+  window.__teamData = teamData;
+}
+
+window.__showTeamDetail = function(memberId){
+  const m = window.__teamData[memberId];
+  const area = document.getElementById('teamDetailArea');
+  const photo = m.photoUrl
+    ? `<img src="${escapeHtml(m.photoUrl)}" alt="${escapeHtml(m.name)}" style="width:88px;height:88px;border-radius:50%;object-fit:cover;margin-bottom:10px;">`
+    : '';
+  area.innerHTML = `
+    <div class="card" style="text-align:center;">
+      ${photo}
+      <h3>${escapeHtml(m.name)}</h3>
+      <p class="muted">${escapeHtml(m.role||'')}</p>
+      ${m.bio ? `<p style="margin-top:10px;">${escapeHtml(m.bio)}</p>` : ''}
+    </div>`;
+  area.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
+function renderTrainings(snap, slug){
+  if (snap.empty) return;
+  let html = '';
+  snap.forEach(d=>{
+    const t = d.data();
+    const link = `saudecare-formacao-publica.html?t=${encodeURIComponent(slug)}&tr=${d.id}`;
+    html += `<div class="card">
+      <strong>${escapeHtml(t.title)}</strong>
+      <div class="muted">${escapeHtml(t.date||'')} ${t.price > 0 ? '· '+t.price+'€' : '· Gratuito'}</div>
+      <a class="cta" style="background:var(--primary);color:#fff;padding:8px 16px;font-size:13px;display:inline-block;margin-top:8px;" href="${link}">Inscrever-me</a>
+    </div>`;
+  });
+  document.getElementById('trainingsSection').innerHTML = `<h2 class="section-title">Formações e Eventos</h2>${html}`;
+}
+
+function renderTestimonials(snap){
+  if (snap.empty) return;
+  let html = '';
+  snap.forEach(d=>{
+    const t = d.data();
+    html += `<div class="card">
+      <div class="stars">${'★'.repeat(t.rating||5)}</div>
+      <p>"${escapeHtml(t.text)}"</p>
+      <div class="muted" style="margin-top:6px;">— ${escapeHtml(t.name)}</div>
+    </div>`;
+  });
+  document.getElementById('testimonialsSection').innerHTML = `<h2 class="section-title">O que dizem os clientes</h2>${html}`;
+}
+
+function renderContact(profile){
+  let rows = '';
+  if (profile.phone) rows += `<div>📞 ${escapeHtml(profile.phone)}</div>`;
+  if (profile.email) rows += `<div>✉️ ${escapeHtml(profile.email)}</div>`;
+  if (profile.address) rows += `<div>📍 ${escapeHtml(profile.address)}</div>`;
+  if (!rows) return;
+  document.getElementById('contactSection').innerHTML = `
+    <h2 class="section-title">Contactos</h2>
+    <div class="card contact-row">${rows}</div>
+  `;
+}
+
+const DAY_LABELS = { mon:'Segunda', tue:'Terça', wed:'Quarta', thu:'Quinta', fri:'Sexta', sat:'Sábado', sun:'Domingo' };
+const DAY_KEYS_BY_JS_INDEX = ['sun','mon','tue','wed','thu','fri','sat'];
+
+// Devolve o horário aplicável a uma data concreta, já considerando
+// exceções (têm sempre prioridade) e alternância semana A/B quando o
+// modo é quinzenal. Devolve null se esse dia estiver fechado.
+function getScheduleForDate(avail, dateObj){
+  const dateStr = dateObj.toISOString().slice(0,10);
+  const exceptions = avail.exceptions || {};
+  if (exceptions[dateStr]){
+    const ex = exceptions[dateStr];
+    return ex.closed ? null : { enabled: true, start: ex.start, end: ex.end };
+  }
+  const dayKey = DAY_KEYS_BY_JS_INDEX[dateObj.getDay()];
+  if (avail.mode === 'biweekly' && avail.biweekly?.referenceMonday){
+    const ref = new Date(avail.biweekly.referenceMonday + 'T00:00:00');
+    const diffWeeks = Math.floor((dateObj - ref) / (7*86400000));
+    const isWeekB = (((diffWeeks % 2) + 2) % 2) === 1;
+    const src = isWeekB ? (avail.biweekly.weekB || {}) : avail;
+    return src[dayKey] || { enabled: false };
+  }
+  return avail[dayKey] || { enabled: false };
+}
+
+function renderAvailability(profile, slug){
+  const avail = profile.availability || {};
+  const el = document.getElementById('availabilitySection');
+
+  if (avail.noFixedHours || avail.mode === 'none'){
+    el.innerHTML = `
+      <h2 class="section-title">🗓️ Horários</h2>
+      <div class="card" style="text-align:center;">
+        <p class="muted">Sem horário fixo — atendimento só por marcação combinada.</p>
+        <a class="cta" style="margin-top:10px;display:inline-block;" href="saudecare-funil-publico.html?t=${encodeURIComponent(slug)}">📅 Marcar Consulta</a>
+      </div>
+    `;
+    return;
+  }
+
+  let scheduleHtml;
+  if (avail.mode === 'biweekly'){
+    const weekB = avail.biweekly?.weekB || {};
+    const rowsFor = (src) => Object.keys(DAY_LABELS).filter(k => src[k]?.enabled)
+      .map(k => `<div>${DAY_LABELS[k]}: ${escapeHtml(src[k].start)} – ${escapeHtml(src[k].end)}</div>`).join('');
+    scheduleHtml = `
+      <p class="muted" style="margin-bottom:4px;"><strong>Semana A</strong></p>${rowsFor(avail) || '<p class="muted">Sem horário nesta semana.</p>'}
+      <p class="muted" style="margin:10px 0 4px;"><strong>Semana B</strong></p>${rowsFor(weekB) || '<p class="muted">Sem horário nesta semana.</p>'}
+      <p class="muted" style="margin-top:8px;">As semanas alternam quinzenalmente — confirme o dia certo ao pedir a marcação.</p>`;
+  } else {
+    const activeDays = Object.keys(DAY_LABELS).filter(k => avail[k]?.enabled);
+    if (!activeDays.length){ el.innerHTML = ''; return; }
+    scheduleHtml = activeDays.map(k => `<div>${DAY_LABELS[k]}: ${escapeHtml(avail[k].start)} – ${escapeHtml(avail[k].end)}</div>`).join('');
+  }
+  el.innerHTML = `
+    <h2 class="section-title">🗓️ Horários</h2>
+    <div class="card">${scheduleHtml}</div>
+  `;
+}
+
+load();
+</script>
+</body>
+</html>
