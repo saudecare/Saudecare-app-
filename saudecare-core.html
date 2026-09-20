@@ -329,13 +329,13 @@ import {
 import {
   getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager,
   collection, doc, getDoc, getDocs, addDoc, updateDoc,
-  deleteDoc, setDoc, query, where, orderBy, serverTimestamp, Timestamp, onSnapshot, arrayUnion
+  deleteDoc, setDoc, query, where, orderBy, serverTimestamp, Timestamp, onSnapshot, arrayUnion, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-13-13';
+const APP_VERSION = '2026-09-20-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10233,6 +10233,17 @@ async function renderReikiAlunos(main){
       lerColecao('reikiQuizResults'),
       lerColecao('reikiThreads')
     ]);
+    // Categorias à parte, para saber se a leitura falhou (regras por
+    // publicar) e avisar em vez de fingir que não há categorias.
+    __reikiCategorias = [];
+    try {
+      const catSnap = await getDocs(collection(db, 'tenants', tenantId, 'reikiCategories'));
+      catSnap.forEach(d => __reikiCategorias.push({ id: d.id, ...d.data() }));
+      __reikiCategoriasOk = true;
+    } catch(e){
+      console.warn('Reiki: não consegui ler reikiCategories', e);
+      __reikiCategoriasOk = false;
+    }
     __reikiConversas = [];
     convSnap.forEach(d => __reikiConversas.push({ id: d.id, ...d.data() }));
     __reikiConversas.sort((a,b) => (b.atualizadoEm?.toMillis?.()||0) - (a.atualizadoEm?.toMillis?.()||0));
@@ -10804,44 +10815,346 @@ function reikiRecursoVisivel(recurso, nivelAluno){
   return reikiIndiceNivel(alvo) <= reikiIndiceNivel(nivelAluno);
 }
 
+/* ─── Painel de materiais: níveis → categorias → subcategorias ─────
+   Cada nível tem as suas categorias, e cada categoria pode ter
+   subcategorias (só um andar abaixo, para não virar um labirinto).
+   Categorias e materiais têm um número de "ordem" que se muda com as
+   setas ▲ ▼. O nível do material acompanha sempre o da categoria onde
+   está, e é esse nível que decide quem o vê.
+
+   Firestore:
+     tenants/{tenantId}/reikiCategories/{id}
+       { nome, nivel, paiId ('' = categoria principal), ordem, descricao }
+     tenants/{tenantId}/reikiLibrary/{id}
+       { ..., categoriaId ('' = sem categoria), ordem }
+   ────────────────────────────────────────────────────────────────── */
+
+let __reikiCategorias = [];
+let __reikiCategoriasOk = true;   // false se a colecção não se deixou ler
+let __reikiBibNivel = '1';        // nível aberto no painel
+
+function reikiOrdemDe(x){
+  return (typeof x.ordem === 'number' && isFinite(x.ordem)) ? x.ordem : 1e9;
+}
+function reikiOrdenar(lista, campoNome){
+  return lista.slice().sort((a, b) => {
+    const d = reikiOrdemDe(a) - reikiOrdemDe(b);
+    if (d) return d;
+    return String(a[campoNome]||'').localeCompare(String(b[campoNome]||''), 'pt');
+  });
+}
+function reikiCatInfo(id){ return id ? (__reikiCategorias.find(c => c.id === id) || null) : null; }
+
+/* Categorias principais de um nível, já ordenadas. */
+function reikiCatsDoNivel(nivel){
+  return reikiOrdenar(__reikiCategorias.filter(c => !c.paiId && String(c.nivel||'0') === String(nivel)), 'nome');
+}
+/* Subcategorias de uma categoria, já ordenadas. */
+function reikiSubcats(paiId){
+  return reikiOrdenar(__reikiCategorias.filter(c => c.paiId === paiId), 'nome');
+}
+/* Materiais de um sítio: dentro de uma (sub)categoria, ou soltos no nível. */
+function reikiMateriaisEm(nivel, categoriaId){
+  const cat = categoriaId || '';
+  return reikiOrdenar(__reikiRecursos.filter(r => {
+    const rc = r.categoriaId && reikiCatInfo(r.categoriaId) ? r.categoriaId : '';
+    if (cat) return rc === cat;
+    return rc === '' && String(r.nivel||'0') === String(nivel);
+  }), 'titulo');
+}
+/* Nome completo para mostrar: "Categoria › Sub". */
+function reikiCatCaminho(id){
+  const c = reikiCatInfo(id);
+  if (!c) return '';
+  const pai = reikiCatInfo(c.paiId);
+  return pai ? (pai.nome + ' › ' + c.nome) : c.nome;
+}
+
+function reikiRotuloNivelCurto(id){
+  return id === '0' ? 'Todos' : ('Nível ' + id);
+}
+
+/* Botões pequenos, para caberem no telemóvel. */
+const REIKI_BTN_MINI = 'padding:5px 9px;font-size:.85rem;min-width:0;';
+
+function reikiHtmlMaterial(r, irmaos, idx){
+  const t = reikiTipoInfo(r.tipo);
+  return `
+    <div style="border:1px solid var(--border, #e5e5e5);border-radius:10px;padding:9px 10px;margin:6px 0;background:var(--card, #fff);">
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        <span style="font-size:1.15rem;line-height:1.3;">${t.icone}</span>
+        <div style="flex:1;min-width:0;">
+          <strong style="word-break:break-word;">${escapeHtml(r.titulo || '(sem título)')}</strong>${r.pago ? ' <span class="badge">pago</span>' : ''}
+          ${r.descricao ? `<p class="muted" style="margin-top:2px;font-size:.85rem;">${escapeHtml(r.descricao)}</p>` : ''}
+        </div>
+      </div>
+      <div class="row" style="gap:5px;margin-top:8px;flex-wrap:wrap;">
+        <button class="ghost" style="${REIKI_BTN_MINI}" ${idx===0?'disabled':''} onclick="reikiMoverMaterial('${r.id}',-1)" title="Subir">▲</button>
+        <button class="ghost" style="${REIKI_BTN_MINI}" ${idx===irmaos-1?'disabled':''} onclick="reikiMoverMaterial('${r.id}',1)" title="Descer">▼</button>
+        ${r.url ? `<a class="ghost" style="${REIKI_BTN_MINI}text-decoration:none;" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">👁️</a>` : ''}
+        <button class="ghost" style="${REIKI_BTN_MINI}" onclick="reikiAbrirRecurso('${r.id}')">✏️</button>
+        <button class="danger" style="${REIKI_BTN_MINI}" onclick="reikiApagarRecurso('${r.id}')">🗑️</button>
+      </div>
+    </div>`;
+}
+
+function reikiHtmlListaMateriais(lista){
+  if (!lista.length) return `<p class="muted" style="font-size:.85rem;margin:6px 0 2px;">Ainda sem materiais.</p>`;
+  return lista.map((r, i) => reikiHtmlMaterial(r, lista.length, i)).join('');
+}
+
+function reikiHtmlCategoria(c, irmaos, idx, ehSub){
+  const subs = ehSub ? [] : reikiSubcats(c.id);
+  const mats = reikiMateriaisEm(c.nivel, c.id);
+  const moldura = ehSub
+    ? 'border-left:3px solid var(--primary, #b8893b);padding:8px 0 4px 10px;margin:12px 0 4px;'
+    : 'margin-bottom:12px;';
+  return `
+    <div class="${ehSub ? '' : 'card'}" style="${moldura}">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <strong style="flex:1;min-width:140px;font-size:${ehSub?'.95rem':'1.05rem'};">${ehSub ? '↳ ' : '📂 '}${escapeHtml(c.nome || '(sem nome)')}</strong>
+        <button class="ghost" style="${REIKI_BTN_MINI}" ${idx===0?'disabled':''} onclick="reikiMoverCategoria('${c.id}',-1)" title="Subir">▲</button>
+        <button class="ghost" style="${REIKI_BTN_MINI}" ${idx===irmaos-1?'disabled':''} onclick="reikiMoverCategoria('${c.id}',1)" title="Descer">▼</button>
+        <button class="ghost" style="${REIKI_BTN_MINI}" onclick="reikiAbrirCategoria('${c.id}')" title="Editar">✏️</button>
+        <button class="danger" style="${REIKI_BTN_MINI}" onclick="reikiApagarCategoria('${c.id}')" title="Remover">🗑️</button>
+      </div>
+      ${c.descricao ? `<p class="muted" style="margin-top:4px;font-size:.85rem;">${escapeHtml(c.descricao)}</p>` : ''}
+      ${reikiHtmlListaMateriais(mats)}
+      ${subs.map((s, i) => reikiHtmlCategoria(s, subs.length, i, true)).join('')}
+      <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap;">
+        <button class="ghost" style="${REIKI_BTN_MINI}" onclick="reikiAbrirRecurso('','${c.id}')">➕ Material</button>
+        ${ehSub ? '' : `<button class="ghost" style="${REIKI_BTN_MINI}" onclick="reikiAbrirCategoria('','${c.id}')">➕ Subcategoria</button>`}
+      </div>
+    </div>`;
+}
+
 function reikiRenderBiblioteca(){
   const alvo = document.getElementById('reikiConteudo');
   if (!alvo) return;
+  const nivel = __reikiBibNivel;
 
-  const lista = __reikiRecursos.length === 0
-    ? `<p class="muted">A biblioteca está vazia. Adiciona o primeiro manual ou vídeo.</p>`
-    : REIKI_NIVEIS_BIB.map(n => {
-        const doNivel = __reikiRecursos.filter(r => String(r.nivel||'0') === n.id);
-        if (!doNivel.length) return '';
-        return `
-        <h3 style="margin:16px 0 8px;">${escapeHtml(n.certLabel)}</h3>
-        ${doNivel.map(r => {
-          const t = reikiTipoInfo(r.tipo);
-          return `
-          <div class="card" style="margin-bottom:8px;">
-            <strong>${t.icone} ${escapeHtml(r.titulo || '(sem título)')}</strong>${r.pago ? ' <span class="badge">pago</span>' : ''}
-            ${r.descricao ? `<p class="muted" style="margin-top:4px;">${escapeHtml(r.descricao)}</p>` : ''}
-            <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
-              ${r.url ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">👁️ Abrir</a>` : ''}
-              <button class="ghost" onclick="reikiAbrirRecurso('${r.id}')">✏️ Editar</button>
-              <button class="danger" onclick="reikiApagarRecurso('${r.id}')">🗑️</button>
-            </div>
-          </div>`;
-        }).join('')}`;
-      }).join('');
+  const fichas = REIKI_NIVEIS_BIB.map(n => {
+    const conta = __reikiRecursos.filter(r => String(r.nivel||'0') === n.id).length;
+    const ativo = n.id === nivel;
+    return `<button class="${ativo?'primary':'ghost'}" style="${REIKI_BTN_MINI}padding:7px 11px;" onclick="reikiBibEscolherNivel('${n.id}')">${escapeHtml(reikiRotuloNivelCurto(n.id))} <span style="opacity:.7;">(${conta})</span></button>`;
+  }).join('');
+
+  const cats = reikiCatsDoNivel(nivel);
+  const soltos = reikiMateriaisEm(nivel, '');
+
+  const avisoRegras = __reikiCategoriasOk ? '' : `
+    <div class="card" style="border:1px solid #e0b4b4;background:#fdf3f3;margin-bottom:12px;">
+      <strong>As categorias ainda não estão activas.</strong>
+      <p class="muted" style="margin-top:4px;">Falta publicar as novas regras do Firestore (colecção reikiCategories). Os materiais continuam a funcionar.</p>
+    </div>`;
 
   alvo.innerHTML = `
+    ${avisoRegras}
     <div class="card" style="margin-bottom:12px;">
-      <p class="muted">Os ficheiros ficam no teu Drive. Aqui guardas só o link, e escolhes a partir de que nível é que o aluno o vê.</p>
-      <p class="muted" style="margin-top:6px;font-size:.85rem;">No Drive, partilha cada ficheiro como <strong>"Qualquer pessoa com o link"</strong>, senão o aluno não consegue abrir.</p>
-      <button class="primary" style="margin-top:12px;" onclick="reikiAbrirRecurso()">➕ Novo recurso</button>
+      <p class="muted">Organiza os materiais por nível e por categorias. As setas ▲ ▼ mudam a ordem, e é essa ordem que o aluno vê.</p>
+      <p class="muted" style="margin-top:6px;font-size:.85rem;">Os ficheiros ficam no teu Drive, partilhados como <strong>"Qualquer pessoa com o link"</strong>.</p>
+      <div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap;">${fichas}</div>
     </div>
-    ${lista}`;
+    <h3 style="margin:14px 0 4px;">${escapeHtml(reikiNivelBibLabel(nivel))}</h3>
+    <p class="muted" style="font-size:.85rem;margin-bottom:10px;">${nivel === '0'
+      ? 'Material visível a todos os alunos, de qualquer nível.'
+      : 'Visível a quem estuda este nível e a todos os que já passaram por ele.'}</p>
+    <div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="primary" onclick="reikiAbrirCategoria()" ${__reikiCategoriasOk?'':'disabled'}>➕ Categoria</button>
+      <button class="ghost" onclick="reikiAbrirRecurso('','','${nivel}')">➕ Material</button>
+    </div>
+    ${cats.length ? cats.map((c, i) => reikiHtmlCategoria(c, cats.length, i, false)).join('') : `<p class="muted" style="margin-bottom:12px;">Ainda não há categorias neste nível.</p>`}
+    ${(soltos.length || !cats.length) ? `
+      <div class="card" style="margin-bottom:12px;">
+        <strong>${cats.length ? '📎 Sem categoria' : '📎 Materiais'}</strong>
+        ${reikiHtmlListaMateriais(soltos)}
+      </div>` : ''}`;
 }
 
-window.reikiAbrirRecurso = function(recursoId){
+window.reikiBibEscolherNivel = function(nivel){
+  __reikiBibNivel = String(nivel || '1');
+  reikiRenderBiblioteca();
+};
+
+/* ─── Mudar a ordem ─────────────────────────────────────────────────
+   Troca com o vizinho e grava a ordem de todos os irmãos de uma vez
+   (0, 1, 2, …). Assim, materiais antigos sem número ficam arrumados
+   na primeira vez que se mexe neles.                                */
+async function reikiGravarOrdem(colecao, listaOrdenada){
+  const lote = writeBatch(db);
+  listaOrdenada.forEach((x, i) => {
+    lote.update(doc(db, 'tenants', tenantId, colecao, x.id), { ordem: i });
+  });
+  await lote.commit();
+  listaOrdenada.forEach((x, i) => { x.ordem = i; });
+}
+
+function reikiIrmaosMaterial(r){
+  const cat = r.categoriaId && reikiCatInfo(r.categoriaId) ? r.categoriaId : '';
+  return reikiMateriaisEm(r.nivel || '0', cat);
+}
+function reikiIrmaosCategoria(c){
+  return c.paiId ? reikiSubcats(c.paiId) : reikiCatsDoNivel(c.nivel || '0');
+}
+
+let __reikiAMover = false;
+async function reikiMover(colecao, lista, id, direcao){
+  if (__reikiAMover) return;
+  const i = lista.findIndex(x => x.id === id);
+  const j = i + direcao;
+  if (i < 0 || j < 0 || j >= lista.length) return;
+  const nova = lista.slice();
+  [nova[i], nova[j]] = [nova[j], nova[i]];
+  __reikiAMover = true;
+  try {
+    await reikiGravarOrdem(colecao, nova);
+    reikiRenderBiblioteca();
+  } catch(e){
+    toast('Não consegui mudar a ordem: ' + (e.message || e), true);
+  } finally {
+    __reikiAMover = false;
+  }
+}
+
+window.reikiMoverMaterial = function(id, direcao){
+  const r = __reikiRecursos.find(x => x.id === id);
+  if (!r) return;
+  reikiMover('reikiLibrary', reikiIrmaosMaterial(r), id, direcao);
+};
+window.reikiMoverCategoria = function(id, direcao){
+  const c = reikiCatInfo(id);
+  if (!c) return;
+  reikiMover('reikiCategories', reikiIrmaosCategoria(c), id, direcao);
+};
+
+/* Número de ordem para pôr um elemento novo no fim da lista. */
+function reikiProximaOrdem(lista){
+  return lista.reduce((m, x) => Math.max(m, (typeof x.ordem === 'number' ? x.ordem : -1)), lista.length - 1) + 1;
+}
+
+/* ─── Categorias: criar, editar, remover ───────────────────────────── */
+
+window.reikiAbrirCategoria = function(catId, paiIdNovo){
+  const c = catId ? reikiCatInfo(catId) : null;
+  const paiId = c ? (c.paiId || '') : (paiIdNovo || '');
+  const pai = reikiCatInfo(paiId);
+  const ehSub = !!pai;
+  const nivelAtual = String(c?.nivel || pai?.nivel || __reikiBibNivel || '1');
+  const titulo = c ? (ehSub ? '✏️ Editar subcategoria' : '✏️ Editar categoria')
+                   : (ehSub ? '➕ Nova subcategoria' : '➕ Nova categoria');
+  showPatientOverlay(titulo, `
+    <div class="card">
+      ${ehSub ? `<p class="muted" style="margin-bottom:10px;">Dentro de <strong>${escapeHtml(pai.nome || '')}</strong> · ${escapeHtml(reikiNivelBibLabel(pai.nivel))}</p>` : ''}
+      <label>Nome</label>
+      <input id="reikiCatNome" type="text" value="${escapeHtml(c?.nome || '')}" placeholder="${ehSub ? 'Exercícios práticos' : 'Fundamentos'}">
+      ${ehSub ? '' : `
+      <label style="margin-top:10px;">Nível</label>
+      <select id="reikiCatNivel">
+        ${REIKI_NIVEIS_BIB.map(n => `<option value="${n.id}" ${nivelAtual===n.id ? 'selected':''}>${escapeHtml(n.certLabel)}</option>`).join('')}
+      </select>
+      ${c ? `<p class="muted" style="margin-top:4px;font-size:.82rem;">Se mudares o nível, as subcategorias e os materiais desta categoria mudam com ela.</p>` : ''}`}
+      <label style="margin-top:10px;">Descrição (opcional)</label>
+      <textarea id="reikiCatDesc" rows="2">${escapeHtml(c?.descricao || '')}</textarea>
+      <div class="row" style="gap:8px;margin-top:12px;">
+        <button class="primary" onclick="reikiGuardarCategoria('${catId || ''}','${paiId}')">Guardar</button>
+        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+      </div>
+    </div>`);
+};
+
+window.reikiGuardarCategoria = async function(catId, paiId){
+  const nome = (document.getElementById('reikiCatNome')?.value || '').trim();
+  if (!nome){ toast('Dá um nome à categoria.', true); return; }
+  const pai = reikiCatInfo(paiId);
+  const nivel = pai ? String(pai.nivel || '0') : (document.getElementById('reikiCatNivel')?.value || '1');
+  const descricao = (document.getElementById('reikiCatDesc')?.value || '').trim();
+  try {
+    if (catId){
+      const c = reikiCatInfo(catId);
+      if (!c) return;
+      const mudouNivel = !c.paiId && String(c.nivel || '0') !== nivel;
+      const lote = writeBatch(db);
+      const dados = { nome, descricao, atualizadoEm: serverTimestamp() };
+      if (mudouNivel){
+        dados.nivel = nivel;
+        dados.ordem = reikiProximaOrdem(reikiCatsDoNivel(nivel));
+        // Subcategorias e materiais acompanham a categoria.
+        const subs = reikiSubcats(c.id);
+        subs.forEach(s => lote.update(doc(db, 'tenants', tenantId, 'reikiCategories', s.id), { nivel }));
+        const ids = [c.id].concat(subs.map(s => s.id));
+        __reikiRecursos.filter(r => ids.includes(r.categoriaId)).forEach(r =>
+          lote.update(doc(db, 'tenants', tenantId, 'reikiLibrary', r.id), { nivel }));
+      }
+      lote.update(doc(db, 'tenants', tenantId, 'reikiCategories', catId), dados);
+      await lote.commit();
+      if (mudouNivel) __reikiBibNivel = nivel;
+    } else {
+      const irmaos = pai ? reikiSubcats(pai.id) : reikiCatsDoNivel(nivel);
+      await addDoc(collection(db, 'tenants', tenantId, 'reikiCategories'), {
+        nome, nivel, descricao,
+        paiId: pai ? pai.id : '',
+        ordem: reikiProximaOrdem(irmaos),
+        criadoEm: serverTimestamp(),
+        atualizadoEm: serverTimestamp()
+      });
+      __reikiBibNivel = nivel;
+    }
+    closePatientOverlay();
+    toast('Categoria guardada.');
+    __reikiTab = 'biblioteca';
+    renderReikiAlunos();
+  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
+};
+
+window.reikiApagarCategoria = async function(catId){
+  const c = reikiCatInfo(catId);
+  if (!c) return;
+  const subs = c.paiId ? [] : reikiSubcats(c.id);
+  const ids = [c.id].concat(subs.map(s => s.id));
+  const mats = __reikiRecursos.filter(r => ids.includes(r.categoriaId));
+  let texto = 'Remover "' + (c.nome || '') + '"?';
+  if (subs.length) texto += '\n\nAs ' + subs.length + ' subcategoria(s) também saem.';
+  if (mats.length) texto += '\n\nOs ' + mats.length + ' material(is) não são apagados: passam para "Sem categoria" do mesmo nível.';
+  if (!await reikiConfirmar('Remover categoria', texto, 'Remover')) return;
+  try {
+    const lote = writeBatch(db);
+    const soltos = reikiMateriaisEm(c.nivel || '0', '');
+    let proxima = reikiProximaOrdem(soltos);
+    mats.forEach(r => lote.update(doc(db, 'tenants', tenantId, 'reikiLibrary', r.id),
+      { categoriaId: '', ordem: proxima++ }));
+    ids.forEach(id => lote.delete(doc(db, 'tenants', tenantId, 'reikiCategories', id)));
+    await lote.commit();
+    toast('Categoria removida.');
+    __reikiTab = 'biblioteca';
+    renderReikiAlunos();
+  } catch(e){ toast('Não consegui remover: ' + (e.message || e), true); }
+};
+
+/* ─── Materiais: criar, editar, remover ────────────────────────────── */
+
+function reikiOpcoesCategorias(nivel, escolhida){
+  let h = `<option value="">— Sem categoria —</option>`;
+  reikiCatsDoNivel(nivel).forEach(c => {
+    h += `<option value="${c.id}" ${escolhida===c.id?'selected':''}>${escapeHtml(c.nome || '')}</option>`;
+    reikiSubcats(c.id).forEach(s => {
+      h += `<option value="${s.id}" ${escolhida===s.id?'selected':''}>&nbsp;&nbsp;&nbsp;↳ ${escapeHtml(s.nome || '')}</option>`;
+    });
+  });
+  return h;
+}
+
+window.reikiRecTrocarNivel = function(){
+  const nivel = document.getElementById('reikiRecNivel')?.value || '0';
+  const sel = document.getElementById('reikiRecCat');
+  if (sel) sel.innerHTML = reikiOpcoesCategorias(nivel, '');
+};
+
+window.reikiAbrirRecurso = function(recursoId, categoriaPre, nivelPre){
   const r = recursoId ? __reikiRecursos.find(x => x.id === recursoId) : null;
-  showPatientOverlay(r ? '✏️ Editar recurso' : '➕ Novo recurso', `
+  const catPre = reikiCatInfo(categoriaPre);
+  const catAtual = r ? (reikiCatInfo(r.categoriaId) ? r.categoriaId : '') : (catPre ? catPre.id : '');
+  const nivelAtual = String(r?.nivel || catPre?.nivel || nivelPre || __reikiBibNivel || '0');
+  showPatientOverlay(r ? '✏️ Editar material' : '➕ Novo material', `
     <div class="card">
       <label>Título</label>
       <input id="reikiRecTitulo" type="text" value="${escapeHtml(r?.titulo || '')}" placeholder="Manual do Nível 1 — Shoden">
@@ -10849,10 +11162,12 @@ window.reikiAbrirRecurso = function(recursoId){
       <select id="reikiRecTipo">
         ${REIKI_TIPOS.map(t => `<option value="${t.id}" ${ (r?.tipo||'manual')===t.id ? 'selected':'' }>${t.icone} ${escapeHtml(t.rotulo)}</option>`).join('')}
       </select>
-      <label style="margin-top:10px;">Visível a partir de</label>
-      <select id="reikiRecNivel">
-        ${REIKI_NIVEIS_BIB.map(n => `<option value="${n.id}" ${ String(r?.nivel||'0')===n.id ? 'selected':'' }>${escapeHtml(n.certLabel)}</option>`).join('')}
+      <label style="margin-top:10px;">Nível</label>
+      <select id="reikiRecNivel" onchange="reikiRecTrocarNivel()">
+        ${REIKI_NIVEIS_BIB.map(n => `<option value="${n.id}" ${ nivelAtual===n.id ? 'selected':'' }>${escapeHtml(n.certLabel)}</option>`).join('')}
       </select>
+      <label style="margin-top:10px;">Categoria</label>
+      <select id="reikiRecCat">${reikiOpcoesCategorias(nivelAtual, catAtual)}</select>
       <label style="margin-top:10px;">Link do Drive</label>
       <input id="reikiRecUrl" type="url" value="${escapeHtml(r?.url || '')}" placeholder="https://drive.google.com/...">
       <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;">
@@ -10874,24 +11189,40 @@ window.reikiGuardarRecurso = async function(recursoId){
   if (!titulo){ toast('O título é obrigatório.', true); return; }
   if (!url){ toast('Falta o link do ficheiro.', true); return; }
   if (!/^https?:\/\//i.test(url)){ toast('O link tem de começar por https://', true); return; }
+  let nivel = document.getElementById('reikiRecNivel')?.value || '0';
+  let categoriaId = document.getElementById('reikiRecCat')?.value || '';
+  const cat = reikiCatInfo(categoriaId);
+  if (cat) nivel = String(cat.nivel || '0'); else categoriaId = '';
+
   const dados = {
     titulo,
     url,
     tipo: document.getElementById('reikiRecTipo')?.value || 'manual',
-    nivel: document.getElementById('reikiRecNivel')?.value || '0',
+    nivel,
+    categoriaId,
     pago: !!document.getElementById('reikiRecPago')?.checked,
     descricao: (document.getElementById('reikiRecDesc')?.value || '').trim(),
     atualizadoEm: serverTimestamp()
   };
   try {
+    const antigo = recursoId ? __reikiRecursos.find(x => x.id === recursoId) : null;
+    const mudouSitio = !antigo
+      || String(antigo.nivel||'0') !== nivel
+      || (reikiCatInfo(antigo.categoriaId) ? antigo.categoriaId : '') !== categoriaId;
+    if (mudouSitio){
+      // Vai para o fim da lista do sítio novo.
+      const destino = reikiMateriaisEm(nivel, categoriaId).filter(x => x.id !== recursoId);
+      dados.ordem = reikiProximaOrdem(destino);
+    }
     if (recursoId){
       await updateDoc(doc(db, 'tenants', tenantId, 'reikiLibrary', recursoId), dados);
     } else {
       await addDoc(collection(db, 'tenants', tenantId, 'reikiLibrary'), { ...dados, criadoEm: serverTimestamp() });
     }
     closePatientOverlay();
-    toast('Recurso guardado.');
+    toast('Material guardado.');
     __reikiTab = 'biblioteca';
+    __reikiBibNivel = nivel;
     renderReikiAlunos();
   } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
 };
@@ -10902,7 +11233,7 @@ window.reikiApagarRecurso = async function(recursoId){
   if (!await reikiConfirmar('Retirar da biblioteca', 'Retirar "' + (r.titulo||'') + '"?\n\nO ficheiro no Drive não é apagado.', 'Retirar')) return;
   try {
     await deleteDoc(doc(db, 'tenants', tenantId, 'reikiLibrary', recursoId));
-    toast('Recurso retirado.');
+    toast('Material retirado.');
     __reikiTab = 'biblioteca';
     renderReikiAlunos();
   } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
