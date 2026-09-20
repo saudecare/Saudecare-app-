@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-19-13';
+const APP_VERSION = '2026-09-13-10';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10166,7 +10166,7 @@ const REIKI_NIVEIS = [
     descricao:'Sintonização com os três primeiros símbolos. O trabalho aprofunda-se no plano emocional e mental, e o aluno passa a poder enviar Reiki à distância, no tempo e no espaço.' },
   { id:'3A', nome:'Nível 3A — Shinpiden (Aprofundamento)', certLabel:'Nível 3A — Shinpiden', certCampo:'3A — Shinpiden', cor:[122,66,62], subtitulo:'O Mestre Interior',
     descricao:'Sintonização com o símbolo do Mestre. É um nível de amadurecimento pessoal e espiritual: o aluno aprofunda a sua própria prática e prepara-se para a responsabilidade de ensinar, mas ainda não sintoniza outras pessoas.' },
-  { id:'3B', nome:'Nível 3B — Gokukaiden', certLabel:'Nível 3B — Gokukaiden', certCampo:'3B — Gokukaiden', cor:[96,40,44], subtitulo:'O Mestrado',
+  { id:'3B', nome:'Nível 3B — Shinpiden (Mestrado)', certLabel:'Nível 3B — Shinpiden', certCampo:'3B — Shinpiden', cor:[96,40,44], subtitulo:'O Mestrado',
     descricao:'Habilitação para ensinar Usui Reiki Ryoho e sintonizar novos alunos, com a responsabilidade de manter a linhagem viva e íntegra.' }
 ];
 
@@ -10249,18 +10249,12 @@ function reikiRenderEcra(main){
       <button class="${__reikiTab==='biblioteca'?'primary':'ghost'}" onclick="reikiMudarTab('biblioteca')">Biblioteca</button>
       <button class="${__reikiTab==='turmas'?'primary':'ghost'}" onclick="reikiMudarTab('turmas')">Turmas</button>
       <button class="${__reikiTab==='testes'?'primary':'ghost'}" onclick="reikiMudarTab('testes')">Testes</button>
-      <button class="${__reikiTab==='percurso'?'primary':'ghost'}" onclick="reikiMudarTab('percurso')">Percurso</button>
-      <button class="${__reikiTab==='poemas'?'primary':'ghost'}" onclick="reikiMudarTab('poemas')">Poemas</button>
-      <button class="${__reikiTab==='acompanhar'?'primary':'ghost'}" onclick="reikiMudarTab('acompanhar')">Acompanhar</button>
     </div>
     <div id="reikiConteudo"></div>`;
   if (__reikiTab === 'alunos') reikiRenderListaAlunos();
   else if (__reikiTab === 'biblioteca') reikiRenderBiblioteca();
   else if (__reikiTab === 'turmas') reikiRenderTurmas();
   else if (__reikiTab === 'testes') reikiRenderTestes();
-  else if (__reikiTab === 'percurso') reikiRenderPercurso();
-  else if (__reikiTab === 'poemas') reikiRenderPoemas();
-  else if (__reikiTab === 'acompanhar') reikiRenderAcompanhar();
   else reikiRenderNiveis();
 }
 
@@ -10332,26 +10326,10 @@ function reikiRenderTestes(){
     <div class="card" style="margin-bottom:12px;">
       <p class="muted">Perguntas de escolha múltipla, corrigidas automaticamente. O aluno vê a nota no fim e tu vês quem entregou.</p>
       <p class="muted" style="margin-top:6px;font-size:.85rem;">O teste conta, mas não decide sozinho: a avaliação é tua, e o que pesa mais é a entrega e a prática de cada um.</p>
-      <div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap;">
-        <button class="primary" onclick="reikiAbrirTeste()">➕ Novo teste</button>
-        ${REIKI_NIVEIS.map(n => __reikiTestes.some(t => String(t.nivel)===n.id) ? '' :
-          `<button class="ghost" onclick="reikiCriarTeste('${n.id}', this)">⬇️ Teste final do Nível ${n.id}</button>`).join('')}
-      </div>
+      <button class="primary" style="margin-top:12px;" onclick="reikiAbrirTeste()">➕ Novo teste</button>
     </div>
     ${lista}`;
 }
-
-window.reikiCriarTeste = async function(nivel, btn){
-  const nome = 'seedReikiTeste' + nivel;
-  if (typeof window[nome] !== 'function'){
-    toast('O ficheiro reiki-testes-seed.js não está a ser carregado — confirme que está na raiz do repositório.', true);
-    return;
-  }
-  btn.disabled = true; btn.textContent = 'A criar…';
-  try { await window[nome](); } catch(e){ toast('Não consegui criar: ' + (e.message || e), true); }
-  __reikiTab = 'testes';
-  renderReikiAlunos();
-};
 
 /* Guardamos o rascunho aqui enquanto se editam as perguntas. */
 let __reikiRascunho = null;
@@ -10634,7 +10612,6 @@ async function reikiSincronizarAcessosDaTurma(turmaId){
    ────────────────────────────────────────────────────────────────── */
 
 const REIKI_TIPOS = [
-  { id:'estudo',   rotulo:'Guia de estudo (texto)', icone:'📝' },
   { id:'manual',   rotulo:'Manual',    icone:'📘' },
   { id:'video',    rotulo:'Vídeo',     icone:'🎬' },
   { id:'audio',    rotulo:'Áudio',     icone:'🎧' },
@@ -10667,58 +10644,36 @@ function reikiRenderBiblioteca(){
   const alvo = document.getElementById('reikiConteudo');
   if (!alvo) return;
 
-  const temRecursos = id => __reikiRecursos.some(r => String(r.nivel||'0') === id);
-
   const lista = __reikiRecursos.length === 0
-    ? `<p class="muted">A biblioteca está vazia. Cria a estrutura de um nível, ou adiciona um recurso avulso.</p>`
+    ? `<p class="muted">A biblioteca está vazia. Adiciona o primeiro manual ou vídeo.</p>`
     : REIKI_NIVEIS_BIB.map(n => {
         const doNivel = __reikiRecursos.filter(r => String(r.nivel||'0') === n.id);
         if (!doNivel.length) return '';
-        const categorias = [...new Set(doNivel.map(r => r.categoria || 'Sem categoria'))];
         return `
         <h3 style="margin:16px 0 8px;">${escapeHtml(n.certLabel)}</h3>
-        ${categorias.map(cat => `
-          <p class="muted" style="font-weight:600;margin:10px 0 4px;">${escapeHtml(cat)}</p>
-          ${doNivel.filter(r => (r.categoria || 'Sem categoria') === cat).map(r => {
-            const t = reikiTipoInfo(r.tipo);
-            return `
-            <div class="card" style="margin-bottom:8px;">
-              <strong>${t.icone} ${escapeHtml(r.titulo || '(sem título)')}</strong>${r.pago ? ' <span class="badge">pago</span>' : ''}${(!r.url && r.tipo !== 'estudo') ? ' <span class="badge" style="background:#fdf3f3;color:#a83a3a;">sem link</span>' : ''}
-              ${r.descricao ? `<p class="muted" style="margin-top:4px;">${escapeHtml(r.descricao)}</p>` : ''}
-              <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
-                ${r.url ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">👁️ Abrir</a>` : ''}
-                <button class="ghost" onclick="reikiAbrirRecurso('${r.id}')">✏️ ${r.url ? 'Editar' : 'Colar o link'}</button>
-                <button class="danger" onclick="reikiApagarRecurso('${r.id}')">🗑️</button>
-              </div>
-            </div>`;
-          }).join('')}`).join('')}`;
+        ${doNivel.map(r => {
+          const t = reikiTipoInfo(r.tipo);
+          return `
+          <div class="card" style="margin-bottom:8px;">
+            <strong>${t.icone} ${escapeHtml(r.titulo || '(sem título)')}</strong>${r.pago ? ' <span class="badge">pago</span>' : ''}
+            ${r.descricao ? `<p class="muted" style="margin-top:4px;">${escapeHtml(r.descricao)}</p>` : ''}
+            <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
+              ${r.url ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">👁️ Abrir</a>` : ''}
+              <button class="ghost" onclick="reikiAbrirRecurso('${r.id}')">✏️ Editar</button>
+              <button class="danger" onclick="reikiApagarRecurso('${r.id}')">🗑️</button>
+            </div>
+          </div>`;
+        }).join('')}`;
       }).join('');
 
   alvo.innerHTML = `
     <div class="card" style="margin-bottom:12px;">
       <p class="muted">Os ficheiros ficam no teu Drive. Aqui guardas só o link, e escolhes a partir de que nível é que o aluno o vê.</p>
       <p class="muted" style="margin-top:6px;font-size:.85rem;">No Drive, partilha cada ficheiro como <strong>"Qualquer pessoa com o link"</strong>, senão o aluno não consegue abrir.</p>
-      <div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap;">
-        ${REIKI_NIVEIS.map(n => temRecursos(n.id) ? '' :
-          `<button class="primary" onclick="reikiCriarBiblioteca('${n.id}', this)">➕ Estrutura do Nível ${n.id}</button>`).join('')}
-        <button class="ghost" onclick="reikiAbrirRecurso()">➕ Recurso avulso</button>
-      </div>
+      <button class="primary" style="margin-top:12px;" onclick="reikiAbrirRecurso()">➕ Novo recurso</button>
     </div>
     ${lista}`;
 }
-
-/* Cria os títulos e categorias de um nível, sem link — ficam por preencher. */
-window.reikiCriarBiblioteca = async function(nivel, btn){
-  const nome = 'seedReikiBiblioteca' + nivel;
-  if (typeof window[nome] !== 'function'){
-    toast('O ficheiro reiki-biblioteca-seed.js não está a ser carregado — confirme que está na raiz do repositório.', true);
-    return;
-  }
-  btn.disabled = true; btn.textContent = 'A criar…';
-  try { await window[nome](); }
-  catch(e){ toast('Não consegui criar: ' + (e.message || e), true); }
-  reikiRenderBiblioteca();
-};
 
 window.reikiAbrirRecurso = function(recursoId){
   const r = recursoId ? __reikiRecursos.find(x => x.id === recursoId) : null;
@@ -10726,33 +10681,16 @@ window.reikiAbrirRecurso = function(recursoId){
     <div class="card">
       <label>Título</label>
       <input id="reikiRecTitulo" type="text" value="${escapeHtml(r?.titulo || '')}" placeholder="Manual do Nível 1 — Shoden">
-      <label style="margin-top:10px;">Categoria</label>
-      <input id="reikiRecCategoria" type="text" value="${escapeHtml(r?.categoria || '')}" placeholder="ex: Vídeos de introdução, Técnicas na prática, Símbolos do nível" list="reikiCategoriasExistentes">
-      <datalist id="reikiCategoriasExistentes">
-        ${[...new Set(__reikiRecursos.map(x => x.categoria).filter(Boolean))].map(c => `<option value="${escapeHtml(c)}">`).join('')}
-      </datalist>
       <label style="margin-top:10px;">Tipo</label>
-      <select id="reikiRecTipo" onchange="reikiAlternarCampoRecurso()">
+      <select id="reikiRecTipo">
         ${REIKI_TIPOS.map(t => `<option value="${t.id}" ${ (r?.tipo||'manual')===t.id ? 'selected':'' }>${t.icone} ${escapeHtml(t.rotulo)}</option>`).join('')}
       </select>
       <label style="margin-top:10px;">Visível a partir de</label>
       <select id="reikiRecNivel">
         ${REIKI_NIVEIS_BIB.map(n => `<option value="${n.id}" ${ String(r?.nivel||'0')===n.id ? 'selected':'' }>${escapeHtml(n.certLabel)}</option>`).join('')}
       </select>
-      <div id="reikiRecCampoUrl" class="${r && r.tipo === 'estudo' ? 'hidden' : ''}">
-        <label style="margin-top:10px;">Link do Drive</label>
-        <input id="reikiRecUrl" type="url" value="${escapeHtml(r?.url || '')}" placeholder="https://drive.google.com/...">
-        <p class="muted" style="margin-top:4px;font-size:.82rem;">Podes deixar em branco por agora e voltar aqui depois de subires o vídeo ou a imagem ao Drive.</p>
-      </div>
-      <div id="reikiRecCampoConteudo" class="${r && r.tipo === 'estudo' ? '' : 'hidden'}">
-        <label style="margin-top:10px;">Texto do guia — o aluno lê isto directamente na app</label>
-        <textarea id="reikiRecConteudo" rows="10" placeholder="Escreve aqui o texto. Linhas que comecem por &quot;- &quot; viram lista.">${escapeHtml(r?.conteudo || '')}</textarea>
-        <p class="muted" style="margin-top:4px;font-size:.82rem;">Não precisa de link nenhum — este texto é o material em si.</p>
-        <label style="margin-top:10px;">Imagem do símbolo (opcional) — substitui o esquema automático</label>
-        <input id="reikiRecImagem" type="url" value="${escapeHtml(r?.imagemUrl || '')}" placeholder="https://drive.google.com/...">
-        ${r?.imagemUrl ? `<img src="${escapeHtml(r.imagemUrl)}" style="max-width:100%;border-radius:8px;margin-top:8px;border:1px solid #eee;" onerror="this.style.display='none'">` : ''}
-        <p class="muted" style="margin-top:4px;font-size:.82rem;">Cola aqui o traço real do símbolo, tirado do teu manual, para substituir o esquema simplificado que a app desenha.</p>
-      </div>
+      <label style="margin-top:10px;">Link do Drive</label>
+      <input id="reikiRecUrl" type="url" value="${escapeHtml(r?.url || '')}" placeholder="https://drive.google.com/...">
       <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;">
         <input id="reikiRecPago" type="checkbox" style="width:auto;margin-top:3px;" ${r?.pago ? 'checked' : ''}>
         <span>Conteúdo pago (ebook, módulo extra) — o aluno vê que é uma oferta, não material do curso</span>
@@ -10766,27 +10704,16 @@ window.reikiAbrirRecurso = function(recursoId){
     </div>`);
 };
 
-window.reikiAlternarCampoRecurso = function(){
-  const ehEstudo = document.getElementById('reikiRecTipo')?.value === 'estudo';
-  document.getElementById('reikiRecCampoUrl')?.classList.toggle('hidden', ehEstudo);
-  document.getElementById('reikiRecCampoConteudo')?.classList.toggle('hidden', !ehEstudo);
-};
-
 window.reikiGuardarRecurso = async function(recursoId){
   const titulo = (document.getElementById('reikiRecTitulo')?.value || '').trim();
   const url = (document.getElementById('reikiRecUrl')?.value || '').trim();
-  const tipo = document.getElementById('reikiRecTipo')?.value || 'manual';
-  const conteudo = (document.getElementById('reikiRecConteudo')?.value || '').trim();
   if (!titulo){ toast('O título é obrigatório.', true); return; }
-  if (tipo === 'estudo' && !conteudo){ toast('Falta o texto do guia.', true); return; }
-  if (url && !/^https?:\/\//i.test(url)){ toast('O link tem de começar por https://', true); return; }
+  if (!url){ toast('Falta o link do ficheiro.', true); return; }
+  if (!/^https?:\/\//i.test(url)){ toast('O link tem de começar por https://', true); return; }
   const dados = {
     titulo,
     url,
-    conteudo,
-    imagemUrl: (document.getElementById('reikiRecImagem')?.value || '').trim(),
-    categoria: (document.getElementById('reikiRecCategoria')?.value || '').trim(),
-    tipo,
+    tipo: document.getElementById('reikiRecTipo')?.value || 'manual',
     nivel: document.getElementById('reikiRecNivel')?.value || '0',
     pago: !!document.getElementById('reikiRecPago')?.checked,
     descricao: (document.getElementById('reikiRecDesc')?.value || '').trim(),
@@ -10827,11 +10754,6 @@ function reikiGerarCodigo(){
   return Array.from(a).map(n => REIKI_ALFABETO[n % REIKI_ALFABETO.length]).join('');
 }
 
-function reikiUrlPercurso(codigo){
-  const base = window.location.href.replace(/[^/]*$/, '');
-  return base + 'reiki-percurso.html?t=' + encodeURIComponent(tenantId) + '&c=' + encodeURIComponent(codigo);
-}
-
 function reikiUrlBiblioteca(codigo){
   const base = window.location.href.replace(/[^/]*$/, '');
   return base + 'reiki-biblioteca.html?t=' + encodeURIComponent(tenantId) + '&c=' + encodeURIComponent(codigo);
@@ -10844,9 +10766,7 @@ async function reikiGravarAcesso(codigo, aluno){
   await setDoc(doc(db, 'tenants', tenantId, 'reikiAccess', codigo), {
     alunoId: aluno.id,
     nome: aluno.nome || '',
-    foto: aluno.foto || '',
     nivel: aluno.nivelAtual || null,
-    suspenso: !!aluno.suspenso,
     turmaNome: (t && t.ativa !== false) ? (t.nome || '') : '',
     turmaWhatsapp: (t && t.ativa !== false) ? (t.whatsappUrl || '') : '',
     turmaJitsi: (t && t.ativa !== false) ? reikiUrlJitsi(t.jitsiSala) : '',
@@ -10866,18 +10786,17 @@ window.reikiAbrirLinkAluno = async function(alunoId){
       a.codigoAcesso = codigo;
     }
     await reikiGravarAcesso(codigo, a);
-    const url = reikiUrlPercurso(codigo);
+    const url = reikiUrlBiblioteca(codigo);
     const nivel = reikiNivelInfo(a.nivelAtual);
     showPatientOverlay('🔗 Link do aluno', `
       <div class="card">
         <strong>${escapeHtml(a.nome || '')}</strong>
         <p class="muted" style="margin-top:4px;">${nivel ? escapeHtml(nivel.nome) : 'Ainda sem nível — só vê o material geral.'}</p>
-        <label style="margin-top:12px;">Link pessoal do aluno</label>
-        <input id="reikiLinkCampo" type="text" readonly value="${escapeHtml(reikiUrlPercurso(codigo))}" onclick="this.select()">
-        <p class="muted" style="margin-top:4px;font-size:.82rem;">Um único link: percurso, biblioteca e turma ficam todos lá dentro, em separadores.</p>
+        <label style="margin-top:12px;">Link pessoal</label>
+        <input id="reikiLinkCampo" type="text" readonly value="${escapeHtml(url)}" onclick="this.select()">
         <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="primary" onclick="reikiCopiarLink()">📋 Copiar</button>
-          ${a.telefone ? `<a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/${encodeURIComponent(String(a.telefone).replace(/[^0-9]/g,''))}?text=${encodeURIComponent('Olá ' + (a.nome||'') + ', aqui tens a tua formação de Reiki: ' + url)}">💬 WhatsApp</a>` : ''}
+          ${a.telefone ? `<a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/${encodeURIComponent(String(a.telefone).replace(/[^0-9]/g,''))}?text=${encodeURIComponent('Olá ' + (a.nome||'') + ', aqui tens a tua biblioteca de Reiki: ' + url)}">💬 WhatsApp</a>` : ''}
           <button class="ghost" onclick="reikiRenovarCodigo('${a.id}')">🔄 Novo código</button>
         </div>
         <p class="muted" style="margin-top:12px;font-size:.85rem;">Quem tiver este link vê a biblioteca deste aluno. Se ele o partilhar, gera um código novo — o antigo deixa de funcionar.</p>
@@ -10929,16 +10848,11 @@ function reikiRenderListaAlunos(){
         return `
         <div class="card" style="margin-bottom:10px;">
           <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
-            <div class="row" style="gap:10px;align-items:flex-start;">
-            ${a.foto
-              ? `<img src="${escapeHtml(a.foto)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid #eee;" onerror="this.style.display='none'">`
-              : `<div style="width:40px;height:40px;border-radius:50%;background:#f3ece0;color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:600;flex-shrink:0;">${escapeHtml((a.nome||'?').trim()[0]||'?').toUpperCase()}</div>`}
             <div>
-              <strong>${escapeHtml(a.nome || '(sem nome)')}</strong>${a.suspenso ? ' <span class="badge">suspenso</span>' : ''}
+              <strong>${escapeHtml(a.nome || '(sem nome)')}</strong>
               <p class="muted" style="margin-top:4px;">${nivel ? '📜 ' + escapeHtml(nivel.nome) : '🌱 Inscrito, ainda sem nível'}</p>
               ${a.telefone ? `<p class="muted" style="margin-top:2px;">📞 ${escapeHtml(a.telefone)}</p>` : ''}
               ${a.email ? `<p class="muted" style="margin-top:2px;">✉️ ${escapeHtml(a.email)}</p>` : ''}
-            </div>
             </div>
           </div>
           ${hist.length ? `<p class="muted" style="margin-top:8px;font-size:.85rem;">Percurso: ${hist.map(h => escapeHtml((reikiNivelInfo(h.nivel)?.certLabel) || h.nivel) + ' (' + escapeHtml(reikiDataPT(h.data)) + ')').join(' · ')}</p>` : ''}
@@ -10947,7 +10861,6 @@ function reikiRenderListaAlunos(){
             ${nivel ? `<button class="ghost" onclick="reikiAbrirCertificado('${a.id}')">📜 Certificado</button>` : ''}
             <button class="ghost" onclick="reikiAbrirLinkAluno('${a.id}')">🔗 Link do aluno</button>
             <button class="ghost" onclick="reikiAbrirForm('${a.id}')">✏️ Editar</button>
-            <button class="ghost" onclick="reikiAlternarSuspensao('${a.id}')">${a.suspenso ? '▶️ Reativar' : '⏸️ Suspender'}</button>
             <button class="danger" onclick="reikiApagarAluno('${a.id}')">🗑️</button>
           </div>
         </div>`;
@@ -10973,12 +10886,6 @@ window.reikiAbrirForm = function(alunoId){
     <div class="card">
       <label>Nome completo</label>
       <input id="reikiNome" type="text" value="${escapeHtml(a?.nome || '')}" placeholder="Nome como vai sair no certificado">
-      <label style="margin-top:10px;">Foto (link) — opcional</label>
-      <div class="row" style="gap:10px;align-items:center;">
-        ${a?.foto ? `<img src="${escapeHtml(a.foto)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid #eee;" onerror="this.style.display='none'">` : ''}
-        <input id="reikiFoto" type="url" style="flex:1;" value="${escapeHtml(a?.foto || '')}" placeholder="https://drive.google.com/...">
-      </div>
-      <p class="muted" style="margin-top:4px;font-size:.82rem;">Cola o link de uma foto do Drive, partilhada como "qualquer pessoa com o link". Aparece no teu painel e na formação dele.</p>
       <label style="margin-top:10px;">Telefone</label>
       <input id="reikiTelefone" type="tel" value="${escapeHtml(a?.telefone || '')}">
       <label style="margin-top:10px;">E-mail</label>
@@ -11003,7 +10910,6 @@ window.reikiGuardarAluno = async function(alunoId){
   if (!nome){ toast('O nome do aluno é obrigatório.', true); return; }
   const dados = {
     nome,
-    foto: (document.getElementById('reikiFoto')?.value || '').trim(),
     telefone: (document.getElementById('reikiTelefone')?.value || '').trim(),
     email: (document.getElementById('reikiEmail')?.value || '').trim(),
     turmaId: document.getElementById('reikiTurma')?.value || '',
@@ -11024,22 +10930,6 @@ window.reikiGuardarAluno = async function(alunoId){
   } catch(e){
     toast('Não consegui guardar: ' + (e.message || e), true);
   }
-};
-
-window.reikiAlternarSuspensao = async function(alunoId){
-  const a = __reikiAlunos.find(x => x.id === alunoId);
-  if (!a) return;
-  const vaiSuspender = !a.suspenso;
-  if (vaiSuspender && !await reikiConfirmar('Suspender aluno',
-      'Suspender "' + (a.nome||'') + '"?\n\nO link do percurso deixa de funcionar para ele até reativares.')) return;
-  try {
-    await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId), { suspenso: vaiSuspender });
-    if (a.codigoAcesso){
-      await updateDoc(doc(db, 'tenants', tenantId, 'reikiAccess', a.codigoAcesso), { suspenso: vaiSuspender }).catch(()=>{});
-    }
-    toast(vaiSuspender ? 'Aluno suspenso.' : 'Aluno reativado.');
-    renderReikiAlunos();
-  } catch(e){ toast('Não consegui alterar: ' + (e.message || e), true); }
 };
 
 window.reikiApagarAluno = async function(alunoId){
@@ -11097,7 +10987,7 @@ window.reikiConfirmarSubirNivel = async function(alunoId){
       atualizadoEm: serverTimestamp()
     });
     if (a.codigoAcesso){
-      await reikiGravarAcesso(a.codigoAcesso, { id: alunoId, nome: a.nome, foto: a.foto, suspenso: a.suspenso, nivelAtual: prox.id, turmaId: a.turmaId }).catch(()=>{});
+      await reikiGravarAcesso(a.codigoAcesso, { id: alunoId, nome: a.nome, nivelAtual: prox.id, turmaId: a.turmaId }).catch(()=>{});
     }
     closePatientOverlay();
     toast('Nível actualizado.');
@@ -11206,775 +11096,6 @@ window.reikiGerarCertificado = async function(alunoId){
       <strong>Não consegui gerar o certificado.</strong>
       <p class="muted" style="margin-top:6px;">${escapeHtml(e.message || String(e))}</p></div>`;
   }
-};
-
-/* ─── Percurso interativo ────────────────────────────────────────────
-   Os módulos que o aluno percorre: ler → praticar → responder. O
-   conteúdo do Nível 1 vem do ficheiro reiki-percurso-nivel1.js, que
-   expõe seedReikiNivel1() — aqui é só o botão que o chama, para não
-   ser preciso consola nenhuma.
-
-   Firestore: tenants/{tenantId}/reikiModules/{id}
-   ────────────────────────────────────────────────────────────────── */
-
-let __reikiModulos = [];
-
-async function reikiCarregarModulos(){
-  const snap = await getDocs(collection(db, 'tenants', tenantId, 'reikiModules'));
-  __reikiModulos = [];
-  snap.forEach(d => __reikiModulos.push({ id: d.id, ...d.data() }));
-  __reikiModulos.sort((a, b) => {
-    const na = reikiIndiceNivelBib(a.nivel), nb = reikiIndiceNivelBib(b.nivel);
-    if (na !== nb) return na - nb;
-    return (a.ordem || 0) - (b.ordem || 0);
-  });
-}
-
-async function reikiRenderPercurso(){
-  const alvo = document.getElementById('reikiConteudo');
-  if (!alvo) return;
-  alvo.innerHTML = '<p class="muted">A carregar o percurso…</p>';
-  try {
-    await reikiCarregarModulos();
-  } catch(e){
-    alvo.innerHTML = `<div class="card" style="border:1px solid #e0b4b4;background:#fdf3f3;">
-      <strong>Não consegui carregar os módulos.</strong>
-      <p class="muted" style="margin-top:6px;">${escapeHtml(e.message || String(e))}</p></div>`;
-    return;
-  }
-
-  const temNivel1 = __reikiModulos.some(m => String(m.nivel) === '1');
-  const lista = __reikiModulos.length === 0
-    ? '<p class="muted">Ainda não há módulos. Crie os do Nível 1 no botão acima.</p>'
-    : REIKI_NIVEIS.map(n => {
-        const doNivel = __reikiModulos.filter(m => String(m.nivel) === n.id);
-        if (!doNivel.length) return '';
-        const publicados = doNivel.filter(m => m.publicado).length;
-        return `
-        <h3 style="margin:16px 0 8px;">${escapeHtml(n.certLabel)} <span class="muted" style="font-weight:400;font-size:.85rem;">· ${publicados} de ${doNivel.length} publicados</span></h3>
-        ${doNivel.map(m => `
-          <div class="card" style="margin-bottom:8px;">
-            <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
-              <div>
-                <strong>${m.ordem}. ${escapeHtml(m.titulo || '(sem título)')}</strong>
-                ${m.subtitulo ? `<p class="muted" style="margin-top:2px;">${escapeHtml(m.subtitulo)}</p>` : ''}
-                <p class="muted" style="margin-top:4px;font-size:.85rem;">
-                  ${(m.ler||[]).length} bloco(s) de leitura ·
-                  ${m.praticar ? '1 prática' : 'sem prática'} ·
-                  ${(m.responder||[]).length} pergunta(s)
-                  ${m.manual ? ' · ' + escapeHtml(m.manual) : ''}
-                </p>
-              </div>
-              <span class="badge ${m.publicado ? 'active' : ''}">${m.publicado ? 'publicado' : 'rascunho'}</span>
-            </div>
-            <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
-              <button class="ghost" onclick="reikiVerModulo('${m.id}')">👁️ Ver</button>
-              <button class="ghost" onclick="reikiEditarModulo('${m.id}')">✏️ Editar</button>
-              <button class="ghost" onclick="reikiAlternarPublicacaoModulo('${m.id}')">${m.publicado ? '🙈 Despublicar' : '✅ Publicar'}</button>
-              <button class="danger" onclick="reikiApagarModulo('${m.id}')">🗑️</button>
-            </div>
-          </div>`).join('')}`;
-      }).join('');
-
-  alvo.innerHTML = `
-    <div class="card" style="margin-bottom:12px;">
-      <p class="muted">Cada módulo tem três partes: <strong>ler</strong> um bocado, <strong>praticar</strong> com registo, e <strong>responder</strong> a perguntas de treino. O aluno avança ao seu ritmo.</p>
-      <p class="muted" style="margin-top:6px;font-size:.85rem;">Os módulos ficam como rascunho até os publicar — assim pode lê-los com calma antes de os alunos os verem.</p>
-      <div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap;">
-        ${REIKI_NIVEIS.map(nv => {
-          const jaTem = __reikiModulos.some(m => String(m.nivel) === nv.id);
-          return jaTem ? '' : `<button class="primary" onclick="reikiCriarModulosNivel('${nv.id}', this)">➕ Módulos do Nível ${nv.id}</button>`;
-        }).join('')}
-      </div>
-      <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap;">
-        ${REIKI_NIVEIS.map(nv => {
-          const porPublicar = __reikiModulos.filter(m => String(m.nivel) === nv.id && !m.publicado).length;
-          return porPublicar ? `<button class="ghost" onclick="reikiPublicarNivel('${nv.id}')">✅ Publicar os ${porPublicar} do Nível ${nv.id}</button>` : '';
-        }).join('')}
-      </div>
-    </div>
-    ${lista}`;
-}
-
-window.reikiCriarModulosNivel = async function(nivel, btn){
-  const fn = { '1':'seedReikiNivel1', '2':'seedReikiNivel2',
-               '3A':'seedReikiNivel3A', '3B':'seedReikiNivel3B' }[nivel];
-  if (typeof window[fn] !== 'function'){
-    const ficheiro = nivel === '1' ? 'reiki-percurso-nivel1.js' : 'reiki-percurso-niveis-2-3.js';
-    toast('O ficheiro ' + ficheiro + ' não está a ser carregado — confirme que está na raiz do repositório.', true);
-    return;
-  }
-  btn.disabled = true; btn.textContent = 'A criar…';
-  try { await window[fn](); }
-  catch(e){ toast('Não consegui criar: ' + (e.message || e), true); }
-  __reikiTab = 'percurso';
-  reikiRenderPercurso();
-};
-
-window.reikiAlternarPublicacaoModulo = async function(moduloId){
-  const m = __reikiModulos.find(x => x.id === moduloId);
-  if (!m) return;
-  try {
-    await updateDoc(doc(db, 'tenants', tenantId, 'reikiModules', moduloId), {
-      publicado: !m.publicado, actualizadoEm: serverTimestamp()
-    });
-    toast(m.publicado ? 'Módulo despublicado.' : 'Módulo publicado.');
-    reikiRenderPercurso();
-  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
-};
-
-window.reikiPublicarNivel = async function(nivel){
-  nivel = String(nivel);
-  const porPublicar = __reikiModulos.filter(m => String(m.nivel) === String(nivel) && !m.publicado);
-  if (!porPublicar.length) return;
-  if (!await reikiConfirmar('Publicar módulos', 'Publicar os ' + porPublicar.length + ' módulos por publicar do Nível ' + nivel + '?\n\nA partir daí ficam visíveis aos alunos desse nível.', 'Publicar')) return;
-  try {
-    for (const m of porPublicar){
-      await updateDoc(doc(db, 'tenants', tenantId, 'reikiModules', m.id), {
-        publicado: true, actualizadoEm: serverTimestamp()
-      });
-    }
-    toast(porPublicar.length + ' módulo(s) publicado(s).');
-    reikiRenderPercurso();
-  } catch(e){ toast('Não consegui publicar: ' + (e.message || e), true); }
-};
-
-window.reikiApagarModulo = async function(moduloId){
-  const m = __reikiModulos.find(x => x.id === moduloId);
-  if (!m) return;
-  if (!await reikiConfirmar('Apagar módulo', 'Apagar "' + (m.titulo||'') + '"?\n\nO progresso que os alunos já tenham feito neste módulo deixa de fazer sentido.')) return;
-  try {
-    await deleteDoc(doc(db, 'tenants', tenantId, 'reikiModules', moduloId));
-    toast('Módulo apagado.');
-    reikiRenderPercurso();
-  } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
-};
-
-/* ─── Editor de módulos ──────────────────────────────────────────────
-   Tudo o que o aluno lê, pratica e responde é editável aqui: acrescentar,
-   alterar e apagar blocos, a prática e as perguntas.
-
-   A resposta certa marca-se com um botão de rádio, nunca por número —
-   assim a pontuação não se desalinha quando mexes na ordem das opções.
-   ────────────────────────────────────────────────────────────────── */
-
-let __modEdit = null;
-
-window.reikiEditarModulo = function(moduloId){
-  const m = __reikiModulos.find(x => x.id === moduloId);
-  if (!m) return;
-  __modEdit = JSON.parse(JSON.stringify({
-    id: m.id, titulo: m.titulo || '', subtitulo: m.subtitulo || '',
-    duracao: m.duracao || '', manual: m.manual || '',
-    ler: m.ler || [], praticar: m.praticar || { titulo:'', instrucoes:'', registo:true, registoPergunta:'' },
-    responder: m.responder || [], desafio: m.desafio || ''
-  }));
-  desenharEditor();
-};
-
-function desenharEditor(){
-  const e = __modEdit;
-  showPatientOverlay('✏️ ' + (e.titulo || 'Módulo'), `
-    <div class="card">
-      <label>Título</label>
-      <input id="edTitulo" value="${escapeHtml(e.titulo)}" oninput="__modEdit.titulo=this.value">
-      <label style="margin-top:10px;">Subtítulo</label>
-      <input id="edSub" value="${escapeHtml(e.subtitulo)}" oninput="__modEdit.subtitulo=this.value">
-      <div class="row" style="gap:8px;margin-top:10px;">
-        <div style="flex:1;"><label>Duração</label>
-          <input value="${escapeHtml(e.duracao)}" oninput="__modEdit.duracao=this.value" placeholder="25 min"></div>
-        <div style="flex:1;"><label>Referência do manual</label>
-          <input value="${escapeHtml(e.manual)}" oninput="__modEdit.manual=this.value" placeholder="Capítulos 1 a 4"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:center;">
-        <strong>📖 Ler</strong>
-        <div class="row" style="gap:5px;">
-          <button class="ghost" onclick="edAddBloco('texto')">+ Texto</button>
-          <button class="ghost" onclick="edAddBloco('destaque')">+ Destaque</button>
-          <button class="ghost" onclick="edAddBloco('lista')">+ Lista</button>
-          <button class="ghost" onclick="edAddBloco('imagem')">+ Imagem</button>
-        </div>
-      </div>
-      ${e.ler.map((b, i) => `
-        <div style="border:1px solid #eee;border-radius:10px;padding:10px;margin-top:10px;">
-          <div class="row" style="justify-content:space-between;align-items:center;">
-            <span class="badge">${b.tipo === 'destaque' ? 'destaque' : (b.tipo === 'lista' ? 'lista' : (b.tipo === 'imagem' ? 'imagem' : 'texto'))}</span>
-            <div class="row" style="gap:4px;">
-              ${i > 0 ? `<button class="ghost" onclick="edMover('ler',${i},-1)">↑</button>` : ''}
-              ${i < e.ler.length - 1 ? `<button class="ghost" onclick="edMover('ler',${i},1)">↓</button>` : ''}
-              <button class="danger" onclick="edApagar('ler',${i})">🗑️</button>
-            </div>
-          </div>
-          ${b.tipo === 'lista' ? `
-            <label style="margin-top:8px;">Título da lista</label>
-            <input value="${escapeHtml(b.titulo || '')}" oninput="__modEdit.ler[${i}].titulo=this.value">
-            <label style="margin-top:8px;">Itens — um por linha</label>
-            <textarea rows="5" oninput="__modEdit.ler[${i}].itens=this.value.split('\n').map(x=>x.trim()).filter(Boolean)">${escapeHtml((b.itens||[]).join('\n'))}</textarea>`
-          : b.tipo === 'imagem' ? `
-            <label style="margin-top:8px;">Link da imagem (Drive, ou qualquer imagem pública)</label>
-            <input value="${escapeHtml(b.url || '')}" oninput="__modEdit.ler[${i}].url=this.value" placeholder="https://...">
-            <label style="margin-top:8px;">Legenda (opcional)</label>
-            <input value="${escapeHtml(b.legenda || '')}" oninput="__modEdit.ler[${i}].legenda=this.value" placeholder="Cho Ku Rei, traçado completo">
-            ${b.url ? `<img src="${escapeHtml(b.url)}" style="max-width:100%;border-radius:8px;margin-top:8px;border:1px solid #eee;" onerror="this.style.display='none'">` : ''}
-            <p class="muted" style="margin-top:4px;font-size:.8rem;">No Drive: partilha a imagem como "Qualquer pessoa com o link", senão não aparece.</p>`
-          : `
-            <textarea rows="4" style="margin-top:8px;" oninput="__modEdit.ler[${i}].conteudo=this.value">${escapeHtml(b.conteudo || '')}</textarea>`}
-        </div>`).join('')}
-    </div>
-
-    <div class="card">
-      <strong>🤲 Praticar</strong>
-      <label style="margin-top:10px;">Título do exercício</label>
-      <input value="${escapeHtml(e.praticar.titulo || '')}" oninput="__modEdit.praticar.titulo=this.value">
-      <label style="margin-top:10px;">Instruções</label>
-      <textarea rows="5" oninput="__modEdit.praticar.instrucoes=this.value">${escapeHtml(e.praticar.instrucoes || '')}</textarea>
-      <label style="margin-top:10px;">Pergunta do registo</label>
-      <input value="${escapeHtml(e.praticar.registoPergunta || '')}" oninput="__modEdit.praticar.registoPergunta=this.value">
-      <label style="margin-top:10px;">
-        <input type="checkbox" style="width:auto;" ${e.praticar.registo !== false ? 'checked' : ''}
-          onchange="__modEdit.praticar.registo=this.checked"> Pedir registo escrito ao aluno
-      </label>
-    </div>
-
-    <div class="card">
-      <strong>🎯 Desafio para levar para a vida</strong>
-      <p class="muted" style="margin-top:4px;font-size:.85rem;">Aparece ao aluno a seguir à prática. Não é obrigatório — é um convite, e o que ele escrever fica visível para ti em Acompanhar.</p>
-      <textarea rows="3" style="margin-top:8px;" oninput="__modEdit.desafio=this.value" placeholder="ex: Usa o Cho Ku Rei numa situação nova esta semana e regista o que notaste.">${escapeHtml(e.desafio || '')}</textarea>
-    </div>
-
-    <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:center;">
-        <strong>✍️ Responder</strong>
-        <button class="ghost" onclick="edAddPergunta()">+ Pergunta</button>
-      </div>
-      ${e.responder.map((q, i) => `
-        <div style="border:1px solid #eee;border-radius:10px;padding:10px;margin-top:10px;">
-          <div class="row" style="justify-content:space-between;align-items:center;">
-            <span class="badge">${i + 1}</span>
-            <div class="row" style="gap:4px;">
-              ${i > 0 ? `<button class="ghost" onclick="edMover('responder',${i},-1)">↑</button>` : ''}
-              ${i < e.responder.length - 1 ? `<button class="ghost" onclick="edMover('responder',${i},1)">↓</button>` : ''}
-              <button class="danger" onclick="edApagar('responder',${i})">🗑️</button>
-            </div>
-          </div>
-          <label style="margin-top:8px;">Pergunta</label>
-          <textarea rows="2" oninput="__modEdit.responder[${i}].pergunta=this.value">${escapeHtml(q.pergunta || '')}</textarea>
-          <label style="margin-top:8px;">Opções — marca a certa</label>
-          ${(q.opcoes || []).map((o, oi) => `
-            <div class="row" style="gap:7px;align-items:center;margin-bottom:6px;">
-              <input type="radio" name="certa${i}" style="width:auto;" ${oi === q.correta ? 'checked' : ''}
-                onchange="__modEdit.responder[${i}].correta=${oi}">
-              <input style="flex:1;" value="${escapeHtml(o)}" oninput="__modEdit.responder[${i}].opcoes[${oi}]=this.value">
-              <button class="danger" onclick="edApagarOpcao(${i},${oi})">✕</button>
-            </div>`).join('')}
-          <button class="ghost" onclick="edAddOpcao(${i})">+ Opção</button>
-          <label style="margin-top:10px;">Comentário depois de responder</label>
-          <textarea rows="3" oninput="__modEdit.responder[${i}].feedback=this.value">${escapeHtml(q.feedback || '')}</textarea>
-        </div>`).join('')}
-    </div>
-
-    <div class="card">
-      <button class="primary" style="width:100%;" onclick="edGuardar()">Guardar alterações</button>
-      <button class="ghost" style="width:100%;margin-top:8px;" onclick="closePatientOverlay()">Cancelar</button>
-      <p class="muted" style="margin-top:8px;font-size:.82rem;">O que já estiver publicado passa a mostrar esta versão aos alunos. O trabalho que eles já entregaram não se perde.</p>
-    </div>`);
-}
-
-window.edAddBloco = function(tipo){
-  __modEdit.ler.push(
-    tipo === 'lista'  ? { tipo, titulo:'', itens:[] } :
-    tipo === 'imagem' ? { tipo, url:'', legenda:'' } :
-    { tipo, conteudo:'' });
-  desenharEditor();
-};
-window.edAddPergunta = function(){
-  __modEdit.responder.push({ pergunta:'', opcoes:['', ''], correta:0, feedback:'' });
-  desenharEditor();
-};
-window.edAddOpcao = function(i){
-  __modEdit.responder[i].opcoes.push('');
-  desenharEditor();
-};
-window.edApagarOpcao = function(i, oi){
-  const q = __modEdit.responder[i];
-  if (q.opcoes.length <= 2){ toast('Uma pergunta precisa de pelo menos duas opções.', true); return; }
-  q.opcoes.splice(oi, 1);
-  /* A resposta certa acompanha a remoção, para a pontuação não desalinhar. */
-  if (q.correta === oi) q.correta = 0;
-  else if (q.correta > oi) q.correta--;
-  desenharEditor();
-};
-window.edApagar = function(lista, i){
-  __modEdit[lista].splice(i, 1);
-  desenharEditor();
-};
-window.edMover = function(lista, i, d){
-  const a = __modEdit[lista];
-  [a[i], a[i + d]] = [a[i + d], a[i]];
-  desenharEditor();
-};
-
-window.edGuardar = async function(){
-  const e = __modEdit;
-  if (!e.titulo.trim()){ toast('O módulo precisa de título.', true); return; }
-  for (const q of e.responder){
-    if (!q.pergunta.trim()){ toast('Há uma pergunta sem texto.', true); return; }
-    if ((q.opcoes || []).some(o => !String(o).trim())){ toast('Há uma opção vazia.', true); return; }
-    if (q.correta == null || q.correta < 0 || q.correta >= q.opcoes.length){
-      toast('Há uma pergunta sem resposta certa marcada.', true); return;
-    }
-  }
-  try {
-    await updateDoc(doc(db, 'tenants', tenantId, 'reikiModules', e.id), {
-      titulo: e.titulo.trim(), subtitulo: e.subtitulo.trim(),
-      duracao: e.duracao.trim(), manual: e.manual.trim(),
-      ler: e.ler, praticar: e.praticar, responder: e.responder,
-      desafio: (e.desafio || '').trim(),
-      actualizadoEm: serverTimestamp()
-    });
-    closePatientOverlay();
-    toast('Módulo guardado.');
-    reikiRenderPercurso();
-  } catch(err){ toast('Não consegui guardar: ' + (err.message || err), true); }
-};
-
-/* Pré-visualização — vê-se o módulo como o aluno o vai ver. */
-window.reikiVerModulo = function(moduloId){
-  const m = __reikiModulos.find(x => x.id === moduloId);
-  if (!m) return;
-
-  const blocoLer = (b) => {
-    if (b.tipo === 'destaque'){
-      return `<div class="card" style="background:#fff8ed;border:1px solid #f0d9a8;margin-bottom:8px;">
-        <p style="white-space:pre-wrap;">${escapeHtml(b.conteudo || '')}</p></div>`;
-    }
-    if (b.tipo === 'lista'){
-      return `<div style="margin-bottom:10px;">
-        ${b.titulo ? `<strong>${escapeHtml(b.titulo)}</strong>` : ''}
-        <ul style="margin:6px 0 0 18px;line-height:1.6;">
-          ${(b.itens||[]).map(i => `<li>${escapeHtml(i)}</li>`).join('')}
-        </ul></div>`;
-    }
-    if (b.tipo === 'imagem'){
-      return b.url ? `<div style="margin-bottom:10px;text-align:center;">
-        <img src="${escapeHtml(b.url)}" style="max-width:100%;border-radius:10px;border:1px solid #eee;">
-        ${b.legenda ? `<p class="muted" style="margin-top:6px;font-size:.85rem;">${escapeHtml(b.legenda)}</p>` : ''}
-      </div>` : `<p class="muted">(imagem por colar)</p>`;
-    }
-    return `<p style="margin-bottom:10px;white-space:pre-wrap;line-height:1.6;">${escapeHtml(b.conteudo || '')}</p>`;
-  };
-
-  showPatientOverlay(m.titulo || 'Módulo', `
-    <div class="card">
-      <span class="badge">${escapeHtml(reikiNivelBibLabel(m.nivel))} · módulo ${m.ordem}</span>
-      <h2 style="margin-top:8px;">${escapeHtml(m.titulo || '')}</h2>
-      ${m.subtitulo ? `<p class="muted">${escapeHtml(m.subtitulo)}</p>` : ''}
-      ${m.duracao ? `<p class="muted" style="margin-top:4px;">⏱️ ${escapeHtml(m.duracao)}</p>` : ''}
-    </div>
-
-    <div class="card">
-      <h3 style="margin-bottom:10px;">📖 Ler</h3>
-      ${(m.ler||[]).map(blocoLer).join('') || '<p class="muted">Sem conteúdo de leitura.</p>'}
-    </div>
-
-    ${m.praticar ? `
-    <div class="card">
-      <h3 style="margin-bottom:8px;">🤲 Praticar</h3>
-      <strong>${escapeHtml(m.praticar.titulo || '')}</strong>
-      <p style="margin-top:6px;white-space:pre-wrap;line-height:1.6;">${escapeHtml(m.praticar.instrucoes || '')}</p>
-      ${m.praticar.registo ? `
-      <label style="margin-top:10px;">${escapeHtml(m.praticar.registoPergunta || 'O que notou?')}</label>
-      <textarea rows="3" disabled placeholder="(aqui o aluno escreve o seu registo)"></textarea>` : ''}
-    ${m.desafio ? `<div class="card" style="background:#fff8ed;border:1px solid #f0d9a8;margin-top:10px;">
-        <strong>🎯 Desafio</strong>
-        <p style="margin-top:4px;white-space:pre-wrap;">${escapeHtml(m.desafio)}</p></div>` : ''}
-    </div>` : ''}
-
-    ${(m.responder||[]).length ? `
-    <div class="card">
-      <h3 style="margin-bottom:10px;">✍️ Responder</h3>
-      ${(m.responder||[]).map((q, i) => `
-        <div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #eee;">
-          <strong>${i+1}. ${escapeHtml(q.pergunta || '')}</strong>
-          ${(q.opcoes||[]).map((o, oi) => `
-            <p style="margin:6px 0 0 10px;${oi === q.correta ? 'color:var(--primary);font-weight:600;' : ''}">
-              ${oi === q.correta ? '✓' : '○'} ${escapeHtml(o)}
-            </p>`).join('')}
-          ${q.feedback ? `<p class="muted" style="margin-top:8px;font-style:italic;">💬 ${escapeHtml(q.feedback)}</p>` : ''}
-        </div>`).join('')}
-      <p class="muted" style="font-size:.85rem;">O aluno só vê a resposta certa e este comentário depois de responder.</p>
-    </div>` : ''}
-
-    <div class="card">
-      <button class="ghost" style="width:100%;" onclick="closePatientOverlay()">Fechar</button>
-    </div>`);
-};
-
-/* ─── Acompanhamento dos alunos ──────────────────────────────────────
-   Tudo o que cada aluno escreveu e respondeu no percurso. É esta a
-   avaliação contínua: eles estudam, praticam e registam, e a escola lê.
-
-   Firestore: tenants/{tenantId}/reikiProgress/{codigo_moduloId}
-   ────────────────────────────────────────────────────────────────── */
-
-let __reikiProgresso = [];
-
-async function reikiRenderAcompanhar(){
-  const alvo = document.getElementById('reikiConteudo');
-  if (!alvo) return;
-  alvo.innerHTML = '<p class="muted">A carregar o trabalho dos alunos…</p>';
-  try {
-    const [snapP, snapM] = await Promise.all([
-      getDocs(collection(db, 'tenants', tenantId, 'reikiProgress')),
-      getDocs(collection(db, 'tenants', tenantId, 'reikiModules'))
-    ]);
-    __reikiProgresso = [];
-    snapP.forEach(d => __reikiProgresso.push({ id: d.id, ...d.data() }));
-    __reikiModulos = [];
-    snapM.forEach(d => __reikiModulos.push({ id: d.id, ...d.data() }));
-  } catch(e){
-    alvo.innerHTML = `<div class="card" style="border:1px solid #e0b4b4;background:#fdf3f3;">
-      <strong>Não consegui carregar.</strong>
-      <p class="muted" style="margin-top:6px;">${escapeHtml(e.message || String(e))}</p></div>`;
-    return;
-  }
-
-  if (!__reikiProgresso.length){
-    alvo.innerHTML = `<div class="card"><strong>Ainda ninguém começou o percurso.</strong>
-      <p class="muted" style="margin-top:6px;">Assim que um aluno abrir o link do percurso e concluir o primeiro passo, aparece aqui tudo o que ele escrever e responder.</p></div>`;
-    return;
-  }
-
-  /* Agrupa por aluno (o código é a chave do cartão de acesso). */
-  const porAluno = {};
-  __reikiProgresso.forEach(r => {
-    const k = r.codigo || '?';
-    if (!porAluno[k]) porAluno[k] = { nome: r.alunoNome || '(sem nome)', nivel: r.nivel || '', registos: [] };
-    if (r.alunoNome) porAluno[k].nome = r.alunoNome;
-    porAluno[k].registos.push(r);
-  });
-
-  const linhas = Object.entries(porAluno).map(([codigo, a]) => {
-    const totalNivel = __reikiModulos.filter(m => String(m.nivel) === String(a.nivel) && m.publicado).length;
-    const feitos = a.registos.filter(r => r.concluido).length;
-    const certos = a.registos.reduce((n, r) => n + (r.acertos || 0), 0);
-    const perguntas = a.registos.reduce((n, r) => n + (r.totalPerguntas || 0), 0);
-    const pct = perguntas ? Math.round(certos / perguntas * 100) : null;
-    const ultimo = a.registos.map(r => r.actualizadoEm || '').sort().pop() || '';
-    const completo = totalNivel && feitos >= totalNivel;
-    return { codigo, ...a, totalNivel, feitos, certos, perguntas, pct, ultimo, completo };
-  }).sort((x, y) => (y.ultimo || '').localeCompare(x.ultimo || ''));
-
-  alvo.innerHTML = `
-    <div class="card" style="margin-bottom:12px;">
-      <strong>${linhas.length} aluno(s) em percurso</strong>
-      <p class="muted" style="margin-top:6px;">Cada aluno estuda, pratica e regista — e é isso que avalias. As respostas certas contam, mas o que escrevem na prática conta mais.</p>
-    </div>
-    ${linhas.map(a => `
-      <div class="card" style="margin-bottom:8px;">
-        <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
-          <div>
-            <strong>${escapeHtml(a.nome)}</strong>
-            <p class="muted" style="margin-top:3px;">Nível ${escapeHtml(a.nivel)} · ${a.feitos}${a.totalNivel ? ' de ' + a.totalNivel : ''} módulos concluídos</p>
-            ${a.pct !== null ? `<p class="muted" style="margin-top:2px;">Respostas certas: ${a.certos} de ${a.perguntas} (${a.pct}%)</p>` : ''}
-          </div>
-          <span class="badge ${a.completo ? 'active' : ''}">${a.completo ? 'completo' : 'a decorrer'}</span>
-        </div>
-        <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
-          <button class="ghost" onclick="reikiVerTrabalho('${a.codigo}')">📖 Ver o trabalho</button>
-          ${a.completo ? `<button class="primary" onclick="reikiMudarTab('alunos')">🎓 Certificado e nível seguinte</button>` : ''}
-        </div>
-      </div>`).join('')}`;
-}
-
-/* Tudo o que um aluno escreveu, módulo a módulo. */
-window.reikiVerTrabalho = function(codigo){
-  const regs = __reikiProgresso.filter(r => r.codigo === codigo)
-    .sort((a, b) => {
-      const ma = __reikiModulos.find(m => m.id === a.moduloId) || {};
-      const mb = __reikiModulos.find(m => m.id === b.moduloId) || {};
-      return (ma.ordem || 0) - (mb.ordem || 0);
-    });
-  if (!regs.length) return;
-  const nome = regs.find(r => r.alunoNome)?.alunoNome || 'Aluno';
-
-  showPatientOverlay('📖 ' + nome, regs.map(r => {
-    const m = __reikiModulos.find(x => x.id === r.moduloId) || {};
-    const perguntas = m.responder || [];
-    return `
-    <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
-        <strong>${escapeHtml(String(m.ordem || '?'))}. ${escapeHtml(r.moduloTitulo || m.titulo || '')}</strong>
-        <span class="badge ${r.concluido ? 'active' : ''}">${r.concluido ? 'concluído' : (r.praticaFeita ? 'a responder' : (r.lido ? 'a praticar' : 'a ler'))}</span>
-      </div>
-
-      ${r.registo ? `
-        <label style="margin-top:10px;">O que escreveu na prática</label>
-        <div style="background:#fcf8f0;border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:10px 12px;white-space:pre-wrap;font-size:.95rem;">${escapeHtml(r.registo)}</div>`
-      : (r.praticaFeita ? '<p class="muted" style="margin-top:10px;">Marcou a prática como feita, sem registo escrito.</p>' : '')}
-
-      ${r.desafioRegisto ? `
-        <label style="margin-top:10px;">🎯 O que escreveu sobre o desafio</label>
-        <div style="background:#fff8ed;border-left:3px solid #d9a52a;border-radius:0 8px 8px 0;padding:10px 12px;white-space:pre-wrap;font-size:.95rem;">${escapeHtml(r.desafioRegisto)}</div>` : ''}
-
-      ${(r.respostas && perguntas.length) ? `
-        <label style="margin-top:12px;">Respostas — ${r.acertos || 0} de ${r.totalPerguntas || perguntas.length}</label>
-        ${perguntas.map((q, i) => {
-          const dada = r.respostas[i];
-          const certo = dada === q.correta;
-          if (dada === undefined) return '';
-          return `<p style="margin-top:6px;font-size:.92rem;">
-            ${certo ? '✅' : '❌'} <strong>${escapeHtml(q.pergunta)}</strong><br>
-            <span class="muted">Respondeu: ${escapeHtml(String(q.opcoes?.[dada] ?? ''))}</span>
-            ${certo ? '' : `<br><span style="color:var(--primary);">Certa: ${escapeHtml(String(q.opcoes?.[q.correta] ?? ''))}</span>`}
-          </p>`;
-        }).join('')}` : ''}
-
-      ${r.concluidoEm ? `<p class="muted" style="margin-top:10px;font-size:.8rem;">Concluído em ${new Date(r.concluidoEm).toLocaleDateString('pt-PT')}</p>` : ''}
-    </div>`;
-  }).join('') + `<div class="card"><button class="ghost" style="width:100%;" onclick="closePatientOverlay()">Fechar</button></div>`);
-};
-
-/* ─── Poemas do imperador Meiji ──────────────────────────────────────
-   Os 125 gyosei que o Mestre Usui usava no ensino. Os poemas originais
-   são de domínio público (Meiji morreu em 1912); as traduções para
-   português são da escola — escritas aqui, não copiadas de um livro.
-
-   Firestore: tenants/{tenantId}/reikiPoems/{id}
-   Lidos pela página pública poemas-meiji.html, sem necessidade de conta.
-   ────────────────────────────────────────────────────────────────── */
-
-let __reikiPoemas = [];
-
-async function reikiCarregarPoemas(){
-  const snap = await getDocs(collection(db, 'tenants', tenantId, 'reikiPoems'));
-  __reikiPoemas = [];
-  snap.forEach(d => __reikiPoemas.push({ id: d.id, ...d.data() }));
-  __reikiPoemas.sort((a, b) => (Number(a.numero)||0) - (Number(b.numero)||0));
-}
-
-async function reikiRenderPoemas(){
-  const alvo = document.getElementById('reikiConteudo');
-  if (!alvo) return;
-  alvo.innerHTML = '<p class="muted">A carregar poemas…</p>';
-  try { await reikiCarregarPoemas(); }
-  catch(e){
-    alvo.innerHTML = `<div class="card" style="border:1px solid #e0b4b4;background:#fdf3f3;">
-      <strong>Não consegui carregar os poemas.</strong>
-      <p class="muted" style="margin-top:6px;">${escapeHtml(e.message || String(e))}</p></div>`;
-    return;
-  }
-
-  const total = __reikiPoemas.length;
-  const faltam = Math.max(0, 125 - total);
-  const url = window.location.href.replace(/[^/]*$/, '') + 'poemas-meiji.html';
-
-  alvo.innerHTML = `
-    <div class="card" style="margin-bottom:12px;">
-      <div class="row" style="justify-content:space-between;align-items:center;">
-        <strong>${total} de 125 poemas</strong>
-        ${faltam ? `<span class="badge">faltam ${faltam}</span>` : '<span class="badge active">completo</span>'}
-      </div>
-      <p class="muted" style="margin-top:8px;">Os poemas originais do imperador Meiji são de domínio público. As traduções são tuas — escreve-as com as tuas palavras, não as copies de um livro com direitos de autor.</p>
-      <label style="margin-top:10px;">🔗 Link para os alunos</label>
-      <input readonly value="${escapeHtml(url)}" onclick="this.select()">
-      <button class="ghost" style="margin-top:6px;" onclick="navigator.clipboard.writeText('${escapeAttrJs(url)}').then(()=>toast('Link copiado.'))">Copiar link</button>
-      <div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap;">
-        ${total === 0 ? `<button class="primary" onclick="reikiCarregarOs125(this)">⬇️ Carregar os 125 poemas</button>` : ''}
-        <button class="${total === 0 ? 'ghost' : 'primary'}" onclick="reikiAbrirPoema()">➕ Um poema</button>
-        <button class="ghost" onclick="reikiAbrirImportador()">📋 Colar vários</button>
-      </div>
-    </div>
-    ${total === 0 ? '<p class="muted">Ainda não há poemas. Começa por importar os que tiveres — a página dos alunos já funciona com os quatro que estão nos manuais.</p>' :
-      __reikiPoemas.map(p => `
-      <div class="card" style="margin-bottom:8px;">
-        <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
-          <div>
-            <strong>${escapeHtml(String(p.numero||'?'))}${p.titulo ? ' · ' + escapeHtml(p.titulo) : ''}</strong>
-            <p class="muted" style="margin-top:4px;white-space:pre-line;">${escapeHtml(p.texto||'')}</p>
-          </div>
-        </div>
-        <div class="row" style="gap:6px;margin-top:8px;">
-          <button class="ghost" onclick="reikiAbrirPoema('${p.id}')">✏️ Editar</button>
-          <button class="danger" onclick="reikiApagarPoema('${p.id}')">🗑️</button>
-        </div>
-      </div>`).join('')}`;
-}
-
-/* Carrega de uma vez os 125 poemas que vêm no ficheiro reiki-poemas-seed.js,
-   com o princípio e a leitura de cada um. Sem consola e sem colar nada. */
-window.reikiCarregarOs125 = async function(btn){
-  if (typeof window.seedReikiPoemas !== 'function'){
-    toast('O ficheiro reiki-poemas-seed.js não está a ser carregado — confirme que está na raiz do repositório.', true);
-    return;
-  }
-  btn.disabled = true; btn.textContent = 'A carregar os 125…';
-  try { await window.seedReikiPoemas(); }
-  catch(e){ toast('Não consegui carregar: ' + (e.message || e), true); }
-  reikiRenderPoemas();
-};
-
-window.reikiAbrirPoema = function(poemaId){
-  const p = poemaId ? __reikiPoemas.find(x => x.id === poemaId) : null;
-  showPatientOverlay(p ? '✏️ Editar poema' : '➕ Novo poema', `
-    <div class="card">
-      <label>Número (1 a 125)</label>
-      <input id="poemaNum" type="number" min="1" max="125" value="${p?.numero || ''}">
-      <label style="margin-top:10px;">Título (opcional)</label>
-      <input id="poemaTitulo" type="text" value="${escapeHtml(p?.titulo || '')}" placeholder="ex: Bola de cristal">
-      <label style="margin-top:10px;">O poema, em português</label>
-      <textarea id="poemaTexto" rows="5" placeholder="Uma linha por verso.">${escapeHtml(p?.texto || '')}</textarea>
-      <label style="margin-top:10px;">Original ou transliteração (opcional)</label>
-      <textarea id="poemaJapones" rows="3">${escapeHtml(p?.japones || '')}</textarea>
-      <div class="row" style="gap:8px;margin-top:12px;">
-        <button class="primary" onclick="reikiGuardarPoema('${poemaId || ''}')">Guardar</button>
-        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
-      </div>
-    </div>`);
-};
-
-window.reikiGuardarPoema = async function(poemaId){
-  const numero = parseInt(document.getElementById('poemaNum')?.value, 10);
-  const texto = (document.getElementById('poemaTexto')?.value || '').trim();
-  if (!numero || numero < 1 || numero > 125){ toast('O número tem de estar entre 1 e 125.', true); return; }
-  if (!texto){ toast('Falta o texto do poema.', true); return; }
-  const dados = {
-    numero,
-    titulo: (document.getElementById('poemaTitulo')?.value || '').trim(),
-    texto,
-    japones: (document.getElementById('poemaJapones')?.value || '').trim(),
-    atualizadoEm: serverTimestamp()
-  };
-  try {
-    if (poemaId) await updateDoc(doc(db, 'tenants', tenantId, 'reikiPoems', poemaId), dados);
-    else await addDoc(collection(db, 'tenants', tenantId, 'reikiPoems'), { ...dados, criadoEm: serverTimestamp() });
-    closePatientOverlay();
-    toast('Poema guardado.');
-    reikiRenderPoemas();
-  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
-};
-
-window.reikiApagarPoema = async function(poemaId){
-  const p = __reikiPoemas.find(x => x.id === poemaId);
-  if (!p) return;
-  if (!await reikiConfirmar('Apagar poema', 'Apagar o poema ' + (p.numero||'') + '?')) return;
-  try {
-    await deleteDoc(doc(db, 'tenants', tenantId, 'reikiPoems', poemaId));
-    toast('Poema apagado.');
-    reikiRenderPoemas();
-  } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
-};
-
-/* Importador em massa — para não teres de criar 125 um a um no telemóvel.
-   Formato: o número, um ponto, e o poema. Linha em branco entre poemas. */
-window.reikiAbrirImportador = function(){
-  showPatientOverlay('📋 Importar vários poemas', `
-    <div class="card">
-      <p class="muted">Cola os poemas assim — o número, um ponto, e o texto. Deixa uma linha em branco entre cada um:</p>
-      <pre style="background:#f6f8f7;border-radius:8px;padding:10px;font-size:11.5px;overflow-x:auto;">19. A Tolerância (Tama)
-Mesmo a esfera de cristal mais límpida acumula pó;
-nenhum ser humano caminha isento de falhas.
-Princípio: sou calmo
-Leitura: Liberta a cobrança excessiva da perfeição.
-
-25. A Resiliência (Taki)
-Ninguém contemplaria a força da cascata
-se as rochas duras não estreitassem o curso do rio.
-Princípio: confio
-Leitura: É o obstáculo que revela a tua força.</pre>
-      <p class="muted" style="margin-top:8px;">A primeira linha é o número e o título, com o japonês entre parênteses. Depois o poema, uma linha por verso. As linhas <b>Princípio:</b> e <b>Leitura:</b> são opcionais — mas sem o princípio o poema não aparece no sorteio por «só por hoje».</p>
-      <textarea id="poemasEmMassa" rows="12" placeholder="Cola aqui…" style="font-family:monospace;font-size:13px;"></textarea>
-      <div class="row" style="gap:8px;margin-top:12px;">
-        <button class="primary" onclick="reikiImportarPoemas()">Importar</button>
-        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
-      </div>
-      <p id="importaAviso" class="muted" style="margin-top:8px;"></p>
-    </div>`);
-};
-
-window.reikiImportarPoemas = async function(){
-  const bruto = (document.getElementById('poemasEmMassa')?.value || '').trim();
-  if (!bruto){ toast('Cola os poemas primeiro.', true); return; }
-  const aviso = document.getElementById('importaAviso');
-
-  /* Formato aceite, por bloco separado por linha em branco:
-       19. A Tolerância (Tama)      ← número, título e, entre parênteses, o japonês
-       verso                         ← o poema, uma linha por verso
-       verso
-       Princípio: sou calmo          ← opcional
-       Leitura: ...                  ← opcional
-     As linhas de cabeçalho de um documento (sem número à frente) são ignoradas. */
-  const PRINCIPIOS = ['sou calmo','confio','sou grato','trabalho honestamente','sou bondoso'];
-  const semAcentos = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-
-  const novos = [], recusados = [];
-  bruto.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean).forEach(bloco => {
-    const linhas = bloco.split('\n').map(l => l.trim()).filter(Boolean);
-    const cabeca = (linhas[0] || '').match(/^(\d{1,3})\s*[.\-–·)]?\s*(.*)$/);
-    if (!cabeca){ return; }                       // linha de cabeçalho do documento
-    const numero = parseInt(cabeca[1], 10);
-    if (!numero || numero < 1 || numero > 125){ recusados.push(linhas[0].slice(0,40)); return; }
-
-    let titulo = (cabeca[2] || '').trim(), japones = '';
-    const comJaponês = titulo.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
-    if (comJaponês){ titulo = comJaponês[1].trim(); japones = comJaponês[2].trim(); }
-
-    const versos = [];
-    let principio = '', interpretacao = '';
-    linhas.slice(1).forEach(l => {
-      const mp = l.match(/^Princ[íi]pio\s*:?\s*(.*)$/i);
-      const ml = l.match(/^Leitura\s*:?\s*(.*)$/i);
-      if (mp){
-        const valor = semAcentos(mp[1]);
-        principio = PRINCIPIOS.find(x => valor.includes(semAcentos(x))) || '';
-      } else if (ml){
-        interpretacao = ml[1].trim();
-      } else if (interpretacao){
-        interpretacao += ' ' + l;                 // leitura que continua na linha seguinte
-      } else {
-        versos.push(l);
-      }
-    });
-
-    const texto = versos.join('\n').trim();
-    if (!texto){ recusados.push(linhas[0].slice(0,40)); return; }
-    novos.push({ numero, titulo, japones, texto, principio, interpretacao });
-  });
-
-  if (!novos.length){ aviso.textContent = 'Não consegui ler nenhum poema. Confirma o formato.'; return; }
-  aviso.textContent = 'A guardar ' + novos.length + ' poema(s)…';
-
-  const porNumero = {};
-  __reikiPoemas.forEach(x => { porNumero[Number(x.numero)] = x.id; });
-
-  let criados = 0, actualizados = 0;
-  try {
-    for (const n of novos){
-      const jaExiste = porNumero[n.numero];
-      if (jaExiste){
-        await updateDoc(doc(db, 'tenants', tenantId, 'reikiPoems', jaExiste),
-          { ...n, atualizadoEm: serverTimestamp() });
-        actualizados++;
-      } else {
-        await addDoc(collection(db, 'tenants', tenantId, 'reikiPoems'),
-          { ...n, criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp() });
-        criados++;
-      }
-      if (criados + actualizados === 25 || (criados + actualizados) % 50 === 0){
-        aviso.textContent = 'A guardar… ' + (criados + actualizados) + ' de ' + novos.length;
-      }
-    }
-  } catch(e){ toast('Erro a meio da importação: ' + (e.message || e), true); }
-
-  const semPrincipio = novos.filter(x => !x.principio).length;
-  closePatientOverlay();
-  toast(criados + ' novo(s), ' + actualizados + ' actualizado(s)' +
-        (semPrincipio ? ' · ' + semPrincipio + ' sem princípio' : '') +
-        (recusados.length ? ' · ' + recusados.length + ' por ler' : ''));
-  reikiRenderPoemas();
 };
 
 /* ─── Descrições dos níveis (editáveis uma a uma) ─────────────────── */
@@ -13323,14 +12444,5 @@ window.sendChatbotMessage = async function(){
 };
 
 </script>
-
-<!-- Percurso interativo de Reiki — Nível 1 (módulos ler → praticar → responder).
-     Ficheiro separado, na raiz do repositório. Corre seedReikiNivel1() na
-     consola, uma vez, para criar os 6 módulos em tenants/hikari-terapias/reikiModules. -->
-<script type="module" src="./reiki-percurso-nivel1.js"></script>
-<script type="module" src="./reiki-percurso-niveis-2-3.js"></script>
-<script type="module" src="./reiki-poemas-seed.js"></script>
-<script type="module" src="./reiki-biblioteca-seed.js"></script>
-<script type="module" src="./reiki-testes-seed.js"></script>
 </body>
 </html>
