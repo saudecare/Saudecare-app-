@@ -151,6 +151,16 @@ const ROTULOS = {
 };
 const ICONES = { manual:'📘', video:'🎬', audio:'🎧', documento:'📄', link:'🔗' };
 
+/* Aviso nosso: o aviso() é bloqueado no browser do WhatsApp. */
+function aviso(texto){
+  const f = document.createElement('div');
+  f.style.cssText = 'position:fixed;inset:0;background:rgba(40,30,15,.45);display:flex;align-items:center;justify-content:center;z-index:99;padding:20px;';
+  f.innerHTML = '<div class="cartao" style="max-width:360px;text-align:center;margin:0;">'
+    + '<p style="margin:0 0 14px;">' + esc(texto) + '</p>'
+    + '<button class="abrir" style="margin:0;">OK</button></div>';
+  f.querySelector('button').onclick = () => f.remove();
+  document.body.appendChild(f);
+}
 function esc(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
 
 /* O nível em estudo é o seguinte ao último concluído.
@@ -244,10 +254,17 @@ async function carregarDados(){
 
   /* As notas ficam no próprio cartão do aluno: ele vê as suas e não
      consegue ler as dos colegas. */
+  /* Os resultados ficam guardados na conversa privada do aluno — é o
+     único sítio onde a sala de estudo tem licença para escrever. */
+  C.resultados = (C.aluno.resultados || []).slice();
   try {
-    const s = await getDoc(doc(db, 'tenants', tenant, 'reikiAccess', codigo));
-    C.resultados = (s.exists() && s.data().resultados) || [];
-  } catch(e){ C.resultados = []; }
+    const s = await getDoc(doc(db, 'tenants', tenant, 'reikiThreads', codigo));
+    if (s.exists()){
+      const d = s.data();
+      if (Array.isArray(d.resultados) && d.resultados.length) C.resultados = d.resultados;
+      porLer = (d.ultimaDe === 'mestre' && d.lidoAluno === false) ? 1 : 0;
+    }
+  } catch(e){}
 }
 
 const ABAS = [
@@ -304,6 +321,11 @@ function verInicio(){
       + feitos + ' de ' + testes.length + ' teste(s) concluído(s).</p></div>';
   }
 
+  if (porLer){
+    h += '<div class="cartao" style="border-color:var(--aviso);text-align:center;">'
+      + '<strong>✉️ O teu Mestre deixou-te uma mensagem</strong><br>'
+      + '<button class="abrir" onclick="__mostrar(\'mensagens\')">Ler agora</button></div>';
+  }
   h += '<h2>Onde continuar</h2><div class="cartao">'
     + '<button class="botao" onclick="__mostrar(\'biblioteca\')">📚 Materiais (' + recursos.length + ')</button>'
     + '<button class="botao" onclick="__mostrar(\'testes\')">📝 Testes</button>'
@@ -473,7 +495,7 @@ async function entregarTeste(testeId){
     if (v < 0) faltam++;
     else if (v === (q.correta||0)) certas++;
   });
-  if (faltam){ alert('Faltam ' + faltam + ' pergunta(s) por responder.'); return; }
+  if (faltam){ aviso('Faltam ' + faltam + ' pergunta(s) por responder.'); return; }
 
   const pct = Math.round(certas / qs.length * 100);
   const aprovado = pct >= (t.notaMinima || 70);
@@ -487,8 +509,9 @@ async function entregarTeste(testeId){
       respostas: respostas, entregueEm: serverTimestamp()
     });
     C.resultados = C.resultados.filter(r => r.testeId !== testeId).concat([registo]);
-    await setDoc(doc(db, 'tenants', C.tenant, 'reikiAccess', C.codigo),
-                 { resultados: C.resultados }, { merge: true });
+    await setDoc(doc(db, 'tenants', C.tenant, 'reikiThreads', C.codigo),
+                 { resultados: C.resultados, codigo: C.codigo,
+                   alunoNome: C.aluno.nome || '' }, { merge: true });
   } catch(e){ C.resultados = C.resultados.concat([registo]); }
 
   alvo.innerHTML = '<div class="cartao vazio">'
@@ -517,7 +540,10 @@ function verMensagens(){
   const ref = collection(db, 'tenants', C.tenant, 'reikiThreads', C.codigo, 'mensagens');
   const fim = onSnapshot(query(ref, orderBy('criadoEm')), function(s){
     const m = []; s.forEach(d => m.push(d.data()));
-    porLer = 0; desenharBarra();
+    if (porLer){
+      porLer = 0; desenharBarra();
+      setDoc(doc(db, 'tenants', C.tenant, 'reikiThreads', C.codigo), { lidoAluno: true }, { merge: true }).catch(()=>{});
+    }
     if (!m.length){
       caixa.innerHTML = '<p class="vazio">Ainda não há mensagens.<br>Escreve a primeira.</p>';
       return;
@@ -544,8 +570,9 @@ function verMensagens(){
       await setDoc(doc(db, 'tenants', C.tenant, 'reikiThreads', C.codigo),
         { alunoNome: C.aluno.nome || '', alunoId: C.aluno.alunoId || '',
           codigo: C.codigo, ultima: texto.slice(0,120),
-          ultimaDe: 'aluno', atualizadoEm: serverTimestamp() }, { merge: true });
-    } catch(e){ alert('Não consegui enviar. Tenta outra vez.'); ta.value = texto; }
+          ultimaDe: 'aluno', lidoMestre: false, lidoAluno: true,
+          atualizadoEm: serverTimestamp() }, { merge: true });
+    } catch(e){ aviso('Não consegui enviar. Tenta outra vez.'); ta.value = texto; }
   };
 }
 
@@ -554,10 +581,12 @@ let salaAtual = 'geral';
 function verConversa(){
   const emEstudo = C.emEstudo;
   const salaNivel = emEstudo ? 'nivel-' + emEstudo : null;
-  if (salaAtual !== 'geral' && !salaNivel) salaAtual = 'geral';
+  const salaTurma = C.aluno.turmaId ? 'turma-' + C.aluno.turmaId : null;
+  if (![ 'geral', salaNivel, salaTurma ].includes(salaAtual)) salaAtual = 'geral';
 
   alvo.innerHTML = '<div class="cartao" style="text-align:center;">'
     + '<button class="botao" id="sGeral">🌍 Toda a escola</button>'
+    + (salaTurma ? '<button class="botao" id="sTurma">👥 ' + esc(C.aluno.turmaNome || 'A minha turma') + '</button>' : '')
     + (salaNivel ? '<button class="botao" id="sNivel">' + esc(ROTULOS[emEstudo]) + '</button>' : '')
     + '<p style="margin:10px 0 0;color:var(--suave);font-size:.82rem;">'
     + 'Aqui escrevem os alunos da escola. Trata os outros como gostarias de ser tratado.</p></div>'
@@ -565,9 +594,10 @@ function verConversa(){
     + '<div class="escrever"><textarea id="txt" rows="2" placeholder="Escreve para o grupo…"></textarea>'
     + '<button class="abrir" id="btEnviar" style="margin:0;">Enviar</button></div></div>';
 
-  const bG = document.getElementById('sGeral'), bN = document.getElementById('sNivel');
-  [bG,bN].forEach(function(b){ if (b){ b.style.background='none'; b.style.color='var(--destaque)'; } });
-  const act = salaAtual === 'geral' ? bG : bN;
+  const bG = document.getElementById('sGeral'), bN = document.getElementById('sNivel'), bT = document.getElementById('sTurma');
+  [bG,bN,bT].forEach(function(b){ if (b){ b.style.background='none'; b.style.color='var(--destaque)'; } });
+  const act = salaAtual === 'geral' ? bG : (salaAtual === salaTurma ? bT : bN);
+  if (bT) bT.onclick = function(){ salaAtual = salaTurma; verConversa(); };
   if (act){ act.style.background='var(--destaque)'; act.style.color='#fff'; }
   if (bG) bG.onclick = function(){ salaAtual = 'geral'; verConversa(); };
   if (bN) bN.onclick = function(){ salaAtual = salaNivel; verConversa(); };
@@ -599,7 +629,7 @@ function verConversa(){
     try {
       await addDoc(ref, { de:'aluno', nome: C.aluno.nome || 'Aluno',
                           codigo: C.codigo, texto: texto, criadoEm: serverTimestamp() });
-    } catch(e){ alert('Não consegui enviar. Tenta outra vez.'); ta.value = texto; }
+    } catch(e){ aviso('Não consegui enviar. Tenta outra vez.'); ta.value = texto; }
   };
 }
 

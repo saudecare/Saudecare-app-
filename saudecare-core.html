@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-20-01';
+const APP_VERSION = '2026-09-20-02';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10161,7 +10161,7 @@ window.viewTriagemEvolucao = async function(patientId){
    Gestão de alunos por nível (Usui Reiki Ryoho: 1, 2, 3A, 3B) e emissão
    do certificado em PDF sobre a imagem do modelo.
 
-   A subida de nível é SEMPRE manual e exige confirmação da Mestra: no
+   A subida de nível é SEMPRE manual e exige confirmação do Mestre: no
    Reiki a progressão depende da sintonização presencial, não de um
    teste automático. A estrutura de dados já fica preparada para os
    testes e o chatbot por nível de uma fase seguinte.
@@ -10346,14 +10346,19 @@ function reikiRenderMensagens(){
   if (!alvo) return;
 
   const salas = [{ id:'geral', nome:'🌍 Toda a escola' }]
-    .concat(REIKI_NIVEIS.map(n => ({ id:'nivel-'+n.id, nome:'💬 '+n.certLabel })));
+    .concat(REIKI_NIVEIS.map(n => ({ id:'nivel-'+n.id, nome:'💬 '+n.certLabel })))
+    .concat(__reikiTurmas.filter(t => t.ativa !== false).map(t => ({ id:'turma-'+t.id, nome:'👥 '+(t.nome||'Turma') })));
+
+  // Alunos que ainda não escreveram também aparecem, para poderes começar tu.
+  const comConversa = new Set(__reikiConversas.map(c => c.id));
+  const semConversa = __reikiAlunos.filter(a => !a.codigoAcesso || !comConversa.has(a.codigoAcesso));
 
   const conversas = __reikiConversas.length === 0
     ? '<p class="muted">Ainda nenhum aluno escreveu. Assim que escreverem, a conversa aparece aqui.</p>'
     : __reikiConversas.map(c => `
         <div class="appt-item" style="cursor:pointer;" onclick="reikiAbrirConversa('${c.id}','${escapeAttrJs(c.alunoNome||'')}')">
           <strong>${escapeHtml(c.alunoNome || c.codigo)}</strong>
-          ${c.ultimaDe === 'aluno' ? '<span class="badge" style="margin-left:6px;">novo</span>' : ''}
+          ${(c.ultimaDe === 'aluno' && c.lidoMestre !== true) ? '<span class="badge" style="margin-left:6px;">novo</span>' : ''}
           <div class="muted" style="margin-top:3px;font-size:.86rem;">${escapeHtml(c.ultima || '')}</div>
         </div>`).join('');
 
@@ -10361,6 +10366,7 @@ function reikiRenderMensagens(){
     <div class="card" style="margin-bottom:12px;">
       <p class="muted">Aqui falas com cada aluno em privado, e escreves nas salas de
       grupo da escola. Os alunos veem isto na Sala de Estudo.</p>
+      <button class="primary" style="margin-top:12px;" onclick="reikiNovaMensagem()">✉️ Nova mensagem</button>
     </div>
     <div class="card" style="margin-bottom:12px;">
       <h3 style="margin:0 0 8px;">Salas de grupo</h3>
@@ -10371,8 +10377,126 @@ function reikiRenderMensagens(){
     <div class="card">
       <h3 style="margin:0 0 8px;">Conversas com alunos</h3>
       ${conversas}
+      ${semConversa.length ? `
+        <h3 style="margin:16px 0 8px;font-size:.95rem;">Começar conversa</h3>
+        ${semConversa.map(a => `
+          <div class="appt-item" style="cursor:pointer;" onclick="reikiConversaComAluno('${a.id}')">
+            <strong>${escapeHtml(a.nome || '')}</strong>
+            <div class="muted" style="margin-top:3px;font-size:.86rem;">Ainda sem mensagens · tocar para escrever</div>
+          </div>`).join('')}` : ''}
     </div>`;
 }
+
+/* Garante que o aluno tem código e cartão de acesso — sem isso não tem
+   onde ler as mensagens. Devolve o código. */
+async function reikiGarantirCodigo(a){
+  let codigo = a.codigoAcesso;
+  if (!codigo){
+    codigo = reikiGerarCodigo();
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', a.id), { codigoAcesso: codigo });
+    a.codigoAcesso = codigo;
+    await reikiGravarAcesso(codigo, a);
+  }
+  return codigo;
+}
+
+window.reikiConversaComAluno = async function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  try {
+    const codigo = await reikiGarantirCodigo(a);
+    window.reikiAbrirConversa(codigo, a.nome || '');
+  } catch(e){ toast('Não consegui abrir: ' + (e.message || e), true); }
+};
+
+/* Grava uma mensagem do Mestre na conversa privada de um aluno. */
+async function reikiEnviarPrivada(codigo, aluno, texto){
+  await addDoc(collection(db, 'tenants', tenantId, 'reikiThreads', codigo, 'mensagens'),
+    { de:'mestre', texto, criadoEm: serverTimestamp() });
+  await setDoc(doc(db, 'tenants', tenantId, 'reikiThreads', codigo), {
+    alunoNome: aluno?.nome || '', alunoId: aluno?.id || '', codigo,
+    ultima: texto.slice(0,120), ultimaDe: 'mestre', lidoAluno: false, lidoMestre: true,
+    atualizadoEm: serverTimestamp()
+  }, { merge: true });
+}
+
+/* ─── Nova mensagem: para um aluno, uma turma, um nível ou todos ───
+   Chega a cada aluno na conversa privada dele, com aviso de "nova". */
+window.reikiNovaMensagem = function(){
+  showPatientOverlay('✉️ Nova mensagem', `
+    <div class="card">
+      <label>Para quem</label>
+      <select id="reikiNmTipo" onchange="reikiNmTrocar()">
+        <option value="aluno">Um aluno</option>
+        <option value="turma">Uma turma</option>
+        <option value="nivel">Alunos a estudar um nível</option>
+        <option value="todos">Todos os alunos</option>
+      </select>
+      <div id="reikiNmAlvo" style="margin-top:10px;"></div>
+      <label style="margin-top:10px;">Mensagem</label>
+      <textarea id="reikiNmTexto" rows="5" placeholder="Escreve aqui…"></textarea>
+      <p id="reikiNmConta" class="muted" style="margin-top:6px;font-size:.85rem;"></p>
+      <div class="row" style="gap:8px;margin-top:12px;">
+        <button class="primary" id="reikiNmEnviar" onclick="reikiNmEnviar()">Enviar</button>
+        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+      </div>
+    </div>`);
+  window.reikiNmTrocar();
+};
+
+function reikiNivelEmEstudoDe(a){
+  if (!a.nivelAtual) return '1';
+  const p = reikiProximoNivel(a.nivelAtual);
+  return p ? p.id : null;
+}
+
+function reikiNmDestinatarios(){
+  const tipo = document.getElementById('reikiNmTipo')?.value || 'aluno';
+  const v = document.getElementById('reikiNmSel')?.value || '';
+  if (tipo === 'todos') return __reikiAlunos.slice();
+  if (tipo === 'aluno') return __reikiAlunos.filter(a => a.id === v);
+  if (tipo === 'turma') return __reikiAlunos.filter(a => a.turmaId && a.turmaId === v);
+  if (tipo === 'nivel') return __reikiAlunos.filter(a => reikiNivelEmEstudoDe(a) === v);
+  return [];
+}
+
+window.reikiNmContar = function(){
+  const c = document.getElementById('reikiNmConta');
+  if (c) { const n = reikiNmDestinatarios().length; c.textContent = n + ' aluno(s) recebem esta mensagem em privado.'; }
+};
+
+window.reikiNmTrocar = function(){
+  const tipo = document.getElementById('reikiNmTipo')?.value || 'aluno';
+  const alvo = document.getElementById('reikiNmAlvo');
+  if (!alvo) return;
+  let opcoes = '';
+  if (tipo === 'aluno') opcoes = __reikiAlunos.map(a => `<option value="${a.id}">${escapeHtml(a.nome||'')}</option>`).join('');
+  if (tipo === 'turma') opcoes = __reikiTurmas.map(t => `<option value="${t.id}">${escapeHtml(t.nome||'')}${t.ativa===false?' (encerrada)':''}</option>`).join('');
+  if (tipo === 'nivel') opcoes = REIKI_NIVEIS.map(n => `<option value="${n.id}">${escapeHtml(n.certLabel)}</option>`).join('');
+  alvo.innerHTML = tipo === 'todos' ? '' : `<select id="reikiNmSel" onchange="reikiNmContar()">${opcoes}</select>`;
+  window.reikiNmContar();
+};
+
+window.reikiNmEnviar = async function(){
+  const texto = (document.getElementById('reikiNmTexto')?.value || '').trim();
+  if (!texto){ toast('Escreve a mensagem.', true); return; }
+  const lista = reikiNmDestinatarios();
+  if (!lista.length){ toast('Não há alunos neste grupo.', true); return; }
+  const bt = document.getElementById('reikiNmEnviar');
+  if (bt){ bt.disabled = true; bt.textContent = 'A enviar…'; }
+  let ok = 0, falhas = 0;
+  for (const a of lista){
+    try {
+      const codigo = await reikiGarantirCodigo(a);
+      await reikiEnviarPrivada(codigo, a, texto);
+      ok++;
+    } catch(e){ falhas++; console.warn('Reiki: envio falhou para', a.nome, e); }
+  }
+  closePatientOverlay();
+  toast(ok + ' mensagem(ns) enviada(s)' + (falhas ? ', ' + falhas + ' falharam' : '') + '.', !!falhas);
+  __reikiTab = 'mensagens';
+  renderReikiAlunos();
+};
 
 function reikiCaixaHtml(titulo, aviso){
   return `
@@ -10410,6 +10534,11 @@ function reikiDesenharMensagens(lista, souEu){
 window.reikiAbrirConversa = function(codigo, nome){
   reikiPararEscuta();
   __reikiMsgAberta = { tipo:'privada', codigo };
+  const conv = __reikiConversas.find(c => c.id === codigo);
+  if (conv && conv.ultimaDe === 'aluno' && conv.lidoMestre !== true){
+    conv.lidoMestre = true;
+    setDoc(doc(db, 'tenants', tenantId, 'reikiThreads', codigo), { lidoMestre: true }, { merge: true }).catch(()=>{});
+  }
   showPatientOverlay('✉️ ' + (nome || codigo),
     reikiCaixaHtml(nome, 'Só tu e este aluno leem esta conversa.'));
 
@@ -10428,10 +10557,8 @@ window.reikiAbrirConversa = function(codigo, nome){
     if (!texto) return;
     ta.value = '';
     try {
-      await addDoc(ref, { de:'mestre', texto, criadoEm: serverTimestamp() });
-      await setDoc(doc(db, 'tenants', tenantId, 'reikiThreads', codigo),
-        { ultima: texto.slice(0,120), ultimaDe: 'mestre', atualizadoEm: serverTimestamp() },
-        { merge: true });
+      const a = __reikiAlunos.find(x => x.codigoAcesso === codigo);
+      await reikiEnviarPrivada(codigo, a || { nome: nome || '' }, texto);
     } catch(e){ toast('Não consegui enviar: ' + (e.message || e), true); ta.value = texto; }
   };
 };
@@ -10457,7 +10584,7 @@ window.reikiAbrirSala = function(sala, nome){
     if (!texto) return;
     ta.value = '';
     try {
-      await addDoc(ref, { de:'mestre', nome:'Mestra', texto, criadoEm: serverTimestamp() });
+      await addDoc(ref, { de:'mestre', nome:'Mestre', texto, criadoEm: serverTimestamp() });
     } catch(e){ toast('Não consegui enviar: ' + (e.message || e), true); ta.value = texto; }
   };
 };
@@ -10763,7 +10890,8 @@ window.reikiApagarTurma = async function(turmaId){
     await deleteDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId));
     toast('Turma apagada.');
     __reikiTab = 'turmas';
-    renderReikiAlunos();
+    await renderReikiAlunos();
+    reikiSincronizarAcessosDaTurma(turmaId);
   } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
 };
 
@@ -11262,6 +11390,7 @@ async function reikiGravarAcesso(codigo, aluno){
     alunoId: aluno.id,
     nome: aluno.nome || '',
     nivel: aluno.nivelAtual || null,
+    turmaId: (t && t.ativa !== false) ? t.id : '',
     turmaNome: (t && t.ativa !== false) ? (t.nome || '') : '',
     turmaWhatsapp: (t && t.ativa !== false) ? (t.whatsappUrl || '') : '',
     turmaJitsi: (t && t.ativa !== false) ? reikiUrlJitsi(t.jitsiSala) : '',
@@ -11414,6 +11543,11 @@ window.reikiGuardarAluno = async function(alunoId){
   try {
     if (alunoId){
       await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId), dados);
+      // O link do aluno passa a mostrar logo a turma e o nome novos.
+      const a = __reikiAlunos.find(x => x.id === alunoId);
+      if (a?.codigoAcesso){
+        await reikiGravarAcesso(a.codigoAcesso, { ...a, ...dados, id: alunoId }).catch(()=>{});
+      }
     } else {
       await addDoc(collection(db, 'tenants', tenantId, 'reikiStudents'), {
         ...dados, nivelAtual: null, historico: [], criadoEm: serverTimestamp()
