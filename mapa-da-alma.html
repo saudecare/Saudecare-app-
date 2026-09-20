@@ -1388,7 +1388,13 @@ function renderPaymentChoice(leadId, extra){
   document.getElementById('btnPagarMbway').addEventListener('click', () => startCheckout(leadId, extra, 'mbway'));
 }
 
+let __checkoutEmCurso = false;
 async function startCheckout(leadId, extra, metodo){
+  // Impede dois pedidos ao mesmo tempo — um duplo clique, ou clicar num
+  // método e depois no outro antes da página mudar, chegava a disparar
+  // dois checkouts em simultâneo.
+  if (__checkoutEmCurso) return;
+  __checkoutEmCurso = true;
   main.innerHTML = '<div class="loading">A preparar o pagamento…</div>';
   try{
     const res = await fetch(FUNCTION_URL, {
@@ -1398,10 +1404,12 @@ async function startCheckout(leadId, extra, metodo){
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || 'Erro desconhecido');
     if (data.checkoutUrl) window.location.href = data.checkoutUrl;
-    else renderManualPayment(leadId, data.paymentInfo || {});
+    else { __checkoutEmCurso = false; renderManualPayment(leadId, data.paymentInfo || {}); }
   }catch(e){
     console.error(e);
-    main.innerHTML = `<div class="card"><div class="errorbox">Não foi possível preparar o pagamento. (${escapeHtml(e.message)})</div></div>`;
+    __checkoutEmCurso = false;
+    main.innerHTML = `<div class="card"><div class="errorbox">Não foi possível preparar o pagamento. (${escapeHtml(e.message)})</div></div>
+      <button class="btn btn-ghost" style="margin-top:10px;" onclick="renderPaymentChoice('${leadId}', ${JSON.stringify(extra)})">← Tentar outra vez</button>`;
   }
 }
 
