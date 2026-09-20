@@ -168,7 +168,7 @@ async function arrancar(){
 
   if (!tenant || !codigo){
     alvo.innerHTML = '<div class="cartao vazio"><strong>Link incompleto</strong>'
-      + '<p>Falta o código de acesso. Usa o link que a tua Mestra te enviou.</p></div>';
+      + '<p>Falta o código de acesso. Usa o link que o teu Mestre te enviou.</p></div>';
     return;
   }
 
@@ -179,7 +179,7 @@ async function arrancar(){
     aluno = s.data();
   } catch(e){
     alvo.innerHTML = '<div class="cartao vazio"><strong>Não encontrei este código</strong>'
-      + '<p>Confirma o link. Se continuar assim, fala com a tua Mestra.</p></div>';
+      + '<p>Confirma o link. Se continuar assim, fala com o teu Mestre.</p></div>';
     return;
   }
 
@@ -231,7 +231,7 @@ const ABAS = [
   { id:'inicio',    ic:'🏠', nome:'Início' },
   { id:'biblioteca',ic:'📚', nome:'Estudo' },
   { id:'testes',    ic:'📝', nome:'Testes' },
-  { id:'mensagens', ic:'✉️', nome:'Mestra' },
+  { id:'mensagens', ic:'✉️', nome:'Mestre' },
   { id:'conversa',  ic:'💬', nome:'Conversa' }
 ];
 
@@ -284,7 +284,7 @@ function verInicio(){
   h += '<h2>Onde continuar</h2><div class="cartao">'
     + '<button class="botao" onclick="__mostrar(\'biblioteca\')">📚 Materiais (' + recursos.length + ')</button>'
     + '<button class="botao" onclick="__mostrar(\'testes\')">📝 Testes</button>'
-    + '<button class="botao" onclick="__mostrar(\'mensagens\')">✉️ Falar com a Mestra</button>'
+    + '<button class="botao" onclick="__mostrar(\'mensagens\')">✉️ Falar com o Mestre</button>'
     + '<button class="botao" onclick="__mostrar(\'conversa\')">💬 Conversa da escola</button>'
     + '</div>';
 
@@ -306,7 +306,7 @@ function verBiblioteca(){
   const { recursos } = C;
   if (!recursos.length){
     alvo.innerHTML = '<div class="cartao vazio"><strong>Ainda sem materiais</strong>'
-      + '<p>A tua Mestra ainda não publicou materiais para o teu nível.</p></div>';
+      + '<p>O teu Mestre ainda não publicou materiais para o teu nível.</p></div>';
     return;
   }
   let h = '', nivelAnterior = null;
@@ -333,7 +333,7 @@ function verTestes(){
   }
   if (!testes.length){
     alvo.innerHTML = '<div class="cartao vazio"><strong>Ainda sem testes</strong>'
-      + '<p>Quando a tua Mestra publicar um teste do teu nível, aparece aqui.</p></div>';
+      + '<p>Quando o teu Mestre publicar um teste do teu nível, aparece aqui.</p></div>';
     return;
   }
   let h = '<div class="cartao"><p style="margin:0;color:var(--suave);font-size:.88rem;">'
@@ -419,8 +419,8 @@ async function entregarTeste(testeId){
   alvo.innerHTML = '<div class="cartao vazio">'
     + '<strong style="font-size:1.5rem;">' + pct + '%</strong>'
     + '<p style="margin-top:8px;">' + (aprovado
-        ? 'Passaste. A tua Mestra recebeu o resultado.'
-        : 'Ficaste abaixo do mínimo. Revê o material, fala com a tua Mestra, e repete quando te sentires pronto.')
+        ? 'Passaste. O teu Mestre recebeu o resultado.'
+        : 'Ficaste abaixo do mínimo. Revê o material, fala com o teu Mestre, e repete quando te sentires pronto.')
     + '</p></div>'
     + '<div class="cartao" style="text-align:center;">'
     + '<button class="abrir" onclick="__mostrar(\'testes\')">Voltar aos testes</button></div>';
@@ -429,9 +429,9 @@ async function entregarTeste(testeId){
 
 function verMensagens(){
   alvo.innerHTML = '<div class="cartao">'
-    + '<strong>Conversa com a tua Mestra</strong>'
+    + '<strong>Conversa com o teu Mestre</strong>'
     + '<p style="color:var(--suave);font-size:.88rem;margin-top:4px;">'
-    + 'Só tu e ela é que leem o que aqui se escreve. Para dúvidas, relatos de '
+    + 'Só tu e ele é que leem o que aqui se escreve. Para dúvidas, relatos de '
     + 'prática, ou o que precisares.</p></div>'
     + '<div class="cartao"><div class="msgs" id="caixa">'
     + '<p class="vazio">A abrir…</p></div>'
@@ -449,7 +449,7 @@ function verMensagens(){
     }
     caixa.innerHTML = m.map(function(x){
       return '<div class="msg ' + (x.de === 'aluno' ? 'meu' : 'mestre') + '">'
-        + '<div class="quem">' + (x.de === 'aluno' ? 'Tu' : 'Mestra') + '</div>'
+        + '<div class="quem">' + (x.de === 'aluno' ? 'Tu' : 'Mestre') + '</div>'
         + '<div class="bolha">' + esc(x.texto) + '</div></div>';
     }).join('');
     caixa.scrollTop = caixa.scrollHeight;
@@ -507,7 +507,7 @@ function verConversa(){
     }
     caixa.innerHTML = m.slice(-120).map(function(x){
       return '<div class="msg ' + (x.codigo === C.codigo ? 'meu' : (x.de === 'mestre' ? 'mestre' : '')) + '">'
-        + '<div class="quem">' + esc(x.de === 'mestre' ? 'Mestra' : (x.nome || 'Aluno')) + '</div>'
+        + '<div class="quem">' + esc(x.de === 'mestre' ? 'Mestre' : (x.nome || 'Aluno')) + '</div>'
         + '<div class="bolha">' + esc(x.texto) + '</div></div>';
     }).join('');
     caixa.scrollTop = caixa.scrollHeight;

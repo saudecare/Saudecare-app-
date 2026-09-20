@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-13-12';
+const APP_VERSION = '2026-09-13-13';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10213,14 +10213,25 @@ async function renderReikiAlunos(main){
   const m = main || document.getElementById('mainView');
   m.innerHTML = '<p class="muted">A carregar alunos…</p>';
   try {
+    // Cada colecção é lida à parte: se uma falhar (por exemplo, por as
+    // permissões dessa colecção ainda não estarem publicadas), o resto
+    // do módulo continua a abrir em vez de ir tudo abaixo.
+    const lerColecao = async (nome) => {
+      try {
+        return await getDocs(collection(db, 'tenants', tenantId, nome));
+      } catch(e){
+        console.warn('Reiki: não consegui ler ' + nome, e);
+        return { forEach: () => {}, empty: true };
+      }
+    };
     const [alunosSnap, configSnap, bibSnap, turmasSnap, testesSnap, resSnap, convSnap] = await Promise.all([
-      getDocs(collection(db, 'tenants', tenantId, 'reikiStudents')),
-      getDocs(collection(db, 'tenants', tenantId, 'reikiConfig')),
-      getDocs(collection(db, 'tenants', tenantId, 'reikiLibrary')),
-      getDocs(collection(db, 'tenants', tenantId, 'reikiClasses')),
-      getDocs(collection(db, 'tenants', tenantId, 'reikiQuizzes')),
-      getDocs(collection(db, 'tenants', tenantId, 'reikiQuizResults')),
-      getDocs(collection(db, 'tenants', tenantId, 'reikiThreads'))
+      lerColecao('reikiStudents'),
+      lerColecao('reikiConfig'),
+      lerColecao('reikiLibrary'),
+      lerColecao('reikiClasses'),
+      lerColecao('reikiQuizzes'),
+      lerColecao('reikiQuizResults'),
+      lerColecao('reikiThreads')
     ]);
     __reikiConversas = [];
     convSnap.forEach(d => __reikiConversas.push({ id: d.id, ...d.data() }));
