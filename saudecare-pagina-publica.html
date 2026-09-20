@@ -145,6 +145,7 @@ async function load(){
   if (tenantId === 'hikari-terapias'){
     const mapaUrl = window.location.href.replace('saudecare-pagina-publica.html', 'mapa-da-alma.html').split('?')[0];
     const cartoUrl = window.location.href.replace('saudecare-pagina-publica.html', 'cartomancia.html').split('?')[0];
+    const poemasUrl = window.location.href.replace('saudecare-pagina-publica.html', 'poemas-meiji.html').split('?')[0] + '?t=hikari-terapias';
 
     fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/mapaAlma', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -154,15 +155,18 @@ async function load(){
 
       const tiles = [];
       if (data.mapaAlmaVisivel !== false){
-        tiles.push(`<a href="${escapeHtml(mapaUrl)}" class="spirit-tile">
+        tiles.push(`<a href="${escapeHtml(mapaUrl)}" class="spirit-tile" target="_blank" rel="noopener">
           <div class="spirit-icon">✦</div><div class="spirit-label">Mapa da Alma</div><div class="spirit-tag">grátis</div>
         </a>`);
       }
       if (data.cartomanciaVisivel !== false){
-        tiles.push(`<a href="${escapeHtml(cartoUrl)}" class="spirit-tile">
+        tiles.push(`<a href="${escapeHtml(cartoUrl)}" class="spirit-tile" target="_blank" rel="noopener">
           <div class="spirit-icon">🃏</div><div class="spirit-label">Tarot</div><div class="spirit-tag">grátis</div>
         </a>`);
       }
+      tiles.push(`<a href="${escapeHtml(poemasUrl)}" class="spirit-tile" target="_blank" rel="noopener">
+        <div class="spirit-icon">🎴</div><div class="spirit-label">Poemas Meiji</div><div class="spirit-tag">grátis</div>
+      </a>`);
       if (data.limpezaTexto){
         tiles.push(`<a href="#limpezaDetalhe" class="spirit-tile" onclick="document.getElementById('limpezaDetalhe').classList.toggle('hidden');return false;">
           <div class="spirit-icon">🛡️</div><div class="spirit-label">Limpeza Energética</div><div class="spirit-tag">${data.limpezaPrecoConsulta ?? 35}€</div>
