@@ -94,6 +94,21 @@
   .fechado{opacity:.55;}
   .etiqueta{font-size:.76rem;color:var(--verde);font-weight:600;}
   .etiqueta.mau{color:var(--aviso);}
+  details.categoria{
+    background:var(--papel); border:1px solid var(--linha);
+    border-radius:14px; padding:4px 12px 2px; margin-bottom:12px;
+  }
+  details.categoria summary{
+    cursor:pointer; padding:10px 0; font-weight:600; list-style:none;
+  }
+  details.categoria summary::-webkit-details-marker{display:none;}
+  details.categoria summary::after{content:'▾';float:right;color:var(--suave);transition:transform .2s;}
+  details.categoria:not([open]) summary::after{transform:rotate(-90deg);}
+  details.categoria .cartao{background:var(--fundo);}
+  .conta{font-weight:400;font-size:.78rem;color:var(--suave);margin-left:4px;}
+  .subtitulo{font-size:.86rem;font-weight:600;color:var(--destaque);margin:12px 0 6px;}
+  .sub{border-left:2px solid var(--linha);padding-left:10px;margin-bottom:8px;}
+  p.desc{margin:0 0 8px;color:var(--suave);font-size:.86rem;}
 </style>
 </head>
 <body>
@@ -208,6 +223,14 @@ async function carregarDados(){
     C.recursos = r.filter(x => materialVisivel(x, emEstudo, concluido));
   } catch(e){ C.recursos = []; }
 
+  /* Categorias: se não se deixarem ler, a sala mostra os materiais
+     numa lista simples, como antes. */
+  try {
+    const s = await getDocs(collection(db, 'tenants', tenant, 'reikiCategories'));
+    const c = []; s.forEach(d => c.push({ id: d.id, ...d.data() }));
+    C.categorias = c;
+  } catch(e){ C.categorias = []; }
+
   /* Testes: só os do nível em estudo, e os abertos a todos.
      Nada de testes de níveis que o aluno ainda não frequenta. */
   try {
@@ -302,24 +325,76 @@ function verInicio(){
   alvo.innerHTML = h;
 }
 
+/* Ordem definida pelo Mestre no painel; sem número, vai para o fim
+   por ordem alfabética. */
+function ordenar(lista, campo){
+  return lista.slice().sort((a,b) => {
+    const oa = typeof a.ordem === 'number' ? a.ordem : 1e9;
+    const ob = typeof b.ordem === 'number' ? b.ordem : 1e9;
+    if (oa !== ob) return oa - ob;
+    return String(a[campo]||'').localeCompare(String(b[campo]||''), 'pt');
+  });
+}
+
+function htmlMaterial(r){
+  return '<div class="cartao"><div class="recurso">'
+    + '<div class="icone">' + (ICONES[r.tipo] || '📄') + '</div><div>'
+    + '<strong>' + esc(r.titulo || 'Material') + '</strong>'
+    + (r.pago ? ' <span class="etiqueta mau">extra</span>' : '')
+    + (r.descricao ? '<p>' + esc(r.descricao) + '</p>' : '')
+    + (r.url ? '<a class="abrir" href="' + esc(r.url) + '" target="_blank" rel="noopener">Abrir</a>' : '')
+    + '</div></div></div>';
+}
+
 function verBiblioteca(){
-  const { recursos } = C;
+  const { recursos, emEstudo } = C;
+  const categorias = C.categorias || [];
   if (!recursos.length){
     alvo.innerHTML = '<div class="cartao vazio"><strong>Ainda sem materiais</strong>'
       + '<p>O teu Mestre ainda não publicou materiais para o teu nível.</p></div>';
     return;
   }
-  let h = '', nivelAnterior = null;
-  for (const r of recursos){
-    const n = String(r.nivel || '0');
-    if (n !== nivelAnterior){ h += '<h2>' + esc(ROTULOS[n] || n) + '</h2>'; nivelAnterior = n; }
-    h += '<div class="cartao"><div class="recurso">'
-      + '<div class="icone">' + (ICONES[r.tipo] || '📄') + '</div><div>'
-      + '<strong>' + esc(r.titulo || 'Material') + '</strong>'
-      + (r.pago ? ' <span class="etiqueta mau">extra</span>' : '')
-      + (r.descricao ? '<p>' + esc(r.descricao) + '</p>' : '')
-      + (r.url ? '<a class="abrir" href="' + esc(r.url) + '" target="_blank" rel="noopener">Abrir</a>' : '')
-      + '</div></div></div>';
+  const catExiste = id => id && categorias.some(c => c.id === id);
+  const noSitio = (nivel, catId) => ordenar(recursos.filter(r => {
+    const rc = catExiste(r.categoriaId) ? r.categoriaId : '';
+    return catId ? rc === catId : (rc === '' && String(r.nivel||'0') === nivel);
+  }), 'titulo');
+
+  /* O nível que o aluno está a estudar aparece primeiro e aberto;
+     os anteriores ficam abaixo, para rever. O geral vem no fim. */
+  const presentes = [...new Set(recursos.map(r => String(r.nivel || '0')))];
+  const ordemNiveis = [];
+  if (emEstudo && presentes.includes(emEstudo)) ordemNiveis.push(emEstudo);
+  NIVEIS.slice().reverse().forEach(n => { if (n !== emEstudo && presentes.includes(n)) ordemNiveis.push(n); });
+  if (presentes.includes('0')) ordemNiveis.push('0');
+
+  let h = '';
+  for (const nivel of ordemNiveis){
+    const aberto = nivel === emEstudo || ordemNiveis.length === 1;
+    h += '<h2>' + esc(ROTULOS[nivel] || nivel) + (nivel === emEstudo ? ' · a estudar' : '') + '</h2>';
+    const cats = ordenar(categorias.filter(c => !c.paiId && String(c.nivel||'0') === nivel), 'nome');
+    for (const c of cats){
+      const subs = ordenar(categorias.filter(s => s.paiId === c.id), 'nome');
+      const mats = noSitio(nivel, c.id);
+      const blocosSub = subs.map(s => {
+        const ms = noSitio(nivel, s.id);
+        if (!ms.length) return '';
+        return '<div class="sub"><div class="subtitulo">' + esc(s.nome || '') + '</div>'
+          + (s.descricao ? '<p class="desc">' + esc(s.descricao) + '</p>' : '')
+          + ms.map(htmlMaterial).join('') + '</div>';
+      }).join('');
+      const total = mats.length + subs.reduce((t, s) => t + noSitio(nivel, s.id).length, 0);
+      if (!total) continue;
+      h += '<details class="categoria"' + (aberto ? ' open' : '') + '>'
+        + '<summary>📂 ' + esc(c.nome || '') + ' <span class="conta">' + total + '</span></summary>'
+        + (c.descricao ? '<p class="desc">' + esc(c.descricao) + '</p>' : '')
+        + mats.map(htmlMaterial).join('') + blocosSub + '</details>';
+    }
+    const soltos = noSitio(nivel, '');
+    if (soltos.length){
+      if (cats.length) h += '<div class="subtitulo" style="margin:14px 0 6px;">Outros materiais</div>';
+      h += soltos.map(htmlMaterial).join('');
+    }
   }
   alvo.innerHTML = h;
 }
