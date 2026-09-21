@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-21-01';
+const APP_VERSION = '2026-09-21-02';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -464,10 +464,90 @@ window.savePatientPortalDataSettings = async function(){
   toast('Preferência guardada.');
 };
 
+/* Os browsers só deixam tocar som depois de a pessoa tocar no ecrã uma
+   vez. Antes, criava-se um "leitor de som" novo a cada aviso, que nascia
+   bloqueado e ficava mudo. Agora há um só, que é desbloqueado no
+   primeiro toque na app e fica pronto para todos os avisos. */
+/* ─── Copiar, partilhar e confirmar, em qualquer ecrã ──────────────
+   O copiar do browser falha dentro da app instalada e dentro do
+   WhatsApp, e o confirm() também é bloqueado lá — era por isso que os
+   links "não davam para copiar" e o "gerar novo link" não fazia nada.
+   Estas três funções tentam o caminho normal e, se falhar, usam outro. */
+function copiaAlternativa(texto){
+  const ta = document.createElement('textarea');
+  ta.value = texto; ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+  document.body.appendChild(ta);
+  ta.select(); ta.setSelectionRange(0, texto.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch(e){}
+  ta.remove();
+  return ok;
+}
+function mostrarParaCopiar(texto){
+  const fundo = document.createElement('div');
+  fundo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;';
+  fundo.innerHTML = `<div class="card" style="max-width:420px;width:100%;">
+      <strong>Copiar link</strong>
+      <p class="muted" style="margin:6px 0 10px;">Mantém o dedo em cima do link e escolhe <b>Copiar</b>.</p>
+      <textarea readonly style="width:100%;min-height:90px;">${escapeHtml(texto)}</textarea>
+      <button class="primary" style="width:100%;margin-top:10px;">Fechar</button>
+    </div>`;
+  fundo.querySelector('button').onclick = () => fundo.remove();
+  document.body.appendChild(fundo);
+  const ta = fundo.querySelector('textarea'); ta.focus(); ta.select();
+}
+window.copiarTexto = async function(texto, aviso){
+  try {
+    if (navigator.clipboard?.writeText){ await navigator.clipboard.writeText(texto); toast(aviso || 'Link copiado.'); return true; }
+  } catch(e){}
+  if (copiaAlternativa(texto)){ toast(aviso || 'Link copiado.'); return true; }
+  mostrarParaCopiar(texto);
+  return false;
+};
+window.partilharLink = async function(link, titulo){
+  if (navigator.share){
+    try { await navigator.share({ title: titulo || '', url: link }); return; }
+    catch(e){ if (e && e.name === 'AbortError') return; }
+  }
+  window.copiarTexto(link);
+};
+async function confirmar(texto){
+  return reikiConfirmar('Confirmar', texto, 'Continuar');
+}
+window.confirmar = confirmar;
+
+// Todos os "copiar" que já existem na app passam a ter o mesmo plano B.
+(function(){
+  const plano = async (texto) => {
+    try { if (__clipNativo){ await __clipNativo(texto); return; } } catch(e){}
+    if (copiaAlternativa(texto)) return;
+    mostrarParaCopiar(texto);
+  };
+  const __clipNativo = navigator.clipboard?.writeText ? navigator.clipboard.writeText.bind(navigator.clipboard) : null;
+  try {
+    if (navigator.clipboard) navigator.clipboard.writeText = plano;
+    else Object.defineProperty(navigator, 'clipboard', { value: { writeText: plano }, configurable: true });
+  } catch(e){}
+})();
+
+let __somCtx = null;
+function obterSomCtx(){
+  if (!__somCtx){
+    try { __somCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return null; }
+  }
+  if (__somCtx.state === 'suspended') __somCtx.resume().catch(()=>{});
+  return __somCtx;
+}
+['pointerdown','touchstart','keydown'].forEach(ev =>
+  window.addEventListener(ev, () => obterSomCtx(), { once: true, passive: true }));
+
 function playNotifSound(){
   if (localStorage.getItem('vindoraNotifSound') === 'off') return;
+  try { if (navigator.vibrate) navigator.vibrate([120, 60, 120]); } catch(e){}
   try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = obterSomCtx();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
@@ -542,11 +622,22 @@ function isPatientVisibleToCurrentStaff(p){
   return p.assignedStaffUid === currentUser.uid;
 }
 
+let __inicioRefresco = null;
 function setNavBadge(subKey, count){
+  const primeiraLeitura = !(subKey in __notifPrevCounts);
+  const anterior = __notifPrevCounts[subKey] || 0;
   __notifCounts[subKey] = count;
-  if (count > (__notifPrevCounts[subKey] || 0)) playNotifSound();
+  // Na primeira leitura só se regista o que já havia; o som fica para
+  // o que chegar de novo com a app aberta.
+  if (!primeiraLeitura && count > anterior) playNotifSound();
   __notifPrevCounts[subKey] = count;
   renderTopNavBadges();
+  // Se estiver no Início e algo mudou, o Início actualiza-se sozinho —
+  // antes só aparecia depois de se carregar noutra opção e voltar.
+  if (!primeiraLeitura && count !== anterior && __currentView === 'home'){
+    clearTimeout(__inicioRefresco);
+    __inicioRefresco = setTimeout(() => { if (__currentView === 'home') renderView('home'); }, 1200);
+  }
 }
 
 function renderTopNavBadges(){
@@ -1626,7 +1717,7 @@ window.recuarOnboarding = async function(){
   renderOnboardingBanner(__currentView);
 };
 window.saltarOnboarding = async function(){
-  if (!confirm('Saltar o tutorial de configuração? Pode sempre pedir ajuda depois em "Apoio".')) return;
+  if (!await confirmar('Saltar o tutorial de configuração? Pode sempre pedir ajuda depois em "Apoio".')) return;
   const onboarding = { ...(currentTenantDoc?.onboarding||{}), dismissed: true };
   await updateDoc(doc(db, 'tenants', tenantId), { onboarding });
   currentTenantDoc.onboarding = onboarding;
@@ -1819,7 +1910,7 @@ window.saveStaffTeamProfile = async function(staffUid, existingTeamMemberId){
 };
 
 window.suspendStaffMember = async function(staffUid){
-  if (!confirm('Suspender o acesso deste terapeuta? Fica sem conseguir entrar na app até reativar, mas os dados dele mantêm-se todos.')) return;
+  if (!await confirmar('Suspender o acesso deste terapeuta? Fica sem conseguir entrar na app até reativar, mas os dados dele mantêm-se todos.')) return;
   try{
     const idToken = await currentUser.getIdToken();
     const res = await fetch(STAFF_SUSPEND_FUNCTION_URL, {
@@ -1866,7 +1957,7 @@ window.createStaffInvite = async function(){
 };
 
 window.cancelStaffInvite = async function(inviteId, code){
-  if (!confirm('Cancelar este convite? O link e o código deixam de funcionar.')) return;
+  if (!await confirmar('Cancelar este convite? O link e o código deixam de funcionar.')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'staffInvites', inviteId));
   if (code) await deleteDoc(doc(db, 'inviteCodes', code)).catch(()=>{});
   toast('Convite cancelado.');
@@ -1892,7 +1983,7 @@ window.activateStaffMember = async function(staffUid, role){
 };
 
 window.removeStaffMember = async function(staffUid, name){
-  if (!confirm(`Remover "${name}" da equipa? Isto apaga o registo, mas para revogar totalmente o acesso é preciso também eliminar a conta em Firebase Authentication.`)) return;
+  if (!await confirmar(`Remover "${name}" da equipa? Isto apaga o registo, mas para revogar totalmente o acesso é preciso também eliminar a conta em Firebase Authentication.`)) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'staff', staffUid));
   toast('Removido da lista de equipa.');
   renderView('team');
@@ -2003,7 +2094,7 @@ async function renderHome(main){
     if (pendingStaff) alerts.push({ id: 'staff', icon: '👥', text: `${pendingStaff} pedido(s) de equipa por aprovar`, action: "renderView('team')" });
   }
   if (bookingReqSnap && bookingReqSnap.size){
-    alerts.push({ id: 'bookingReq', icon: '📩', text: `${bookingReqSnap.size} pedido(s) de marcação por rever`, action: "openProfileSection('disponibilidade')" });
+    alerts.push({ id: 'bookingReq', icon: '📩', text: `${bookingReqSnap.size} pedido(s) de marcação por rever`, action: "abrirPedidosMarcacao()" });
   }
   if (pendingFormsSnap.size){
     alerts.push({ id: 'pendingForms', icon: '📝', text: `${pendingFormsSnap.size} resposta(s) de ficha por associar a um paciente`, action: "renderView('forms')" });
@@ -2049,7 +2140,7 @@ async function renderHome(main){
   if (totalUnread){
     unreadHtml = `<div class="appt-item">
       <div>💬 ${totalUnread} mensagem(ns) por ler</div>
-      ${withUnread.map(p => `<div class="muted" style="cursor:pointer;margin-top:2px;" onclick="viewPatient('${p.patientId}')">↳ ${escapeHtml(p.patientName)} (${p.count})</div>`).join('')}
+      ${withUnread.map(p => `<div class="muted" style="cursor:pointer;margin-top:2px;" onclick="abrirConversaPaciente('${p.patientId}')">↳ ${escapeHtml(p.patientName)} (${p.count}) ›</div>`).join('')}
     </div>`;
   }
 
@@ -2502,7 +2593,7 @@ window.saveWaitlistEntry = async function(){
 };
 
 window.removeWaitlistEntry = async function(id){
-  if (!confirm('Remover da lista de espera?')) return;
+  if (!await confirmar('Remover da lista de espera?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'waitlist', id));
   toast('Removido da lista de espera.');
   renderView('waitlist');
@@ -2784,7 +2875,7 @@ window.connectGoogleCalendar = function(){
 };
 
 window.disconnectGoogleCalendar = async function(){
-  if (!confirm('Desligar o Google Calendar? As marcações deixam de ser sincronizadas.')) return;
+  if (!await confirmar('Desligar o Google Calendar? As marcações deixam de ser sincronizadas.')) return;
   await updateDoc(doc(db, 'tenants', tenantId), { googleCalendar: null });
   currentTenantDoc.googleCalendar = null;
   toast('Google Calendar desligado.');
@@ -2983,7 +3074,7 @@ window.updateAppointment = async function(appointmentId){
 
   const newPrice = parseFloat(document.getElementById('apptPrice').value || '0') || 0;
   if (newPrice === 0 && existingData.price > 0){
-    if (!confirm(`Esta marcação tinha um preço de ${existingData.price}€ e está prestes a ficar com 0€. Confirma que é isso mesmo que quer?`)) return;
+    if (!await confirmar(`Esta marcação tinha um preço de ${existingData.price}€ e está prestes a ficar com 0€. Confirma que é isso mesmo que quer?`)) return;
   }
 
   const updateData = {
@@ -3027,7 +3118,7 @@ window.markAppointmentPaidFromPatient = async function(appointmentId, patientId)
 };
 
 window.cancelAppointment = async function(appointmentId){
-  if (!confirm('Cancelar esta marcação? Fica registada como cancelada, não é apagada.')) return;
+  if (!await confirmar('Cancelar esta marcação? Fica registada como cancelada, não é apagada.')) return;
   const existingSnap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
   const existing = existingSnap.data();
   await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { status: 'cancelled' });
@@ -3049,7 +3140,7 @@ window.cancelAppointment = async function(appointmentId){
 };
 
 window.deleteAppointment = async function(appointmentId){
-  if (!confirm('Apagar esta marcação definitivamente? Não pode ser desfeito.')) return;
+  if (!await confirmar('Apagar esta marcação definitivamente? Não pode ser desfeito.')) return;
   const existingSnap = await getDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
   const existingGoogleEventId = existingSnap.data()?.googleEventId;
   await deleteDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId));
@@ -3335,7 +3426,7 @@ window.saveSharedMaterial = async function(patientId){
 };
 
 window.removeSharedMaterial = async function(patientId, materialId){
-  if (!confirm('Remover este material? Deixa de aparecer no Portal do paciente.')) return;
+  if (!await confirmar('Remover este material? Deixa de aparecer no Portal do paciente.')) return;
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
   const list = (snap.data()?.sharedMaterials || []).filter(m => m.id !== materialId);
   await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId), { sharedMaterials: list });
@@ -3934,7 +4025,8 @@ function renderPatientPortalLink(patientId, p){
     <div class="muted" style="margin-bottom:6px;">${statusBadge}</div>
     <input readonly value="${link}" onclick="this.select()">
     <div class="row" style="margin-top:6px;flex-wrap:wrap;">
-      <button class="ghost" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Link copiado.'))">Copiar link</button>
+      <button class="ghost" onclick="copiarTexto('${link}')">📋 Copiar link</button>
+      <button class="ghost" onclick="partilharLink('${link}', 'O seu Portal do Paciente')">📤 Enviar</button>
       <button class="ghost" onclick="regeneratePatientPortalLink('${patientId}')">Gerar novo link</button>
       <button class="danger" onclick="revokePatientPortalAccess('${patientId}','${escapeAttrJs(p.fullName||'')}')">Revogar acesso</button>
     </div>`;
@@ -3978,12 +4070,12 @@ window.generatePatientPortalLink = async function(patientId){
 };
 
 window.regeneratePatientPortalLink = async function(patientId){
-  if (!confirm('Gerar um novo link invalida o link anterior — quem tiver o link antigo deixa de conseguir usá-lo. Continuar?')) return;
+  if (!await confirmar('Gerar um novo link invalida o link anterior — quem tiver o link antigo deixa de conseguir usá-lo. Continuar?')) return;
   if (await _generatePortalToken(patientId)) viewPatient(patientId);
 };
 
 window.revokePatientPortalAccess = async function(patientId, name){
-  if (!confirm(`Revogar o acesso de "${name}" ao Portal do Paciente? O link atual deixa de funcionar até gerar um novo.`)) return;
+  if (!await confirmar(`Revogar o acesso de "${name}" ao Portal do Paciente? O link atual deixa de funcionar até gerar um novo.`)) return;
   await _revokePortalToken(patientId);
   viewPatient(patientId);
 };
@@ -3993,12 +4085,12 @@ window.generatePortalLinkFromOverview = async function(patientId){
 };
 
 window.regeneratePortalLinkFromOverview = async function(patientId){
-  if (!confirm('Gerar um novo link invalida o link anterior — quem tiver o link antigo deixa de conseguir usá-lo. Continuar?')) return;
+  if (!await confirmar('Gerar um novo link invalida o link anterior — quem tiver o link antigo deixa de conseguir usá-lo. Continuar?')) return;
   if (await _generatePortalToken(patientId)) renderView('portalPaciente');
 };
 
 window.revokePortalLinkFromOverview = async function(patientId, name){
-  if (!confirm(`Revogar o acesso de "${name}" ao Portal do Paciente? O link atual deixa de funcionar até gerar um novo.`)) return;
+  if (!await confirmar(`Revogar o acesso de "${name}" ao Portal do Paciente? O link atual deixa de funcionar até gerar um novo.`)) return;
   await _revokePortalToken(patientId);
   renderView('portalPaciente');
 };
@@ -4107,6 +4199,13 @@ window.filterPortalPatientSwitcher = function(term){
   if (keepSelected && keepSelected !== currentId) selectPortalPatient(keepSelected);
 };
 
+/* Abre a conversa de um paciente directamente, a partir de um alerta. */
+window.abrirConversaPaciente = function(patientId){
+  window.__portalOverviewJumpTo = patientId;
+  window.__portalAbrirSeccao = 'messages';
+  renderView('portalPaciente');
+};
+
 // ── Abre logo a área tipo-Portal do paciente escolhido no seletor ───────
 window.selectPortalPatient = async function(patientId){
   if (!patientId) return;
@@ -4123,6 +4222,12 @@ window.selectPortalPatient = async function(patientId){
     window.__mirrorPatient = { id: patientId, data: snap.data() };
     window.__currentPatientChannel = snap.data().preferredChannel || 'portal';
     await renderPatientMirrorMenu();
+    // Veio de um alerta? Abre logo a secção certa (ex.: as mensagens).
+    if (window.__portalAbrirSeccao){
+      const seccao = window.__portalAbrirSeccao;
+      window.__portalAbrirSeccao = null;
+      await openPatientMirrorSection(seccao);
+    }
   } catch (err) {
     console.error('selectPortalPatient falhou:', err);
     pane.innerHTML = `<div class="card" style="border:2px solid #e74c3c;">
@@ -4569,7 +4674,7 @@ window.usePackageSession = async function(patientId, idx){
 };
 
 window.removePackage = async function(patientId, idx){
-  if (!confirm('Remover este pacote?')) return;
+  if (!await confirmar('Remover este pacote?')) return;
   const ref = doc(db, 'tenants', tenantId, 'patients', patientId);
   const snap = await getDoc(ref);
   const p = snap.data();
@@ -4755,7 +4860,7 @@ window.viewSavedReport = async function(patientId, reportId){
 };
 
 window.deletePatient = async function(patientId, name){
-  if (!confirm(`Apagar definitivamente "${name}"? Esta ação cumpre o direito ao apagamento RGPD e não pode ser desfeita.`)) return;
+  if (!await confirmar(`Apagar definitivamente "${name}"? Esta ação cumpre o direito ao apagamento RGPD e não pode ser desfeita.`)) return;
   await logAudit('patient_deleted', patientId);
   await deleteDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
   toast('Paciente apagado.');
@@ -4861,7 +4966,7 @@ window.importarTerapiasHikariFafe = async function(btn){
     toast('Esta importação é exclusiva de uma conta específica.', true);
     return;
   }
-  if (!confirm('Isto vai criar as categorias, serviços, formações e perfis de equipa com base no que já tem na sua página atual. Depois de criado, pode editar ou apagar cada um livremente. Continuar?')) return;
+  if (!await confirmar('Isto vai criar as categorias, serviços, formações e perfis de equipa com base no que já tem na sua página atual. Depois de criado, pode editar ou apagar cada um livremente. Continuar?')) return;
   btn.disabled = true; btn.textContent = 'A importar…';
   try{
     // Categorias + serviços — preços exatamente como já pratica.
@@ -5002,7 +5107,7 @@ window.saveCategory = async function(editId){
 window.deleteCategory = async function(id){
   const svcSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'services'), where('categoryId', '==', id)));
   if (!svcSnap.empty){ toast('Remova primeiro os itens desta categoria.', true); return; }
-  if (!confirm('Remover esta categoria?')) return;
+  if (!await confirmar('Remover esta categoria?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'serviceCategories', id));
   renderView('services');
 };
@@ -5071,7 +5176,7 @@ window.saveService = async function(editId){
 };
 
 window.deleteService = async function(serviceId){
-  if (!confirm('Remover este item?')) return;
+  if (!await confirmar('Remover este item?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'services', serviceId));
   await syncPublicServices();
   renderView('services');
@@ -5318,7 +5423,7 @@ window.saveForm = async function(editId){
 };
 
 window.deleteForm = async function(id){
-  if (!confirm('Remover esta ficha? O link deixa de funcionar.')) return;
+  if (!await confirmar('Remover esta ficha? O link deixa de funcionar.')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'forms', id));
   renderView('forms');
 };
@@ -6606,7 +6711,7 @@ window.saveProtocol = async function(editId){
 };
 
 window.deleteProtocol = async function(id){
-  if (!confirm('Remover este protocolo? Relatórios já gerados com ele não são afetados.')) return;
+  if (!await confirmar('Remover este protocolo? Relatórios já gerados com ele não são afetados.')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'protocols', id));
   renderView('protocols');
 };
@@ -7611,6 +7716,12 @@ function renderProfileMenu(main){
   `;
 }
 
+/* Leva aos pedidos de marcação e desce logo até à lista. */
+window.abrirPedidosMarcacao = function(){
+  openProfileSection('disponibilidade');
+  setTimeout(() => document.getElementById('bookingRequestsList')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 600);
+};
+
 window.openProfileSection = function(key){
   __profileSection = key;
   renderView('profile');
@@ -8112,7 +8223,7 @@ window.addRoom = async function(){
 };
 
 window.removeRoom = async function(roomId){
-  if (!confirm('Remover esta sala? Marcações já feitas mantêm a referência, mas deixa de aparecer para escolher em novas marcações.')) return;
+  if (!await confirmar('Remover esta sala? Marcações já feitas mantêm a referência, mas deixa de aparecer para escolher em novas marcações.')) return;
   const rooms = (currentTenantDoc?.rooms || []).filter(r => r.id !== roomId);
   await updateDoc(doc(db, 'tenants', tenantId), { rooms });
   currentTenantDoc.rooms = rooms;
@@ -8322,7 +8433,7 @@ window.saveTeamMember = async function(editId){
 };
 
 window.deleteTeamMember = async function(id){
-  if (!confirm('Remover este membro da equipa?')) return;
+  if (!await confirmar('Remover este membro da equipa?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'teamMembers', id));
   renderView('team');
 };
@@ -8353,7 +8464,7 @@ window.saveTestimonial = async function(editId){
 };
 
 window.deleteTestimonial = async function(id){
-  if (!confirm('Remover este testemunho?')) return;
+  if (!await confirmar('Remover este testemunho?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'testimonials', id));
   renderView('profile');
 };
@@ -8454,7 +8565,7 @@ window.saveTraining = async function(editId){
 };
 
 window.deleteTraining = async function(id){
-  if (!confirm('Remover esta formação? O link de inscrição deixa de funcionar.')) return;
+  if (!await confirmar('Remover esta formação? O link de inscrição deixa de funcionar.')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'trainings', id));
   renderView('trainings');
 };
@@ -8640,7 +8751,7 @@ function renderTutorialOverviewCard(){
 }
 
 window.restartOnboarding = async function(){
-  if (!confirm('Reiniciar o tutorial de configuração desde o primeiro passo?')) return;
+  if (!await confirmar('Reiniciar o tutorial de configuração desde o primeiro passo?')) return;
   const onboarding = { step: 0, dismissed: false };
   await updateDoc(doc(db, 'tenants', tenantId), { onboarding });
   currentTenantDoc.onboarding = onboarding;
@@ -8904,7 +9015,7 @@ async function renderMapaAlma(main){
         <textarea id="maOverrides" rows="10" style="font-family:monospace;font-size:12px;" placeholder='{ "dons": { "7": { "texto": "novo texto..." } }, "papeisRelacao": { "8": "novo papel na relação..." }, "compatibilidadeCasal": { "textoEspelho": "usar {{nome1}}, {{nome2}}, {{cv1}}, {{cv2}}" }, "vibracaoEmpresa": { "textoVibracaoEmpresa": "usar {{cv}} e {{dom}}" }, "harmoniaFamilia": "usar {{v}} e {{dom}}" }'>${escapeHtml(JSON.stringify(currentTenantDoc?.mapaAlmaOverrides || {}, null, 2))}</textarea>
         <div class="row" style="margin-top:8px;">
           <button class="primary" onclick="saveMapaAlmaOverrides()">Guardar edições</button>
-          <button class="danger" onclick="if(confirm('Apagar todas as suas edições e voltar aos textos predefinidos?')) { document.getElementById('maOverrides').value='{}'; saveMapaAlmaOverrides(); }">Repor predefinições</button>
+          <button class="danger" onclick="confirmar('Apagar todas as suas edições e voltar aos textos predefinidos?').then(ok => { if (ok){ document.getElementById('maOverrides').value='{}'; saveMapaAlmaOverrides(); } })">Repor predefinições</button>
         </div>
       </div>
     </details>`;
@@ -8963,7 +9074,7 @@ window.saveMapaAlmaPromo = async function(){
 };
 
 window.cancelMapaAlmaPromo = async function(){
-  if (!confirm('Desativar a promoção agora? Volta imediatamente ao preço normal.')) return;
+  if (!await confirmar('Desativar a promoção agora? Volta imediatamente ao preço normal.')) return;
   const promo = { ...(currentTenantDoc?.mapaAlmaSettings?.promo||{}), active: false };
   const merged = { ...(currentTenantDoc?.mapaAlmaSettings||{}), promo };
   await updateDoc(doc(db, 'tenants', tenantId), { mapaAlmaSettings: merged });
@@ -9010,14 +9121,14 @@ window.toggleMapaAlmaVisivel = async function(){
 };
 
 window.rejectMapaAlmaLead = async function(leadId){
-  if (!confirm('Apagar este pedido? Não há pagamento confirmado, a pessoa terá de preencher tudo outra vez se quiser.')) return;
+  if (!await confirmar('Apagar este pedido? Não há pagamento confirmado, a pessoa terá de preencher tudo outra vez se quiser.')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'mapaAlmaLeads', leadId));
   toast('Pedido apagado.');
   renderMapaAlma(document.getElementById('mainView'));
 };
 
 window.confirmMapaAlmaPayment = async function(leadId){
-  if (!confirm('Confirmar que este pagamento foi recebido? A pessoa vai poder ver o Mapa Diamante completo.')) return;
+  if (!await confirmar('Confirmar que este pagamento foi recebido? A pessoa vai poder ver o Mapa Diamante completo.')) return;
   await updateDoc(doc(db, 'tenants', tenantId, 'mapaAlmaLeads', leadId), { paymentStatus: 'paid', paymentMethod: 'manual', paidAt: serverTimestamp() });
   // Se houver uma promoção por número de pedidos ativa, conta este como usado.
   const promo = currentTenantDoc?.mapaAlmaSettings?.promo;
@@ -12374,7 +12485,7 @@ window.toggleCartomanciaVisivel = async function(){
 };
 
 window.apagarLeituraCartomancia = async function(id){
-  if (!confirm('Apagar esta leitura?')) return;
+  if (!await confirmar('Apagar esta leitura?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'cartomanciaLeads', id));
   toast('Leitura apagada.');
   renderCartomancia(document.getElementById('mainView'));
@@ -13079,7 +13190,7 @@ window.saveKnowledgeEntry = async function(editId){
 };
 
 window.deleteKnowledgeEntry = async function(id){
-  if (!confirm('Apagar este conhecimento?')) return;
+  if (!await confirmar('Apagar este conhecimento?')) return;
   await deleteDoc(doc(db, 'tenants', tenantId, 'knowledgeBase', id));
   toast('Apagado.');
   renderView('knowledge');
