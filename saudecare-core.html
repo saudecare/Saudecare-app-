@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-20-02';
+const APP_VERSION = '2026-09-21-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4268,7 +4268,10 @@ window.openPatientMirrorSection = async function(section){
           </div>`).join('') : '<p class="muted">Ainda sem relatórios partilhados.</p>'}
       </div>
       <button class="ghost" style="width:100%;" onclick="viewPatientEvolution('${patientId}','${escapeAttrJs(p.fullName||'')}')">📈 Ver linha do tempo de evolução</button>
+      <button class="ghost" style="width:100%;margin-top:6px;" onclick="compararRegistosPaciente('${patientId}')">🔍 Comparar duas consultas</button>
+      <div id="compararRegistos"></div>
     `;
+    window.__registosPaciente = rows;
 
   } else if (section === 'myData'){
     pane.innerHTML = backBtn + `
@@ -9029,19 +9032,36 @@ window.confirmMapaAlmaPayment = async function(leadId){
 };
 
 let __cartoTab = 'leituras';
+let __cartoConsultas = [];
 window.setCartoTab = function(id){ __cartoTab = id; renderCartomancia(document.getElementById('mainView')); };
 
 const CARTO_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/cartomancia';
 const CARTO_NAIPES = { paus:'♣ Paus', copas:'♥ Copas', espadas:'♠ Espadas', ouros:'♦ Ouros' };
 const CARTO_VALORES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 
+window.ctPreencherNome = function(){
+  const sel = document.getElementById('ctPaciente');
+  const p = (window.__allPatientsCache||[]).find(x => x.id === sel?.value);
+  if (p && document.getElementById('ctNome')) document.getElementById('ctNome').value = p.fullName || '';
+};
+
 async function renderCartomancia(main){
+  await carregarPacientes();
   // Mesmo bloqueio a sério do Mapa da Alma — exclusivo desta conta.
   if (tenantId !== 'hikari-terapias'){
     main.innerHTML = `<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">A Cartomancia é uma ferramenta exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>`;
     return;
   }
   const publicLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','cartomancia.html')}`;
+
+  // As consultas que fazes tu ficam guardadas à parte das triagens que
+  // chegam pelo site — pastas separadas, para não se misturarem.
+  __cartoConsultas = [];
+  try {
+    const snap = await getDocs(collection(db, 'tenants', tenantId, 'cartomanciaConsultas'));
+    snap.forEach(d => __cartoConsultas.push({ id: d.id, ...d.data() }));
+    __cartoConsultas.sort((a,b) => String(b.criadoEm||'').localeCompare(String(a.criadoEm||'')));
+  } catch(e){ console.warn('Cartomancia: consultas indisponíveis', e); }
 
   let leituras = [];
   if (__cartoTab === 'leituras'){
@@ -9073,10 +9093,32 @@ async function renderCartomancia(main){
           </div>
         </div>`).join('') : '<p class="muted">Ainda sem leituras públicas.</p>'}
     </div>`;
+  } else if (__cartoTab === 'consultas'){
+    bodyHtml = `
+    <div class="card list-grid-wide">
+      <p class="muted" style="margin-bottom:8px;">As consultas que fizeste, com o baralho físico ou sorteadas na app. Ficam só para ti.</p>
+      ${__cartoConsultas.length ? __cartoConsultas.map(c => `
+        <div class="appt-item">
+          <strong>${escapeHtml(c.nome||'')}</strong>
+          <div class="muted">${escapeHtml(c.foco||'')} · ${c.criadoEm ? new Date(c.criadoEm).toLocaleDateString('pt-PT') : ''}</div>
+          ${c.pergunta ? `<div class="muted" style="margin-top:4px;"><em>"${escapeHtml(c.pergunta)}"</em></div>` : ''}
+          <div class="muted" style="margin-top:4px;">Cartas: ${(c.relatorio?.cartas||[]).map(x=>escapeHtml(x.nomeCarta)).join(', ')}</div>
+          <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;">
+            <button class="ghost" onclick="abrirConsultaGuardada('${c.id}')">👁️ Abrir</button>
+            <button class="danger" onclick="apagarConsultaGuardada('${c.id}')">🗑️ Apagar</button>
+          </div>
+        </div>`).join('') : '<p class="muted">Ainda sem consultas guardadas.</p>'}
+    </div>
+    <div id="ctResultado"></div>`;
   } else if (__cartoTab === 'nova'){
     bodyHtml = `
     <div class="card">
       <p class="muted" style="margin-bottom:8px;">Para uma consulta feita com o baralho físico, escolha as cartas que saíram na mesa. Para sortear na app, use o botão de sorteio.</p>
+      <label>Paciente (para ficar no histórico dele)</label>
+      <select id="ctPaciente" onchange="ctPreencherNome()">
+        <option value="">— sem ficha, só guardar nas minhas consultas —</option>
+        ${(window.__allPatientsCache||[]).map(p => `<option value="${p.id}">${escapeHtml(p.fullName||'')}</option>`).join('')}
+      </select>
       <label>Nome do cliente</label>
       <input id="ctNome" placeholder="Nome">
       <label>Data de nascimento (opcional, ajuda a personalizar)</label>
@@ -9128,8 +9170,9 @@ async function renderCartomancia(main){
     </div>
     <div class="card" style="padding:8px;">
       <div class="row" style="flex-wrap:wrap;">
-        ${tabBtn('leituras', `🎴 Leituras (${leituras.length})`)}
-        ${tabBtn('nova', '✨ Nova Consulta Profissional')}
+        ${tabBtn('leituras', `🌐 Triagens online (${leituras.length})`)}
+        ${tabBtn('consultas', `🗂️ As minhas consultas (${__cartoConsultas.length})`)}
+        ${tabBtn('nova', '✨ Nova consulta')}
       </div>
     </div>
     ${bodyHtml}
@@ -9800,6 +9843,41 @@ function __triagemReset(){
     leituraComplementar: null,
     sessoesNecessarias: '', preco: ''
   };
+}
+
+/* ─── Histórico do paciente ────────────────────────────────────────
+   Tudo o que uma ferramenta produz — cartomancia, triagem energética,
+   mapa da alma, o que vier — fica gravado na ficha do paciente, na
+   mesma colecção `reports`. Assim há um só histórico por pessoa, em
+   vez de um arquivo por ferramenta, e dá para comparar consultas.
+   Cada registo leva um `tipo`, que é o que permite comparar duas do
+   mesmo género, e os `dados` em bruto, para no futuro se poder medir
+   a evolução sem depender do texto.
+   Serve qualquer subscritor: é a ficha dele, com as ferramentas dele. */
+async function guardarNaFicha(patientId, { tipo, titulo, texto, dados }){
+  if (!patientId) return false;
+  try {
+    await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
+      tipo: tipo || 'registo',
+      protocolName: titulo || 'Registo',
+      reportText: texto || '',
+      dados: dados || null,
+      generatedAt: serverTimestamp()
+    });
+    return true;
+  } catch(e){
+    console.error('Não consegui gravar na ficha do paciente:', e);
+    return false;
+  }
+}
+
+async function carregarPacientes(){
+  if (!window.__allPatientsCache){
+    const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients'), orderBy('fullName')));
+    window.__allPatientsCache = [];
+    snap.forEach(d => window.__allPatientsCache.push({ id: d.id, ...d.data() }));
+  }
+  return window.__allPatientsCache;
 }
 
 async function renderTriagemBaixaVibracao(main, opts){
@@ -11988,7 +12066,7 @@ async function triagemGerarRelatorio(){
 async function triagemTentarGravar(payload){
   try{
     await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
-      ...payload, generatedAt: serverTimestamp()
+      tipo: 'triagem-energetica', ...payload, generatedAt: serverTimestamp()
     });
     toast('Triagem guardada na ficha do paciente ✓');
     return true;
@@ -12121,8 +12199,108 @@ window.gerarRelatorioCartomancia = async function(){
 };
 
 let __ultimoRelatorioCarto = null;
-function mostrarRelatorioCartomancia(r){
+
+/* Guarda a consulta na pasta das tuas consultas. Se falhar, o relatório
+   continua à vista — só não fica no arquivo. */
+async function guardarConsultaCartomancia(r){
+  try {
+    await addDoc(collection(db, 'tenants', tenantId, 'cartomanciaConsultas'), {
+      nome: r.nome || '', foco: r.foco || '', pergunta: r.pergunta || '',
+      relatorio: r, criadoEm: new Date().toISOString()
+    });
+  } catch(e){ console.warn('Cartomancia: não consegui guardar a consulta', e); }
+}
+
+/* Comparar duas consultas do mesmo género, lado a lado: o que mudou
+   entre uma e outra, sem ter de andar a abrir uma a uma. */
+window.compararRegistosPaciente = function(patientId){
+  const rows = window.__registosPaciente || [];
+  const alvo = document.getElementById('compararRegistos');
+  if (!alvo) return;
+  if (rows.length < 2){ alvo.innerHTML = '<p class="muted">São precisas pelo menos duas consultas guardadas.</p>'; return; }
+  const opcoes = rows.map((r, i) => {
+    const d = r.generatedAt?.toDate ? r.generatedAt.toDate().toLocaleDateString('pt-PT') : '';
+    return `<option value="${i}">${escapeHtml(r.protocolName||'Registo')}${d ? ' · ' + d : ''}</option>`;
+  }).join('');
+  alvo.innerHTML = `
+    <div class="card" style="margin-top:10px;">
+      <label>Mais recente</label>
+      <select id="cmpA" onchange="desenharComparacao()">${opcoes}</select>
+      <label style="margin-top:8px;">Comparar com</label>
+      <select id="cmpB" onchange="desenharComparacao()">${opcoes}</select>
+      <div id="cmpResultado" style="margin-top:10px;"></div>
+    </div>`;
+  const b = document.getElementById('cmpB');
+  if (b) b.selectedIndex = 1;
+  window.desenharComparacao();
+};
+
+window.desenharComparacao = function(){
+  const rows = window.__registosPaciente || [];
+  const a = rows[parseInt(document.getElementById('cmpA')?.value ?? '0', 10)];
+  const b = rows[parseInt(document.getElementById('cmpB')?.value ?? '1', 10)];
+  const alvo = document.getElementById('cmpResultado');
+  if (!a || !b || !alvo) return;
+  const data = r => r.generatedAt?.toDate ? r.generatedAt.toDate().toLocaleDateString('pt-PT') : '';
+  const dias = (a.generatedAt?.toDate && b.generatedAt?.toDate)
+    ? Math.abs(Math.round((a.generatedAt.toDate() - b.generatedAt.toDate()) / 86400000)) : null;
+  const mesmoTipo = (a.tipo || '') === (b.tipo || '');
+  const coluna = r => `
+    <div style="flex:1;min-width:0;">
+      <strong>${escapeHtml(r.protocolName||'Registo')}</strong>
+      <div class="muted" style="font-size:.85rem;">${data(r)}</div>
+      <div style="margin-top:6px;white-space:pre-wrap;font-size:13px;background:#f6f8f7;border-radius:8px;padding:10px;">${escapeHtml(r.reportText||'')}</div>
+    </div>`;
+  alvo.innerHTML = `
+    <p class="muted" style="margin-bottom:8px;">
+      ${dias != null ? dias + ' dia(s) de intervalo. ' : ''}
+      ${mesmoTipo ? 'São do mesmo género, dá para ler a evolução.' : 'São de géneros diferentes — leia-as como contexto, não como evolução.'}
+    </p>
+    <div class="row" style="gap:10px;align-items:flex-start;flex-wrap:wrap;">${coluna(a)}${coluna(b)}</div>`;
+};
+
+window.abrirConsultaGuardada = function(id){
+  const c = __cartoConsultas.find(x => x.id === id);
+  if (!c?.relatorio) return;
+  mostrarRelatorioCartomancia(c.relatorio, true);
+  document.getElementById('ctResultado')?.scrollIntoView({ behavior:'smooth' });
+};
+
+window.apagarConsultaGuardada = async function(id){
+  if (!await reikiConfirmar('Apagar consulta', 'Apagar esta consulta do teu arquivo?', 'Apagar')) return;
+  try {
+    await deleteDoc(doc(db, 'tenants', tenantId, 'cartomanciaConsultas', id));
+    toast('Consulta apagada.');
+    renderCartomancia(document.getElementById('mainView'));
+  } catch(e){ toast('Não consegui apagar: ' + (e.message||e), true); }
+};
+
+function textoConsultaCartomancia(r){
+  const linhas = [];
+  if (r.pergunta) linhas.push('Pergunta: ' + r.pergunta);
+  linhas.push('Cartas: ' + (r.leituraPorPosicao||[]).map(p => `${p.posicao} — ${p.carta}`).join(' | '));
+  linhas.push('');
+  linhas.push(r.tendenciaGeral || '');
+  if (r.bloqueios?.length) linhas.push('\nBloqueios: ' + r.bloqueios.join('; '));
+  if (r.janelaTemporal) linhas.push('\nJanela: ' + r.janelaTemporal.texto);
+  if (r.sinais?.avisoBloqueio) linhas.push('\nSinal: ' + r.sinais.avisoBloqueio);
+  return linhas.join('\n');
+}
+
+function mostrarRelatorioCartomancia(r, jaGuardada){
   __ultimoRelatorioCarto = r;
+  if (!jaGuardada){
+    guardarConsultaCartomancia(r);
+    const pid = document.getElementById('ctPaciente')?.value || '';
+    if (pid){
+      guardarNaFicha(pid, {
+        tipo: 'cartomancia',
+        titulo: 'Consulta de cartomancia' + (r.foco ? ' — ' + r.foco : ''),
+        texto: textoConsultaCartomancia(r),
+        dados: { cartas: r.cartas, posicoes: (r.leituraPorPosicao||[]).map(p=>p.posicao), pergunta: r.pergunta || '' }
+      }).then(ok => toast(ok ? 'Guardado no histórico do paciente ✓' : 'Consulta guardada, mas não entrou na ficha do paciente.', !ok));
+    }
+  }
   document.getElementById('ctResultado').innerHTML = `
     <div class="card">
       <h3>🔮 Relatório — ${escapeHtml(r.nome)}</h3>
