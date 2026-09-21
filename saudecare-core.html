@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-21-02';
+const APP_VERSION = '2026-09-21-03';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -9992,6 +9992,12 @@ async function carregarPacientes(){
 }
 
 async function renderTriagemBaixaVibracao(main, opts){
+  // Bloqueio a sério, como no Mapa da Alma e na Cartomancia: não basta
+  // estar escondido do menu.
+  if (tenantId !== 'hikari-terapias'){
+    (main || document.getElementById('mainView')).innerHTML = `<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">A Triagem com Pêndulo Hebraico é uma ferramenta exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>`;
+    return;
+  }
   opts = opts || {};
   if (!opts.manterEstado || !__triagem) __triagemReset();
   if (!window.__allPatientsCache){
@@ -10399,6 +10405,12 @@ let __reikiRecursos = [];
 let __reikiTab = 'alunos';
 
 async function renderReikiAlunos(main){
+  // Bloqueio a sério, como no Mapa da Alma e na Cartomancia: não basta
+  // estar escondido do menu.
+  if (tenantId !== 'hikari-terapias'){
+    (main || document.getElementById('mainView')).innerHTML = `<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">A Escola de Reiki é uma ferramenta exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>`;
+    return;
+  }
   const m = main || document.getElementById('mainView');
   m.innerHTML = '<p class="muted">A carregar alunos…</p>';
   try {
