@@ -335,7 +335,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-21-03';
+const APP_VERSION = '2026-09-22-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -668,8 +668,8 @@ function startRealtimeNotifications(){
   ));
 
   // Pedidos de marcação vindos da página pública — só quem pode mesmo
-  // aceitar/recusar (dono e acesso total).
-  if (tenantRole !== 'staff_restricted'){
+  // aceitar/recusar (dono, acesso total e gestor com essa permissão).
+  if (tenantRole !== 'staff_restricted' && gestorPode('pedidos')){
     __notifUnsubscribers.push(onSnapshot(
       query(collection(db, 'public_booking_requests'), where('tenantId','==',tenantId), where('status','==','pending_review')),
       snap => setNavBadge('agenda', snap.size),
@@ -685,6 +685,9 @@ function startRealtimeNotifications(){
       () => {}
     ));
   }
+
+  // Daqui para baixo é tudo clínico: o gestor não recebe.
+  if (ehGestor()) return;
 
   // Respostas de fichas públicas por associar a um paciente.
   __notifUnsubscribers.push(onSnapshot(
@@ -722,6 +725,76 @@ window.addEventListener('beforeunload', () => __notifUnsubscribers.forEach(u => 
 let currentUser = null;
 let tenantId = null;
 let tenantRole = null;
+
+/* ─── Gestor de marcações ───────────────────────────────────────────
+   Um terceiro tipo de acesso à equipa: trata da agenda, nunca de dados
+   clínicos. As permissões são escolhidas pelo dono de cada conta, e as
+   regras do Firestore voltam a verificá-las no servidor — o ecrã só
+   esconde o que o servidor já não deixaria fazer.                     */
+let __permissoesGestor = {};
+const PERMISSOES_GESTOR = [
+  { id:'remarcar',       rotulo:'Remarcar consultas' },
+  { id:'cancelar',       rotulo:'Cancelar e apagar consultas' },
+  { id:'pedidos',        rotulo:'Aceitar ou recusar pedidos da página pública' },
+  { id:'listaEspera',    rotulo:'Gerir a lista de espera' },
+  { id:'criarPacientes', rotulo:'Criar pacientes novos (só nome e contactos)' }
+];
+function ehGestor(){ return tenantRole === 'staff_bookings'; }
+function gestorPode(p){ return !ehGestor() || !!__permissoesGestor[p]; }
+function vistasDoGestor(){
+  const v = ['agenda', 'settings', 'supportContact', 'logout', 'group_agenda', 'group_account'];
+  if (__permissoesGestor.listaEspera) v.push('waitlist');
+  if (__permissoesGestor.pedidos) v.push('gestorPedidos');
+  return v;
+}
+
+/* Os pacientes que a agenda mostra. A equipa clínica lê as fichas; o
+   gestor lê só os cartões de contacto (nome, telefone, email), porque
+   as fichas têm notas clínicas e o servidor não lhas deixa abrir. */
+async function lerPacientesAgenda(){
+  const colecao = ehGestor() ? 'patientContacts' : 'patients';
+  return getDocs(collection(db, 'tenants', tenantId, colecao));
+}
+
+/* Mantém o cartão de contacto igual à ficha. Chamado sempre que uma
+   ficha é criada ou alterada. */
+async function sincronizarContacto(patientId, dados){
+  if (!patientId || ehGestor()) return;
+  try {
+    await setDoc(doc(db, 'tenants', tenantId, 'patientContacts', patientId), {
+      fullName: dados.fullName || '', phone: dados.phone || '', email: dados.email || '',
+      updatedAt: serverTimestamp()
+    });
+  } catch(e){ console.warn('Contacto não sincronizado', patientId, e); }
+}
+
+/* Uma vez por dia, quem tem acesso às fichas acerta todos os cartões de
+   contacto — cobre pacientes antigos e os que chegam por outros meios. */
+async function sincronizarTodosContactos(){
+  if (ehGestor() || tenantRole === 'staff_restricted') return;
+  const chave = 'vindora_contactos_' + tenantId;
+  const hoje = new Date().toISOString().slice(0,10);
+  if (localStorage.getItem(chave) === hoje) return;
+  try {
+    const [pSnap, cSnap] = await Promise.all([
+      getDocs(collection(db, 'tenants', tenantId, 'patients')),
+      getDocs(collection(db, 'tenants', tenantId, 'patientContacts'))
+    ]);
+    const atuais = {};
+    cSnap.forEach(d => atuais[d.id] = d.data());
+    let lote = writeBatch(db), n = 0;
+    for (const d of pSnap.docs){
+      const p = d.data(), c = atuais[d.id];
+      if (c && c.fullName === (p.fullName||'') && c.phone === (p.phone||'') && c.email === (p.email||'')) continue;
+      lote.set(doc(db, 'tenants', tenantId, 'patientContacts', d.id), {
+        fullName: p.fullName || '', phone: p.phone || '', email: p.email || '', updatedAt: serverTimestamp()
+      });
+      if (++n % 400 === 0){ await lote.commit(); lote = writeBatch(db); }
+    }
+    if (n % 400) await lote.commit();
+    localStorage.setItem(chave, hoje);
+  } catch(e){ console.warn('Sincronização de contactos falhou', e); }
+}
 let currentTenantDoc = null;
 let currentUserDisplayName = ''; // nome de QUEM ESTÁ A USAR a app agora — dono ou terapeuta da equipa, nunca o nome do negócio
 
@@ -1253,6 +1326,7 @@ onAuthStateChanged(auth, async (user) => {
     try{
       const staffSnap = await getDoc(doc(db, 'tenants', tenantId, 'staff', currentUser.uid));
       currentUserDisplayName = staffSnap.exists() ? (staffSnap.data().name || currentUser.email || '') : (currentUser.email || '');
+      __permissoesGestor = (staffSnap.exists() && staffSnap.data().permissoes) || {};
     }catch(e){
       currentUserDisplayName = currentUser.email || '';
     }
@@ -1289,9 +1363,11 @@ onAuthStateChanged(auth, async (user) => {
   updateOnlineBanner();
   applyBranding();
   applyDynamicManifestAdmin();
-  renderView('home');
-  checkBackupReminder();
+  aplicarMenuGestor();
+  renderView(ehGestor() ? 'agenda' : 'home');
+  if (!ehGestor()) checkBackupReminder();
   startRealtimeNotifications();
+  sincronizarTodosContactos();
 
   const calendarParam = new URLSearchParams(window.location.search).get('calendarConnected');
   if (calendarParam === '1'){
@@ -1548,7 +1624,8 @@ let __profileSection = null;
 const NAV_GROUPS = {
   agenda: { title: '📅 Agenda & Marcações', items: [
     { view: 'agenda', icon: '📅', label: 'Agenda' },
-    { view: 'waitlist', icon: '⏳', label: 'Lista de Espera' }
+    { view: 'waitlist', icon: '⏳', label: 'Lista de Espera' },
+    { view: 'gestorPedidos', icon: '📩', label: 'Pedidos de marcação', gestorOnly: true }
   ]},
   tools: { title: '🧰 Ferramentas', items: [
     { view: 'protocols', icon: '📋', label: 'Os Meus Métodos' },
@@ -1588,7 +1665,9 @@ function renderGroupMenu(main, groupKey){
     if (it.hideForRestricted && tenantRole === 'staff_restricted') return false;
     if (it.ownerOnly && tenantRole !== 'owner') return false;
     if (it.hideForOwner && tenantRole === 'owner') return false;
+    if (it.gestorOnly && !ehGestor()) return false;
     if (it.tenantOnly && tenantId !== it.tenantOnly) return false;
+    if (ehGestor() && !vistasDoGestor().includes(it.view)) return false;
     return true;
   });
   main.innerHTML = `
@@ -1605,8 +1684,23 @@ function highlightActiveNavGroup(view){
   });
 }
 
+/* O gestor só vê os botões da barra que lhe dizem respeito. */
+function aplicarMenuGestor(){
+  if (!ehGestor()) return;
+  const permitidos = ['group_agenda', 'group_account', 'logout'];
+  document.querySelectorAll('nav button').forEach(b => {
+    const v = b.dataset.view;
+    if (v === 'home'){ b.textContent = '📅 A minha agenda'; b.dataset.view = 'agenda'; return; }
+    if (v && permitidos.includes(v)) return;
+    if (!v && /installApp/.test(b.getAttribute('onclick')||'')) return;
+    b.style.display = 'none';
+  });
+}
+
 function renderView(view, opts){
   opts = opts || {};
+  // O gestor de marcações não entra em mais nada, nem por endereço directo.
+  if (ehGestor() && !vistasDoGestor().includes(view)) view = 'agenda';
   const main = document.getElementById('mainView');
   main.innerHTML = '<p class="muted">A carregar…</p>';
   if (!__navigatingFromPopstate){
@@ -1617,6 +1711,7 @@ function renderView(view, opts){
   __navigatingFromPopstate = false;
   if (view === 'home') renderHome(main);
   else if (view === 'agenda') renderAgenda(main);
+  else if (view === 'gestorPedidos') renderGestorPedidos(main);
   else if (view === 'finances') renderFinances(main);
   else if (view === 'team') renderTeam(main);
   else if (view === 'patients') renderPatients(main);
@@ -1764,7 +1859,7 @@ async function renderTeam(main){
     }catch(e){ console.error(e); }
   }
 
-  const roleLabel = { owner:'Acesso total (dono)', staff_full:'Acesso total', staff_restricted:'Acesso restrito (só a sua agenda)' };
+  const roleLabel = { owner:'Acesso total (dono)', staff_full:'Acesso total', staff_restricted:'Acesso restrito (só a sua agenda)', staff_bookings:'Gestor de marcações' };
   const statusLabel = { pending_activation:'Por ativar', active:'Ativo', suspended:'Suspenso' };
   const statusClass = { pending_activation:'trial', active:'active', suspended:'suspended' };
 
@@ -1787,6 +1882,7 @@ async function renderTeam(main){
         ${status === 'pending_activation' ? `<button class="primary" onclick="activateStaffMember('${d.id}','${s.role}')">✓ Ativar acesso</button>` : ''}
         ${status === 'active' ? `<button class="ghost" onclick="suspendStaffMember('${d.id}')">⏸ Suspender acesso</button>` : ''}
         ${status === 'suspended' ? `<button class="primary" onclick="activateStaffMember('${d.id}','${s.role}')">▶ Reativar acesso</button>` : ''}
+        ${s.role === 'staff_bookings' ? `<button class="ghost" onclick="editarPermissoesGestor('${d.id}')">🔐 Permissões</button>` : ''}
         <button class="ghost" onclick="toggleEditStaffProfile('${d.id}')">${isEditingThis ? 'Fechar' : '🖊 Foto e bio'}</button>
         <button class="danger" onclick="removeStaffMember('${d.id}','${escapeAttrJs(s.name||s.email)}')">Remover</button>
       </div>` : ''}
@@ -1848,6 +1944,7 @@ async function renderTeam(main){
         <select id="newInviteRole">
           <option value="staff_full">Acesso total (vê tudo — ex: família, sócios)</option>
           <option value="staff_restricted">Acesso restrito (só a sua própria agenda — ex: terapeuta externo)</option>
+          <option value="staff_bookings">Gestor de marcações (agenda e contactos, nunca dados clínicos — ex: secretária)</option>
         </select>
         <button class="primary" style="width:100%" onclick="createStaffInvite()">Gerar código de convite</button>
       </div>
@@ -1926,6 +2023,105 @@ window.suspendStaffMember = async function(staffUid){
     console.error(e);
     toast('Não foi possível suspender. Tente novamente.', true);
   }
+};
+
+/* O dono escolhe o que cada gestor pode fazer. Fica na ficha de equipa
+   do gestor, onde as regras do servidor a vão ler. */
+window.editarPermissoesGestor = async function(staffUid){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'staff', staffUid));
+  const atual = (snap.exists() && snap.data().permissoes) || {};
+  showPatientOverlay('🔐 Permissões do gestor', `
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px;">Ver a agenda e marcar consultas está sempre incluído. Fichas, notas clínicas, relatórios, mensagens e ferramentas ficam sempre fechados — isso não se pode abrir.</p>
+      ${PERMISSOES_GESTOR.map(p => `
+        <label style="display:flex;gap:10px;align-items:flex-start;margin:10px 0;">
+          <input type="checkbox" id="perm_${p.id}" style="width:auto;margin-top:3px;" ${atual[p.id] ? 'checked' : ''}>
+          <span>${escapeHtml(p.rotulo)}</span>
+        </label>`).join('')}
+      <div class="row" style="gap:8px;margin-top:12px;">
+        <button class="primary" onclick="guardarPermissoesGestor('${staffUid}')">Guardar</button>
+        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+      </div>
+    </div>`);
+};
+
+window.guardarPermissoesGestor = async function(staffUid){
+  const permissoes = {};
+  PERMISSOES_GESTOR.forEach(p => { permissoes[p.id] = !!document.getElementById('perm_' + p.id)?.checked; });
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'staff', staffUid), { permissoes });
+    closePatientOverlay();
+    toast('Permissões guardadas. O gestor vê as mudanças ao voltar a abrir a app.');
+  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
+};
+
+/* Pedidos de marcação, na versão do gestor: aceita pelo cartão de
+   contacto, e se o cliente for novo cria-o só com os contactos. */
+async function renderGestorPedidos(main){
+  main.innerHTML = '<h2>📩 Pedidos de marcação</h2><div id="bookingRequestsList"><p class="muted">A carregar…</p></div>';
+  const snap = await getDocs(query(collection(db, 'public_booking_requests'),
+    where('tenantId', '==', tenantId), where('status', '==', 'pending_review')));
+  const lista = [];
+  snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
+  const alvo = document.getElementById('bookingRequestsList');
+  if (!lista.length){ alvo.innerHTML = '<p class="muted">Sem pedidos por rever.</p>'; return; }
+  alvo.innerHTML = lista.map(r => `
+    <div class="appt-item">
+      <strong>${escapeHtml(r.clientName||'Sem nome')}</strong> — ${escapeHtml(r.clientPhone||r.clientEmail||'')}
+      <div class="muted">Pediu: ${r.requestedStart ? new Date(r.requestedStart).toLocaleString('pt-PT', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'} · ${escapeHtml(r.serviceName||'')}</div>
+      <div class="row" style="margin-top:6px;gap:6px;">
+        <button class="primary" onclick="gestorAceitarPedido('${r.id}')">✅ Aceitar</button>
+        <button class="danger" onclick="gestorRecusarPedido('${r.id}')">Recusar</button>
+      </div>
+    </div>`).join('');
+}
+
+window.gestorRecusarPedido = async function(id){
+  if (!await confirmar('Recusar este pedido de marcação?')) return;
+  await updateDoc(doc(db, 'public_booking_requests', id), { status: 'declined' });
+  toast('Pedido recusado.');
+  renderView('gestorPedidos');
+};
+
+window.gestorAceitarPedido = async function(id){
+  const snap = await getDoc(doc(db, 'public_booking_requests', id));
+  if (!snap.exists()){ toast('Pedido não encontrado.', true); return; }
+  const r = snap.data();
+  const contactos = await lerPacientesAgenda();
+  let patientId = null;
+  contactos.forEach(d => {
+    if (patientId) return;
+    const p = d.data();
+    if ((p.phone && p.phone === r.clientPhone) || (p.email && r.clientEmail && p.email.toLowerCase() === r.clientEmail.toLowerCase())) patientId = d.id;
+  });
+  if (!patientId){
+    if (!gestorPode('criarPacientes')){
+      toast('Este cliente ainda não existe. Peça a quem gere as fichas para o criar, ou peça a permissão de criar pacientes.', true);
+      return;
+    }
+    // Cria a ficha só com contactos; o terapeuta completa-a depois.
+    const dados = { fullName: r.clientName || 'Cliente', phone: r.clientPhone || '', email: r.clientEmail || '' };
+    const ref = await addDoc(collection(db, 'tenants', tenantId, 'patients'), {
+      ...dados, createdAt: serverTimestamp(), criadoPorGestor: true, active: true
+    });
+    await setDoc(doc(db, 'tenants', tenantId, 'patientContacts', ref.id), { ...dados, updatedAt: serverTimestamp() });
+    patientId = ref.id;
+  }
+  let serviceId = null;
+  if (r.serviceName){
+    const svc = await getDocs(query(collection(db, 'tenants', tenantId, 'services'), where('name', '==', r.serviceName)));
+    if (!svc.empty) serviceId = svc.docs[0].id;
+  }
+  let startLocal = '';
+  if (r.requestedStart){
+    const d = new Date(r.requestedStart);
+    startLocal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+  await updateDoc(doc(db, 'public_booking_requests', id), { status: 'processed' });
+  window.__pendingBookingPrefill = { patientId, serviceId, startLocal };
+  toast('A abrir a marcação já preenchida.');
+  renderView('agenda');
+  setTimeout(() => openNewAppointment(), 300);
 };
 
 window.createStaffInvite = async function(){
@@ -2344,14 +2540,14 @@ async function renderAgenda(main){
         </div>
       </div>
       <div class="row" style="margin-top:6px;">
-        <button class="ghost" onclick="editAppointment('${a.id}')">Editar</button>
+        ${gestorPode('remarcar') ? `<button class="ghost" onclick="editAppointment('${a.id}')">Editar</button>` : ''}
         <button class="ghost" onclick="downloadAppointmentICS('${a.id}')">📅 Calendário</button>
-        ${a.local==='online' && a.patientId ? `<button class="primary" onclick="joinOnlineConsult('${a.patientId}')">💻 Entrar na videochamada</button>` : ''}
-        ${a.local==='online' && a.patientId ? `<button class="ghost" onclick="sendCallInvite('${a.id}','whatsapp')">📤 Convite WhatsApp</button>` : ''}
-        ${a.local==='online' && a.patientId ? `<button class="ghost" onclick="sendCallInvite('${a.id}','sms')">📤 Convite SMS</button>` : ''}
-        ${a.price && a.paymentStatus !== 'paid' ? `<button class="ghost" onclick="markAppointmentPaid('${a.id}')">💶 Marcar pago</button>` : ''}
-        ${a.status !== 'cancelled' ? `<button class="ghost" onclick="cancelAppointment('${a.id}')">Cancelar</button>` : ''}
-        <button class="danger" onclick="deleteAppointment('${a.id}')">Apagar</button>
+        ${!ehGestor() && a.local==='online' && a.patientId ? `<button class="primary" onclick="joinOnlineConsult('${a.patientId}')">💻 Entrar na videochamada</button>` : ''}
+        ${!ehGestor() && a.local==='online' && a.patientId ? `<button class="ghost" onclick="sendCallInvite('${a.id}','whatsapp')">📤 Convite WhatsApp</button>` : ''}
+        ${!ehGestor() && a.local==='online' && a.patientId ? `<button class="ghost" onclick="sendCallInvite('${a.id}','sms')">📤 Convite SMS</button>` : ''}
+        ${!ehGestor() && a.price && a.paymentStatus !== 'paid' ? `<button class="ghost" onclick="markAppointmentPaid('${a.id}')">💶 Marcar pago</button>` : ''}
+        ${gestorPode('cancelar') && a.status !== 'cancelled' ? `<button class="ghost" onclick="cancelAppointment('${a.id}')">Cancelar</button>` : ''}
+        ${gestorPode('cancelar') ? `<button class="danger" onclick="deleteAppointment('${a.id}')">Apagar</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -2513,7 +2709,7 @@ function phoneToWaLink(phone){
 async function renderWaitlist(main){
   const [waitlistSnap, patientsSnap, servicesSnap] = await Promise.all([
     getDocs(query(collection(db, 'tenants', tenantId, 'waitlist'), orderBy('createdAt', 'desc'))),
-    getDocs(collection(db, 'tenants', tenantId, 'patients')),
+    lerPacientesAgenda(),
     getDocs(collection(db, 'tenants', tenantId, 'services'))
   ]);
 
@@ -2617,7 +2813,7 @@ window.goToAgendaToday = function(){
 };
 
 window.openNewAppointment = async function(){
-  const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+  const patientsSnap = await lerPacientesAgenda();
   // Nota: já não filtramos por where('active','==',true) no Firestore —
   // serviços criados antes deste campo existir ficavam invisíveis aqui
   // mesmo estando "ativos" na prática. Em vez disso, mostramos tudo o
@@ -2996,7 +3192,7 @@ window.editAppointment = async function(appointmentId){
   if (!snap.exists()){ toast('Marcação não encontrada.', true); return; }
   const a = snap.data();
 
-  const patientsSnap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+  const patientsSnap = await lerPacientesAgenda();
   const servicesSnap = await getDocs(collection(db, 'tenants', tenantId, 'services'));
   const staffOpts = await getStaffOptionsHTML(a.staffUid);
 
@@ -3551,6 +3747,9 @@ window.updatePatient = async function(patientId){
     customFields: patientCustomFieldsDraft.filter(f => f.label && f.label.trim()),
     attachments: patientAttachmentsDraft.filter(f => f.label && f.label.trim() && f.url && f.url.trim())
   });
+  sincronizarContacto(patientId, {
+    fullName, phone: document.getElementById('pPhone').value.trim(), email: document.getElementById('pEmail').value.trim()
+  });
   toast('Paciente atualizado.');
   viewPatient(patientId);
 };
@@ -3629,6 +3828,9 @@ window.savePatient = async function(){
     ...consentData,
     portalToken,
     createdBy: currentUser.uid
+  });
+  sincronizarContacto(novoPatientRef.id, {
+    fullName, phone: document.getElementById('pPhone').value.trim(), email: document.getElementById('pEmail').value.trim()
   });
   toast('Paciente registado, com consentimento guardado.');
   closePatientOverlay();
@@ -5489,6 +5691,7 @@ window.confirmAttach = async function(responseId){
       createdBy: currentUser.uid
     });
     patientId = newPatientRef.id;
+    sincronizarContacto(patientId, { fullName: r.respondentName || 'Paciente sem nome', phone: isEmail ? '' : contact, email: isEmail ? contact : '' });
     if (!realConsentGiven) toast('Paciente criado — falta registar o consentimento (a ficha usada não incluía o termo completo).');
   }
 
