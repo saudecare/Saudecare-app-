@@ -529,7 +529,6 @@
       const card = document.getElementById(`qcard-${idx}`);
       card.className = 'q-card answered';
 
-      // Update button styles
       const btns = card.querySelectorAll('.q-sn-btn');
       btns.forEach(b => b.className = 'q-sn-btn');
       const simBtn = btns[0], naoBtn = btns[1];
@@ -544,7 +543,6 @@
       const card = document.getElementById(`qcard-${idx}`);
       card.className = 'q-card answered';
 
-      // Update button styles
       for (let n = 1; n <= 10; n++) {
         const btn = document.getElementById(`qe-${idx}-${n}`);
         if (btn) btn.className = 'q-escala-btn' + (n === val ? ' selected' : '');
@@ -558,7 +556,6 @@
       const card = document.getElementById(`qcard-${idx}`);
       card.className = 'q-card answered';
 
-      // Update option styles
       const opts = card.querySelectorAll('.q-multi-opt');
       opts.forEach((o, i) => {
         o.className = 'q-multi-opt' + (i === optIdx ? ' selected' : '');
@@ -586,7 +583,6 @@
       const btn = document.getElementById('q-submit-btn');
       errEl.style.display = 'none';
 
-      // Build respostas object
       const respostas = {};
       let erros = 0;
 
@@ -613,7 +609,6 @@
         return;
       }
 
-      // Send
       btn.disabled = true;
       btn.textContent = 'A enviar...';
 
