@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Questionário de Saúde</title>
+  <style>
+    :root {
+      --c-bg: #f5f7fa;
+      --c-card: #ffffff;
+      --c-primary: #4a90a4;
+      --c-primary-dark: #357a8e;
+      --c-accent: #6bb5c8;
+      --c-text: #2d3748;
+      --c-muted: #718096;
+      --c-border: #e2e8f0;
+      --c-success: #48bb78;
+      --c-danger: #fc8181;
+      --c-warn: #f6ad55;
+      --radius: 12px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--c-bg);
+      color: var(--c-text);
+      min-height: 100vh;
+      padding: 0 0 60px 0;
+    }
+
+    /* Header */
+    .q-header {
+      background: var(--c-primary);
+      color: #fff;
+      padding: 20px 20px 24px;
+      text-align: center;
+    }
+    .q-header .logo {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+    .q-header .subtitle {
+      font-size: 13px;
+      opacity: 0.85;
+    }
+
+    /* Container */
+    .q-wrap {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 20px 16px;
+    }
+
+    /* States */
+    #q-loading, #q-error, #q-success, #q-expired {
+      display: none;
+      text-align: center;
+      padding: 40px 20px;
+    }
+    #q-loading .spin {
+      font-size: 48px;
+      animation: spin 1s linear infinite;
+      display: block;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .state-icon { font-size: 64px; margin-bottom: 16px; display: block; }
+    .state-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .state-msg { font-size: 15px; color: var(--c-muted); line-height: 1.5; }
+
+    /* Form */
+    #q-form { display: none; }
+    .q-intro {
+      background: var(--c-card);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--c-primary);
+    }
+    .q-intro h2 { font-size: 18px; margin-bottom: 6px; }
+    .q-intro p { font-size: 14px; color: var(--c-muted); line-height: 1.5; }
+
+    /* Progress */
+    .q-progress {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .q-progress-bar {
+      flex: 1;
+      height: 6px;
+      background: var(--c-border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .q-progress-fill {
+      height: 100%;
+      background: var(--c-primary);
+      border-radius: 99px;
+      transition: width 0.3s ease;
+    }
+    .q-progress-label {
+      font-size: 12px;
+      color: var(--c-muted);
+      white-space: nowrap;
+    }
+
+    /* Question cards */
+    .q-card {
+      background: var(--c-card);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.2s;
+    }
+    .q-card.answered { border-left: 4px solid var(--c-success); }
+    .q-card.unanswered { border-left: 4px solid var(--c-border); }
+    .q-card.required-error { border-left: 4px solid var(--c-danger) !important; }
+
+    .q-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--c-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .q-text {
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    /* Input: texto */
+    .q-textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 10px 12px;
+      border: 1.5px solid var(--c-border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--c-text);
+      resize: vertical;
+      transition: border-color 0.2s;
+      background: #fafbfc;
+    }
+    .q-textarea:focus {
+      outline: none;
+      border-color: var(--c-primary);
+      background: #fff;
+    }
+
+    /* Input: sim_nao */
+    .q-sn-group { display: flex; gap: 10px; }
+    .q-sn-btn {
+      flex: 1;
+      padding: 12px;
+      border: 1.5px solid var(--c-border);
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #fafbfc;
+      color: var(--c-text);
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .q-sn-btn:hover { border-color: var(--c-primary); background: #f0f7fa; }
+    .q-sn-btn.selected-sim { background: #e6f9ee; border-color: var(--c-success); color: #276749; }
+    .q-sn-btn.selected-nao { background: #fff5f5; border-color: var(--c-danger); color: #9b2c2c; }
+
+    /* Input: escala */
+    .q-escala-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .q-escala-btn {
+      width: 44px;
+      height: 44px;
+      border: 1.5px solid var(--c-border);
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #fafbfc;
+      color: var(--c-text);
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .q-escala-btn:hover { border-color: var(--c-primary); background: #f0f7fa; }
+    .q-escala-btn.selected { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+    .q-escala-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--c-muted);
+    }
+
+    /* Input: multi */
+    .q-multi-group { display: flex; flex-direction: column; gap: 8px; }
+    .q-multi-opt {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1.5px solid var(--c-border);
+      border-radius: 8px;
+      cursor: pointer;
+      background: #fafbfc;
+      transition: all 0.15s;
+      font-size: 14px;
+    }
+    .q-multi-opt:hover { border-color: var(--c-primary); background: #f0f7fa; }
+    .q-multi-opt.selected { background: #e8f4f8; border-color: var(--c-primary); }
+    .q-multi-opt input[type="radio"] { display: none; }
+    .q-multi-dot {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--c-border);
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: #fff;
+      transition: all 0.15s;
+    }
+    .q-multi-opt.selected .q-multi-dot {
+      background: var(--c-primary);
+      border-color: var(--c-primary);
+    }
+
+    /* Submit */
+    .q-submit-wrap {
+      margin-top: 24px;
+      text-align: center;
+    }
+    .q-submit-btn {
+      background: var(--c-primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 15px 40px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      max-width: 360px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .q-submit-btn:hover { background: var(--c-primary-dark); }
+    .q-submit-btn:active { transform: scale(0.98); }
+    .q-submit-btn:disabled { background: var(--c-muted); cursor: not-allowed; }
+    .q-submit-note {
+      font-size: 12px;
+      color: var(--c-muted);
+      margin-top: 10px;
+    }
+    .q-error-msg {
+      color: #c53030;
+      font-size: 13px;
+      margin-top: 8px;
+      display: none;
+    }
+
+    /* Success/Error screens */
+    #q-success .state-icon { color: var(--c-success); }
+    #q-error .state-icon { color: var(--c-danger); }
+    #q-expired .state-icon { color: var(--c-warn); }
+
+    /* Footer */
+    .q-footer {
+      text-align: center;
+      font-size: 11px;
+      color: #a0aec0;
+      margin-top: 32px;
+      padding-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="q-header">
+    <div class="logo">Saúde &amp; Bem-estar</div>
+    <div class="subtitle">Questionário de Avaliação</div>
+  </div>
+
+  <div class="q-wrap">
+
+    <!-- Loading -->
+    <div id="q-loading">
+      <span class="spin">⏳</span>
+      <p style="color:#718096">A carregar questionário...</p>
+    </div>
+
+    <!-- Error -->
+    <div id="q-error">
+      <span class="state-icon">❌</span>
+      <div class="state-title">Questionário não encontrado</div>
+      <div class="state-msg">Este link pode estar incorreto ou expirado.<br>Por favor contacte o seu terapeuta.</div>
+    </div>
+
+    <!-- Expired / already answered -->
+    <div id="q-expired">
+      <span class="state-icon">✅</span>
+      <div class="state-title" id="q-expired-title">Questionário já respondido</div>
+      <div class="state-msg" id="q-expired-msg">As suas respostas já foram registadas.<br>O seu terapeuta irá analisá-las brevemente.</div>
+    </div>
+
+    <!-- Success -->
+    <div id="q-success">
+      <span class="state-icon">🎉</span>
+      <div class="state-title">Respostas enviadas!</div>
+      <div class="state-msg">Obrigado por preencher o questionário.<br>O seu terapeuta irá analisá-las brevemente.<br><br>Pode fechar esta página.</div>
+    </div>
+
+    <!-- Form -->
+    <div id="q-form">
+      <div class="q-intro">
+        <h2 id="q-titulo">Questionário</h2>
+        <p id="q-descricao">Por favor responda às perguntas abaixo com honestidade. As suas respostas são confidenciais e serão analisadas pelo seu terapeuta.</p>
+      </div>
+
+      <div class="q-progress">
+        <div class="q-progress-bar">
+          <div class="q-progress-fill" id="q-prog-fill" style="width:0%"></div>
+        </div>
+        <div class="q-progress-label" id="q-prog-label">0 / 0</div>
+      </div>
+
+      <div id="q-perguntas"></div>
+
+      <div class="q-submit-wrap">
+        <button class="q-submit-btn" id="q-submit-btn" onclick="qSubmit()">
+          Enviar Respostas ✓
+        </button>
+        <div class="q-error-msg" id="q-submit-err"></div>
+        <p class="q-submit-note">As suas respostas serão guardadas de forma segura.</p>
+      </div>
+
+      <div class="q-footer">
+        © Saúde &amp; Bem-estar · Área do Paciente
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Firebase v9 compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+      authDomain: "saudecare-app.firebaseapp.com",
+      projectId: "saudecare-app",
+      storageBucket: "saudecare-app.firebasestorage.app",
+      messagingSenderId: "455466438728",
+      appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+    };
+    const NETLIFY_BASE = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions';
+
+    // Init Firebase
+    firebase.initializeApp(FIREBASE_CONFIG);
+    const db = firebase.firestore();
+
+    // Get qId from URL
+    const params = new URLSearchParams(window.location.search);
+    const qId = params.get('d') || params.get('q');
+
+    let qData = null;   // Firestore document data
+    let perguntas = []; // Array of question objects
+
+    // ── Show/Hide states ──────────────────────────────────────────────────────
+    function mostrar(id) {
+      ['q-loading','q-error','q-expired','q-success','q-form'].forEach(s => {
+        document.getElementById(s).style.display = (s === id) ? 'block' : 'none';
+      });
+    }
+
+    // ── Load questionnaire ─────────────────────────────────────────────────────
+    async function qCarregar() {
+      if (!qId) {
+        mostrar('q-error');
+        return;
+      }
+      mostrar('q-loading');
+
+      let snap;
+      try {
+        snap = await db.collection('pe_questionarios').doc(qId).get();
+      } catch (err) {
+        console.error('Erro Firebase:', err);
+        mostrar('q-error');
+        return;
+      }
+
+      if (!snap.exists) {
+        mostrar('q-error');
+        return;
+      }
+
+      qData = snap.data();
+
+      if (qData.status === 'respondido') {
+        document.getElementById('q-expired-title').textContent = 'Questionário já respondido';
+        document.getElementById('q-expired-msg').textContent =
+          'As suas respostas já foram registadas.\nO seu terapeuta irá analisá-las brevemente.\n\nPode fechar esta página.';
+        mostrar('q-expired');
+        return;
+      }
+
+      if (qData.status !== 'pendente') {
+        document.getElementById('q-expired-title').textContent = 'Questionário não disponível';
+        document.getElementById('q-expired-msg').textContent =
+          'Este questionário já não está disponível.\nContacte o seu terapeuta para mais informações.';
+        mostrar('q-expired');
+        return;
+      }
+
+      // Valid — render form
+      perguntas = qData.perguntas || [];
+      if (qData.titulo) document.getElementById('q-titulo').textContent = qData.titulo;
+      if (qData.descricao) document.getElementById('q-descricao').textContent = qData.descricao;
+
+      qRenderPerguntas();
+      mostrar('q-form');
+    }
+
+    // ── Render questions ───────────────────────────────────────────────────────
+    function qRenderPerguntas() {
+      const el = document.getElementById('q-perguntas');
+      if (!perguntas.length) {
+        el.innerHTML = '<p style="color:#718096;text-align:center;padding:20px;">Nenhuma pergunta disponível.</p>';
+        return;
+      }
+
+      el.innerHTML = perguntas.map((p, i) => {
+        const tipo = p.tipo || 'texto';
+        let inputHtml = '';
+
+        if (tipo === 'sim_nao') {
+          inputHtml = `
+            <div class="q-sn-group">
+              <button type="button" class="q-sn-btn" onclick="qSelectSN(${i},'Sim')">✔ Sim</button>
+              <button type="button" class="q-sn-btn" onclick="qSelectSN(${i},'Não')">✗ Não</button>
+            </div>
+            <input type="hidden" id="qr-${i}" value="" />
+          `;
+        } else if (tipo === 'escala') {
+          const nums = [1,2,3,4,5,6,7,8,9,10];
+          inputHtml = `
+            <div class="q-escala-group">
+              ${nums.map(n => `<button type="button" class="q-escala-btn" onclick="qSelectEscala(${i},${n})" id="qe-${i}-${n}">${n}</button>`).join('')}
+            </div>
+            <div class="q-escala-labels">
+              <span>Nada</span><span>Muito</span>
+            </div>
+            <input type="hidden" id="qr-${i}" value="" />
+          `;
+        } else if (tipo === 'multi' && p.opcoes && p.opcoes.length) {
+          inputHtml = `
+            <div class="q-multi-group">
+              ${p.opcoes.map((op, oi) => `
+                <div class="q-multi-opt" id="qm-${i}-${oi}" onclick="qSelectMulti(${i},${oi},${JSON.stringify(op)})">
+                  <div class="q-multi-dot"></div>
+                  <span>${op}</span>
+                </div>
+              `).join('')}
+            </div>
+            <input type="hidden" id="qr-${i}" value="" />
+          `;
+        } else {
+          // texto (default)
+          inputHtml = `
+            <textarea
+              class="q-textarea"
+              id="qr-${i}"
+              placeholder="Escreva a sua resposta aqui..."
+              oninput="qOnInput(${i})"
+              rows="3"
+            ></textarea>
+          `;
+        }
+
+        return `
+          <div class="q-card unanswered" id="qcard-${i}">
+            <div class="q-num">Pergunta ${i + 1} de ${perguntas.length}</div>
+            <div class="q-text">${qEscapar(p.q || p.texto || '')}</div>
+            ${inputHtml}
+          </div>
+        `;
+      }).join('');
+
+      qAtualizarProgresso();
+    }
+
+    function qEscapar(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ── Input handlers ─────────────────────────────────────────────────────────
+    function qOnInput(idx) {
+      const el = document.getElementById(`qr-${idx}`);
+      const card = document.getElementById(`qcard-${idx}`);
+      if (el && card) {
+        const has = el.value.trim().length > 0;
+        card.className = 'q-card ' + (has ? 'answered' : 'unanswered');
+        card.classList.remove('required-error');
+      }
+      qAtualizarProgresso();
+    }
+
+    function qSelectSN(idx, val) {
+      document.getElementById(`qr-${idx}`).value = val;
+      const card = document.getElementById(`qcard-${idx}`);
+      card.className = 'q-card answered';
+
+      // Update button styles
+      const btns = card.querySelectorAll('.q-sn-btn');
+      btns.forEach(b => b.className = 'q-sn-btn');
+      const simBtn = btns[0], naoBtn = btns[1];
+      if (val === 'Sim') simBtn.classList.add('selected-sim');
+      else naoBtn.classList.add('selected-nao');
+
+      qAtualizarProgresso();
+    }
+
+    function qSelectEscala(idx, val) {
+      document.getElementById(`qr-${idx}`).value = String(val);
+      const card = document.getElementById(`qcard-${idx}`);
+      card.className = 'q-card answered';
+
+      // Update button styles
+      for (let n = 1; n <= 10; n++) {
+        const btn = document.getElementById(`qe-${idx}-${n}`);
+        if (btn) btn.className = 'q-escala-btn' + (n === val ? ' selected' : '');
+      }
+
+      qAtualizarProgresso();
+    }
+
+    function qSelectMulti(idx, optIdx, val) {
+      document.getElementById(`qr-${idx}`).value = val;
+      const card = document.getElementById(`qcard-${idx}`);
+      card.className = 'q-card answered';
+
+      // Update option styles
+      const opts = card.querySelectorAll('.q-multi-opt');
+      opts.forEach((o, i) => {
+        o.className = 'q-multi-opt' + (i === optIdx ? ' selected' : '');
+      });
+
+      qAtualizarProgresso();
+    }
+
+    // ── Progress ───────────────────────────────────────────────────────────────
+    function qAtualizarProgresso() {
+      const total = perguntas.length;
+      let respondidas = 0;
+      for (let i = 0; i < total; i++) {
+        const el = document.getElementById(`qr-${i}`);
+        if (el && el.value.trim().length > 0) respondidas++;
+      }
+      const pct = total > 0 ? Math.round((respondidas / total) * 100) : 0;
+      document.getElementById('q-prog-fill').style.width = pct + '%';
+      document.getElementById('q-prog-label').textContent = `${respondidas} / ${total}`;
+    }
+
+    // ── Submit ─────────────────────────────────────────────────────────────────
+    async function qSubmit() {
+      const errEl = document.getElementById('q-submit-err');
+      const btn = document.getElementById('q-submit-btn');
+      errEl.style.display = 'none';
+
+      // Build respostas object
+      const respostas = {};
+      let erros = 0;
+
+      for (let i = 0; i < perguntas.length; i++) {
+        const el = document.getElementById(`qr-${i}`);
+        const card = document.getElementById(`qcard-${i}`);
+        const val = el ? el.value.trim() : '';
+
+        if (!val) {
+          if (card) {
+            card.className = 'q-card required-error';
+            if (erros === 0) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          erros++;
+        } else {
+          respostas[`p${i}`] = val;
+          if (card) card.classList.remove('required-error');
+        }
+      }
+
+      if (erros > 0) {
+        errEl.textContent = `Por favor responda a todas as perguntas (${erros} em falta).`;
+        errEl.style.display = 'block';
+        return;
+      }
+
+      // Send
+      btn.disabled = true;
+      btn.textContent = 'A enviar...';
+
+      try {
+        const resp = await fetch(`${NETLIFY_BASE}/peSubmeterResposta`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questionarioId: qId, respostas })
+        });
+        const json = await resp.json();
+
+        if (json.ok) {
+          mostrar('q-success');
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Enviar Respostas ✓';
+          errEl.textContent = json.error || 'Erro ao enviar. Tente novamente.';
+          errEl.style.display = 'block';
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Enviar Respostas ✓';
+        errEl.textContent = 'Erro de ligação. Verifique a sua internet e tente novamente.';
+        errEl.style.display = 'block';
+      }
+    }
+
+    // ── Start ──────────────────────────────────────────────────────────────────
+    qCarregar();
+  </script>
+
+</body>
+</html>
