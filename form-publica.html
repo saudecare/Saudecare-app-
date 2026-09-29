@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Questionário</title>
+<style>
+  :root{
+    --bg:#0f172a;--card:#1e293b;--border:#334155;
+    --primary:#6366f1;--primary-d:#4f46e5;
+    --success:#22c55e;--warn:#f59e0b;--danger:#ef4444;
+    --text:#f1f5f9;--muted:#94a3b8;--radius:.75rem;
+    --font:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;padding:1rem 0 3rem;}
+  a{color:var(--primary);text-decoration:none;}
+
+  /* ── Layout ── */
+  .wrap{max-width:640px;margin:0 auto;padding:0 1rem;}
+  .logo{text-align:center;padding:2rem 0 1.5rem;font-size:1.4rem;font-weight:700;letter-spacing:-.02em;}
+  .logo span{color:var(--primary);}
+
+  /* ── Card ── */
+  .card{background:var(--card);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;border:1px solid var(--border);}
+  .card h1{font-size:1.2rem;font-weight:700;margin-bottom:.4rem;}
+  .card .desc{color:var(--muted);font-size:.875rem;line-height:1.5;}
+  .prog-bar{height:4px;background:var(--border);border-radius:2px;margin-top:1rem;overflow:hidden;}
+  .prog-fill{height:100%;background:var(--primary);border-radius:2px;transition:width .4s;}
+
+  /* ── Perguntas ── */
+  .q-card{background:var(--card);border-radius:var(--radius);padding:1.25rem;margin-bottom:.75rem;border:1px solid var(--border);transition:border-color .2s;}
+  .q-card.active{border-color:var(--primary);}
+  .q-num{font-size:.75rem;color:var(--primary);font-weight:600;margin-bottom:.3rem;letter-spacing:.05em;}
+  .q-label{font-size:.95rem;font-weight:600;line-height:1.4;margin-bottom:.75rem;}
+
+  /* Inputs */
+  input[type=text],input[type=email],input[type=tel],input[type=date],textarea,select{
+    width:100%;background:#0f172a;border:1.5px solid var(--border);color:var(--text);
+    border-radius:.5rem;padding:.65rem .75rem;font-size:.9rem;font-family:var(--font);
+    outline:none;transition:border-color .2s;
+  }
+  input:focus,textarea:focus,select:focus{border-color:var(--primary);}
+  textarea{resize:vertical;min-height:80px;}
+  select option{background:#1e293b;}
+
+  /* Escala */
+  .scale-wrap{display:flex;flex-direction:column;gap:.5rem;}
+  .scale-labels{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);}
+  .scale-btns{display:flex;gap:.3rem;flex-wrap:wrap;}
+  .scale-btn{flex:1;min-width:2.2rem;padding:.5rem .2rem;background:#0f172a;border:1.5px solid var(--border);
+    border-radius:.4rem;color:var(--text);font-size:.85rem;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;}
+  .scale-btn:hover{border-color:var(--primary);color:var(--primary);}
+  .scale-btn.sel{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+  /* Radio / Checkbox */
+  .opts{display:flex;flex-direction:column;gap:.5rem;}
+  .opt-btn{display:flex;align-items:center;gap:.7rem;padding:.65rem .75rem;background:#0f172a;
+    border:1.5px solid var(--border);border-radius:.5rem;cursor:pointer;font-size:.9rem;
+    color:var(--text);transition:all .15s;user-select:none;}
+  .opt-btn:hover{border-color:var(--primary);}
+  .opt-btn.sel{background:rgba(99,102,241,.15);border-color:var(--primary);color:var(--primary);}
+  .opt-icon{width:1.1rem;height:1.1rem;border:2px solid currentColor;border-radius:50%;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;}
+  .opt-btn.sel .opt-icon::after{content:'';width:.45rem;height:.45rem;background:var(--primary);border-radius:50%;}
+  .chk-icon{border-radius:.25rem !important;}
+  .opt-btn.sel .chk-icon::after{content:'✓';font-size:.7rem;color:var(--primary);line-height:1;}
+
+  /* Sim / Não */
+  .simn-wrap{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
+  .simn-btn{padding:.75rem;background:#0f172a;border:1.5px solid var(--border);border-radius:.5rem;
+    color:var(--text);font-size:.9rem;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;}
+  .simn-btn:hover{border-color:var(--primary);}
+  .simn-btn.sel-sim{background:rgba(34,197,94,.15);border-color:var(--success);color:var(--success);}
+  .simn-btn.sel-nao{background:rgba(239,68,68,.15);border-color:var(--danger);color:var(--danger);}
+
+  /* Botão principal */
+  .btn-primary{display:block;width:100%;padding:1rem;background:var(--primary);color:#fff;
+    border:none;border-radius:.75rem;font-size:1rem;font-weight:700;cursor:pointer;
+    text-align:center;margin-top:1.25rem;transition:background .2s;letter-spacing:.01em;}
+  .btn-primary:hover{background:var(--primary-d);}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+
+  /* Nome (campo inicial) */
+  .nome-wrap{margin-bottom:1.5rem;}
+  .nome-wrap label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:.4rem;}
+
+  /* Estado: já respondido / erro / carregando */
+  .estado{text-align:center;padding:3rem 1rem;}
+  .estado .icon{font-size:3rem;margin-bottom:1rem;}
+  .estado h2{font-size:1.2rem;font-weight:700;margin-bottom:.5rem;}
+  .estado p{color:var(--muted);font-size:.875rem;line-height:1.6;}
+
+  /* Obrigado */
+  .obrigado{text-align:center;padding:2.5rem 1rem;}
+  .obrigado .icon{font-size:3.5rem;animation:pop .4s;}
+  @keyframes pop{0%{transform:scale(.5)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+  .obrigado h2{font-size:1.3rem;font-weight:700;margin:.75rem 0 .5rem;}
+  .obrigado p{color:var(--muted);font-size:.875rem;line-height:1.6;}
+
+  /* Toast */
+  #toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+    background:#1e293b;border:1px solid var(--border);color:var(--text);
+    padding:.65rem 1.25rem;border-radius:2rem;font-size:.875rem;
+    z-index:9999;white-space:nowrap;opacity:0;transition:opacity .25s;pointer-events:none;}
+  #toast.show{opacity:1;}
+  #toast.erro{border-color:var(--danger);color:var(--danger);}
+
+  /* Spinner */
+  .spin{display:inline-block;width:1.2rem;height:1.2rem;border:2px solid rgba(255,255,255,.3);
+    border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">vindora<span>.</span></div>
+  <div id="app"><div class="estado"><div class="spin" style="width:2rem;height:2rem;border-width:3px;"></div></div></div>
+</div>
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, getDoc, updateDoc, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey:'AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg',
+  authDomain:'saudecare-app.firebaseapp.com',
+  projectId:'saudecare-app',
+  storageBucket:'saudecare-app.firebasestorage.app',
+  messagingSenderId:'455466438728',
+  appId:'1:455466438728:web:61cfbf9fac85d59e18c87d'
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ── helpers ────────────────────────────────────────────────────────────────
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function toast(msg, erro=false){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (erro?' erro':'');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>{ el.className=''; }, 2800);
+}
+
+// ── URL param ─────────────────────────────────────────────────────────────
+const responseId = new URLSearchParams(location.search).get('r');
+
+// ── Estado local ──────────────────────────────────────────────────────────
+let _dados = null; // doc data
+let _respostas = {}; // {questionId: valor}
+let _nome = '';
+
+// ── Entrada ───────────────────────────────────────────────────────────────
+async function init(){
+  if(!responseId){
+    renderErro('Link inválido', 'Este link não contém um identificador de questionário válido.');
+    return;
+  }
+  try{
+    const snap = await getDoc(doc(db,'public_form_responses', responseId));
+    if(!snap.exists()){
+      renderErro('Formulário não encontrado', 'Este link pode ter expirado ou ser inválido. Peça um novo link ao seu terapeuta.');
+      return;
+    }
+    _dados = snap.data();
+    if(_dados.completadoEm){
+      renderJaRespondido();
+      return;
+    }
+    renderFormulario();
+  }catch(e){
+    console.error(e);
+    renderErro('Erro ao carregar', 'Não foi possível carregar o formulário. Verifique a sua ligação e tente novamente.');
+  }
+}
+
+// ── Renderizadores ────────────────────────────────────────────────────────
+function renderErro(titulo, msg){
+  document.getElementById('app').innerHTML = `
+    <div class="card estado">
+      <div class="icon">⚠️</div>
+      <h2>${esc(titulo)}</h2>
+      <p>${esc(msg)}</p>
+    </div>`;
+}
+
+function renderJaRespondido(){
+  const titulo = _dados.titulo || 'Questionário';
+  document.getElementById('app').innerHTML = `
+    <div class="card">
+      <div class="obrigado">
+        <div class="icon">✅</div>
+        <h2>Já respondido</h2>
+        <p>Este questionário (<strong>${esc(titulo)}</strong>) já foi preenchido e enviado ao seu terapeuta.</p>
+        <p style="margin-top:.75rem;">Caso precise de preencher novamente, solicite um novo link.</p>
+      </div>
+    </div>`;
+}
+
+function renderFormulario(){
+  const d = _dados;
+  const perguntas = d.perguntas || [];
+  const total = perguntas.length;
+  // Campo nome (se não vem identificado)
+  const nomeHidden = d.patientName ? `<input type="hidden" id="fNome" value="${esc(d.patientName)}">` : '';
+  const nomeCampo = !d.patientName ? `
+    <div class="nome-wrap">
+      <label>O seu nome completo</label>
+      <input type="text" id="fNome" placeholder="Nome e apelido…" autocomplete="name">
+    </div>` : nomeHidden;
+
+  const pergsHtml = perguntas.map((p,i) => renderPergunta(p, i, total)).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="card">
+      <h1>${esc(d.titulo||'Questionário')}</h1>
+      ${d.descricao ? `<p class="desc">${esc(d.descricao)}</p>` : ''}
+      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    </div>
+    ${nomeCampo}
+    <div id="perguntasWrap">${pergsHtml}</div>
+    <button class="btn-primary" id="btnEnviar" onclick="window._enviar()">Enviar respostas</button>
+    <p style="text-align:center;color:var(--muted);font-size:.75rem;margin-top:1rem;">
+      As suas respostas são enviadas de forma segura e privada ao seu terapeuta.
+    </p>`;
+
+  atualizarProgresso();
+}
+
+function renderPergunta(p, i, total){
+  const num = `Pergunta ${i+1} de ${total}`;
+  const tipo = (p.tipo||p.type||'texto').toLowerCase();
+
+  if(tipo==='escala'||tipo==='scale'){
+    const btns = Array.from({length:11},(_,n)=>`<button type="button" class="scale-btn" data-qid="${esc(p.id)}" data-val="${n}" onclick="window._escala('${esc(p.id)}',${n},this)">${n}</button>`).join('');
+    return `<div class="q-card" id="qc-${esc(p.id)}">
+      <div class="q-num">${num}</div>
+      <div class="q-label">${esc(p.label||p.q||'')}</div>
+      <div class="scale-wrap">
+        <div class="scale-labels"><span>Nada</span><span>Muito</span></div>
+        <div class="scale-btns">${btns}</div>
+      </div>
+    </div>`;
+  }
+
+  if(tipo==='opcao'||tipo==='multiple_choice'||tipo==='radio'){
+    const opcoes = (p.opcoes||p.options||[]).map(o=>`
+      <div class="opt-btn" data-qid="${esc(p.id)}" data-val="${esc(o)}" onclick="window._radio('${esc(p.id)}','${esc(o).replace(/'/g,"\\'")}',this)">
+        <div class="opt-icon"></div><span>${esc(o)}</span>
+      </div>`).join('');
+    return `<div class="q-card" id="qc-${esc(p.id)}">
+      <div class="q-num">${num}</div>
+      <div class="q-label">${esc(p.label||p.q||'')}</div>
+      <div class="opts">${opcoes}</div>
+    </div>`;
+  }
+
+  if(tipo==='multipla'||tipo==='checkbox'){
+    const opcoes = (p.opcoes||p.options||[]).map(o=>`
+      <div class="opt-btn" data-qid="${esc(p.id)}" data-val="${esc(o)}" onclick="window._check('${esc(p.id)}','${esc(o).replace(/'/g,"\\'")}',this)">
+        <div class="opt-icon chk-icon"></div><span>${esc(o)}</span>
+      </div>`).join('');
+    return `<div class="q-card" id="qc-${esc(p.id)}">
+      <div class="q-num">${num}</div>
+      <div class="q-label">${esc(p.label||p.q||'')}</div>
+      <div class="opts">${opcoes}</div>
+    </div>`;
+  }
+
+  if(tipo==='sim_nao'||tipo==='boolean'){
+    return `<div class="q-card" id="qc-${esc(p.id)}">
+      <div class="q-num">${num}</div>
+      <div class="q-label">${esc(p.label||p.q||'')}</div>
+      <div class="simn-wrap">
+        <button type="button" class="simn-btn" data-qid="${esc(p.id)}" data-val="Sim" onclick="window._simn('${esc(p.id)}','Sim',this)">✔ Sim</button>
+        <button type="button" class="simn-btn" data-qid="${esc(p.id)}" data-val="Não" onclick="window._simn('${esc(p.id)}','Não',this)">✖ Não</button>
+      </div>
+    </div>`;
+  }
+
+  if(tipo==='area'||tipo==='textarea'){
+    return `<div class="q-card" id="qc-${esc(p.id)}">
+      <div class="q-num">${num}</div>
+      <div class="q-label">${esc(p.label||p.q||'')}</div>
+      <textarea data-qid="${esc(p.id)}" placeholder="Escreva aqui…" rows="4" oninput="window._txt('${esc(p.id)}',this.value)"></textarea>
+    </div>`;
+  }
+
+  if(tipo==='email'){
+    return `<div class="q-card" id="qc-${esc(p.id)}">
+      <div class="q-num">${num}</div>
+      <div class="q-label">${esc(p.label||p.q||'')}</div>
+      <input type="email" data-qid="${esc(p.id)}" placeholder="email@exemplo.com" autocomplete="email" oninput="window._txt('${esc(p.id)}',this.value)">
+    </div>`;
+  }
+
+  if(tipo==='telefone'||tipo==='tel'){
+    return `<div class="q-card" id="qc-${esc(p.id)}">
+      <div class="q-num">${num}</div>
+      <div class="q-label">${esc(p.label||p.q||'')}</div>
+      <input type="tel" data-qid="${esc(p.id)}" placeholder="+351 9XX XXX XXX" autocomplete="tel" oninput="window._txt('${esc(p.id)}',this.value)">
+    </div>`;
+  }
+
+  if(tipo==='data'||tipo==='date'){
+    return `<div class="q-card" id="qc-${esc(p.id)}">
+      <div class="q-num">${num}</div>
+      <div class="q-label">${esc(p.label||p.q||'')}</div>
+      <input type="date" data-qid="${esc(p.id)}" oninput="window._txt('${esc(p.id)}',this.value)">
+    </div>`;
+  }
+
+  // Default: texto
+  return `<div class="q-card" id="qc-${esc(p.id)}">
+    <div class="q-num">${num}</div>
+    <div class="q-label">${esc(p.label||p.q||'')}</div>
+    <input type="text" data-qid="${esc(p.id)}" placeholder="A sua resposta…" oninput="window._txt('${esc(p.id)}',this.value)">
+  </div>`;
+}
+
+// ── Handlers de interação ─────────────────────────────────────────────────
+function atualizarProgresso(){
+  const total = (_dados.perguntas||[]).length;
+  if(!total) return;
+  const preenchidas = Object.keys(_respostas).filter(k=>String(_respostas[k]||'').trim()!=='').length;
+  const pct = Math.round(preenchidas/total*100);
+  const el = document.getElementById('progFill');
+  if(el) el.style.width = pct+'%';
+}
+
+window._txt = function(qid, val){
+  _respostas[qid] = val;
+  atualizarProgresso();
+  const c = document.getElementById('qc-'+qid);
+  if(c) c.classList.toggle('active', !!val.trim());
+};
+
+window._escala = function(qid, val, btn){
+  _respostas[qid] = val;
+  atualizarProgresso();
+  const wrap = btn.closest('.scale-btns');
+  wrap.querySelectorAll('.scale-btn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  const c = document.getElementById('qc-'+qid);
+  if(c) c.classList.add('active');
+};
+
+window._radio = function(qid, val, el){
+  _respostas[qid] = val;
+  atualizarProgresso();
+  const wrap = el.closest('.opts');
+  wrap.querySelectorAll('.opt-btn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  const c = document.getElementById('qc-'+qid);
+  if(c) c.classList.add('active');
+};
+
+window._check = function(qid, val, el){
+  if(!Array.isArray(_respostas[qid])) _respostas[qid] = [];
+  const idx = _respostas[qid].indexOf(val);
+  if(idx>=0){ _respostas[qid].splice(idx,1); el.classList.remove('sel'); }
+  else { _respostas[qid].push(val); el.classList.add('sel'); }
+  atualizarProgresso();
+  const c = document.getElementById('qc-'+qid);
+  if(c) c.classList.toggle('active', _respostas[qid].length>0);
+};
+
+window._simn = function(qid, val, el){
+  _respostas[qid] = val;
+  atualizarProgresso();
+  const wrap = el.closest('.simn-wrap');
+  wrap.querySelectorAll('.simn-btn').forEach(b=>{ b.classList.remove('sel-sim','sel-nao'); });
+  el.classList.add(val==='Sim'?'sel-sim':'sel-nao');
+  const c = document.getElementById('qc-'+qid);
+  if(c) c.classList.add('active');
+};
+
+// ── Enviar ────────────────────────────────────────────────────────────────
+window._enviar = async function(){
+  // Validar nome
+  const nomeEl = document.getElementById('fNome');
+  const nome = nomeEl ? nomeEl.value.trim() : (_dados.patientName||'');
+  if(!_dados.patientName && !nome){
+    toast('Por favor escreva o seu nome antes de enviar.', true);
+    nomeEl && nomeEl.focus();
+    return;
+  }
+
+  const btn = document.getElementById('btnEnviar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> A enviar…';
+
+  // Montar array de respostas
+  const perguntas = _dados.perguntas || [];
+  const respostasArr = perguntas.map(p=>{
+    const v = _respostas[p.id];
+    return {
+      questionId: p.id,
+      label: p.label||p.q||'',
+      value: Array.isArray(v) ? v.join(', ') : String(v??'')
+    };
+  });
+
+  try{
+    await updateDoc(doc(db,'public_form_responses', responseId),{
+      respostas: respostasArr,
+      respondentName: nome || (_dados.patientName||''),
+      completadoEm: serverTimestamp()
+    });
+    renderObrigado(nome||_dados.patientName||'');
+  }catch(e){
+    console.error(e);
+    toast('Erro ao enviar. Verifique a ligação e tente novamente.', true);
+    btn.disabled = false;
+    btn.textContent = 'Enviar respostas';
+  }
+};
+
+function renderObrigado(nome){
+  const titulo = _dados.titulo||'Questionário';
+  document.getElementById('app').innerHTML = `
+    <div class="card">
+      <div class="obrigado">
+        <div class="icon">🙏</div>
+        <h2>Obrigada${nome?', '+nome.split(' ')[0]:''}!</h2>
+        <p>As suas respostas ao <strong>${esc(titulo)}</strong> foram enviadas com sucesso ao seu terapeuta.</p>
+        <p style="margin-top:.75rem;color:var(--muted);">Pode fechar esta página.</p>
+      </div>
+    </div>`;
+}
+
+// ── Arrancar ──────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
