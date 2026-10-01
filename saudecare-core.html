@@ -344,7 +344,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-10-02-02';
+const APP_VERSION = '2026-10-02-03';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11042,10 +11042,11 @@ function reikiRenderEcra(main){
   const m = main || document.getElementById('mainView');
   m.innerHTML = `
     <h2>🎓 Alunos Reiki</h2>
-    <div class="row" style="gap:6px;margin:10px 0 14px;">
+    <div class="row" style="gap:6px;margin:10px 0 14px;flex-wrap:wrap;">
       <button class="${__reikiTab==='alunos'?'primary':'ghost'}" onclick="reikiMudarTab('alunos')">Alunos</button>
       <button class="${__reikiTab==='niveis'?'primary':'ghost'}" onclick="reikiMudarTab('niveis')">Níveis</button>
       <button class="${__reikiTab==='biblioteca'?'primary':'ghost'}" onclick="reikiMudarTab('biblioteca')">Biblioteca</button>
+      <button class="${__reikiTab==='licoes'?'primary':'ghost'}" onclick="reikiMudarTab('licoes')">Lições</button>
       <button class="${__reikiTab==='turmas'?'primary':'ghost'}" onclick="reikiMudarTab('turmas')">Turmas</button>
       <button class="${__reikiTab==='testes'?'primary':'ghost'}" onclick="reikiMudarTab('testes')">Testes</button>
       <button class="${__reikiTab==='mensagens'?'primary':'ghost'}" onclick="reikiMudarTab('mensagens')">Mensagens</button>
@@ -11053,6 +11054,7 @@ function reikiRenderEcra(main){
     <div id="reikiConteudo"></div>`;
   if (__reikiTab === 'alunos') reikiRenderListaAlunos();
   else if (__reikiTab === 'biblioteca') reikiRenderBiblioteca();
+  else if (__reikiTab === 'licoes') reikiRenderLicoes();
   else if (__reikiTab === 'turmas') reikiRenderTurmas();
   else if (__reikiTab === 'testes') reikiRenderTestes();
   else if (__reikiTab === 'mensagens') reikiRenderMensagens();
@@ -11526,6 +11528,423 @@ window.reikiVerResultados = function(testeId){
         </div>`).join('')}
       <p class="muted" style="margin-top:12px;font-size:.82rem;">A nota é uma referência. Quem decide se o aluno avança és tu.</p>
     </div>`);
+};
+
+/* ─── Lições ─────────────────────────────────────────────────────────
+   O conteúdo de cada módulo (ler → praticar → responder) nasce em
+   ficheiros fixos. Aqui o Mestre edita cada lição, cria lições novas e
+   esconde as que não quer mostrar. O que for editado fica guardado e a
+   sala do aluno passa a mostrar a versão editada. "Repor original" volta
+   ao texto fixo.
+
+   Imagens e símbolos: são sempre inseridos pelo Mestre, à mão (link ou
+   foto do telemóvel). A app não os desenha nem os descarrega.
+
+   Firestore: tenants/{tenantId}/reikiModules/{nivel}-{ordem}
+   ─────────────────────────────────────────────────────────────────── */
+
+let __reikiLicNivel = '1';
+let __reikiLicOriginais = {};
+let __reikiLicEditadas = [];
+let __reikiLicOk = true;
+let __reikiLicRasc = null;
+
+const REIKI_LIC_TIPOS = {
+  texto:    '📝 Texto',
+  destaque: '✨ Destaque',
+  lista:    '📋 Lista',
+  imagem:   '🖼️ Imagem ou símbolo'
+};
+
+async function reikiLicCarregar(nivel){
+  if (!__reikiLicOriginais[nivel]){
+    try {
+      await import(nivel === '1' ? './reiki-percurso-nivel1.js' : './reiki-percurso-niveis-2-3.js');
+      __reikiLicOriginais[nivel] = window['MODULOS_NIVEL_' + nivel] || [];
+    } catch(e){
+      console.warn('Reiki: não consegui carregar as lições originais', e);
+      __reikiLicOriginais[nivel] = [];
+    }
+  }
+  try {
+    const snap = await getDocs(collection(db, 'tenants', tenantId, 'reikiModules'));
+    __reikiLicEditadas = [];
+    snap.forEach(d => __reikiLicEditadas.push({ id: d.id, ...d.data() }));
+    __reikiLicOk = true;
+  } catch(e){
+    console.warn('Reiki: não consegui ler reikiModules', e);
+    __reikiLicEditadas = [];
+    __reikiLicOk = false;
+  }
+}
+
+/* Junta as lições originais com as editadas/novas deste nível. */
+function reikiLicLista(nivel){
+  const itens = {};
+  (__reikiLicOriginais[nivel] || []).forEach(m => {
+    const id = nivel + '-' + m.ordem;
+    itens[id] = { id, ordem: m.ordem, dados: m, temOriginal: true, editada: false };
+  });
+  __reikiLicEditadas.filter(m => String(m.nivel) === nivel).forEach(m => {
+    const it = itens[m.id] || { id: m.id, temOriginal: false };
+    it.dados = m;
+    it.editada = true;
+    it.ordem = m.ordem;
+    itens[m.id] = it;
+  });
+  return Object.values(itens).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+}
+
+async function reikiRenderLicoes(){
+  const alvo = document.getElementById('reikiConteudo');
+  if (!alvo) return;
+  alvo.innerHTML = '<p class="muted">A carregar lições…</p>';
+  await reikiLicCarregar(__reikiLicNivel);
+  if (!document.getElementById('reikiConteudo')) return;
+  const lista = reikiLicLista(__reikiLicNivel);
+
+  const niveis = REIKI_NIVEIS.map(n => `
+    <button class="${__reikiLicNivel === n.id ? 'primary' : 'ghost'}" onclick="reikiLicEscolherNivel('${n.id}')">Nível ${escapeHtml(n.id)}</button>`).join('');
+
+  const aviso = __reikiLicOk ? '' : `
+    <div class="card" style="border:2px solid #e6a100;background:#fff8e6;margin-bottom:12px;">
+      <strong>⚠️ Falta publicar as novas regras do Firestore</strong>
+      <p class="muted" style="margin-top:4px;">Sem a colecção <code>reikiModules</code> nas regras não é possível guardar edições. As lições originais continuam a funcionar para os alunos.</p>
+    </div>`;
+
+  const cartoes = lista.length === 0
+    ? '<p class="muted">Este nível ainda não tem lições. Cria a primeira.</p>'
+    : lista.map(it => {
+        const d = it.dados || {};
+        const escondida = d.publicado === false;
+        const selo = escondida ? '🙈 Escondida'
+          : it.editada ? (it.temOriginal ? '✏️ Editada' : '🆕 Nova')
+          : 'Original';
+        return `
+        <div class="card" style="margin-bottom:10px;${escondida ? 'opacity:.7;' : ''}">
+          <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div style="flex:1;">
+              <strong>${escapeHtml(String(it.ordem))}. ${escapeHtml(d.titulo || '(sem título)')}</strong>
+              <p class="muted" style="margin-top:4px;">${(d.ler || []).length} bloco(s) · ${(d.responder || []).length} pergunta(s)${d.duracao ? ' · ' + escapeHtml(d.duracao) : ''}</p>
+            </div>
+            <span class="badge">${selo}</span>
+          </div>
+          <div class="row" style="gap:6px;margin-top:10px;">
+            <button class="ghost" onclick="reikiLicAbrir('${it.id}')">✏️ Editar</button>
+          </div>
+        </div>`;
+      }).join('');
+
+  alvo.innerHTML = `
+    <div class="card" style="margin-bottom:12px;">
+      <p class="muted">Escreve e edita aqui o conteúdo das lições, tal como o aluno o vê: ler, praticar e responder. As imagens e os símbolos inseres tu, à mão.</p>
+      <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">${niveis}</div>
+      <button class="primary" style="margin-top:12px;" onclick="reikiLicAbrir()">➕ Nova lição</button>
+    </div>
+    ${aviso}
+    ${cartoes}`;
+}
+
+window.reikiLicEscolherNivel = function(nivel){
+  __reikiLicNivel = nivel;
+  reikiRenderLicoes();
+};
+
+function reikiLicNormalizar(d){
+  d.titulo = String(d.titulo || '');
+  d.subtitulo = String(d.subtitulo || '');
+  d.duracao = String(d.duracao || '');
+  d.desafio = String(d.desafio || '');
+  d.manual = String(d.manual || '');
+  d.ler = Array.isArray(d.ler) ? d.ler : [];
+  d.ler = d.ler.map(b => {
+    const tipo = REIKI_LIC_TIPOS[b.tipo] ? b.tipo : 'texto';
+    if (tipo === 'lista') return { tipo, titulo: String(b.titulo || ''), itens: Array.isArray(b.itens) ? b.itens.map(String) : [] };
+    if (tipo === 'imagem') return { tipo, url: String(b.url || ''), legenda: String(b.legenda || '') };
+    return { tipo, conteudo: String(b.conteudo || '') };
+  });
+  if (!d.ler.length) d.ler.push({ tipo: 'texto', conteudo: '' });
+  const p = d.praticar || {};
+  d.praticar = {
+    titulo: String(p.titulo || ''),
+    instrucoes: String(p.instrucoes || ''),
+    registo: p.registo !== false,
+    registoPergunta: String(p.registoPergunta || '')
+  };
+  d.responder = (Array.isArray(d.responder) ? d.responder : []).map(q => {
+    const ops = Array.isArray(q.opcoes) ? q.opcoes.map(String) : [];
+    while (ops.length < 4) ops.push('');
+    return { pergunta: String(q.pergunta || ''), opcoes: ops.slice(0, 4), correta: Number.isInteger(q.correta) ? q.correta : 0, feedback: String(q.feedback || '') };
+  });
+  d.publicado = d.publicado !== false;
+  return d;
+}
+
+window.reikiLicAbrir = function(id){
+  const nivel = __reikiLicNivel;
+  const lista = reikiLicLista(nivel);
+  const it = id ? lista.find(x => x.id === id) : null;
+  let base;
+  if (it){
+    base = JSON.parse(JSON.stringify(it.dados));
+  } else {
+    const maior = Math.max(0, ...lista.map(x => Number(x.ordem) || 0));
+    base = { ordem: maior + 1 };
+  }
+  base.nivel = nivel;
+  base.id = it ? it.id : nivel + '-' + base.ordem;
+  base.temOriginal = !!(it && it.temOriginal);
+  base.ehNova = !it;
+  __reikiLicRasc = reikiLicNormalizar(base);
+  reikiLicDesenhar();
+};
+
+function reikiLicDesenhar(){
+  const d = __reikiLicRasc;
+  if (!d) return;
+  const corpoAntes = document.querySelector('#patientOverlay .patientOverlayBody');
+  const topo = corpoAntes ? corpoAntes.scrollTop : 0;
+
+  const blocos = d.ler.map((b, i) => {
+    let corpo;
+    if (b.tipo === 'lista'){
+      corpo = `
+        <input type="text" placeholder="Título da lista (opcional)" value="${escapeHtml(b.titulo || '')}" oninput="reikiLicBloco(${i},'titulo',this.value)">
+        <textarea rows="5" style="margin-top:6px;" placeholder="Um item por linha" oninput="reikiLicItens(${i},this.value)">${escapeHtml((b.itens || []).join('\n'))}</textarea>`;
+    } else if (b.tipo === 'imagem'){
+      corpo = `
+        <input type="text" id="licImg${i}" placeholder="Link da imagem (ou escolhe uma foto abaixo)" value="${escapeHtml(b.url || '')}"
+          oninput="reikiLicBloco(${i},'url',this.value)" onchange="reikiLicBloco(${i},'url',this.value);reikiLicDesenhar()">
+        ${imageUploadFieldHTML('licImg' + i, 'tenants/' + tenantId + '/reiki-licoes')}
+        ${b.url ? `<div style="text-align:center;margin:6px 0;"><img src="${escapeHtml(b.url)}" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #ddd;" onerror="this.style.display='none'"></div>` : ''}
+        <input type="text" placeholder="Legenda (opcional)" value="${escapeHtml(b.legenda || '')}" oninput="reikiLicBloco(${i},'legenda',this.value)">`;
+    } else {
+      corpo = `<textarea rows="${b.tipo === 'destaque' ? 3 : 6}" placeholder="${b.tipo === 'destaque' ? 'Uma frase ou ideia a destacar' : 'Escreve o texto'}" oninput="reikiLicBloco(${i},'conteudo',this.value)">${escapeHtml(b.conteudo || '')}</textarea>`;
+    }
+    return `
+      <div class="card" style="margin-top:8px;">
+        <div class="row" style="justify-content:space-between;align-items:center;gap:6px;">
+          <strong style="font-size:.9rem;">${REIKI_LIC_TIPOS[b.tipo]}</strong>
+          <span class="row" style="gap:4px;">
+            <button class="ghost" ${i === 0 ? 'disabled' : ''} onclick="reikiLicMoverBloco(${i},-1)">▲</button>
+            <button class="ghost" ${i === d.ler.length - 1 ? 'disabled' : ''} onclick="reikiLicMoverBloco(${i},1)">▼</button>
+            <button class="danger" onclick="reikiLicRemoverBloco(${i})">🗑️</button>
+          </span>
+        </div>
+        <div style="margin-top:6px;">${corpo}</div>
+      </div>`;
+  }).join('');
+
+  const perguntas = d.responder.map((q, i) => `
+    <div class="card" style="margin-top:8px;">
+      <div class="row" style="justify-content:space-between;align-items:center;">
+        <strong style="font-size:.9rem;">Pergunta ${i + 1}</strong>
+        <button class="danger" onclick="reikiLicRemoverPergunta(${i})">🗑️</button>
+      </div>
+      <textarea rows="2" style="margin-top:6px;" placeholder="Escreve a pergunta" oninput="reikiLicPergunta(${i},'pergunta',this.value)">${escapeHtml(q.pergunta)}</textarea>
+      ${[0, 1, 2, 3].map(o => `
+        <label style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+          <input type="radio" name="licCerta${i}" style="width:auto;" ${q.correta === o ? 'checked' : ''} onchange="reikiLicPergunta(${i},'correta',${o})">
+          <input type="text" value="${escapeHtml(q.opcoes[o] || '')}" placeholder="Opção ${o + 1}" oninput="reikiLicOpcao(${i},${o},this.value)">
+        </label>`).join('')}
+      <p class="muted" style="margin-top:6px;font-size:.82rem;">Marca o círculo da opção certa. Deixa em branco as opções que não usares.</p>
+      <label style="margin-top:6px;">O que o aluno lê depois de responder</label>
+      <textarea rows="3" placeholder="Explica porquê, mesmo quando o aluno acerta" oninput="reikiLicPergunta(${i},'feedback',this.value)">${escapeHtml(q.feedback)}</textarea>
+    </div>`).join('');
+
+  const botoesBloco = Object.keys(REIKI_LIC_TIPOS).map(t =>
+    `<button class="ghost" onclick="reikiLicAddBloco('${t}')">${REIKI_LIC_TIPOS[t]}</button>`).join('');
+
+  const rodape = d.temOriginal
+    ? `<button class="ghost" onclick="reikiLicRepor()">↩️ Repor original</button>`
+    : (d.ehNova ? '' : `<button class="danger" onclick="reikiLicApagar()">🗑️ Apagar lição</button>`);
+
+  showPatientOverlay((d.ehNova ? '➕ Nova lição' : '✏️ Lição ' + d.ordem) + ' · Nível ' + d.nivel, `
+    <div class="card">
+      <label>Título</label>
+      <input type="text" value="${escapeHtml(d.titulo)}" placeholder="Ex.: O que é, afinal, o Reiki" oninput="reikiLicCampo('titulo',this.value)">
+      <label style="margin-top:10px;">Subtítulo</label>
+      <input type="text" value="${escapeHtml(d.subtitulo)}" oninput="reikiLicCampo('subtitulo',this.value)">
+      <div class="row" style="gap:8px;margin-top:10px;">
+        <div style="flex:1;">
+          <label>Duração</label>
+          <input type="text" value="${escapeHtml(d.duracao)}" placeholder="20 min" oninput="reikiLicCampo('duracao',this.value)">
+        </div>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:12px;">
+        <input type="checkbox" style="width:auto;" ${d.publicado ? 'checked' : ''} onchange="reikiLicCampo('publicado',this.checked)">
+        Mostrar esta lição aos alunos
+      </label>
+    </div>
+
+    <h3 style="margin:16px 0 4px;">📖 1. Ler</h3>
+    ${blocos}
+    <div class="card" style="margin-top:8px;">
+      <p class="muted" style="margin-bottom:8px;">Acrescentar:</p>
+      <div class="row" style="gap:6px;flex-wrap:wrap;">${botoesBloco}</div>
+    </div>
+
+    <h3 style="margin:16px 0 4px;">🤲 2. Praticar</h3>
+    <div class="card">
+      <label>Título da prática</label>
+      <input type="text" value="${escapeHtml(d.praticar.titulo)}" oninput="reikiLicPrat('titulo',this.value)">
+      <label style="margin-top:10px;">Instruções</label>
+      <textarea rows="5" oninput="reikiLicPrat('instrucoes',this.value)">${escapeHtml(d.praticar.instrucoes)}</textarea>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+        <input type="checkbox" style="width:auto;" ${d.praticar.registo ? 'checked' : ''} onchange="reikiLicPrat('registo',this.checked)">
+        O aluno escreve um registo da prática
+      </label>
+      <label style="margin-top:10px;">Pergunta do registo</label>
+      <input type="text" value="${escapeHtml(d.praticar.registoPergunta)}" placeholder="O que notaste?" oninput="reikiLicPrat('registoPergunta',this.value)">
+      <label style="margin-top:10px;">Desafio para levar para a vida (opcional)</label>
+      <textarea rows="3" oninput="reikiLicCampo('desafio',this.value)">${escapeHtml(d.desafio)}</textarea>
+    </div>
+
+    <h3 style="margin:16px 0 4px;">✍️ 3. Responder</h3>
+    ${perguntas}
+    <div class="card" style="margin-top:8px;">
+      <button class="ghost" onclick="reikiLicAddPergunta()">➕ Adicionar pergunta</button>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div class="row" style="gap:8px;flex-wrap:wrap;">
+        <button class="primary" onclick="reikiLicGuardar()">Guardar lição</button>
+        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+        ${rodape}
+      </div>
+    </div>`);
+
+  const corpoDepois = document.querySelector('#patientOverlay .patientOverlayBody');
+  if (corpoDepois) corpoDepois.scrollTop = topo;
+}
+
+window.reikiLicCampo = function(campo, valor){ if (__reikiLicRasc) __reikiLicRasc[campo] = valor; };
+window.reikiLicPrat = function(campo, valor){ if (__reikiLicRasc) __reikiLicRasc.praticar[campo] = valor; };
+window.reikiLicBloco = function(i, campo, valor){ const b = __reikiLicRasc?.ler[i]; if (b) b[campo] = valor; };
+window.reikiLicItens = function(i, texto){ const b = __reikiLicRasc?.ler[i]; if (b) b.itens = String(texto).split('\n'); };
+window.reikiLicAddBloco = function(tipo){
+  const novo = tipo === 'lista' ? { tipo, titulo: '', itens: [''] }
+    : tipo === 'imagem' ? { tipo, url: '', legenda: '' }
+    : { tipo, conteudo: '' };
+  __reikiLicRasc.ler.push(novo);
+  reikiLicDesenhar();
+};
+window.reikiLicMoverBloco = function(i, dir){
+  const l = __reikiLicRasc.ler, j = i + dir;
+  if (j < 0 || j >= l.length) return;
+  [l[i], l[j]] = [l[j], l[i]];
+  reikiLicDesenhar();
+};
+window.reikiLicRemoverBloco = function(i){
+  __reikiLicRasc.ler.splice(i, 1);
+  if (!__reikiLicRasc.ler.length) __reikiLicRasc.ler.push({ tipo: 'texto', conteudo: '' });
+  reikiLicDesenhar();
+};
+window.reikiLicPergunta = function(i, campo, valor){ const q = __reikiLicRasc?.responder[i]; if (q) q[campo] = valor; };
+window.reikiLicOpcao = function(i, o, valor){ const q = __reikiLicRasc?.responder[i]; if (q) q.opcoes[o] = valor; };
+window.reikiLicAddPergunta = function(){
+  __reikiLicRasc.responder.push({ pergunta: '', opcoes: ['', '', '', ''], correta: 0, feedback: '' });
+  reikiLicDesenhar();
+};
+window.reikiLicRemoverPergunta = function(i){
+  __reikiLicRasc.responder.splice(i, 1);
+  reikiLicDesenhar();
+};
+
+window.reikiLicGuardar = async function(){
+  const d = __reikiLicRasc;
+  if (!d) return;
+  if (!d.titulo.trim()){ toast('A lição precisa de um título.', true); return; }
+
+  const ler = d.ler.map(b => {
+    if (b.tipo === 'lista'){
+      const itens = (b.itens || []).map(x => String(x).trim()).filter(Boolean);
+      return itens.length ? { tipo: 'lista', titulo: (b.titulo || '').trim(), itens } : null;
+    }
+    if (b.tipo === 'imagem'){
+      const url = (b.url || '').trim();
+      return url ? { tipo: 'imagem', url, legenda: (b.legenda || '').trim() } : null;
+    }
+    const c = String(b.conteudo || '').trim();
+    return c ? { tipo: b.tipo === 'destaque' ? 'destaque' : 'texto', conteudo: c } : null;
+  }).filter(Boolean);
+  if (!ler.length){ toast('Escreve pelo menos um bloco na parte "Ler".', true); return; }
+
+  const responder = [];
+  for (let i = 0; i < d.responder.length; i++){
+    const q = d.responder[i];
+    const pergunta = (q.pergunta || '').trim();
+    const ops = [];
+    let correta = -1;
+    (q.opcoes || []).forEach((o, oi) => {
+      const t = String(o || '').trim();
+      if (!t) return;
+      if (oi === q.correta) correta = ops.length;
+      ops.push(t);
+    });
+    if (!pergunta && !ops.length) continue; // pergunta vazia: ignora
+    if (!pergunta || ops.length < 2 || correta < 0){
+      toast('A pergunta ' + (i + 1) + ' precisa de texto, de pelo menos duas opções e da certa marcada (e a certa não pode estar em branco).', true);
+      return;
+    }
+    responder.push({ pergunta, opcoes: ops, correta, feedback: (q.feedback || '').trim() });
+  }
+
+  const dados = {
+    nivel: String(d.nivel),
+    ordem: Number(d.ordem),
+    titulo: d.titulo.trim(),
+    subtitulo: d.subtitulo.trim(),
+    duracao: d.duracao.trim(),
+    manual: d.manual || '',
+    desafio: d.desafio.trim(),
+    ler,
+    praticar: {
+      titulo: d.praticar.titulo.trim(),
+      instrucoes: d.praticar.instrucoes.trim(),
+      registo: d.praticar.registo !== false,
+      registoPergunta: d.praticar.registoPergunta.trim()
+    },
+    responder,
+    publicado: d.publicado !== false,
+    atualizadoEm: serverTimestamp()
+  };
+  try {
+    await setDoc(doc(db, 'tenants', tenantId, 'reikiModules', d.id), dados);
+    closePatientOverlay();
+    toast('Lição guardada.');
+    __reikiTab = 'licoes';
+    reikiRenderEcra();
+  } catch(e){
+    console.error('reikiLicGuardar:', e);
+    toast('Não consegui guardar: ' + (e.message || e), true);
+  }
+};
+
+window.reikiLicRepor = async function(){
+  const d = __reikiLicRasc;
+  if (!d) return;
+  if (!await reikiConfirmar('Repor original', 'Voltar ao texto original da lição "' + (d.titulo || '') + '"?\n\nAs tuas edições a esta lição perdem-se.', 'Repor')) return;
+  try {
+    await deleteDoc(doc(db, 'tenants', tenantId, 'reikiModules', d.id));
+    closePatientOverlay();
+    toast('Lição reposta.');
+    __reikiTab = 'licoes';
+    reikiRenderEcra();
+  } catch(e){ toast('Não consegui repor: ' + (e.message || e), true); }
+};
+
+window.reikiLicApagar = async function(){
+  const d = __reikiLicRasc;
+  if (!d) return;
+  if (!await reikiConfirmar('Apagar lição', 'Apagar a lição "' + (d.titulo || '') + '"?\n\nO progresso que os alunos já fizeram nela não é apagado.', 'Apagar')) return;
+  try {
+    await deleteDoc(doc(db, 'tenants', tenantId, 'reikiModules', d.id));
+    closePatientOverlay();
+    toast('Lição apagada.');
+    __reikiTab = 'licoes';
+    reikiRenderEcra();
+  } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
 };
 
 /* ─── Turmas ─────────────────────────────────────────────────────────

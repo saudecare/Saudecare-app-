@@ -136,15 +136,33 @@ function nivelEmEstudo(concluido){
   const i = ORDEM_NIVEIS.indexOf(String(concluido));
   return i >= 0 && i < ORDEM_NIVEIS.length - 1 ? ORDEM_NIVEIS[i+1] : String(concluido);
 }
-/* Os módulos vêm dos ficheiros do percurso, escritos a partir dos
-   manuais da escola. Não é preciso gravá-los no Firestore. */
+/* Os módulos vêm dos ficheiros do percurso (escritos a partir dos
+   manuais da escola), com as edições do Mestre por cima (reikiModules). */
 async function carregarModulos(nivel){
   window.firebaseConfig = firebaseConfig;
   const f = nivel === '1' ? './reiki-percurso-nivel1.js' : './reiki-percurso-niveis-2-3.js';
   await import(f);
   const lista = window['MODULOS_NIVEL_' + nivel] || [];
-  return lista.map(m => Object.assign({}, m, { id: nivel + '-' + m.ordem, publicado: true }))
-              .sort((a,b) => (a.ordem||0) - (b.ordem||0));
+  const mapa = {};
+  lista.forEach(m => {
+    const id = nivel + '-' + m.ordem;
+    mapa[id] = Object.assign({}, m, { id, publicado: true });
+  });
+  /* Lições editadas (ou criadas) pelo Mestre na app: quando existem,
+     substituem o texto original com o mesmo número, e as que ele esconde
+     (publicado = false) deixam de aparecer. Se a leitura falhar, ficam as
+     originais — o aluno nunca fica sem percurso. */
+  try {
+    const snap = await getDocs(collection(db, 'tenants', TENANT, 'reikiModules'));
+    snap.forEach(d => {
+      const x = d.data() || {};
+      if (String(x.nivel) !== String(nivel)) return;
+      mapa[d.id] = Object.assign({}, x, { id: d.id });
+    });
+  } catch(e){ console.warn('lições editadas indisponíveis', e); }
+  return Object.values(mapa)
+    .filter(m => m.publicado !== false)
+    .sort((a,b) => (a.ordem||0) - (b.ordem||0));
 }
 let ALUNO = null, MODULOS = [], PROGRESSO = {}, RECURSOS = [], TESTES = [];
 
