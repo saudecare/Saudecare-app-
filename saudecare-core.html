@@ -344,7 +344,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-10-02-05';
+const APP_VERSION = '2026-10-02-06';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1235,9 +1235,18 @@ window.doRegister = async function(){
     // tenant — só de escrita, uma única vez, via a regra de "create".
     // Se o documento já existir, a escrita cai na regra de "update" (que
     // exige claims) e falha em segurança, sem apagar nada.
-    const slug = businessName.toLowerCase()
+    const slugBase = businessName.toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-').replace(/(^-+|-+$)/g, '') || 'novo-subscritor';
+    // Se já existir uma página pública com este nome, acrescenta -2, -3…
+    let slug = slugBase;
+    try {
+      for (let n = 2; n < 30; n++){
+        const ocupado = await getDoc(doc(db, 'public_tenant_profiles', slug));
+        if (!ocupado.exists()) break;
+        slug = slugBase + '-' + n;
+      }
+    } catch(e){ console.warn('Não consegui verificar o nome do endereço', e); }
 
     await setDoc(doc(db, 'tenants', uid), {
       businessName, slug,
@@ -8333,6 +8342,35 @@ async function renderProfile(main){
   }
 }
 
+// Muda o nome do endereço da página pública. Verifica se está livre, copia
+// a página pública para o novo nome, atualiza a conta e remove a antiga.
+window.mudarSlug = async function(){
+  const el = document.getElementById('slugNovo');
+  const novo = (el?.value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/(^-+|-+$)/g, '');
+  const atual = currentTenantDoc?.slug;
+  if (!novo || novo.length < 3){ toast('O nome do endereço precisa de pelo menos 3 letras ou números.', true); return; }
+  if (novo === atual){ toast('Esse já é o teu endereço.'); return; }
+  try {
+    const ocupado = await getDoc(doc(db, 'public_tenant_profiles', novo));
+    if (ocupado.exists()){ toast('Esse nome já está a ser usado. Escolhe outro.', true); return; }
+    if (!await confirmar('Mudar o endereço para "' + novo + '"? O link antigo deixa de funcionar.')) return;
+    const antigo = await getDoc(doc(db, 'public_tenant_profiles', atual));
+    const dados = antigo.exists() ? antigo.data() : { tenantId };
+    await setDoc(doc(db, 'public_tenant_profiles', novo), dados);
+    await updateDoc(doc(db, 'tenants', tenantId), { slug: novo });
+    currentTenantDoc.slug = novo;
+    if (antigo.exists()){
+      try { await deleteDoc(doc(db, 'public_tenant_profiles', atual)); } catch(e){ console.warn('Não consegui apagar o endereço antigo', e); }
+    }
+    toast('Endereço alterado.');
+    renderView('profile');
+  } catch(e){
+    console.error(e);
+    toast('Não foi possível mudar o endereço: ' + (e.message || 'erro'), true);
+  }
+};
+
 function renderProfileMenu(main){
   const publicLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-pagina-publica.html')}?t=${currentTenantDoc.slug}`;
   const tiles = [
@@ -8353,6 +8391,10 @@ function renderProfileMenu(main){
       <label>🔗 O seu link público</label>
       <input readonly value="${publicLink}" onclick="this.select()">
       <button class="primary" onclick="navigator.clipboard.writeText('${publicLink}').then(()=>toast('Link copiado.'))">Copiar link público</button>
+      ${tenantRole === 'owner' ? `<details style="margin-top:12px;"><summary class="muted" style="cursor:pointer;">Mudar o nome do endereço</summary>
+        <p class="muted" style="margin:8px 0;">Só letras minúsculas, números e hífenes. Atenção: o link antigo deixa de funcionar, por isso atualiza onde o tenhas divulgado.</p>
+        <input id="slugNovo" value="${escapeHtml(currentTenantDoc.slug || '')}" maxlength="40" autocapitalize="none">
+        <button class="ghost" onclick="mudarSlug()">Verificar e mudar</button></details>` : ''}
     </div>
     <div class="profile-grid">
       ${tiles.map(t => `<button class="profile-tile" onclick="openProfileSection('${t.key}')"><span class="ptile-icon">${t.icon}</span><span>${t.label}</span></button>`).join('')}
