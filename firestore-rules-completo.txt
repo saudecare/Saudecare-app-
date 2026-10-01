@@ -125,6 +125,12 @@ service cloud.firestore {
         }
       }
 
+      match /contentVersions/{versaoId} {
+        allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+        allow update: if false;
+        allow delete: if isEquipaClinica(tenantId);
+      }
+
       match /mapaAlmaLeads/{leadId} {
         allow create: if request.resource.data.nome is string &&
           request.resource.data.dataNascimento is string &&

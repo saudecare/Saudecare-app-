@@ -344,7 +344,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-10-02-04';
+const APP_VERSION = '2026-10-02-05';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1677,6 +1677,7 @@ const NAV_GROUPS = {
     { view: 'respostas', icon: '📥', label: 'Respostas de Fichas' },
     { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
     { view: 'trainings', icon: '🎓', label: 'Formações' },
+    { view: 'versoes', icon: '🕘', label: 'Versões anteriores' },
     { view: 'pesquisaEmocional', icon: '🔬', label: 'Pesquisa Emocional Clínica', peAccess: true }
   ]},
   mistica: { title: '🔮 Métodos Exclusivos Hikari Fafe', tenantOnly: 'hikari-terapias', items: [
@@ -1768,6 +1769,7 @@ function renderView(view, opts){
   else if (view === 'respostas') renderRespostas(main);
   else if (view === 'knowledge') renderKnowledgeBase(main);
   else if (view === 'trainings') renderTrainings(main);
+  else if (view === 'versoes') renderVersoes(main);
   else if (view === 'profile') renderProfile(main);
   else if (view === 'myprofile') renderMyPublicProfile(main);
   else if (view === 'settings') renderSettings(main);
@@ -5859,6 +5861,84 @@ window.removeFormQuestion = function(idx){
     document.getElementById('formIncludesConsent')?.checked || false);
 };
 
+// ── Histórico de versões (fichas e métodos) ─────────────────────────────
+// Antes de cada alteração ou remoção guarda-se uma cópia do estado anterior
+// em "contentVersions", para se poder voltar atrás. Se esta cópia falhar,
+// o guardar normal não é bloqueado.
+const VERSAO_COLECAO = { protocol: 'protocols', form: 'forms' };
+const VERSAO_ROTULO = { protocol: 'Método', form: 'Ficha' };
+
+async function guardarVersao(kind, docId, nome, data, motivo){
+  try {
+    if (!data) return;
+    await addDoc(collection(db, 'tenants', tenantId, 'contentVersions'), {
+      kind, docId, nome: nome || '', motivo, data,
+      savedAt: serverTimestamp(), savedBy: auth.currentUser?.uid || ''
+    });
+  } catch(e){ console.warn('Não consegui guardar a versão anterior', e); }
+}
+
+async function guardarVersaoDe(kind, docId, motivo){
+  try {
+    const snap = await getDoc(doc(db, 'tenants', tenantId, VERSAO_COLECAO[kind], docId));
+    if (!snap.exists()) return;
+    const d = snap.data();
+    await guardarVersao(kind, docId, d.name || d.title || '', d, motivo);
+  } catch(e){ console.warn('Não consegui ler o estado anterior', e); }
+}
+
+let __versoesFiltro = 'todos';
+
+async function renderVersoes(main){
+  main = main || document.getElementById('mainView');
+  main.innerHTML = '<div class="card"><p class="muted">A carregar…</p></div>';
+  let docs = [];
+  try {
+    const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'contentVersions'), orderBy('savedAt', 'desc'), limit(80)));
+    docs = snap.docs;
+  } catch(e){
+    console.error('Versões indisponíveis', e);
+    main.innerHTML = `<div class="card"><h2>🕘 Versões anteriores</h2><p class="muted" style="color:var(--danger);">Não foi possível ler o histórico. ${escapeHtml(e.message||'')}</p></div>`;
+    return;
+  }
+  const lista = docs.filter(d => __versoesFiltro === 'todos' || d.data().kind === __versoesFiltro);
+  const quando = d => { try { return d.data().savedAt.toDate().toLocaleString('pt-PT'); } catch(_) { return ''; } };
+  const motivoTxt = m => m === 'delete' ? 'removido' : (m === 'restore' ? 'antes de restaurar' : 'antes de editar');
+  const linhas = lista.map(d => {
+    const v = d.data();
+    return `<div class="appt-item"><div class="row">
+      <div><strong>${escapeHtml(v.nome || '(sem nome)')}</strong>
+        <div class="muted">${VERSAO_ROTULO[v.kind] || ''} · ${motivoTxt(v.motivo)} · ${escapeHtml(quando(d))}</div></div>
+      <button class="ghost" onclick="restaurarVersao('${d.id}')">Restaurar</button>
+    </div></div>`;
+  }).join('') || '<p class="muted">Ainda não há versões guardadas. Aparecem aqui sempre que editares ou removeres um método ou uma ficha.</p>';
+  const filtro = (id, rotulo) => `<button class="${__versoesFiltro===id?'primary':'ghost'}" onclick="versoesFiltrar('${id}')">${rotulo}</button>`;
+  main.innerHTML = `<h2>🕘 Versões anteriores</h2>
+    ${hintBox('Cada vez que editas ou removes um método ou uma ficha, a versão anterior fica guardada aqui. Se não gostares da alteração, carrega em Restaurar. Antes de restaurar, a versão atual também fica guardada, por isso nada se perde.')}
+    <div class="row" style="gap:6px;margin:10px 0;flex-wrap:wrap;">${filtro('todos','Tudo')}${filtro('protocol','Métodos')}${filtro('form','Fichas')}</div>
+    <div class="card">${linhas}</div>`;
+}
+window.versoesFiltrar = function(f){ __versoesFiltro = f; renderVersoes(); };
+
+window.restaurarVersao = async function(versaoId){
+  try {
+    const vs = await getDoc(doc(db, 'tenants', tenantId, 'contentVersions', versaoId));
+    if (!vs.exists()){ toast('Versão não encontrada.', true); return; }
+    const v = vs.data();
+    const col = VERSAO_COLECAO[v.kind];
+    if (!col){ toast('Tipo de versão desconhecido.', true); return; }
+    if (!await confirmar('Restaurar "' + (v.nome || 'esta versão') + '"? A versão atual fica guardada antes de ser substituída.')) return;
+    await guardarVersaoDe(v.kind, v.docId, 'restore');
+    const dados = Object.assign({}, v.data, { updatedAt: serverTimestamp() });
+    await setDoc(doc(db, 'tenants', tenantId, col, v.docId), dados);
+    toast('Versão restaurada.');
+    renderVersoes();
+  } catch(e){
+    console.error(e);
+    toast('Não foi possível restaurar: ' + (e.message || 'erro'), true);
+  }
+};
+
 window.saveForm = async function(editId){
   const title = document.getElementById('formTitle').value.trim();
   if (!title){ toast('Dê um título à ficha.', true); return; }
@@ -5876,6 +5956,7 @@ window.saveForm = async function(editId){
     updatedAt: serverTimestamp()
   };
   if (editId){
+    await guardarVersaoDe('form', editId, 'edit');
     await updateDoc(doc(db, 'tenants', tenantId, 'forms', editId), data);
   } else {
     data.createdAt = serverTimestamp();
@@ -5886,7 +5967,8 @@ window.saveForm = async function(editId){
 };
 
 window.deleteForm = async function(id){
-  if (!await confirmar('Remover esta ficha? O link deixa de funcionar.')) return;
+  if (!await confirmar('Remover esta ficha? O link deixa de funcionar. Fica guardada em "Versões anteriores" para a poderes restaurar.')) return;
+  await guardarVersaoDe('form', id, 'delete');
   await deleteDoc(doc(db, 'tenants', tenantId, 'forms', id));
   renderView('forms');
 };
@@ -7260,6 +7342,7 @@ window.saveProtocol = async function(editId){
   }
 
   if (editId){
+    await guardarVersaoDe('protocol', editId, 'edit');
     await updateDoc(doc(db, 'tenants', tenantId, 'protocols', editId), data);
   } else {
     data.createdAt = serverTimestamp();
@@ -7271,7 +7354,8 @@ window.saveProtocol = async function(editId){
 };
 
 window.deleteProtocol = async function(id){
-  if (!await confirmar('Remover este protocolo? Relatórios já gerados com ele não são afetados.')) return;
+  if (!await confirmar('Remover este protocolo? Relatórios já gerados com ele não são afetados. Fica guardado em "Versões anteriores" para o poderes restaurar.')) return;
+  await guardarVersaoDe('protocol', id, 'delete');
   await deleteDoc(doc(db, 'tenants', tenantId, 'protocols', id));
   renderView('protocols');
 };
