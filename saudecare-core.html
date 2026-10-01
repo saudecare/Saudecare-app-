@@ -331,6 +331,7 @@
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
+import { aplicarCorMarca } from './marca.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
@@ -344,7 +345,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-10-02-06';
+const APP_VERSION = '2026-10-02-07';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1438,9 +1439,7 @@ document.querySelectorAll('nav button[data-view]').forEach(btn=>{
 });
 
 function applyBranding(){
-  if (currentTenantDoc?.branding?.primaryColor){
-    document.documentElement.style.setProperty('--primary', currentTenantDoc.branding.primaryColor);
-  }
+  aplicarCorMarca(currentTenantDoc?.branding?.primaryColor);
 }
 
 // ── "Adicionar ao ecrã principal" com identidade do subscritor ─────────

@@ -40,6 +40,7 @@
 <div id="toast"></div>
 
 <script type="module">
+import { aplicarCorMarca } from "./marca.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, collection, addDoc, getDocs, query, where, serverTimestamp
@@ -85,6 +86,7 @@ async function loadTraining(){
     return;
   }
   tenantId = profileSnap.data().tenantId;
+  aplicarCorMarca(profileSnap.data().branding?.primaryColor);
 
   const trSnap = await getDoc(doc(db, 'tenants', tenantId, 'trainings', trainingId));
   if (!trSnap.exists()){

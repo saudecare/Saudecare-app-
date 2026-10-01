@@ -44,6 +44,7 @@
 <div id="toast"></div>
 
 <script type="module">
+import { aplicarCorMarca } from "./marca.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, collection, addDoc, serverTimestamp
@@ -92,6 +93,7 @@ async function loadForm(){
     return;
   }
   tenantId = profileSnap.data().tenantId;
+  aplicarCorMarca(profileSnap.data().branding?.primaryColor);
 
   const formSnap = await getDoc(doc(db, 'tenants', tenantId, 'forms', formId));
   if (!formSnap.exists()){

@@ -89,6 +89,7 @@
 <footer>Powered by Vindora</footer>
 
 <script type="module">
+import { aplicarCorMarca } from "./marca.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, collection, getDocs
@@ -131,9 +132,7 @@ async function load(){
   // desapareçam todos de uma vez só por faltar este campo.
   const tenantId = profile.tenantId || tenantSlug;
 
-  if (profile.branding?.primaryColor){
-    document.documentElement.style.setProperty('--primary', profile.branding.primaryColor);
-  }
+  aplicarCorMarca(profile.branding?.primaryColor);
 
   renderHero(profile, tenantSlug);
   renderAbout(profile);
