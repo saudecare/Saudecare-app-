@@ -344,7 +344,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-10-02-03';
+const APP_VERSION = '2026-10-02-04';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11671,10 +11671,12 @@ function reikiLicNormalizar(d){
     registo: p.registo !== false,
     registoPergunta: String(p.registoPergunta || '')
   };
-  d.responder = (Array.isArray(d.responder) ? d.responder : []).map(q => {
-    const ops = Array.isArray(q.opcoes) ? q.opcoes.map(String) : [];
-    while (ops.length < 4) ops.push('');
-    return { pergunta: String(q.pergunta || ''), opcoes: ops.slice(0, 4), correta: Number.isInteger(q.correta) ? q.correta : 0, feedback: String(q.feedback || '') };
+  ['responder', 'treino'].forEach(campo => {
+    d[campo] = (Array.isArray(d[campo]) ? d[campo] : []).map(q => {
+      const ops = Array.isArray(q.opcoes) ? q.opcoes.map(String) : [];
+      while (ops.length < 4) ops.push('');
+      return { pergunta: String(q.pergunta || ''), opcoes: ops.slice(0, 4), correta: Number.isInteger(q.correta) ? q.correta : 0, feedback: String(q.feedback || '') };
+    });
   });
   d.publicado = d.publicado !== false;
   return d;
@@ -11735,22 +11737,24 @@ function reikiLicDesenhar(){
       </div>`;
   }).join('');
 
-  const perguntas = d.responder.map((q, i) => `
+  const cartoesPerguntas = (campo) => d[campo].map((q, i) => `
     <div class="card" style="margin-top:8px;">
       <div class="row" style="justify-content:space-between;align-items:center;">
         <strong style="font-size:.9rem;">Pergunta ${i + 1}</strong>
-        <button class="danger" onclick="reikiLicRemoverPergunta(${i})">🗑️</button>
+        <button class="danger" onclick="reikiLicRemoverPergunta('${campo}',${i})">🗑️</button>
       </div>
-      <textarea rows="2" style="margin-top:6px;" placeholder="Escreve a pergunta" oninput="reikiLicPergunta(${i},'pergunta',this.value)">${escapeHtml(q.pergunta)}</textarea>
+      <textarea rows="2" style="margin-top:6px;" placeholder="Escreve a pergunta" oninput="reikiLicPergunta('${campo}',${i},'pergunta',this.value)">${escapeHtml(q.pergunta)}</textarea>
       ${[0, 1, 2, 3].map(o => `
         <label style="display:flex;gap:8px;align-items:center;margin-top:6px;">
-          <input type="radio" name="licCerta${i}" style="width:auto;" ${q.correta === o ? 'checked' : ''} onchange="reikiLicPergunta(${i},'correta',${o})">
-          <input type="text" value="${escapeHtml(q.opcoes[o] || '')}" placeholder="Opção ${o + 1}" oninput="reikiLicOpcao(${i},${o},this.value)">
+          <input type="radio" name="licCerta_${campo}_${i}" style="width:auto;" ${q.correta === o ? 'checked' : ''} onchange="reikiLicPergunta('${campo}',${i},'correta',${o})">
+          <input type="text" value="${escapeHtml(q.opcoes[o] || '')}" placeholder="Opção ${o + 1}" oninput="reikiLicOpcao('${campo}',${i},${o},this.value)">
         </label>`).join('')}
       <p class="muted" style="margin-top:6px;font-size:.82rem;">Marca o círculo da opção certa. Deixa em branco as opções que não usares.</p>
       <label style="margin-top:6px;">O que o aluno lê depois de responder</label>
-      <textarea rows="3" placeholder="Explica porquê, mesmo quando o aluno acerta" oninput="reikiLicPergunta(${i},'feedback',this.value)">${escapeHtml(q.feedback)}</textarea>
+      <textarea rows="3" placeholder="Explica porquê, mesmo quando o aluno acerta" oninput="reikiLicPergunta('${campo}',${i},'feedback',this.value)">${escapeHtml(q.feedback)}</textarea>
     </div>`).join('');
+  const perguntas = cartoesPerguntas('responder');
+  const perguntasTreino = cartoesPerguntas('treino');
 
   const botoesBloco = Object.keys(REIKI_LIC_TIPOS).map(t =>
     `<button class="ghost" onclick="reikiLicAddBloco('${t}')">${REIKI_LIC_TIPOS[t]}</button>`).join('');
@@ -11803,7 +11807,14 @@ function reikiLicDesenhar(){
     <h3 style="margin:16px 0 4px;">✍️ 3. Responder</h3>
     ${perguntas}
     <div class="card" style="margin-top:8px;">
-      <button class="ghost" onclick="reikiLicAddPergunta()">➕ Adicionar pergunta</button>
+      <button class="ghost" onclick="reikiLicAddPergunta('responder')">➕ Adicionar pergunta</button>
+    </div>
+
+    <h3 style="margin:16px 0 4px;">🎲 4. Perguntas extra para o treino</h3>
+    <p class="muted" style="margin-bottom:4px;">Não fazem parte do módulo: só aparecem nos quizes aleatórios do treino, para o aluno não decorar sempre as mesmas.</p>
+    ${perguntasTreino}
+    <div class="card" style="margin-top:8px;">
+      <button class="ghost" onclick="reikiLicAddPergunta('treino')">➕ Adicionar pergunta ao treino</button>
     </div>
 
     <div class="card" style="margin-top:12px;">
@@ -11840,14 +11851,14 @@ window.reikiLicRemoverBloco = function(i){
   if (!__reikiLicRasc.ler.length) __reikiLicRasc.ler.push({ tipo: 'texto', conteudo: '' });
   reikiLicDesenhar();
 };
-window.reikiLicPergunta = function(i, campo, valor){ const q = __reikiLicRasc?.responder[i]; if (q) q[campo] = valor; };
-window.reikiLicOpcao = function(i, o, valor){ const q = __reikiLicRasc?.responder[i]; if (q) q.opcoes[o] = valor; };
-window.reikiLicAddPergunta = function(){
-  __reikiLicRasc.responder.push({ pergunta: '', opcoes: ['', '', '', ''], correta: 0, feedback: '' });
+window.reikiLicPergunta = function(lista, i, campo, valor){ const q = __reikiLicRasc?.[lista]?.[i]; if (q) q[campo] = valor; };
+window.reikiLicOpcao = function(lista, i, o, valor){ const q = __reikiLicRasc?.[lista]?.[i]; if (q) q.opcoes[o] = valor; };
+window.reikiLicAddPergunta = function(lista){
+  __reikiLicRasc[lista].push({ pergunta: '', opcoes: ['', '', '', ''], correta: 0, feedback: '' });
   reikiLicDesenhar();
 };
-window.reikiLicRemoverPergunta = function(i){
-  __reikiLicRasc.responder.splice(i, 1);
+window.reikiLicRemoverPergunta = function(lista, i){
+  __reikiLicRasc[lista].splice(i, 1);
   reikiLicDesenhar();
 };
 
@@ -11870,25 +11881,35 @@ window.reikiLicGuardar = async function(){
   }).filter(Boolean);
   if (!ler.length){ toast('Escreve pelo menos um bloco na parte "Ler".', true); return; }
 
-  const responder = [];
-  for (let i = 0; i < d.responder.length; i++){
-    const q = d.responder[i];
-    const pergunta = (q.pergunta || '').trim();
-    const ops = [];
-    let correta = -1;
-    (q.opcoes || []).forEach((o, oi) => {
-      const t = String(o || '').trim();
-      if (!t) return;
-      if (oi === q.correta) correta = ops.length;
-      ops.push(t);
-    });
-    if (!pergunta && !ops.length) continue; // pergunta vazia: ignora
-    if (!pergunta || ops.length < 2 || correta < 0){
-      toast('A pergunta ' + (i + 1) + ' precisa de texto, de pelo menos duas opções e da certa marcada (e a certa não pode estar em branco).', true);
-      return;
+  /* Valida e limpa uma lista de perguntas. Devolve null se alguma estiver
+     incompleta (e já avisou o Mestre). A opção certa é remapeada, porque
+     as opções em branco são retiradas e as posições mudam. */
+  const limparPerguntas = (campo, rotulo) => {
+    const saida = [];
+    for (let i = 0; i < d[campo].length; i++){
+      const q = d[campo][i];
+      const pergunta = (q.pergunta || '').trim();
+      const ops = [];
+      let correta = -1;
+      (q.opcoes || []).forEach((o, oi) => {
+        const t = String(o || '').trim();
+        if (!t) return;
+        if (oi === q.correta) correta = ops.length;
+        ops.push(t);
+      });
+      if (!pergunta && !ops.length) continue; // pergunta vazia: ignora
+      if (!pergunta || ops.length < 2 || correta < 0){
+        toast(rotulo + ' ' + (i + 1) + ' precisa de texto, de pelo menos duas opções e da certa marcada (e a certa não pode estar em branco).', true);
+        return null;
+      }
+      saida.push({ pergunta, opcoes: ops, correta, feedback: (q.feedback || '').trim() });
     }
-    responder.push({ pergunta, opcoes: ops, correta, feedback: (q.feedback || '').trim() });
-  }
+    return saida;
+  };
+  const responder = limparPerguntas('responder', 'A pergunta');
+  if (!responder) return;
+  const treino = limparPerguntas('treino', 'A pergunta extra de treino');
+  if (!treino) return;
 
   const dados = {
     nivel: String(d.nivel),
@@ -11906,6 +11927,7 @@ window.reikiLicGuardar = async function(){
       registoPergunta: d.praticar.registoPergunta.trim()
     },
     responder,
+    treino,
     publicado: d.publicado !== false,
     atualizadoEm: serverTimestamp()
   };
