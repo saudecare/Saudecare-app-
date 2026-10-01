@@ -26,6 +26,19 @@ service cloud.firestore {
       return isTenantMember(tenantId) && request.auth.token.role == "owner";
     }
 
+    function isGestor(tenantId) {
+      return isTenantMember(tenantId) && request.auth.token.get('role', '') == 'staff_bookings';
+    }
+
+    function isEquipaClinica(tenantId) {
+      return isTenantMember(tenantId) && request.auth.token.get('role', '') != 'staff_bookings';
+    }
+
+    function gestorPode(tenantId, permissao) {
+      return isGestor(tenantId) &&
+        get(/databases/$(database)/documents/tenants/$(tenantId)/staff/$(request.auth.uid)).data.get('permissoes', {}).get(permissao, false) == true;
+    }
+
     function tenantIsActive(tenantId) {
       let t = get(/databases/$(database)/documents/tenants/$(tenantId)).data;
       return t.status == "active" ||
@@ -79,33 +92,35 @@ service cloud.firestore {
       }
 
       match /patients/{patientId} {
-        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
-        allow delete: if isTenantMember(tenantId);
+        allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+        allow delete: if isEquipaClinica(tenantId);
+        allow create: if gestorPode(tenantId, 'criarPacientes') && tenantIsActive(tenantId) &&
+          request.resource.data.keys().hasOnly(['fullName', 'phone', 'email', 'createdAt', 'criadoPorGestor', 'active']);
 
         match /reports/{reportId} {
-          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
           allow update, delete: if false;
         }
 
         match /formResponses/{responseId} {
-          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
           allow update, delete: if false;
         }
 
         match /messages/{messageId} {
-          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
-          allow update: if isTenantMember(tenantId) && tenantIsActive(tenantId) &&
+          allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+          allow update: if isEquipaClinica(tenantId) && tenantIsActive(tenantId) &&
             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readByProfessional', 'readByPatient']);
           allow delete: if false;
         }
 
         match /checkins/{checkinId} {
-          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
           allow update, delete: if false;
         }
 
         match /healingProtocols/{protocolId} {
-          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
           allow update, delete: if false;
         }
       }
@@ -114,7 +129,7 @@ service cloud.firestore {
         allow create: if request.resource.data.nome is string &&
           request.resource.data.dataNascimento is string &&
           request.resource.data.paymentStatus == 'unpaid';
-        allow read: if isTenantMember(tenantId) || isPlatformAdmin();
+        allow read: if isEquipaClinica(tenantId) || isPlatformAdmin();
         allow update: if isTenantOwner(tenantId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentStatus','paidAt']);
       }
@@ -122,76 +137,75 @@ service cloud.firestore {
       match /marketingContacts/{contactId} {
         allow create, update: if request.resource.data.nome is string &&
           request.resource.data.contacto is string;
-        allow read: if isTenantMember(tenantId) || isPlatformAdmin();
+        allow read: if isEquipaClinica(tenantId) || isPlatformAdmin();
         allow delete: if isTenantOwner(tenantId) || isPlatformAdmin();
+      }
+
+      match /cartomanciaConsultas/{consultaId} {
+        allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+        allow delete: if isEquipaClinica(tenantId);
       }
 
       match /cartomanciaLeads/{leituraId} {
         allow create: if request.resource.data.nome is string &&
                         request.resource.data.contacto is string;
-        allow read, delete: if isTenantMember(tenantId) || isPlatformAdmin();
+        allow read, delete: if isEquipaClinica(tenantId) || isPlatformAdmin();
       }
 
-      // Triagem de Baixa Vibração — Pêndulo Hebraico
       match /triagemBaixaVibracao/{triagemId} {
-        allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
         allow update, delete: if false;
       }
 
-      // Escola de Reiki — configuração (modelo de certificado, níveis)
       match /reikiConfig/{configId} {
-        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
-      // Escola de Reiki — alunos e respectivos certificados
       match /reikiStudents/{studentId} {
-        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
-        allow delete: if isTenantMember(tenantId);
+        allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+        allow delete: if isEquipaClinica(tenantId);
 
         match /certificados/{certId} {
-          allow read, create: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
           allow update, delete: if false;
         }
       }
 
-      // Escola de Reiki — biblioteca de materiais.
-      // Leitura aberta porque o aluno não tem conta: são títulos e links
-      // do Drive, e é a partilha do próprio Drive que protege o ficheiro.
       match /reikiLibrary/{recursoId} {
         allow read: if true;
-        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
-      // Escola de Reiki — turmas, com os links de comunidade
-      // (grupo de WhatsApp e sala Jitsi). São links externos.
+      match /reikiCategories/{categoriaId} {
+        allow read: if true;
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /reikiModules/{moduloId} {
+        allow read: if true;
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+      }
+
       match /reikiClasses/{turmaId} {
         allow read: if true;
-        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
-      // Escola de Reiki — testes de avaliação
       match /reikiQuizzes/{testeId} {
         allow read: if true;
-        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
-      // Escola de Reiki — entregas dos alunos.
-      // Só se cria, nunca se altera nem se apaga: uma nota entregue fica
-      // como ficou. Ler, só a escola.
       match /reikiQuizResults/{resultadoId} {
         allow create: if request.resource.data.codigo is string &&
                         request.resource.data.testeId is string;
-        allow read: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow read: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
         allow update, delete: if false;
       }
 
-      // Escola de Reiki — conversa privada entre a escola e cada aluno.
-      // O documento tem o nome do código do aluno, e a lista de conversas
-      // só é acessível a quem está autenticado na escola: um aluno que
-      // saiba o seu código chega às suas mensagens e a mais nenhumas.
       match /reikiThreads/{codigo} {
         allow get: if true;
-        allow list: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow list: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
         allow write: if true;
 
         match /mensagens/{msgId} {
@@ -200,15 +214,12 @@ service cloud.firestore {
                           request.resource.data.texto.size() > 0 &&
                           request.resource.data.texto.size() < 4000;
           allow update: if false;
-          allow delete: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
         }
       }
 
-      // Escola de Reiki — salas de conversa em grupo (geral e por nível).
-      // São grupos de turma: quem tiver o link da sala de estudo lê e
-      // escreve. Apagar mensagens é só da escola.
       match /reikiChat/{sala} {
-        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
 
         match /mensagens/{msgId} {
           allow read: if true;
@@ -217,53 +228,68 @@ service cloud.firestore {
                           request.resource.data.texto.size() < 4000 &&
                           request.resource.data.nome is string;
           allow update: if false;
-          allow delete: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+          allow delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
         }
       }
 
-      // Escola de Reiki — cartão de acesso do aluno.
-      // "get" sim, "list" não: só abre quem souber o código exacto,
-      // e ninguém consegue percorrer a lista de alunos.
       match /reikiAccess/{codigo} {
         allow get: if true;
         allow list: if false;
-        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
       match /protocols/{protocolId} {
-        allow read, write: if (isTenantMember(tenantId) && tenantIsActive(tenantId)) || isPlatformAdmin();
+        allow read, write: if (isEquipaClinica(tenantId) && tenantIsActive(tenantId)) || isPlatformAdmin();
       }
 
       match /forms/{formId} {
         allow read: if true;
-        allow write: if (isTenantMember(tenantId) && tenantIsActive(tenantId)) || isPlatformAdmin();
+        allow write: if (isEquipaClinica(tenantId) && tenantIsActive(tenantId)) || isPlatformAdmin();
       }
 
       match /teamMembers/{memberId} {
         allow read: if true;
-        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
       match /trainings/{trainingId} {
         allow read: if true;
-        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
       match /testimonials/{testimonialId} {
         allow read: if true;
-        allow write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /patientContacts/{patientId} {
+        allow read: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+        allow create: if gestorPode(tenantId, 'criarPacientes') && tenantIsActive(tenantId) &&
+          request.resource.data.keys().hasOnly(['fullName', 'phone', 'email', 'updatedAt']);
       }
 
       match /appointments/{appointmentId} {
-        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+        allow read, create: if isGestor(tenantId) && tenantIsActive(tenantId);
+        allow update: if isGestor(tenantId) && tenantIsActive(tenantId) && (
+          gestorPode(tenantId, 'remarcar') ||
+          (gestorPode(tenantId, 'cancelar') &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+            request.resource.data.status == 'cancelled') ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['googleEventId', 'googleSyncStatus', 'googleSyncError'])
+        );
+        allow delete: if gestorPode(tenantId, 'cancelar') && tenantIsActive(tenantId);
       }
 
       match /waitlist/{waitlistId} {
-        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+        allow read: if isGestor(tenantId) && tenantIsActive(tenantId);
+        allow write: if gestorPode(tenantId, 'listaEspera') && tenantIsActive(tenantId);
       }
 
       match /knowledgeBase/{entryId} {
-        allow read, write: if isTenantMember(tenantId) && tenantIsActive(tenantId);
+        allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
       match /auditLog/{logId} {
@@ -299,7 +325,7 @@ service cloud.firestore {
 
     match /public_tenant_profiles/{profileId} {
       allow read: if true;
-      allow write: if isSignedIn() &&
+      allow write: if isSignedIn() && request.auth.token.get('role', '') != 'staff_bookings' &&
         request.resource.data.tenantId == request.auth.token.tenantId &&
         (resource == null || resource.data.tenantId == request.auth.token.tenantId);
     }
@@ -308,36 +334,74 @@ service cloud.firestore {
       allow create: if request.resource.data.tenantId is string &&
                       request.resource.data.status == "pending_review";
       allow read, update: if isSignedIn() &&
-        resource.data.tenantId == request.auth.token.tenantId;
+        resource.data.tenantId == request.auth.token.tenantId &&
+        (request.auth.token.get('role', '') != 'staff_bookings' ||
+         gestorPode(resource.data.tenantId, 'pedidos'));
       allow delete: if false;
     }
 
     match /public_form_responses/{responseId} {
+      // Terapeuta cria o documento e o paciente recebe o link
       allow create: if request.resource.data.tenantId is string &&
                       request.resource.data.formId is string &&
                       request.resource.data.status == "pending_review";
-      allow read, update: if isSignedIn() &&
-        resource.data.tenantId == request.auth.token.tenantId;
-      allow delete: if false;
+
+      // Paciente lê (sem autenticação) enquanto a ficha está por preencher
+      allow read: if resource.data.status == 'pending_review'
+                  || (isSignedIn() &&
+                      resource.data.tenantId == request.auth.token.tenantId &&
+                      request.auth.token.get('role', '') != 'staff_bookings');
+
+      // Paciente submete as respostas (sem autenticação):
+      //   • só quando a ficha ainda está pendente
+      //   • apenas pode alterar respostas, nome e data de conclusão
+      //   • o status não pode ser alterado pelo paciente (fica pending_review)
+      allow update: if resource.data.status == 'pending_review' &&
+                      request.resource.data.status == 'pending_review' &&
+                      request.resource.data.diff(resource.data)
+                        .affectedKeys()
+                        .hasOnly(['respostas', 'respondentName', 'completadoEm'])
+                    || (isSignedIn() &&
+                        resource.data.tenantId == request.auth.token.tenantId &&
+                        request.auth.token.get('role', '') != 'staff_bookings');
+
+      // RGPD: a equipa clínica do próprio tenant pode apagar respostas
+      allow delete: if isSignedIn() &&
+        resource.data.tenantId == request.auth.token.tenantId &&
+        request.auth.token.get('role', '') != 'staff_bookings';
     }
 
     match /public_training_signups/{signupId} {
       allow create: if request.resource.data.tenantId is string &&
                       request.resource.data.trainingId is string;
       allow read, update: if isSignedIn() &&
-        resource.data.tenantId == request.auth.token.tenantId;
+        resource.data.tenantId == request.auth.token.tenantId &&
+        request.auth.token.get('role', '') != 'staff_bookings';
       allow delete: if false;
     }
 
     match /platform_support_requests/{requestId} {
       allow create: if isSignedIn() &&
         request.resource.data.tenantId == request.auth.token.tenantId;
-      // O subscritor passa a poder ler os próprios pedidos, para ver a
-      // resposta da administração dentro da app. Escrever a resposta
-      // continua a ser só da administração.
       allow read: if isPlatformAdmin() ||
         (isSignedIn() && resource.data.tenantId == request.auth.token.tenantId);
       allow update: if isPlatformAdmin();
+      allow delete: if false;
+    }
+
+    // ── Módulo: Pesquisa Emocional Clínica ───────────────────────────────
+    match /modulo_requests/{requestId} {
+      allow read: if isSignedIn() &&
+        resource.data.tenantId == request.auth.token.tenantId;
+      allow write: if false;
+    }
+
+    match /pe_questionarios/{qId} {
+      allow read: if resource.data.status == 'pendente'
+                  || (isSignedIn() && resource.data.tenantId == request.auth.token.tenantId);
+      allow create: if isSignedIn()
+                    && request.resource.data.tenantId == request.auth.token.tenantId;
+      allow update: if false;
       allow delete: if false;
     }
 
