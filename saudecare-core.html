@@ -344,7 +344,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-09-27-01';
+const APP_VERSION = '2026-10-02-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3999,42 +3999,91 @@ window.viewPatient = async function(patientId){
     collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'),
     orderBy('generatedAt', 'desc')
   ));
-  let reportsHtml = '';
+  // ── Histórico Clínico unificado ─────────────────────────────────────
+  // Junta relatórios, fichas respondidas e fichas pendentes numa linha do
+  // tempo cronológica (mais recente primeiro), com etiqueta de tipo em cada
+  // entrada. Elimina as duas secções separadas que existiam antes e que
+  // tornavam difícil ter a visão global do paciente.
+
   const triagensDoPaciente = [];
+  const _historicoItems = [];
+
+  // 1. Relatórios de protocolos/consultas
   reportsSnap.forEach(rd => {
     const r = rd.data();
-    const date = r.generatedAt?.toDate ? r.generatedAt.toDate().toLocaleDateString('pt-PT') : '';
+    const ts = r.generatedAt?.toDate ? r.generatedAt.toDate() : new Date(0);
+    const date = ts > new Date(0) ? ts.toLocaleDateString('pt-PT') : '—';
     if (r.protocolName === 'Triagem de Baixa Vibração') triagensDoPaciente.push({ id: rd.id, ...r });
-    reportsHtml += `<div class="appt-item row">
-      <div><strong>${escapeHtml(r.protocolName)}</strong><div class="muted">${date}</div></div>
-      <button class="ghost" onclick="viewSavedReport('${patientId}','${rd.id}')">Ver</button>
-    </div>`;
+    _historicoItems.push({ ts, html: `
+      <div class="appt-item row">
+        <div>
+          <span style="font-size:11px;background:#eef4f0;color:#1a6644;border-radius:20px;padding:2px 8px;margin-bottom:4px;display:inline-block;font-weight:600;">📖 Relatório</span>
+          <strong style="display:block;">${escapeHtml(r.protocolName)}</strong>
+          <div class="muted">${date}</div>
+        </div>
+        <button class="ghost" onclick="viewSavedReport('${patientId}','${rd.id}')">Ver</button>
+      </div>` });
   });
-  if (triagensDoPaciente.length >= 2){
-    reportsHtml = `<div class="appt-item row" style="background:#eef4f0;">
-      <div><strong>📊 Evolução — Triagem de Baixa Vibração</strong><div class="muted">${triagensDoPaciente.length} sessões registadas</div></div>
-      <button class="primary" onclick="viewTriagemEvolucao('${patientId}')">Ver Evolução</button>
-    </div>` + reportsHtml;
-  }
-  if (!reportsHtml) reportsHtml = '<p class="muted">Ainda sem relatórios para este paciente.</p>';
 
-  // Fichas/questionários já associados a este paciente (antes ficavam
-  // guardados mas nunca eram mostrados aqui — corrigido).
+  // 2. Fichas respondidas (já associadas ao paciente)
   const formRespSnap = await getDocs(query(
     collection(db, 'tenants', tenantId, 'patients', patientId, 'formResponses'),
     orderBy('submittedAt', 'desc')
   ));
-  let formRespHtml = '';
   formRespSnap.forEach(fd => {
     const f = fd.data();
+    const ts = (f.submittedAt||f.completadoEm)?.toDate ? (f.submittedAt||f.completadoEm).toDate() : new Date(0);
+    const date = ts > new Date(0) ? ts.toLocaleDateString('pt-PT') : '—';
     const titulo = f.formTitle || f.titulo || f.formId || 'Ficha';
-    const date = (f.submittedAt||f.completadoEm)?.toDate ? (f.submittedAt||f.completadoEm).toDate().toLocaleDateString('pt-PT') : '';
-    formRespHtml += `<div class="appt-item row">
-      <div><strong>${escapeHtml(titulo)}</strong><div class="muted">${date}</div></div>
-      <button class="ghost" onclick="viewSavedFormResponse('${patientId}','${fd.id}')">Ver respostas</button>
-    </div>`;
+    _historicoItems.push({ ts, html: `
+      <div class="appt-item row">
+        <div>
+          <span style="font-size:11px;background:#eef1fb;color:#3344bb;border-radius:20px;padding:2px 8px;margin-bottom:4px;display:inline-block;font-weight:600;">📋 Ficha respondida</span>
+          <strong style="display:block;">${escapeHtml(titulo)}</strong>
+          <div class="muted">${date}</div>
+        </div>
+        <button class="ghost" onclick="viewSavedFormResponse('${patientId}','${fd.id}')">Ver respostas</button>
+      </div>` });
   });
-  if (!formRespHtml) formRespHtml = '<p class="muted">Ainda sem fichas respondidas para este paciente.</p>';
+
+  // 3. Fichas enviadas ainda por responder (pendentes)
+  try {
+    const pendSnap = await getDocs(query(
+      collection(db, 'public_form_responses'),
+      where('tenantId', '==', tenantId),
+      where('patientId', '==', patientId),
+      where('status', 'in', ['pending', 'submitted', 'pending_review'])
+    ));
+    pendSnap.forEach(d => {
+      const pf = d.data();
+      const ts = pf.sentAt?.toDate ? pf.sentAt.toDate() : (pf.createdAt?.toDate ? pf.createdAt.toDate() : new Date(0));
+      const date = ts > new Date(0) ? ts.toLocaleDateString('pt-PT') : '—';
+      const titulo = pf.titulo || pf.formTitle || pf.formId || 'Ficha';
+      _historicoItems.push({ ts, html: `
+        <div class="appt-item row" style="opacity:.8;">
+          <div>
+            <span style="font-size:11px;background:#fff8e6;color:#8a5a00;border-radius:20px;padding:2px 8px;margin-bottom:4px;display:inline-block;font-weight:600;">⏳ Aguarda resposta</span>
+            <strong style="display:block;">${escapeHtml(titulo)}</strong>
+            <div class="muted">Enviada em ${date} — ainda não respondida</div>
+          </div>
+          <span class="muted" style="font-size:11px;white-space:nowrap;">Por responder</span>
+        </div>` });
+    });
+  } catch(e){ console.warn('pendingForms:', e); }
+
+  // Ordenar cronologicamente (mais recente primeiro)
+  _historicoItems.sort((a, b) => b.ts - a.ts);
+
+  let historicoHtml = '';
+  if (triagensDoPaciente.length >= 2) {
+    historicoHtml += `<div class="appt-item row" style="background:#eef4f0;margin-bottom:4px;">
+      <div><strong>📊 Evolução — Triagem de Baixa Vibração</strong><div class="muted">${triagensDoPaciente.length} sessões registadas</div></div>
+      <button class="primary" onclick="viewTriagemEvolucao('${patientId}')">Ver Evolução</button>
+    </div>`;
+  }
+  historicoHtml += _historicoItems.length
+    ? _historicoItems.map(i => i.html).join('')
+    : '<p class="muted">Ainda sem relatórios ou fichas para este paciente.</p>';
 
   // Resumo de pagamentos deste paciente — quanto está em dívida e de que
   // marcações, sem ter de ir procurar em Finanças.
@@ -4220,14 +4269,14 @@ window.viewPatient = async function(patientId){
       </div>
     </details>
 
-    <details class="card">
-      <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">📖 Relatórios anteriores</summary>
-      <div style="margin-top:10px;">${reportsHtml}</div>
-    </details>
-
-    <details class="card">
-      <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">📋 Fichas respondidas</summary>
-      <div style="margin-top:10px;">${formRespHtml}</div>
+    <details class="card" open>
+      <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">📚 Histórico Clínico</summary>
+      <div style="margin-top:10px;">
+        <div style="margin-bottom:10px;display:flex;justify-content:flex-end;">
+          <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeAttrJs(p.fullName)}')">📝 Enviar nova ficha</button>
+        </div>
+        ${historicoHtml}
+      </div>
     </details>`;
   window.__currentPatientChannel = p.preferredChannel || 'portal';
   showPatientOverlay(p.fullName, overlayBody);
@@ -5136,12 +5185,29 @@ window.viewSavedReport = async function(patientId, reportId){
 };
 
 window.deletePatient = async function(patientId, name){
-  if (!await confirmar(`Apagar definitivamente "${name}"? Esta ação cumpre o direito ao apagamento RGPD e não pode ser desfeita.`)) return;
-  await logAudit('patient_deleted', patientId);
-  await deleteDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
-  toast('Paciente apagado.');
-  closePatientOverlay();
-  renderView('patients');
+  if (!await confirmar(`Apagar definitivamente "${name}"?\n\nEsta ação cumpre o direito ao apagamento RGPD e não pode ser desfeita.`)) return;
+  try {
+    await logAudit('patient_deleted', patientId);
+    // Apagar respostas públicas de fichas ligadas a este paciente (coleção top-level — permitido)
+    try {
+      const pubSnap = await getDocs(query(
+        collection(db, 'public_form_responses'),
+        where('tenantId', '==', tenantId),
+        where('patientId', '==', patientId)
+      ));
+      for (const d of pubSnap.docs) {
+        await deleteDoc(d.ref).catch(() => {});
+      }
+    } catch(e){ /* ignora — não é bloqueador */ }
+    // Apagar o documento principal do paciente
+    await deleteDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
+    toast('Paciente apagado.');
+    closePatientOverlay();
+    renderView('patients');
+  } catch(e){
+    toast('Erro ao apagar o paciente: ' + (e.message || e), true);
+    console.error('deletePatient:', e);
+  }
 };
 
 // ── SERVIÇOS ─────────────────────────────────────────────────────────
@@ -5933,6 +5999,22 @@ window.confirmAttachNovo = async function(){
   if (!responseId || !r){ toast('Erro interno — tente novamente.', true); return; }
   const nome = (document.getElementById('_attachNovoNome')?.value||'').trim();
   if (!nome){ toast('Introduza o nome do paciente.', true); return; }
+
+  // Verificar se já existe um paciente com o mesmo nome (prevenir duplicados)
+  const _stripAcc = s => (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const nomeNorm = _stripAcc(nome);
+  const allPats = window.__attachAllPatients || [];
+  const existente = allPats.find(p => _stripAcc(p.fullName) === nomeNorm);
+  if (existente) {
+    const usar = await confirmar(
+      `Já existe um paciente com o nome "${existente.fullName}".\n\nAssociar esta resposta ao paciente existente em vez de criar um novo?`
+    );
+    if (usar) {
+      await window.confirmAttachToPatient(existente.id);
+      return;
+    }
+    // Utilizador optou por criar mesmo assim — continua abaixo
+  }
 
   try {
     const contact = (r.respondentContact || '').trim();
