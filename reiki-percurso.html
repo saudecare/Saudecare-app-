@@ -79,6 +79,7 @@
 <div class="abas hidden" id="barraAbas">
   <button id="abaPercurso" class="on" onclick="mudarAba('percurso')">📖 Percurso</button>
   <button onclick="voltarSala()">← Sala de estudo</button>
+  <button id="abaDesafios" onclick="mudarAba('desafios')">🌱 Desafios</button>
   <button id="abaPoemas" onclick="mudarAba('poemas')">🎴 Poemas</button>
 </div>
 
@@ -248,11 +249,12 @@ window.voltarSala = function(){
   location.href = 'reiki-biblioteca.html?t=' + encodeURIComponent(TENANT) + '&c=' + encodeURIComponent(CODIGO);
 };
 window.mudarAba = function(qual){
-  ['Percurso','Biblioteca','Testes','Poemas'].forEach(nome => {
+  ['Percurso','Biblioteca','Testes','Desafios','Poemas'].forEach(nome => {
     document.getElementById('aba'+nome)?.classList.toggle('on', qual === nome.toLowerCase());
   });
   if (qual === 'biblioteca') desenharBiblioteca();
   else if (qual === 'testes') desenharTestes();
+  else if (qual === 'desafios') desenharDesafios();
   else if (qual === 'poemas') desenharPoemas();
   else desenharLista();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -663,14 +665,14 @@ function desenharModulo(){
 
 window.responder = function(i, oi){ RESPOSTAS[i] = oi; desenharModulo(); };
 
-async function gravar(dados){
-  const id = CODIGO + '_' + ABERTO.id;
-  const base = { codigo: CODIGO, moduloId: ABERTO.id, nivel: String(NIVEL),
-    alunoNome: ALUNO.nome || '', moduloTitulo: ABERTO.titulo || '', actualizadoEm: new Date().toISOString() };
-  const junto = Object.assign({}, PROGRESSO[ABERTO.id] || {}, base, dados);
-  PROGRESSO[ABERTO.id] = junto;
+async function gravar(dados, mod){
+  mod = mod || ABERTO;
+  const base = { codigo: CODIGO, moduloId: mod.id, nivel: String(NIVEL),
+    alunoNome: ALUNO.nome || '', moduloTitulo: mod.titulo || '', actualizadoEm: new Date().toISOString() };
+  const junto = Object.assign({}, PROGRESSO[mod.id] || {}, base, dados);
+  PROGRESSO[mod.id] = junto;
   try { await setDoc(doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO),
-    { codigo: CODIGO, alunoNome: ALUNO.nome || '', percurso: { [ABERTO.id]: junto } }, { merge: true }); }
+    { codigo: CODIGO, alunoNome: ALUNO.nome || '', percurso: { [mod.id]: junto } }, { merge: true }); }
   catch(e){ console.warn('não consegui gravar', e); }
 }
 
@@ -692,17 +694,23 @@ window.concluirModulo = async function(){
   desenharLista(); window.scrollTo({top:0,behavior:'smooth'});
 };
 
-let TREINO = [], TI = 0, TACERTOS = 0, TRESP = null;
+let TREINO = [], TI = 0, TACERTOS = 0, TRESP = null, TFALHADAS = [];
 
-window.abrirTreino = function(){
-  const banco = [];
-  MODULOS.forEach(m => {
+function embaralhar(q){
+  const idx = (q.opcoes||[]).map((_, i) => i).sort(() => Math.random() - 0.5);
+  return Object.assign({}, q, { opcoes: idx.map(i => q.opcoes[i]), correta: idx.indexOf(q.correta) });
+}
+
+window.abrirTreino = function(soFalhadas){
+  let banco = [];
+  if (soFalhadas === true && TFALHADAS.length){ banco = TFALHADAS.slice(); }
+  else MODULOS.forEach(m => {
     if (!(PROGRESSO[m.id]||{}).lido) return;
-    (m.responder||[]).forEach(q => banco.push(Object.assign({}, q, { modulo: m.titulo })));
+    (m.responder||[]).concat(m.treino||[]).forEach(q => banco.push(Object.assign({}, q, { modulo: m.titulo })));
   });
   if (!banco.length) return;
-  TREINO = banco.sort(() => Math.random() - 0.5).slice(0, Math.min(10, banco.length));
-  TI = 0; TACERTOS = 0; TRESP = null;
+  TREINO = banco.sort(() => Math.random() - 0.5).slice(0, Math.min(10, banco.length)).map(embaralhar);
+  TI = 0; TACERTOS = 0; TRESP = null; TFALHADAS = [];
   desenharTreino();
   window.scrollTo({top:0,behavior:'smooth'});
 };
@@ -716,7 +724,8 @@ function desenharTreino(){
     palco().innerHTML = `<div class="card" style="text-align:center;"><h3 style="color:var(--bronze);">${TACERTOS} de ${TREINO.length}</h3>
       <div class="barra" style="margin:12px 0;"><i style="width:${pct}%"></i></div>
       <p>${pct}% certas</p><p class="nota" style="margin-top:8px;">${msg}</p>
-      <button class="principal" onclick="abrirTreino()">Treinar outra vez</button>
+      ${TFALHADAS.length ? `<button class="principal" onclick="abrirTreino(true)">Repetir só as que falhei (${TFALHADAS.length})</button>` : ''}
+      <button class="${TFALHADAS.length ? 'leve' : 'principal'}" style="width:100%;margin-top:8px;" onclick="abrirTreino()">Novo treino ao acaso</button>
       <button class="leve" style="width:100%;margin-top:8px;" onclick="desenharLista();window.scrollTo(0,0)">Voltar ao percurso</button></div>`;
     return;
   }
@@ -736,8 +745,37 @@ function desenharTreino(){
       <button class="principal" onclick="treinoSeguinte()">Seguinte</button>` : ''}</div>`;
 }
 
-window.treinoResponder = function(oi){ TRESP = oi; if (oi === TREINO[TI].correta) TACERTOS++; desenharTreino(); };
+window.treinoResponder = function(oi){ TRESP = oi; if (oi === TREINO[TI].correta) TACERTOS++; else TFALHADAS.push(TREINO[TI]); desenharTreino(); };
 window.treinoSeguinte = function(){ TI++; TRESP = null; desenharTreino(); window.scrollTo({top:0,behavior:'smooth'}); };
+
+function desenharDesafios(){
+  const lista = MODULOS.filter(m => m.desafio && (PROGRESSO[m.id]||{}).lido);
+  const feitos = lista.filter(m => (PROGRESSO[m.id]||{}).desafioFeito).length;
+  const cartoes = lista.map(m => {
+    const p = PROGRESSO[m.id] || {};
+    return `<div class="card"><p class="nota">${esc(m.titulo)}</p>
+      <p style="white-space:pre-line;margin:6px 0 10px;">${esc(m.desafio)}</p>
+      <textarea id="nota_${esc(m.id)}" rows="2" placeholder="Nota pessoal (opcional)">${esc(p.desafioRegisto || '')}</textarea>
+      <button class="${p.desafioFeito ? 'leve' : 'principal'}" style="margin-top:8px;" onclick="desafioFeito('${esc(m.id)}')">${p.desafioFeito ? '✓ Feito — guardar nota' : 'Marcar como feito'}</button></div>`;
+  }).join('');
+  palco().innerHTML = `<div class="card"><h4>🌱 Desafios</h4>
+    <p class="nota">Pequenos exercícios de prática dos módulos que já leste. Sem pressão — são para ti.${lista.length ? ' Feitos: ' + feitos + ' de ' + lista.length + '.' : ''}</p>
+    ${lista.length ? '<button class="principal" onclick="desafioSurpresa()">🎲 Desafio surpresa</button>' : '<p class="nota" style="margin-top:8px;">Quando leres o primeiro módulo, os desafios aparecem aqui.</p>'}</div>${cartoes}`;
+}
+window.desafioSurpresa = function(){
+  const lista = MODULOS.filter(m => m.desafio && (PROGRESSO[m.id]||{}).lido);
+  if (!lista.length) return;
+  const pend = lista.filter(m => !(PROGRESSO[m.id]||{}).desafioFeito);
+  const m = (pend.length ? pend : lista)[Math.floor(Math.random() * (pend.length || lista.length))];
+  const el = document.getElementById('nota_' + m.id);
+  if (el){ el.closest('.card').scrollIntoView({behavior:'smooth', block:'center'}); el.closest('.card').style.outline = '2px solid var(--bronze)'; }
+};
+window.desafioFeito = async function(id){
+  const m = MODULOS.find(x => x.id === id); if (!m) return;
+  const t = document.getElementById('nota_' + id);
+  await gravar({ desafioFeito: true, desafioFeitoEm: new Date().toISOString(), desafioRegisto: t ? t.value.trim() : '' }, m);
+  desenharDesafios();
+};
 
 arrancar();
 </script>
