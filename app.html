@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-02-15';
+const APP_VERSION = '2026-10-02-16';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2464,6 +2464,12 @@ async function renderHome(main){
     });
   }
 
+  let chkHtml = '';
+  if (tenantRole === 'owner'){
+    try { chkHtml = checklistHtml(await checklistCalcular(apptsSnap, patientsSnap)); }
+    catch(e){ console.warn('lista de primeiros passos indisponível', e); }
+  }
+
   const firstName = (currentUserDisplayName || '').split(' ')[0] || '';
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Bom dia' : hour < 20 ? 'Boa tarde' : 'Boa noite';
@@ -2489,6 +2495,7 @@ async function renderHome(main){
     <h2 style="margin-bottom:2px;">${greeting}${firstName ? ', ' + escapeHtml(firstName) : ''} 👋</h2>
     <p class="muted" style="margin-bottom:14px;">${now.toLocaleDateString('pt-PT', { weekday:'long', day:'2-digit', month:'long' })}</p>
 
+    ${chkHtml}
     <div class="card">
       <label for="homeAjuda" style="font-weight:600;">❓ Não sabes como fazer alguma coisa?</label>
       <div class="row" style="gap:8px;margin-top:6px;">
@@ -2515,6 +2522,79 @@ async function renderHome(main){
   maybeShowPlatformAnnouncement();
   maybeShowTrialEndingBanner();
 }
+
+// ── Primeiros passos (lista com progresso) ───────────────────────────────
+// A app diz ao dono, passo a passo, o que falta para ter o consultório
+// pronto, e cada passo marca-se sozinho quando está feito.
+let __chk = { passos: [] };
+
+function chkLs(k, v){
+  try {
+    if (v === undefined) return localStorage.getItem('chk:' + k + ':' + tenantId);
+    if (v === null) localStorage.removeItem('chk:' + k + ':' + tenantId); else localStorage.setItem('chk:' + k + ':' + tenantId, v);
+  } catch(_) {}
+  return null;
+}
+
+async function checklistCalcular(apptsSnap, patientsSnap){
+  const t = currentTenantDoc || {};
+  const cont = async nome => { try { return (await getDocs(collection(db, 'tenants', tenantId, nome))).size; } catch(_) { return 0; } };
+  const [servicos, equipa, formacoes] = await Promise.all([cont('services'), cont('teamMembers'), cont('trainings')]);
+  const av = t.availability || {};
+  const temHorario = av.mode === 'none' || av.noFixedHours || ['mon','tue','wed','thu','fri','sat','sun'].some(d => av[d]?.enabled);
+  const passos = [
+    { ic: '🎨', t: 'Põe o teu logótipo e a tua cor', why: 'A tua página e a app ficam com a tua cara.', ok: !!t.branding?.logoUrl, a: () => openProfileSection('negocio') },
+    { ic: '✍️', t: 'Escreve a tua apresentação', why: 'Quem chega à tua página fica a saber quem és.', ok: !!(t.profile?.about || t.profile?.tagline), a: () => openProfileSection('negocio') },
+    { ic: '🩺', t: 'Cria o teu primeiro serviço', why: 'É o que as pessoas vão poder marcar.', ok: servicos > 0, a: () => renderView('services') },
+    { ic: '🗓️', t: 'Define o teu horário e o teu fuso', why: 'Para só receberes marcações quando podes.', ok: !!(temHorario && av.timezone), a: () => openProfileSection('disponibilidade') },
+    { ic: '🙋', t: 'Cria o teu cartão de terapeuta', why: 'Foto e apresentação aparecem na tua página.', ok: equipa > 0, a: () => renderView('myprofile') },
+    { ic: '📄', t: 'Põe o Livro de Reclamações', why: 'É obrigatório por lei em Portugal.', ok: !!t.legalTexts?.livroReclamacoesUrl, a: () => openProfileSection('consentimento') },
+    { ic: '🔗', t: 'Copia o link da tua página e partilha-o', why: 'É por aqui que chegam os clientes.', ok: chkLs('link') === '1', a: () => {
+        const l = window.location.origin + '/' + t.slug;
+        (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.resolve()).catch(() => {}).then(() => { chkLs('link', '1'); toast('Link copiado: ' + l); renderView('home'); });
+      } },
+    { ic: '🧑', t: 'Cria o teu primeiro paciente', why: 'Para começares a registar as consultas.', ok: patientsSnap.size > 0, a: () => renderView('patients') },
+    { ic: '📅', t: 'Faz a tua primeira marcação', why: 'Já vês a agenda a funcionar.', ok: apptsSnap.size > 0, a: () => renderView('agenda') }
+  ];
+  __chk.passos = passos;
+  __chk.extra = { formacoes };
+  return passos;
+}
+
+function checklistHtml(passos){
+  const feitos = passos.filter(p => p.ok).length;
+  const pct = Math.round(feitos / passos.length * 100);
+  const proximo = passos.findIndex(p => !p.ok);
+  if (chkLs('ocultar') === '1') return '';
+  if (proximo === -1){
+    return `<div class="card" style="text-align:center;">
+      <h2>🎉 O teu consultório está pronto!</h2>
+      <p class="muted" style="margin:6px 0 10px;">Todos os passos feitos. Agora é partilhar a tua página e receber clientes.</p>
+      <button class="ghost" onclick="chkOcultar()">Esconder esta caixa</button></div>`;
+  }
+  const frase = pct < 30 ? 'Vamos a isto! Um passo de cada vez.' : pct < 70 ? 'Estás a ir muito bem!' : 'Quase lá, falta pouco!';
+  const p0 = passos[proximo];
+  return `<div class="card" style="border:2px solid var(--primary);">
+    <div class="row"><h2>🚀 Prepara o teu consultório</h2><span class="muted">${feitos} de ${passos.length}</span></div>
+    <div style="background:#e6efeb;border-radius:100px;height:12px;margin:10px 0 6px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:var(--primary);border-radius:100px;transition:width .4s;"></div></div>
+    <p class="muted" style="margin-bottom:12px;">${frase}</p>
+    <div style="background:#f3f8f6;border-radius:14px;padding:14px;margin-bottom:10px;">
+      <div style="font-size:30px;line-height:1;">${p0.ic}</div>
+      <strong style="display:block;margin-top:6px;">${escapeHtml(p0.t)}</strong>
+      <span class="muted">${escapeHtml(p0.why)}</span>
+      <button class="primary" style="width:100%;margin-top:10px;" onclick="chkAbrir(${proximo})">Fazer agora →</button>
+    </div>
+    <details><summary class="muted" style="cursor:pointer;">Ver todos os passos</summary>
+      <div style="margin-top:8px;">${passos.map((p, i) => `<div class="appt-item row" style="${p.ok ? 'opacity:.6;' : ''}">
+        <div>${p.ok ? '✅' : '⭕'} ${p.ic} ${escapeHtml(p.t)}</div>
+        ${p.ok ? '' : `<button class="ghost" style="padding:4px 10px;" onclick="chkAbrir(${i})">Abrir</button>`}
+      </div>`).join('')}</div>
+    </details>
+    <button class="ghost" style="margin-top:8px;" onclick="chkOcultar()">Esconder por agora</button>
+  </div>`;
+}
+window.chkAbrir = function(i){ const p = __chk.passos[i]; if (p) p.a(); };
+window.chkOcultar = function(){ chkLs('ocultar', '1'); renderView('home'); };
 
 // ── Ajuda: "Como faço…?" ─────────────────────────────────────────────────
 // Respostas curtas, passo a passo, com um botão que abre o sítio certo.
