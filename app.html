@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-02-16';
+const APP_VERSION = '2026-10-02-17';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2624,6 +2624,12 @@ const AJUDA_TOPICOS = [
     passos: ['Abre Fichas e cria a ficha com as perguntas.', 'Copia o link e envia ao paciente.', 'As respostas aparecem em "Respostas de Fichas".'], a: () => renderView('forms') },
   { t: 'Criar o meu método / protocolo de consulta', k: 'metodo protocolo consulta guiada criar passos pontos',
     passos: ['Abre Os Meus Métodos e cria um método novo.', 'Define os pontos ou grupos e as classificações finais.', 'Usa "Pré-visualizar" para o testares sem paciente.'], a: () => renderView('protocols') },
+  { t: 'Fazer uma consulta guiada e gerar o relatório automático', k: 'consulta guiada relatorio automatico metodo paciente passo a passo gerar pdf',
+    passos: ['Abre Pacientes e escolhe o paciente (ou cria um novo).', 'Carrega em "🧭 Iniciar consulta guiada" e escolhe o método.', 'Vai marcando os pontos e respondendo às perguntas.', 'No fim carrega em "Gerar relatório": fica guardado na ficha do paciente.'], a: () => renderView('patients') },
+  { t: 'Dar ao paciente o Portal do Paciente (o espaço dele)', k: 'portal paciente espaco link acesso area do paciente ver relatorios marcacoes',
+    passos: ['Abre a ficha do paciente.', 'Procura "Portal do Paciente" e carrega em "Gerar link".', 'Carrega em "📤 Enviar" para mandar por WhatsApp ou email.', 'Se quiseres cortar o acesso, usa "Revogar acesso".'], a: () => renderView('patients') },
+  { t: 'Começar com um modelo pronto de ficha ou método', k: 'modelo pronto exemplo comecar ficha metodo anamnese questionario exemplo',
+    passos: ['Abre Fichas (ou Os Meus Métodos).', 'No topo, em "✨ Comece em 1 clique", toca no modelo que gostares.', 'Fica na tua lista. Carrega em "Editar" para o ajustares à tua maneira.'], a: () => renderView('forms') },
   { t: 'Voltar a uma versão anterior de um método ou ficha', k: 'versao anterior desfazer restaurar apagado recuperar voltar atras',
     passos: ['Abre Versões anteriores.', 'Escolhe a versão e carrega em "Restaurar".', 'Também recuperas métodos e fichas que tenhas removido.'], a: () => renderView('versoes') },
   { t: 'Marcar ou remarcar uma consulta', k: 'marcar remarcar consulta marcacao agenda cancelar',
@@ -5886,6 +5892,31 @@ async function renderRespostas(main){
   }
 }
 
+function passosHtml(titulo, passos){
+  return `<div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(0,0,0,0.02),rgba(0,0,0,0.0));">
+    <div style="font-weight:700;margin-bottom:8px;">${titulo}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">
+      ${passos.map((x,i)=>`<div style="display:flex;gap:8px;align-items:flex-start;"><span style="flex:0 0 26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;">${i+1}</span><div style="font-size:.9rem;line-height:1.35;">${x}</div></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function modelosEmDestaque(tipo){
+  const lista = tipo === 'forms' ? TEMPLATE_FORMS : TEMPLATE_PROTOCOLS;
+  const fn = tipo === 'forms' ? 'useFormTemplate' : 'useProtocolTemplate';
+  const nomeDe = t => tipo === 'forms' ? t.title : t.name;
+  const infoDe = t => tipo === 'forms'
+    ? `${t.questions.length} perguntas`
+    : (t.type === 'mapping' ? '🗺️ Mapeamento no corpo' : '📋 Lista de pontos');
+  return `<div class="card" style="margin-bottom:12px;border:2px dashed var(--primary);">
+    <div style="font-weight:700;font-size:1.05rem;">✨ Comece em 1 clique com um modelo pronto</div>
+    <div class="muted" style="margin:4px 0 10px;">Toque num modelo: fica logo na sua lista, pronto a usar. Depois pode mudar o que quiser em "Editar".</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;">
+      ${lista.map((t,i)=>`<button class="ghost" style="text-align:left;padding:10px;" onclick="${fn}(${i})"><strong>${escapeHtml(nomeDe(t))}</strong><div class="muted" style="font-size:.8rem;">${infoDe(t)} · + Usar</div></button>`).join('')}
+    </div>
+  </div>`;
+}
+
 async function renderForms(main){
   try{
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'forms'));
@@ -5918,22 +5949,20 @@ async function renderForms(main){
       </div>`;
     });
   });
-  if (!rows) rows = '<p class="muted">Ainda sem fichas. Crie a sua primeira ficha de avaliação.</p>';
+  if (!rows) rows = '<p class="muted">Ainda não tem fichas. Escolha um modelo pronto acima, ou toque em "+ Nova ficha" para criar do zero.</p>';
 
   main.innerHTML = `
     <div class="row"><h2>Fichas / Questionários</h2>
       <button class="primary" onclick="openNewForm()">+ Nova ficha</button>
     </div>
     ${hintBox('Crie questionários avulsos para os seus clientes preencherem antes ou depois de um atendimento — avaliação inicial, satisfação, o que for útil à sua prática. Enviados por link próprio, sem precisar de estar dentro de uma consulta. Diferente de "Os Meus Métodos" (o que usa durante a própria consulta, com pontos/mapeamento).')}
+    ${passosHtml('Como funciona (3 passos)', ['<strong>Crie</strong> a ficha (ou escolha um modelo pronto).','Toque em <strong>📤 Enviar Online</strong> e envie o link por WhatsApp ou email.','As respostas chegam a <strong>📥 Respostas recebidas</strong>, sem o cliente precisar de conta.'])}
+    ${modelosEmDestaque('forms')}
     <div style="margin-bottom:12px;">
       <button class="ghost" onclick="renderView('respostas')" style="display:flex;align-items:center;gap:.5rem;">📥 Ver Respostas recebidas</button>
     </div>
-    <div class="card">${rows}</div>
+    <div class="card"><h3 style="margin-top:0;">As minhas fichas</h3>${rows}</div>
     <div id="formBuilderContainer"></div>
-    <details style="margin-top:18px;">
-      <summary style="cursor:pointer;color:var(--primary);font-weight:600;padding:10px 0;">💡 Ver modelos prontos (exemplos, opcional)</summary>
-      ${renderFormTemplatesSection()}
-    </details>
   `;
   }catch(e){
     console.error('Erro ao carregar fichas:', e);
@@ -6825,7 +6854,7 @@ async function renderProtocols(main){
       </div>
     </div>`;
   });
-  if (!rows) rows = '<p class="muted">Ainda sem métodos. Crie o seu primeiro método de consulta.</p>';
+  if (!rows) rows = '<p class="muted">Ainda não tem métodos. Escolha um modelo pronto acima, ou toque em "+ Novo método" para criar do zero.</p>';
 
   main.innerHTML = `
     <div class="row"><h2>Os Meus Métodos de Consulta</h2>
@@ -6835,20 +6864,11 @@ async function renderProtocols(main){
       <strong>Lista livre</strong>: uma checklist de pontos a observar, com ou sem imagens — sem lógica fixa a seguir; coloque o que quiser, onde quiser (ex: sintomas, temas de sessão, ou pontos marcados numa foto sua, sem restrição de frente/costas/lados).
       <strong>Mapeamento por zonas</strong>: pontos organizados em grupos sobre uma imagem do corpo, com zonas frente/costas e esquerdo/direito escolhidas antes de cada consulta — útil quando o seu método segue mesmo essa lógica (terapias manuais, corporais ou energéticas).
       Em ambos, pode acrescentar perguntas antes, durante ou depois do atendimento, e a app gera um relatório automático no fim. Diferente de "Fichas" (questionário enviado à parte, sem estar numa consulta) e "Serviços" (o que vende, com preço e duração).`)}
-    <div class="card">${rows}</div>
+    ${passosHtml('Consulta guiada → relatório automático', ['<strong>Crie o método</strong> (ou escolha um modelo pronto).','Na <strong>consulta</strong>, abra o paciente e escolha o método: vai respondendo passo a passo.','No fim a app gera o <strong>relatório automático</strong>, que fica na ficha do paciente e o paciente pode ver no <strong>Portal do Paciente</strong> (link na ficha dele).'])}
+    ${modelosEmDestaque('protocols')}
+    <div class="card"><h3 style="margin-top:0;">Os meus métodos</h3>${rows}</div>
     <div id="protocolFormContainer"></div>
-    <details style="margin-top:18px;">
-      <summary style="cursor:pointer;color:var(--primary);font-weight:600;padding:10px 0;">💡 Ver modelos prontos (exemplos, opcional)</summary>
-      <details style="margin-top:8px;margin-left:4px;">
-        <summary style="cursor:pointer;font-weight:600;padding:8px 0;">📝 Questionários e Fichas de Anamnese (exemplos)</summary>
-        ${renderFormTemplatesSection()}
-      </details>
-      <details style="margin-top:8px;margin-left:4px;">
-        <summary style="cursor:pointer;font-weight:600;padding:8px 0;">📋 Atendimento Passo a Passo / Protocolos (exemplos)</summary>
-        ${renderProtocolTemplatesSection()}
-      </details>
-      ${tenantId === 'hikari-terapias' ? renderDemoProtocolsSection() : ''}
-    </details>
+    ${tenantId === 'hikari-terapias' ? `<details style="margin-top:18px;"><summary style="cursor:pointer;color:var(--primary);font-weight:600;padding:10px 0;">💡 Exemplos de demonstração</summary>${renderDemoProtocolsSection()}</details>` : ''}
   `;
 }
 
