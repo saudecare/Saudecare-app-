@@ -347,7 +347,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-02-11';
+const APP_VERSION = '2026-10-02-12';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -9342,7 +9342,7 @@ async function renderTrainings(main){
         const s = sd.data();
         signupsListHtml += `<div class="muted" style="padding:4px 0;">• ${escapeHtml(s.name)} — ${escapeHtml(s.contact||'')}</div>`;
       });
-      const link = `${window.location.origin}${window.location.pathname.replace('app.html','inscricao.html')}?t=${currentTenantDoc.slug}&tr=${d.id}`;
+      const link = `${window.location.origin}/${currentTenantDoc.slug}/formacao/${d.id}`;
       rows += `<div class="appt-item">
         <div class="row">
           <div><strong>${escapeHtml(t.title)}</strong>
