@@ -19,7 +19,7 @@
 
    COMO USAR
    1. Guarda este ficheiro na raiz do repositório.
-   2. No saudecare-core.html, antes de </body>:
+   2. No app.html, antes de </body>:
         <script type="module" src="./reiki-poemas-seed.js"></script>
    3. Autentica-te e, no separador Poemas, carrega em importar — ou corre
       seedReikiPoemas() na consola. Corre uma vez só.

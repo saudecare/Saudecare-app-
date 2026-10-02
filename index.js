@@ -69,7 +69,7 @@ exports.syncPublicProfile = onDocumentWritten('tenants/{tenantId}', async (event
 });
 
 // ── 3. Promover pedidos de marcação públicos para marcações reais ──────
-// O funil público (saudecare-funil-publico.html) escreve em
+// O funil público (marcar.html) escreve em
 // public_booking_requests porque o cliente final não tem conta. Esta
 // função confirma o pedido e cria a marcação real na agenda do
 // subscritor — hoje isto fica preso na fila sem ninguém automatizar.

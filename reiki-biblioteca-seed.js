@@ -13,7 +13,7 @@
 
    COMO USAR
    1. Guarda este ficheiro na raiz do repositório.
-   2. Já está ligado no fim do saudecare-core.html.
+   2. Já está ligado no fim do app.html.
    3. No separador Biblioteca, carrega no botão de cada nível.
    ========================================================================= */
 

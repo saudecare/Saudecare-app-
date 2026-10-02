@@ -69,7 +69,7 @@
 
 <div class="topo">
   <span class="marca">Vindora</span>
-  <a class="entrar" href="saudecare-core.html">Entrar</a>
+  <a class="entrar" href="app.html">Entrar</a>
 </div>
 
 <header class="hero">
@@ -77,7 +77,7 @@
   <h1 id="heroTitulo">Terapias, Mapa da Alma e Tarot, com Hikari Fafe</h1>
   <p id="heroTexto">Marca a tua consulta, descobre o teu Mapa da Alma, tira o teu Tarot ou inscreve-te numa formação de Reiki.</p>
   <div class="botoes">
-    <a class="btn ouro" data-funil href="saudecare-funil-publico.html">📅 Marcar consulta</a>
+    <a class="btn ouro" data-funil href="marcar.html">📅 Marcar consulta</a>
     <a class="btn claro" href="#formacoes">🎓 Ver formações</a>
   </div>
 </header>
@@ -121,7 +121,7 @@
     <h2>🩺 Terapias e marcações</h2>
     <p class="sub">Escolhe a terapia, vê os preços e marca online. A terapeuta confirma contigo.</p>
     <div id="servicos" class="grelha"><p class="vazio">A carregar…</p></div>
-    <div class="botoes" style="margin-top:18px;"><a class="btn verde" data-funil href="saudecare-funil-publico.html">📅 Marcar consulta</a></div>
+    <div class="botoes" style="margin-top:18px;"><a class="btn verde" data-funil href="marcar.html">📅 Marcar consulta</a></div>
   </section>
 
   <section id="formacoes">
@@ -146,7 +146,7 @@
     <h2>🗓️ Horários de atendimento</h2>
     <p class="sub" id="subHorarios"></p>
     <div id="listaHorarios" class="horario"></div>
-    <div class="botoes" style="margin-top:16px;justify-content:flex-start;"><a class="btn verde" data-funil href="saudecare-funil-publico.html">📅 Pedir marcação</a></div>
+    <div class="botoes" style="margin-top:16px;justify-content:flex-start;"><a class="btn verde" data-funil href="marcar.html">📅 Pedir marcação</a></div>
   </section>
 
   <section id="testemunhos" class="hidden">
@@ -174,8 +174,8 @@
         <li>Versões anteriores para voltares atrás</li>
       </ul>
       <div class="botoes" style="justify-content:flex-start;">
-        <a class="btn verde" href="saudecare-core.html">Criar conta e experimentar</a>
-        <a class="btn contorno" href="saudecare-core.html">Já tenho conta</a>
+        <a class="btn verde" href="app.html">Criar conta e experimentar</a>
+        <a class="btn contorno" href="app.html">Já tenho conta</a>
       </div>
       <p class="suave" style="margin-top:10px;">Período de teste incluído.</p>
     </div>
@@ -204,7 +204,7 @@ const db = getFirestore(app);
 const TENANT = 'hikari-terapias';
 const $ = id => document.getElementById(id);
 const esc = s => s == null ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const urlSegura = u => /^https?:\/\/[^\s]+$/i.test(String(u||'').trim()) || /^saudecare-[a-z-]+\.html(\?[^\s]*)?$/.test(String(u||'').trim());
+const urlSegura = u => /^https?:\/\/[^\s]+$/i.test(String(u||'').trim()) || /^(app|pagina|marcar|inscricao|ficha|portal|saudecare-[a-z-]+)\.html(\?[^\s]*)?$/.test(String(u||'').trim());
 const mostrar = (secao, menu) => { $(secao).classList.remove('hidden'); if (menu) $(menu).classList.remove('hidden'); };
 const DIAS = { mon:'Segunda', tue:'Terça', wed:'Quarta', thu:'Quinta', fri:'Sexta', sat:'Sábado', sun:'Domingo' };
 
@@ -232,7 +232,7 @@ async function arrancar(){
     else { const s = await getDoc(doc(db, 'public_tenant_profiles', TENANT)); if (s.exists()) perfil = s.data(); }
   } catch(e){ console.warn('perfil indisponível', e); }
 
-  const funil = 'saudecare-funil-publico.html?t=' + encodeURIComponent(slug);
+  const funil = 'marcar.html?t=' + encodeURIComponent(slug);
   document.querySelectorAll('[data-funil]').forEach(a => a.href = funil);
   document.querySelectorAll('[data-poemas]').forEach(a => a.href = 'poemas-meiji.html?t=' + TENANT);
 
@@ -288,7 +288,7 @@ function desenharFormacoes(lista, slug){
     <p>${esc(t.date || '')}</p>
     ${t.description ? `<p>${esc(t.description)}</p>` : ''}
     <p><span class="preco">${t.price > 0 ? esc(t.price) + ' €' : 'Gratuito'}</span>${t.capacity ? ' · ' + esc(t.capacity) + ' vagas' : ''}</p>
-    <div class="acao"><a class="btn verde pequeno" href="saudecare-formacao-publica.html?t=${encodeURIComponent(slug)}&tr=${encodeURIComponent(t.id)}">Inscrever-me</a></div>
+    <div class="acao"><a class="btn verde pequeno" href="inscricao.html?t=${encodeURIComponent(slug)}&tr=${encodeURIComponent(t.id)}">Inscrever-me</a></div>
   </div>`).join('');
 }
 

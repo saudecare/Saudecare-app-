@@ -159,7 +159,7 @@ exports.handler = async function (event) {
           clinicalNotes: showClinicalNotes ? (patient.clinicalNotes || '') : null
         },
         sharedMaterials: patient.sharedMaterials || [],
-        businessName: tenant.businessName || 'SaúdeCare',
+        businessName: tenant.businessName || 'Vindora',
         primaryColor: tenant?.branding?.primaryColor || '#1a2b26',
         logoUrl: tenant?.branding?.logoUrl || '',
         onlineConsult,

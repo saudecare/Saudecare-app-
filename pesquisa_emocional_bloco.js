@@ -1,6 +1,6 @@
 // ╔══════════════════════════════════════════════════════════════════╗
 // ║  MÓDULO: PESQUISA EMOCIONAL CLÍNICA                              ║
-// ║  Adicionar este bloco ao final do <script> em saudecare-core.html║
+// ║  Adicionar este bloco ao final do <script> em app.html║
 // ║  NOTA: expõe todas as funções via window.X para <script module>  ║
 // ╚══════════════════════════════════════════════════════════════════╝
 

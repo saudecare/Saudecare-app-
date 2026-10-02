@@ -1,7 +1,7 @@
 {
-  "name": "SaúdeCare",
-  "short_name": "SaúdeCare",
-  "start_url": "./saudecare-core.html",
+  "name": "Vindora Portugal APP",
+  "short_name": "Vindora",
+  "start_url": "./app.html",
   "display": "standalone",
   "background_color": "#f6f8f7",
   "theme_color": "#2f6f5e",

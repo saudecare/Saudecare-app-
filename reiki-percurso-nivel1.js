@@ -8,8 +8,8 @@
 
    COMO USAR
    1. Guarda este ficheiro na raiz do repositório (saudecare/Saudecare-app),
-      ao lado do saudecare-core.html
-   2. No saudecare-core.html, a seguir ao teu <script type="module">
+      ao lado do app.html
+   2. No app.html, a seguir ao teu <script type="module">
       principal, acrescenta:
          <script type="module" src="./reiki-percurso-nivel1.js"></script>
    3. Abre a app, autentica-te, e na consola corre:  seedReikiNivel1()
@@ -24,7 +24,7 @@ import {
   getFirestore, collection, addDoc, getDocs, query, where
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-/* Reutiliza a app Firebase já iniciada pelo saudecare-core.html. */
+/* Reutiliza a app Firebase já iniciada pelo app.html. */
 const app = getApps().length ? getApp() : initializeApp(window.firebaseConfig || {});
 const db = getFirestore(app);
 

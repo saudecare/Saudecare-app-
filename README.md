@@ -17,11 +17,11 @@ telemóvel.
 
 | Ficheiro | O que é |
 |---|---|
-| `saudecare-core.html` | Painel do subscritor autenticado. Ficheiro principal, ~12.600 linhas, todo num `<script type="module">`. |
+| `app.html` | Painel do subscritor autenticado. Ficheiro principal, ~12.600 linhas, todo num `<script type="module">`. |
 | `saudecare-admin.html` | Painel de administração da plataforma. |
 | `reiki-biblioteca.html` | Sala de Estudo do aluno de Reiki. Abre por link pessoal com código, sem conta. |
-| `saudecare-portal-paciente.html` | Portal do paciente. |
-| `saudecare-pagina-publica.html` | Página pública do terapeuta. |
+| `portal.html` | Portal do paciente. |
+| `pagina.html` | Página pública do terapeuta. |
 | `mapa-da-alma.html` | Ferramenta de numerologia. Tem modo público e modo interno. |
 | `cartomancia.html` | Leitura de cartas. |
 | `triagem-baixa-vibracao.html` | Triagem com pêndulo hebraico. |
@@ -79,7 +79,7 @@ Vivem na consola do Firebase, não no repositório. Quando mudarem,
 
 ## Escola de Reiki
 
-Módulo dentro do `saudecare-core.html`, visível apenas no tenant
+Módulo dentro do `app.html`, visível apenas no tenant
 `hikari-terapias`. Separadores: **Alunos, Níveis, Biblioteca, Turmas,
 Testes, Mensagens**.
 
