@@ -38,15 +38,25 @@ jobs:
           JSON
           printf '%s' "$CHAVE" > "$RUNNER_TEMP/sa.json"
 
-      - name: Diagnóstico da chave (não mostra segredos)
+      - name: Diagnóstico e arranjo da chave (não mostra segredos)
         run: |
           python3 - <<'PY'
           import json, os
-          try:
-              d = json.load(open(os.environ['RUNNER_TEMP'] + '/sa.json'))
-              print("::notice::Chave lida. type=%s project_id=%s client_email=%s tem_private_key=%s" % (d.get('type'), d.get('project_id'), d.get('client_email'), bool(d.get('private_key'))))
-          except Exception as e:
-              print("::error::A chave guardada no GitHub não é um JSON válido: %s" % type(e).__name__)
+          f = os.environ['RUNNER_TEMP'] + '/sa.json'
+          raw = open(f, encoding='utf-8', errors='replace').read().strip()
+          info = "tamanho=%d primeiro=%r ultimo=%r" % (len(raw), raw[:1], raw[-1:])
+          d = None
+          for tentativa, txt in (("normal", raw), ("tolerante", raw)):
+              try:
+                  d = json.loads(txt, strict=(tentativa == "normal"))
+                  print("::notice::Chave lida (%s). %s type=%s project_id=%s client_email=%s tem_private_key=%s" % (tentativa, info, d.get('type'), d.get('project_id'), d.get('client_email'), bool(d.get('private_key'))))
+                  break
+              except Exception as e:
+                  print("::warning::Falhou leitura %s: %s | %s" % (tentativa, e, info))
+          if d:
+              json.dump(d, open(f, 'w'))
+          else:
+              print("::error::A chave guardada no GitHub não é um JSON válido. %s" % info)
           PY
 
       - name: Publicar regras
