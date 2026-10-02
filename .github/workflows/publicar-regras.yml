@@ -38,6 +38,17 @@ jobs:
           JSON
           printf '%s' "$CHAVE" > "$RUNNER_TEMP/sa.json"
 
+      - name: Diagnóstico da chave (não mostra segredos)
+        run: |
+          python3 - <<'PY'
+          import json, os
+          try:
+              d = json.load(open(os.environ['RUNNER_TEMP'] + '/sa.json'))
+              print("::notice::Chave lida. type=%s project_id=%s client_email=%s tem_private_key=%s" % (d.get('type'), d.get('project_id'), d.get('client_email'), bool(d.get('private_key'))))
+          except Exception as e:
+              print("::error::A chave guardada no GitHub não é um JSON válido: %s" % type(e).__name__)
+          PY
+
       - name: Publicar regras
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
