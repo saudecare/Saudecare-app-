@@ -1,11 +1,157 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=saudecare-core.html">
-  <title>Vindora</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vindora · Hikari Fafe — Terapias, Mapa da Alma, Tarot e plataforma para terapeutas</title>
+<meta name="description" content="Terapias, Mapa da Alma, Tarot, Poemas do Imperador Meiji e formações de Reiki com Hikari Fafe. E a Vindora: a plataforma para terapeutas e clínicas gerirem marcações, fichas e a sua página própria.">
+<meta property="og:title" content="Vindora · Hikari Fafe">
+<meta property="og:description" content="Terapias, Mapa da Alma, Tarot, formações de Reiki — e a plataforma para terapeutas e clínicas.">
+<link rel="manifest" href="manifest.json">
+<style>
+  :root{
+    --verde:#2f6f5e; --verde-escuro:#1f4d40; --fundo:#f6f8f7; --texto:#1a2b26; --suave:#5e706a;
+    --roxo:#2d1b4e; --roxo2:#1a0f2e; --ouro:#d4af37; --ouro-claro:#f0d878;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--texto);line-height:1.55;}
+  a{color:inherit;}
+  .topo{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;max-width:980px;margin:0 auto;}
+  .marca{font-weight:700;font-size:18px;letter-spacing:.02em;color:var(--verde-escuro);}
+  .entrar{font-size:14px;font-weight:600;text-decoration:none;color:var(--verde-escuro);border:1.5px solid var(--verde);padding:8px 16px;border-radius:100px;}
+  .hero{background:linear-gradient(160deg,var(--roxo2),var(--roxo) 60%,#3b2566);color:#fff;padding:54px 20px 60px;text-align:center;}
+  .hero h1{font-size:clamp(28px,6vw,44px);font-weight:700;line-height:1.15;max-width:640px;margin:0 auto 14px;}
+  .hero p{max-width:540px;margin:0 auto 24px;color:#d8cdef;font-size:17px;}
+  .botoes{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  .btn{display:inline-block;text-decoration:none;font-weight:600;padding:14px 26px;border-radius:100px;font-size:15px;}
+  .btn.ouro{background:var(--ouro);color:#2b1d00;}
+  .btn.claro{background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.4);}
+  .btn.verde{background:var(--verde);color:#fff;}
+  .btn.contorno{border:1.5px solid var(--verde);color:var(--verde-escuro);}
+  main{max-width:980px;margin:0 auto;padding:0 18px;}
+  section{padding:42px 0 6px;}
+  h2{font-size:24px;margin-bottom:6px;color:var(--verde-escuro);}
+  .sub{color:var(--suave);margin-bottom:18px;}
+  .grelha{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;}
+  .cartao{display:flex;flex-direction:column;gap:6px;text-decoration:none;background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,.07);border:1px solid #e6ece9;}
+  .cartao .ic{font-size:30px;}
+  .cartao h3{font-size:17px;}
+  .cartao p{font-size:14px;color:var(--suave);flex:1;}
+  .cartao .ver{font-size:14px;font-weight:600;color:var(--verde);margin-top:6px;}
+  .cartao.espiritual{background:linear-gradient(135deg,var(--roxo),var(--roxo2));border-color:rgba(212,175,55,.35);}
+  .cartao.espiritual h3{color:var(--ouro-claro);}
+  .cartao.espiritual p{color:#cdbfe8;}
+  .cartao.espiritual .ver{color:var(--ouro-claro);}
+  .plataforma{background:#fff;border-radius:20px;padding:26px 20px;margin-top:10px;border:1px solid #e6ece9;}
+  .lista{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px 18px;margin:16px 0 22px;list-style:none;}
+  .lista li{padding-left:26px;position:relative;font-size:15px;}
+  .lista li::before{content:"✓";position:absolute;left:0;color:var(--verde);font-weight:700;}
+  .nota{font-size:13px;color:var(--suave);margin-top:10px;}
+  footer{max-width:980px;margin:40px auto 30px;padding:0 18px;font-size:13px;color:var(--suave);text-align:center;}
+  footer a{margin:0 8px;}
+  .oculto{display:none !important;}
+</style>
 </head>
 <body>
-  <p>A abrir a Vindora... Se não for redirecionado automaticamente, <a href="saudecare-core.html">clique aqui</a>.</p>
+
+<div class="topo">
+  <span class="marca">Vindora</span>
+  <a class="entrar" href="saudecare-core.html">Entrar</a>
+</div>
+
+<header class="hero">
+  <h1>Terapias, Mapa da Alma e Tarot, com Hikari Fafe</h1>
+  <p>Marca a tua consulta, descobre o teu Mapa da Alma, tira o teu Tarot ou aprende Reiki. Tudo num só lugar.</p>
+  <div class="botoes">
+    <a class="btn ouro" href="saudecare-funil-publico.html?t=hikari-terapias">📅 Marcar consulta</a>
+    <a class="btn claro" href="#espiritual">✨ Ver serviços espirituais</a>
+  </div>
+</header>
+
+<main>
+  <section id="espiritual">
+    <h2>✨ Serviços espirituais</h2>
+    <p class="sub">Começa grátis e vai mais fundo quando quiseres.</p>
+    <div class="grelha">
+      <a class="cartao espiritual" id="cartaoMapa" href="mapa-da-alma.html">
+        <span class="ic">🔮</span><h3>Mapa da Alma</h3>
+        <p>O teu mapa pessoal a partir da data de nascimento. Resumo gratuito, leitura completa para quem quiser mais.</p>
+        <span class="ver">Descobrir o meu mapa →</span>
+      </a>
+      <a class="cartao espiritual" id="cartaoTarot" href="cartomancia.html">
+        <span class="ic">🃏</span><h3>Tarot</h3>
+        <p>Uma leitura de cartas para a tua pergunta. Experimenta grátis.</p>
+        <span class="ver">Tirar as cartas →</span>
+      </a>
+      <a class="cartao espiritual" href="poemas-meiji.html?t=hikari-terapias">
+        <span class="ic">🎴</span><h3>Poemas do Imperador Meiji</h3>
+        <p>Tira um poema e lê a mensagem para o teu momento.</p>
+        <span class="ver">Tirar um poema →</span>
+      </a>
+    </div>
+  </section>
+
+  <section id="terapias">
+    <h2>🌿 Terapias, marcações e formações</h2>
+    <p class="sub">Atendimento presencial e à distância, e formação em Reiki.</p>
+    <div class="grelha">
+      <a class="cartao" href="saudecare-funil-publico.html?t=hikari-terapias">
+        <span class="ic">📅</span><h3>Marcar consulta</h3>
+        <p>Escolhe o serviço e o horário. Recebes a confirmação da terapeuta.</p>
+        <span class="ver">Marcar agora →</span>
+      </a>
+      <a class="cartao" href="saudecare-pagina-publica.html?t=hikari-terapias">
+        <span class="ic">🩺</span><h3>Terapias e preços</h3>
+        <p>Todos os serviços, a equipa, testemunhos e horários.</p>
+        <span class="ver">Ver a página completa →</span>
+      </a>
+      <a class="cartao" href="saudecare-pagina-publica.html?t=hikari-terapias#trainingsSection">
+        <span class="ic">🎓</span><h3>Formações e Escola de Reiki</h3>
+        <p>Cursos, workshops e os níveis de Reiki, com inscrição direta.</p>
+        <span class="ver">Ver formações →</span>
+      </a>
+    </div>
+  </section>
+
+  <section id="terapeutas">
+    <h2>👩‍⚕️ És terapeuta ou tens uma clínica?</h2>
+    <p class="sub">A Vindora é a plataforma onde geres o teu consultório e crias a tua própria página, com o teu nome, logótipo e cores.</p>
+    <div class="plataforma">
+      <ul class="lista">
+        <li>Agenda e marcações online</li>
+        <li>Fichas e métodos criados por ti</li>
+        <li>Pacientes e histórico clínico</li>
+        <li>Página pública com a tua marca</li>
+        <li>Equipa com vários terapeutas e salas</li>
+        <li>Loja com as tuas ofertas e formações</li>
+        <li>Portal para os teus pacientes</li>
+        <li>Versões anteriores para voltares atrás</li>
+      </ul>
+      <div class="botoes" style="justify-content:flex-start;">
+        <a class="btn verde" href="saudecare-core.html">Criar conta e experimentar</a>
+        <a class="btn contorno" href="saudecare-core.html">Já tenho conta</a>
+      </div>
+      <p class="nota">Período de teste incluído. Sem compromisso.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div><a href="politica-privacidade.html">Política de privacidade</a><a href="termos-utilizacao.html">Termos de utilização</a></div>
+  <p style="margin-top:10px;">Vindora · Hikari Fafe</p>
+</footer>
+
+<script>
+  // Respeita o que a Hikari deixou visível nas definições (Mapa da Alma e Tarot).
+  fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/mapaAlma', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'getOverrides', tenantId: 'hikari-terapias' })
+  }).then(r => r.json()).then(d => {
+    if (!d || !d.ok) return;
+    if (d.mapaAlmaVisivel === false) document.getElementById('cartaoMapa').classList.add('oculto');
+    if (d.cartomanciaVisivel === false) document.getElementById('cartaoTarot').classList.add('oculto');
+  }).catch(() => {});
+</script>
 </body>
 </html>
