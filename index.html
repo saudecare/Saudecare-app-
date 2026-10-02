@@ -18,6 +18,24 @@
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--texto);line-height:1.55;}
   a{color:inherit;}
   .hidden,.oculto{display:none !important;}
+  .vista{display:none;}
+  .vista.ativa{display:block;}
+  .voltar{display:inline-block;margin:18px 0 4px;font-weight:600;font-size:15px;text-decoration:none;color:var(--verde-escuro);padding:8px 14px;border-radius:100px;background:#fff;border:1px solid var(--linha);}
+  .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding-top:26px;}
+  @media(min-width:700px){.tiles{grid-template-columns:repeat(3,1fr);}}
+  .tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;text-decoration:none;background:#fff;border:1px solid var(--linha);border-radius:18px;padding:22px 12px;min-height:128px;box-shadow:0 2px 8px rgba(0,0,0,.05);transition:transform .1s;}
+  .tile:active{transform:scale(.97);}
+  .tile .ic{font-size:34px;line-height:1;}
+  .tile .nome{font-weight:700;font-size:15px;color:var(--verde-escuro);}
+  .tile .peq{font-size:12px;color:var(--suave);}
+  .tile.roxo{background:linear-gradient(135deg,var(--roxo),var(--roxo2));border-color:rgba(212,175,55,.35);}
+  .tile.roxo .nome{color:var(--ouro-claro);}
+  .tile.roxo .peq{color:#cdbfe8;}
+  .tile.destaque{background:var(--verde);border-color:var(--verde);}
+  .tile.destaque .nome,.tile.destaque .peq{color:#fff;}
+  .hero{padding:34px 20px 36px;}
+  body.interior .hero{display:none;}
+
   .topo{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;max-width:1040px;margin:0 auto;}
   .marca{font-weight:700;font-size:18px;color:var(--verde-escuro);}
   .entrar{font-size:14px;font-weight:600;text-decoration:none;color:var(--verde-escuro);border:1.5px solid var(--verde);padding:8px 16px;border-radius:100px;}
@@ -32,10 +50,8 @@
   .btn.verde{background:var(--verde);color:#fff;}
   .btn.contorno{border:1.5px solid var(--verde);color:var(--verde-escuro);background:#fff;}
   .btn.pequeno{padding:9px 18px;font-size:14px;}
-  nav.menu{position:sticky;top:0;z-index:20;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.07);display:flex;gap:8px;overflow-x:auto;padding:10px 14px;-webkit-overflow-scrolling:touch;}
-  nav.menu a{flex-shrink:0;text-decoration:none;font-size:13px;font-weight:600;padding:8px 14px;border-radius:100px;background:#f2f6f4;color:var(--verde-escuro);white-space:nowrap;}
   main{max-width:1040px;margin:0 auto;padding:0 18px;}
-  section{padding-top:38px;scroll-margin-top:56px;}
+  section{padding-top:8px;}
   h2{font-size:24px;color:var(--verde-escuro);margin-bottom:4px;}
   .sub{color:var(--suave);margin-bottom:16px;}
   .grelha{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
@@ -68,7 +84,7 @@
 <body>
 
 <div class="topo">
-  <span class="marca">Vindora</span>
+  <a class="marca" href="#" style="text-decoration:none;">Vindora</a>
   <a class="entrar" href="app.html">Entrar</a>
 </div>
 
@@ -78,24 +94,25 @@
   <p id="heroTexto">Marca a tua consulta, descobre o teu Mapa da Alma, tira o teu Tarot ou inscreve-te numa formação de Reiki.</p>
   <div class="botoes">
     <a class="btn ouro" data-funil href="marcar.html">📅 Marcar consulta</a>
-    <a class="btn claro" href="#formacoes">🎓 Ver formações</a>
   </div>
 </header>
 
-<nav class="menu" id="menu">
-  <a href="#espiritual">✨ Espiritual</a>
-  <a href="#terapias">🩺 Terapias</a>
-  <a href="#formacoes">🎓 Formações</a>
-  <a href="#equipa" id="mEquipa" class="hidden">🙋 Terapeutas</a>
-  <a href="#loja" id="mLoja" class="hidden">🛍️ Loja</a>
-  <a href="#horarios" id="mHorarios" class="hidden">🗓️ Horários</a>
-  <a href="#testemunhos" id="mTestemunhos" class="hidden">⭐ Testemunhos</a>
-  <a href="#contactos" id="mContactos" class="hidden">📍 Contactos</a>
-  <a href="#terapeutas">👩‍⚕️ Para terapeutas</a>
-</nav>
-
 <main>
-  <section id="espiritual">
+  <div id="home" class="vista ativa">
+    <div class="tiles">
+      <a class="tile roxo" href="#espiritual"><span class="ic">✨</span><span class="nome">Espiritual</span><span class="peq">Mapa da Alma, Tarot, Poemas</span></a>
+      <a class="tile" href="#terapias"><span class="ic">🩺</span><span class="nome">Terapias e marcações</span><span class="peq">Serviços e preços</span></a>
+      <a class="tile" href="#formacoes"><span class="ic">🎓</span><span class="nome">Formações e turmas</span><span class="peq">Reiki e workshops</span></a>
+      <a class="tile hidden" id="mEquipa" href="#equipa"><span class="ic">🙋</span><span class="nome">Terapeutas</span><span class="peq">Quem cuida de ti</span></a>
+      <a class="tile hidden" id="mLoja" href="#loja"><span class="ic">🛍️</span><span class="nome">Loja</span><span class="peq">Livros e cursos</span></a>
+      <a class="tile hidden" id="mHorarios" href="#horarios"><span class="ic">🗓️</span><span class="nome">Horários</span><span class="peq">Disponibilidade</span></a>
+      <a class="tile hidden" id="mTestemunhos" href="#testemunhos"><span class="ic">⭐</span><span class="nome">Testemunhos</span><span class="peq">O que dizem</span></a>
+      <a class="tile hidden" id="mContactos" href="#contactos"><span class="ic">📍</span><span class="nome">Contactos</span><span class="peq">Fala connosco</span></a>
+      <a class="tile destaque" href="#terapeutas"><span class="ic">👩‍⚕️</span><span class="nome">Sou terapeuta</span><span class="peq">Plataforma Vindora</span></a>
+    </div>
+  </div>
+<section id="espiritual" class="vista">
+    <a class="voltar" href="#">← Início</a>
     <h2>✨ Serviços espirituais</h2>
     <p class="sub">Começa grátis e vai mais fundo quando quiseres.</p>
     <div class="grelha">
@@ -117,49 +134,57 @@
     </div>
   </section>
 
-  <section id="terapias">
+  <section id="terapias" class="vista">
+    <a class="voltar" href="#">← Início</a>
     <h2>🩺 Terapias e marcações</h2>
     <p class="sub">Escolhe a terapia, vê os preços e marca online. A terapeuta confirma contigo.</p>
     <div id="servicos" class="grelha"><p class="vazio">A carregar…</p></div>
     <div class="botoes" style="margin-top:18px;"><a class="btn verde" data-funil href="marcar.html">📅 Marcar consulta</a></div>
   </section>
 
-  <section id="formacoes">
+  <section id="formacoes" class="vista">
+    <a class="voltar" href="#">← Início</a>
     <h2>🎓 Formações e turmas</h2>
     <p class="sub">Cursos, workshops e níveis de Reiki, com inscrição direta.</p>
     <div id="listaFormacoes" class="grelha"><p class="vazio">A carregar…</p></div>
   </section>
 
-  <section id="equipa" class="hidden">
+  <section id="equipa" class="vista">
+    <a class="voltar" href="#">← Início</a>
     <h2>🙋 Os terapeutas</h2>
     <p class="sub">Quem vai cuidar de ti.</p>
     <div id="listaEquipa" class="grelha"></div>
   </section>
 
-  <section id="loja" class="hidden">
+  <section id="loja" class="vista">
+    <a class="voltar" href="#">← Início</a>
     <h2>🛍️ Loja</h2>
     <p class="sub">Livros, cursos e outras ofertas.</p>
     <div id="listaLoja" class="grelha"></div>
   </section>
 
-  <section id="horarios" class="hidden">
+  <section id="horarios" class="vista">
+    <a class="voltar" href="#">← Início</a>
     <h2>🗓️ Horários de atendimento</h2>
     <p class="sub" id="subHorarios"></p>
     <div id="listaHorarios" class="horario"></div>
     <div class="botoes" style="margin-top:16px;justify-content:flex-start;"><a class="btn verde" data-funil href="marcar.html">📅 Pedir marcação</a></div>
   </section>
 
-  <section id="testemunhos" class="hidden">
+  <section id="testemunhos" class="vista">
+    <a class="voltar" href="#">← Início</a>
     <h2>⭐ O que dizem os clientes</h2>
     <div id="listaTestemunhos" class="grelha" style="margin-top:12px;"></div>
   </section>
 
-  <section id="contactos" class="hidden">
+  <section id="contactos" class="vista">
+    <a class="voltar" href="#">← Início</a>
     <h2>📍 Contactos</h2>
     <div id="listaContactos" class="cartao" style="margin-top:12px;gap:8px;"></div>
   </section>
 
-  <section id="terapeutas">
+  <section id="terapeutas" class="vista">
+    <a class="voltar" href="#">← Início</a>
     <h2>👩‍⚕️ És terapeuta ou tens uma clínica?</h2>
     <p class="sub">A Vindora é a plataforma onde geres o teu consultório e crias a tua própria página, com o teu nome, logótipo e cores.</p>
     <div class="plataforma">
@@ -188,6 +213,21 @@
   <p style="margin-top:10px;">Vindora · Hikari Fafe</p>
 </footer>
 
+<script>
+(function(){
+// Navegação por categorias: o endereço (#terapias, #formacoes…) escolhe o que se vê.
+function rota(){
+  const id = location.hash.replace('#', '');
+  let alvo = document.getElementById(id);
+  if (!alvo || !alvo.classList.contains('vista')) alvo = document.getElementById('home');
+  document.querySelectorAll('.vista').forEach(v => v.classList.toggle('ativa', v === alvo));
+  document.body.classList.toggle('interior', alvo !== document.getElementById('home'));
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', rota);
+rota();
+})();
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, doc, getDoc, getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -205,7 +245,7 @@ const TENANT = 'hikari-terapias';
 const $ = id => document.getElementById(id);
 const esc = s => s == null ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const urlSegura = u => /^https?:\/\/[^\s]+$/i.test(String(u||'').trim()) || /^(app|pagina|marcar|inscricao|ficha|portal|saudecare-[a-z-]+)\.html(\?[^\s]*)?$/.test(String(u||'').trim());
-const mostrar = (secao, menu) => { $(secao).classList.remove('hidden'); if (menu) $(menu).classList.remove('hidden'); };
+const mostrar = (secao, tile) => { if (tile) $(tile).classList.remove('hidden'); };
 const DIAS = { mon:'Segunda', tue:'Terça', wed:'Quarta', thu:'Quinta', fri:'Sexta', sat:'Sábado', sun:'Domingo' };
 
 // Tarot e Mapa da Alma: respeita o que ficou visível nas definições.
