@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-02-17';
+const APP_VERSION = '2026-10-02-18';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1686,6 +1686,7 @@ const NAV_GROUPS = {
   tools: { title: '🧰 Ferramentas', items: [
     { view: 'protocols', icon: '📋', label: 'Os Meus Métodos' },
     { view: 'knowledge', icon: '🧠', label: 'Fonte de Conhecimento' },
+    { view: 'farmacia', icon: '💊', label: 'Farmácia & Interações' },
     { view: 'forms', icon: '📝', label: 'Fichas' },
     { view: 'respostas', icon: '📥', label: 'Respostas de Fichas' },
     { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
@@ -1782,6 +1783,7 @@ function renderView(view, opts){
   else if (view === 'forms') renderForms(main);
   else if (view === 'respostas') renderRespostas(main);
   else if (view === 'knowledge') renderKnowledgeBase(main);
+  else if (view === 'farmacia') renderFarmacia(main);
   else if (view === 'trainings') renderTrainings(main);
   else if (view === 'versoes') renderVersoes(main);
   else if (view === 'profile') renderProfile(main);
@@ -2630,6 +2632,8 @@ const AJUDA_TOPICOS = [
     passos: ['Abre a ficha do paciente.', 'Procura "Portal do Paciente" e carrega em "Gerar link".', 'Carrega em "📤 Enviar" para mandar por WhatsApp ou email.', 'Se quiseres cortar o acesso, usa "Revogar acesso".'], a: () => renderView('patients') },
   { t: 'Começar com um modelo pronto de ficha ou método', k: 'modelo pronto exemplo comecar ficha metodo anamnese questionario exemplo',
     passos: ['Abre Fichas (ou Os Meus Métodos).', 'No topo, em "✨ Comece em 1 clique", toca no modelo que gostares.', 'Fica na tua lista. Carrega em "Editar" para o ajustares à tua maneira.'], a: () => renderView('forms') },
+  { t: 'Registar medicamentos e naturais e ver se há interações (Farmácia)', k: 'farmacia medicamento medicacao natural suplemento fitoterapico oleo essencial probiotico interacao cruzar verificar dose efeitos secundarios',
+    passos: ['Abre Ferramentas → Farmácia & Interações.', 'Na primeira vez, carrega em "Importar pacote inicial" (sugestões a rever) ou cria as tuas entradas.', 'Em "Verificar combinação" escolhe o natural e o que o paciente toma.', 'Se aparecer um alerta, não aconselhes esse natural sem o médico confirmar.'], a: () => renderView('farmacia') },
   { t: 'Voltar a uma versão anterior de um método ou ficha', k: 'versao anterior desfazer restaurar apagado recuperar voltar atras',
     passos: ['Abre Versões anteriores.', 'Escolhe a versão e carrega em "Restaurar".', 'Também recuperas métodos e fichas que tenhas removido.'], a: () => renderView('versoes') },
   { t: 'Marcar ou remarcar uma consulta', k: 'marcar remarcar consulta marcacao agenda cancelar',
@@ -14502,6 +14506,212 @@ async function renderKnowledgeBase(main){
     <div id="knowledgeFormContainer"></div>
   `;
 }
+
+// ── 💊 Farmácia & Interações ────────────────────────────────────────────
+// Base PRÓPRIA do subscritor (medicamentos e naturais) + verificador que só
+// cruza o que está registado. Nunca diz "seguro": só mostra alertas
+// registados e lembra de confirmar com médico/farmacêutico.
+const FARM_PACOTE = [
+  // [tipo, nome, aliases, classe, uso, interageCom, nota]
+  ['quimico','Anticoagulantes','varfarina, sintrom, marevan, rivaroxabano, xarelto, apixabano, eliquis, dabigatrano, heparina','anticoagulante','Previnem coágulos.','hipericão, ginkgo, alho, gengibre, cúrcuma, ómega-3, óleo de peixe, dong quai, ginseng, camomila, gaultéria','Risco de hemorragia ou de alterar o efeito do anticoagulante.'],
+  ['quimico','Antiagregantes plaquetários','aspirina, clopidogrel, plavix','antiagregante','Previnem coágulos (coração, AVC).','ginkgo, alho, gengibre, cúrcuma, ómega-3, óleo de peixe, gaultéria','Risco acrescido de hemorragia.'],
+  ['quimico','Antidepressivos','sertralina, fluoxetina, escitalopram, citalopram, paroxetina, venlafaxina, duloxetina, amitriptilina, trazodona, mirtazapina','antidepressivo','Tratamento de depressão e ansiedade.','hipericão, 5-htp, triptofano, sam-e','Risco de síndrome serotoninérgica ou de alterar o efeito do fármaco.'],
+  ['quimico','Ansiolíticos e hipnóticos (benzodiazepinas)','alprazolam, xanax, diazepam, valium, lorazepam, lorenin, bromazepam, lexotan, clonazepam, zolpidem','ansiolítico, hipnótico, sedativo','Ansiedade e insónia.','valeriana, passiflora, kava, melatonina, camomila, lúpulo, lavanda','Sedação somada (sonolência excessiva, quedas).'],
+  ['quimico','Opioides e tramadol','tramadol, codeína, morfina, oxicodona, tapentadol','opioide','Dor intensa.','hipericão, valeriana, kava, passiflora','Sedação somada e/ou risco serotoninérgico (tramadol).'],
+  ['quimico','Anti-hipertensores','enalapril, lisinopril, ramipril, losartan, valsartan, amlodipina, bisoprolol, metoprolol','anti-hipertensor','Baixam a tensão arterial.','alcaçuz, hibisco, toranja','O alcaçuz pode subir a tensão; o hibisco pode baixá-la demais.'],
+  ['quimico','Diuréticos','furosemida, hidroclorotiazida, espironolactona','diurético','Eliminam líquidos / baixam a tensão.','alcaçuz','Perda excessiva de potássio.'],
+  ['quimico','Digoxina','digoxina','digoxina','Insuficiência cardíaca / arritmias.','hipericão, alcaçuz','O hipericão reduz o efeito; o alcaçuz aumenta o risco de toxicidade.'],
+  ['quimico','Antidiabéticos','metformina, insulina, glibenclamida, gliclazida, sitagliptina, empagliflozina','antidiabético','Controlo da glicemia.','canela, berberina, ginseng, fenacho','Pode baixar demais o açúcar no sangue (hipoglicemia).'],
+  ['quimico','Contraceptivos orais','pílula, contraceção oral','contraceptivo','Contraceção.','hipericão','Pode reduzir a eficácia contracetiva.'],
+  ['quimico','Imunossupressores','ciclosporina, tacrolimus, azatioprina, metotrexato, micofenolato','imunossupressor','Transplantes e doenças autoimunes.','hipericão, equinácea, probióticos','Pode reduzir o efeito do fármaco ou estimular o sistema imunitário; probióticos pedem cuidado em imunodeprimidos.'],
+  ['quimico','Estatinas','atorvastatina, sinvastatina, rosuvastatina, pravastatina','estatina','Baixam o colesterol.','arroz de levedura vermelha, toranja, hipericão','Efeito duplicado ou alterado (risco muscular/hepático).'],
+  ['quimico','Antiepiléticos','carbamazepina, valproato, fenitoína, lamotrigina, levetiracetam','antiepilético','Prevenção de convulsões.','hipericão, ginkgo','Pode alterar os níveis do fármaco e o controlo das crises.'],
+  ['quimico','Levotiroxina','levotiroxina, euthyrox','levotiroxina','Hipotiroidismo.','cálcio, ferro, magnésio, soja, algas, kelp, iodo','Altera a absorção: separar as tomas e confirmar com o médico.'],
+  ['quimico','Corticoides','prednisolona, prednisona, dexametasona','corticoide','Anti-inflamatório potente.','alcaçuz','Retenção de líquidos e perda de potássio.'],
+  ['quimico','Antirretrovirais (VIH)','','antirretroviral','Tratamento de VIH.','hipericão, alho','Pode reduzir muito o efeito do tratamento.'],
+  ['quimico','Quimioterapia e antineoplásicos','','antineoplásico, quimioterapia','Tratamento oncológico.','hipericão','Qualquer natural deve ser validado antes com o oncologista.'],
+  ['quimico','Anti-inflamatórios (AINE)','ibuprofeno, diclofenac, naproxeno, brufen','anti-inflamatório','Dor e inflamação.','ginkgo, alho, gaultéria, casca de salgueiro','Risco de hemorragia ou de efeito somado.'],
+  ['quimico','Antibióticos','amoxicilina, azitromicina, doxiciclina, ciprofloxacina','antibiótico','Infeções bacterianas.','probióticos, cálcio, ferro, magnésio, zinco','Minerais podem impedir a absorção (tetraciclinas/quinolonas); probióticos: tomar com ~2 h de intervalo.'],
+  ['natural','Hipericão (erva-de-são-joão)','erva-de-são-joão, hypericum, st john wort','fitoterápico','Uso tradicional em humor baixo.','anticoagulante, antidepressivo, contraceptivo, imunossupressor, estatina, antiepilético, digoxina, antirretroviral, antineoplásico, opioide','Um dos naturais com mais interações: acelera a eliminação de muitos fármacos. Evitar se toma medicação sem validação médica.'],
+  ['natural','Ginkgo','ginkgo biloba','fitoterápico','Circulação e memória.','anticoagulante, antiagregante, anti-inflamatório, antiepilético','Risco de hemorragia.'],
+  ['natural','Valeriana','valeriana officinalis','fitoterápico','Sono e nervosismo.','ansiolítico, hipnótico, opioide','Sedação somada.'],
+  ['natural','Passiflora','maracujá, passiflora incarnata','fitoterápico','Ansiedade leve.','ansiolítico, hipnótico, opioide','Sedação somada.'],
+  ['natural','Kava','kava-kava','fitoterápico','Ansiedade.','ansiolítico, hipnótico, opioide','Sedação somada; atenção ao fígado.'],
+  ['natural','Melatonina','','suplemento','Sono.','ansiolítico, hipnótico, anticoagulante','Sedação somada; confirmar com anticoagulantes.'],
+  ['natural','Alcaçuz','regaliz, glycyrrhiza','fitoterápico','Digestão, garganta.','anti-hipertensor, diurético, digoxina, corticoide','Sobe a tensão e baixa o potássio.'],
+  ['natural','Alho (suplemento)','alho, allium sativum','fitoterápico','Circulação.','anticoagulante, antiagregante, anti-inflamatório, antirretroviral','Risco de hemorragia.'],
+  ['natural','Gengibre','zingiber','fitoterápico','Náuseas, digestão.','anticoagulante, antiagregante','Em doses altas pode aumentar o risco de hemorragia.'],
+  ['natural','Cúrcuma','curcuma, açafrão-da-terra, curcumina','fitoterápico','Anti-inflamatório natural.','anticoagulante, antiagregante','Em doses altas pode aumentar o risco de hemorragia.'],
+  ['natural','Ómega-3 / óleo de peixe','omega 3, óleo de peixe, óleo de krill','suplemento','Coração e inflamação.','anticoagulante, antiagregante, anti-hipertensor','Efeito somado sobre coagulação e tensão.'],
+  ['natural','Ginseng','panax ginseng','fitoterápico','Energia e vitalidade.','anticoagulante, antidiabético, antidepressivo','Pode alterar a coagulação, o açúcar e a ação de antidepressivos.'],
+  ['natural','Canela e berberina','canela, berberina','suplemento','Apoio ao açúcar no sangue.','antidiabético','Pode baixar demais o açúcar no sangue.'],
+  ['natural','Equinácea','echinacea','fitoterápico','Imunidade.','imunossupressor','Pode contrariar a imunossupressão.'],
+  ['natural','Arroz de levedura vermelha','red yeast rice','suplemento','Colesterol.','estatina','Contém um composto igual à estatina: efeito duplicado.'],
+  ['natural','5-HTP e triptofano','5-htp, triptofano','suplemento','Humor e sono.','antidepressivo','Risco de síndrome serotoninérgica.'],
+  ['natural','Probióticos','lactobacillus, bifidobacterium','suplemento','Flora intestinal.','imunossupressor, antibiótico, quimioterapia','Cuidado em imunodeprimidos; tomar afastado dos antibióticos.'],
+  ['natural','Camomila','matricaria, camomila','fitoterápico','Calmante, digestão.','anticoagulante, ansiolítico','Efeito suave, mas pode somar sedação ou afetar a coagulação em uso intenso.'],
+  ['natural','Lavanda','lavandula','fitoterápico','Relaxamento.','ansiolítico, hipnótico','Pode somar sedação.'],
+  ['natural','Hibisco','hibiscus','fitoterápico','Chá refrescante.','anti-hipertensor','Pode baixar demais a tensão.'],
+  ['natural','Casca de salgueiro','salix','fitoterápico','Dor e inflamação.','anticoagulante, anti-inflamatório, antiagregante','Contém salicilatos: risco de hemorragia.'],
+  ['natural','Óleo essencial de gaultéria','gaultéria, wintergreen, salicilato de metilo','óleo essencial','Dores musculares (uso externo).','anticoagulante, antiagregante, anti-inflamatório','Contém salicilato de metilo: perigoso com anticoagulantes.'],
+  ['natural','Minerais (cálcio, ferro, magnésio, zinco)','cálcio, ferro, magnésio, zinco','suplemento','Suplementação mineral.','levotiroxina, antibiótico','Altera a absorção: separar as tomas.'],
+  ['natural','Toranja (grapefruit)','toranja, pomelo, grapefruit','alimento','—','estatina, anti-hipertensor','Altera a eliminação de vários fármacos.']
+];
+
+function farmNorm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
+function farmLista(s){ return String(s||'').split(/[,;\n]/).map(farmNorm).filter(Boolean); }
+function farmTermosDe(e){ return [farmNorm(e.nome), ...farmLista(e.aliases), ...farmLista(e.classe)].filter(x => x.length >= 4); }
+function farmToca(termos, outrosTermos){
+  return termos.some(t => t.length >= 4 && outrosTermos.some(u => u.length >= 4 && (u.includes(t) || t.includes(u))));
+}
+// Devolve alertas entre duas entradas (nos dois sentidos)
+function farmCruzar(a, b){
+  const alertas = [];
+  if (farmToca(farmLista(a.interageCom), farmTermosDe(b))) alertas.push({ de: a, para: b });
+  if (farmToca(farmLista(b.interageCom), farmTermosDe(a))) alertas.push({ de: b, para: a });
+  return alertas;
+}
+window.farmVerificarCore = function(entradas, naturaisIdx, medsIdx, textoLivre){
+  const alertas = [], seen = new Set(), semRegisto = [];
+  naturaisIdx.forEach(i => {
+    const n = entradas[i];
+    medsIdx.forEach(j => {
+      farmCruzar(n, entradas[j]).forEach(al => {
+        const k = n.id + '|' + entradas[j].id;
+        if (seen.has(k)) return; seen.add(k);
+        alertas.push({ natural: n, med: entradas[j], nota: al.de.nota || '' });
+      });
+    });
+    farmLista(textoLivre).forEach(m => {
+      const reg = entradas.filter(e => e.tipo === 'quimico' && farmToca([m], farmTermosDe(e)));
+      if (reg.length){
+        reg.forEach(r => {
+          const k = n.id + '|' + r.id; if (seen.has(k)) return;
+          const cr = farmCruzar(n, r);
+          if (cr.length){ seen.add(k); alertas.push({ natural: n, med: r, nota: cr[0].de.nota || '' }); }
+        });
+      } else if (farmToca(farmLista(n.interageCom), [m]) && !seen.has(n.id + '|' + m)){
+        seen.add(n.id + '|' + m);
+        alertas.push({ natural: n, med: { nome: m }, nota: n.nota || '' });
+      } else if (!semRegisto.includes(m)) semRegisto.push(m);
+    });
+  });
+  return { alertas, semRegisto };
+};
+
+async function renderFarmacia(main){
+  if (!currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt || currentTenantDoc?.knowledgeBaseDisclaimerVersion !== KB_DISCLAIMER_VERSION){
+    main.innerHTML = `<h2>💊 Farmácia & Interações</h2>
+      <div class="card"><p>Antes de usar esta secção tem de ler e aceitar o termo de responsabilidade (é o mesmo da Biblioteca de Conhecimento — aceita uma vez só).</p>
+      <button class="primary" onclick="renderView('knowledge')">Ler e aceitar o termo</button></div>`;
+    return;
+  }
+  let docs = [];
+  try{
+    const snap = await getDocs(collection(db, 'tenants', tenantId, 'farmacia'));
+    snap.forEach(d => docs.push({ id: d.id, ...d.data() }));
+  }catch(e){
+    console.error(e);
+    main.innerHTML = `<h2>💊 Farmácia & Interações</h2><p class="muted" style="color:var(--danger);">Esta secção ainda não está ativada na sua conta (falta publicar as regras da base de dados). Erro: ${escapeHtml(e.message||'')}</p>`;
+    return;
+  }
+  docs.sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
+  window.__farmCache = docs;
+  const naturais = docs.map((e,i)=>({e,i})).filter(x => x.e.tipo === 'natural');
+  const quimicos = docs.map((e,i)=>({e,i})).filter(x => x.e.tipo !== 'natural');
+  const chip = (x, nome) => `<label style="display:inline-flex;align-items:center;gap:4px;margin:3px 6px 3px 0;padding:4px 8px;border:1px solid var(--border,#ccc);border-radius:16px;cursor:pointer;font-size:.9rem;"><input type="checkbox" name="${nome}" value="${x.i}" style="width:auto;"> ${escapeHtml(x.e.nome)}</label>`;
+  const linha = e => `<div class="appt-item"><div class="row"><strong>${escapeHtml(e.nome)}</strong>
+      <span><button class="ghost" onclick="farmEditar('${e.id}')">Editar</button> <button class="ghost" onclick="farmApagar('${e.id}')">Apagar</button></span></div>
+      <div class="muted" style="margin-top:4px;">${e.uso ? escapeHtml(e.uso) : ''}${e.interageCom ? `<br>⚠️ Cuidado com: ${escapeHtml(e.interageCom)}` : ''}${e.origem === 'pacote' ? '<br><em>Sugestão inicial — reveja antes de confiar.</em>' : ''}</div></div>`;
+  main.innerHTML = `
+    <div class="row"><h2>💊 Farmácia & Interações</h2>
+      <button class="primary" onclick="farmNovo()">+ Nova entrada</button></div>
+    ${hintBox('Aqui guarda o que sabe sobre <strong>medicamentos</strong> e <strong>naturais</strong> (suplementos, fitoterápicos, óleos essenciais, probióticos): para que servem, dose, efeitos secundários e com o que <strong>não</strong> devem ser combinados. O verificador cruza o que estiver registado e avisa antes de aconselhar um natural a quem toma medicação. Não substitui o médico nem o farmacêutico.')}
+    ${docs.length ? '' : `<div class="card" style="border:2px dashed var(--primary);"><strong>✨ Comece em 1 clique</strong><p class="muted">Importe um pacote inicial com cerca de 40 entradas e interações conhecidas (anticoagulantes, antidepressivos, hipericão, ginkgo, valeriana…). São apenas sugestões a rever — a responsabilidade final é sua.</p><button class="primary" onclick="farmImportar()">📦 Importar pacote inicial</button></div>`}
+    <div class="card" style="margin-top:12px;">
+      <h3 style="margin-top:0;">🔎 Verificar combinação</h3>
+      <label>1. Que natural(is) pensa aconselhar?</label>
+      <div>${naturais.length ? naturais.map(x => chip(x,'farmNat')).join('') : '<span class="muted">Ainda sem naturais registados.</span>'}</div>
+      <label style="margin-top:8px;">2. O que o paciente toma? (toque, ou escreva abaixo)</label>
+      <div>${quimicos.length ? quimicos.map(x => chip(x,'farmMed')).join('') : '<span class="muted">Ainda sem medicamentos registados.</span>'}</div>
+      <input id="farmLivre" placeholder="Outros medicamentos, separados por vírgula (ex: varfarina, sertralina)" style="margin-top:6px;">
+      <button class="primary" style="margin-top:8px;" onclick="farmVerificar()">Verificar</button>
+      <div id="farmResultado" style="margin-top:10px;"></div>
+    </div>
+    <div class="card"><h3 style="margin-top:0;">🌿 Naturais (${naturais.length})</h3>${naturais.map(x => linha(x.e)).join('') || '<p class="muted">Nenhum ainda.</p>'}</div>
+    <div class="card"><h3 style="margin-top:0;">💊 Medicamentos (${quimicos.length})</h3>${quimicos.map(x => linha(x.e)).join('') || '<p class="muted">Nenhum ainda.</p>'}</div>
+    ${docs.length ? `<button class="ghost" onclick="farmImportar()">📦 Acrescentar o pacote inicial (não duplica o que já tem)</button>` : ''}
+    <div id="farmForm"></div>`;
+}
+
+window.farmVerificar = function(){
+  const docs = window.__farmCache || [];
+  const nat = [...document.querySelectorAll('input[name="farmNat"]:checked')].map(i => +i.value);
+  const med = [...document.querySelectorAll('input[name="farmMed"]:checked')].map(i => +i.value);
+  const livre = document.getElementById('farmLivre').value;
+  const out = document.getElementById('farmResultado');
+  if (!nat.length){ out.innerHTML = '<p class="muted">Escolha pelo menos um natural.</p>'; return; }
+  if (!med.length && !livre.trim()){ out.innerHTML = '<p class="muted">Indique o que o paciente toma (ou "nada", se não toma nada: nesse caso não há o que cruzar).</p>'; return; }
+  const r = window.farmVerificarCore(docs, nat, med, livre);
+  let h = '';
+  if (r.alertas.length){
+    h += r.alertas.map(a => `<div style="border-left:4px solid var(--danger,#c0392b);background:rgba(192,57,43,.08);padding:8px 10px;margin-bottom:8px;border-radius:6px;"><strong>⚠️ ${escapeHtml(a.natural.nome)} × ${escapeHtml(a.med.nome)}</strong><div>${escapeHtml(a.nota || 'Interação registada — evite esta combinação sem validação médica.')}</div></div>`).join('');
+    h += '<p><strong>Não aconselhe estes naturais</strong> sem o médico do paciente confirmar.</p>';
+  } else {
+    h += '<div style="border-left:4px solid #e0a800;background:rgba(224,168,0,.1);padding:8px 10px;border-radius:6px;">Sem alertas nos registos que tem. <strong>Isto não significa que seja seguro</strong> — a verificação só conhece o que está registado aqui. Confirme sempre com o médico ou farmacêutico.</div>';
+  }
+  if (r.semRegisto.length) h += `<p class="muted">Não encontrei na sua farmácia: ${r.semRegisto.map(escapeHtml).join(', ')}. Registe-os para serem cruzados no futuro.</p>`;
+  out.innerHTML = h;
+};
+
+window.farmNovo = function(e){
+  const isEdit = !!e; e = e || {};
+  document.getElementById('farmForm').innerHTML = `<div class="card" style="margin-top:10px;">
+    <h3 style="margin-top:0;">${isEdit ? 'Editar' : 'Nova entrada'}</h3>
+    <label>Tipo</label>
+    <select id="fmTipo"><option value="natural" ${e.tipo==='natural'?'selected':''}>🌿 Natural (suplemento, fitoterápico, óleo essencial, probiótico…)</option><option value="quimico" ${e.tipo==='quimico'?'selected':''}>💊 Medicamento</option></select>
+    <label>Nome</label><input id="fmNome" value="${escapeHtml(e.nome||'')}">
+    <label>Outros nomes (marcas, nome científico; separe por vírgula)</label><input id="fmAliases" value="${escapeHtml(e.aliases||'')}">
+    <label>Grupo / classe (ex: anticoagulante, fitoterápico)</label><input id="fmClasse" value="${escapeHtml(e.classe||'')}">
+    <label>Para que serve</label><textarea id="fmUso" rows="2">${escapeHtml(e.uso||'')}</textarea>
+    <label>Dose habitual</label><textarea id="fmDose" rows="2">${escapeHtml(e.dose||'')}</textarea>
+    <label>Efeitos secundários</label><textarea id="fmEfeitos" rows="2">${escapeHtml(e.efeitos||'')}</textarea>
+    <label>Não combinar com (nomes ou grupos, separados por vírgula)</label><input id="fmInter" value="${escapeHtml(e.interageCom||'')}" placeholder="ex: anticoagulante, antidepressivo">
+    <label>Porquê / nota de segurança</label><textarea id="fmNota" rows="2">${escapeHtml(e.nota||'')}</textarea>
+    <div class="row" style="margin-top:8px;"><button class="primary" onclick="farmGuardar(${isEdit ? `'${e.id}'` : 'null'})">Guardar</button>
+    <button class="ghost" onclick="document.getElementById('farmForm').innerHTML=''">Cancelar</button></div></div>`;
+  document.getElementById('farmForm').scrollIntoView({ behavior: 'smooth' });
+};
+window.farmEditar = function(id){ const e = (window.__farmCache||[]).find(x => x.id === id); if (e) window.farmNovo(e); };
+window.farmGuardar = async function(id){
+  const v = k => document.getElementById(k).value.trim();
+  const data = { tipo: v('fmTipo'), nome: v('fmNome'), aliases: v('fmAliases'), classe: v('fmClasse'), uso: v('fmUso'), dose: v('fmDose'), efeitos: v('fmEfeitos'), interageCom: v('fmInter'), nota: v('fmNota'), updatedAt: serverTimestamp() };
+  if (!data.nome){ toast('Escreva o nome.', true); return; }
+  try{
+    if (id) await updateDoc(doc(db, 'tenants', tenantId, 'farmacia', id), data);
+    else await addDoc(collection(db, 'tenants', tenantId, 'farmacia'), { ...data, origem: 'manual', createdAt: serverTimestamp() });
+    toast('Guardado.');
+    renderView('farmacia');
+  }catch(err){ console.error(err); toast('Não foi possível guardar: ' + (err.message||''), true); }
+};
+window.farmApagar = async function(id){
+  if (!await confirmar('Apagar esta entrada?')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'farmacia', id));
+  renderView('farmacia');
+};
+window.farmImportar = async function(){
+  const existentes = new Set((window.__farmCache||[]).map(e => farmNorm(e.nome)));
+  let n = 0;
+  try{
+    for (const r of FARM_PACOTE){
+      if (existentes.has(farmNorm(r[1]))) continue;
+      await addDoc(collection(db, 'tenants', tenantId, 'farmacia'), { tipo: r[0], nome: r[1], aliases: r[2], classe: r[3], uso: r[4], interageCom: r[5], nota: r[6], dose: '', efeitos: '', origem: 'pacote', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      n++;
+    }
+    toast(n ? `${n} entradas importadas — reveja-as com calma.` : 'Já tinha tudo importado.');
+  }catch(err){ console.error(err); toast('Não foi possível importar: ' + (err.message||''), true); return; }
+  renderView('farmacia');
+};
 
 const KB_DISCLAIMER_VERSION = 2;
 

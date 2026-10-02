@@ -298,6 +298,10 @@ service cloud.firestore {
         allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
+      match /farmacia/{entryId} {
+        allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+      }
+
       match /auditLog/{logId} {
         allow read: if isTenantOwner(tenantId) || isPlatformAdmin();
         allow create: if isTenantMember(tenantId);
