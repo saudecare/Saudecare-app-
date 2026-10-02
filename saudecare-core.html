@@ -345,7 +345,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-10-02-09';
+const APP_VERSION = '2026-10-02-10';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3789,6 +3789,7 @@ window.editPatient = async function(patientId){
         <button class="primary" onclick="updatePatient('${patientId}')">Guardar alterações</button>
         <button class="ghost" onclick="viewPatient('${patientId}')">Cancelar</button>
       </div>
+      <button class="ghost" style="width:100%;margin-top:10px;" onclick="exportPatientData('${patientId}')">📦 Exportar todos os dados deste paciente (RGPD)</button>
       <button class="danger" style="width:100%;margin-top:10px;" onclick="deletePatient('${patientId}','${escapeAttrJs(p.fullName||'')}')">🗑 Apagar este paciente</button>
     </div>`);
   refreshPatientAttachmentsList();
@@ -5217,6 +5218,46 @@ window.viewSavedReport = async function(patientId, reportId){
       </div>
     </div>
     ${mapHtml}`);
+};
+
+// Exportação dos dados de um paciente (direito de portabilidade, RGPD).
+// Junta a ficha, o contacto, as marcações, as respostas a fichas e tudo o
+// que está nas subcoleções, num único ficheiro JSON.
+window.exportPatientData = async function(patientId){
+  try {
+    toast('A preparar a exportação…');
+    const base = doc(db, 'tenants', tenantId, 'patients', patientId);
+    const snap = await getDoc(base);
+    if (!snap.exists()){ toast('Paciente não encontrado.', true); return; }
+    const lerSub = async nome => {
+      try { return (await getDocs(collection(base, nome))).docs.map(d => ({ id: d.id, ...d.data() })); }
+      catch(e){ console.warn('sem acesso a', nome, e); return { erro: 'não foi possível ler' }; }
+    };
+    const out = { exportadoEm: new Date().toISOString(), paciente: { id: patientId, ...snap.data() } };
+    for (const nome of ['reports','formResponses','messages','checkins','healingProtocols']) out[nome] = await lerSub(nome);
+    try {
+      const c = await getDoc(doc(db, 'tenants', tenantId, 'patientContacts', patientId));
+      out.contacto = c.exists() ? c.data() : null;
+    } catch(e){ out.contacto = { erro: 'não foi possível ler' }; }
+    try {
+      out.marcacoes = (await getDocs(query(collection(db, 'tenants', tenantId, 'appointments'), where('patientId', '==', patientId)))).docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e){ out.marcacoes = { erro: 'não foi possível ler' }; }
+    try {
+      out.respostasFichasPublicas = (await getDocs(query(collection(db, 'public_form_responses'), where('tenantId', '==', tenantId), where('patientId', '==', patientId)))).docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e){ out.respostasFichasPublicas = { erro: 'não foi possível ler' }; }
+    await logAudit('patient_exported', patientId);
+    const json = JSON.stringify(out, (k, v) => (v && typeof v === 'object' && typeof v.toDate === 'function') ? v.toDate().toISOString() : v, 2);
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dados-paciente-' + (snap.data().fullName || patientId).toString().toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('Exportação descarregada.');
+  } catch(e){
+    console.error('exportPatientData:', e);
+    toast('Não foi possível exportar: ' + (e.message || e), true);
+  }
 };
 
 window.deletePatient = async function(patientId, name){
