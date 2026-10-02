@@ -47,6 +47,7 @@
 
 <script type="module">
 import { aplicarCorMarca } from "./marca.js";
+import { fusoDe, dataNoFuso, formatarNoFuso, fusoDoDispositivo, chaveData, semanasDesde } from "./fuso.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, collection, getDocs, addDoc
@@ -78,7 +79,7 @@ const DAY_KEYS_BY_JS_INDEX = ['sun','mon','tue','wed','thu','fri','sat'];
 // Mesma lógica usada na página pública de perfil: exceções têm sempre
 // prioridade, depois alterna semana A/B se o modo for quinzenal.
 function getScheduleForDate(avail, dateObj){
-  const dateStr = dateObj.toISOString().slice(0,10);
+  const dateStr = chaveData(dateObj);
   const exceptions = avail.exceptions || {};
   if (exceptions[dateStr]){
     const ex = exceptions[dateStr];
@@ -86,8 +87,7 @@ function getScheduleForDate(avail, dateObj){
   }
   const dayKey = DAY_KEYS_BY_JS_INDEX[dateObj.getDay()];
   if (avail.mode === 'biweekly' && avail.biweekly?.referenceMonday){
-    const ref = new Date(avail.biweekly.referenceMonday + 'T00:00:00');
-    const diffWeeks = Math.floor((dateObj - ref) / (7*86400000));
+    const diffWeeks = semanasDesde(avail.biweekly.referenceMonday, dateObj);
     const isWeekB = (((diffWeeks % 2) + 2) % 2) === 1;
     const src = isWeekB ? (avail.biweekly.weekB || {}) : avail;
     return src[dayKey] || { enabled: false };
@@ -95,7 +95,7 @@ function getScheduleForDate(avail, dateObj){
   return avail[dayKey] || { enabled: false };
 }
 
-let profile, tenantId, services = [], categories = [], selectedService = null;
+let profile, tenantId, services = [], categories = [], selectedService = null, FUSO = 'Europe/Lisbon';
 
 async function load(){
   if (!tenantSlug){
@@ -110,6 +110,7 @@ async function load(){
   profile = profileSnap.data();
   tenantId = profile.tenantId || tenantSlug;
   aplicarCorMarca(profile.branding?.primaryColor);
+  FUSO = fusoDe(profile);
 
   document.getElementById('hero').innerHTML = `
     ${profile.logoUrl ? `<img class="logo" src="${escapeHtml(profile.logoUrl)}">` : ''}
@@ -160,6 +161,7 @@ function renderForm(){
       <p class="muted" id="fDataInfo" style="margin-top:4px;"></p>
       <label>Hora aproximada</label>
       <input id="fHora" type="time">
+      <p class="muted" id="fFusoInfo" style="margin-top:4px;"></p>
       `}
 
       <label>Mensagem (opcional)</label>
@@ -177,7 +179,10 @@ function renderForm(){
   }));
 
   const fDataInput = document.getElementById('fData');
-  if (fDataInput) fDataInput.addEventListener('change', () => updateDateInfo(avail));
+  if (fDataInput) fDataInput.addEventListener('change', () => { updateDateInfo(avail); atualizarFuso(); });
+  const fHoraInput = document.getElementById('fHora');
+  if (fHoraInput) fHoraInput.addEventListener('input', atualizarFuso);
+  atualizarFuso();
 
   document.getElementById('btnEnviar').addEventListener('click', onSubmit);
 }
@@ -195,6 +200,23 @@ function updateDateInfo(avail){
     infoEl.textContent = `Horário habitual neste dia: ${sched.start}–${sched.end}.`;
     infoEl.style.color = '';
   }
+}
+
+// Mostra em que fuso são as horas e, se o visitante estiver noutro fuso,
+// a hora equivalente no dispositivo dele.
+function atualizarFuso(){
+  const el = document.getElementById('fFusoInfo');
+  if (!el) return;
+  const meu = fusoDoDispositivo();
+  const base = 'Horas no fuso do profissional: ' + FUSO.replace('_', ' ') + '.';
+  const data = document.getElementById('fData')?.value;
+  const hora = document.getElementById('fHora')?.value;
+  if (meu === FUSO || !data || !hora){
+    el.textContent = meu === FUSO ? '' : base;
+    return;
+  }
+  const quando = dataNoFuso(data, hora, FUSO);
+  el.textContent = base + ' No teu fuso (' + meu.replace('_', ' ') + ') será ' + formatarNoFuso(quando, meu) + '.';
 }
 
 async function onSubmit(){
@@ -227,7 +249,7 @@ async function onSubmit(){
       errorEl.innerHTML = '<div class="errorbox">Escolha uma data.</div>';
       return;
     }
-    requestedStart = new Date(`${data}T${hora || '09:00'}:00`).toISOString();
+    requestedStart = dataNoFuso(data, hora || '09:00', FUSO).toISOString();
   }
 
   const btn = document.getElementById('btnEnviar');

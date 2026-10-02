@@ -91,6 +91,7 @@
 
 <script type="module">
 import { aplicarCorMarca } from "./marca.js";
+import { fusoDe, fusoDoDispositivo, chaveData, semanasDesde } from "./fuso.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, collection, getDocs
@@ -459,7 +460,7 @@ const DAY_KEYS_BY_JS_INDEX = ['sun','mon','tue','wed','thu','fri','sat'];
 // exceções (têm sempre prioridade) e alternância semana A/B quando o
 // modo é quinzenal. Devolve null se esse dia estiver fechado.
 function getScheduleForDate(avail, dateObj){
-  const dateStr = dateObj.toISOString().slice(0,10);
+  const dateStr = chaveData(dateObj);
   const exceptions = avail.exceptions || {};
   if (exceptions[dateStr]){
     const ex = exceptions[dateStr];
@@ -467,8 +468,7 @@ function getScheduleForDate(avail, dateObj){
   }
   const dayKey = DAY_KEYS_BY_JS_INDEX[dateObj.getDay()];
   if (avail.mode === 'biweekly' && avail.biweekly?.referenceMonday){
-    const ref = new Date(avail.biweekly.referenceMonday + 'T00:00:00');
-    const diffWeeks = Math.floor((dateObj - ref) / (7*86400000));
+    const diffWeeks = semanasDesde(avail.biweekly.referenceMonday, dateObj);
     const isWeekB = (((diffWeeks % 2) + 2) % 2) === 1;
     const src = isWeekB ? (avail.biweekly.weekB || {}) : avail;
     return src[dayKey] || { enabled: false };
@@ -505,9 +505,12 @@ function renderAvailability(profile, slug){
     if (!activeDays.length){ el.innerHTML = ''; return; }
     scheduleHtml = activeDays.map(k => `<div>${DAY_LABELS[k]}: ${escapeHtml(avail[k].start)} – ${escapeHtml(avail[k].end)}</div>`).join('');
   }
+  const tzTenant = fusoDe(profile);
+  const nota = tzTenant !== fusoDoDispositivo()
+    ? `<p class="muted" style="margin-top:8px;">Horas no fuso do profissional (${escapeHtml(tzTenant.replace('_',' '))}).</p>` : '';
   el.innerHTML = `
     <h2 class="section-title">🗓️ Horários</h2>
-    <div class="card">${scheduleHtml}</div>
+    <div class="card">${scheduleHtml}${nota}</div>
   `;
 }
 

@@ -332,6 +332,7 @@
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
 import { aplicarCorMarca } from './marca.js';
+import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
@@ -347,7 +348,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-02-12';
+const APP_VERSION = '2026-10-02-13';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3068,7 +3069,7 @@ async function syncAppointmentToGoogle(action, appt, appointmentId, googleEventI
         location: currentTenantDoc?.businessName || '',
         startISO: appt.startsAt instanceof Date ? appt.startsAt.toISOString() : appt.startsAt,
         endISO: appt.endsAt instanceof Date ? appt.endsAt.toISOString() : appt.endsAt,
-        timeZone: 'Europe/Lisbon'
+        timeZone: (fusoValido(currentTenantDoc?.availability?.timezone) ? currentTenantDoc.availability.timezone : FUSO_PADRAO)
       })
     });
     const data = await res.json();
@@ -8709,6 +8710,17 @@ async function renderProfileSection(main, section){
         <button class="ghost" onclick="openProfileSection('calendar')">📅 Google Calendar</button>
         <button class="ghost" onclick="openProfileSection('salas')">🚪 Salas de Atendimento</button>
       </div>
+      <label>Fuso horário do seu atendimento</label>
+      <select id="availTimezone">
+        ${(() => {
+          const atual = fusoValido(avail.timezone) ? avail.timezone : FUSO_PADRAO;
+          const disp = fusoDoDispositivo();
+          const lista = ['Europe/Lisbon','Atlantic/Azores','Atlantic/Madeira','Europe/London','Europe/Madrid','Europe/Paris','Europe/Brussels','Europe/Amsterdam','Europe/Luxembourg','Europe/Zurich','Europe/Berlin','Europe/Rome','America/Sao_Paulo','America/New_York','America/Toronto','America/Chicago','America/Los_Angeles','Africa/Luanda','Africa/Maputo','Atlantic/Cape_Verde','Asia/Dubai','Australia/Sydney'];
+          [atual, disp].forEach(z => { if (!lista.includes(z)) lista.unshift(z); });
+          return lista.map(z => `<option value="${z}" ${z===atual?'selected':''}>${z.replace('_',' ')}${z===disp?' (o deste dispositivo)':''}</option>`).join('');
+        })()}
+      </select>
+      <p class="muted" style="margin:4px 0 12px;">Os horários abaixo são as horas deste fuso. Quem marcar de outro país vê a diferença e o pedido chega com a hora certa.</p>
       <label>Como funciona o seu horário?</label>
       <select id="availMode" onchange="toggleAvailabilityMode()">
         <option value="none" ${mode==='none'?'selected':''}>Sem horário fixo — atendo só por marcação combinada</option>
@@ -9003,6 +9015,7 @@ window.saveAvailability = async function(){
   const availability = {
     mode,
     noFixedHours: mode === 'none', // mantido para compatibilidade com o que já lê este campo
+    timezone: document.getElementById('availTimezone')?.value || FUSO_PADRAO,
     exceptions: currentTenantDoc?.availability?.exceptions || {}
   };
   days.forEach(k => {
