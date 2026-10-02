@@ -75,6 +75,7 @@
 <nav id="quickNav" class="quick-nav"></nav>
 
 <div class="wrap">
+  <section id="ofertasSection"></section>
   <section id="espiritualidadeSection"></section>
   <section id="aboutSection"></section>
   <section id="servicesSection"></section>
@@ -136,6 +137,7 @@ async function load(){
 
   renderHero(profile, tenantSlug);
   renderAbout(profile);
+  renderOfertas(profile, tenantSlug);
 
   // Destaque especial só na página da Hikari Fafe — link para o Mapa da
   // Alma e para a Cartomancia. Não aparece a mais ninguém (outros
@@ -219,6 +221,7 @@ async function load(){
 
 function renderQuickNav(){
   const secoes = [
+    { id:'ofertasSection', label:'Loja', icon:'🛍️' },
     { id:'espiritualidadeSection', label:'Espiritual', icon:'✨' },
     { id:'servicesSection', label:'Serviços', icon:'🩺' },
     { id:'teamSection', label:'Equipa', icon:'🙋' },
@@ -285,6 +288,26 @@ function renderHero(profile, slug){
     <a class="cta" href="saudecare-funil-publico.html?t=${encodeURIComponent(slug)}">Marcar Consulta</a>
     ${socialLinks ? `<div class="social-row">${socialLinks}</div>` : ''}
   `;
+}
+
+function ofertaLinkSeguro(u){
+  u = String(u || '').trim();
+  return /^https?:\/\/[^\s]+$/i.test(u) || /^saudecare-[a-z-]+\.html(\?[^\s]*)?$/.test(u);
+}
+
+function renderOfertas(profile){
+  const lista = Array.isArray(profile.ofertas) ? profile.ofertas.filter(o => o && o.titulo) : [];
+  if (!lista.length) return;
+  document.getElementById('ofertasSection').innerHTML = `
+    <h2 class="section-title">🛍️ Loja</h2>
+    ${lista.map(o => `<div class="card service-card" style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+        <h3 style="margin:0;font-size:16px;">${escapeHtml(o.titulo)}</h3>
+        ${o.preco ? `<span class="price">${escapeHtml(o.preco)}</span>` : ''}
+      </div>
+      ${o.descricao ? `<p style="margin:8px 0;">${escapeHtml(o.descricao)}</p>` : ''}
+      ${ofertaLinkSeguro(o.url) ? `<a class="cta" style="background:var(--primary);color:#fff;padding:10px 20px;font-size:14px;display:inline-block;margin-top:6px;" href="${escapeHtml(o.url)}" ${/^https?:/i.test(o.url) ? 'target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(o.botao || 'Quero saber mais')}</a>` : ''}
+    </div>`).join('')}`;
 }
 
 function renderAbout(profile){

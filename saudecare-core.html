@@ -345,7 +345,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-10-02-07';
+const APP_VERSION = '2026-10-02-08';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -8370,6 +8370,115 @@ window.mudarSlug = async function(){
   }
 };
 
+// ── Loja & Ofertas (página pública) ─────────────────────────────────────
+// Guardadas no perfil público (public_tenant_profiles/{slug}.ofertas), por
+// isso aparecem logo na página pública sem regras novas.
+let __ofertas = [];
+let __ofertasOpcoes = [];
+
+function ofertaUrlSegura(u){
+  u = String(u || '').trim();
+  return /^https:\/\/[^\s]+$/i.test(u) || /^http:\/\/[^\s]+$/i.test(u) || /^saudecare-[a-z-]+\.html(\?[^\s]*)?$/.test(u);
+}
+
+async function ofertasCarregar(){
+  const cont = document.getElementById('ofertasLista');
+  if (!cont) return;
+  try {
+    const snap = await getDoc(doc(db, 'public_tenant_profiles', currentTenantDoc.slug));
+    __ofertas = (snap.exists() && Array.isArray(snap.data().ofertas)) ? snap.data().ofertas.map(o => Object.assign({}, o)) : [];
+    __ofertasOpcoes = [{ v: 'consulta', t: '📅 Marcar consulta' }];
+    try {
+      const tr = await getDocs(collection(db, 'tenants', tenantId, 'trainings'));
+      tr.forEach(d => __ofertasOpcoes.push({ v: 'tr:' + d.id, t: '🎓 Formação: ' + (d.data().title || d.id), titulo: d.data().title || '', preco: d.data().price }));
+    } catch(e){ console.warn('formações indisponíveis', e); }
+    ofertasDesenhar();
+  } catch(e){
+    console.error(e);
+    cont.innerHTML = '<p class="muted" style="color:var(--danger);">Não foi possível carregar as ofertas. ' + escapeHtml(e.message || '') + '</p>';
+  }
+}
+
+function ofertasDesenhar(){
+  const cont = document.getElementById('ofertasLista');
+  if (!cont) return;
+  const cartoes = __ofertas.map((o, i) => `
+    <div class="appt-item" style="margin-bottom:10px;">
+      <label>Título</label>
+      <input value="${escapeHtml(o.titulo || '')}" maxlength="80" oninput="ofertaCampo(${i},'titulo',this.value)">
+      <label>Descrição curta</label>
+      <textarea rows="2" maxlength="300" oninput="ofertaCampo(${i},'descricao',this.value)">${escapeHtml(o.descricao || '')}</textarea>
+      <label>Preço (texto livre, ex: "29 €" ou "Grátis")</label>
+      <input value="${escapeHtml(o.preco || '')}" maxlength="30" oninput="ofertaCampo(${i},'preco',this.value)">
+      <label>Texto do botão</label>
+      <input value="${escapeHtml(o.botao || '')}" maxlength="30" placeholder="Comprar" oninput="ofertaCampo(${i},'botao',this.value)">
+      <label>Para onde leva o botão</label>
+      <select onchange="ofertaPreencher(${i},this.value)">
+        <option value="">Preencher com…</option>
+        ${__ofertasOpcoes.map(x => `<option value="${escapeHtml(x.v)}">${escapeHtml(x.t)}</option>`).join('')}
+      </select>
+      <input id="ofUrl${i}" value="${escapeHtml(o.url || '')}" placeholder="ou cola aqui um link https://… (pagamento, e-book, etc.)" oninput="ofertaCampo(${i},'url',this.value)">
+      <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;">
+        <button class="ghost" onclick="ofertaMover(${i},-1)">↑</button>
+        <button class="ghost" onclick="ofertaMover(${i},1)">↓</button>
+        <button class="danger" onclick="ofertaRemover(${i})">Remover</button>
+      </div>
+    </div>`).join('');
+  cont.innerHTML = `${cartoes || '<p class="muted">Ainda sem ofertas.</p>'}
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px;">
+      ${__ofertas.length < 12 ? '<button class="ghost" onclick="ofertaAdd()">+ Nova oferta</button>' : ''}
+      <button class="primary" onclick="ofertasGuardar()">Guardar e publicar</button>
+    </div>`;
+}
+
+window.ofertaCampo = function(i, campo, valor){ if (__ofertas[i]) __ofertas[i][campo] = valor; };
+window.ofertaAdd = function(){ __ofertas.push({ titulo: '', descricao: '', preco: '', botao: 'Quero saber mais', url: '' }); ofertasDesenhar(); };
+window.ofertaRemover = function(i){ __ofertas.splice(i, 1); ofertasDesenhar(); };
+window.ofertaMover = function(i, d){
+  const j = i + d;
+  if (j < 0 || j >= __ofertas.length) return;
+  [__ofertas[i], __ofertas[j]] = [__ofertas[j], __ofertas[i]];
+  ofertasDesenhar();
+};
+window.ofertaPreencher = function(i, v){
+  const o = __ofertas[i]; if (!o || !v) return;
+  if (v === 'consulta'){
+    o.url = 'saudecare-funil-publico.html?t=' + encodeURIComponent(currentTenantDoc.slug);
+    if (!o.botao) o.botao = 'Marcar consulta';
+  } else if (v.startsWith('tr:')){
+    const id = v.slice(3);
+    o.url = 'saudecare-formacao-publica.html?t=' + encodeURIComponent(currentTenantDoc.slug) + '&tr=' + encodeURIComponent(id);
+    const op = __ofertasOpcoes.find(x => x.v === v);
+    if (op && !o.titulo) o.titulo = op.titulo;
+    if (op && !o.preco && op.preco !== undefined) o.preco = Number(op.preco) > 0 ? op.preco + ' €' : 'Grátis';
+    if (!o.botao) o.botao = 'Inscrever-me';
+  }
+  ofertasDesenhar();
+};
+
+window.ofertasGuardar = async function(){
+  const limpas = [];
+  for (let i = 0; i < __ofertas.length; i++){
+    const o = __ofertas[i];
+    const titulo = String(o.titulo || '').trim();
+    if (!titulo){ toast('A oferta ' + (i + 1) + ' precisa de título.', true); return; }
+    const url = String(o.url || '').trim();
+    if (url && !ofertaUrlSegura(url)){ toast('O link da oferta "' + titulo + '" tem de começar por https://', true); return; }
+    limpas.push({ titulo, descricao: String(o.descricao || '').trim(), preco: String(o.preco || '').trim(),
+      botao: String(o.botao || '').trim() || 'Quero saber mais', url });
+  }
+  try {
+    await setDoc(doc(db, 'public_tenant_profiles', currentTenantDoc.slug), { ofertas: limpas }, { merge: true });
+    __ofertas = limpas.map(o => Object.assign({}, o));
+    toast('Ofertas guardadas e publicadas.');
+    ofertasDesenhar();
+  } catch(e){
+    console.error(e);
+    toast('Não foi possível guardar: ' + (e.message || 'erro'), true);
+  }
+};
+
+
 function renderProfileMenu(main){
   const publicLink = `${window.location.origin}${window.location.pathname.replace('saudecare-core.html','saudecare-pagina-publica.html')}?t=${currentTenantDoc.slug}`;
   const tiles = [
@@ -8381,6 +8490,7 @@ function renderProfileMenu(main){
     { key: 'online', icon: '💻', label: 'Consultório Online' },
     { key: 'consentimento', icon: '📄', label: 'Consentimento Informado' },
     { key: 'mensagens', icon: '💬', label: 'Modelos de Mensagens' },
+    { key: 'ofertas', icon: '🛍️', label: 'Loja & Ofertas' },
     { key: 'testemunhos', icon: '⭐', label: 'Testemunhos' }
   ];
   main.innerHTML = `
@@ -8676,6 +8786,12 @@ async function renderProfileSection(main, section){
         ${window.__editingTeamMemberId ? `<button class="ghost" onclick="window.__editingTeamMemberId=null;window.__editingTeamMember=null;renderView('profile')">Cancelar edição</button>` : ''}
       </div>
     `;
+  } else if (section === 'ofertas'){
+    inner = `
+      <h2>🛍️ Loja & Ofertas</h2>
+      <p class="muted" style="margin-bottom:10px;">Cria aqui o que queres vender ou oferecer na tua página pública: um curso, um e-book, um pacote de sessões, uma ficha gratuita. Cada oferta tem um botão que leva a quem queres: a marcação, uma formação tua, ou um link de pagamento (Hotmart, Stripe, PayPal, MB Way…).</p>
+      <div id="ofertasLista"><p class="muted">A carregar…</p></div>`;
+    setTimeout(ofertasCarregar, 0);
   } else if (section === 'testemunhos'){
     const testimonialsSnap = await getDocs(collection(db, 'tenants', tenantId, 'testimonials'));
     let testimonialsHtml = '';
