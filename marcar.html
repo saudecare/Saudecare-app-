@@ -137,7 +137,8 @@ function renderForm(){
       <label>O seu nome</label>
       <input id="fNome" placeholder="Nome completo">
       <label>WhatsApp ou email</label>
-      <input id="fContacto" placeholder="Telemóvel ou email">
+      <input id="fContacto" placeholder="Telemóvel (com indicativo, ex: +351…) ou email" autocomplete="email">
+      <input id="fSite" type="text" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;height:0;width:0;opacity:0;" aria-hidden="true">
 
       ${services.length ? `
       <label>Serviço pretendido</label>
@@ -157,7 +158,7 @@ function renderForm(){
       <p class="muted" style="margin-top:4px;">Este profissional não tem horário fixo — combina o horário diretamente consigo.</p>
       ` : `
       <label>Data</label>
-      <input id="fData" type="date">
+      <input id="fData" type="date" min="${hojeNoFuso()}">
       <p class="muted" id="fDataInfo" style="margin-top:4px;"></p>
       <label>Hora aproximada</label>
       <input id="fHora" type="time">
@@ -204,6 +205,13 @@ function updateDateInfo(avail){
 
 // Mostra em que fuso são as horas e, se o visitante estiver noutro fuso,
 // a hora equivalente no dispositivo dele.
+function hojeNoFuso(){
+  const p = {};
+  new Intl.DateTimeFormat('en-US', { timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(new Date()).forEach(x => { p[x.type] = x.value; });
+  return p.year + '-' + p.month + '-' + p.day;
+}
+
 function atualizarFuso(){
   const el = document.getElementById('fFusoInfo');
   if (!el) return;
@@ -230,6 +238,16 @@ async function onSubmit(){
     errorEl.innerHTML = '<div class="errorbox">Preencha o nome e um contacto.</div>';
     return;
   }
+  const eEmail = clientContacto.includes('@');
+  if (eEmail ? !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(clientContacto) : clientContacto.replace(/\D/g, '').length < 7){
+    errorEl.innerHTML = '<div class="errorbox">O contacto não parece certo. Escreva um email válido ou um telemóvel com indicativo.</div>';
+    return;
+  }
+  // Campo-armadilha para robôs: pessoas não o veem nem o preenchem.
+  if (document.getElementById('fSite')?.value){
+    main.innerHTML = '<div class="card success"><div class="check">✅</div><h2>Pedido enviado!</h2></div>';
+    return;
+  }
 
   const avail = profile.availability || {};
   const semHorarioFixo = !!avail.noFixedHours || avail.mode === 'none';
@@ -249,7 +267,12 @@ async function onSubmit(){
       errorEl.innerHTML = '<div class="errorbox">Escolha uma data.</div>';
       return;
     }
-    requestedStart = dataNoFuso(data, hora || '09:00', FUSO).toISOString();
+    const quando = dataNoFuso(data, hora || '09:00', FUSO);
+    if (quando.getTime() < Date.now()){
+      errorEl.innerHTML = '<div class="errorbox">Escolha uma data e hora que ainda não tenham passado.</div>';
+      return;
+    }
+    requestedStart = quando.toISOString();
   }
 
   const btn = document.getElementById('btnEnviar');
@@ -276,6 +299,7 @@ async function onSubmit(){
         <div class="check">✅</div>
         <h2>Pedido enviado!</h2>
         <p class="muted" style="margin-top:8px;">Vamos rever o seu pedido e confirmar consigo em breve, através do contacto que deixou.</p>
+        ${requestedStart ? `<p style="margin-top:10px;"><strong>Pediu:</strong> ${escapeHtml(formatarNoFuso(new Date(requestedStart), FUSO))} (${escapeHtml(FUSO.replace('_',' '))})${fusoDoDispositivo() !== FUSO ? '<br><span class="muted">No seu fuso: ' + escapeHtml(formatarNoFuso(new Date(requestedStart), fusoDoDispositivo())) + '</span>' : ''}</p>` : ''}
       </div>
     `;
   }catch(e){

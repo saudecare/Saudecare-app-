@@ -333,6 +333,7 @@
 <script type="module">
 import { aplicarCorMarca } from './marca.js';
 import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
+import { telefoneParaDigitos } from './contacto.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
@@ -348,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-02-13';
+const APP_VERSION = '2026-10-02-14';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -991,8 +992,7 @@ window.attachInvoiceToAppointment = async function(fileInputEl, appointmentId, p
 
 window.sendInvoiceToPatient = function(invoiceUrl, phone, patientName, channel){
   const text = `Olá ${patientName}! Aqui está a sua fatura: ${invoiceUrl}`;
-  let digits = (phone||'').replace(/\D/g, '');
-  if (digits.length === 9) digits = '351' + digits;
+  const digits = telefoneParaDigitos(phone);
   if (channel === 'sms'){
     window.open(`sms:${digits}?body=${encodeURIComponent(text)}`, '_blank');
   } else {
@@ -2660,8 +2660,7 @@ window.notifyPatientForCall = function(patientId, phone, patientName, portalToke
       ? `Olá ${patientName}! Vamos começar a nossa consulta online agora — entre no seu Portal e toque em "Entrar na videochamada": ${portalLink} (é preciso estar ligado à internet, wifi ou dados móveis)`
       : `Olá ${patientName}! Vamos começar a nossa consulta online agora (é preciso estar ligado à internet, wifi ou dados móveis).`;
   }
-  let digits = (phone||'').replace(/\D/g, '');
-  if (digits.length === 9) digits = '351' + digits;
+  const digits = telefoneParaDigitos(phone);
   if (channel === 'sms'){
     window.open(`sms:${digits}?body=${encodeURIComponent(text)}`, '_blank');
   } else {
@@ -2750,8 +2749,7 @@ window.sendCallInvite = async function(apptId, channel){
     text = `Olá ${a.patientName||''}! A sua consulta online${serviceLabel} está marcada para ${dateStr} às ${timeStr}. Nessa hora, aceda a este link e toque em "Entrar na videochamada": ${portalLink} (é preciso estar ligado à internet, wifi ou dados móveis).`;
   }
 
-  let digits = phone.replace(/\D/g, '');
-  if (digits.length === 9) digits = '351' + digits;
+  const digits = telefoneParaDigitos(phone);
   if (channel === 'sms'){
     window.open(`sms:${digits}?body=${encodeURIComponent(text)}`, '_blank');
   } else {
@@ -2764,8 +2762,7 @@ window.sendCallInvite = async function(apptId, channel){
 // aparece uma vaga (ex: alguém cancela), o profissional avisa manualmente
 // por WhatsApp com um toque — sem envio automático, sem custos.
 function phoneToWaLink(phone){
-  let digits = (phone||'').replace(/\D/g, '');
-  if (digits.length === 9) digits = '351' + digits; // assume Portugal se não tiver indicativo
+  const digits = telefoneParaDigitos(phone); // assume Portugal se não tiver indicativo
   return `https://wa.me/${digits}`;
 }
 
@@ -9058,7 +9055,7 @@ window.toggleOnlineToolFields = function(){
 
 window.saveOnlineConsultSettings = async function(){
   const tool = document.getElementById('pfOnlineTool').value;
-  const whatsappNumber = document.getElementById('pfOnlineWhatsapp').value.replace(/\D/g,'');
+  const whatsappNumber = telefoneParaDigitos(document.getElementById('pfOnlineWhatsapp').value);
   if (tool === 'whatsapp' && !whatsappNumber){
     toast('Escolheu WhatsApp mas não preencheu o número — preencha-o para a videochamada funcionar corretamente.', true);
     return;
@@ -9251,7 +9248,7 @@ window.saveMyPublicProfile = async function(existingId){
     name,
     category,
     role: document.getElementById('mpRole').value.trim(),
-    whatsappNumber: document.getElementById('mpWhatsapp').value.trim().replace(/\D/g,''),
+    whatsappNumber: telefoneParaDigitos(document.getElementById('mpWhatsapp').value),
     photoUrl: document.getElementById('mpPhotoUrl').value.trim(),
     bio: document.getElementById('mpBio').value.trim(),
     staffUid: currentUser.uid
@@ -12936,7 +12933,7 @@ window.reikiAbrirLinkAluno = async function(alunoId){
         <input id="reikiLinkCampo" type="text" readonly value="${escapeHtml(url)}" onclick="this.select()">
         <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="primary" onclick="reikiCopiarLink()">📋 Copiar</button>
-          ${a.telefone ? `<a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/${encodeURIComponent(String(a.telefone).replace(/[^0-9]/g,''))}?text=${encodeURIComponent('Olá ' + (a.nome||'') + ', aqui tens a tua biblioteca de Reiki: ' + url)}">💬 WhatsApp</a>` : ''}
+          ${a.telefone ? `<a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/${encodeURIComponent(telefoneParaDigitos(a.telefone))}?text=${encodeURIComponent('Olá ' + (a.nome||'') + ', aqui tens a tua biblioteca de Reiki: ' + url)}">💬 WhatsApp</a>` : ''}
           <button class="ghost" onclick="reikiRenovarCodigo('${a.id}')">🔄 Novo código</button>
         </div>
         <p class="muted" style="margin-top:12px;font-size:.85rem;">Quem tiver este link vê a biblioteca deste aluno. Se ele o partilhar, gera um código novo — o antigo deixa de funcionar.</p>
