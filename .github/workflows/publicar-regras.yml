@@ -41,7 +41,15 @@ jobs:
       - name: Publicar regras
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: npx --yes firebase-tools@latest deploy --only firestore:rules --project saudecare-app --non-interactive
+        run: |
+          set +e
+          npx --yes firebase-tools@latest deploy --only firestore:rules --project saudecare-app --non-interactive > deploy.log 2>&1
+          code=$?
+          cat deploy.log
+          if [ $code -ne 0 ]; then
+            echo "::error::$(grep -iE 'error|permission|denied|403|404|not found' deploy.log | head -6 | tr '\n' ' ' | cut -c1-900)"
+            exit $code
+          fi
 
       - name: Apagar a chave do servidor temporário
         if: always()
