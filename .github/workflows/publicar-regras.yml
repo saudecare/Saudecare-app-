@@ -1,0 +1,46 @@
+# Publica as regras do Firestore sozinho sempre que o ficheiro
+# firestore-rules-completo.txt muda na branch main (ou à mão, no separador Actions).
+name: Publicar regras do Firestore
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firestore-rules-completo.txt'
+  workflow_dispatch:
+
+concurrency:
+  group: publicar-regras
+  cancel-in-progress: false
+
+jobs:
+  regras:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar que a chave existe
+        env:
+          CHAVE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$CHAVE" ]; then
+            echo "::error::Falta o segredo FIREBASE_SERVICE_ACCOUNT (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+      - name: Preparar ficheiros do Firebase
+        run: |
+          cp firestore-rules-completo.txt firestore.rules
+          cat > firebase.json <<'JSON'
+          { "firestore": { "rules": "firestore.rules" } }
+          JSON
+          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+
+      - name: Publicar regras
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx --yes firebase-tools@latest deploy --only firestore:rules --project saudecare-app --non-interactive
+
+      - name: Apagar a chave do servidor temporário
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
