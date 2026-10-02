@@ -345,7 +345,7 @@ import {
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha — isso podia apagar algo que alguém estivesse
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
-const APP_VERSION = '2026-10-02-08';
+const APP_VERSION = '2026-10-02-09';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11718,12 +11718,22 @@ window.reikiGuardarTeste = async function(testeId){
   if (!d?.titulo?.trim()){ toast('O teste precisa de um título.', true); return; }
   const perguntas = d.perguntas
     .filter(q => (q.texto||'').trim())
-    .map(q => ({
-      texto: q.texto.trim(),
-      opcoes: (q.opcoes||[]).map(o => (o||'').trim()).filter(Boolean),
-      correta: q.correta || 0
-    }))
-    .filter(q => q.opcoes.length >= 2 && q.correta < q.opcoes.length);
+    .map(q => {
+      // A resposta certa é um índice na lista original; ao retirar as opções
+      // em branco o índice tem de acompanhar, senão a certa muda de sítio.
+      const orig = q.opcoes || [];
+      const certaOrig = q.correta || 0;
+      const opcoes = [];
+      let correta = -1;
+      orig.forEach((o, i) => {
+        const t = (o || '').trim();
+        if (!t) return;
+        if (i === certaOrig) correta = opcoes.length;
+        opcoes.push(t);
+      });
+      return { texto: q.texto.trim(), opcoes, correta };
+    })
+    .filter(q => q.opcoes.length >= 2 && q.correta >= 0);
   if (!perguntas.length){
     toast('Cada pergunta precisa de texto, pelo menos duas opções, e a certa marcada.', true); return;
   }
