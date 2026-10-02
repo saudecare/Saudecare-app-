@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-02-14';
+const APP_VERSION = '2026-10-02-15';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -788,7 +788,7 @@ const PERMISSOES_GESTOR = [
 function ehGestor(){ return tenantRole === 'staff_bookings'; }
 function gestorPode(p){ return !ehGestor() || !!__permissoesGestor[p]; }
 function vistasDoGestor(){
-  const v = ['agenda', 'settings', 'supportContact', 'logout', 'group_agenda', 'group_account'];
+  const v = ['agenda', 'settings', 'supportContact', 'ajuda', 'logout', 'group_agenda', 'group_account'];
   if (__permissoesGestor.listaEspera) v.push('waitlist');
   if (__permissoesGestor.pedidos) v.push('gestorPedidos');
   return v;
@@ -1705,6 +1705,7 @@ const NAV_GROUPS = {
     { view: 'profile', icon: '🏥', label: 'Perfil do Negócio', ownerOnly: true }
   ]},
   account: { title: '⚙️ Conta', items: [
+    { view: 'ajuda', icon: '❓', label: 'Ajuda: como faço…?' },
     { view: 'myprofile', icon: '🙋', label: 'O Meu Perfil' },
     { view: 'settings', icon: '⚙️', label: 'Definições' },
     { view: 'supportContact', icon: '🆘', label: 'Reportar / Pedir Apoio' }
@@ -1787,6 +1788,7 @@ function renderView(view, opts){
   else if (view === 'myprofile') renderMyPublicProfile(main);
   else if (view === 'settings') renderSettings(main);
   else if (view === 'supportContact') renderSupportContact(main);
+  else if (view === 'ajuda') renderAjuda(main);
   else if (view === 'mapaAlma') renderMapaAlma(main);
   else if (view === 'cartomancia') renderCartomancia(main);
   else if (view === 'triagemBaixaVibracao') renderTriagemBaixaVibracao(main, opts);
@@ -2488,6 +2490,13 @@ async function renderHome(main){
     <p class="muted" style="margin-bottom:14px;">${now.toLocaleDateString('pt-PT', { weekday:'long', day:'2-digit', month:'long' })}</p>
 
     <div class="card">
+      <label for="homeAjuda" style="font-weight:600;">❓ Não sabes como fazer alguma coisa?</label>
+      <div class="row" style="gap:8px;margin-top:6px;">
+        <input id="homeAjuda" placeholder="ex: criar secretária, mudar horário, formação…" onkeydown="if(event.key==='Enter')abrirAjuda(this.value)">
+        <button class="primary" onclick="abrirAjuda(document.getElementById('homeAjuda').value)">Procurar</button>
+      </div>
+    </div>
+    <div class="card">
       <h2 style="margin-bottom:8px;">🔔 Alertas</h2>
       ${alertsHtml}
     </div>
@@ -2506,6 +2515,103 @@ async function renderHome(main){
   maybeShowPlatformAnnouncement();
   maybeShowTrialEndingBanner();
 }
+
+// ── Ajuda: "Como faço…?" ─────────────────────────────────────────────────
+// Respostas curtas, passo a passo, com um botão que abre o sítio certo.
+// Serve para o subscritor se desenrascar sozinho antes de pedir apoio.
+const AJUDA_TOPICOS = [
+  { t: 'Convidar a secretária (gestor de marcações)', k: 'secretaria secretário gestor marcacoes assistente acesso limitado equipa convidar',
+    dono: true, passos: ['Abre Equipa.', 'Em "Convidar profissional" escolhe "Gestor de marcações".', 'Carrega em "Gerar código de convite" e envia o código à pessoa.', 'A pessoa entra na app com o código (opção "Código de equipa") e tu carregas em "Ativar acesso".', 'Em "🔐 Permissões" escolhes o que ela pode fazer. Ela nunca vê dados clínicos.'], a: () => renderView('team') },
+  { t: 'Convidar outro terapeuta para a minha equipa', k: 'terapeuta equipa colega convidar clinica varios profissionais acesso total restrito',
+    dono: true, passos: ['Abre Equipa.', 'Escolhe "Acesso total" (vê tudo) ou "Acesso restrito" (só a agenda dele).', 'Gera o código e envia-o. Depois ativa o acesso quando ele entrar.'], a: () => renderView('team') },
+  { t: 'Não vejo uma opção que devia ver (Equipa, Perfil do Negócio…)', k: 'nao vejo nao aparece falta menu opcao equipa perfil negocio dono',
+    passos: ['Algumas opções só aparecem ao dono da conta (Equipa, Perfil do Negócio, Finanças).', 'Se entraste com uma conta de equipa (terapeuta ou secretária), vês só o que o dono te deu.', 'Confirma que entras com o email da conta principal. Se mesmo assim faltar, carrega no botão de baixo.'], a: () => renderView('supportContact'), ab: 'Pedir apoio' },
+  { t: 'Mudar o horário de atendimento e o fuso horário', k: 'horario horarios disponibilidade fuso hora semana quinzenal',
+    dono: true, passos: ['Abre Disponibilidade & Marcação.', 'Escolhe o fuso do teu atendimento (importante se atendes noutro país).', 'Marca os dias e as horas e guarda.'], a: () => openProfileSection('disponibilidade') },
+  { t: 'Fechar um dia (feriado, férias) ou mudar o horário só nesse dia', k: 'feriado ferias fechar dia excecao folga',
+    dono: true, passos: ['Abre Disponibilidade & Marcação.', 'Desce até "Exceções" e escolhe a data.', 'Marca "Fechado" ou define um horário especial.'], a: () => openProfileSection('disponibilidade') },
+  { t: 'Criar serviços e preços', k: 'servico servicos preco precos terapia sessao pack categoria',
+    passos: ['Abre Serviços & Preços.', 'Cria uma categoria (ex.: Reiki) e acrescenta os serviços com duração e preço.', 'Aparecem logo na tua página pública.'], a: () => renderView('services') },
+  { t: 'Criar uma formação, workshop ou turma com inscrições', k: 'formacao formacoes workshop turma curso evento inscricao vagas',
+    passos: ['Abre Formações.', 'Preenche título, data, preço e vagas e carrega em "Criar".', 'Copia o link da formação para partilhar. Quem se inscrever aparece na lista.'], a: () => renderView('trainings') },
+  { t: 'Vender um livro, curso ou pacote na minha página (Loja)', k: 'loja vender oferta livro curso ebook pacote link pagamento hotmart',
+    dono: true, passos: ['Abre Loja & Ofertas.', 'Cria uma oferta com título, preço e texto do botão.', 'No link, cola o endereço de pagamento (Hotmart, PayPal, etc.) ou escolhe uma marcação/formação tua.'], a: () => openProfileSection('ofertas') },
+  { t: 'Mudar o link da minha página (vindora.pt/o-meu-nome)', k: 'link endereco pagina publica nome slug url partilhar',
+    dono: true, passos: ['Abre o Perfil do Negócio.', 'No topo, em "O seu link público", abre "Mudar o nome do endereço".', 'Escreve o nome novo e confirma. O link antigo deixa de funcionar.'], a: () => closeProfileSection() },
+  { t: 'Pôr o meu logótipo e a minha cor', k: 'logotipo logo cor marca nome imagem',
+    dono: true, passos: ['Abre Dados do negócio.', 'Escolhe o logótipo e a cor principal e guarda.', 'Passam a aparecer no painel, na página pública e nas marcações.'], a: () => openProfileSection('negocio') },
+  { t: 'Criar uma ficha (questionário) e enviar ao paciente', k: 'ficha questionario formulario anamnese enviar link paciente',
+    passos: ['Abre Fichas e cria a ficha com as perguntas.', 'Copia o link e envia ao paciente.', 'As respostas aparecem em "Respostas de Fichas".'], a: () => renderView('forms') },
+  { t: 'Criar o meu método / protocolo de consulta', k: 'metodo protocolo consulta guiada criar passos pontos',
+    passos: ['Abre Os Meus Métodos e cria um método novo.', 'Define os pontos ou grupos e as classificações finais.', 'Usa "Pré-visualizar" para o testares sem paciente.'], a: () => renderView('protocols') },
+  { t: 'Voltar a uma versão anterior de um método ou ficha', k: 'versao anterior desfazer restaurar apagado recuperar voltar atras',
+    passos: ['Abre Versões anteriores.', 'Escolhe a versão e carrega em "Restaurar".', 'Também recuperas métodos e fichas que tenhas removido.'], a: () => renderView('versoes') },
+  { t: 'Marcar ou remarcar uma consulta', k: 'marcar remarcar consulta marcacao agenda cancelar',
+    passos: ['Abre a Agenda.', 'Carrega no dia e escolhe o paciente, o serviço e a hora.', 'Para remarcar ou cancelar, abre a marcação.'], a: () => renderView('agenda') },
+  { t: 'Aceitar pedidos de marcação da página pública', k: 'pedido pedidos marcacao aceitar recusar pagina publica',
+    passos: ['Abre os pedidos de marcação.', 'Vê a hora pedida (no teu fuso) e carrega em "Aceitar" para criar a marcação.', 'Combina com o cliente pelo contacto que deixou.'], a: () => abrirPedidosMarcacao() },
+  { t: 'Lista de espera', k: 'lista espera vaga cancelamento',
+    passos: ['Abre Lista de Espera.', 'Quando surgir uma vaga, avisa a pessoa por WhatsApp com um toque.'], a: () => renderView('waitlist') },
+  { t: 'Criar um paciente e a sua ficha clínica', k: 'paciente novo criar ficha clinica historico',
+    passos: ['Abre Pacientes e carrega em novo paciente.', 'Preenche nome e contacto. O resto pode ser depois.', 'Pede o consentimento informado na primeira consulta.'], a: () => renderView('patients') },
+  { t: 'Exportar ou apagar os dados de um paciente (RGPD)', k: 'rgpd exportar apagar dados paciente portabilidade eliminar privacidade',
+    passos: ['Abre o paciente e carrega em "Editar".', 'No fim estão os botões "Exportar todos os dados" e "Apagar este paciente".'], a: () => renderView('patients') },
+  { t: 'Consentimento informado e Livro de Reclamações', k: 'consentimento livro reclamacoes legal termos privacidade',
+    dono: true, passos: ['Abre Consentimento Informado.', 'Edita o texto e coloca o link do Livro de Reclamações Eletrónico (obrigatório em Portugal).'], a: () => openProfileSection('consentimento') },
+  { t: 'Ligar o Google Calendar', k: 'google calendar calendario sincronizar',
+    dono: true, passos: ['Abre Google Calendar e carrega em ligar.', 'Autoriza a tua conta Google. As marcações passam a sincronizar sozinhas.'], a: () => openProfileSection('calendar') },
+  { t: 'Salas de atendimento', k: 'sala salas conflito espaco',
+    dono: true, passos: ['Abre Salas de Atendimento.', 'Cria as salas. A agenda avisa se duas marcações usarem a mesma sala à mesma hora.'], a: () => openProfileSection('salas') },
+  { t: 'Atender pacientes de outros países (fusos horários)', k: 'fuso horario pais estrangeiro emigrante hora diferente internacional',
+    dono: true, passos: ['Em Disponibilidade & Marcação escolhe o fuso do teu atendimento.', 'Quem marca vê as horas no teu fuso e a equivalente no dispositivo dele.'], a: () => openProfileSection('disponibilidade') },
+  { t: 'Fazer uma cópia de segurança (backup)', k: 'backup copia seguranca exportar guardar dados',
+    passos: ['Abre Definições → Backup.', 'Descarrega o ficheiro e guarda-o num sítio seguro.'], a: () => openSettingsSection('backup') },
+  { t: 'Instalar a app no telemóvel', k: 'instalar telemovel ecra principal atalho app',
+    passos: ['No menu de cima carrega em "Instalar app no dispositivo".', 'No iPhone: abre no Safari, carrega em Partilhar e depois em "Adicionar ao ecrã principal".'] },
+  { t: 'Subscrever ou mudar de plano', k: 'plano subscricao subscrever pagar teste trial preco',
+    dono: true, passos: ['Abre Definições → Plano.', 'Vê o que o teu plano inclui e pede a subscrição.'], a: () => openSettingsSection('plano') },
+  { t: 'Falar com o apoio', k: 'apoio ajuda problema erro suporte contacto bug',
+    passos: ['Descreve o problema e o que estavas a fazer. Se puderes, diz o que aparece no ecrã.'], a: () => renderView('supportContact'), ab: 'Pedir apoio' }
+];
+
+function ajudaNorm(x){ return String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+
+window.abrirAjuda = function(termo){
+  window.__ajudaTermo = String(termo || '').trim();
+  renderView('ajuda');
+};
+
+function renderAjuda(main){
+  const termo = window.__ajudaTermo || '';
+  window.__ajudaTermo = '';
+  main.innerHTML = `
+    <h2>❓ Ajuda: como faço…?</h2>
+    ${hintBox('Escreve o que queres fazer e abre-se o passo a passo, com um botão que te leva ao sítio certo.')}
+    <input id="ajudaBusca" placeholder="ex: secretária, horário, formação, loja…" value="${escapeHtml(termo)}" oninput="ajudaFiltrar(this.value)" autocomplete="off">
+    <div id="ajudaLista" style="margin-top:12px;"></div>`;
+  ajudaFiltrar(termo);
+  if (!termo) document.getElementById('ajudaBusca')?.focus();
+}
+
+window.ajudaFiltrar = function(valor){
+  const lista = document.getElementById('ajudaLista');
+  if (!lista) return;
+  const palavras = ajudaNorm(valor).split(/\s+/).filter(w => w.length > 1);
+  const achados = AJUDA_TOPICOS.map((x, i) => ({ x, i }))
+    .filter(({ x }) => !palavras.length || palavras.every(w => ajudaNorm(x.t + ' ' + x.k).includes(w)));
+  const souDono = tenantRole === 'owner';
+  lista.innerHTML = achados.map(({ x, i }) => `
+    <details class="card" style="margin-bottom:8px;" ${palavras.length && achados.length <= 2 ? 'open' : ''}>
+      <summary style="cursor:pointer;font-weight:600;">${escapeHtml(x.t)}${x.dono ? ' <span class="badge trial" style="font-weight:400;">só o dono</span>' : ''}</summary>
+      <ol style="margin:10px 0 10px 20px;line-height:1.6;">${x.passos.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ol>
+      ${x.dono && !souDono ? '<p class="muted" style="margin-bottom:8px;">Esta opção só aparece ao dono da conta. Estás a entrar com uma conta de equipa, por isso não a vês.</p>' : ''}
+      ${x.a && !(x.dono && !souDono) ? `<button class="primary" onclick="ajudaAbrir(${i})">${escapeHtml(x.ab || 'Abrir')}</button>` : ''}
+    </details>`).join('') || `
+    <div class="card"><p>Não encontrei nada com "${escapeHtml(valor)}". Tenta com outra palavra.</p>
+      <button class="ghost" style="margin-top:8px;" onclick="renderView('supportContact')">Pedir apoio</button></div>`;
+};
+
+window.ajudaAbrir = function(i){ const t = AJUDA_TOPICOS[i]; if (t && t.a) t.a(); };
 
 window.goToAgendaDay = function(dayKey){
   const [y, m, d] = dayKey.split('-').map(Number);
