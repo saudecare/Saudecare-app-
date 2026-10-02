@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-02-18';
+const APP_VERSION = '2026-10-02-19';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4396,6 +4396,11 @@ window.viewPatient = async function(patientId){
           <p class="muted" style="margin-top:4px;">Este paciente não tem telefone registado — não é possível avisá-lo automaticamente antes de entrar.</p>`}
           <p class="muted" style="margin-top:6px;">⚠️ A videochamada precisa de ligação à internet dos dois lados (wifi ou dados móveis) — não funciona sem internet, mesmo com boa rede telefónica.</p>
         </div>
+      </details>
+
+      <details style="margin-top:10px;" ontoggle="if(this.open) farmPainelCarregar('${patientId}')">
+        <summary style="cursor:pointer;font-weight:700;">💊 Medicação & Queixas</summary>
+        <div id="medPanel_${patientId}" style="margin-top:8px;"><p class="muted">A abrir…</p></div>
       </details>
 
       <details style="margin-top:10px;">
@@ -14599,6 +14604,139 @@ window.farmVerificarCore = function(entradas, naturaisIdx, medsIdx, textoLivre){
   return { alertas, semRegisto };
 };
 
+// ── Efeitos secundários mais comuns por grupo (pacote inicial, não exaustivo) ──
+const FARM_EFEITOS = {
+  'Anticoagulantes':'hemorragias, nódoas negras, sangramento nas gengivas ou no nariz, cansaço, tonturas',
+  'Antiagregantes plaquetários':'nódoas negras, sangramentos, dor de estômago, azia',
+  'Antidepressivos':'náuseas, insónia, sonolência, tonturas, boca seca, dor de cabeça, ansiedade, alterações do apetite, suores, diminuição da libido, ganho de peso',
+  'Ansiolíticos e hipnóticos (benzodiazepinas)':'sonolência, tonturas, fraqueza muscular, esquecimento, confusão, descoordenação, dependência',
+  'Opioides e tramadol':'sonolência, obstipação, náuseas, tonturas, confusão, dependência',
+  'Anti-hipertensores':'tonturas, cansaço, tosse seca, inchaço nos tornozelos, dor de cabeça, batimento lento',
+  'Diuréticos':'sede, cãibras, tonturas, urinar muito, fraqueza',
+  'Digoxina':'náuseas, perda de apetite, alterações da visão, batimento irregular, confusão',
+  'Antidiabéticos':'hipoglicemia, suores, tremores, fome, náuseas, diarreia, tonturas, ganho de peso',
+  'Contraceptivos orais':'náuseas, dor de cabeça, sensibilidade nos seios, alterações de humor, retenção de líquidos',
+  'Imunossupressores':'infeções frequentes, tremores, dor de cabeça, náuseas, cansaço, tensão alta',
+  'Estatinas':'dores musculares, fraqueza, dor de cabeça, náuseas, diarreia',
+  'Antiepiléticos':'sonolência, tonturas, náuseas, descoordenação, visão turva, alterações de humor, cansaço',
+  'Levotiroxina':'(se a dose for excessiva) palpitações, nervosismo, insónia, suores, perda de peso, tremores',
+  'Corticoides':'insónia, retenção de líquidos, aumento do apetite, alterações de humor, aumento do açúcar no sangue',
+  'Antirretrovirais (VIH)':'náuseas, diarreia, cansaço, dor de cabeça, alterações do sono',
+  'Quimioterapia e antineoplásicos':'náuseas, vómitos, cansaço, queda de cabelo, feridas na boca, infeções',
+  'Anti-inflamatórios (AINE)':'dor de estômago, azia, náuseas, retenção de líquidos, tonturas, dor de cabeça',
+  'Antibióticos':'diarreia, náuseas, candidíase, dor de estômago, erupções na pele'
+};
+
+function farmStems(txt){
+  return farmNorm(txt).split(/[^a-z0-9]+/).filter(t => t.length >= 4).map(t => t.length >= 7 ? t.slice(0,-2) : t.length >= 5 ? t.slice(0,-1) : t);
+}
+// Queixa -> medicamentos do paciente cujos efeitos registados a mencionam
+window.farmEfeitosCore = function(queixa, meds, docs){
+  const stems = farmStems(queixa), achados = [], semInfo = [];
+  meds.forEach(m => {
+    const reg = docs.filter(e => e.tipo !== 'natural' && farmToca([farmNorm(m)], farmTermosDe(e)));
+    if (!reg.length){ semInfo.push(m + ' (não está na sua Farmácia)'); return; }
+    let teveEfeitos = false;
+    reg.forEach(e => {
+      if (!e.efeitos) return;
+      teveEfeitos = true;
+      const ef = farmNorm(e.efeitos);
+      const hit = stems.filter(s => ef.includes(s));
+      if (hit.length) achados.push({ med: m, entrada: e });
+    });
+    if (!teveEfeitos) semInfo.push(m + ' (sem efeitos secundários registados)');
+  });
+  return { achados, semInfo };
+};
+
+window.farmPainelCarregar = async function(pid){
+  const box = document.getElementById('medPanel_' + pid);
+  if (!box || box.dataset.ok) return;
+  box.innerHTML = '<p class="muted">A carregar…</p>';
+  try{
+    const [ps, fs] = await Promise.all([getDoc(doc(db,'tenants',tenantId,'patients',pid)), getDocs(collection(db,'tenants',tenantId,'farmacia'))]);
+    const docs = []; fs.forEach(d => docs.push({ id: d.id, ...d.data() }));
+    docs.sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
+    window.__farmCache = docs;
+    window.__medPat = { id: pid, meds: Array.isArray(ps.data()?.medicacao) ? [...ps.data().medicacao] : [] };
+    box.dataset.ok = '1';
+    farmPainelDesenhar();
+  }catch(e){
+    console.error(e);
+    box.innerHTML = '<p class="muted" style="color:var(--danger);">Não foi possível carregar. Se é a primeira vez, confirme que as regras da Farmácia estão publicadas.</p>';
+  }
+};
+function farmPainelDesenhar(){
+  const st = window.__medPat; if (!st) return;
+  const box = document.getElementById('medPanel_' + st.id); if (!box) return;
+  const docs = window.__farmCache || [];
+  const quim = docs.filter(e => e.tipo !== 'natural'), nat = docs.filter(e => e.tipo === 'natural');
+  box.innerHTML = `
+    <label>Medicação que toma</label>
+    <div>${st.meds.length ? st.meds.map((m,i) => `<span style="display:inline-flex;align-items:center;gap:4px;margin:3px 6px 3px 0;padding:4px 8px;border:1px solid var(--border,#ccc);border-radius:16px;">${escapeHtml(m)} <a href="#" onclick="farmPacRemover(${i});return false;" style="text-decoration:none;">✕</a></span>`).join('') : '<span class="muted">Nada registado.</span>'}</div>
+    <div class="row" style="margin-top:6px;gap:6px;">
+      <input id="medNovo" list="medLista" placeholder="Escreva ou escolha (ex: varfarina)" style="flex:1;">
+      <datalist id="medLista">${quim.map(e => `<option value="${escapeHtml(e.nome)}">`).join('')}</datalist>
+      <button class="ghost" onclick="farmPacAdicionar()">+ Adicionar</button>
+    </div>
+    <hr style="margin:12px 0;">
+    <label>🩺 Queixa ou sintoma do paciente</label>
+    <div class="row" style="gap:6px;"><input id="medQueixa" placeholder="ex: tonturas, insónia, náuseas" style="flex:1;"><button class="primary" onclick="farmPacQueixa()">Pode ser da medicação?</button></div>
+    <div id="medQueixaRes" style="margin-top:8px;"></div>
+    <hr style="margin:12px 0;">
+    <label>🌿 Vou aconselhar um natural — é compatível com a medicação?</label>
+    <div class="row" style="gap:6px;"><select id="medNat" style="flex:1;">${nat.length ? nat.map(e => `<option value="${e.id}">${escapeHtml(e.nome)}</option>`).join('') : '<option value="">Sem naturais na Farmácia</option>'}</select><button class="primary" onclick="farmPacNatural()">Verificar</button></div>
+    <div id="medNatRes" style="margin-top:8px;"></div>
+    <p class="muted" style="font-size:12px;margin-top:10px;">A informação vem só do que registou na sua Farmácia; cada profissional é responsável pela fonte de conhecimento que insere. Isto não substitui o médico nem o farmacêutico.${docs.length ? '' : ' <a href="#" onclick="renderView(\'farmacia\');return false;">Abrir a Farmácia</a> para começar.'}</p>`;
+}
+async function farmPacGuardar(){
+  const st = window.__medPat;
+  await updateDoc(doc(db,'tenants',tenantId,'patients',st.id), { medicacao: st.meds });
+  farmPainelDesenhar();
+}
+window.farmPacAdicionar = async function(){
+  const v = document.getElementById('medNovo').value.trim(); if (!v) return;
+  const st = window.__medPat;
+  if (!st.meds.some(m => farmNorm(m) === farmNorm(v))) st.meds.push(v);
+  try{ await farmPacGuardar(); }catch(e){ console.error(e); toast('Não foi possível guardar.', true); }
+};
+window.farmPacRemover = async function(i){
+  window.__medPat.meds.splice(i,1);
+  try{ await farmPacGuardar(); }catch(e){ console.error(e); toast('Não foi possível guardar.', true); }
+};
+window.farmPacQueixa = function(){
+  const st = window.__medPat, q = document.getElementById('medQueixa').value.trim(), out = document.getElementById('medQueixaRes');
+  if (!q){ out.innerHTML = '<p class="muted">Escreva a queixa.</p>'; return; }
+  if (!st.meds.length){ out.innerHTML = '<p class="muted">Registe primeiro a medicação do paciente.</p>'; return; }
+  const r = window.farmEfeitosCore(q, st.meds, window.__farmCache || []);
+  let h = '';
+  if (r.achados.length){
+    h += r.achados.map(a => `<div style="border-left:4px solid #e0a800;background:rgba(224,168,0,.1);padding:8px 10px;margin-bottom:8px;border-radius:6px;"><strong>${escapeHtml(a.med)}</strong> tem "${escapeHtml(q)}" entre os efeitos registados.<div class="muted">Efeitos registados: ${escapeHtml(a.entrada.efeitos)}</div></div>`).join('');
+    h += '<p><strong>Pode ser efeito secundário.</strong> Sugira ao paciente que fale com o médico que o acompanha — nunca suspender nem alterar a medicação sem indicação médica.</p>';
+  } else {
+    h += '<p>Nenhum dos medicamentos registados tem esta queixa nos efeitos secundários guardados. Isto não exclui a medicação como causa.</p>';
+  }
+  if (r.semInfo.length) h += `<p class="muted">Sem informação para: ${r.semInfo.map(escapeHtml).join('; ')}.</p>`;
+  out.innerHTML = h;
+};
+window.farmPacNatural = function(){
+  const st = window.__medPat, docs = window.__farmCache || [], out = document.getElementById('medNatRes');
+  const id = document.getElementById('medNat').value;
+  const idx = docs.findIndex(e => e.id === id);
+  if (idx < 0){ out.innerHTML = '<p class="muted">Escolha um natural.</p>'; return; }
+  if (!st.meds.length){ out.innerHTML = '<p class="muted">Registe primeiro a medicação do paciente (se não toma nada, não há o que cruzar).</p>'; return; }
+  const r = window.farmVerificarCore(docs, [idx], [], st.meds.join(', '));
+  let h = '';
+  if (r.alertas.length){
+    h += r.alertas.map(a => `<div style="border-left:4px solid var(--danger,#c0392b);background:rgba(192,57,43,.08);padding:8px 10px;margin-bottom:8px;border-radius:6px;"><strong>⚠️ ${escapeHtml(a.natural.nome)} × ${escapeHtml(a.med.nome)}</strong><div>${escapeHtml(a.nota || 'Interação registada.')}</div></div>`).join('');
+    h += '<p><strong>Não aconselhe</strong> sem o médico do paciente confirmar.</p>';
+  } else {
+    h += '<div style="border-left:4px solid #e0a800;background:rgba(224,168,0,.1);padding:8px 10px;border-radius:6px;">Sem alertas nos seus registos. <strong>Não significa que seja seguro</strong> — confirme com o médico ou farmacêutico.</div>';
+  }
+  if (r.semRegisto.length) h += `<p class="muted">Não encontrei na Farmácia: ${r.semRegisto.map(escapeHtml).join(', ')}.</p>`;
+  out.innerHTML = h;
+};
+
 async function renderFarmacia(main){
   if (!currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt || currentTenantDoc?.knowledgeBaseDisclaimerVersion !== KB_DISCLAIMER_VERSION){
     main.innerHTML = `<h2>💊 Farmácia & Interações</h2>
@@ -14704,8 +14842,12 @@ window.farmImportar = async function(){
   let n = 0;
   try{
     for (const r of FARM_PACOTE){
-      if (existentes.has(farmNorm(r[1]))) continue;
-      await addDoc(collection(db, 'tenants', tenantId, 'farmacia'), { tipo: r[0], nome: r[1], aliases: r[2], classe: r[3], uso: r[4], interageCom: r[5], nota: r[6], dose: '', efeitos: '', origem: 'pacote', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      if (existentes.has(farmNorm(r[1]))){
+        const ex = (window.__farmCache||[]).find(e => farmNorm(e.nome) === farmNorm(r[1]));
+        if (ex && ex.origem === 'pacote' && !ex.efeitos && FARM_EFEITOS[r[1]]){ await updateDoc(doc(db,'tenants',tenantId,'farmacia',ex.id), { efeitos: FARM_EFEITOS[r[1]] }); n++; }
+        continue;
+      }
+      await addDoc(collection(db, 'tenants', tenantId, 'farmacia'), { tipo: r[0], nome: r[1], aliases: r[2], classe: r[3], uso: r[4], interageCom: r[5], nota: r[6], dose: '', efeitos: FARM_EFEITOS[r[1]] || '', origem: 'pacote', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       n++;
     }
     toast(n ? `${n} entradas importadas — reveja-as com calma.` : 'Já tinha tudo importado.');
