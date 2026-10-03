@@ -59,12 +59,13 @@
 <body>
 
 <div id="updateBanner" class="hidden" style="position:sticky;top:0;z-index:500;background:#1a2b26;color:#fff;padding:10px 14px;text-align:center;font-size:.85rem;">
-  Há uma versão mais recente desta página. <button onclick="window.location.reload()" style="background:#fff;color:#1a2b26;border:none;border-radius:6px;padding:4px 10px;margin-left:6px;cursor:pointer;font-weight:600;">Atualizar agora</button>
+  <span id="updTxt">Há uma versão mais recente desta página.</span> <button id="updBtn" onclick="window.location.reload()" style="background:#fff;color:#1a2b26;border:none;border-radius:6px;padding:4px 10px;margin-left:6px;cursor:pointer;font-weight:600;">Atualizar agora</button>
 </div>
 
 <header>
   <h1 id="hBusiness">Portal do Paciente</h1>
   <p id="hPatient"></p>
+  <div style="text-align:center;margin-top:4px;"><select id="vdLang" aria-label="Language" style="font-size:12px;padding:3px 6px;border-radius:8px;"></select></div>
 </header>
 
 <main id="mainContent">
@@ -72,7 +73,18 @@
 </main>
 
 <script>
-const PAGE_VERSION = '2026-09-06-05';
+const PAGE_VERSION = '2026-10-03-01';
+
+// ── Idiomas (o módulo carrega em paralelo; load() espera por ele) ───────
+const __DICT = {"portalTitle": {"pt": "Portal do Paciente", "en": "Patient Portal", "es": "Portal del Paciente", "fr": "Portail du patient", "de": "Patientenportal", "it": "Portale del Paziente"}, "novaVersao": {"pt": "Há uma versão mais recente desta página.", "en": "There is a newer version of this page.", "es": "Hay una versión más reciente de esta página.", "fr": "Une version plus récente de cette page est disponible.", "de": "Es gibt eine neuere Version dieser Seite.", "it": "È disponibile una versione più recente di questa pagina."}, "atualizar": {"pt": "Atualizar agora", "en": "Update now", "es": "Actualizar ahora", "fr": "Mettre à jour", "de": "Jetzt aktualisieren", "it": "Aggiorna ora"}, "pdfTitulo": {"pt": "Comprovativo de Pagamento", "en": "Proof of Payment", "es": "Comprobante de pago", "fr": "Justificatif de paiement", "de": "Zahlungsbestätigung", "it": "Ricevuta di pagamento"}, "pdfNaoFatura": {"pt": "Este documento NÃO é fatura, fatura-recibo nem qualquer documento fiscal.", "en": "This document is NOT an invoice, invoice-receipt or any tax document.", "es": "Este documento NO es una factura, factura-recibo ni ningún documento fiscal.", "fr": "Ce document n’est PAS une facture, une facture-reçu ni un document fiscal.", "de": "Dieses Dokument ist KEINE Rechnung, Quittung oder ein Steuerdokument.", "it": "Questo documento NON è una fattura, una fattura-ricevuta né un documento fiscale."}, "pdfInterno": {"pt": "Serve apenas como confirmação interna de pagamento.", "en": "It serves only as internal confirmation of payment.", "es": "Sirve solo como confirmación interna de pago.", "fr": "Il sert uniquement de confirmation interne de paiement.", "de": "Es dient nur als interne Zahlungsbestätigung.", "it": "Serve solo come conferma interna di pagamento."}, "pdfConsultorio": {"pt": "Consultório", "en": "Practice", "es": "Consulta", "fr": "Cabinet", "de": "Praxis", "it": "Studio"}, "pdfPaciente": {"pt": "Paciente", "en": "Patient", "es": "Paciente", "fr": "Patient", "de": "Patient", "it": "Paziente"}, "pdfServico": {"pt": "Serviço", "en": "Service", "es": "Servicio", "fr": "Service", "de": "Leistung", "it": "Servizio"}, "pdfData": {"pt": "Data da consulta", "en": "Appointment date", "es": "Fecha de la cita", "fr": "Date du rendez-vous", "de": "Termin", "it": "Data dell’appuntamento"}, "pdfValor": {"pt": "Valor pago", "en": "Amount paid", "es": "Importe pagado", "fr": "Montant payé", "de": "Bezahlter Betrag", "it": "Importo pagato"}, "pdfEmitido": {"pt": "Emitido em", "en": "Issued on", "es": "Emitido el", "fr": "Émis le", "de": "Ausgestellt am", "it": "Emesso il"}, "pdfFatura": {"pt": "Se precisar de fatura para efeitos fiscais, contacte o seu terapeuta diretamente.", "en": "If you need an invoice for tax purposes, contact your therapist directly.", "es": "Si necesita una factura a efectos fiscales, contacte directamente con su terapeuta.", "fr": "Si vous avez besoin d’une facture à des fins fiscales, contactez directement votre thérapeute.", "de": "Wenn Sie eine Rechnung für steuerliche Zwecke benötigen, wenden Sie sich direkt an Ihre Therapeutin/Ihren Therapeuten.", "it": "Se ha bisogno di una fattura a fini fiscali, contatti direttamente il suo terapeuta."}, "erroDesc": {"pt": "Erro desconhecido", "en": "Unknown error", "es": "Error desconocido", "fr": "Erreur inconnue", "de": "Unbekannter Fehler", "it": "Errore sconosciuto"}, "semMsgs": {"pt": "Ainda sem mensagens.", "en": "No messages yet.", "es": "Aún no hay mensajes.", "fr": "Pas encore de messages.", "de": "Noch keine Nachrichten.", "it": "Ancora nessun messaggio."}, "lida": {"pt": "✓✓ Lida", "en": "✓✓ Read", "es": "✓✓ Leído", "fr": "✓✓ Lu", "de": "✓✓ Gelesen", "it": "✓✓ Letto"}, "enviada": {"pt": "✓ Enviada", "en": "✓ Sent", "es": "✓ Enviado", "fr": "✓ Envoyé", "de": "✓ Gesendet", "it": "✓ Inviato"}, "escMuitoBaixo": {"pt": "Muito baixo", "en": "Very low", "es": "Muy bajo", "fr": "Très bas", "de": "Sehr niedrig", "it": "Molto basso"}, "humor": {"pt": "Humor", "en": "Mood", "es": "Estado de ánimo", "fr": "Humeur", "de": "Stimmung", "it": "Umore"}, "sono": {"pt": "Sono", "en": "Sleep", "es": "Sueño", "fr": "Sommeil", "de": "Schlaf", "it": "Sonno"}, "energia": {"pt": "Energia", "en": "Energy", "es": "Energía", "fr": "Énergie", "de": "Energie", "it": "Energia"}, "semRegistos": {"pt": "Ainda sem registos — o primeiro fica aqui assim que guardar.", "en": "No entries yet — the first one will appear here once you save it.", "es": "Aún no hay registros: el primero aparecerá aquí en cuanto lo guarde.", "fr": "Pas encore d’entrées — la première apparaîtra ici dès que vous l’enregistrerez.", "de": "Noch keine Einträge – der erste erscheint hier, sobald Sie ihn speichern.", "it": "Ancora nessuna registrazione: la prima comparirà qui non appena la salva."}, "escolhaUma": {"pt": "Escolha pelo menos uma escala ou escreva algo antes de guardar.", "en": "Choose at least one scale or write something before saving.", "es": "Elija al menos una escala o escriba algo antes de guardar.", "fr": "Choisissez au moins une échelle ou écrivez quelque chose avant d’enregistrer.", "de": "Wählen Sie mindestens eine Skala oder schreiben Sie etwas, bevor Sie speichern.", "it": "Scelga almeno una scala o scriva qualcosa prima di salvare."}, "aGuardar": {"pt": "A guardar…", "en": "Saving…", "es": "Guardando…", "fr": "Enregistrement…", "de": "Wird gespeichert…", "it": "Salvataggio…"}, "registado": {"pt": "✅ Registado!", "en": "✅ Saved!", "es": "✅ ¡Registrado!", "fr": "✅ Enregistré !", "de": "✅ Gespeichert!", "it": "✅ Registrato!"}, "guardarHoje": {"pt": "Guardar registo de hoje", "en": "Save today’s entry", "es": "Guardar el registro de hoy", "fr": "Enregistrer l’entrée du jour", "de": "Heutigen Eintrag speichern", "it": "Salva la registrazione di oggi"}, "erroGuardar": {"pt": "Não foi possível guardar o registo. Tente novamente.", "en": "Could not save the entry. Please try again.", "es": "No se pudo guardar el registro. Inténtelo de nuevo.", "fr": "Impossible d’enregistrer l’entrée. Veuillez réessayer.", "de": "Der Eintrag konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.", "it": "Impossibile salvare la registrazione. Riprovi."}, "erroMsg": {"pt": "Não foi possível enviar a mensagem. Tente novamente.", "en": "Could not send the message. Please try again.", "es": "No se pudo enviar el mensaje. Inténtelo de nuevo.", "fr": "Impossible d’envoyer le message. Veuillez réessayer.", "de": "Die Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es erneut.", "it": "Impossibile inviare il messaggio. Riprovi."}, "crisisTitulo": {"pt": "⚠️ Este espaço não é monitorizado 24 horas.", "en": "⚠️ This space is not monitored 24 hours a day.", "es": "⚠️ Este espacio no se supervisa las 24 horas.", "fr": "⚠️ Cet espace n’est pas surveillé 24 h/24.", "de": "⚠️ Dieser Bereich wird nicht rund um die Uhr überwacht.", "it": "⚠️ Questo spazio non è monitorato 24 ore su 24."}, "crisisTxt": {"pt": "Se estiver numa situação de crise ou emergência, não espere por uma resposta aqui — contacte a Linha SNS24 (808 24 24 24) ou o 112 imediatamente.", "en": "If you are in a crisis or emergency, do not wait for a reply here — contact the SNS24 line (808 24 24 24) or 112 immediately.", "es": "Si se encuentra en una situación de crisis o emergencia, no espere una respuesta aquí: contacte de inmediato con la Línea SNS24 (808 24 24 24) o el 112.", "fr": "En cas de crise ou d’urgence, n’attendez pas de réponse ici : contactez immédiatement la ligne SNS24 (808 24 24 24) ou le 112.", "de": "Wenn Sie sich in einer Krise oder einem Notfall befinden, warten Sie nicht auf eine Antwort hier – wenden Sie sich sofort an die SNS24-Linie (808 24 24 24) oder an die 112.", "it": "In caso di crisi o emergenza, non aspetti una risposta qui: contatti subito la linea SNS24 (808 24 24 24) o il 112."}, "instalarAjuda": {"pt": "Para guardar este Portal no seu telemóvel, como se fosse uma app:\n\n📱 iPhone/iPad (Safari): toque no botão Partilhar (o quadrado com a seta para cima) e escolha \"Adicionar ao ecrã principal\".\n\n🤖 Android/Chrome: toque no menu ⋮ do navegador e escolha \"Instalar app\" ou \"Adicionar ao ecrã principal\".", "en": "To save this Portal on your phone like an app:\n\n📱 iPhone/iPad (Safari): tap the Share button (the square with an up arrow) and choose \"Add to Home Screen\".\n\n🤖 Android/Chrome: tap the browser menu ⋮ and choose \"Install app\" or \"Add to Home screen\".", "es": "Para guardar este Portal en su móvil como si fuera una app:\n\n📱 iPhone/iPad (Safari): toque el botón Compartir (el cuadrado con la flecha hacia arriba) y elija \"Añadir a pantalla de inicio\".\n\n🤖 Android/Chrome: toque el menú ⋮ del navegador y elija \"Instalar app\" o \"Añadir a pantalla de inicio\".", "fr": "Pour enregistrer ce Portail sur votre téléphone comme une appli :\n\n📱 iPhone/iPad (Safari) : touchez le bouton Partager (le carré avec une flèche vers le haut) et choisissez « Sur l’écran d’accueil ».\n\n🤖 Android/Chrome : touchez le menu ⋮ du navigateur et choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil ».", "de": "So speichern Sie dieses Portal wie eine App auf Ihrem Handy:\n\n📱 iPhone/iPad (Safari): Tippen Sie auf „Teilen“ (das Quadrat mit dem Pfeil nach oben) und wählen Sie „Zum Home-Bildschirm“.\n\n🤖 Android/Chrome: Tippen Sie auf das Browser-Menü ⋮ und wählen Sie „App installieren“ oder „Zum Startbildschirm hinzufügen“.", "it": "Per salvare questo Portale sul telefono come un’app:\n\n📱 iPhone/iPad (Safari): tocchi il pulsante Condividi (il quadrato con la freccia verso l’alto) e scelga \"Aggiungi alla schermata Home\".\n\n🤖 Android/Chrome: tocchi il menu ⋮ del browser e scelga \"Installa app\" o \"Aggiungi alla schermata Home\"."}, "instalar": {"pt": "📲 Guardar no telemóvel (como uma app)", "en": "📲 Save on your phone (like an app)", "es": "📲 Guardar en el móvil (como una app)", "fr": "📲 Enregistrer sur le téléphone (comme une appli)", "de": "📲 Auf dem Handy speichern (wie eine App)", "it": "📲 Salva sul telefono (come un’app)"}, "tOnline": {"pt": "Online", "en": "Online", "es": "En línea", "fr": "En ligne", "de": "Online", "it": "Online"}, "tMarcacoes": {"pt": "Marcações", "en": "Appointments", "es": "Citas", "fr": "Rendez-vous", "de": "Termine", "it": "Appuntamenti"}, "tDiario": {"pt": "Diário de Bem-Estar", "en": "Wellbeing Diary", "es": "Diario de bienestar", "fr": "Journal de bien-être", "de": "Wohlfühl-Tagebuch", "it": "Diario del benessere"}, "tContacto": {"pt": "Contacto", "en": "Contact", "es": "Contacto", "fr": "Contact", "de": "Kontakt", "it": "Contatto"}, "tMensagens": {"pt": "Mensagens", "en": "Messages", "es": "Mensajes", "fr": "Messages", "de": "Nachrichten", "it": "Messaggi"}, "tRelatorios": {"pt": "Relatórios", "en": "Reports", "es": "Informes", "fr": "Rapports", "de": "Berichte", "it": "Rapporti"}, "eRotina": {"pt": " e Rotina", "en": " and Routine", "es": " y rutina", "fr": " et routine", "de": " und Routine", "it": " e routine"}, "tDados": {"pt": "Os Meus Dados", "en": "My Data", "es": "Mis datos", "fr": "Mes données", "de": "Meine Daten", "it": "I miei dati"}, "tMateriais": {"pt": "Materiais", "en": "Materials", "es": "Materiales", "fr": "Supports", "de": "Materialien", "it": "Materiali"}, "voltar": {"pt": "← Voltar", "en": "← Back", "es": "← Volver", "fr": "← Retour", "de": "← Zurück", "it": "← Indietro"}, "pago": {"pt": "✅ Pago", "en": "✅ Paid", "es": "✅ Pagado", "fr": "✅ Payé", "de": "✅ Bezahlt", "it": "✅ Pagato"}, "parcial": {"pt": "🟡 Parcial", "en": "🟡 Partial", "es": "🟡 Parcial", "fr": "🟡 Partiel", "de": "🟡 Teilweise", "it": "🟡 Parziale"}, "pendente": {"pt": "🔴 Pendente", "en": "🔴 Pending", "es": "🔴 Pendiente", "fr": "🔴 En attente", "de": "🔴 Offen", "it": "🔴 In sospeso"}, "semMarc": {"pt": "Sem marcações agendadas.", "en": "No appointments scheduled.", "es": "Sin citas programadas.", "fr": "Aucun rendez-vous prévu.", "de": "Keine Termine geplant.", "it": "Nessun appuntamento in programma."}, "semAnt": {"pt": "Ainda sem consultas anteriores.", "en": "No previous appointments yet.", "es": "Aún no hay citas anteriores.", "fr": "Pas encore de rendez-vous passés.", "de": "Noch keine vergangenen Termine.", "it": "Ancora nessun appuntamento precedente."}, "descComp": {"pt": "📥 Descarregar comprovativo", "en": "📥 Download receipt", "es": "📥 Descargar comprobante", "fr": "📥 Télécharger le justificatif", "de": "📥 Beleg herunterladen", "it": "📥 Scarica la ricevuta"}, "entrarVideo": {"pt": "Entrar na videochamada", "en": "Join the video call", "es": "Entrar en la videollamada", "fr": "Rejoindre la visioconférence", "de": "Videoanruf beitreten", "it": "Entra nella videochiamata"}, "abrirWA": {"pt": "Abrir WhatsApp", "en": "Open WhatsApp", "es": "Abrir WhatsApp", "fr": "Ouvrir WhatsApp", "de": "WhatsApp öffnen", "it": "Apri WhatsApp"}, "waNota": {"pt": "O seu terapeuta vai iniciar a chamada de vídeo lá dentro, à hora combinada.", "en": "Your therapist will start the video call there, at the agreed time.", "es": "Su terapeuta iniciará la videollamada allí, a la hora acordada.", "fr": "Votre thérapeute lancera l’appel vidéo là-bas, à l’heure convenue.", "de": "Ihre Therapeutin/Ihr Therapeut startet dort den Videoanruf zur vereinbarten Zeit.", "it": "Il suo terapeuta avvierà la videochiamata lì, all’ora concordata."}, "videoNaoCfg": {"pt": "A videochamada ainda não está configurada — contacte o seu terapeuta diretamente para combinar.", "en": "The video call is not set up yet — contact your therapist directly to arrange it.", "es": "La videollamada aún no está configurada: contacte directamente con su terapeuta para acordarla.", "fr": "La visioconférence n’est pas encore configurée — contactez directement votre thérapeute pour convenir.", "de": "Der Videoanruf ist noch nicht eingerichtet – wenden Sie sich direkt an Ihre Therapeutin/Ihren Therapeuten.", "it": "La videochiamata non è ancora configurata: contatti direttamente il suo terapeuta per accordarsi."}, "consultaOnline": {"pt": "💻 Consulta online", "en": "💻 Online appointment", "es": "💻 Cita en línea", "fr": "💻 Rendez-vous en ligne", "de": "💻 Online-Termin", "it": "💻 Appuntamento online"}, "temOnline": {"pt": "Tem uma consulta online agendada. Toque no botão à hora combinada.", "en": "You have an online appointment scheduled. Tap the button at the agreed time.", "es": "Tiene una cita en línea programada. Toque el botón a la hora acordada.", "fr": "Vous avez un rendez-vous en ligne prévu. Touchez le bouton à l’heure convenue.", "de": "Sie haben einen Online-Termin. Tippen Sie zur vereinbarten Zeit auf die Schaltfläche.", "it": "Ha un appuntamento online in programma. Tocchi il pulsante all’ora concordata."}, "precisaNet": {"pt": "⚠️ Precisa de estar ligado à internet (wifi ou dados móveis) para a videochamada funcionar.", "en": "⚠️ You need an internet connection (wifi or mobile data) for the video call to work.", "es": "⚠️ Necesita conexión a internet (wifi o datos móviles) para que la videollamada funcione.", "fr": "⚠️ Une connexion internet (wifi ou données mobiles) est nécessaire pour la visioconférence.", "de": "⚠️ Für den Videoanruf benötigen Sie eine Internetverbindung (WLAN oder mobile Daten).", "it": "⚠️ Serve una connessione a internet (wifi o dati mobili) perché la videochiamata funzioni."}, "proximas": {"pt": "📅 Próximas marcações", "en": "📅 Upcoming appointments", "es": "📅 Próximas citas", "fr": "📅 Prochains rendez-vous", "de": "📅 Kommende Termine", "it": "📅 Prossimi appuntamenti"}, "historico": {"pt": "🗓️ Histórico de consultas", "en": "🗓️ Appointment history", "es": "🗓️ Historial de citas", "fr": "🗓️ Historique des rendez-vous", "de": "🗓️ Terminverlauf", "it": "🗓️ Storico appuntamenti"}, "diarioTxt": {"pt": "Registe como se sente hoje — sono, energia, humor, ou o que quiser partilhar. Fica guardado para o seu terapeuta acompanhar consigo, sessão após sessão. Não precisa de preencher tudo, nem todos os dias.", "en": "Record how you feel today — sleep, energy, mood, or anything you want to share. It is saved so your therapist can follow along with you, session after session. You do not have to fill in everything, or every day.", "es": "Registre cómo se siente hoy: sueño, energía, ánimo o lo que quiera compartir. Queda guardado para que su terapeuta lo acompañe, sesión tras sesión. No necesita rellenarlo todo, ni todos los días.", "fr": "Notez comment vous vous sentez aujourd’hui — sommeil, énergie, humeur, ou ce que vous voulez partager. C’est conservé pour que votre thérapeute vous accompagne, séance après séance. Inutile de tout remplir, ni tous les jours.", "de": "Halten Sie fest, wie Sie sich heute fühlen – Schlaf, Energie, Stimmung oder was Sie teilen möchten. Es wird gespeichert, damit Ihre Therapeutin/Ihr Therapeut Sie Sitzung für Sitzung begleiten kann. Sie müssen nicht alles und nicht jeden Tag ausfüllen.", "it": "Registri come si sente oggi: sonno, energia, umore o ciò che desidera condividere. Resta salvato perché il suo terapeuta la accompagni, seduta dopo seduta. Non deve compilare tutto, né tutti i giorni."}, "notasPh": {"pt": "Algo que queira partilhar (sintomas, pensamentos, o que sentir)…", "en": "Anything you would like to share (symptoms, thoughts, what you feel)…", "es": "Algo que quiera compartir (síntomas, pensamientos, lo que sienta)…", "fr": "Quelque chose que vous souhaitez partager (symptômes, pensées, ressenti)…", "de": "Etwas, das Sie teilen möchten (Symptome, Gedanken, Gefühle)…", "it": "Qualcosa che desidera condividere (sintomi, pensieri, ciò che sente)…"}, "contactoTitulo": {"pt": "💬 Contacto", "en": "💬 Contact", "es": "💬 Contacto", "fr": "💬 Contact", "de": "💬 Kontakt", "it": "💬 Contatto"}, "prefereWA": {"pt": "O seu terapeuta prefere falar consigo por WhatsApp (ou outro meio combinado), em vez de mensagens aqui no Portal.", "en": "Your therapist prefers to talk to you via WhatsApp (or another agreed channel) instead of messages here in the Portal.", "es": "Su terapeuta prefiere hablar con usted por WhatsApp (u otro medio acordado) en lugar de mensajes en este Portal.", "fr": "Votre thérapeute préfère communiquer avec vous par WhatsApp (ou un autre moyen convenu) plutôt que par messages dans ce Portail.", "de": "Ihre Therapeutin/Ihr Therapeut spricht lieber per WhatsApp (oder einen anderen vereinbarten Weg) mit Ihnen als über Nachrichten in diesem Portal.", "it": "Il suo terapeuta preferisce parlarle via WhatsApp (o un altro mezzo concordato) invece che con messaggi in questo Portale."}, "msgsTitulo": {"pt": "💬 Mensagens", "en": "💬 Messages", "es": "💬 Mensajes", "fr": "💬 Messages", "de": "💬 Nachrichten", "it": "💬 Messaggi"}, "msgsTxt": {"pt": "Fale com o seu terapeuta entre sessões. As mensagens novas aparecem sozinhas, sem precisar de atualizar a página.", "en": "Talk to your therapist between sessions. New messages appear on their own, without refreshing the page.", "es": "Hable con su terapeuta entre sesiones. Los mensajes nuevos aparecen solos, sin actualizar la página.", "fr": "Échangez avec votre thérapeute entre les séances. Les nouveaux messages apparaissent tout seuls, sans actualiser la page.", "de": "Sprechen Sie zwischen den Sitzungen mit Ihrer Therapeutin/Ihrem Therapeuten. Neue Nachrichten erscheinen von selbst, ohne die Seite zu aktualisieren.", "it": "Parli con il suo terapeuta tra una seduta e l’altra. I nuovi messaggi compaiono da soli, senza aggiornare la pagina."}, "escreverMsg": {"pt": "Escrever mensagem…", "en": "Write a message…", "es": "Escribir mensaje…", "fr": "Écrire un message…", "de": "Nachricht schreiben…", "it": "Scrivi un messaggio…"}, "enviar": {"pt": "Enviar", "en": "Send", "es": "Enviar", "fr": "Envoyer", "de": "Senden", "it": "Invia"}, "relatorio": {"pt": "Relatório", "en": "Report", "es": "Informe", "fr": "Rapport", "de": "Bericht", "it": "Rapporto"}, "tocarVer": {"pt": "Toque para ver ▾", "en": "Tap to view ▾", "es": "Toque para ver ▾", "fr": "Touchez pour voir ▾", "de": "Zum Ansehen tippen ▾", "it": "Tocchi per vedere ▾"}, "semConteudo": {"pt": "Sem conteúdo disponível.", "en": "No content available.", "es": "Sin contenido disponible.", "fr": "Aucun contenu disponible.", "de": "Kein Inhalt verfügbar.", "it": "Nessun contenuto disponibile."}, "semRelat": {"pt": "Ainda sem relatórios partilhados.", "en": "No shared reports yet.", "es": "Aún no hay informes compartidos.", "fr": "Pas encore de rapports partagés.", "de": "Noch keine geteilten Berichte.", "it": "Ancora nessun rapporto condiviso."}, "rotinaCura": {"pt": "Rotina de cura", "en": "Healing routine", "es": "Rutina de sanación", "fr": "Routine de guérison", "de": "Heilroutine", "it": "Routine di guarigione"}, "padraoEmo": {"pt": "Padrão Emocional", "en": "Emotional pattern", "es": "Patrón emocional", "fr": "Schéma émotionnel", "de": "Emotionales Muster", "it": "Schema emotivo"}, "abrirMat": {"pt": "🎧 Abrir materiais de apoio", "en": "🎧 Open support materials", "es": "🎧 Abrir materiales de apoyo", "fr": "🎧 Ouvrir les supports", "de": "🎧 Begleitmaterial öffnen", "it": "🎧 Apri i materiali di supporto"}, "minhaRotina": {"pt": "🌿 A minha rotina de cura", "en": "🌿 My healing routine", "es": "🌿 Mi rutina de sanación", "fr": "🌿 Ma routine de guérison", "de": "🌿 Meine Heilroutine", "it": "🌿 La mia routine di guarigione"}, "relatAnt": {"pt": "📖 Relatórios de consultas anteriores", "en": "📖 Reports from previous appointments", "es": "📖 Informes de citas anteriores", "fr": "📖 Rapports des rendez-vous précédents", "de": "📖 Berichte früherer Termine", "it": "📖 Rapporti degli appuntamenti precedenti"}, "dadosTitulo": {"pt": "📋 Os Meus Dados", "en": "📋 My Data", "es": "📋 Mis datos", "fr": "📋 Mes données", "de": "📋 Meine Daten", "it": "📋 I miei dati"}, "dadosTxt": {"pt": "É exatamente esta a ficha que o seu terapeuta tem guardada sobre si — só para leitura. Se algo estiver errado, avise-o pelas Mensagens.", "en": "This is exactly the record your therapist has stored about you — read only. If anything is wrong, tell them through Messages.", "es": "Esta es exactamente la ficha que su terapeuta tiene guardada sobre usted, solo de lectura. Si algo es incorrecto, avíselo por Mensajes.", "fr": "Voici exactement la fiche que votre thérapeute conserve sur vous — en lecture seule. Si quelque chose est faux, prévenez-le via Messages.", "de": "Dies ist genau die Akte, die Ihre Therapeutin/Ihr Therapeut über Sie gespeichert hat – nur lesbar. Falls etwas nicht stimmt, sagen Sie es über Nachrichten.", "it": "Questa è esattamente la scheda che il suo terapeuta conserva su di lei, in sola lettura. Se qualcosa non è corretto, lo comunichi tramite Messaggi."}, "nomeCompleto": {"pt": "Nome completo", "en": "Full name", "es": "Nombre completo", "fr": "Nom complet", "de": "Vollständiger Name", "it": "Nome completo"}, "telefone": {"pt": "Telefone", "en": "Phone", "es": "Teléfono", "fr": "Téléphone", "de": "Telefon", "it": "Telefono"}, "email": {"pt": "Email", "en": "Email", "es": "Correo electrónico", "fr": "E-mail", "de": "E-Mail", "it": "E-mail"}, "nif": {"pt": "NIF / Contribuinte", "en": "Tax ID (NIF)", "es": "NIF / Identificación fiscal", "fr": "NIF / Numéro fiscal", "de": "Steuernummer (NIF)", "it": "NIF / Codice fiscale"}, "notasClin": {"pt": "Notas clínicas", "en": "Clinical notes", "es": "Notas clínicas", "fr": "Notes cliniques", "de": "Klinische Notizen", "it": "Note cliniche"}, "material": {"pt": "Material", "en": "Material", "es": "Material", "fr": "Support", "de": "Material", "it": "Materiale"}, "abrirDesc": {"pt": "🎧 Abrir / descarregar", "en": "🎧 Open / download", "es": "🎧 Abrir / descargar", "fr": "🎧 Ouvrir / télécharger", "de": "🎧 Öffnen / herunterladen", "it": "🎧 Apri / scarica"}, "semMat": {"pt": "O seu terapeuta ainda não lhe enviou nenhum material.", "en": "Your therapist has not sent you any material yet.", "es": "Su terapeuta aún no le ha enviado ningún material.", "fr": "Votre thérapeute ne vous a encore envoyé aucun support.", "de": "Ihre Therapeutin/Ihr Therapeut hat Ihnen noch kein Material geschickt.", "it": "Il suo terapeuta non le ha ancora inviato alcun materiale."}, "matTitulo": {"pt": "🎧 Materiais", "en": "🎧 Materials", "es": "🎧 Materiales", "fr": "🎧 Supports", "de": "🎧 Materialien", "it": "🎧 Materiali"}, "matTxt": {"pt": "Músicas, meditações, ficheiros e fotos que o seu terapeuta lhe enviou. Toque para abrir — pode guardar no seu telemóvel a partir daí.", "en": "Music, meditations, files and photos your therapist sent you. Tap to open — you can save them to your phone from there.", "es": "Música, meditaciones, archivos y fotos que su terapeuta le ha enviado. Toque para abrir: desde ahí puede guardarlos en su móvil.", "fr": "Musiques, méditations, fichiers et photos que votre thérapeute vous a envoyés. Touchez pour ouvrir — vous pouvez les enregistrer sur votre téléphone à partir de là.", "de": "Musik, Meditationen, Dateien und Fotos, die Ihre Therapeutin/Ihr Therapeut Ihnen geschickt hat. Zum Öffnen tippen – von dort können Sie sie auf Ihrem Handy speichern.", "it": "Musica, meditazioni, file e foto che il suo terapeuta le ha inviato. Tocchi per aprire: da lì può salvarli sul telefono."}, "linkIncompleto": {"pt": "Link incompleto. Peça ao seu terapeuta um novo link.", "en": "Incomplete link. Ask your therapist for a new link.", "es": "Enlace incompleto. Pida un nuevo enlace a su terapeuta.", "fr": "Lien incomplet. Demandez un nouveau lien à votre thérapeute.", "de": "Unvollständiger Link. Bitten Sie Ihre Therapeutin/Ihren Therapeuten um einen neuen Link.", "it": "Link incompleto. Chieda un nuovo link al suo terapeuta."}, "ola": {"pt": "Olá, {n}!", "en": "Hello, {n}!", "es": "¡Hola, {n}!", "fr": "Bonjour, {n} !", "de": "Hallo, {n}!", "it": "Ciao, {n}!"}, "naoAbre": {"pt": "Não foi possível abrir o seu portal. Verifique o link ou peça um novo ao seu terapeuta.", "en": "Could not open your portal. Check the link or ask your therapist for a new one.", "es": "No se pudo abrir su portal. Compruebe el enlace o pida uno nuevo a su terapeuta.", "fr": "Impossible d’ouvrir votre portail. Vérifiez le lien ou demandez-en un nouveau à votre thérapeute.", "de": "Ihr Portal konnte nicht geöffnet werden. Prüfen Sie den Link oder bitten Sie um einen neuen.", "it": "Impossibile aprire il suo portale. Controlli il link o ne chieda uno nuovo al suo terapeuta."}, "antes": {"pt": "📄 Antes de continuar", "en": "📄 Before you continue", "es": "📄 Antes de continuar", "fr": "📄 Avant de continuer", "de": "📄 Bevor Sie fortfahren", "it": "📄 Prima di continuare"}, "leiaTermo": {"pt": "Por favor leia o termo de consentimento abaixo. Precisa de confirmar que leu e concorda antes de aceder ao seu Portal.", "en": "Please read the consent form below. You need to confirm that you have read and agree before accessing your Portal.", "es": "Lea el consentimiento a continuación. Debe confirmar que lo ha leído y está de acuerdo antes de acceder a su Portal.", "fr": "Veuillez lire le formulaire de consentement ci-dessous. Vous devez confirmer que vous l’avez lu et que vous êtes d’accord avant d’accéder à votre Portail.", "de": "Bitte lesen Sie die Einwilligungserklärung unten. Sie müssen bestätigen, dass Sie sie gelesen haben und zustimmen, bevor Sie auf Ihr Portal zugreifen.", "it": "Legga il modulo di consenso qui sotto. Deve confermare di averlo letto e di essere d’accordo prima di accedere al suo Portale."}, "concordo": {"pt": "Li e concordo com o termo de consentimento acima.", "en": "I have read and agree to the consent form above.", "es": "He leído y estoy de acuerdo con el consentimiento anterior.", "fr": "J’ai lu et j’accepte le formulaire de consentement ci-dessus.", "de": "Ich habe die obige Einwilligungserklärung gelesen und stimme zu.", "it": "Ho letto e accetto il modulo di consenso sopra indicato."}, "confCont": {"pt": "Confirmar e continuar", "en": "Confirm and continue", "es": "Confirmar y continuar", "fr": "Confirmer et continuer", "de": "Bestätigen und fortfahren", "it": "Conferma e continua"}, "marcarConf": {"pt": "Precisa de marcar a confirmação antes de continuar.", "en": "You need to tick the confirmation before continuing.", "es": "Debe marcar la confirmación antes de continuar.", "fr": "Vous devez cocher la confirmation avant de continuer.", "de": "Sie müssen die Bestätigung ankreuzen, bevor Sie fortfahren.", "it": "Deve spuntare la conferma prima di continuare."}, "aConfirmar": {"pt": "A confirmar…", "en": "Confirming…", "es": "Confirmando…", "fr": "Confirmation…", "de": "Wird bestätigt…", "it": "Conferma in corso…"}, "erroConf": {"pt": "Não foi possível confirmar. Tente novamente.", "en": "Could not confirm. Please try again.", "es": "No se pudo confirmar. Inténtelo de nuevo.", "fr": "Impossible de confirmer. Veuillez réessayer.", "de": "Bestätigung nicht möglich. Bitte versuchen Sie es erneut.", "it": "Impossibile confermare. Riprovi."}, "paciente": {"pt": "Paciente", "en": "Patient", "es": "Paciente", "fr": "Patient", "de": "Patient", "it": "Paziente"}};
+let T = (k) => k;
+let __lang = 'pt';
+const __LOCALES = { pt:'pt-PT', en:'en-GB', es:'es-ES', fr:'fr-FR', de:'de-DE', it:'it-IT' };
+let __i18n = null;
+const __i18nPronto = import('./i18n.js').then(m => {
+  __i18n = m; m.registar('portal', __DICT); __lang = m.iniciarIdioma();
+  T = (k, v) => m.t('portal', k, v);
+}).catch(() => {});
 
 // ── Verificação automática de versão ────────────────────────────────────
 // Nunca recarrega sozinha (podia interromper alguém a meio de escrever
@@ -83,6 +95,7 @@ const PAGE_VERSION = '2026-09-06-05';
     const html = await res.text();
     const match = html.match(/const PAGE_VERSION = '([^']+)'/);
     if (match && match[1] !== PAGE_VERSION){
+      await __i18nPronto; document.getElementById('updTxt').textContent = T('novaVersao'); document.getElementById('updBtn').textContent = T('atualizar');
       document.getElementById('updateBanner').classList.remove('hidden');
     }
   } catch(e){
@@ -113,25 +126,25 @@ window.downloadPaymentProof = function(serviceName, dateStr, price){
   let y = 60;
 
   doc.setFontSize(16);
-  doc.text('Comprovativo de Pagamento', 40, y); y += 30;
+  doc.text(T('pdfTitulo'), 40, y); y += 30;
 
   doc.setFontSize(11);
   doc.setTextColor(150, 60, 40);
-  doc.text('Este documento NÃO é fatura, fatura-recibo nem qualquer documento fiscal.', 40, y); y += 16;
-  doc.text('Serve apenas como confirmação interna de pagamento.', 40, y); y += 30;
+  doc.text(T('pdfNaoFatura'), 40, y); y += 16;
+  doc.text(T('pdfInterno'), 40, y); y += 30;
 
   doc.setTextColor(20, 30, 25);
   doc.setFontSize(12);
-  doc.text(`Consultório: ${business}`, 40, y); y += 20;
-  doc.text(`Paciente: ${patientName}`, 40, y); y += 20;
-  doc.text(`Serviço: ${serviceName || '-'}`, 40, y); y += 20;
-  doc.text(`Data da consulta: ${dateStr}`, 40, y); y += 20;
-  doc.text(`Valor pago: ${price}€`, 40, y); y += 20;
-  doc.text(`Emitido em: ${new Date().toLocaleString('pt-PT')}`, 40, y); y += 40;
+  doc.text(`${T('pdfConsultorio')}: ${business}`, 40, y); y += 20;
+  doc.text(`${T('pdfPaciente')}: ${patientName}`, 40, y); y += 20;
+  doc.text(`${T('pdfServico')}: ${serviceName || '-'}`, 40, y); y += 20;
+  doc.text(`${T('pdfData')}: ${dateStr}`, 40, y); y += 20;
+  doc.text(`${T('pdfValor')}: ${price}€`, 40, y); y += 20;
+  doc.text(`${T('pdfEmitido')}: ${new Date().toLocaleString(__LOCALES[__lang])}`, 40, y); y += 40;
 
   doc.setFontSize(10);
   doc.setTextColor(120, 120, 120);
-  doc.text('Se precisar de fatura para efeitos fiscais, contacte o seu terapeuta diretamente.', 40, y);
+  doc.text(T('pdfFatura'), 40, y);
 
   doc.save(`comprovativo-pagamento-${dateStr.replace(/[/,: ]/g,'-')}.pdf`);
 };
@@ -143,14 +156,15 @@ async function callPortal(action, extra){
     body: JSON.stringify({ tenantId, patientId, token, action, ...extra })
   });
   const data = await res.json();
-  if (!res.ok || !data.ok) throw new Error(data.error || 'Erro desconhecido');
+  if (!res.ok || !data.ok) throw new Error(data.error || T('erroDesc'));
   return data;
 }
 
 function formatDateTime(iso){
   const d = new Date(iso);
-  return d.toLocaleDateString('pt-PT', { weekday:'short', day:'2-digit', month:'2-digit' }) + ' às ' +
-    d.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
+  const loc = __LOCALES[__lang];
+  return d.toLocaleDateString(loc, { weekday:'short', day:'2-digit', month:'2-digit' }) + (__lang === 'pt' ? ' às ' : ' · ') +
+    d.toLocaleTimeString(loc, { hour:'2-digit', minute:'2-digit' });
 }
 
 function playPortalNotifSound(){
@@ -197,8 +211,8 @@ function renderMessages(messages){
   box.innerHTML = messages.length ? messages.map(m => `
     <div class="msg ${m.sender === 'patient' ? 'me' : 'them'}">
       ${escapeHtml(m.text)}
-      <div class="msgtime">${formatDateTime(m.createdAt)}${m.sender === 'patient' ? `<span class="msg-tick ${m.readByProfessional ? 'read' : ''}">${m.readByProfessional ? '✓✓ Lida' : '✓ Enviada'}</span>` : ''}</div>
-    </div>`).join('') : '<p class="muted" style="text-align:center;">Ainda sem mensagens.</p>';
+      <div class="msgtime">${formatDateTime(m.createdAt)}${m.sender === 'patient' ? `<span class="msg-tick ${m.readByProfessional ? 'read' : ''}">${m.readByProfessional ? T('lida') : T('enviada')}</span>` : ''}</div>
+    </div>`).join('') : '<p class="muted" style="text-align:center;">' + T('semMsgs') + '</p>';
   box.scrollTop = box.scrollHeight;
 }
 
@@ -208,7 +222,6 @@ function toggleReport(id){
 }
 
 // ── Diário de Bem-Estar ───────────────────────────────────────────────
-const SCALE_LABELS = ['Muito baixo', 'Baixo', 'Médio', 'Bom', 'Muito bom'];
 const MOOD_ICONS = ['😔','😕','😐','🙂','😄'];
 const SLEEP_ICONS = ['😩','😪','😐','🙂','😴'];
 const ENERGY_ICONS = ['🪫','🔋','🔋','🔋','⚡'];
@@ -230,14 +243,14 @@ function renderCheckinHistory(checkins){
   const box = document.getElementById('checkinHistory');
   if (!box) return;
   if (!checkins || !checkins.length){
-    box.innerHTML = '<p class="muted">Ainda sem registos — o primeiro fica aqui assim que guardar.</p>';
+    box.innerHTML = '<p class="muted">' + T('semRegistos') + '</p>';
     return;
   }
   box.innerHTML = checkins.map(c => {
     const parts = [];
-    if (c.mood) parts.push(`${MOOD_ICONS[c.mood-1]} Humor`);
-    if (c.sleepQuality) parts.push(`${SLEEP_ICONS[c.sleepQuality-1]} Sono`);
-    if (c.energyLevel) parts.push(`${ENERGY_ICONS[c.energyLevel-1]} Energia`);
+    if (c.mood) parts.push(`${MOOD_ICONS[c.mood-1]} ${T('humor')}`);
+    if (c.sleepQuality) parts.push(`${SLEEP_ICONS[c.sleepQuality-1]} ${T('sono')}`);
+    if (c.energyLevel) parts.push(`${ENERGY_ICONS[c.energyLevel-1]} ${T('energia')}`);
     return `<div class="checkin-entry">
       <strong>${formatDateTime(c.createdAt)}</strong>
       ${parts.length ? `<div class="cvals">${parts.join(' &nbsp; ')}</div>` : ''}
@@ -249,12 +262,12 @@ function renderCheckinHistory(checkins){
 async function submitCheckin(){
   const notes = document.getElementById('checkinNotes').value.trim();
   if (!checkinState.mood && !checkinState.sleepQuality && !checkinState.energyLevel && !notes){
-    alert('Escolha pelo menos uma escala ou escreva algo antes de guardar.');
+    alert(T('escolhaUma'));
     return;
   }
   const btn = document.getElementById('checkinSubmitBtn');
   btn.disabled = true;
-  btn.textContent = 'A guardar…';
+  btn.textContent = T('aGuardar');
   try{
     await callPortal('addCheckin', { mood: checkinState.mood, sleepQuality: checkinState.sleepQuality, energyLevel: checkinState.energyLevel, notes });
     document.getElementById('checkinNotes').value = '';
@@ -265,11 +278,11 @@ async function submitCheckin(){
     const data = await callPortal('get');
     portalData = data;
     renderCheckinHistory(data.checkins);
-    btn.textContent = '✅ Registado!';
-    setTimeout(() => { btn.textContent = 'Guardar registo de hoje'; }, 1800);
+    btn.textContent = T('registado');
+    setTimeout(() => { btn.textContent = T('guardarHoje'); }, 1800);
   }catch(e){
-    alert('Não foi possível guardar o registo. Tente novamente.');
-    btn.textContent = 'Guardar registo de hoje';
+    alert(T('erroGuardar'));
+    btn.textContent = T('guardarHoje');
   }
   btn.disabled = false;
 }
@@ -286,7 +299,7 @@ async function sendMessage(){
     input.value = '';
     await refreshMessages();
   }catch(e){
-    alert('Não foi possível enviar a mensagem. Tente novamente.');
+    alert(T('erroMsg'));
   }
   input.disabled = false;
   input.focus();
@@ -317,8 +330,8 @@ let currentSection = null;
 
 function crisisBox(){
   return `<div class="card crisis">
-    <strong>⚠️ Este espaço não é monitorizado 24 horas.</strong>
-    Se estiver numa situação de crise ou emergência, não espere por uma resposta aqui — contacte a Linha SNS24 (808 24 24 24) ou o 112 imediatamente.
+    <strong>${T('crisisTitulo')}</strong>
+    ${T('crisisTxt')}
   </div>`;
 }
 
@@ -331,7 +344,7 @@ function applyPortalManifest(businessName, primaryColor, logoUrl){
     if (appleIcon) appleIcon.href = logoUrl;
   }
   const manifestObj = {
-    name: (businessName || 'Vindora') + ' — Portal do Paciente',
+    name: (businessName || 'Vindora') + ' — ' + T('portalTitle'),
     short_name: (businessName || 'Vindora').slice(0, 12),
     start_url: window.location.href,
     display: 'standalone',
@@ -359,7 +372,7 @@ window.installPortalApp = async function(){
     await __deferredInstallPrompt.userChoice;
     __deferredInstallPrompt = null;
   } else {
-    alert('Para guardar este Portal no seu telemóvel, como se fosse uma app:\n\n📱 iPhone/iPad (Safari): toque no botão Partilhar (o quadrado com a seta para cima) e escolha "Adicionar ao ecrã principal".\n\n🤖 Android/Chrome: toque no menu ⋮ do navegador e escolha "Instalar app" ou "Adicionar ao ecrã principal".');
+    alert(T('instalarAjuda'));
   }
 };
 
@@ -371,28 +384,28 @@ function renderMenu(){
   const hasHealing = (data.healingProtocols||[]).length > 0;
   main.innerHTML = `
     ${crisisBox()}
-    <button class="btn btn-block" style="margin-bottom:14px;" onclick="installPortalApp()">📲 Guardar no telemóvel (como uma app)</button>
+    <button class="btn btn-block" style="margin-bottom:14px;" onclick="installPortalApp()">${T('instalar')}</button>
     <div class="tile-grid">
       <button class="tile" onclick="openPortalSection('appointments')">
-        ${hasOnlineUpcoming ? '<span class="tile-badge">Online</span>' : ''}
-        <span class="tile-icon">📅</span><span>Marcações</span>
+        ${hasOnlineUpcoming ? '<span class="tile-badge">' + T('tOnline') + '</span>' : ''}
+        <span class="tile-icon">📅</span><span>${T('tMarcacoes')}</span>
       </button>
       <button class="tile" onclick="openPortalSection('checkin')">
-        <span class="tile-icon">🌱</span><span>Diário de Bem-Estar</span>
+        <span class="tile-icon">🌱</span><span>${T('tDiario')}</span>
       </button>
       <button class="tile" onclick="openPortalSection('messages')">
         <span id="msgTileBadge" class="tile-badge" style="${(data.unreadMessagesCount||0) > 0 ? '' : 'display:none;'}">${data.unreadMessagesCount||0}</span>
-        <span class="tile-icon">💬</span><span>${data.preferredChannel && data.preferredChannel !== 'portal' ? 'Contacto' : 'Mensagens'}</span>
+        <span class="tile-icon">💬</span><span>${data.preferredChannel && data.preferredChannel !== 'portal' ? T('tContacto') : T('tMensagens')}</span>
       </button>
       <button class="tile" onclick="openPortalSection('reports')">
-        <span class="tile-icon">📖</span><span>Relatórios${hasHealing ? ' e Rotina' : ''}</span>
+        <span class="tile-icon">📖</span><span>${T('tRelatorios')}${hasHealing ? T('eRotina') : ''}</span>
       </button>
       <button class="tile" onclick="openPortalSection('myData')">
-        <span class="tile-icon">📋</span><span>Os Meus Dados</span>
+        <span class="tile-icon">📋</span><span>${T('tDados')}</span>
       </button>
       <button class="tile" onclick="openPortalSection('materials')">
         ${(data.sharedMaterials||[]).length ? '<span class="tile-badge">' + data.sharedMaterials.length + '</span>' : ''}
-        <span class="tile-icon">🎧</span><span>Materiais</span>
+        <span class="tile-icon">🎧</span><span>${T('tMateriais')}</span>
       </button>
     </div>
   `;
@@ -425,23 +438,23 @@ function renderPortalSection(name){
   stopMessagePolling();
   const main = document.getElementById('mainContent');
   const data = portalData;
-  const backBtn = `<button class="btn-back" onclick="backToPortalMenu()">← Voltar</button>`;
+  const backBtn = `<button class="btn-back" onclick="backToPortalMenu()">${T('voltar')}</button>`;
   let inner = '';
 
   if (name === 'appointments'){
     const paymentBadge = (a) => {
       if (!a.price) return '';
-      const label = a.paymentStatus === 'paid' ? '✅ Pago' : (a.paymentStatus === 'partial' ? '🟡 Parcial' : '🔴 Pendente');
+      const label = a.paymentStatus === 'paid' ? T('pago') : (a.paymentStatus === 'partial' ? T('parcial') : T('pendente'));
       return `<div class="muted" style="margin-top:2px;">${label} · ${a.price}€</div>`;
     };
     const upcomingHtml = data.upcoming.length
       ? data.upcoming.map(a => `
         <div class="appt">
           <strong>${formatDateTime(a.startsAt)}</strong>
-          <span class="muted">${escapeHtml(a.serviceName||'')} ${a.local==='online' ? '· 💻 Online' : ''}</span>
+          <span class="muted">${escapeHtml(a.serviceName||'')} ${a.local==='online' ? '· 💻 ' + T('tOnline') : ''}</span>
           ${paymentBadge(a)}
         </div>`).join('')
-      : '<p class="muted">Sem marcações agendadas.</p>';
+      : '<p class="muted">' + T('semMarc') + '</p>';
 
     const pastHtml = data.past.length
       ? data.past.map(a => `
@@ -449,42 +462,42 @@ function renderPortalSection(name){
           <strong>${formatDateTime(a.startsAt)}</strong>
           <span class="muted">${escapeHtml(a.serviceName||'')}</span>
           ${paymentBadge(a)}
-          ${a.price && a.paymentStatus === 'paid' ? `<button class="ghost" style="margin-top:6px;" onclick="downloadPaymentProof('${escapeAttrJs(a.serviceName||'')}','${escapeAttrJs(formatDateTime(a.startsAt))}',${a.price})">📥 Descarregar comprovativo</button>` : ''}
+          ${a.price && a.paymentStatus === 'paid' ? `<button class="ghost" style="margin-top:6px;" onclick="downloadPaymentProof('${escapeAttrJs(a.serviceName||'')}','${escapeAttrJs(formatDateTime(a.startsAt))}',${a.price})">${T('descComp')}</button>` : ''}
         </div>`).join('')
-      : '<p class="muted">Ainda sem consultas anteriores.</p>';
+      : '<p class="muted">' + T('semAnt') + '</p>';
 
     const hasOnlineUpcoming = data.upcoming.some(a => a.local === 'online');
     const oc = data.onlineConsult || { tool: 'whatsapp' };
     let onlineToolHtml = '';
     if (oc.tool === 'custom' && oc.customLink){
-      onlineToolHtml = `<a class="btn btn-block" target="_blank" href="${escapeHtml(oc.customLink)}">Entrar na videochamada</a>`;
+      onlineToolHtml = `<a class="btn btn-block" target="_blank" href="${escapeHtml(oc.customLink)}">${T('entrarVideo')}</a>`;
     } else if (oc.tool === 'whatsapp'){
       if (oc.whatsappNumber){
-        onlineToolHtml = `<a class="btn btn-block" target="_blank" href="https://wa.me/${oc.whatsappNumber}">Abrir WhatsApp</a>
-          <p class="muted" style="margin-top:6px;">O seu terapeuta vai iniciar a chamada de vídeo lá dentro, à hora combinada.</p>`;
+        onlineToolHtml = `<a class="btn btn-block" target="_blank" href="https://wa.me/${oc.whatsappNumber}">${T('abrirWA')}</a>
+          <p class="muted" style="margin-top:6px;">${T('waNota')}</p>`;
       } else {
-        onlineToolHtml = `<p class="muted">A videochamada ainda não está configurada — contacte o seu terapeuta diretamente para combinar.</p>`;
+        onlineToolHtml = `<p class="muted">${T('videoNaoCfg')}</p>`;
       }
     } else {
       const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
-      const displayName = encodeURIComponent(data.patientName || 'Paciente');
-      onlineToolHtml = `<a class="btn btn-block" target="_blank" href="https://meet.jit.si/${jitsiRoom}#config.disableDeepLinking=true&config.deeplinking.disabled=true&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22">Entrar na videochamada</a>`;
+      const displayName = encodeURIComponent(data.patientName || T('paciente'));
+      onlineToolHtml = `<a class="btn btn-block" target="_blank" href="https://meet.jit.si/${jitsiRoom}#config.disableDeepLinking=true&config.deeplinking.disabled=true&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22">${T('entrarVideo')}</a>`;
     }
 
     inner = `
       ${hasOnlineUpcoming ? `
       <div class="card">
-        <h2>💻 Consulta online</h2>
-        <p class="muted">Tem uma consulta online agendada. Toque no botão à hora combinada.</p>
+        <h2>${T('consultaOnline')}</h2>
+        <p class="muted">${T('temOnline')}</p>
         ${onlineToolHtml}
-        <p class="muted" style="margin-top:8px;">⚠️ Precisa de estar ligado à internet (wifi ou dados móveis) para a videochamada funcionar.</p>
+        <p class="muted" style="margin-top:8px;">${T('precisaNet')}</p>
       </div>` : ''}
       <div class="card">
-        <h2>📅 Próximas marcações</h2>
+        <h2>${T('proximas')}</h2>
         ${upcomingHtml}
       </div>
       <div class="card">
-        <h2>🗓️ Histórico de consultas</h2>
+        <h2>${T('historico')}</h2>
         ${pastHtml}
       </div>
     `;
@@ -492,16 +505,16 @@ function renderPortalSection(name){
   } else if (name === 'checkin'){
     inner = `
       <div class="card">
-        <h2>🌱 Diário de Bem-Estar</h2>
-        <p class="muted" style="margin-bottom:10px;">Registe como se sente hoje — sono, energia, humor, ou o que quiser partilhar. Fica guardado para o seu terapeuta acompanhar consigo, sessão após sessão. Não precisa de preencher tudo, nem todos os dias.</p>
-        <div class="scale-label">Humor</div>
+        <h2>${T('tDiario').replace(/^/, '🌱 ')}</h2>
+        <p class="muted" style="margin-bottom:10px;">${T('diarioTxt')}</p>
+        <div class="scale-label">${T('humor')}</div>
         <div class="scale-row" id="moodScale"></div>
-        <div class="scale-label" style="margin-top:10px;">Sono</div>
+        <div class="scale-label" style="margin-top:10px;">${T('sono')}</div>
         <div class="scale-row" id="sleepScale"></div>
-        <div class="scale-label" style="margin-top:10px;">Energia</div>
+        <div class="scale-label" style="margin-top:10px;">${T('energia')}</div>
         <div class="scale-row" id="energyScale"></div>
-        <textarea id="checkinNotes" placeholder="Algo que queira partilhar (sintomas, pensamentos, o que sentir)…" rows="3" style="width:100%;margin-top:12px;padding:9px 10px;border:1px solid #ccc;border-radius:8px;font-family:inherit;font-size:.9rem;resize:vertical;"></textarea>
-        <button id="checkinSubmitBtn" class="btn btn-block" onclick="submitCheckin()">Guardar registo de hoje</button>
+        <textarea id="checkinNotes" placeholder="${T('notasPh')}" rows="3" style="width:100%;margin-top:12px;padding:9px 10px;border:1px solid #ccc;border-radius:8px;font-family:inherit;font-size:.9rem;resize:vertical;"></textarea>
+        <button id="checkinSubmitBtn" class="btn btn-block" onclick="submitCheckin()">${T('guardarHoje')}</button>
         <div id="checkinHistory" style="margin-top:14px;"></div>
       </div>
     `;
@@ -509,24 +522,24 @@ function renderPortalSection(name){
   } else if (name === 'messages'){
     if (data.preferredChannel && data.preferredChannel !== 'portal'){
       const wa = data.onlineConsult?.tool === 'whatsapp' && data.onlineConsult?.whatsappNumber
-        ? `<a class="btn btn-block" style="margin-top:8px;" target="_blank" href="https://wa.me/${data.onlineConsult.whatsappNumber}">Abrir WhatsApp</a>`
+        ? `<a class="btn btn-block" style="margin-top:8px;" target="_blank" href="https://wa.me/${data.onlineConsult.whatsappNumber}">${T('abrirWA')}</a>`
         : '';
       inner = `
         <div class="card">
-          <h2>💬 Contacto</h2>
-          <p class="muted">O seu terapeuta prefere falar consigo por WhatsApp (ou outro meio combinado), em vez de mensagens aqui no Portal.</p>
+          <h2>${T('contactoTitulo')}</h2>
+          <p class="muted">${T('prefereWA')}</p>
           ${wa}
         </div>
       `;
     } else {
     inner = `
       <div class="card">
-        <h2>💬 Mensagens</h2>
-        <p class="muted" style="margin-bottom:8px;">Fale com o seu terapeuta entre sessões. As mensagens novas aparecem sozinhas, sem precisar de atualizar a página.</p>
+        <h2>${T('msgsTitulo')}</h2>
+        <p class="muted" style="margin-bottom:8px;">${T('msgsTxt')}</p>
         <div id="msgs"></div>
         <div class="inputrow">
-          <input id="msgInput" placeholder="Escrever mensagem…" onkeydown="if(event.key==='Enter')sendMessage()">
-          <button class="btn" onclick="sendMessage()">Enviar</button>
+          <input id="msgInput" placeholder="${T('escreverMsg')}" onkeydown="if(event.key==='Enter')sendMessage()">
+          <button class="btn" onclick="sendMessage()">${T('enviar')}</button>
         </div>
       </div>
     `;
@@ -538,33 +551,33 @@ function renderPortalSection(name){
         <div class="appt" style="cursor:pointer;" onclick="toggleReport('${r.id}')">
           <div class="row" style="justify-content:space-between;align-items:center;">
             <div>
-              <strong>${escapeHtml(r.protocolName||'Relatório')}</strong>
+              <strong>${escapeHtml(r.protocolName||T('relatorio'))}</strong>
               <span class="muted">${r.generatedAt ? formatDateTime(r.generatedAt) : ''}</span>
             </div>
-            <span class="muted">Toque para ver ▾</span>
+            <span class="muted">${T('tocarVer')}</span>
           </div>
-          <div id="report_${r.id}" style="display:none;margin-top:8px;font-size:.9rem;background:#fff;border-radius:8px;padding:14px;">${r.reportHtml ? r.reportHtml : `<div style="white-space:pre-wrap;font-size:.85rem;">${escapeHtml(r.reportText||'Sem conteúdo disponível.')}</div>`}</div>
+          <div id="report_${r.id}" style="display:none;margin-top:8px;font-size:.9rem;background:#fff;border-radius:8px;padding:14px;">${r.reportHtml ? r.reportHtml : `<div style="white-space:pre-wrap;font-size:.85rem;">${escapeHtml(r.reportText||T('semConteudo'))}</div>`}</div>
         </div>`).join('')
-      : '<p class="muted">Ainda sem relatórios partilhados.</p>';
+      : '<p class="muted">' + T('semRelat') + '</p>';
 
     const healingHtml = (data.healingProtocols||[]).length
       ? data.healingProtocols.map(h => `
         <div class="appt">
-          <strong>${h.generatedAt ? formatDateTime(h.generatedAt) : 'Rotina de cura'}</strong>
-          ${h.emotionalPattern ? `<div class="muted">Padrão Emocional: ${escapeHtml(h.emotionalPattern)}</div>` : ''}
+          <strong>${h.generatedAt ? formatDateTime(h.generatedAt) : T('rotinaCura')}</strong>
+          ${h.emotionalPattern ? `<div class="muted">${T('padraoEmo')}: ${escapeHtml(h.emotionalPattern)}</div>` : ''}
           ${h.notes ? `<div style="margin-top:6px;white-space:pre-wrap;">${escapeHtml(h.notes)}</div>` : ''}
-          ${h.materialsLink ? `<a class="btn btn-block" style="margin-top:8px;" target="_blank" href="${escapeHtml(h.materialsLink)}">🎧 Abrir materiais de apoio</a>` : ''}
+          ${h.materialsLink ? `<a class="btn btn-block" style="margin-top:8px;" target="_blank" href="${escapeHtml(h.materialsLink)}">${T('abrirMat')}</a>` : ''}
         </div>`).join('')
       : '';
 
     inner = `
       ${healingHtml ? `
       <div class="card">
-        <h2>🌿 A minha rotina de cura</h2>
+        <h2>${T('minhaRotina')}</h2>
         ${healingHtml}
       </div>` : ''}
       <div class="card">
-        <h2>📖 Relatórios de consultas anteriores</h2>
+        <h2>${T('relatAnt')}</h2>
         ${reportsHtml}
       </div>
     `;
@@ -576,16 +589,16 @@ function renderPortalSection(name){
       : '';
     inner = `
       <div class="card">
-        <h2>📋 Os Meus Dados</h2>
-        <p class="muted" style="margin-bottom:10px;">É exatamente esta a ficha que o seu terapeuta tem guardada sobre si — só para leitura. Se algo estiver errado, avise-o pelas Mensagens.</p>
+        <h2>${T('dadosTitulo')}</h2>
+        <p class="muted" style="margin-bottom:10px;">${T('dadosTxt')}</p>
         ${md.photoUrl ? `<img src="${escapeHtml(md.photoUrl)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:10px;" onerror="this.style.display='none';">` : ''}
-        <div class="appt"><strong>Nome completo</strong><div class="muted">${escapeHtml(md.fullName||'—')}</div></div>
-        <div class="appt"><strong>Telefone</strong><div class="muted">${escapeHtml(md.phone||'—')}</div></div>
-        <div class="appt"><strong>Email</strong><div class="muted">${escapeHtml(md.email||'—')}</div></div>
-        <div class="appt"><strong>NIF / Contribuinte</strong><div class="muted">${escapeHtml(md.nif||'—')}</div></div>
+        <div class="appt"><strong>${T('nomeCompleto')}</strong><div class="muted">${escapeHtml(md.fullName||'—')}</div></div>
+        <div class="appt"><strong>${T('telefone')}</strong><div class="muted">${escapeHtml(md.phone||'—')}</div></div>
+        <div class="appt"><strong>${T('email')}</strong><div class="muted">${escapeHtml(md.email||'—')}</div></div>
+        <div class="appt"><strong>${T('nif')}</strong><div class="muted">${escapeHtml(md.nif||'—')}</div></div>
         ${customFieldsHtml}
         ${md.clinicalNotes !== null && md.clinicalNotes !== undefined ? `
-        <div class="appt"><strong>Notas clínicas</strong><div class="muted" style="white-space:pre-wrap;">${escapeHtml(md.clinicalNotes||'—')}</div></div>` : ''}
+        <div class="appt"><strong>${T('notasClin')}</strong><div class="muted" style="white-space:pre-wrap;">${escapeHtml(md.clinicalNotes||'—')}</div></div>` : ''}
       </div>
     `;
 
@@ -594,14 +607,14 @@ function renderPortalSection(name){
     const materialsHtml = materials.length
       ? materials.map(m => `
         <div class="appt">
-          <strong>${escapeHtml(m.label||'Material')}</strong>
-          <a class="btn btn-block" style="margin-top:8px;" target="_blank" rel="noopener" href="${escapeHtml(m.url)}">🎧 Abrir / descarregar</a>
+          <strong>${escapeHtml(m.label||T('material'))}</strong>
+          <a class="btn btn-block" style="margin-top:8px;" target="_blank" rel="noopener" href="${escapeHtml(m.url)}">${T('abrirDesc')}</a>
         </div>`).join('')
-      : '<p class="muted">O seu terapeuta ainda não lhe enviou nenhum material.</p>';
+      : '<p class="muted">' + T('semMat') + '</p>';
     inner = `
       <div class="card">
-        <h2>🎧 Materiais</h2>
-        <p class="muted" style="margin-bottom:10px;">Músicas, meditações, ficheiros e fotos que o seu terapeuta lhe enviou. Toque para abrir — pode guardar no seu telemóvel a partir daí.</p>
+        <h2>${T('matTitulo')}</h2>
+        <p class="muted" style="margin-bottom:10px;">${T('matTxt')}</p>
         ${materialsHtml}
       </div>
     `;
@@ -628,16 +641,18 @@ function renderPortalSection(name){
 async function load(){
   const main = document.getElementById('mainContent');
   if (!tenantId || !patientId || !token){
-    main.innerHTML = '<div class="errorbox">Link incompleto. Peça ao seu terapeuta um novo link.</div>';
+    await __i18nPronto; main.innerHTML = '<div class="errorbox">' + T('linkIncompleto') + '</div>';
     return;
   }
+  await __i18nPronto;
+  montarSeletor();
   try{
     const data = await callPortal('get');
     portalData = data;
     document.documentElement.style.setProperty('--primary', data.primaryColor || '#1a2b26');
     document.getElementById('hBusiness').textContent = data.businessName;
-    document.getElementById('hPatient').textContent = 'Olá, ' + data.patientName + '!';
-    document.title = data.businessName + ' — Portal do Paciente';
+    document.getElementById('hPatient').textContent = T('ola', { n: data.patientName });
+    document.title = data.businessName + ' — ' + T('portalTitle');
     applyPortalManifest(data.businessName, data.primaryColor, data.logoUrl);
 
     if (!data.portalConsentGivenAt && data.consentText){
@@ -649,7 +664,7 @@ async function load(){
     startGlobalMessagePolling();
   }catch(e){
     console.error(e);
-    main.innerHTML = '<div class="errorbox">Não foi possível abrir o seu portal. Verifique o link ou peça um novo ao seu terapeuta.</div>';
+    main.innerHTML = '<div class="errorbox">' + T('naoAbre') + '</div>';
   }
 }
 
@@ -657,14 +672,14 @@ function renderConsentGate(){
   const main = document.getElementById('mainContent');
   main.innerHTML = `
     <div class="card">
-      <h2>📄 Antes de continuar</h2>
-      <p class="muted" style="margin-bottom:10px;">Por favor leia o termo de consentimento abaixo. Precisa de confirmar que leu e concorda antes de aceder ao seu Portal.</p>
+      <h2>${T('antes')}</h2>
+      <p class="muted" style="margin-bottom:10px;">${T('leiaTermo')}</p>
       <div style="max-height:280px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;margin-bottom:14px;">${escapeHtml(portalData.consentText)}</div>
       <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;margin-bottom:14px;">
         <input type="checkbox" id="consentGateCheckbox" style="width:auto;margin-top:3px;">
-        <span>Li e concordo com o termo de consentimento acima.</span>
+        <span>${T('concordo')}</span>
       </label>
-      <button id="consentGateBtn" class="btn btn-block" onclick="acceptConsentGate()">Confirmar e continuar</button>
+      <button id="consentGateBtn" class="btn btn-block" onclick="acceptConsentGate()">${T('confCont')}</button>
       <p id="consentGateError" class="muted" style="color:#b3413a;margin-top:8px;"></p>
     </div>
   `;
@@ -674,21 +689,36 @@ window.acceptConsentGate = async function(){
   const errEl = document.getElementById('consentGateError');
   errEl.textContent = '';
   if (!document.getElementById('consentGateCheckbox').checked){
-    errEl.textContent = 'Precisa de marcar a confirmação antes de continuar.';
+    errEl.textContent = T('marcarConf');
     return;
   }
   const btn = document.getElementById('consentGateBtn');
   btn.disabled = true;
-  btn.textContent = 'A confirmar…';
+  btn.textContent = T('aConfirmar');
   try{
     await callPortal('giveConsent');
     renderMenu();
   }catch(e){
-    errEl.textContent = 'Não foi possível confirmar. Tente novamente.';
+    errEl.textContent = T('erroConf');
     btn.disabled = false;
-    btn.textContent = 'Confirmar e continuar';
+    btn.textContent = T('confCont');
   }
 };
+
+function montarSeletor(){
+  const sel = document.getElementById('vdLang');
+  if (!sel || !__i18n) return;
+  sel.innerHTML = __i18n.IDIOMAS.map(([k,n]) => '<option value="'+k+'"'+(k===__lang?' selected':'')+'>'+n+'</option>').join('');
+  sel.onchange = () => {
+    __i18n.definirIdioma(sel.value); __lang = sel.value;
+    T = (k, v) => __i18n.t('portal', k, v);
+    if (!portalData) return;
+    document.getElementById('hPatient').textContent = T('ola', { n: portalData.patientName });
+    document.title = portalData.businessName + ' — ' + T('portalTitle');
+    if (document.getElementById('consentGateBtn')) renderConsentGate();
+    else if (currentSection) renderPortalSection(currentSection); else renderMenu();
+  };
+}
 
 load();
 </script>
