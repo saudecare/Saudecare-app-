@@ -69,7 +69,7 @@
 <body>
 
 <div class="hero" id="hero">
-  <p class="muted" style="color:#fff;opacity:.8;">A carregar…</p>
+  <p class="muted" style="color:#fff;opacity:.8;">…</p>
 </div>
 
 <nav id="quickNav" class="quick-nav"></nav>
@@ -87,15 +87,20 @@
 </div>
 
 <div id="livroReclamacoesLink" style="display:none;text-align:center;padding:0 16px;"></div>
-<footer>Powered by Vindora</footer>
+<footer>Powered by Vindora<br><select id="vdLang" aria-label="Language" style="margin-top:8px;font-size:12px;padding:4px 8px;border-radius:8px;"></select></footer>
 
 <script type="module">
 import { aplicarCorMarca } from "./marca.js";
+import { registar, t as _t, iniciarIdioma, definirIdioma, IDIOMAS, idioma } from "./i18n.js";
 import { fusoDe, fusoDoDispositivo, chaveData, semanasDesde } from "./fuso.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+registar('pagina', {"invalido": {"pt": "Ligação inválida", "en": "Invalid link", "es": "Enlace no válido", "fr": "Lien invalide", "de": "Ungültiger Link", "it": "Link non valido"}, "naoEnc": {"pt": "Página não encontrada", "en": "Page not found", "es": "Página no encontrada", "fr": "Page introuvable", "de": "Seite nicht gefunden", "it": "Pagina non trovata"}, "navLoja": {"pt": "Loja", "en": "Shop", "es": "Tienda", "fr": "Boutique", "de": "Shop", "it": "Negozio"}, "navEsp": {"pt": "Espiritual", "en": "Spiritual", "es": "Espiritual", "fr": "Spirituel", "de": "Spirituell", "it": "Spirituale"}, "servicos": {"pt": "Serviços", "en": "Services", "es": "Servicios", "fr": "Services", "de": "Leistungen", "it": "Servizi"}, "equipa": {"pt": "Equipa", "en": "Team", "es": "Equipo", "fr": "Équipe", "de": "Team", "it": "Team"}, "formacoes": {"pt": "Formações", "en": "Training", "es": "Formaciones", "fr": "Formations", "de": "Weiterbildung", "it": "Formazioni"}, "testemunhos": {"pt": "Testemunhos", "en": "Testimonials", "es": "Testimonios", "fr": "Témoignages", "de": "Erfahrungen", "it": "Testimonianze"}, "horarios": {"pt": "Horários", "en": "Opening hours", "es": "Horarios", "fr": "Horaires", "de": "Zeiten", "it": "Orari"}, "contactos": {"pt": "Contactos", "en": "Contact", "es": "Contacto", "fr": "Contact", "de": "Kontakt", "it": "Contatti"}, "marcar": {"pt": "Marcar Consulta", "en": "Book an appointment", "es": "Reservar cita", "fr": "Prendre rendez-vous", "de": "Termin buchen", "it": "Prenota un appuntamento"}, "marcarCal": {"pt": "📅 Marcar Consulta", "en": "📅 Book an appointment", "es": "📅 Reservar cita", "fr": "📅 Prendre rendez-vous", "de": "📅 Termin buchen", "it": "📅 Prenota un appuntamento"}, "queroSaber": {"pt": "Quero saber mais", "en": "I want to know more", "es": "Quiero saber más", "fr": "Je veux en savoir plus", "de": "Mehr erfahren", "it": "Voglio saperne di più"}, "sobre": {"pt": "Sobre", "en": "About", "es": "Acerca de", "fr": "À propos", "de": "Über uns", "it": "Chi siamo"}, "pack": {"pt": "Pack · {n} sessões", "en": "Pack · {n} sessions", "es": "Pack · {n} sesiones", "fr": "Pack · {n} séances", "de": "Paket · {n} Sitzungen", "it": "Pacchetto · {n} sedute"}, "presencial": {"pt": "📍 Presencial", "en": "📍 In person", "es": "📍 Presencial", "fr": "📍 Sur place", "de": "📍 Vor Ort", "it": "📍 Di persona"}, "online": {"pt": "💻 Online", "en": "💻 Online", "es": "💻 En línea", "fr": "💻 En ligne", "de": "💻 Online", "it": "💻 Online"}, "ambos": {"pt": "📍 Presencial · 💻 Online", "en": "📍 In person · 💻 Online", "es": "📍 Presencial · 💻 En línea", "fr": "📍 Sur place · 💻 En ligne", "de": "📍 Vor Ort · 💻 Online", "it": "📍 Di persona · 💻 Online"}, "formEv": {"pt": "Formações e Eventos", "en": "Training and events", "es": "Formaciones y eventos", "fr": "Formations et événements", "de": "Weiterbildungen und Veranstaltungen", "it": "Formazioni ed eventi"}, "gratuito": {"pt": "Gratuito", "en": "Free", "es": "Gratuito", "fr": "Gratuit", "de": "Kostenlos", "it": "Gratuito"}, "inscrever": {"pt": "Inscrever-me", "en": "Sign me up", "es": "Inscribirme", "fr": "M’inscrire", "de": "Anmelden", "it": "Iscrivermi"}, "dizem": {"pt": "O que dizem os clientes", "en": "What clients say", "es": "Lo que dicen los clientes", "fr": "Ce que disent les clients", "de": "Das sagen unsere Kunden", "it": "Cosa dicono i clienti"}, "seg": {"pt": "Segunda", "en": "Monday", "es": "Lunes", "fr": "Lundi", "de": "Montag", "it": "Lunedì"}, "ter": {"pt": "Terça", "en": "Tuesday", "es": "Martes", "fr": "Mardi", "de": "Dienstag", "it": "Martedì"}, "qua": {"pt": "Quarta", "en": "Wednesday", "es": "Miércoles", "fr": "Mercredi", "de": "Mittwoch", "it": "Mercoledì"}, "qui": {"pt": "Quinta", "en": "Thursday", "es": "Jueves", "fr": "Jeudi", "de": "Donnerstag", "it": "Giovedì"}, "sex": {"pt": "Sexta", "en": "Friday", "es": "Viernes", "fr": "Vendredi", "de": "Freitag", "it": "Venerdì"}, "sab": {"pt": "Sábado", "en": "Saturday", "es": "Sábado", "fr": "Samedi", "de": "Samstag", "it": "Sabato"}, "dom": {"pt": "Domingo", "en": "Sunday", "es": "Domingo", "fr": "Dimanche", "de": "Sonntag", "it": "Domenica"}, "semFixo": {"pt": "Sem horário fixo — atendimento só por marcação combinada.", "en": "No fixed hours — by arranged appointment only.", "es": "Sin horario fijo: atención solo con cita acordada.", "fr": "Pas d’horaires fixes : uniquement sur rendez-vous convenu.", "de": "Keine festen Zeiten – nur nach Terminvereinbarung.", "it": "Nessun orario fisso: solo su appuntamento concordato."}, "semanaA": {"pt": "Semana A", "en": "Week A", "es": "Semana A", "fr": "Semaine A", "de": "Woche A", "it": "Settimana A"}, "semanaB": {"pt": "Semana B", "en": "Week B", "es": "Semana B", "fr": "Semaine B", "de": "Woche B", "it": "Settimana B"}, "semHorSem": {"pt": "Sem horário nesta semana.", "en": "No hours this week.", "es": "Sin horario esta semana.", "fr": "Pas d’horaires cette semaine.", "de": "Keine Zeiten in dieser Woche.", "it": "Nessun orario in questa settimana."}, "alterna": {"pt": "As semanas alternam quinzenalmente — confirme o dia certo ao pedir a marcação.", "en": "Weeks alternate every two weeks — confirm the right day when requesting a booking.", "es": "Las semanas se alternan cada quince días: confirme el día correcto al solicitar la cita.", "fr": "Les semaines alternent tous les quinze jours : confirmez le bon jour lors de votre demande.", "de": "Die Wochen wechseln alle zwei Wochen – bestätigen Sie den richtigen Tag bei der Anfrage.", "it": "Le settimane si alternano ogni due settimane: confermi il giorno giusto quando richiede la prenotazione."}, "fuso": {"pt": "Horas no fuso do profissional ({f}).", "en": "Times are in the professional’s time zone ({f}).", "es": "Horas en la zona horaria del profesional ({f}).", "fr": "Heures dans le fuseau du professionnel ({f}).", "de": "Zeiten in der Zeitzone der Fachperson ({f}).", "it": "Orari nel fuso del professionista ({f})."}});
+const t = (k, v) => _t('pagina', k, v);
+iniciarIdioma();
 
 const firebaseConfig = {
   apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
@@ -118,12 +123,12 @@ function escapeHtml(str){
 
 async function load(){
   if (!tenantSlug){
-    document.getElementById('hero').innerHTML = '<h1>Ligação inválida</h1>';
+    document.getElementById('hero').innerHTML = '<h1>' + t('invalido') + '</h1>';
     return;
   }
   const profileSnap = await getDoc(doc(db, 'public_tenant_profiles', tenantSlug));
   if (!profileSnap.exists()){
-    document.getElementById('hero').innerHTML = '<h1>Página não encontrada</h1>';
+    document.getElementById('hero').innerHTML = '<h1>' + t('naoEnc') + '</h1>';
     return;
   }
   const profile = profileSnap.data();
@@ -222,14 +227,14 @@ async function load(){
 
 function renderQuickNav(){
   const secoes = [
-    { id:'ofertasSection', label:'Loja', icon:'🛍️' },
-    { id:'espiritualidadeSection', label:'Espiritual', icon:'✨' },
-    { id:'servicesSection', label:'Serviços', icon:'🩺' },
-    { id:'teamSection', label:'Equipa', icon:'🙋' },
-    { id:'trainingsSection', label:'Formações', icon:'🎓' },
-    { id:'testimonialsSection', label:'Testemunhos', icon:'⭐' },
-    { id:'availabilitySection', label:'Horários', icon:'🗓️' },
-    { id:'contactSection', label:'Contactos', icon:'📍' }
+    { id:'ofertasSection', label:t('navLoja'), icon:'🛍️' },
+    { id:'espiritualidadeSection', label:t('navEsp'), icon:'✨' },
+    { id:'servicesSection', label:t('servicos'), icon:'🩺' },
+    { id:'teamSection', label:t('equipa'), icon:'🙋' },
+    { id:'trainingsSection', label:t('formacoes'), icon:'🎓' },
+    { id:'testimonialsSection', label:t('testemunhos'), icon:'⭐' },
+    { id:'availabilitySection', label:t('horarios'), icon:'🗓️' },
+    { id:'contactSection', label:t('contactos'), icon:'📍' }
   ];
   const links = secoes
     .filter(s => document.getElementById(s.id)?.innerHTML.trim())
@@ -289,7 +294,7 @@ function renderHero(profile, slug){
     ${logoHtml}
     <h1>${escapeHtml(profile.businessName || '')}</h1>
     <p>${escapeHtml(profile.tagline || '')}</p>
-    <a class="cta" href="marcar.html?t=${encodeURIComponent(slug)}">Marcar Consulta</a>
+    <a class="cta" href="marcar.html?t=${encodeURIComponent(slug)}">${t('marcar')}</a>
     ${socialLinks ? `<div class="social-row">${socialLinks}</div>` : ''}
   `;
 }
@@ -310,14 +315,14 @@ function renderOfertas(profile){
         ${o.preco ? `<span class="price">${escapeHtml(o.preco)}</span>` : ''}
       </div>
       ${o.descricao ? `<p style="margin:8px 0;">${escapeHtml(o.descricao)}</p>` : ''}
-      ${ofertaLinkSeguro(o.url) ? `<a class="cta" style="background:var(--primary);color:#fff;padding:10px 20px;font-size:14px;display:inline-block;margin-top:6px;" href="${escapeHtml(o.url)}" ${/^https?:/i.test(o.url) ? 'target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(o.botao || 'Quero saber mais')}</a>` : ''}
+      ${ofertaLinkSeguro(o.url) ? `<a class="cta" style="background:var(--primary);color:#fff;padding:10px 20px;font-size:14px;display:inline-block;margin-top:6px;" href="${escapeHtml(o.url)}" ${/^https?:/i.test(o.url) ? 'target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(o.botao || t('queroSaber'))}</a>` : ''}
     </div>`).join('')}`;
 }
 
 function renderAbout(profile){
   if (!profile.about) return;
   document.getElementById('aboutSection').innerHTML = `
-    <h2 class="section-title">Sobre</h2>
+    <h2 class="section-title">${t('sobre')}</h2>
     <div class="card"><p>${escapeHtml(profile.about)}</p></div>
   `;
 }
@@ -326,7 +331,7 @@ function renderServices(categoriesSnap, servicesSnap, slug){
   if (servicesSnap.empty) return;
   const services = [];
   servicesSnap.forEach(d => services.push(d.data()));
-  const modLabel = { presencial: '📍 Presencial', online: '💻 Online', ambos: '📍 Presencial · 💻 Online' };
+  const modLabel = { presencial: t('presencial'), online: t('online'), ambos: t('ambos') };
 
   let categories = [];
   categoriesSnap.forEach(d => categories.push({ id: d.id, ...d.data() }));
@@ -335,9 +340,9 @@ function renderServices(categoriesSnap, servicesSnap, slug){
   // no momento em que este perfil foi visto) — agrupa por nome de categoria.
   if (categories.length === 0){
     const byName = {};
-    services.forEach(s => { const n = s.category || 'Serviços'; if(!byName[n]) byName[n] = { name:n, icon: s.categoryIcon||'🩺', modalidade:'', id:n }; });
+    services.forEach(s => { const n = s.category || t('servicos'); if(!byName[n]) byName[n] = { name:n, icon: s.categoryIcon||'🩺', modalidade:'', id:n }; });
     categories = Object.values(byName);
-    services.forEach(s => { s.categoryId = s.category || 'Serviços'; });
+    services.forEach(s => { s.categoryId = s.category || t('servicos'); });
   }
 
   let html = '';
@@ -348,7 +353,7 @@ function renderServices(categoriesSnap, servicesSnap, slug){
       <div class="service-card" style="margin-top:8px;">
         <div>
           <strong>${escapeHtml(s.name)}</strong>
-          ${s.type === 'pack' ? `<div class="muted">Pack · ${s.packSessions||''} sessões</div>` : ''}
+          ${s.type === 'pack' ? `<div class="muted">${t('pack', { n: s.packSessions||'' })}</div>` : ''}
           ${s.description ? `<div class="muted">${escapeHtml(s.description)}</div>` : ''}
         </div>
         <div class="price">${s.price}€</div>
@@ -364,7 +369,7 @@ function renderServices(categoriesSnap, servicesSnap, slug){
     </div>`;
   });
   document.getElementById('servicesSection').innerHTML = `
-    <h2 class="section-title">Serviços</h2>${html}
+    <h2 class="section-title">${t('servicos')}</h2>${html}
   `;
 }
 
@@ -392,7 +397,7 @@ function renderTeam(snap){
     </div>`;
   });
   html += '</div><div id="teamDetailArea"></div>';
-  document.getElementById('teamSection').innerHTML = `<h2 class="section-title">Equipa</h2>${html}`;
+  document.getElementById('teamSection').innerHTML = `<h2 class="section-title">${t('equipa')}</h2>${html}`;
   window.__teamData = teamData;
 }
 
@@ -416,29 +421,29 @@ function renderTrainings(snap, slug){
   if (snap.empty) return;
   let html = '';
   snap.forEach(d=>{
-    const t = d.data();
+    const tr = d.data();
     const link = `inscricao.html?t=${encodeURIComponent(slug)}&tr=${d.id}`;
     html += `<div class="card">
-      <strong>${escapeHtml(t.title)}</strong>
-      <div class="muted">${escapeHtml(t.date||'')} ${t.price > 0 ? '· '+t.price+'€' : '· Gratuito'}</div>
-      <a class="cta" style="background:var(--primary);color:#fff;padding:8px 16px;font-size:13px;display:inline-block;margin-top:8px;" href="${link}">Inscrever-me</a>
+      <strong>${escapeHtml(tr.title)}</strong>
+      <div class="muted">${escapeHtml(tr.date||'')} ${tr.price > 0 ? '· '+tr.price+'€' : '· ' + t('gratuito')}</div>
+      <a class="cta" style="background:var(--primary);color:#fff;padding:8px 16px;font-size:13px;display:inline-block;margin-top:8px;" href="${link}">${t('inscrever')}</a>
     </div>`;
   });
-  document.getElementById('trainingsSection').innerHTML = `<h2 class="section-title">Formações e Eventos</h2>${html}`;
+  document.getElementById('trainingsSection').innerHTML = `<h2 class="section-title">${t('formEv')}</h2>${html}`;
 }
 
 function renderTestimonials(snap){
   if (snap.empty) return;
   let html = '';
   snap.forEach(d=>{
-    const t = d.data();
+    const ts = d.data();
     html += `<div class="card">
-      <div class="stars">${'★'.repeat(t.rating||5)}</div>
-      <p>"${escapeHtml(t.text)}"</p>
-      <div class="muted" style="margin-top:6px;">— ${escapeHtml(t.name)}</div>
+      <div class="stars">${'★'.repeat(ts.rating||5)}</div>
+      <p>"${escapeHtml(ts.text)}"</p>
+      <div class="muted" style="margin-top:6px;">— ${escapeHtml(ts.name)}</div>
     </div>`;
   });
-  document.getElementById('testimonialsSection').innerHTML = `<h2 class="section-title">O que dizem os clientes</h2>${html}`;
+  document.getElementById('testimonialsSection').innerHTML = `<h2 class="section-title">${t('dizem')}</h2>${html}`;
 }
 
 function renderContact(profile){
@@ -448,12 +453,12 @@ function renderContact(profile){
   if (profile.address) rows += `<div>📍 ${escapeHtml(profile.address)}</div>`;
   if (!rows) return;
   document.getElementById('contactSection').innerHTML = `
-    <h2 class="section-title">Contactos</h2>
+    <h2 class="section-title">${t('contactos')}</h2>
     <div class="card contact-row">${rows}</div>
   `;
 }
 
-const DAY_LABELS = { mon:'Segunda', tue:'Terça', wed:'Quarta', thu:'Quinta', fri:'Sexta', sat:'Sábado', sun:'Domingo' };
+const DAY_LABELS = { get mon(){return t('seg');}, get tue(){return t('ter');}, get wed(){return t('qua');}, get thu(){return t('qui');}, get fri(){return t('sex');}, get sat(){return t('sab');}, get sun(){return t('dom');} };
 const DAY_KEYS_BY_JS_INDEX = ['sun','mon','tue','wed','thu','fri','sat'];
 
 // Devolve o horário aplicável a uma data concreta, já considerando
@@ -482,10 +487,10 @@ function renderAvailability(profile, slug){
 
   if (avail.noFixedHours || avail.mode === 'none'){
     el.innerHTML = `
-      <h2 class="section-title">🗓️ Horários</h2>
+      <h2 class="section-title">🗓️ ${t('horarios')}</h2>
       <div class="card" style="text-align:center;">
-        <p class="muted">Sem horário fixo — atendimento só por marcação combinada.</p>
-        <a class="cta" style="margin-top:10px;display:inline-block;" href="marcar.html?t=${encodeURIComponent(slug)}">📅 Marcar Consulta</a>
+        <p class="muted">${t('semFixo')}</p>
+        <a class="cta" style="margin-top:10px;display:inline-block;" href="marcar.html?t=${encodeURIComponent(slug)}">${t('marcarCal')}</a>
       </div>
     `;
     return;
@@ -497,9 +502,9 @@ function renderAvailability(profile, slug){
     const rowsFor = (src) => Object.keys(DAY_LABELS).filter(k => src[k]?.enabled)
       .map(k => `<div>${DAY_LABELS[k]}: ${escapeHtml(src[k].start)} – ${escapeHtml(src[k].end)}</div>`).join('');
     scheduleHtml = `
-      <p class="muted" style="margin-bottom:4px;"><strong>Semana A</strong></p>${rowsFor(avail) || '<p class="muted">Sem horário nesta semana.</p>'}
-      <p class="muted" style="margin:10px 0 4px;"><strong>Semana B</strong></p>${rowsFor(weekB) || '<p class="muted">Sem horário nesta semana.</p>'}
-      <p class="muted" style="margin-top:8px;">As semanas alternam quinzenalmente — confirme o dia certo ao pedir a marcação.</p>`;
+      <p class="muted" style="margin-bottom:4px;"><strong>${t('semanaA')}</strong></p>${rowsFor(avail) || '<p class="muted">' + t('semHorSem') + '</p>'}
+      <p class="muted" style="margin:10px 0 4px;"><strong>${t('semanaB')}</strong></p>${rowsFor(weekB) || '<p class="muted">' + t('semHorSem') + '</p>'}
+      <p class="muted" style="margin-top:8px;">${t('alterna')}</p>`;
   } else {
     const activeDays = Object.keys(DAY_LABELS).filter(k => avail[k]?.enabled);
     if (!activeDays.length){ el.innerHTML = ''; return; }
@@ -507,13 +512,16 @@ function renderAvailability(profile, slug){
   }
   const tzTenant = fusoDe(profile);
   const nota = tzTenant !== fusoDoDispositivo()
-    ? `<p class="muted" style="margin-top:8px;">Horas no fuso do profissional (${escapeHtml(tzTenant.replace('_',' '))}).</p>` : '';
+    ? `<p class="muted" style="margin-top:8px;">${escapeHtml(t('fuso', { f: tzTenant.replace('_',' ') }))}</p>` : '';
   el.innerHTML = `
-    <h2 class="section-title">🗓️ Horários</h2>
+    <h2 class="section-title">🗓️ ${t('horarios')}</h2>
     <div class="card">${scheduleHtml}${nota}</div>
   `;
 }
 
+const sel = document.getElementById('vdLang');
+sel.innerHTML = IDIOMAS.map(([k,n]) => '<option value="'+k+'"'+(k===idioma()?' selected':'')+'>'+n+'</option>').join('');
+sel.addEventListener('change', () => { definirIdioma(sel.value); const u = new URL(location.href); u.searchParams.delete('lang'); location.href = u.toString(); });
 load();
 </script>
 </body>
