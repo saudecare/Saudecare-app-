@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-03-16';
+const APP_VERSION = '2026-10-03-17';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12929,6 +12929,7 @@ function reikiHtmlMaterial(r, irmaos, idx){
         <button class="ghost" style="${REIKI_BTN_MINI}" ${idx===0?'disabled':''} onclick="reikiMoverMaterial('${r.id}',-1)" title="Subir">▲</button>
         <button class="ghost" style="${REIKI_BTN_MINI}" ${idx===irmaos-1?'disabled':''} onclick="reikiMoverMaterial('${r.id}',1)" title="Descer">▼</button>
         ${r.url ? `<a class="ghost" style="${REIKI_BTN_MINI}text-decoration:none;" href="${escapeHtml(r.url)}" target="_blank" rel="noopener">👁️</a>` : ''}
+        ${r.url && r.url.indexOf('/manuais/') > -1 ? `<a class="ghost" style="${REIKI_BTN_MINI}text-decoration:none;" href="${escapeHtml(r.url)}" download title="Descarregar PDF">⬇️</a>` : ''}
         <button class="ghost" style="${REIKI_BTN_MINI}" onclick="reikiAbrirRecurso('${r.id}')">✏️</button>
         <button class="danger" style="${REIKI_BTN_MINI}" onclick="reikiApagarRecurso('${r.id}')">🗑️</button>
       </div>
