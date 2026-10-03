@@ -6,105 +6,101 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Vindora · Gestão da plataforma</title>
 <style>
-  :root{ --bg:#f5f7f6; --card:#fff; --ink:#1d2b26; --muted:#66756f; --line:#dfe6e3; --primary:#1f5c4a; --primary-ink:#fff; --danger:#b3413a; --warn:#b07a00; --ok:#1f7a4d; }
+  :root{ --bg:#f3f6f4; --card:#fff; --ink:#1b2a25; --muted:#64736d; --line:#dde5e1; --primary:#1f5c4a; --primary-2:#2f7a63; --danger:#b3413a; --warn:#b07a00; --ok:#1f7a4d; --info:#34519c; }
   *{ box-sizing:border-box; }
-  body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); line-height:1.4; }
-  header{ background:var(--primary); color:#fff; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); line-height:1.4; padding-bottom:78px; }
+  header{ background:linear-gradient(135deg,var(--primary),var(--primary-2)); color:#fff; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:sticky; top:0; z-index:5; }
   header h1{ font-size:1.05rem; margin:0; }
   header small{ opacity:.85; display:block; font-weight:400; font-size:.78rem; }
-  main{ max-width:960px; margin:0 auto; padding:16px; }
-  .card{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; }
+  header a{ color:#fff; font-size:.85rem; }
+  main{ max-width:980px; margin:0 auto; padding:14px; }
+  h2{ margin:4px 0 10px; font-size:1.15rem; }
+  h3{ margin:0 0 8px; font-size:1rem; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
   .hidden{ display:none !important; }
-  button{ font:inherit; border:1px solid var(--primary); background:var(--primary); color:var(--primary-ink); padding:8px 12px; border-radius:8px; cursor:pointer; }
+  button{ font:inherit; border:1px solid var(--primary); background:var(--primary); color:#fff; padding:9px 13px; border-radius:9px; cursor:pointer; }
   button.ghost{ background:#fff; color:var(--primary); }
   button.danger{ background:#fff; color:var(--danger); border-color:var(--danger); }
+  button.small{ padding:6px 10px; font-size:.85rem; }
   button:disabled{ opacity:.5; cursor:default; }
-  input,select{ font:inherit; padding:9px 10px; border:1px solid var(--line); border-radius:8px; width:100%; background:#fff; }
-  label{ display:block; font-size:.85rem; color:var(--muted); margin:8px 0 3px; }
-  .stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:12px; }
-  .stat{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; cursor:pointer; }
-  .stat b{ display:block; font-size:1.6rem; }
-  .stat span{ color:var(--muted); font-size:.85rem; }
-  .stat.on{ border-color:var(--primary); box-shadow:0 0 0 2px rgba(31,92,74,.15); }
-  .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:.75rem; font-weight:600; background:#eef2f0; color:var(--muted); }
-  .badge.active{ background:#e3f4ea; color:var(--ok); }
-  .badge.trial{ background:#fff3d6; color:var(--warn); }
-  .badge.pending_activation{ background:#e8eefc; color:#34519c; }
-  .badge.suspended,.badge.cancelled{ background:#fbe6e4; color:var(--danger); }
-  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .row.sp{ justify-content:space-between; }
+  input,select,textarea{ font:inherit; padding:9px 10px; border:1px solid var(--line); border-radius:9px; width:100%; background:#fff; color:var(--ink); }
+  textarea{ resize:vertical; min-height:70px; }
+  label{ display:block; font-size:.82rem; color:var(--muted); margin:10px 0 3px; }
+  .grid{ display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
+  .kpi{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; }
+  .kpi b{ display:block; font-size:1.7rem; line-height:1.1; }
+  .kpi span{ color:var(--muted); font-size:.82rem; }
+  .kpi.click{ cursor:pointer; } .kpi.click:active{ transform:scale(.98); }
+  .badge{ display:inline-block; padding:2px 9px; border-radius:999px; font-size:.74rem; font-weight:600; background:#eef2f0; color:var(--muted); white-space:nowrap; }
+  .badge.active{ background:#e3f4ea; color:var(--ok); } .badge.trial{ background:#fff3d6; color:var(--warn); }
+  .badge.pending_activation{ background:#e8eefc; color:var(--info); } .badge.suspended,.badge.cancelled{ background:#fbe6e4; color:var(--danger); }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; } .row.sp{ justify-content:space-between; }
   .muted{ color:var(--muted); font-size:.85rem; }
-  .actions{ display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
-  .actions button,.actions select{ width:auto; padding:6px 10px; font-size:.85rem; }
-  .tabs{ display:flex; gap:6px; margin-bottom:12px; }
-  .tabs button{ flex:1; }
-  .tabs button:not(.on){ background:#fff; color:var(--primary); }
-  #toast{ position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:#1d2b26; color:#fff; padding:10px 16px; border-radius:10px; max-width:90vw; z-index:9; }
+  .item{ cursor:pointer; } .item:active{ background:#f8faf9; }
+  .alert{ border-left:4px solid var(--warn); background:#fff9e8; padding:9px 12px; border-radius:8px; margin-bottom:8px; cursor:pointer; }
+  .alert.red{ border-color:var(--danger); background:#fdf0ee; } .alert.blue{ border-color:var(--info); background:#eef2fc; }
+  .bar{ height:10px; background:#e8eeea; border-radius:6px; overflow:hidden; } .bar i{ display:block; height:100%; background:var(--primary-2); }
+  nav.tabs{ position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line); display:flex; z-index:6; padding-bottom:env(safe-area-inset-bottom); }
+  nav.tabs button{ flex:1; background:#fff; color:var(--muted); border:0; border-radius:0; padding:9px 2px 8px; font-size:.72rem; display:flex; flex-direction:column; align-items:center; gap:2px; }
+  nav.tabs button span.i{ font-size:1.3rem; line-height:1; }
+  nav.tabs button.on{ color:var(--primary); font-weight:700; box-shadow:inset 0 3px 0 var(--primary); }
+  #sheet{ position:fixed; inset:0; background:rgba(20,30,26,.45); z-index:20; display:flex; align-items:flex-end; justify-content:center; }
+  #sheetBox{ background:var(--bg); width:100%; max-width:760px; max-height:94vh; overflow:auto; border-radius:18px 18px 0 0; padding:14px; }
+  @media(min-width:760px){ #sheet{ align-items:center; } #sheetBox{ border-radius:18px; } }
+  .sheethead{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px; }
+  .two{ display:grid; grid-template-columns:1fr 1fr; gap:10px; } @media(max-width:420px){ .two{ grid-template-columns:1fr; } }
+  .sw{ display:flex; align-items:center; gap:8px; margin:8px 0; } .sw input{ width:auto; }
+  #toast{ position:fixed; left:50%; bottom:90px; transform:translateX(-50%); background:#1b2a25; color:#fff; padding:10px 16px; border-radius:10px; max-width:90vw; z-index:40; }
   #toast.err{ background:var(--danger); }
   code{ background:#eef2f0; padding:2px 6px; border-radius:6px; word-break:break-all; }
   a{ color:var(--primary); }
+  table{ width:100%; border-collapse:collapse; font-size:.9rem; } th,td{ text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); } td input{ padding:6px 8px; }
 </style>
 </head>
 <body>
 <header>
   <h1>Vindora · Gestão da plataforma<small id="quem"></small></h1>
-  <div class="row"><a href="app.html" style="color:#fff;font-size:.85rem;">← App</a><button class="ghost hidden" id="btnSair">Sair</button></div>
+  <div class="row"><a href="app.html">← App</a><button class="ghost small hidden" id="btnSair">Sair</button></div>
 </header>
 <main>
-
-  <!-- A carregar -->
   <div id="vCarregar" class="card muted">A verificar o acesso…</div>
 
-  <!-- Entrar -->
   <div id="vLogin" class="card hidden">
-    <h2 style="margin-top:0;">Entrar como administrador</h2>
-    <p class="muted">Use o email de administração da plataforma.</p>
+    <h2>Entrar como administrador</h2>
     <label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" value="hikarifafe@gmail.com">
     <label for="lgPass">Palavra-passe</label><input id="lgPass" type="password" autocomplete="current-password">
     <p id="lgErro" class="muted" style="color:var(--danger);min-height:1.2em;"></p>
     <button id="btnEntrar">Entrar</button>
   </div>
 
-  <!-- Sem permissão -->
   <div id="vSemAcesso" class="card hidden">
-    <h2 style="margin-top:0;">Esta conta ainda não é administradora</h2>
+    <h2>Esta conta ainda não é administradora</h2>
     <p>Entrou como <b id="saEmail"></b>, mas a plataforma não tem esta conta na lista de administradores.</p>
-    <p>Para a autorizar (uma só vez):</p>
     <ol>
-      <li>Abra a <a id="saLink" target="_blank" rel="noopener" href="https://console.firebase.google.com/project/saudecare-app/firestore/databases/-default-/data/~2Fplatform_admins">lista platform_admins na consola</a>.</li>
-      <li>Toque em <b>Adicionar documento</b> e, em "ID do documento", cole este código:<br><code id="saUid"></code> <button class="ghost" id="btnCopiarUid" style="padding:3px 8px;">Copiar</button></li>
-      <li>Adicione um campo qualquer, por exemplo <code>email</code> (texto) com o seu email, e guarde.</li>
-      <li>Volte aqui e recarregue a página.</li>
+      <li>Abra a <a target="_blank" rel="noopener" href="https://console.firebase.google.com/project/saudecare-app/firestore/databases/-default-/data/~2Fplatform_admins">lista platform_admins na consola</a>.</li>
+      <li>Toque em <b>Adicionar documento</b> e em "ID do documento" cole este código:<br><code id="saUid"></code> <button class="ghost small" id="btnCopiarUid">Copiar</button></li>
+      <li>Adicione um campo qualquer (por exemplo <code>email</code>) e guarde. Depois recarregue esta página.</li>
     </ol>
     <button class="ghost" id="btnSair2">Sair</button>
   </div>
 
-  <!-- Painel -->
-  <div id="vPainel" class="hidden">
-    <div class="tabs">
-      <button id="tabSub" class="on">Subscritores</button>
-      <button id="tabApoio">Pedidos de apoio <span id="nApoio"></span></button>
-    </div>
-
-    <section id="secSub">
-      <div class="stats" id="stats"></div>
-      <div class="card">
-        <input id="busca" placeholder="Procurar por nome, email ou endereço (slug)…">
-      </div>
-      <div id="lista"></div>
-    </section>
-
-    <section id="secApoio" class="hidden">
-      <div id="listaApoio"></div>
-    </section>
-  </div>
+  <div id="vPainel" class="hidden"><div id="conteudo"></div></div>
 </main>
+
+<nav class="tabs hidden" id="nav">
+  <button data-t="geral" class="on"><span class="i">📊</span>Visão geral</button>
+  <button data-t="subs"><span class="i">👥</span>Subscritores</button>
+  <button data-t="planos"><span class="i">💳</span>Planos</button>
+  <button data-t="apoio"><span class="i">🆘</span>Apoio <b id="nApoio"></b></button>
+</nav>
+<div id="sheet" class="hidden"><div id="sheetBox"></div></div>
 <div id="toast" class="hidden"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, getDocs, updateDoc, Timestamp, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteField, Timestamp, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
 const app = initializeApp({
@@ -115,176 +111,328 @@ const app = initializeApp({
   messagingSenderId: "455466438728",
   appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
 });
-const auth = getAuth(app);
-const db = getFirestore(app);
-const fns = getFunctions(app, 'europe-west1');
+const auth = getAuth(app), db = getFirestore(app), fns = getFunctions(app, 'europe-west1');
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function toast(msg, err){
-  const t = $('toast'); t.textContent = msg; t.className = err ? 'err' : ''; t.classList.remove('hidden');
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hidden'), 4500);
-}
-function mostrar(id){ ['vCarregar','vLogin','vSemAcesso','vPainel'].forEach(v => $(v).classList.toggle('hidden', v !== id)); $('btnSair').classList.toggle('hidden', id === 'vLogin' || id === 'vCarregar'); }
-const fmt = ts => { try{ const d = ts?.toDate ? ts.toDate() : (ts ? new Date(ts) : null); return d ? d.toLocaleDateString('pt-PT') : '—'; }catch(e){ return '—'; } };
+const DIA = 86400000, MB = 1024*1024;
+function toast(msg, err){ const t = $('toast'); t.textContent = msg; t.className = err ? 'err' : ''; t.classList.remove('hidden'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hidden'), 4500); }
+function ver(id){ ['vCarregar','vLogin','vSemAcesso','vPainel'].forEach(v => $(v).classList.toggle('hidden', v !== id)); $('btnSair').classList.toggle('hidden', id === 'vLogin' || id === 'vCarregar'); $('nav').classList.toggle('hidden', id !== 'vPainel'); }
+const ms = ts => ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds*1000 : (typeof ts === 'number' ? ts : null));
+const dt = ts => { const m = ms(ts); return m ? new Date(m).toLocaleDateString('pt-PT') : '—'; };
+const iso = ts => { const m = ms(ts); return m ? new Date(m).toISOString().slice(0,10) : ''; };
+const hoje = () => new Date().toISOString().slice(0,10);
 const ESTADOS = { pending_activation:'Por ativar', trial:'Em teste', active:'Ativo', suspended:'Suspenso', cancelled:'Cancelado' };
 const PLANOS = ['start','grow','pro','enterprise','lifetime'];
+const PLANO_PADRAO = { start:{staff:1,kbBytes:5*MB,portalPatients:10}, grow:{staff:3,kbBytes:25*MB,portalPatients:50}, pro:{staff:8,kbBytes:100*MB,portalPatients:200}, enterprise:{staff:20,kbBytes:500*MB,portalPatients:1000} };
 
-let tenants = [], pedidos = [], filtro = 'todos';
+let T = [], P = [], PLANS = {}, CFG = {}, aba = 'geral', filtro = 'todos', busca = '', ordem = 'recentes';
 
 // ── Entrada ────────────────────────────────────────────────────────────
-$('btnEntrar').onclick = async () => {
-  $('lgErro').textContent = '';
-  try{ await signInWithEmailAndPassword(auth, $('lgEmail').value.trim(), $('lgPass').value); }
-  catch(e){ $('lgErro').textContent = 'Email ou palavra-passe incorretos.'; }
-};
-const sair = () => signOut(auth);
-$('btnSair').onclick = sair; $('btnSair2').onclick = sair;
-$('btnCopiarUid').onclick = () => { navigator.clipboard?.writeText($('saUid').textContent).then(() => toast('Copiado.')).catch(() => toast('Mantenha o dedo no código para copiar.', true)); };
-
+$('btnEntrar').onclick = async () => { $('lgErro').textContent = ''; try{ await signInWithEmailAndPassword(auth, $('lgEmail').value.trim(), $('lgPass').value); }catch(e){ $('lgErro').textContent = 'Email ou palavra-passe incorretos.'; } };
+$('btnSair').onclick = $('btnSair2').onclick = () => signOut(auth);
+$('btnCopiarUid').onclick = () => navigator.clipboard?.writeText($('saUid').textContent).then(() => toast('Copiado.')).catch(() => toast('Mantenha o dedo no código para copiar.', true));
 onAuthStateChanged(auth, async user => {
-  if (!user){ $('quem').textContent = ''; mostrar('vLogin'); return; }
-  mostrar('vCarregar');
-  let ehAdmin = false;
-  try{ ehAdmin = (await getDoc(doc(db, 'platform_admins', user.uid))).exists(); }catch(e){ console.error(e); }
-  if (!ehAdmin){
-    $('saEmail').textContent = user.email || '';
-    $('saUid').textContent = user.uid;
-    mostrar('vSemAcesso');
-    return;
-  }
+  if (!user){ $('quem').textContent = ''; ver('vLogin'); return; }
+  ver('vCarregar');
+  let ok = false;
+  try{ ok = (await getDoc(doc(db, 'platform_admins', user.uid))).exists(); }catch(e){ console.error(e); }
+  if (!ok){ $('saEmail').textContent = user.email || ''; $('saUid').textContent = user.uid; ver('vSemAcesso'); return; }
   $('quem').textContent = user.email || '';
-  mostrar('vPainel');
+  ver('vPainel');
   await carregar();
 });
 
 // ── Dados ──────────────────────────────────────────────────────────────
 async function carregar(){
   try{
-    const [ts, ps] = await Promise.all([
-      getDocs(collection(db, 'tenants')),
-      getDocs(collection(db, 'platform_support_requests'))
+    const [ts, ps, pl, cf] = await Promise.all([
+      getDocs(collection(db, 'tenants')), getDocs(collection(db, 'platform_support_requests')),
+      getDoc(doc(db, 'settings', 'plans')), getDoc(doc(db, 'settings', 'platformConfig'))
     ]);
-    tenants = ts.docs.map(d => ({ id: d.id, ...d.data() }));
-    tenants.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
-    pedidos = ps.docs.map(d => ({ id: d.id, ...d.data() }));
-    pedidos.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
-  }catch(e){
-    console.error(e);
-    toast('Não foi possível carregar os dados: ' + (e.message||''), true);
-  }
+    T = ts.docs.map(d => ({ id: d.id, ...d.data() }));
+    P = ps.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (ms(b.createdAt)||0) - (ms(a.createdAt)||0));
+    PLANS = pl.exists() ? pl.data() : {}; CFG = cf.exists() ? cf.data() : {};
+  }catch(e){ console.error(e); toast('Não foi possível carregar: ' + (e.message||''), true); }
   desenhar();
 }
+const estado = t => t.status || 'pending_activation';
+const precoDe = p => Number(PLANS?.[p]?.price) || 0;
+const nomeDe = t => t.businessName || t.ownerEmail || t.id;
 
 function desenhar(){
-  const conta = s => tenants.filter(t => (t.status||'pending_activation') === s).length;
-  const abertos = pedidos.filter(p => p.status === 'open').length;
+  const abertos = P.filter(p => p.status === 'open').length;
   $('nApoio').textContent = abertos ? `(${abertos})` : '';
-  const itens = [['todos','Todos',tenants.length],['active','Ativos',conta('active')],['trial','Em teste',conta('trial')],['pending_activation','Por ativar',conta('pending_activation')],['suspended','Suspensos',conta('suspended')]];
-  $('stats').innerHTML = itens.map(([k,l,n]) => `<div class="stat ${filtro===k?'on':''}" data-f="${k}"><b>${n}</b><span>${l}</span></div>`).join('');
-  $('stats').querySelectorAll('.stat').forEach(el => el.onclick = () => { filtro = el.dataset.f; desenhar(); });
-
-  const q = $('busca').value.trim().toLowerCase();
-  const lista = tenants.filter(t => (filtro==='todos' || (t.status||'pending_activation')===filtro) &&
-    (!q || [t.businessName,t.ownerEmail,t.slug,t.id].some(x => String(x||'').toLowerCase().includes(q))));
-  $('lista').innerHTML = lista.length ? lista.map(cartao).join('') : '<div class="card muted">Nenhum subscritor nesta vista.</div>';
-
-  $('listaApoio').innerHTML = pedidos.length ? pedidos.map(cartaoApoio).join('') : '<div class="card muted">Sem pedidos de apoio.</div>';
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.t === aba));
+  const c = $('conteudo');
+  if (aba === 'geral') c.innerHTML = vGeral();
+  else if (aba === 'subs') c.innerHTML = vSubs();
+  else if (aba === 'planos') c.innerHTML = vPlanos();
+  else c.innerHTML = vApoio();
+  window.scrollTo(0, 0);
 }
-$('busca').addEventListener('input', desenhar);
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { aba = b.dataset.t; desenhar(); });
 
-function cartao(t){
-  const st = t.status || 'pending_activation';
+// ── Visão geral ────────────────────────────────────────────────────────
+function vGeral(){
+  const agora = Date.now(), hojeIso = hoje();
+  const n = s => T.filter(t => estado(t) === s).length;
+  const ativos = T.filter(t => estado(t) === 'active');
+  const mrr = ativos.reduce((a,t) => a + (t.id === 'hikari-terapias' ? 0 : precoDe(t.plan)), 0);
+  const novos30 = T.filter(t => (ms(t.createdAt)||0) > agora - 30*DIA).length;
+  const acabam = T.filter(t => estado(t) === 'trial' && ms(t.trialEndsAt) && ms(t.trialEndsAt) > agora && ms(t.trialEndsAt) < agora + 7*DIA);
+  const expirados = T.filter(t => estado(t) === 'trial' && ms(t.trialEndsAt) && ms(t.trialEndsAt) < agora);
+  const atraso = T.filter(t => estado(t) === 'active' && t.nextPaymentDue && t.nextPaymentDue < hojeIso);
+  const porAtivar = T.filter(t => estado(t) === 'pending_activation');
+  const incidentes = P.filter(p => p.status === 'open' && p.type === 'incident');
+  const inativos = T.filter(t => ['active','trial'].includes(estado(t)) && ms(t.lastSeenAt) && ms(t.lastSeenAt) < agora - 30*DIA);
+  const al = [];
+  if (incidentes.length) al.push(`<div class="alert red" data-go="apoio">🚨 ${incidentes.length} incidente(s) urgente(s) por tratar</div>`);
+  if (porAtivar.length) al.push(`<div class="alert blue" data-f="pending_activation">🆕 ${porAtivar.length} conta(s) por ativar</div>`);
+  if (atraso.length) al.push(`<div class="alert red" data-f="atraso">💶 ${atraso.length} pagamento(s) em atraso</div>`);
+  if (acabam.length) al.push(`<div class="alert" data-f="acabam">⏳ ${acabam.length} teste(s) a acabar nos próximos 7 dias</div>`);
+  if (expirados.length) al.push(`<div class="alert" data-f="expirados">⌛ ${expirados.length} teste(s) já terminado(s)</div>`);
+  if (inativos.length) al.push(`<div class="alert" data-f="inativos">😴 ${inativos.length} subscritor(es) sem entrar há mais de 30 dias</div>`);
+  const porPlano = PLANOS.map(p => [p, ativos.filter(t => (t.plan||'start') === p).length]);
+  const maxP = Math.max(1, ...porPlano.map(x => x[1]));
+  return `
+    <h2>Visão geral</h2>
+    <div class="grid" style="margin-bottom:12px;">
+      <div class="kpi click" data-f="todos"><b>${T.length}</b><span>Subscritores</span></div>
+      <div class="kpi click" data-f="active"><b>${ativos.length}</b><span>Ativos</span></div>
+      <div class="kpi click" data-f="trial"><b>${n('trial')}</b><span>Em teste</span></div>
+      <div class="kpi click" data-f="suspended"><b>${n('suspended') + n('cancelled')}</b><span>Suspensos/cancelados</span></div>
+      <div class="kpi"><b>+${novos30}</b><span>Novos (30 dias)</span></div>
+      <div class="kpi"><b>${mrr.toLocaleString('pt-PT')} €</b><span>Receita mensal estimada${Object.values(PLANS).some(p => p?.price) ? '' : ' (defina os preços em Planos)'}</span></div>
+    </div>
+    <div class="card"><h3>Precisa de atenção</h3>${al.join('') || '<p class="muted" style="margin:0;">Tudo em ordem. ✅</p>'}</div>
+    <div class="card"><h3>Subscritores ativos por plano</h3>
+      ${porPlano.map(([p,k]) => `<div class="row sp" style="margin:6px 0 2px;"><span>${esc(p)}</span><b>${k}</b></div><div class="bar"><i style="width:${Math.round(k/maxP*100)}%"></i></div>`).join('')}
+    </div>
+    <div class="card"><h3>Últimos registos</h3>
+      ${T.slice().sort((a,b) => (ms(b.createdAt)||0)-(ms(a.createdAt)||0)).slice(0,5).map(t => `<div class="row sp item" data-open="${esc(t.id)}" style="padding:7px 0;border-bottom:1px solid var(--line);"><span>${esc(nomeDe(t))}<br><span class="muted">${dt(t.createdAt)}</span></span><span class="badge ${esc(estado(t))}">${esc(ESTADOS[estado(t)]||estado(t))}</span></div>`).join('') || '<p class="muted">Sem registos.</p>'}
+    </div>
+    <div class="card"><h3>Exportar</h3><p class="muted" style="margin-top:0;">Lista de subscritores para abrir no Excel ou Google Sheets.</p><button class="ghost" data-act="csv">⬇ Descarregar CSV</button></div>`;
+}
+
+// ── Subscritores ───────────────────────────────────────────────────────
+function passaFiltro(t){
+  const agora = Date.now(), st = estado(t);
+  if (filtro === 'todos') return true;
+  if (filtro === 'atraso') return st === 'active' && t.nextPaymentDue && t.nextPaymentDue < hoje();
+  if (filtro === 'acabam') return st === 'trial' && ms(t.trialEndsAt) > agora && ms(t.trialEndsAt) < agora + 7*DIA;
+  if (filtro === 'expirados') return st === 'trial' && ms(t.trialEndsAt) && ms(t.trialEndsAt) < agora;
+  if (filtro === 'inativos') return ['active','trial'].includes(st) && ms(t.lastSeenAt) && ms(t.lastSeenAt) < agora - 30*DIA;
+  return st === filtro;
+}
+function vSubs(){
+  const q = busca.toLowerCase();
+  let l = T.filter(t => passaFiltro(t) && (!q || [t.businessName,t.ownerEmail,t.slug,t.id].some(x => String(x||'').toLowerCase().includes(q))));
+  l.sort((a,b) => ordem === 'nome' ? nomeDe(a).localeCompare(nomeDe(b)) : ordem === 'acesso' ? (ms(b.lastSeenAt)||0)-(ms(a.lastSeenAt)||0) : (ms(b.createdAt)||0)-(ms(a.createdAt)||0));
+  const F = [['todos','Todos'],['active','Ativos'],['trial','Em teste'],['pending_activation','Por ativar'],['suspended','Suspensos'],['acabam','Teste a acabar'],['expirados','Teste terminado'],['atraso','Em atraso'],['inativos','Inativos']];
+  return `
+    <h2>Subscritores <span class="muted">(${l.length})</span></h2>
+    <div class="card">
+      <input id="busca" placeholder="Procurar por nome, email ou endereço…" value="${esc(busca)}">
+      <div class="two" style="margin-top:8px;">
+        <select id="fFiltro">${F.map(([k,v]) => `<option value="${k}" ${filtro===k?'selected':''}>${v}</option>`).join('')}</select>
+        <select id="fOrdem"><option value="recentes" ${ordem==='recentes'?'selected':''}>Mais recentes</option><option value="nome" ${ordem==='nome'?'selected':''}>Nome (A–Z)</option><option value="acesso" ${ordem==='acesso'?'selected':''}>Último acesso</option></select>
+      </div>
+    </div>
+    ${l.map(t => { const st = estado(t); return `<div class="card item" data-open="${esc(t.id)}">
+      <div class="row sp"><strong>${esc(nomeDe(t))}</strong><span class="badge ${esc(st)}">${esc(ESTADOS[st]||st)}</span></div>
+      <div class="muted">${esc(t.ownerEmail || t.profile?.email || '—')}</div>
+      <div class="muted">Plano <b>${esc(t.plan||'—')}</b>${t.fullAccessOverride?.active ? ' · acesso total manual' : ''} · criado ${dt(t.createdAt)}${st==='trial' && t.trialEndsAt ? ` · teste até ${dt(t.trialEndsAt)}` : ''}${t.nextPaymentDue ? ` · pagamento ${esc(t.nextPaymentDue)}` : ''}${t.lastSeenAt ? ` · visto ${dt(t.lastSeenAt)}` : ''}</div>
+    </div>`; }).join('') || '<div class="card muted">Nenhum subscritor nesta vista.</div>'}`;
+}
+
+// ── Detalhe do subscritor ──────────────────────────────────────────────
+function abrirDetalhe(id){
+  const t = T.find(x => x.id === id); if (!t) return;
+  const st = estado(t), fao = t.fullAccessOverride || {}, lo = t.limitOverrides || {};
   const pagina = t.slug ? `${location.origin}/${t.slug}` : '';
-  const botoes = [];
-  if (st === 'pending_activation' || st === 'suspended' || st === 'cancelled') botoes.push(`<button data-a="status" data-v="active" data-id="${esc(t.id)}">✓ ${st==='suspended'||st==='cancelled' ? 'Reativar' : 'Ativar'}</button>`);
-  if (st === 'trial' || st === 'pending_activation') botoes.push(`<button class="ghost" data-a="extend" data-d="7" data-id="${esc(t.id)}">+7 dias de teste</button><button class="ghost" data-a="extend" data-d="14" data-id="${esc(t.id)}">+14 dias</button>`);
-  if (st === 'trial') botoes.push(`<button data-a="status" data-v="active" data-id="${esc(t.id)}">✓ Passar a ativo</button>`);
-  if (st !== 'suspended') botoes.push(`<button class="danger" data-a="status" data-v="suspended" data-id="${esc(t.id)}">⏸ Suspender</button>`);
-  botoes.push(`<button class="ghost" data-a="claim" data-id="${esc(t.id)}" title="Dá ao dono o acesso à sua conta, se ficou preso">🔑 Reparar acesso</button>`);
-  return `<div class="card">
-    <div class="row sp"><strong>${esc(t.businessName || '(sem nome)')}</strong><span class="badge ${esc(st)}">${esc(ESTADOS[st]||st)}</span></div>
-    <div class="muted">${esc(t.ownerEmail || t.profile?.email || '—')}</div>
-    <div class="muted">Plano <b>${esc(t.plan||'—')}</b> · criado em ${fmt(t.createdAt)}${t.trialEndsAt ? ` · teste até ${fmt(t.trialEndsAt)}` : ''}</div>
-    ${pagina ? `<div class="muted">Página: <a href="${esc(pagina)}" target="_blank" rel="noopener">${esc(pagina.replace(/^https?:\/\//,''))}</a></div>` : ''}
-    <div class="actions">
-      ${botoes.join('')}
-      <select data-a="plano" data-id="${esc(t.id)}" aria-label="Mudar plano">${PLANOS.map(p => `<option value="${p}" ${t.plan===p?'selected':''}>Plano: ${p}</option>`).join('')}</select>
+  $('sheetBox').innerHTML = `
+    <div class="sheethead"><div><h2 style="margin:0;">${esc(nomeDe(t))}</h2><span class="badge ${esc(st)}">${esc(ESTADOS[st]||st)}</span></div><button class="ghost small" data-act="fechar">Fechar ✕</button></div>
+    <div class="card">
+      <div class="muted">Email: <b>${esc(t.ownerEmail || t.profile?.email || '—')}</b></div>
+      <div class="muted">Criado em ${dt(t.createdAt)} · último acesso ${dt(t.lastSeenAt)}</div>
+      <div class="muted">ID: <code>${esc(t.id)}</code></div>
+      ${pagina ? `<div class="muted">Página: <a href="${esc(pagina)}" target="_blank" rel="noopener">${esc(pagina.replace(/^https?:\/\//,''))}</a> <button class="ghost small" data-act="copiar" data-v="${esc(pagina)}">Copiar</button></div>` : ''}
     </div>
-  </div>`;
+
+    <div class="card"><h3>Estado e plano</h3>
+      <div class="row" style="margin-bottom:8px;">
+        ${st !== 'active' ? `<button data-act="estado" data-v="active">✓ ${st==='suspended'||st==='cancelled' ? 'Reativar' : 'Ativar'}</button>` : ''}
+        ${st !== 'trial' && st !== 'active' ? '' : ''}
+        ${st !== 'suspended' ? `<button class="danger" data-act="estado" data-v="suspended">⏸ Suspender</button>` : ''}
+        ${st !== 'cancelled' ? `<button class="danger" data-act="estado" data-v="cancelled">✕ Cancelar conta</button>` : ''}
+      </div>
+      <div class="two">
+        <div><label>Plano</label><select id="dPlano">${PLANOS.map(p => `<option value="${p}" ${(t.plan||'start')===p?'selected':''}>${p}</option>`).join('')}</select></div>
+        <div><label>Próximo pagamento</label><input id="dPag" type="date" value="${esc(t.nextPaymentDue||'')}"></div>
+      </div>
+      <label>Fim do período de teste</label>
+      <div class="row"><input id="dTeste" type="date" value="${iso(t.trialEndsAt)}" style="flex:1;min-width:150px;"><button class="ghost small" data-act="mais" data-d="7">+7 dias</button><button class="ghost small" data-act="mais" data-d="14">+14 dias</button></div>
+    </div>
+
+    <div class="card"><h3>Permissões extra</h3>
+      <div class="sw"><input type="checkbox" id="dFao" ${fao.active?'checked':''}><label for="dFao" style="margin:0;color:var(--ink);">Acesso total manual (todas as funcionalidades, sem limites do plano)</label></div>
+      <label>Acesso total válido até (vazio = para sempre)</label><input id="dFaoAte" type="date" value="${iso(fao.expiresAt)}">
+      <div class="two" style="margin-top:4px;">
+        <div><label>+ profissionais</label><input id="dLoStaff" type="number" min="0" value="${lo.staffExtra||0}"></div>
+        <div><label>+ pacientes com Portal</label><input id="dLoPortal" type="number" min="0" value="${lo.portalPatientsExtra||0}"></div>
+      </div>
+      <label>+ espaço da Biblioteca (MB)</label><input id="dLoKb" type="number" min="0" value="${Math.round((lo.kbBytesExtra||0)/MB)}">
+    </div>
+
+    <div class="card"><h3>Notas internas <span class="muted">(só tu vês)</span></h3>
+      <textarea id="dNotas" placeholder="Ex.: pagou por MB Way a 3/10; pediu desconto…">${esc(t.adminNotes||'')}</textarea>
+    </div>
+
+    <div class="row" style="margin-bottom:10px;"><button data-act="guardar">💾 Guardar alterações</button></div>
+
+    <div class="card"><h3>Ajuda ao subscritor</h3>
+      <div class="row">
+        <button class="ghost small" data-act="reset">✉ Enviar email para redefinir palavra-passe</button>
+        <button class="ghost small" data-act="claim">🔑 Reparar acesso (conta presa)</button>
+        ${t.ownerEmail ? `<a href="mailto:${esc(t.ownerEmail)}"><button class="ghost small" type="button">Escrever-lhe</button></a>` : ''}
+      </div>
+    </div>`;
+  $('sheet').dataset.id = id;
+  $('sheet').classList.remove('hidden');
+}
+const fechar = () => $('sheet').classList.add('hidden');
+const tAtual = () => T.find(x => x.id === $('sheet').dataset.id);
+const dataTs = v => v ? Timestamp.fromMillis(new Date(v + 'T23:59:00').getTime()) : null;
+
+async function claim(t){ return httpsCallable(fns, 'assignTenantClaim')({ uid: t.ownerUid || t.id, tenantId: t.id, role: 'owner' }); }
+async function guardar(){
+  const t = tAtual(); if (!t) return;
+  const upd = {};
+  const plano = $('dPlano').value; if (plano !== (t.plan||'start')) upd.plan = plano;
+  const pag = $('dPag').value; if (pag !== (t.nextPaymentDue||'')) upd.nextPaymentDue = pag || deleteField();
+  const teste = $('dTeste').value; if (teste !== iso(t.trialEndsAt)) upd.trialEndsAt = teste ? dataTs(teste) : deleteField();
+  const fao = $('dFao').checked, faoAte = $('dFaoAte').value;
+  const faoAntes = !!t.fullAccessOverride?.active;
+  if (fao !== faoAntes || faoAte !== iso(t.fullAccessOverride?.expiresAt)) upd.fullAccessOverride = fao ? { active: true, ...(faoAte ? { expiresAt: dataTs(faoAte) } : {}) } : deleteField();
+  const lo = { staffExtra: +$('dLoStaff').value||0, portalPatientsExtra: +$('dLoPortal').value||0, kbBytesExtra: Math.round((+$('dLoKb').value||0)*MB) };
+  const lo0 = t.limitOverrides || {};
+  if (lo.staffExtra !== (lo0.staffExtra||0) || lo.portalPatientsExtra !== (lo0.portalPatientsExtra||0) || lo.kbBytesExtra !== (lo0.kbBytesExtra||0)) upd.limitOverrides = (lo.staffExtra||lo.portalPatientsExtra||lo.kbBytesExtra) ? lo : deleteField();
+  const notas = $('dNotas').value.trim(); if (notas !== (t.adminNotes||'')) upd.adminNotes = notas || deleteField();
+  if (!Object.keys(upd).length){ toast('Nada para guardar.'); return; }
+  await updateDoc(doc(db, 'tenants', t.id), upd);
+  toast('Guardado.'); await carregar(); abrirDetalhe(t.id);
+}
+async function mudarEstado(v){
+  const t = tAtual(); if (!t) return;
+  const txt = { active:'Ativar', suspended:'Suspender', cancelled:'Cancelar a conta de' }[v];
+  if (!confirm(`${txt} "${nomeDe(t)}"?`)) return;
+  await updateDoc(doc(db, 'tenants', t.id), { status: v, statusChangedAt: serverTimestamp() });
+  if (v === 'active'){ try{ await claim(t); }catch(e){ console.warn(e); toast('Ativado. Não consegui reparar o acesso do dono (use "Reparar acesso" se ele não entrar).', true); await carregar(); abrirDetalhe(t.id); return; } }
+  toast('Feito.'); await carregar(); abrirDetalhe(t.id);
 }
 
-function cartaoApoio(p){
-  const aberto = p.status === 'open';
-  return `<div class="card">
-    <div class="row sp"><strong>${esc(p.businessName || p.tenantId || '—')}</strong>
-      <span class="badge ${aberto ? 'trial' : 'active'}">${p.type === 'incident' ? '🚨 Incidente' : 'Apoio'} · ${aberto ? 'Aberto' : 'Resolvido'}</span></div>
-    <div class="muted">${esc(p.ownerEmail || '')} · ${fmt(p.createdAt)}</div>
-    <p style="white-space:pre-wrap;margin:8px 0;">${esc(p.message || '')}</p>
-    <div class="actions">
-      ${p.ownerEmail ? `<a href="mailto:${esc(p.ownerEmail)}"><button class="ghost" type="button">✉ Responder por email</button></a>` : ''}
-      <button data-a="apoio" data-id="${esc(p.id)}" data-v="${aberto ? 'closed' : 'open'}">${aberto ? '✓ Marcar resolvido' : 'Reabrir'}</button>
+// ── Planos & configuração ──────────────────────────────────────────────
+function vPlanos(){
+  const linha = p => { const c = PLANS[p] || PLANO_PADRAO[p] || {}; const mb = v => (v === null || v === undefined) ? '' : Math.round(v/MB);
+    return `<tr><td><b>${p}</b></td>
+      <td><input data-pl="${p}" data-k="staff" type="number" min="0" value="${c.staff ?? ''}" placeholder="∞"></td>
+      <td><input data-pl="${p}" data-k="kb" type="number" min="0" value="${mb(c.kbBytes)}" placeholder="∞"></td>
+      <td><input data-pl="${p}" data-k="portal" type="number" min="0" value="${c.portalPatients ?? ''}" placeholder="∞"></td>
+      <td><input data-pl="${p}" data-k="price" type="number" min="0" step="0.01" value="${c.price ?? ''}" placeholder="€"></td></tr>`; };
+  return `
+    <h2>Planos e preços</h2>
+    <div class="card">
+      <h3>Catálogo de planos</h3>
+      <p class="muted" style="margin-top:0;">Campo vazio = sem limite. As alterações aplicam-se a todos os subscritores desse plano, logo que voltem a entrar. O plano "lifetime" é sempre ilimitado.</p>
+      <div style="overflow-x:auto;"><table><tr><th>Plano</th><th>Profissionais</th><th>Biblioteca (MB)</th><th>Pacientes c/ Portal</th><th>Preço €/mês</th></tr>${['start','grow','pro','enterprise'].map(linha).join('')}
+        <tr><td><b>lifetime</b></td><td colspan="3" class="muted">Ilimitado</td><td><input data-pl="lifetime" data-k="price" type="number" min="0" step="0.01" value="${PLANS.lifetime?.price ?? ''}" placeholder="€"></td></tr></table></div>
+      <div class="row" style="margin-top:10px;"><button data-act="gplanos">💾 Guardar catálogo</button></div>
     </div>
-  </div>`;
+    <div class="card">
+      <h3>Pagamentos e período de teste</h3>
+      <p class="muted" style="margin-top:0;">Isto é o que os subscritores veem em "Plano & Estado" e no registo.</p>
+      <label>Dias de teste gratuito</label><input id="cTrial" type="number" min="0" value="${CFG.trialDays ?? ''}" placeholder="7">
+      <label>IBAN</label><input id="cIban" value="${esc(CFG.iban||'')}">
+      <label>MB Way</label><input id="cMbway" value="${esc(CFG.mbway||'')}">
+      <label>Link de pagamento automático (Hotmart)</label><input id="cHot" value="${esc(CFG.hotmartLink||'')}">
+      <label>Email de contacto para comprovativos</label><input id="cMail" value="${esc(CFG.contactEmail||'')}" placeholder="vindoraportugal@gmail.com">
+      <div class="row" style="margin-top:10px;"><button data-act="gcfg">💾 Guardar</button></div>
+    </div>`;
 }
-
-// ── Ações ──────────────────────────────────────────────────────────────
-async function chamarClaim(t){
-  const fn = httpsCallable(fns, 'assignTenantClaim');
-  return fn({ uid: t.ownerUid || t.id, tenantId: t.id, role: 'owner' });
-}
-async function acao(el){
-  const a = el.dataset.a, id = el.dataset.id;
-  const t = tenants.find(x => x.id === id);
-  try{
-    if (a === 'status'){
-      const v = el.dataset.v;
-      const nome = t?.businessName || id;
-      if (!confirm(`${v==='suspended' ? 'Suspender' : 'Ativar'} "${nome}"?`)) return;
-      const upd = { status: v, statusChangedAt: serverTimestamp() };
-      await updateDoc(doc(db, 'tenants', id), upd);
-      if (v === 'active' && t){
-        try{ await chamarClaim(t); }catch(e){ console.warn('claims', e); toast('Ativado. Aviso: não consegui reparar o acesso do dono (use "Reparar acesso" se ele não entrar).', true); await carregar(); return; }
-      }
-      toast('Feito.');
-    } else if (a === 'extend'){
-      const dias = +el.dataset.d;
-      const base = Math.max(Date.now(), t?.trialEndsAt?.toMillis?.() || 0);
-      const novo = Timestamp.fromMillis(base + dias*86400000);
-      const upd = { trialEndsAt: novo };
-      if ((t?.status||'pending_activation') !== 'trial') upd.status = 'trial';
-      await updateDoc(doc(db, 'tenants', id), upd);
-      if (upd.status){ try{ await chamarClaim(t); }catch(e){ console.warn('claims', e); } }
-      toast(`Teste prolongado até ${fmt(novo)}.`);
-    } else if (a === 'plano'){
-      const v = el.value;
-      if (!confirm(`Mudar "${t?.businessName||id}" para o plano ${v}?`)){ desenhar(); return; }
-      await updateDoc(doc(db, 'tenants', id), { plan: v });
-      toast('Plano atualizado.');
-    } else if (a === 'claim'){
-      if (!confirm('Dar ao dono o acesso à sua conta (repara contas que ficaram presas)?')) return;
-      await chamarClaim(t);
-      toast('Acesso reparado. O dono deve sair e voltar a entrar na app.');
-    } else if (a === 'apoio'){
-      await updateDoc(doc(db, 'platform_support_requests', id), { status: el.dataset.v });
-      toast('Atualizado.');
-    }
-  }catch(e){
-    console.error(e);
-    const m = String(e.code||e.message||e);
-    toast(m.includes('not-found') || m.includes('functions/') ? 'Esta ação precisa da função do servidor, que não está disponível agora.' : 'Não foi possível: ' + (e.message||m), true);
+async function gPlanos(){
+  const out = {};
+  for (const p of PLANOS){
+    const g = k => { const el = document.querySelector(`[data-pl="${p}"][data-k="${k}"]`); return el ? el.value.trim() : null; };
+    const num = v => v === null || v === '' ? null : Number(v);
+    const price = num(g('price'));
+    if (p === 'lifetime'){ out[p] = { ...(PLANS[p]||{}), ...(price !== null ? { price } : { price: null }) }; continue; }
+    const kb = num(g('kb'));
+    out[p] = { staff: num(g('staff')), kbBytes: kb === null ? null : Math.round(kb*MB), portalPatients: num(g('portal')), price };
   }
-  await carregar();
+  await setDoc(doc(db, 'settings', 'plans'), out);
+  toast('Catálogo guardado.'); await carregar();
 }
-document.addEventListener('click', ev => { const el = ev.target.closest('button[data-a]'); if (el) acao(el); });
-document.addEventListener('change', ev => { const el = ev.target.closest('select[data-a="plano"]'); if (el) acao(el); });
+async function gCfg(){
+  const d = $('cTrial').value.trim();
+  const out = { iban: $('cIban').value.trim(), mbway: $('cMbway').value.trim(), hotmartLink: $('cHot').value.trim(), contactEmail: $('cMail').value.trim() };
+  if (d !== '') out.trialDays = Number(d);
+  await setDoc(doc(db, 'settings', 'platformConfig'), out, { merge: true });
+  toast('Guardado.'); await carregar();
+}
 
-// ── Separadores ────────────────────────────────────────────────────────
-function aba(qual){
-  $('secSub').classList.toggle('hidden', qual !== 'sub'); $('secApoio').classList.toggle('hidden', qual !== 'apoio');
-  $('tabSub').classList.toggle('on', qual === 'sub'); $('tabApoio').classList.toggle('on', qual === 'apoio');
+// ── Apoio ──────────────────────────────────────────────────────────────
+let fApoio = 'open';
+function vApoio(){
+  const l = P.filter(p => fApoio === 'todos' || (fApoio === 'incident' ? p.type === 'incident' && p.status === 'open' : p.status === fApoio));
+  return `<h2>Pedidos de apoio</h2>
+    <div class="card"><select id="fApoio"><option value="open" ${fApoio==='open'?'selected':''}>Abertos</option><option value="incident" ${fApoio==='incident'?'selected':''}>Incidentes urgentes</option><option value="closed" ${fApoio==='closed'?'selected':''}>Resolvidos</option><option value="todos" ${fApoio==='todos'?'selected':''}>Todos</option></select></div>
+    ${l.map(p => { const ab = p.status === 'open'; return `<div class="card">
+      <div class="row sp"><strong>${esc(p.businessName || p.tenantId || '—')}</strong><span class="badge ${ab ? 'trial' : 'active'}">${p.type === 'incident' ? '🚨 Incidente' : 'Apoio'} · ${ab ? 'Aberto' : 'Resolvido'}</span></div>
+      <div class="muted">${esc(p.ownerEmail||'')} · ${dt(p.createdAt)}</div>
+      <p style="white-space:pre-wrap;margin:8px 0;">${esc(p.message||'')}</p>
+      <div class="row">${p.ownerEmail ? `<a href="mailto:${esc(p.ownerEmail)}"><button class="ghost small" type="button">✉ Responder</button></a>` : ''}
+        ${p.tenantId ? `<button class="ghost small" data-open="${esc(p.tenantId)}">Ver subscritor</button>` : ''}
+        <button class="small" data-act="apoio" data-id="${esc(p.id)}" data-v="${ab ? 'closed' : 'open'}">${ab ? '✓ Marcar resolvido' : 'Reabrir'}</button></div>
+    </div>`; }).join('') || '<div class="card muted">Nada nesta vista.</div>'}`;
 }
-$('tabSub').onclick = () => aba('sub'); $('tabApoio').onclick = () => aba('apoio');
+
+// ── CSV ────────────────────────────────────────────────────────────────
+function csv(){
+  const cab = ['Nome','Email','Estado','Plano','Criado','Fim do teste','Próximo pagamento','Último acesso','Endereço','ID'];
+  const lin = T.map(t => [nomeDe(t), t.ownerEmail||'', ESTADOS[estado(t)]||estado(t), t.plan||'', iso(t.createdAt), iso(t.trialEndsAt), t.nextPaymentDue||'', iso(t.lastSeenAt), t.slug||'', t.id]);
+  const txt = [cab, ...lin].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' })); a.download = `subscritores-${hoje()}.csv`; a.click();
+}
+
+// ── Eventos ────────────────────────────────────────────────────────────
+async function correr(fn){ try{ await fn(); }catch(e){ console.error(e); const m = String(e.code||e.message||e); toast(m.includes('not-found') || m.includes('functions/') ? 'Esta ação precisa da função do servidor, que não está disponível agora.' : 'Não foi possível: ' + (e.message||m), true); } }
+document.addEventListener('click', ev => {
+  const o = ev.target.closest('[data-open]'); if (o && !ev.target.closest('button[data-act]')){ abrirDetalhe(o.dataset.open); return; }
+  const g = ev.target.closest('[data-go]'); if (g){ aba = g.dataset.go; desenhar(); return; }
+  const f = ev.target.closest('[data-f]'); if (f){ filtro = f.dataset.f; aba = 'subs'; desenhar(); return; }
+  if (ev.target === $('sheet')){ fechar(); return; }
+  const b = ev.target.closest('[data-act]'); if (!b) return;
+  const a = b.dataset.act, t = tAtual();
+  if (a === 'fechar') fechar();
+  else if (a === 'csv') csv();
+  else if (a === 'copiar') navigator.clipboard?.writeText(b.dataset.v).then(() => toast('Copiado.')).catch(() => toast(b.dataset.v));
+  else if (a === 'mais'){ const base = Math.max(Date.now(), new Date(($('dTeste').value || hoje()) + 'T12:00:00').getTime()); $('dTeste').value = new Date(base + (+b.dataset.d)*DIA).toISOString().slice(0,10); toast('Data alterada — carregue em "Guardar alterações".'); }
+  else if (a === 'guardar') correr(guardar);
+  else if (a === 'estado') correr(() => mudarEstado(b.dataset.v));
+  else if (a === 'reset') correr(async () => { const e = t?.ownerEmail || t?.profile?.email; if (!e) throw new Error('Sem email'); if (!confirm(`Enviar email de redefinição de palavra-passe para ${e}?`)) return; await sendPasswordResetEmail(auth, e); toast('Email enviado.'); });
+  else if (a === 'claim') correr(async () => { if (!confirm('Dar ao dono o acesso à sua conta (repara contas presas)?')) return; await claim(t); toast('Acesso reparado. O dono deve sair e voltar a entrar na app.'); });
+  else if (a === 'gplanos') correr(gPlanos);
+  else if (a === 'gcfg') correr(gCfg);
+  else if (a === 'apoio') correr(async () => { await updateDoc(doc(db, 'platform_support_requests', b.dataset.id), { status: b.dataset.v }); toast('Atualizado.'); await carregar(); });
+});
+document.addEventListener('input', ev => { if (ev.target.id === 'busca'){ busca = ev.target.value; const pos = ev.target.selectionStart; desenharSemScroll(); const n = $('busca'); n.focus(); n.setSelectionRange(pos,pos); } });
+document.addEventListener('change', ev => {
+  if (ev.target.id === 'fFiltro'){ filtro = ev.target.value; desenhar(); }
+  else if (ev.target.id === 'fOrdem'){ ordem = ev.target.value; desenhar(); }
+  else if (ev.target.id === 'fApoio'){ fApoio = ev.target.value; desenhar(); }
+});
+function desenharSemScroll(){ const y = window.scrollY; desenhar(); window.scrollTo(0, y); }
 </script>
 </body>
 </html>

@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-03-01';
+const APP_VERSION = '2026-10-03-02';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1372,6 +1372,15 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
   currentTenantDoc = tSnap.data();
+
+  // Último acesso do dono (para o painel de gestão da plataforma) — no máximo 1x por 12h.
+  if (tenantRole === 'owner'){
+    try{
+      const ls = currentTenantDoc.lastSeenAt;
+      const lsMs = ls && ls.toMillis ? ls.toMillis() : 0;
+      if (Date.now() - lsMs > 12*3600*1000) updateDoc(doc(db, 'tenants', tenantId), { lastSeenAt: serverTimestamp() }).catch(()=>{});
+    }catch(e){}
+  }
 
   // O dono vê o nome do negócio (como sempre); um membro da equipa vê o
   // PRÓPRIO nome, não o do negócio — antes disto, qualquer terapeuta
