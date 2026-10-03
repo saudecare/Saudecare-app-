@@ -61,7 +61,7 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
           set +e
-          npx --yes firebase-tools@latest deploy --only functions --project saudecare-app --non-interactive > deploy.log 2>&1
+          npx --yes firebase-tools@latest deploy --only functions --project saudecare-app --non-interactive --force > deploy.log 2>&1
           code=$?
           cat deploy.log
           if [ $code -ne 0 ]; then
