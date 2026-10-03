@@ -50,7 +50,9 @@ jobs:
           npx --yes firebase-tools@latest functions:list --project saudecare-app --non-interactive > lista.log 2>&1
           cat lista.log
           echo "::notice::LISTA: $(grep -E '│|Function|europe|us-central' lista.log | head -20 | tr '\n' ' ' | cut -c1-900)"
-          if grep -qiE 'error|denied|403' lista.log; then echo "::warning::$(grep -iE 'error|denied|403' lista.log | head -4 | tr '\n' ' ' | cut -c1-600)"; fi
+          echo "::warning::LOG: $(sed 's/\x1b\[[0-9;]*m//g' lista.log | tr '\n' ' ' | cut -c1-900)"
+          npx --yes firebase-tools@latest functions:list --project saudecare-app --non-interactive --debug > debug.log 2>&1
+          echo "::warning::DEBUG: $(sed 's/\x1b\[[0-9;]*m//g' debug.log | grep -iE 'status|error|reason|message|enable|permission' | head -12 | tr '\n' ' ' | cut -c1-1400)"
           exit 0
 
       - name: Publicar funções
