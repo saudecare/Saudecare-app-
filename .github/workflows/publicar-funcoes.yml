@@ -65,7 +65,7 @@ jobs:
           code=$?
           cat deploy.log
           if [ $code -ne 0 ]; then
-            echo "::error::$(grep -iE 'error|permission|denied|403|404|not found|api' deploy.log | head -8 | tr '\n' ' ' | cut -c1-1200)"
+            echo "::error::$(sed 's/\x1b\[[0-9;]*m//g' deploy.log | grep -vE 'ensuring required API|required API .* is enabled' | tail -12 | tr '\n' ' ' | cut -c1-1800)"
             exit $code
           fi
 
