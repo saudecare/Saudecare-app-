@@ -212,6 +212,7 @@ function vGeral(){
     <div class="card"><h3>Últimos registos</h3>
       ${T.slice().sort((a,b) => (ms(b.createdAt)||0)-(ms(a.createdAt)||0)).slice(0,5).map(t => `<div class="row sp item" data-open="${esc(t.id)}" style="padding:7px 0;border-bottom:1px solid var(--line);"><span>${esc(nomeDe(t))}<br><span class="muted">${dt(t.createdAt)}</span></span><span class="badge ${esc(estado(t))}">${esc(ESTADOS[estado(t)]||estado(t))}</span></div>`).join('') || '<p class="muted">Sem registos.</p>'}
     </div>
+    <div class="card"><h3>Limpeza de dados</h3><p class="muted" style="margin-top:0;">Procura registos de pacientes que já foram apagados (relatórios, fichas, mensagens…) e que ficaram para trás. Primeiro só conta; apagas se quiseres.</p><button class="ghost" data-act="orfaos">🧹 Procurar registos órfãos</button></div>
     <div class="card"><h3>Exportar</h3><p class="muted" style="margin-top:0;">Lista de subscritores para abrir no Excel ou Google Sheets.</p><button class="ghost" data-act="csv">⬇ Descarregar CSV</button></div>`;
 }
 
@@ -308,7 +309,11 @@ function abrirDetalhe(id){
         <button class="ghost small" data-act="claim">🔑 Reparar acesso (conta presa)</button>
         ${t.ownerEmail ? `<a href="mailto:${esc(t.ownerEmail)}"><button class="ghost small" type="button">Escrever-lhe</button></a>` : ''}
       </div>
-    </div>`;
+    </div>
+    ${t.id === 'hikari-terapias' ? '' : `<div class="card" style="border-color:#e0a0a0;"><h3 style="color:#b3261e;">Zona perigosa</h3>
+      <p class="muted" style="margin-top:0;">Apaga esta conta e TODOS os dados (pacientes, agenda, página pública, logins). Não dá para desfazer. Para só impedir o acesso, usa "Suspender".</p>
+      <button class="danger small" data-act="apagarconta">🗑 Apagar conta definitivamente</button>
+    </div>`}`;
   $('sheet').dataset.id = id;
   $('sheet').classList.remove('hidden');
 }
@@ -436,6 +441,26 @@ document.addEventListener('click', ev => {
   else if (a === 'estado') correr(() => mudarEstado(b.dataset.v));
   else if (a === 'reset') correr(async () => { const e = t?.ownerEmail || t?.profile?.email; if (!e) throw new Error('Sem email'); if (!confirm(`Enviar email de redefinição de palavra-passe para ${e}?`)) return; await sendPasswordResetEmail(auth, e); toast('Email enviado.'); });
   else if (a === 'claim') correr(async () => { if (!confirm('Dar ao dono o acesso à sua conta (repara contas presas)?')) return; await claim(t); toast('Acesso reparado. O dono deve sair e voltar a entrar na app.'); });
+  else if (a === 'orfaos') correr(async () => {
+    const f = httpsCallable(fns, 'cleanOrphanRecords', { timeout: 300000 });
+    toast('A procurar… pode demorar um pouco.');
+    const r = (await f({ apply: false })).data;
+    if (!r.total){ alert('Não há registos órfãos. Está tudo limpo. ✅'); return; }
+    const det = Object.entries(r.porColecao).filter(([,n]) => n).map(([k,n]) => `• ${k}: ${n}`).join('\n');
+    if (!confirm(`Encontrei ${r.total} registos órfãos:\n${det}\n\nApagar agora? Não dá para desfazer.`)) return;
+    const r2 = (await f({ apply: true })).data;
+    toast(`Apagados ${r2.total} registos órfãos.`);
+  });
+  else if (a === 'apagarconta') correr(async () => {
+    if (!t) return;
+    if (!confirm(`ATENÇÃO: vais apagar a conta "${nomeDe(t)}" e TODOS os seus dados, para sempre.\n\nContinuar?`)) return;
+    const c = prompt(`Para confirmar, escreve exatamente o identificador da conta:\n\n${t.id}`);
+    if (c === null) return;
+    if (c.trim() !== t.id){ toast('O identificador não coincide. Nada foi apagado.', true); return; }
+    toast('A apagar… não feches a página.');
+    const r = (await httpsCallable(fns, 'deleteTenantAccount', { timeout: 540000 })({ tenantId: t.id, confirm: c.trim() })).data;
+    fechar(); toast(`Conta apagada (${r.loginsApagados} login(s) removido(s)).`); await carregar();
+  });
   else if (a === 'gplanos') correr(gPlanos);
   else if (a === 'gcfg') correr(gCfg);
   else if (a === 'apoio') correr(async () => { await updateDoc(doc(db, 'platform_support_requests', b.dataset.id), { status: b.dataset.v }); toast('Atualizado.'); await carregar(); });

@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-03-06';
+const APP_VERSION = '2026-10-03-07';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2156,7 +2156,8 @@ async function renderGestorPedidos(main){
   alvo.innerHTML = lista.map(r => `
     <div class="appt-item">
       <strong>${escapeHtml(r.clientName||'Sem nome')}</strong> — ${escapeHtml(r.clientPhone||r.clientEmail||'')}
-      <div class="muted">Pediu: ${r.requestedStart ? new Date(r.requestedStart).toLocaleString('pt-PT', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'} · ${escapeHtml(r.serviceName||'')}</div>
+      <div class="muted">Pediu: ${r.requestedStart ? new Date(r.requestedStart).toLocaleString('pt-PT', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'} · ${escapeHtml(r.serviceName||'')}${r.durationMinutes ? ' · ' + r.durationMinutes + ' min' : ''}</div>
+      ${r.conflict ? `<div style="margin-top:4px;color:#b3261e;font-size:.85rem;">⚠️ Choca com outra marcação${r.conflictWith ? ' (' + escapeHtml(r.conflictWith.patientName||'') + ', ' + new Date(r.conflictWith.startsAt).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) + ')' : ''}.</div>` : ''}
       <div class="row" style="margin-top:6px;gap:6px;">
         <button class="primary" onclick="gestorAceitarPedido('${r.id}')">✅ Aceitar</button>
         <button class="danger" onclick="gestorRecusarPedido('${r.id}')">Recusar</button>
@@ -2195,8 +2196,8 @@ window.gestorAceitarPedido = async function(id){
     await setDoc(doc(db, 'tenants', tenantId, 'patientContacts', ref.id), { ...dados, updatedAt: serverTimestamp() });
     patientId = ref.id;
   }
-  let serviceId = null;
-  if (r.serviceName){
+  let serviceId = r.serviceId || null;
+  if (!serviceId && r.serviceName){
     const svc = await getDocs(query(collection(db, 'tenants', tenantId, 'services'), where('name', '==', r.serviceName)));
     if (!svc.empty) serviceId = svc.docs[0].id;
   }
@@ -9266,7 +9267,8 @@ async function loadBookingRequests(){
   listEl.innerHTML = list.map(r => `
     <div class="appt-item">
       <strong>${escapeHtml(r.clientName||'Sem nome')}</strong> — ${escapeHtml(r.clientPhone||r.clientEmail||'')}
-      <div class="muted">Pediu: ${r.requestedStart ? new Date(r.requestedStart).toLocaleString('pt-PT', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''} · ${escapeHtml(r.serviceName||'')} ${r.servicePrice ? `(${r.servicePrice}€)` : ''}</div>
+      <div class="muted">Pediu: ${r.requestedStart ? new Date(r.requestedStart).toLocaleString('pt-PT', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''} · ${escapeHtml(r.serviceName||'')}${r.durationMinutes ? ' · ' + r.durationMinutes + ' min' : ''} ${r.servicePrice ? `(${r.servicePrice}€)` : ''}</div>
+      ${r.conflict ? `<div style="margin-top:4px;color:#b3261e;font-size:.85rem;">⚠️ Choca com outra marcação${r.conflictWith ? ' (' + escapeHtml(r.conflictWith.patientName||'') + ', ' + new Date(r.conflictWith.startsAt).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) + ')' : ''}.</div>` : ''}
       <div class="row" style="margin-top:6px;">
         <button class="primary" onclick="acceptBookingRequest('${r.id}')">✅ Aceitar (criar marcação)</button>
         <button class="danger" onclick="declineBookingRequest('${r.id}')">Recusar</button>
@@ -9302,8 +9304,8 @@ window.acceptBookingRequest = async function(requestId){
   }
 
   // Encontra o serviço correspondente pelo nome, para poder pré-preencher.
-  let matchedServiceId = null;
-  if (r.serviceName){
+  let matchedServiceId = r.serviceId || null;
+  if (!matchedServiceId && r.serviceName){
     const svcSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'services'), where('name','==', r.serviceName)));
     if (!svcSnap.empty) matchedServiceId = svcSnap.docs[0].id;
   }
@@ -13180,6 +13182,12 @@ window.reikiAbrirRecurso = function(recursoId, categoriaPre, nivelPre){
       <select id="reikiRecCat">${reikiOpcoesCategorias(nivelAtual, catAtual)}</select>
       <label style="margin-top:10px;">Link do Drive</label>
       <input id="reikiRecUrl" type="url" value="${escapeHtml(r?.url || '')}" placeholder="https://drive.google.com/...">
+      <label style="margin-top:10px;">Foto ou imagem do símbolo (opcional)</label>
+      <p class="muted" style="margin:0 0 6px;font-size:.82rem;">Se puseres uma foto aqui, o aluno vê a tua imagem em vez do desenho simplificado da app.</p>
+      <input id="reikiRecImg" type="text" placeholder="Link da imagem (ou escolhe uma foto abaixo)" value="${escapeHtml(r?.imagemUrl || '')}"
+        onchange="const v=this.value.trim();const pv=document.getElementById('reikiRecImgPrev');if(pv){pv.src=v;pv.style.display=v?'inline-block':'none';}">
+      ${imageUploadFieldHTML('reikiRecImg', 'tenants/' + tenantId + '/reiki-simbolos')}
+      <div style="text-align:center;margin:6px 0;"><img id="reikiRecImgPrev" src="${escapeHtml(r?.imagemUrl || '')}" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #ddd;${r?.imagemUrl ? '' : 'display:none;'}" onerror="this.style.display='none'"></div>
       <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;">
         <input id="reikiRecPago" type="checkbox" style="width:auto;margin-top:3px;" ${r?.pago ? 'checked' : ''}>
         <span>Conteúdo pago (ebook, módulo extra) — o aluno vê que é uma oferta, não material do curso</span>
@@ -13197,8 +13205,12 @@ window.reikiGuardarRecurso = async function(recursoId){
   const titulo = (document.getElementById('reikiRecTitulo')?.value || '').trim();
   const url = (document.getElementById('reikiRecUrl')?.value || '').trim();
   if (!titulo){ toast('O título é obrigatório.', true); return; }
-  if (!url){ toast('Falta o link do ficheiro.', true); return; }
-  if (!/^https?:\/\//i.test(url)){ toast('O link tem de começar por https://', true); return; }
+  const imagemUrl = (document.getElementById('reikiRecImg')?.value || '').trim();
+  const antigoRec = recursoId ? __reikiRecursos.find(x => x.id === recursoId) : null;
+  // Fichas de estudo da app têm texto próprio e não precisam de link do Drive.
+  if (!url && !antigoRec?.conteudo){ toast('Falta o link do ficheiro.', true); return; }
+  if (url && !/^https?:\/\//i.test(url)){ toast('O link tem de começar por https://', true); return; }
+  if (imagemUrl && !/^https?:\/\//i.test(imagemUrl)){ toast('O link da imagem tem de começar por https://', true); return; }
   let nivel = document.getElementById('reikiRecNivel')?.value || '0';
   let categoriaId = document.getElementById('reikiRecCat')?.value || '';
   const cat = reikiCatInfo(categoriaId);
@@ -13212,6 +13224,7 @@ window.reikiGuardarRecurso = async function(recursoId){
     categoriaId,
     pago: !!document.getElementById('reikiRecPago')?.checked,
     descricao: (document.getElementById('reikiRecDesc')?.value || '').trim(),
+    imagemUrl,
     atualizadoEm: serverTimestamp()
   };
   try {

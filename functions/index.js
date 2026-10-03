@@ -1,6 +1,6 @@
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { onDocumentCreated, onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
@@ -68,17 +68,24 @@ exports.syncPublicProfile = onDocumentWritten('tenants/{tenantId}', async (event
   }, { merge: true });
 });
 
-// ── 3. Promover pedidos de marcação públicos para marcações reais ──────
-// O funil público (marcar.html) escreve em
-// public_booking_requests porque o cliente final não tem conta. Esta
-// função confirma o pedido e cria a marcação real na agenda do
-// subscritor — hoje isto fica preso na fila sem ninguém automatizar.
+// ── 3. Validar pedidos de marcação públicos ────────────────────────────
+// O funil público (marcar.html) escreve em public_booking_requests porque
+// o cliente final não tem conta. Esta função NÃO cria pacientes nem
+// marcações sozinha (o cliente ainda não deu consentimento RGPD e o
+// subscritor quer rever cada pedido). Faz o trabalho chato antes:
+//  - rejeita pedidos para contas inativas;
+//  - descobre a duração REAL do serviço escolhido (e o intervalo entre
+//    sessões), em vez de assumir 50 minutos;
+//  - verifica se o horário pedido choca com marcações já existentes e
+//    deixa o aviso no pedido (conflict / conflictWith) para o subscritor ver.
+// O pedido continua em "pending_review" até o subscritor aceitar na app.
 exports.processBookingRequest = onDocumentCreated('public_booking_requests/{requestId}', async (event) => {
   const snap = event.data;
   const request = snap.data();
   if (!request || request.status !== 'pending_review') return;
 
-  const { tenantId, serviceName, servicePrice, clientName, clientPhone, clientEmail, requestedStart } = request;
+  const { tenantId, serviceId, requestedStart } = request;
+  if (!tenantId) return;
 
   const tenantSnap = await db.doc(`tenants/${tenantId}`).get();
   if (!tenantSnap.exists || !['trial', 'active'].includes(tenantSnap.data().status)) {
@@ -86,41 +93,45 @@ exports.processBookingRequest = onDocumentCreated('public_booking_requests/{requ
     return;
   }
 
-  // Cria (ou reaproveita) o paciente pelo telefone/email antes de marcar.
-  const patientsRef = db.collection(`tenants/${tenantId}/patients`);
-  let patientId;
-  const existing = await patientsRef
-    .where('phone', '==', clientPhone || '__none__')
-    .limit(1).get();
+  let svc = null;
+  if (serviceId) {
+    const svcSnap = await db.doc(`tenants/${tenantId}/services/${serviceId}`).get();
+    if (svcSnap.exists) svc = svcSnap.data();
+  }
+  const durationMinutes = parseInt(svc?.durationMinutes, 10) || 50;
+  const bufferMinutes = parseInt(svc?.bufferMinutes, 10) || 0;
 
-  if (!existing.empty) {
-    patientId = existing.docs[0].id;
-  } else {
-    const newPatient = await patientsRef.add({
-      fullName: clientName,
-      phone: clientPhone || '',
-      email: clientEmail || '',
-      clinicalNotes: '',
-      consentGivenAt: FieldValue.serverTimestamp(),
-      consentVersion: 'booking-v1',
-      createdBy: 'system:booking-funnel'
+  const update = { durationMinutes, bufferMinutes, validatedAt: FieldValue.serverTimestamp() };
+
+  const start = requestedStart ? new Date(requestedStart) : null;
+  if (start && !isNaN(start.getTime())) {
+    const end = new Date(start.getTime() + durationMinutes * 60000);
+    update.requestedEnd = end.toISOString();
+
+    // Marcações que começam nas 12h anteriores até ao fim do pedido.
+    const near = await db.collection(`tenants/${tenantId}/appointments`)
+      .where('startsAt', '>=', Timestamp.fromDate(new Date(start.getTime() - 12 * 3600000)))
+      .where('startsAt', '<', Timestamp.fromDate(new Date(end.getTime() + bufferMinutes * 60000)))
+      .get();
+
+    let clash = null;
+    near.forEach(d => {
+      if (clash) return;
+      const a = d.data();
+      if (a.status === 'cancelled' || !a.startsAt) return;
+      const aStart = a.startsAt.toDate();
+      const aEnd = a.endsAt ? a.endsAt.toDate() : new Date(aStart.getTime() + 50 * 60000);
+      const aBuf = (parseInt(a.bufferMinutes, 10) || 0) * 60000;
+      const pedidoFim = end.getTime() + bufferMinutes * 60000;
+      if (aStart.getTime() < pedidoFim && aEnd.getTime() + aBuf > start.getTime()) {
+        clash = { patientName: a.patientName || '', serviceName: a.serviceName || '', startsAt: aStart.toISOString() };
+      }
     });
-    patientId = newPatient.id;
+    update.conflict = !!clash;
+    if (clash) update.conflictWith = clash;
   }
 
-  const startDate = new Date(requestedStart);
-  await db.collection(`tenants/${tenantId}/appointments`).add({
-    patientId,
-    patientName: clientName,
-    serviceName: serviceName || '',
-    startsAt: startDate,
-    endsAt: new Date(startDate.getTime() + 50 * 60000), // duração por defeito; ajustável no painel
-    status: 'pending', // fica visível como "a confirmar" até o subscritor validar
-    createdAt: FieldValue.serverTimestamp(),
-    source: 'public_booking_funnel'
-  });
-
-  await snap.ref.update({ status: 'processed', processedAt: FieldValue.serverTimestamp() });
+  await snap.ref.update(update);
 });
 
 // ── 4. Auto-associar respostas de fichas quando já vêm identificadas ────
@@ -145,4 +156,120 @@ exports.processFormResponse = onDocumentCreated('public_form_responses/{response
   });
 
   await snap.ref.update({ status: 'processed', processedAt: FieldValue.serverTimestamp() });
+});
+
+// ── 5. Limpar registos órfãos (RGPD) ────────────────────────────────────
+// Antes de a app apagar tudo ao eliminar um paciente, ficavam para trás
+// relatórios, fichas, mensagens, check-ins e protocolos de pacientes que já
+// não existem. Esta função encontra-os. Por defeito só CONTA (apply=false);
+// só apaga quando recebe apply=true. Só a plataforma pode chamar.
+async function exigirPlataforma(request) {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError('unauthenticated', 'É necessário iniciar sessão.');
+  const adminSnap = await db.doc(`platform_admins/${callerUid}`).get();
+  if (!adminSnap.exists) throw new HttpsError('permission-denied', 'Só a plataforma pode fazer isto.');
+  return callerUid;
+}
+
+exports.cleanOrphanRecords = onCall({ timeoutSeconds: 300, memory: '512MiB' }, async (request) => {
+  await exigirPlataforma(request);
+  const apply = request.data?.apply === true;
+  const subs = ['reports', 'formResponses', 'messages', 'checkins', 'healingProtocols'];
+  const existe = new Map();
+  const patientExiste = async (tenantId, patientId) => {
+    const k = `${tenantId}/${patientId}`;
+    if (!existe.has(k)) existe.set(k, (await db.doc(`tenants/${tenantId}/patients/${patientId}`).get()).exists);
+    return existe.get(k);
+  };
+
+  const resultado = { apply, porColecao: {} };
+  for (const sub of subs) {
+    const snap = await db.collectionGroup(sub).get();
+    let orfaos = 0;
+    for (const d of snap.docs) {
+      const partes = d.ref.path.split('/'); // tenants/{t}/patients/{p}/{sub}/{id}
+      if (partes.length !== 6 || partes[0] !== 'tenants' || partes[2] !== 'patients') continue;
+      if (!(await patientExiste(partes[1], partes[3]))) {
+        orfaos++;
+        if (apply) await d.ref.delete();
+      }
+    }
+    resultado.porColecao[sub] = orfaos;
+  }
+
+  // Contactos privados de pacientes que já não existem.
+  const contactos = await db.collectionGroup('patientContacts').get();
+  let orfaosContactos = 0;
+  for (const d of contactos.docs) {
+    const partes = d.ref.path.split('/'); // tenants/{t}/patientContacts/{p}
+    if (partes.length !== 4 || partes[0] !== 'tenants') continue;
+    if (!(await patientExiste(partes[1], partes[3]))) {
+      orfaosContactos++;
+      if (apply) await d.ref.delete();
+    }
+  }
+  resultado.porColecao.patientContacts = orfaosContactos;
+  resultado.total = Object.values(resultado.porColecao).reduce((a, b) => a + b, 0);
+  return resultado;
+});
+
+// ── 6. Apagar uma conta de subscritor por completo ─────────────────────
+// Remove o subscritor e TUDO o que lhe pertence: pacientes e restantes
+// dados, perfil público, pedidos pendentes e os utilizadores de login.
+// Irreversível. Exige que escrevas o identificador da conta para confirmar.
+// A conta da própria plataforma (hikari-terapias) nunca pode ser apagada.
+// Nota: as fotos já enviadas para o Cloudinary não são apagadas aqui.
+exports.deleteTenantAccount = onCall({ timeoutSeconds: 540, memory: '512MiB' }, async (request) => {
+  const callerUid = await exigirPlataforma(request);
+  const { tenantId, confirm } = request.data || {};
+  if (!tenantId) throw new HttpsError('invalid-argument', 'tenantId é obrigatório.');
+  if (tenantId === 'hikari-terapias') {
+    throw new HttpsError('failed-precondition', 'Esta conta não pode ser apagada.');
+  }
+  if (confirm !== tenantId) {
+    throw new HttpsError('failed-precondition', 'Confirmação incorreta: escreve exatamente o identificador da conta.');
+  }
+
+  const ref = db.doc(`tenants/${tenantId}`);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'Essa conta não existe.');
+  const t = snap.data();
+
+  // 1. Utilizadores de login ligados a esta conta (nunca administradores da plataforma).
+  const uids = [];
+  let pageToken;
+  do {
+    const page = await auth.listUsers(1000, pageToken);
+    for (const u of page.users) {
+      if (u.customClaims?.tenantId === tenantId && u.uid !== callerUid) uids.push(u.uid);
+    }
+    pageToken = page.pageToken;
+  } while (pageToken);
+  const seguros = [];
+  for (const uid of uids) {
+    if (!(await db.doc(`platform_admins/${uid}`).get()).exists) seguros.push(uid);
+  }
+
+  // 2. Dados externos à conta que apontam para ela.
+  const externas = ['public_booking_requests', 'public_form_responses', 'public_training_signups',
+    'platform_support_requests', 'modulo_requests', 'pe_questionarios', 'privateMethodRequests', 'inviteCodes'];
+  const apagadasExternas = {};
+  for (const col of externas) {
+    const q = await db.collection(col).where('tenantId', '==', tenantId).get();
+    apagadasExternas[col] = q.size;
+    for (const d of q.docs) await d.ref.delete();
+  }
+  if (t.slug) await db.doc(`public_tenant_profiles/${t.slug}`).delete();
+
+  // 3. A conta em si, com todas as subcoleções (pacientes, agenda, etc.).
+  await db.recursiveDelete(ref);
+
+  // 4. Por fim, os logins (só depois de os dados saírem).
+  let loginsApagados = 0;
+  if (seguros.length) {
+    const r = await auth.deleteUsers(seguros);
+    loginsApagados = r.successCount;
+  }
+
+  return { success: true, tenantId, loginsApagados, externas: apagadasExternas };
 });
