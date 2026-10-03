@@ -170,14 +170,24 @@ async function carregarModulos(nivel){
 // tem link do Drive, usa o PDF que está em /manuais (o link do Drive, se existir, ganha).
 function manualPadrao(r){
   try {
-    if (r && !r.url && r.tipo === 'manual'){
+    if (r && r.tipo === 'manual'){
       const m = /n[íi]vel\s*(1|2|3a|3b)\b/i.exec(r.titulo || '');
       const f = { '1':'Manual-Reiki-Nivel-1-Shoden-Hikari-Fafe.pdf', '2':'Manual-Reiki-Nivel-2-Okuden-Hikari-Fafe.pdf',
                   '3a':'Manual-Reiki-Nivel-3A-Shinpiden-Hikari-Fafe.pdf', '3b':'Manual-Reiki-Nivel-3B-Mestrado-Hikari-Fafe.pdf' }[m && m[1].toLowerCase()];
-      if (f) r.url = 'https://vindora.pt/manuais/' + f + '?v=20261003h';
+      if (f){ r.url = 'https://vindora.pt/manuais/' + f + '?v=20261003h'; if (!r.nivel) r.nivel = m[1].toUpperCase(); }
     }
   } catch(e){}
   return r;
+}
+/* Garante que os 4 manuais da escola estão sempre disponíveis, cada um no seu nível. */
+function garantirManuais(lista){
+  const nomes = { '1':'Nível 1 — Shoden', '2':'Nível 2 — Okuden', '3A':'Nível 3A — Shinpiden', '3B':'Nível 3B — Mestrado' };
+  Object.keys(nomes).forEach(n => {
+    const ja = lista.some(r => r && r.tipo === 'manual' && new RegExp('n[íi]vel\\s*' + n + '\\b', 'i').test(r.titulo || ''));
+    if (!ja) lista.push(manualPadrao({ id:'manual-padrao-' + n, tipo:'manual', nivel:n, categoria:'Manuais',
+      titulo:'Manual do ' + nomes[n], descricao:'Manual completo do nível. Podes ler aqui ou descarregar o PDF.' }));
+  });
+  return lista;
 }
 let ALUNO = null, MODULOS = [], PROGRESSO = {}, RECURSOS = [], TESTES = [];
 
@@ -243,6 +253,7 @@ async function arrancar(){
     RECURSOS = [];
     snap.forEach(d => RECURSOS.push(manualPadrao({ id: d.id, ...d.data() })));
   } catch(e){ console.warn('biblioteca indisponível', e); }
+  garantirManuais(RECURSOS);
 
   try {
     const snapT = await getDocs(collection(db, 'tenants', TENANT, 'reikiQuizzes'));
@@ -407,7 +418,7 @@ function desenharBiblioteca(){
             <strong>📝 ${esc(r.titulo || '(sem título)')}</strong>
             <p class="nota">Guia de estudo — toca para ler</p></div>`;
         }
-        return `<div class="card recurso"><strong>${esc(r.titulo || '(sem título)')}</strong>${r.descricao ? `<p class="nota">${esc(r.descricao)}</p>` : ''}<a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="${esc(r.url)}" target="_blank" rel="noopener">Abrir</a></div>`;
+        return `<div class="card recurso"><strong>${esc(r.titulo || '(sem título)')}</strong>${r.descricao ? `<p class="nota">${esc(r.descricao)}</p>` : ''}<a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="${esc(r.url)}" target="_blank" rel="noopener">Abrir</a>${r.url.indexOf('/manuais/') > -1 ? ` <a class="leve" style="display:inline-block;margin:8px 0 0 6px;text-decoration:none;" href="${esc(r.url)}" download>⬇ Descarregar PDF</a>` : ''}</div>`;
       }).join('')
     ).join('');
 }
