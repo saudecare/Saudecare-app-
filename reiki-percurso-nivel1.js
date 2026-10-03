@@ -381,6 +381,7 @@ const MODULOS_NIVEL_1 = [
     duracao: '35 min',
     desafio: 'Desenha o Cho Ku Rei de memória, sem olhar para nenhum exemplo, e só depois compara com o que aprendeste.',
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/cho-ku-rei.png', legenda: 'Cho Ku Rei — ordem dos traços (1, 2, 3).' },
       {
         tipo: 'texto',
         conteudo: 'O autotratamento é a prática mais importante que tens, e é a primeira que os alunos abandonam. Faz-se sentado ou deitado, de manhã ou à noite — a hora que conseguires manter é a hora certa.'

@@ -154,6 +154,7 @@ const MODULOS_NIVEL_2 = [
     duracao: '30 min',
     desafio: 'Usa o Cho Ku Rei numa situação nova esta semana — no carro, numa cadeira, num objecto — e regista o que notaste.',
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/cho-ku-rei.png', legenda: 'Cho Ku Rei — ordem dos traços (1, 2, 3).' },
       { tipo: 'texto', conteudo: 'Um chokurei é um édito imperial: uma ordem, um mandamento, um decreto. Cho liga; Ku é poder, energia; Rei é espírito, universo. Já o conheces do Nível 1 — aqui passas a trabalhá-lo a sério.' },
       { tipo: 'lista', titulo: 'Para que serve', itens: [
         'Aumenta a potência e a intensidade da energia',
@@ -205,6 +206,7 @@ const MODULOS_NIVEL_2 = [
     duracao: '25 min',
     desafio: 'Faz um dia inteiro de autotratamento só com o Sei He Ki, sem os outros símbolos, e repara na diferença.',
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/sei-he-ki.png', legenda: 'Sei He Ki — ordem dos traços (1 a 8).' },
       { tipo: 'texto', conteudo: 'Seiheki significa os atributos emocionais e intelectuais que formam uma pessoa. Lembra-te do conceito japonês de kokoro: mente e coração estão unidos, e não dissociados como no ocidente. Quando pensares no Sei He Ki, pensa em harmonia.' },
       { tipo: 'texto', conteudo: 'Tem origem numa palavra-semente que representa um aspecto de Buda: Hrih, que em japonês se traduz para Kiriku. Representa Avalokiteshvara, o buda da compaixão, mais conhecido entre nós como Kuan Yin.' },
       { tipo: 'lista', titulo: 'Para que serve', itens: [
@@ -250,6 +252,7 @@ const MODULOS_NIVEL_2 = [
     duracao: '35 min',
     desafio: 'Envia Reiki à distância a alguém, com autorização, e pede-lhe depois que te diga o que sentiu — sem lhe dizeres a que horas foi.',
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/hon-sha-ze-sho-nen.png', legenda: 'Hon Sha Ze Sho Nen — ordem dos traços (1 a 22).' },
       { tipo: 'texto', conteudo: 'Tipicamente considera-se este o símbolo da distância, mas o seu uso vai muito além disso. A leitura mais correcta e contemporânea é: «pensamento correcto é a essência do Ser». Ou, kanji a kanji: esta (Hon) pessoa (Sha) justamente (Ze) corrige (Sho) os pensamentos (Nen).' },
       { tipo: 'texto', conteudo: 'A caligrafia japonesa é uma escrita inspirada pelo Céu, pelos kami — logo, sagrada. Um mestre calígrafo eleva primeiro o pincel ao céu, e deve ele próprio estar cheio de ki e em equilíbrio, porque a energia reflecte-se no que faz. É uma lição interessante para um praticante de Reiki.' },
       { tipo: 'lista', titulo: 'O envio simples, passo a passo', itens: [
@@ -442,6 +445,7 @@ const MODULOS_NIVEL_3A = [
     duracao: '30 min',
     desafio: 'Faz a meditação com o Dai Ko Myo três dias seguidos e regista a diferença entre o primeiro e o terceiro dia.',
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/dai-ko-myo.png', legenda: 'Dai Ko Myo — ordem dos traços (1 a 19).' },
       { tipo: 'texto', conteudo: 'O nome costuma traduzir-se por «grande luz brilhante». Dai é o que é grande — divindade, sabedoria da cabeça, luz de um iluminado. Koo é o brilho, a luz do Sol. Myo são o Sol e a Lua juntos: a eterna luz.' },
       { tipo: 'texto', conteudo: 'Parece estar ligado à divindade Fudo Myo, guardião da luz, que usa um medalhão que significa «chave para a luz». E também a Dainichi Nyorai, o grande buda da iluminação universal, que representa o universo na sua totalidade.' },
       { tipo: 'destaque', conteudo: 'Mas tudo isto serve apenas para compreenderes a origem. No Reiki, o Mestre Usui não fala em religião nem em espiritualidade — por isso compreende o Dai Ko Myo unicamente como energia. Se tens uma crença, traz-a. Se não tens, também está bem.' },
@@ -542,7 +546,8 @@ const MODULOS_NIVEL_3A = [
       { tipo: 'destaque', conteudo: 'Onde está o limite, e isto é sério: esta é uma prática de acolhimento, não é psicoterapia. Nem quando a fazes em ti, nem quando a conduzes noutra pessoa. Se o que vier for grande de mais, ou te deixar em sofrimento sério, procura acompanhamento profissional. O Reiki acompanha muito bem esse processo. Não o faz sozinho.' },
       { tipo: 'texto', conteudo: 'Jaki Kiri Joka Ho: jaki é energia negativa, kiri cortar, joka limpeza. Gassho e Reiji-Ho, pegas no objecto, respiração profunda, energia no tanden, e — com a respiração presa — três golpes rápidos por cima, de dentro para fora, a dois ou cinco centímetros. O terceiro termina em cima do objecto. Só então soltas o ar, e energizas com Cho Ku Rei.' },
       { tipo: 'destaque', conteudo: 'Prende mesmo a respiração. Segundo o Mestre Aoki, se não o fizeres ao longo dos três cortes, corres o risco de contaminação com a energia que estás a transmutar. É o pormenor mais pequeno e o mais importante desta técnica.' },
-      { tipo: 'texto', conteudo: 'O Antahkarana é de origem tibetana e não faz parte dos ensinamentos originais do Usui Reiki Ryoho. Ensino-o porque é útil e porque faz parte do meu percurso — mas não o confundas com os quatro símbolos. Ao contrário deles, trabalha pela simples presença: basta estar no espaço.' }
+      { tipo: 'texto', conteudo: 'O Antahkarana é de origem tibetana e não faz parte dos ensinamentos originais do Usui Reiki Ryoho. Ensino-o porque é útil e porque faz parte do meu percurso — mas não o confundas com os quatro símbolos. Ao contrário deles, trabalha pela simples presença: basta estar no espaço.' },
+      { tipo: 'imagem', url: 'reiki-img/antahkarana.png', legenda: 'Antahkarana.' }
     ],
     praticar: {
       titulo: 'A carta que não se envia',
@@ -673,6 +678,8 @@ const MODULOS_NIVEL_3B = [
     duracao: '25 min',
     desafio: 'Desenha o Raku de memória, do topo para a base, e confirma se ainda te esqueces do fecho.',
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/dai-ko-myo-tibetano.png', legenda: 'Dai Ko Myo tibetano — ordem dos traços (1 a 4).' },
+      { tipo: 'imagem', url: 'reiki-img/raku.png', legenda: 'Raku — 1) traço de cima, da esquerda para a direita; 2) a serpente, de cima para baixo.' },
       { tipo: 'texto', conteudo: 'Estes dois vêm do mestrado em Reiki Essencial e não pertencem ao núcleo original do Usui Reiki Ryoho. Diz isto aos teus alunos com naturalidade: escolas que apresentam acrescentos como se fossem tradição perdem credibilidade quando alguém descobre — e alguém descobre sempre.' },
       { tipo: 'texto', conteudo: 'O Dai Ko Myo tibetano é outro desenho, com o mesmo nome do que recebeste no 3A, que entrou pela via ocidental e tibetana. São duas versões e ambas funcionam, desde que tenhas sido sintonizado com elas. A tibetana é mais simples de memorizar, e é a que se usa no momento da sintonização — vai no sopro violeta.' },
       { tipo: 'texto', conteudo: 'O Raku é o símbolo que fecha. Representa a serpente adormecida enrolada na base da coluna: as curvas correspondem aos centros energéticos, e a espiral à base corresponde ao primeiro. Também lhe chamamos serpente de fogo, e nos apontamentos aparece abreviado como SF.' },

@@ -398,6 +398,23 @@ function desenharBiblioteca(){
     ).join('');
 }
 
+// Imagens reais dos símbolos (ficheiros em /reiki-img). Cada ficha só mostra os
+// símbolos do seu nível. Se uma imagem não carregar, volta ao esquema simples.
+const IMAGENS_ILUSTRACAO = {
+  'cho-ku-rei':    ['reiki-img/cho-ku-rei.png'],
+  'simbolos-n2':   ['reiki-img/cho-ku-rei.png', 'reiki-img/sei-he-ki.png', 'reiki-img/hon-sha-ze-sho-nen.png'],
+  'dai-ko-myo':    ['reiki-img/dai-ko-myo.png'],
+  'raku-tibetano': ['reiki-img/dai-ko-myo-tibetano.png', 'reiki-img/raku.png']
+};
+function ilustracaoHtml(chave){
+  const esquema = ILUSTRACOES[chave] || '';
+  const imgs = IMAGENS_ILUSTRACAO[chave];
+  if (!imgs) return esquema ? `<div style="margin:14px 0;">${esquema}</div>` : '';
+  return `<div style="margin:14px 0;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:flex-end;">${
+    imgs.map(u => `<img src="${esc(u)}" alt="" style="max-width:100%;max-height:260px;border-radius:10px;border:1px solid var(--linha);background:#fff;" onerror="this.remove()">`).join('')
+  }</div>`;
+}
+
 window.abrirRecursoTexto = function(id){
   RECURSO_ABERTO = RECURSOS.find(r => r.id === id);
   if (!RECURSO_ABERTO) return;
@@ -405,7 +422,7 @@ window.abrirRecursoTexto = function(id){
   // esquema simplificado que a app desenha por defeito.
   const imagem = RECURSO_ABERTO.imagemUrl
     ? `<div style="text-align:center;margin:14px 0;"><img src="${esc(RECURSO_ABERTO.imagemUrl)}" style="max-width:100%;border-radius:10px;border:1px solid var(--linha);" onerror="this.parentElement.style.display='none'"></div>`
-    : (ILUSTRACOES[RECURSO_ABERTO.ilustracao] ? `<div style="margin:14px 0;">${ILUSTRACOES[RECURSO_ABERTO.ilustracao]}</div>` : '');
+    : ilustracaoHtml(RECURSO_ABERTO.ilustracao);
   palco().innerHTML = `<button class="leve" onclick="mudarAba('biblioteca')">← Voltar</button>
     <div class="card" style="margin-top:12px;">
       <h3 style="color:var(--bronze);">${esc(RECURSO_ABERTO.titulo)}</h3>
