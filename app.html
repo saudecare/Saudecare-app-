@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-03-04';
+const APP_VERSION = '2026-10-03-05';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2428,6 +2428,9 @@ async function renderHome(main){
     </div>`;
   }
 
+  if (tenantRole === 'owner' && areasDoSubscritor().length === 0){
+    alerts.push({ id: 'area', icon: '✨', text: 'Diga-nos o que faz (massagem, psicologia, reiki…) e mostramos modelos prontos de fichas e métodos feitos para si', action: "renderView('protocols')" });
+  }
   if (waitlistSnap.size){
     alerts.push({ id: 'waitlist', icon: '⏳', text: `${waitlistSnap.size} pessoa(s) em lista de espera`, action: "renderView('waitlist')" });
   }
