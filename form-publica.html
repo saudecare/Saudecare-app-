@@ -114,6 +114,7 @@
 </head>
 <body>
 <div class="wrap">
+  <div id="langBox" style="text-align:right;margin-bottom:.5rem;"></div>
   <div class="logo">vindora<span>.</span></div>
   <div id="app"><div class="estado"><div class="spin" style="width:2rem;height:2rem;border-width:3px;"></div></div></div>
 </div>
@@ -121,8 +122,13 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { registar, t as _t, iniciarIdioma, definirIdioma, IDIOMAS, idioma } from './i18n.js';
 import { getFirestore, doc, getDoc, updateDoc, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+registar('form', {"linkInv": {"pt": "Link inválido", "en": "Invalid link", "es": "Enlace no válido", "fr": "Lien invalide", "de": "Ungültiger Link", "it": "Link non valido"}, "linkInvTxt": {"pt": "Este link não contém um identificador de questionário válido.", "en": "This link does not contain a valid questionnaire identifier.", "es": "Este enlace no contiene un identificador de cuestionario válido.", "fr": "Ce lien ne contient pas d’identifiant de questionnaire valide.", "de": "Dieser Link enthält keine gültige Fragebogen-Kennung.", "it": "Questo link non contiene un identificativo di questionario valido."}, "naoEnc": {"pt": "Formulário não encontrado", "en": "Form not found", "es": "Formulario no encontrado", "fr": "Formulaire introuvable", "de": "Formular nicht gefunden", "it": "Modulo non trovato"}, "naoEncTxt": {"pt": "Este link pode ter expirado ou ser inválido. Peça um novo link ao seu terapeuta.", "en": "This link may have expired or be invalid. Ask your therapist for a new link.", "es": "Este enlace puede haber caducado o no ser válido. Pida un nuevo enlace a su terapeuta.", "fr": "Ce lien a peut-être expiré ou est invalide. Demandez un nouveau lien à votre thérapeute.", "de": "Dieser Link ist möglicherweise abgelaufen oder ungültig. Bitten Sie Ihre Therapeutin/Ihren Therapeuten um einen neuen Link.", "it": "Questo link potrebbe essere scaduto o non valido. Chieda un nuovo link al suo terapeuta."}, "erroCarregar": {"pt": "Erro ao carregar", "en": "Loading error", "es": "Error al cargar", "fr": "Erreur de chargement", "de": "Ladefehler", "it": "Errore di caricamento"}, "erroCarregarTxt": {"pt": "Não foi possível carregar o formulário. Verifique a sua ligação e tente novamente.", "en": "The form could not be loaded. Check your connection and try again.", "es": "No se pudo cargar el formulario. Compruebe su conexión e inténtelo de nuevo.", "fr": "Impossible de charger le formulaire. Vérifiez votre connexion et réessayez.", "de": "Das Formular konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.", "it": "Impossibile caricare il modulo. Controlli la connessione e riprovi."}, "questionario": {"pt": "Questionário", "en": "Questionnaire", "es": "Cuestionario", "fr": "Questionnaire", "de": "Fragebogen", "it": "Questionario"}, "jaResp": {"pt": "Já respondido", "en": "Already answered", "es": "Ya respondido", "fr": "Déjà rempli", "de": "Bereits beantwortet", "it": "Già compilato"}, "jaRespTxt": {"pt": "Este questionário (<strong>{t}</strong>) já foi preenchido e enviado ao seu terapeuta.", "en": "This questionnaire (<strong>{t}</strong>) has already been completed and sent to your therapist.", "es": "Este cuestionario (<strong>{t}</strong>) ya se ha rellenado y enviado a su terapeuta.", "fr": "Ce questionnaire (<strong>{t}</strong>) a déjà été rempli et envoyé à votre thérapeute.", "de": "Dieser Fragebogen (<strong>{t}</strong>) wurde bereits ausgefüllt und an Ihre Therapeutin/Ihren Therapeuten gesendet.", "it": "Questo questionario (<strong>{t}</strong>) è già stato compilato e inviato al suo terapeuta."}, "jaRespTxt2": {"pt": "Caso precise de preencher novamente, solicite um novo link.", "en": "If you need to fill it in again, ask for a new link.", "es": "Si necesita rellenarlo de nuevo, solicite un nuevo enlace.", "fr": "Si vous devez le remplir à nouveau, demandez un nouveau lien.", "de": "Wenn Sie ihn erneut ausfüllen müssen, fordern Sie einen neuen Link an.", "it": "Se deve compilarlo di nuovo, richieda un nuovo link."}, "nomeCompleto": {"pt": "O seu nome completo", "en": "Your full name", "es": "Su nombre completo", "fr": "Votre nom complet", "de": "Ihr vollständiger Name", "it": "Il suo nome completo"}, "nomePh": {"pt": "Nome e apelido…", "en": "First and last name…", "es": "Nombre y apellidos…", "fr": "Prénom et nom…", "de": "Vor- und Nachname…", "it": "Nome e cognome…"}, "enviar": {"pt": "Enviar respostas", "en": "Send answers", "es": "Enviar respuestas", "fr": "Envoyer les réponses", "de": "Antworten senden", "it": "Invia le risposte"}, "privado": {"pt": "As suas respostas são enviadas de forma segura e privada ao seu terapeuta.", "en": "Your answers are sent securely and privately to your therapist.", "es": "Sus respuestas se envían de forma segura y privada a su terapeuta.", "fr": "Vos réponses sont envoyées de manière sûre et privée à votre thérapeute.", "de": "Ihre Antworten werden sicher und vertraulich an Ihre Therapeutin/Ihren Therapeuten gesendet.", "it": "Le sue risposte vengono inviate in modo sicuro e riservato al suo terapeuta."}, "perg": {"pt": "Pergunta {i} de {n}", "en": "Question {i} of {n}", "es": "Pregunta {i} de {n}", "fr": "Question {i} sur {n}", "de": "Frage {i} von {n}", "it": "Domanda {i} di {n}"}, "nada": {"pt": "Nada", "en": "Not at all", "es": "Nada", "fr": "Pas du tout", "de": "Gar nicht", "it": "Per niente"}, "muito": {"pt": "Muito", "en": "Very much", "es": "Mucho", "fr": "Beaucoup", "de": "Sehr", "it": "Moltissimo"}, "sim": {"pt": "✔ Sim", "en": "✔ Yes", "es": "✔ Sí", "fr": "✔ Oui", "de": "✔ Ja", "it": "✔ Sì"}, "nao": {"pt": "✖ Não", "en": "✖ No", "es": "✖ No", "fr": "✖ Non", "de": "✖ Nein", "it": "✖ No"}, "escrevaAqui": {"pt": "Escreva aqui…", "en": "Write here…", "es": "Escriba aquí…", "fr": "Écrivez ici…", "de": "Hier schreiben…", "it": "Scriva qui…"}, "suaResposta": {"pt": "A sua resposta…", "en": "Your answer…", "es": "Su respuesta…", "fr": "Votre réponse…", "de": "Ihre Antwort…", "it": "La sua risposta…"}, "escrevaNome": {"pt": "Por favor escreva o seu nome antes de enviar.", "en": "Please write your name before sending.", "es": "Por favor, escriba su nombre antes de enviar.", "fr": "Veuillez écrire votre nom avant d’envoyer.", "de": "Bitte geben Sie Ihren Namen an, bevor Sie senden.", "it": "Scriva il suo nome prima di inviare."}, "aEnviar": {"pt": "A enviar…", "en": "Sending…", "es": "Enviando…", "fr": "Envoi…", "de": "Wird gesendet…", "it": "Invio…"}, "erroEnviar": {"pt": "Erro ao enviar. Verifique a ligação e tente novamente.", "en": "Error sending. Check your connection and try again.", "es": "Error al enviar. Compruebe la conexión e inténtelo de nuevo.", "fr": "Erreur d’envoi. Vérifiez votre connexion et réessayez.", "de": "Fehler beim Senden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.", "it": "Errore nell’invio. Controlli la connessione e riprovi."}, "obrigado": {"pt": "Obrigada{n}!", "en": "Thank you{n}!", "es": "¡Gracias{n}!", "fr": "Merci{n} !", "de": "Danke{n}!", "it": "Grazie{n}!"}, "obrigadoTxt": {"pt": "As suas respostas ao <strong>{t}</strong> foram enviadas com sucesso ao seu terapeuta.", "en": "Your answers to <strong>{t}</strong> were sent successfully to your therapist.", "es": "Sus respuestas a <strong>{t}</strong> se han enviado correctamente a su terapeuta.", "fr": "Vos réponses à <strong>{t}</strong> ont bien été envoyées à votre thérapeute.", "de": "Ihre Antworten zu <strong>{t}</strong> wurden erfolgreich an Ihre Therapeutin/Ihren Therapeuten gesendet.", "it": "Le sue risposte a <strong>{t}</strong> sono state inviate con successo al suo terapeuta."}, "fechar": {"pt": "Pode fechar esta página.", "en": "You can close this page.", "es": "Puede cerrar esta página.", "fr": "Vous pouvez fermer cette page.", "de": "Sie können diese Seite schließen.", "it": "Può chiudere questa pagina."}});
+const t = (k, v) => _t('form', k, v);
+iniciarIdioma();
 
 const firebaseConfig = {
   apiKey:'AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg',
@@ -153,28 +159,29 @@ const responseId = new URLSearchParams(location.search).get('r');
 let _dados = null; // doc data
 let _respostas = {}; // {questionId: valor}
 let _nome = '';
+let _ecra = 'form', _nomeFim = '';
 
 // ── Entrada ───────────────────────────────────────────────────────────────
 async function init(){
   if(!responseId){
-    renderErro('Link inválido', 'Este link não contém um identificador de questionário válido.');
+    renderErro(t('linkInv'), t('linkInvTxt'));
     return;
   }
   try{
     const snap = await getDoc(doc(db,'public_form_responses', responseId));
     if(!snap.exists()){
-      renderErro('Formulário não encontrado', 'Este link pode ter expirado ou ser inválido. Peça um novo link ao seu terapeuta.');
+      renderErro(t('naoEnc'), t('naoEncTxt'));
       return;
     }
     _dados = snap.data();
     if(_dados.completadoEm){
-      renderJaRespondido();
+      _ecra = 'ja'; renderJaRespondido();
       return;
     }
-    renderFormulario();
+    _ecra = 'form'; renderFormulario();
   }catch(e){
     console.error(e);
-    renderErro('Erro ao carregar', 'Não foi possível carregar o formulário. Verifique a sua ligação e tente novamente.');
+    renderErro(t('erroCarregar'), t('erroCarregarTxt'));
   }
 }
 
@@ -189,14 +196,14 @@ function renderErro(titulo, msg){
 }
 
 function renderJaRespondido(){
-  const titulo = _dados.titulo || 'Questionário';
+  const titulo = _dados.titulo || t('questionario');
   document.getElementById('app').innerHTML = `
     <div class="card">
       <div class="obrigado">
         <div class="icon">✅</div>
-        <h2>Já respondido</h2>
-        <p>Este questionário (<strong>${esc(titulo)}</strong>) já foi preenchido e enviado ao seu terapeuta.</p>
-        <p style="margin-top:.75rem;">Caso precise de preencher novamente, solicite um novo link.</p>
+        <h2>${t('jaResp')}</h2>
+        <p>${t('jaRespTxt', { t: esc(titulo) })}</p>
+        <p style="margin-top:.75rem;">${t('jaRespTxt2')}</p>
       </div>
     </div>`;
 }
@@ -209,30 +216,30 @@ function renderFormulario(){
   const nomeHidden = d.patientName ? `<input type="hidden" id="fNome" value="${esc(d.patientName)}">` : '';
   const nomeCampo = !d.patientName ? `
     <div class="nome-wrap">
-      <label>O seu nome completo</label>
-      <input type="text" id="fNome" placeholder="Nome e apelido…" autocomplete="name">
+      <label>${t('nomeCompleto')}</label>
+      <input type="text" id="fNome" placeholder="${t('nomePh')}" autocomplete="name">
     </div>` : nomeHidden;
 
   const pergsHtml = perguntas.map((p,i) => renderPergunta(p, i, total)).join('');
 
   document.getElementById('app').innerHTML = `
     <div class="card">
-      <h1>${esc(d.titulo||'Questionário')}</h1>
+      <h1>${esc(d.titulo||t('questionario'))}</h1>
       ${d.descricao ? `<p class="desc">${esc(d.descricao)}</p>` : ''}
       <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
     </div>
     ${nomeCampo}
     <div id="perguntasWrap">${pergsHtml}</div>
-    <button class="btn-primary" id="btnEnviar" onclick="window._enviar()">Enviar respostas</button>
+    <button class="btn-primary" id="btnEnviar" onclick="window._enviar()">${t('enviar')}</button>
     <p style="text-align:center;color:var(--muted);font-size:.75rem;margin-top:1rem;">
-      As suas respostas são enviadas de forma segura e privada ao seu terapeuta.
+      ${t('privado')}
     </p>`;
 
   atualizarProgresso();
 }
 
 function renderPergunta(p, i, total){
-  const num = `Pergunta ${i+1} de ${total}`;
+  const num = t('perg', { i: i+1, n: total });
   const tipo = (p.tipo||p.type||'texto').toLowerCase();
 
   if(tipo==='escala'||tipo==='scale'){
@@ -241,7 +248,7 @@ function renderPergunta(p, i, total){
       <div class="q-num">${num}</div>
       <div class="q-label">${esc(p.label||p.q||'')}</div>
       <div class="scale-wrap">
-        <div class="scale-labels"><span>Nada</span><span>Muito</span></div>
+        <div class="scale-labels"><span>${t('nada')}</span><span>${t('muito')}</span></div>
         <div class="scale-btns">${btns}</div>
       </div>
     </div>`;
@@ -276,8 +283,8 @@ function renderPergunta(p, i, total){
       <div class="q-num">${num}</div>
       <div class="q-label">${esc(p.label||p.q||'')}</div>
       <div class="simn-wrap">
-        <button type="button" class="simn-btn" data-qid="${esc(p.id)}" data-val="Sim" onclick="window._simn('${esc(p.id)}','Sim',this)">✔ Sim</button>
-        <button type="button" class="simn-btn" data-qid="${esc(p.id)}" data-val="Não" onclick="window._simn('${esc(p.id)}','Não',this)">✖ Não</button>
+        <button type="button" class="simn-btn" data-qid="${esc(p.id)}" data-val="Sim" onclick="window._simn('${esc(p.id)}','Sim',this)">${t('sim')}</button>
+        <button type="button" class="simn-btn" data-qid="${esc(p.id)}" data-val="Não" onclick="window._simn('${esc(p.id)}','Não',this)">${t('nao')}</button>
       </div>
     </div>`;
   }
@@ -286,7 +293,7 @@ function renderPergunta(p, i, total){
     return `<div class="q-card" id="qc-${esc(p.id)}">
       <div class="q-num">${num}</div>
       <div class="q-label">${esc(p.label||p.q||'')}</div>
-      <textarea data-qid="${esc(p.id)}" placeholder="Escreva aqui…" rows="4" oninput="window._txt('${esc(p.id)}',this.value)"></textarea>
+      <textarea data-qid="${esc(p.id)}" placeholder="${t('escrevaAqui')}" rows="4" oninput="window._txt('${esc(p.id)}',this.value)"></textarea>
     </div>`;
   }
 
@@ -318,7 +325,7 @@ function renderPergunta(p, i, total){
   return `<div class="q-card" id="qc-${esc(p.id)}">
     <div class="q-num">${num}</div>
     <div class="q-label">${esc(p.label||p.q||'')}</div>
-    <input type="text" data-qid="${esc(p.id)}" placeholder="A sua resposta…" oninput="window._txt('${esc(p.id)}',this.value)">
+    <input type="text" data-qid="${esc(p.id)}" placeholder="${t('suaResposta')}" oninput="window._txt('${esc(p.id)}',this.value)">
   </div>`;
 }
 
@@ -385,14 +392,14 @@ window._enviar = async function(){
   const nomeEl = document.getElementById('fNome');
   const nome = nomeEl ? nomeEl.value.trim() : (_dados.patientName||'');
   if(!_dados.patientName && !nome){
-    toast('Por favor escreva o seu nome antes de enviar.', true);
+    toast(t('escrevaNome'), true);
     nomeEl && nomeEl.focus();
     return;
   }
 
   const btn = document.getElementById('btnEnviar');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> A enviar…';
+  btn.innerHTML = '<span class="spin"></span> ' + t('aEnviar');
 
   // Montar array de respostas
   const perguntas = _dados.perguntas || [];
@@ -414,24 +421,47 @@ window._enviar = async function(){
     renderObrigado(nome||_dados.patientName||'');
   }catch(e){
     console.error(e);
-    toast('Erro ao enviar. Verifique a ligação e tente novamente.', true);
+    toast(t('erroEnviar'), true);
     btn.disabled = false;
-    btn.textContent = 'Enviar respostas';
+    btn.textContent = t('enviar');
   }
 };
 
 function renderObrigado(nome){
-  const titulo = _dados.titulo||'Questionário';
+  const titulo = _dados.titulo||t('questionario');
+  _ecra = 'obrigado'; _nomeFim = nome;
   document.getElementById('app').innerHTML = `
     <div class="card">
       <div class="obrigado">
         <div class="icon">🙏</div>
-        <h2>Obrigada${nome?', '+nome.split(' ')[0]:''}!</h2>
-        <p>As suas respostas ao <strong>${esc(titulo)}</strong> foram enviadas com sucesso ao seu terapeuta.</p>
-        <p style="margin-top:.75rem;color:var(--muted);">Pode fechar esta página.</p>
+        <h2>${t('obrigado', { n: nome ? ', ' + esc(nome.split(' ')[0]) : '' })}</h2>
+        <p>${t('obrigadoTxt', { t: esc(titulo) })}</p>
+        <p style="margin-top:.75rem;color:var(--muted);">${t('fechar')}</p>
       </div>
     </div>`;
 }
+
+// ── Idioma ────────────────────────────────────────────────────────────────
+function restaurarRespostas(){
+  Object.keys(_respostas).forEach(q => {
+    const v = _respostas[q];
+    document.querySelectorAll('[data-qid="'+q+'"]').forEach(el => {
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'){ el.value = v; return; }
+      const val = el.dataset.val;
+      const on = Array.isArray(v) ? v.includes(val) : String(v) === val;
+      if (on){ el.classList.add('sel'); if (el.classList.contains('simn-btn')) el.classList.add(val === 'Sim' ? 'sel-sim' : 'sel-nao'); }
+    });
+  });
+  atualizarProgresso();
+}
+document.getElementById('langBox').innerHTML = '<select id="vdLang" aria-label="Language" style="width:auto;padding:.3rem .5rem;font-size:.8rem;">' + IDIOMAS.map(([k,n]) => '<option value="'+k+'"'+(k===idioma()?' selected':'')+'>'+n+'</option>').join('') + '</select>';
+document.getElementById('vdLang').addEventListener('change', e => {
+  definirIdioma(e.target.value);
+  if (!_dados) return;
+  if (_ecra === 'form'){ const n = document.getElementById('fNome')?.value || ''; renderFormulario(); const f = document.getElementById('fNome'); if (f && n && !_dados.patientName) f.value = n; restaurarRespostas(); }
+  else if (_ecra === 'ja') renderJaRespondido();
+  else renderObrigado(_nomeFim);
+});
 
 // ── Arrancar ──────────────────────────────────────────────────────────────
 init();
