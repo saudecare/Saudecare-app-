@@ -1,0 +1,72 @@
+# Publica as Cloud Functions do Firebase (pasta functions/).
+# Ao início só corre à mão (separador Actions > Run workflow), com a opção "listar" ou "publicar".
+name: Publicar funções do Firebase
+
+on:
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: 'listar (só mostra o que existe) ou publicar'
+        default: 'listar'
+        required: true
+
+concurrency:
+  group: publicar-funcoes
+  cancel-in-progress: false
+
+jobs:
+  funcoes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Preparar chave
+        env:
+          CHAVE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$CHAVE" > "$RUNNER_TEMP/sa.json"
+          python3 - <<'PY'
+          import json, os
+          f = os.environ['RUNNER_TEMP'] + '/sa.json'
+          d = json.loads(open(f, encoding='utf-8', errors='replace').read().strip(), strict=False)
+          json.dump(d, open(f, 'w'))
+          print("::notice::Chave lida: %s" % d.get('client_email'))
+          PY
+          cat > firebase.json <<'JSON'
+          { "functions": { "source": "functions", "codebase": "default" } }
+          JSON
+
+      - name: Instalar dependências das funções
+        run: cd functions && npm install --no-audit --no-fund
+
+      - name: Listar funções existentes
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          set +e
+          npx --yes firebase-tools@latest functions:list --project saudecare-app --non-interactive > lista.log 2>&1
+          cat lista.log
+          echo "::notice::LISTA: $(grep -E '│|Function|europe|us-central' lista.log | head -20 | tr '\n' ' ' | cut -c1-900)"
+          if grep -qiE 'error|denied|403' lista.log; then echo "::warning::$(grep -iE 'error|denied|403' lista.log | head -4 | tr '\n' ' ' | cut -c1-600)"; fi
+          exit 0
+
+      - name: Publicar funções
+        if: github.event.inputs.acao == 'publicar'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          set +e
+          npx --yes firebase-tools@latest deploy --only functions --project saudecare-app --non-interactive > deploy.log 2>&1
+          code=$?
+          cat deploy.log
+          if [ $code -ne 0 ]; then
+            echo "::error::$(grep -iE 'error|permission|denied|403|404|not found|api' deploy.log | head -8 | tr '\n' ' ' | cut -c1-1200)"
+            exit $code
+          fi
+
+      - name: Apagar a chave
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
