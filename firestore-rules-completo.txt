@@ -106,29 +106,42 @@ service cloud.firestore {
 
         match /reports/{reportId} {
           allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
-          allow update, delete: if false;
+          allow update: if false;
+          // Só se apaga depois de o paciente ter sido apagado (direito ao apagamento RGPD);
+          // enquanto o paciente existe, os registos continuam imutáveis.
+          allow delete: if isEquipaClinica(tenantId) && !exists(/databases/$(database)/documents/tenants/$(tenantId)/patients/$(patientId));
         }
 
         match /formResponses/{responseId} {
           allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
-          allow update, delete: if false;
+          allow update: if false;
+          // Só se apaga depois de o paciente ter sido apagado (direito ao apagamento RGPD);
+          // enquanto o paciente existe, os registos continuam imutáveis.
+          allow delete: if isEquipaClinica(tenantId) && !exists(/databases/$(database)/documents/tenants/$(tenantId)/patients/$(patientId));
         }
 
         match /messages/{messageId} {
           allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
           allow update: if isEquipaClinica(tenantId) && tenantIsActive(tenantId) &&
             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readByProfessional', 'readByPatient']);
-          allow delete: if false;
+          // Só depois de o paciente ter sido apagado (RGPD).
+          allow delete: if isEquipaClinica(tenantId) && !exists(/databases/$(database)/documents/tenants/$(tenantId)/patients/$(patientId));
         }
 
         match /checkins/{checkinId} {
           allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
-          allow update, delete: if false;
+          allow update: if false;
+          // Só se apaga depois de o paciente ter sido apagado (direito ao apagamento RGPD);
+          // enquanto o paciente existe, os registos continuam imutáveis.
+          allow delete: if isEquipaClinica(tenantId) && !exists(/databases/$(database)/documents/tenants/$(tenantId)/patients/$(patientId));
         }
 
         match /healingProtocols/{protocolId} {
           allow read, create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
-          allow update, delete: if false;
+          allow update: if false;
+          // Só se apaga depois de o paciente ter sido apagado (direito ao apagamento RGPD);
+          // enquanto o paciente existe, os registos continuam imutáveis.
+          allow delete: if isEquipaClinica(tenantId) && !exists(/databases/$(database)/documents/tenants/$(tenantId)/patients/$(patientId));
         }
       }
 

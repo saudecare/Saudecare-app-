@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-03-05';
+const APP_VERSION = '2026-10-03-06';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -5488,7 +5488,7 @@ window.exportPatientData = async function(patientId){
 };
 
 window.deletePatient = async function(patientId, name){
-  if (!await confirmar(`Apagar definitivamente "${name}"?\n\nEsta ação cumpre o direito ao apagamento RGPD e não pode ser desfeita.`)) return;
+  if (!await confirmar(`Apagar definitivamente "${name}"?\n\nApaga a ficha, relatórios, respostas a fichas, mensagens e registos deste paciente. As marcações ficam sem nome (para a contabilidade). Cumpre o direito ao apagamento RGPD e não pode ser desfeita.`)) return;
   try {
     await logAudit('patient_deleted', patientId);
     // Apagar respostas públicas de fichas ligadas a este paciente (coleção top-level — permitido)
@@ -5504,7 +5504,24 @@ window.deletePatient = async function(patientId, name){
     } catch(e){ /* ignora — não é bloqueador */ }
     // Apagar o documento principal do paciente
     await deleteDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
-    toast('Paciente apagado.');
+    // Limpeza completa (RGPD): apagar o documento não apaga as subcoleções.
+    // Só agora, com o paciente já apagado, as regras deixam apagar os registos dele.
+    let restos = 0;
+    for (const sub of ['reports', 'formResponses', 'messages', 'checkins', 'healingProtocols']){
+      try{
+        const s = await getDocs(collection(db, 'tenants', tenantId, 'patients', patientId, sub));
+        for (const d of s.docs){ try{ await deleteDoc(d.ref); }catch(e){ restos++; } }
+      }catch(e){ restos++; }
+    }
+    try{ await deleteDoc(doc(db, 'tenants', tenantId, 'patientContacts', patientId)); }catch(e){}
+    // Marcações: ficam (contabilidade/faturação), mas deixam de identificar a pessoa.
+    try{
+      const ap = await getDocs(query(collection(db, 'tenants', tenantId, 'appointments'), where('patientId', '==', patientId)));
+      for (const d of ap.docs){
+        try{ await updateDoc(d.ref, { patientName: '(paciente apagado)', patientPhone: '', patientEmail: '', notes: '', clientNotes: '' }); }catch(e){ restos++; }
+      }
+    }catch(e){ restos++; }
+    toast(restos ? 'Paciente apagado, mas ' + restos + ' registo(s) associado(s) não foram removidos. Contacte o apoio.' : 'Paciente apagado, com todos os registos associados.', !!restos);
     closePatientOverlay();
     renderView('patients');
   } catch(e){
