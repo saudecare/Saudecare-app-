@@ -165,6 +165,20 @@ async function carregarModulos(nivel){
     .filter(m => m.publicado !== false)
     .sort((a,b) => (a.ordem||0) - (b.ordem||0));
 }
+
+// Manuais da escola, guardados no site. Se a linha "Manual do Nível X" ainda não
+// tem link do Drive, usa o PDF que está em /manuais (o link do Drive, se existir, ganha).
+function manualPadrao(r){
+  try {
+    if (r && !r.url && r.tipo === 'manual'){
+      const m = /n[íi]vel\s*(1|2|3a|3b)\b/i.exec(r.titulo || '');
+      const f = { '1':'Manual-Reiki-Nivel-1-Shoden-Hikari-Fafe.pdf', '2':'Manual-Reiki-Nivel-2-Okuden-Hikari-Fafe.pdf',
+                  '3a':'Manual-Reiki-Nivel-3A-Shinpiden-Hikari-Fafe.pdf', '3b':'Manual-Reiki-Nivel-3B-Mestrado-Hikari-Fafe.pdf' }[m && m[1].toLowerCase()];
+      if (f) r.url = 'https://vindora.pt/manuais/' + f;
+    }
+  } catch(e){}
+  return r;
+}
 let ALUNO = null, MODULOS = [], PROGRESSO = {}, RECURSOS = [], TESTES = [];
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
@@ -227,7 +241,7 @@ async function arrancar(){
   try {
     const snap = await getDocs(collection(db, 'tenants', TENANT, 'reikiLibrary'));
     RECURSOS = [];
-    snap.forEach(d => RECURSOS.push({ id: d.id, ...d.data() }));
+    snap.forEach(d => RECURSOS.push(manualPadrao({ id: d.id, ...d.data() })));
   } catch(e){ console.warn('biblioteca indisponível', e); }
 
   try {

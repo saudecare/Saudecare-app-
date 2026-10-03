@@ -223,12 +223,26 @@ async function arrancar(){
   mostrar('inicio');
 }
 
+
+// Manuais da escola, guardados no site. Se a linha "Manual do Nível X" ainda não
+// tem link do Drive, usa o PDF que está em /manuais (o link do Drive, se existir, ganha).
+function manualPadrao(r){
+  try {
+    if (r && !r.url && r.tipo === 'manual'){
+      const m = /n[íi]vel\s*(1|2|3a|3b)\b/i.exec(r.titulo || '');
+      const f = { '1':'Manual-Reiki-Nivel-1-Shoden-Hikari-Fafe.pdf', '2':'Manual-Reiki-Nivel-2-Okuden-Hikari-Fafe.pdf',
+                  '3a':'Manual-Reiki-Nivel-3A-Shinpiden-Hikari-Fafe.pdf', '3b':'Manual-Reiki-Nivel-3B-Mestrado-Hikari-Fafe.pdf' }[m && m[1].toLowerCase()];
+      if (f) r.url = 'https://vindora.pt/manuais/' + f;
+    }
+  } catch(e){}
+  return r;
+}
 async function carregarDados(){
   const { tenant, codigo, emEstudo, concluido } = C;
 
   try {
     const s = await getDocs(collection(db, 'tenants', tenant, 'reikiLibrary'));
-    const r = []; s.forEach(d => r.push({ id: d.id, ...d.data() }));
+    const r = []; s.forEach(d => r.push(manualPadrao({ id: d.id, ...d.data() })));
     r.sort((a,b) => String(a.nivel||'0').localeCompare(String(b.nivel||'0')));
     C.recursos = r.filter(x => materialVisivel(x, emEstudo, concluido));
   } catch(e){ C.recursos = []; }

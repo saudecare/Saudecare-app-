@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-03-07';
+const APP_VERSION = '2026-10-03-08';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11633,6 +11633,20 @@ function reikiCertId(nome, nivelId, iso){
 
 let __reikiAlunos = [];
 let __reikiDescricoes = {};
+
+// Manuais da escola, guardados no site. Se a linha "Manual do Nível X" ainda não
+// tem link do Drive, usa o PDF que está em /manuais (o link do Drive, se existir, ganha).
+function manualPadrao(r){
+  try {
+    if (r && !r.url && r.tipo === 'manual'){
+      const m = /n[íi]vel\s*(1|2|3a|3b)\b/i.exec(r.titulo || '');
+      const f = { '1':'Manual-Reiki-Nivel-1-Shoden-Hikari-Fafe.pdf', '2':'Manual-Reiki-Nivel-2-Okuden-Hikari-Fafe.pdf',
+                  '3a':'Manual-Reiki-Nivel-3A-Shinpiden-Hikari-Fafe.pdf', '3b':'Manual-Reiki-Nivel-3B-Mestrado-Hikari-Fafe.pdf' }[m && m[1].toLowerCase()];
+      if (f) r.url = 'https://vindora.pt/manuais/' + f;
+    }
+  } catch(e){}
+  return r;
+}
 let __reikiRecursos = [];
 let __reikiTab = 'alunos';
 
@@ -11688,7 +11702,7 @@ async function renderReikiAlunos(main){
     turmasSnap.forEach(d => __reikiTurmas.push({ id: d.id, ...d.data() }));
     __reikiTurmas.sort((a, b) => String(a.nome||'').localeCompare(String(b.nome||''), 'pt'));
     __reikiRecursos = [];
-    bibSnap.forEach(d => __reikiRecursos.push({ id: d.id, ...d.data() }));
+    bibSnap.forEach(d => __reikiRecursos.push(manualPadrao({ id: d.id, ...d.data() })));
     __reikiRecursos.sort((a, b) => {
       const na = reikiIndiceNivelBib(a.nivel), nb = reikiIndiceNivelBib(b.nivel);
       if (na !== nb) return na - nb;
