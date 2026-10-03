@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-03-03';
+const APP_VERSION = '2026-10-03-04';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1694,10 +1694,9 @@ const NAV_GROUPS = {
     { view: 'gestorPedidos', icon: '📩', label: 'Pedidos de marcação', gestorOnly: true }
   ]},
   tools: { title: '🧰 Ferramentas', items: [
-    { view: 'protocols', icon: '📋', label: 'Os Meus Métodos' },
+    { view: 'protocols', icon: '📋', label: 'Fichas & Métodos' },
     { view: 'knowledge', icon: '🧠', label: 'Fonte de Conhecimento' },
     { view: 'farmacia', icon: '💊', label: 'Farmácia & Interações' },
-    { view: 'forms', icon: '📝', label: 'Fichas' },
     { view: 'respostas', icon: '📥', label: 'Respostas de Fichas' },
     { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
     { view: 'trainings', icon: '🎓', label: 'Formações' },
@@ -5939,12 +5938,19 @@ function modelosEmDestaque(tipo){
   const infoDe = t => tipo === 'forms'
     ? `${t.questions.length} perguntas`
     : (t.type === 'mapping' ? '🗺️ Mapeamento no corpo' : '📋 Lista de pontos');
+  const minhas = areasDoSubscritor();
+  const todos = !!window.__verTodosModelos;
+  // Mantém o índice original: useXTemplate(i) refere-se sempre ao array completo.
+  const visiveis = lista.map((t,i)=>({t,i})).filter(({t}) => todos || !t.areas || !t.areas.length || t.areas.some(a => minhas.includes(a)));
+  const chips = AREAS_MODELOS.map(([k,nome]) => `<button class="${minhas.includes(k)?'primary':'ghost'}" style="padding:6px 12px;font-size:.85rem;" onclick="alternarAreaModelos('${k}')">${nome}</button>`).join('');
   return `<div class="card" style="margin-bottom:12px;border:2px dashed var(--primary);">
-    <div style="font-weight:700;font-size:1.05rem;">✨ Comece em 1 clique com um modelo pronto</div>
-    <div class="muted" style="margin:4px 0 10px;">Toque num modelo: fica logo na sua lista, pronto a usar. Depois pode mudar o que quiser em "Editar".</div>
+    <div style="font-weight:700;font-size:1.05rem;">✨ Modelos prontos para a sua área</div>
+    <div class="muted" style="margin:4px 0 8px;">O que faz? Toque para ver só os modelos que lhe interessam (pode escolher várias). Toque num modelo: fica logo na sua lista, pronto a usar, e pode mudar o que quiser em "Editar".</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${chips}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;">
-      ${lista.map((t,i)=>`<button class="ghost" style="text-align:left;padding:10px;" onclick="${fn}(${i})"><strong>${escapeHtml(nomeDe(t))}</strong><div class="muted" style="font-size:.8rem;">${infoDe(t)} · + Usar</div></button>`).join('')}
+      ${visiveis.map(({t,i})=>`<button class="ghost" style="text-align:left;padding:10px;" onclick="${fn}(${i})"><strong>${escapeHtml(nomeDe(t))}</strong><div class="muted" style="font-size:.8rem;">${infoDe(t)} · + Usar</div></button>`).join('')}
     </div>
+    <div style="margin-top:8px;"><button class="ghost" style="padding:4px 10px;font-size:.8rem;" onclick="verTodosModelos(${!todos})">${todos ? 'Mostrar só os da minha área' : 'Ver modelos de todas as áreas'}</button></div>
   </div>`;
 }
 
@@ -5983,6 +5989,7 @@ async function renderForms(main){
   if (!rows) rows = '<p class="muted">Ainda não tem fichas. Escolha um modelo pronto acima, ou toque em "+ Nova ficha" para criar do zero.</p>';
 
   main.innerHTML = `
+    ${abasModelos('forms')}
     <div class="row"><h2>Fichas / Questionários</h2>
       <button class="primary" onclick="openNewForm()">+ Nova ficha</button>
     </div>
@@ -6566,6 +6573,110 @@ const TEMPLATE_FORMS = [
   }
 ];
 
+// ── Modelos por área de trabalho (acrescentados no fim: os índices dos modelos
+// antigos não mudam). Um modelo sem "areas" é geral e aparece a todos.
+const AREAS_MODELOS = [
+  ['massagem', '💆 Massagem & terapias manuais'],
+  ['psicologia', '🧠 Psicologia & coaching'],
+  ['fisio', '🦴 Fisioterapia & osteopatia'],
+  ['reiki', '🌿 Reiki & terapias energéticas']
+];
+(function(){
+  const mk = (title, description, qs) => ({ title, description, areas: [], questions: qs });
+  const f = [];
+  let t;
+  t = mk('Massagem — avaliação inicial e contraindicações', 'Para preencher antes da primeira massagem.', [
+    { type: 'text', label: 'Nome completo' },
+    { type: 'text', label: 'Zonas onde sente tensão ou dor' },
+    { type: 'multiple_choice', label: 'Que pressão prefere?', options: ['Suave', 'Média', 'Firme'] },
+    { type: 'multiple_choice', label: 'Está grávida?', options: ['Não', 'Sim', 'Não se aplica'] },
+    { type: 'text', label: 'Tem alguma condição de saúde, lesão recente ou cirurgia? (qual)' },
+    { type: 'text', label: 'Toma medicação, nomeadamente anticoagulantes? (qual)' },
+    { type: 'text', label: 'Alergias (óleos, cremes, frutos secos…)' },
+    { type: 'text', label: 'Algo mais que devamos saber?' }
+  ]); t.areas = ['massagem']; f.push(t);
+  t = mk('Psicologia/Coaching — primeira consulta', 'Ficha de acolhimento para preencher antes da primeira sessão.', [
+    { type: 'text', label: 'Nome completo' },
+    { type: 'text', label: 'O que o/a traz à consulta?' },
+    { type: 'text', label: 'O que gostaria que mudasse com este acompanhamento?' },
+    { type: 'multiple_choice', label: 'Já fez acompanhamento psicológico ou coaching antes?', options: ['Sim', 'Não'] },
+    { type: 'scale', label: 'Qualidade do sono nas últimas semanas (0 = muito má, 10 = excelente)' },
+    { type: 'text', label: 'Tem pessoas de confiança a quem recorre quando precisa?' },
+    { type: 'text', label: 'Toma alguma medicação ou tem acompanhamento médico? (qual)' }
+  ]); t.areas = ['psicologia']; f.push(t);
+  t = mk('Fisioterapia/Osteopatia — dor e mobilidade', 'Avaliação inicial de queixas e limitações.', [
+    { type: 'text', label: 'Nome completo' },
+    { type: 'text', label: 'Onde sente dor ou limitação?' },
+    { type: 'scale', label: 'Intensidade da dor hoje (0 = nenhuma, 10 = máxima)' },
+    { type: 'text', label: 'Quando começou e como (queda, esforço, sem causa aparente)?' },
+    { type: 'text', label: 'O que agrava e o que alivia?' },
+    { type: 'text', label: 'Cirurgias, fraturas ou diagnósticos relevantes' },
+    { type: 'text', label: 'Que atividades do dia a dia lhe custam mais?' },
+    { type: 'text', label: 'Objetivo com o tratamento' }
+  ]); t.areas = ['fisio']; f.push(t);
+  t = mk('Reiki — ficha de sessão', 'Acolhimento antes da sessão.', [
+    { type: 'text', label: 'Nome completo' },
+    { type: 'text', label: 'O que o/a traz hoje?' },
+    { type: 'scale', label: 'Como se sente emocionalmente hoje (0 = muito em baixo, 10 = muito bem)' },
+    { type: 'multiple_choice', label: 'Já recebeu Reiki antes?', options: ['Sim', 'Não'] },
+    { type: 'multiple_choice', label: 'Como prefere a sessão?', options: ['Com toque suave', 'Sem toque (à distância do corpo)', 'Tanto faz'] },
+    { type: 'text', label: 'Tem alguma condição de saúde ou acompanhamento médico que devamos saber?' }
+  ]); t.areas = ['reiki']; f.push(t);
+  f.forEach(x => TEMPLATE_FORMS.push(x));
+
+  const mp = (name, area, pts) => ({ name, type: 'simple', areas: [area], points: pts.map(([n, k]) => ({ name: n, knowledgeText: k })), finalClassifications: [] });
+  [
+    mp('Massagem — checklist da sessão', 'massagem', [
+      ['Queixa e zonas a trabalhar', 'O que o cliente pede e onde sente tensão.'],
+      ['Contraindicações confirmadas', 'Gravidez, febre, lesões na pele, trombose, medicação anticoagulante, cirurgias recentes.'],
+      ['Pressão e técnica escolhidas', 'Pressão combinada com o cliente e técnicas usadas.'],
+      ['Reação durante a sessão', 'Desconforto, relaxamento, zonas sensíveis.'],
+      ['Recomendações para casa', 'Hidratação, alongamentos, quando voltar.']
+    ]),
+    mp('Acompanhamento psicológico/coaching — estrutura da sessão', 'psicologia', [
+      ['Como chega hoje (check-in)', 'Estado e acontecimentos desde a última sessão.'],
+      ['Tema ou objetivo da sessão', 'O que a pessoa quer trabalhar hoje.'],
+      ['O que foi trabalhado', 'Estratégias, reflexões e exercícios feitos.'],
+      ['Tarefas combinadas', 'O que a pessoa se compromete a experimentar até à próxima sessão.'],
+      ['Plano para a próxima sessão', 'Pontos a retomar.']
+    ]),
+    mp('Fisioterapia/Osteopatia — avaliação funcional', 'fisio', [
+      ['Dor: local, intensidade e comportamento', 'Escala 0–10 e o que agrava ou alivia.'],
+      ['Mobilidade e amplitude de movimento', 'Limitações observadas.'],
+      ['Postura e padrões de movimento', 'Observações de pé, sentado e em movimento.'],
+      ['Técnicas aplicadas', 'O que foi feito na sessão.'],
+      ['Plano de exercícios e reavaliação', 'Exercícios para casa e data de reavaliação.']
+    ]),
+    mp('Reiki — acompanhamento da sessão', 'reiki', [
+      ['Intenção da sessão', 'O que a pessoa pede ou o que se pretende trabalhar.'],
+      ['Estado antes da sessão', 'Como a pessoa chega, física e emocionalmente.'],
+      ['Áreas trabalhadas e perceções', 'Posições usadas e o que foi sentido ou observado.'],
+      ['Estado depois da sessão', 'Como a pessoa se sente no fim.'],
+      ['Recomendações', 'Repouso, hidratação, periodicidade sugerida.']
+    ])
+  ].forEach(x => TEMPLATE_PROTOCOLS.push(x));
+})();
+
+// Área(s) de trabalho do subscritor — guardada no próprio tenant (só afeta o que os modelos mostram).
+function areasDoSubscritor(){
+  const a = currentTenantDoc && currentTenantDoc.areaTrabalho;
+  return Array.isArray(a) ? a : [];
+}
+window.alternarAreaModelos = async function(chave){
+  const atuais = areasDoSubscritor().slice();
+  const i = atuais.indexOf(chave);
+  if (i >= 0) atuais.splice(i, 1); else atuais.push(chave);
+  currentTenantDoc = { ...(currentTenantDoc || {}), areaTrabalho: atuais };
+  try{ await updateDoc(doc(db, 'tenants', tenantId), { areaTrabalho: atuais }); }catch(e){ console.warn(e); }
+  renderView(window.__vistaModelos || 'protocols');
+};
+window.verTodosModelos = function(v){ window.__verTodosModelos = !!v; renderView(window.__vistaModelos || 'protocols'); };
+function abasModelos(ativa){
+  window.__vistaModelos = ativa;
+  const b = (v, txt) => `<button class="${ativa===v?'primary':'ghost'}" onclick="renderView('${v}')">${txt}</button>`;
+  return `<div class="row" style="gap:8px;margin-bottom:10px;justify-content:flex-start;">${b('forms','📝 Fichas (questionários)')}${b('protocols','📋 Métodos (consulta guiada)')}</div>`;
+}
+
 function renderProtocolTemplatesSection(){
   const cards = TEMPLATE_PROTOCOLS.map((t, idx) => {
     const isMapping = t.type === 'mapping';
@@ -6888,6 +6999,7 @@ async function renderProtocols(main){
   if (!rows) rows = '<p class="muted">Ainda não tem métodos. Escolha um modelo pronto acima, ou toque em "+ Novo método" para criar do zero.</p>';
 
   main.innerHTML = `
+    ${abasModelos('protocols')}
     <div class="row"><h2>Os Meus Métodos de Consulta</h2>
       <button class="primary" onclick="openNewProtocol()">+ Novo método</button>
     </div>
