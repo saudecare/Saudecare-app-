@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Vindora · Gestão da plataforma</title>
+<style>
+  :root{ --bg:#f5f7f6; --card:#fff; --ink:#1d2b26; --muted:#66756f; --line:#dfe6e3; --primary:#1f5c4a; --primary-ink:#fff; --danger:#b3413a; --warn:#b07a00; --ok:#1f7a4d; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); line-height:1.4; }
+  header{ background:var(--primary); color:#fff; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  header h1{ font-size:1.05rem; margin:0; }
+  header small{ opacity:.85; display:block; font-weight:400; font-size:.78rem; }
+  main{ max-width:960px; margin:0 auto; padding:16px; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; }
+  .hidden{ display:none !important; }
+  button{ font:inherit; border:1px solid var(--primary); background:var(--primary); color:var(--primary-ink); padding:8px 12px; border-radius:8px; cursor:pointer; }
+  button.ghost{ background:#fff; color:var(--primary); }
+  button.danger{ background:#fff; color:var(--danger); border-color:var(--danger); }
+  button:disabled{ opacity:.5; cursor:default; }
+  input,select{ font:inherit; padding:9px 10px; border:1px solid var(--line); border-radius:8px; width:100%; background:#fff; }
+  label{ display:block; font-size:.85rem; color:var(--muted); margin:8px 0 3px; }
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:12px; }
+  .stat{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; cursor:pointer; }
+  .stat b{ display:block; font-size:1.6rem; }
+  .stat span{ color:var(--muted); font-size:.85rem; }
+  .stat.on{ border-color:var(--primary); box-shadow:0 0 0 2px rgba(31,92,74,.15); }
+  .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:.75rem; font-weight:600; background:#eef2f0; color:var(--muted); }
+  .badge.active{ background:#e3f4ea; color:var(--ok); }
+  .badge.trial{ background:#fff3d6; color:var(--warn); }
+  .badge.pending_activation{ background:#e8eefc; color:#34519c; }
+  .badge.suspended,.badge.cancelled{ background:#fbe6e4; color:var(--danger); }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .row.sp{ justify-content:space-between; }
+  .muted{ color:var(--muted); font-size:.85rem; }
+  .actions{ display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .actions button,.actions select{ width:auto; padding:6px 10px; font-size:.85rem; }
+  .tabs{ display:flex; gap:6px; margin-bottom:12px; }
+  .tabs button{ flex:1; }
+  .tabs button:not(.on){ background:#fff; color:var(--primary); }
+  #toast{ position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:#1d2b26; color:#fff; padding:10px 16px; border-radius:10px; max-width:90vw; z-index:9; }
+  #toast.err{ background:var(--danger); }
+  code{ background:#eef2f0; padding:2px 6px; border-radius:6px; word-break:break-all; }
+  a{ color:var(--primary); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Vindora · Gestão da plataforma<small id="quem"></small></h1>
+  <div class="row"><a href="app.html" style="color:#fff;font-size:.85rem;">← App</a><button class="ghost hidden" id="btnSair">Sair</button></div>
+</header>
+<main>
+
+  <!-- A carregar -->
+  <div id="vCarregar" class="card muted">A verificar o acesso…</div>
+
+  <!-- Entrar -->
+  <div id="vLogin" class="card hidden">
+    <h2 style="margin-top:0;">Entrar como administrador</h2>
+    <p class="muted">Use o email de administração da plataforma.</p>
+    <label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" value="hikarifafe@gmail.com">
+    <label for="lgPass">Palavra-passe</label><input id="lgPass" type="password" autocomplete="current-password">
+    <p id="lgErro" class="muted" style="color:var(--danger);min-height:1.2em;"></p>
+    <button id="btnEntrar">Entrar</button>
+  </div>
+
+  <!-- Sem permissão -->
+  <div id="vSemAcesso" class="card hidden">
+    <h2 style="margin-top:0;">Esta conta ainda não é administradora</h2>
+    <p>Entrou como <b id="saEmail"></b>, mas a plataforma não tem esta conta na lista de administradores.</p>
+    <p>Para a autorizar (uma só vez):</p>
+    <ol>
+      <li>Abra a <a id="saLink" target="_blank" rel="noopener" href="https://console.firebase.google.com/project/saudecare-app/firestore/databases/-default-/data/~2Fplatform_admins">lista platform_admins na consola</a>.</li>
+      <li>Toque em <b>Adicionar documento</b> e, em "ID do documento", cole este código:<br><code id="saUid"></code> <button class="ghost" id="btnCopiarUid" style="padding:3px 8px;">Copiar</button></li>
+      <li>Adicione um campo qualquer, por exemplo <code>email</code> (texto) com o seu email, e guarde.</li>
+      <li>Volte aqui e recarregue a página.</li>
+    </ol>
+    <button class="ghost" id="btnSair2">Sair</button>
+  </div>
+
+  <!-- Painel -->
+  <div id="vPainel" class="hidden">
+    <div class="tabs">
+      <button id="tabSub" class="on">Subscritores</button>
+      <button id="tabApoio">Pedidos de apoio <span id="nApoio"></span></button>
+    </div>
+
+    <section id="secSub">
+      <div class="stats" id="stats"></div>
+      <div class="card">
+        <input id="busca" placeholder="Procurar por nome, email ou endereço (slug)…">
+      </div>
+      <div id="lista"></div>
+    </section>
+
+    <section id="secApoio" class="hidden">
+      <div id="listaApoio"></div>
+    </section>
+  </div>
+</main>
+<div id="toast" class="hidden"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, updateDoc, Timestamp, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+const fns = getFunctions(app, 'europe-west1');
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(msg, err){
+  const t = $('toast'); t.textContent = msg; t.className = err ? 'err' : ''; t.classList.remove('hidden');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hidden'), 4500);
+}
+function mostrar(id){ ['vCarregar','vLogin','vSemAcesso','vPainel'].forEach(v => $(v).classList.toggle('hidden', v !== id)); $('btnSair').classList.toggle('hidden', id === 'vLogin' || id === 'vCarregar'); }
+const fmt = ts => { try{ const d = ts?.toDate ? ts.toDate() : (ts ? new Date(ts) : null); return d ? d.toLocaleDateString('pt-PT') : '—'; }catch(e){ return '—'; } };
+const ESTADOS = { pending_activation:'Por ativar', trial:'Em teste', active:'Ativo', suspended:'Suspenso', cancelled:'Cancelado' };
+const PLANOS = ['start','grow','pro','enterprise','lifetime'];
+
+let tenants = [], pedidos = [], filtro = 'todos';
+
+// ── Entrada ────────────────────────────────────────────────────────────
+$('btnEntrar').onclick = async () => {
+  $('lgErro').textContent = '';
+  try{ await signInWithEmailAndPassword(auth, $('lgEmail').value.trim(), $('lgPass').value); }
+  catch(e){ $('lgErro').textContent = 'Email ou palavra-passe incorretos.'; }
+};
+const sair = () => signOut(auth);
+$('btnSair').onclick = sair; $('btnSair2').onclick = sair;
+$('btnCopiarUid').onclick = () => { navigator.clipboard?.writeText($('saUid').textContent).then(() => toast('Copiado.')).catch(() => toast('Mantenha o dedo no código para copiar.', true)); };
+
+onAuthStateChanged(auth, async user => {
+  if (!user){ $('quem').textContent = ''; mostrar('vLogin'); return; }
+  mostrar('vCarregar');
+  let ehAdmin = false;
+  try{ ehAdmin = (await getDoc(doc(db, 'platform_admins', user.uid))).exists(); }catch(e){ console.error(e); }
+  if (!ehAdmin){
+    $('saEmail').textContent = user.email || '';
+    $('saUid').textContent = user.uid;
+    mostrar('vSemAcesso');
+    return;
+  }
+  $('quem').textContent = user.email || '';
+  mostrar('vPainel');
+  await carregar();
+});
+
+// ── Dados ──────────────────────────────────────────────────────────────
+async function carregar(){
+  try{
+    const [ts, ps] = await Promise.all([
+      getDocs(collection(db, 'tenants')),
+      getDocs(collection(db, 'platform_support_requests'))
+    ]);
+    tenants = ts.docs.map(d => ({ id: d.id, ...d.data() }));
+    tenants.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+    pedidos = ps.docs.map(d => ({ id: d.id, ...d.data() }));
+    pedidos.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+  }catch(e){
+    console.error(e);
+    toast('Não foi possível carregar os dados: ' + (e.message||''), true);
+  }
+  desenhar();
+}
+
+function desenhar(){
+  const conta = s => tenants.filter(t => (t.status||'pending_activation') === s).length;
+  const abertos = pedidos.filter(p => p.status === 'open').length;
+  $('nApoio').textContent = abertos ? `(${abertos})` : '';
+  const itens = [['todos','Todos',tenants.length],['active','Ativos',conta('active')],['trial','Em teste',conta('trial')],['pending_activation','Por ativar',conta('pending_activation')],['suspended','Suspensos',conta('suspended')]];
+  $('stats').innerHTML = itens.map(([k,l,n]) => `<div class="stat ${filtro===k?'on':''}" data-f="${k}"><b>${n}</b><span>${l}</span></div>`).join('');
+  $('stats').querySelectorAll('.stat').forEach(el => el.onclick = () => { filtro = el.dataset.f; desenhar(); });
+
+  const q = $('busca').value.trim().toLowerCase();
+  const lista = tenants.filter(t => (filtro==='todos' || (t.status||'pending_activation')===filtro) &&
+    (!q || [t.businessName,t.ownerEmail,t.slug,t.id].some(x => String(x||'').toLowerCase().includes(q))));
+  $('lista').innerHTML = lista.length ? lista.map(cartao).join('') : '<div class="card muted">Nenhum subscritor nesta vista.</div>';
+
+  $('listaApoio').innerHTML = pedidos.length ? pedidos.map(cartaoApoio).join('') : '<div class="card muted">Sem pedidos de apoio.</div>';
+}
+$('busca').addEventListener('input', desenhar);
+
+function cartao(t){
+  const st = t.status || 'pending_activation';
+  const pagina = t.slug ? `${location.origin}/${t.slug}` : '';
+  const botoes = [];
+  if (st === 'pending_activation' || st === 'suspended' || st === 'cancelled') botoes.push(`<button data-a="status" data-v="active" data-id="${esc(t.id)}">✓ ${st==='suspended'||st==='cancelled' ? 'Reativar' : 'Ativar'}</button>`);
+  if (st === 'trial' || st === 'pending_activation') botoes.push(`<button class="ghost" data-a="extend" data-d="7" data-id="${esc(t.id)}">+7 dias de teste</button><button class="ghost" data-a="extend" data-d="14" data-id="${esc(t.id)}">+14 dias</button>`);
+  if (st === 'trial') botoes.push(`<button data-a="status" data-v="active" data-id="${esc(t.id)}">✓ Passar a ativo</button>`);
+  if (st !== 'suspended') botoes.push(`<button class="danger" data-a="status" data-v="suspended" data-id="${esc(t.id)}">⏸ Suspender</button>`);
+  botoes.push(`<button class="ghost" data-a="claim" data-id="${esc(t.id)}" title="Dá ao dono o acesso à sua conta, se ficou preso">🔑 Reparar acesso</button>`);
+  return `<div class="card">
+    <div class="row sp"><strong>${esc(t.businessName || '(sem nome)')}</strong><span class="badge ${esc(st)}">${esc(ESTADOS[st]||st)}</span></div>
+    <div class="muted">${esc(t.ownerEmail || t.profile?.email || '—')}</div>
+    <div class="muted">Plano <b>${esc(t.plan||'—')}</b> · criado em ${fmt(t.createdAt)}${t.trialEndsAt ? ` · teste até ${fmt(t.trialEndsAt)}` : ''}</div>
+    ${pagina ? `<div class="muted">Página: <a href="${esc(pagina)}" target="_blank" rel="noopener">${esc(pagina.replace(/^https?:\/\//,''))}</a></div>` : ''}
+    <div class="actions">
+      ${botoes.join('')}
+      <select data-a="plano" data-id="${esc(t.id)}" aria-label="Mudar plano">${PLANOS.map(p => `<option value="${p}" ${t.plan===p?'selected':''}>Plano: ${p}</option>`).join('')}</select>
+    </div>
+  </div>`;
+}
+
+function cartaoApoio(p){
+  const aberto = p.status === 'open';
+  return `<div class="card">
+    <div class="row sp"><strong>${esc(p.businessName || p.tenantId || '—')}</strong>
+      <span class="badge ${aberto ? 'trial' : 'active'}">${p.type === 'incident' ? '🚨 Incidente' : 'Apoio'} · ${aberto ? 'Aberto' : 'Resolvido'}</span></div>
+    <div class="muted">${esc(p.ownerEmail || '')} · ${fmt(p.createdAt)}</div>
+    <p style="white-space:pre-wrap;margin:8px 0;">${esc(p.message || '')}</p>
+    <div class="actions">
+      ${p.ownerEmail ? `<a href="mailto:${esc(p.ownerEmail)}"><button class="ghost" type="button">✉ Responder por email</button></a>` : ''}
+      <button data-a="apoio" data-id="${esc(p.id)}" data-v="${aberto ? 'closed' : 'open'}">${aberto ? '✓ Marcar resolvido' : 'Reabrir'}</button>
+    </div>
+  </div>`;
+}
+
+// ── Ações ──────────────────────────────────────────────────────────────
+async function chamarClaim(t){
+  const fn = httpsCallable(fns, 'assignTenantClaim');
+  return fn({ uid: t.ownerUid || t.id, tenantId: t.id, role: 'owner' });
+}
+async function acao(el){
+  const a = el.dataset.a, id = el.dataset.id;
+  const t = tenants.find(x => x.id === id);
+  try{
+    if (a === 'status'){
+      const v = el.dataset.v;
+      const nome = t?.businessName || id;
+      if (!confirm(`${v==='suspended' ? 'Suspender' : 'Ativar'} "${nome}"?`)) return;
+      const upd = { status: v, statusChangedAt: serverTimestamp() };
+      await updateDoc(doc(db, 'tenants', id), upd);
+      if (v === 'active' && t){
+        try{ await chamarClaim(t); }catch(e){ console.warn('claims', e); toast('Ativado. Aviso: não consegui reparar o acesso do dono (use "Reparar acesso" se ele não entrar).', true); await carregar(); return; }
+      }
+      toast('Feito.');
+    } else if (a === 'extend'){
+      const dias = +el.dataset.d;
+      const base = Math.max(Date.now(), t?.trialEndsAt?.toMillis?.() || 0);
+      const novo = Timestamp.fromMillis(base + dias*86400000);
+      const upd = { trialEndsAt: novo };
+      if ((t?.status||'pending_activation') !== 'trial') upd.status = 'trial';
+      await updateDoc(doc(db, 'tenants', id), upd);
+      if (upd.status){ try{ await chamarClaim(t); }catch(e){ console.warn('claims', e); } }
+      toast(`Teste prolongado até ${fmt(novo)}.`);
+    } else if (a === 'plano'){
+      const v = el.value;
+      if (!confirm(`Mudar "${t?.businessName||id}" para o plano ${v}?`)){ desenhar(); return; }
+      await updateDoc(doc(db, 'tenants', id), { plan: v });
+      toast('Plano atualizado.');
+    } else if (a === 'claim'){
+      if (!confirm('Dar ao dono o acesso à sua conta (repara contas que ficaram presas)?')) return;
+      await chamarClaim(t);
+      toast('Acesso reparado. O dono deve sair e voltar a entrar na app.');
+    } else if (a === 'apoio'){
+      await updateDoc(doc(db, 'platform_support_requests', id), { status: el.dataset.v });
+      toast('Atualizado.');
+    }
+  }catch(e){
+    console.error(e);
+    const m = String(e.code||e.message||e);
+    toast(m.includes('not-found') || m.includes('functions/') ? 'Esta ação precisa da função do servidor, que não está disponível agora.' : 'Não foi possível: ' + (e.message||m), true);
+  }
+  await carregar();
+}
+document.addEventListener('click', ev => { const el = ev.target.closest('button[data-a]'); if (el) acao(el); });
+document.addEventListener('change', ev => { const el = ev.target.closest('select[data-a="plano"]'); if (el) acao(el); });
+
+// ── Separadores ────────────────────────────────────────────────────────
+function aba(qual){
+  $('secSub').classList.toggle('hidden', qual !== 'sub'); $('secApoio').classList.toggle('hidden', qual !== 'apoio');
+  $('tabSub').classList.toggle('on', qual === 'sub'); $('tabApoio').classList.toggle('on', qual === 'apoio');
+}
+$('tabSub').onclick = () => aba('sub'); $('tabApoio').onclick = () => aba('apoio');
+</script>
+</body>
+</html>
