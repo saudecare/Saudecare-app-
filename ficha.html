@@ -33,11 +33,12 @@
 <body>
 
 <div class="hero">
-  <h1 id="formTitle">A carregar…</h1>
+  <h1 id="formTitle">…</h1>
   <p id="formDesc"></p>
 </div>
 
 <div class="wrap">
+  <div id="langBox" style="text-align:right;margin-bottom:8px;"></div>
   <div id="content"></div>
 </div>
 
@@ -45,10 +46,15 @@
 
 <script type="module">
 import { aplicarCorMarca } from "./marca.js";
+import { registar, t as _t, iniciarIdioma, definirIdioma, IDIOMAS, idioma } from "./i18n.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, collection, addDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+registar('ficha', {"carregar": {"pt": "A carregar…", "en": "Loading…", "es": "Cargando…", "fr": "Chargement…", "de": "Wird geladen…", "it": "Caricamento…"}, "linkInv": {"pt": "Ligação inválida", "en": "Invalid link", "es": "Enlace no válido", "fr": "Lien invalide", "de": "Ungültiger Link", "it": "Link non valido"}, "linkInvTxt": {"pt": "Falta informação no link (?t=&f=).", "en": "The link is missing information (?t=&f=).", "es": "Falta información en el enlace (?t=&f=).", "fr": "Il manque des informations dans le lien (?t=&f=).", "de": "Im Link fehlen Angaben (?t=&f=).", "it": "Mancano informazioni nel link (?t=&f=)."}, "pagNaoEnc": {"pt": "Página não encontrada", "en": "Page not found", "es": "Página no encontrada", "fr": "Page introuvable", "de": "Seite nicht gefunden", "it": "Pagina non trovata"}, "fichaNaoEnc": {"pt": "Ficha não encontrada", "en": "Form not found", "es": "Ficha no encontrada", "fr": "Fiche introuvable", "de": "Formular nicht gefunden", "it": "Scheda non trovata"}, "nome": {"pt": "O seu nome", "en": "Your name", "es": "Su nombre", "fr": "Votre nom", "de": "Ihr Name", "it": "Il suo nome"}, "nomePh": {"pt": "Nome completo", "en": "Full name", "es": "Nombre completo", "fr": "Nom complet", "de": "Vollständiger Name", "it": "Nome completo"}, "contacto": {"pt": "Telefone ou email (para vos ser possível identificar a resposta)", "en": "Phone or email (so that your answer can be identified)", "es": "Teléfono o correo electrónico (para poder identificar su respuesta)", "fr": "Téléphone ou e-mail (pour pouvoir identifier votre réponse)", "de": "Telefon oder E-Mail (damit Ihre Antwort zugeordnet werden kann)", "it": "Telefono o e-mail (per poter identificare la sua risposta)"}, "contactoPh": {"pt": "Telefone ou email", "en": "Phone or email", "es": "Teléfono o correo electrónico", "fr": "Téléphone ou e-mail", "de": "Telefon oder E-Mail", "it": "Telefono o e-mail"}, "termo": {"pt": "Termo de consentimento", "en": "Consent form", "es": "Consentimiento", "fr": "Formulaire de consentement", "de": "Einwilligungserklärung", "it": "Modulo di consenso"}, "aceito": {"pt": "Li e aceito os termos acima.", "en": "I have read and accept the terms above.", "es": "He leído y acepto los términos anteriores.", "fr": "J’ai lu et j’accepte les conditions ci-dessus.", "de": "Ich habe die obigen Bedingungen gelesen und akzeptiere sie.", "it": "Ho letto e accetto i termini sopra indicati."}, "confirmo": {"pt": "Confirmo que as respostas que estou a dar são verdadeiras e autorizo o seu uso pelo profissional responsável para efeitos de avaliação e acompanhamento.", "en": "I confirm that the answers I am giving are true and I authorise their use by the responsible professional for assessment and follow-up purposes.", "es": "Confirmo que las respuestas que doy son verdaderas y autorizo su uso por el profesional responsable a efectos de evaluación y seguimiento.", "fr": "Je confirme que mes réponses sont véridiques et j’autorise leur utilisation par le professionnel responsable à des fins d’évaluation et de suivi.", "de": "Ich bestätige, dass meine Antworten wahrheitsgemäß sind, und erlaube der verantwortlichen Fachperson, sie zur Beurteilung und Begleitung zu verwenden.", "it": "Confermo che le risposte fornite sono veritiere e autorizzo il loro uso da parte del professionista responsabile ai fini di valutazione e follow-up."}, "enviar": {"pt": "Enviar respostas", "en": "Send answers", "es": "Enviar respuestas", "fr": "Envoyer les réponses", "de": "Antworten senden", "it": "Invia le risposte"}, "indiqueNome": {"pt": "Indique o seu nome.", "en": "Please enter your name.", "es": "Indique su nombre.", "fr": "Indiquez votre nom.", "de": "Bitte geben Sie Ihren Namen an.", "it": "Indichi il suo nome."}, "confirmeAut": {"pt": "Confirme a autorização antes de enviar.", "en": "Confirm the authorisation before sending.", "es": "Confirme la autorización antes de enviar.", "fr": "Confirmez l’autorisation avant d’envoyer.", "de": "Bestätigen Sie die Erlaubnis vor dem Senden.", "it": "Confermi l’autorizzazione prima di inviare."}, "confirmeTermo": {"pt": "Confirme que leu e aceita o termo de consentimento antes de enviar.", "en": "Confirm that you have read and accept the consent form before sending.", "es": "Confirme que ha leído y acepta el consentimiento antes de enviar.", "fr": "Confirmez que vous avez lu et accepté le formulaire de consentement avant d’envoyer.", "de": "Bestätigen Sie vor dem Senden, dass Sie die Einwilligungserklärung gelesen und akzeptiert haben.", "it": "Confermi di aver letto e accettato il modulo di consenso prima di inviare."}, "enviadas": {"pt": "Respostas enviadas!", "en": "Answers sent!", "es": "¡Respuestas enviadas!", "fr": "Réponses envoyées !", "de": "Antworten gesendet!", "it": "Risposte inviate!"}, "obrigado": {"pt": "Obrigado. O profissional responsável vai analisar as suas respostas.", "en": "Thank you. The responsible professional will review your answers.", "es": "Gracias. El profesional responsable revisará sus respuestas.", "fr": "Merci. Le professionnel responsable examinera vos réponses.", "de": "Danke. Die verantwortliche Fachperson wird Ihre Antworten prüfen.", "it": "Grazie. Il professionista responsabile esaminerà le sue risposte."}, "erroEnviar": {"pt": "Não foi possível enviar. Tente novamente.", "en": "Could not send. Please try again.", "es": "No se pudo enviar. Inténtelo de nuevo.", "fr": "Envoi impossible. Veuillez réessayer.", "de": "Senden nicht möglich. Bitte versuchen Sie es erneut.", "it": "Impossibile inviare. Riprovi."}});
+const t = (k) => _t('ficha', k);
+iniciarIdioma();
 
 const firebaseConfig = {
   apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
@@ -83,13 +89,13 @@ function escapeHtml(str){
 
 async function loadForm(){
   if (!tenantSlug || !formId){
-    document.getElementById('formTitle').textContent = 'Ligação inválida';
-    document.getElementById('formDesc').textContent = 'Falta informação no link (?t=&f=).';
+    document.getElementById('formTitle').textContent = t('linkInv');
+    document.getElementById('formDesc').textContent = t('linkInvTxt');
     return;
   }
   const profileSnap = await getDoc(doc(db, 'public_tenant_profiles', tenantSlug));
   if (!profileSnap.exists()){
-    document.getElementById('formTitle').textContent = 'Página não encontrada';
+    document.getElementById('formTitle').textContent = t('pagNaoEnc');
     return;
   }
   tenantId = profileSnap.data().tenantId;
@@ -97,7 +103,7 @@ async function loadForm(){
 
   const formSnap = await getDoc(doc(db, 'tenants', tenantId, 'forms', formId));
   if (!formSnap.exists()){
-    document.getElementById('formTitle').textContent = 'Ficha não encontrada';
+    document.getElementById('formTitle').textContent = t('fichaNaoEnc');
     return;
   }
   formData = formSnap.data();
@@ -136,28 +142,28 @@ function renderForm(){
 
   content.innerHTML = `
     <div class="card">
-      <label>O seu nome</label>
-      <input id="respName" placeholder="Nome completo">
-      <label>Telefone ou email (para vos ser possível identificar a resposta)</label>
-      <input id="respContact" placeholder="Telefone ou email">
+      <label>${t('nome')}</label>
+      <input id="respName" placeholder="${t('nomePh')}">
+      <label>${t('contacto')}</label>
+      <input id="respContact" placeholder="${t('contactoPh')}">
     </div>
     ${formData.includesConsent && formData.consentTextSnapshot ? `
     <div class="card">
-      <label style="margin-bottom:6px;">Termo de consentimento</label>
+      <label style="margin-bottom:6px;">${t('termo')}</label>
       <div style="max-height:180px;overflow-y:auto;background:#f6f8f7;border-radius:8px;padding:10px;font-size:13px;white-space:pre-wrap;margin-bottom:8px;">${escapeHtml(formData.consentTextSnapshot)}</div>
       <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
         <input type="checkbox" id="respConsentTerm" style="width:auto;margin-top:3px;">
-        <span>Li e aceito os termos acima.</span>
+        <span>${t('aceito')}</span>
       </label>
     </div>` : ''}
     ${questionsHtml}
     <div class="card">
       <label style="display:flex;align-items:flex-start;gap:8px;font-weight:400;">
         <input type="checkbox" id="respConsent" style="width:auto;margin-top:3px;">
-        <span>Confirmo que as respostas que estou a dar são verdadeiras e autorizo o seu uso pelo profissional responsável para efeitos de avaliação e acompanhamento.</span>
+        <span>${t('confirmo')}</span>
       </label>
     </div>
-    <button class="primary" onclick="window.__submitForm()">Enviar respostas</button>
+    <button class="primary" onclick="window.__submitForm()">${t('enviar')}</button>
   `;
 }
 
@@ -181,10 +187,10 @@ window.__setChoice = function(qId, idx, label){
 
 window.__submitForm = async function(){
   const name = document.getElementById('respName').value.trim();
-  if (!name){ toast('Indique o seu nome.', true); return; }
-  if (!document.getElementById('respConsent').checked){ toast('Confirme a autorização antes de enviar.', true); return; }
+  if (!name){ toast(t('indiqueNome'), true); return; }
+  if (!document.getElementById('respConsent').checked){ toast(t('confirmeAut'), true); return; }
   if (formData.includesConsent && !document.getElementById('respConsentTerm')?.checked){
-    toast('Confirme que leu e aceita o termo de consentimento antes de enviar.', true);
+    toast(t('confirmeTermo'), true);
     return;
   }
 
@@ -211,15 +217,33 @@ window.__submitForm = async function(){
     document.getElementById('content').innerHTML = `
       <div class="card confirm-box">
         <div class="check">✅</div>
-        <h2>Respostas enviadas!</h2>
-        <p class="muted" style="margin-top:8px;">Obrigado. O profissional responsável vai analisar as suas respostas.</p>
+        <h2>${t('enviadas')}</h2>
+        <p class="muted" style="margin-top:8px;">${t('obrigado')}</p>
       </div>`;
   }catch(e){
     console.error(e);
-    toast('Não foi possível enviar. Tente novamente.', true);
+    toast(t('erroEnviar'), true);
   }
 };
 
+function restaurar(){
+  Object.keys(answersState).forEach(q => {
+    const v = answersState[q];
+    const ta = document.querySelector('textarea[oninput*="\'' + q + '\'"]'); if (ta && typeof v === 'string') ta.value = v;
+    if (typeof v === 'number'){ const b = document.getElementById('scale-' + q + '-' + v); if (b) b.classList.add('selected'); }
+    const fq = formData.questions.find(x => x.id === q);
+    if (fq && fq.type === 'multiple_choice'){ (fq.options||[]).forEach((o,i) => { if (o === v){ const el = document.getElementById('choice-' + q + '-' + i); if (el) el.classList.add('selected'); } }); }
+  });
+}
+document.getElementById('langBox').innerHTML = '<select id="vdLang" aria-label="Language" style="width:auto;padding:5px 8px;font-size:12px;">' + IDIOMAS.map(([k,n]) => '<option value="'+k+'"'+(k===idioma()?' selected':'')+'>'+n+'</option>').join('') + '</select>';
+document.getElementById('vdLang').addEventListener('change', e => {
+  definirIdioma(e.target.value);
+  if (!formData || !document.getElementById('respName')) return;
+  const nome = document.getElementById('respName').value, cont = document.getElementById('respContact').value;
+  renderForm();
+  document.getElementById('respName').value = nome; document.getElementById('respContact').value = cont;
+  restaurar();
+});
 loadForm();
 </script>
 <div style="text-align:center;padding:16px;color:var(--muted);font-size:12px;">Powered by Vindora</div>
