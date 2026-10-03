@@ -63,9 +63,16 @@ service cloud.firestore {
         request.resource.data.ownerUid == request.auth.uid &&
         request.resource.data.status == "pending_activation");
 
-      allow update: if isTenantOwner(tenantId) &&
+      // O dono pode editar os seus dados, mas NÃO os campos controlados pela
+      // plataforma (estado, plano, módulos exclusivos, acessos e limites extra,
+      // datas de teste/pagamento, notas internas).
+      allow update: if (isTenantOwner(tenantId) &&
         request.resource.data.status == resource.data.status &&
-        request.resource.data.plan == resource.data.plan
+        request.resource.data.plan == resource.data.plan &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'modulos', 'fullAccessOverride', 'limitOverrides', 'trialEndsAt',
+          'nextPaymentDue', 'adminNotes', 'statusChangedAt', 'ownerUid'
+        ]))
         || isPlatformAdmin();
 
       allow delete: if isPlatformAdmin();

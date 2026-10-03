@@ -316,7 +316,7 @@
     <button data-view="portalPaciente" style="background:#e3f0ea;color:#1a2b26;font-weight:600;">💚 Central do Paciente</button>
     <button data-view="group_agenda">📅 Agenda & Marcações</button>
     <button data-view="group_tools">🧰 Ferramentas</button>
-    <button id="navMisticaBtn" data-view="group_mistica" style="display:none;">🔮 Métodos Exclusivos</button>
+    <button id="navMisticaBtn" data-view="group_mistica" style="display:none;">🔮 Módulos Exclusivos</button>
     <button data-view="group_business">💼 O Meu Negócio</button>
     <button data-view="group_account">⚙️ Conta</button>
     <button onclick="installApp()" style="margin-top:20px;">📲 Instalar app no dispositivo</button>
@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-03-02';
+const APP_VERSION = '2026-10-03-03';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1350,7 +1350,7 @@ onAuthStateChanged(auth, async (user) => {
   tenantId = tokenResult.claims.tenantId || null;
   tenantRole = tokenResult.claims.role || null;
   const navMisticaBtn = document.getElementById('navMisticaBtn');
-  if (navMisticaBtn) navMisticaBtn.style.display = (tenantId === 'hikari-terapias') ? '' : 'none';
+  if (navMisticaBtn) navMisticaBtn.style.display = 'none';
 
   if (!tenantId){
     if (window.__justRegistered){
@@ -1372,6 +1372,7 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
   currentTenantDoc = tSnap.data();
+  atualizarMenuModulos();
 
   // Último acesso do dono (para o painel de gestão da plataforma) — no máximo 1x por 12h.
   if (tenantRole === 'owner'){
@@ -1703,10 +1704,10 @@ const NAV_GROUPS = {
     { view: 'versoes', icon: '🕘', label: 'Versões anteriores' },
     { view: 'pesquisaEmocional', icon: '🔬', label: 'Pesquisa Emocional Clínica', peAccess: true }
   ]},
-  mistica: { title: '🔮 Métodos Exclusivos Hikari Fafe', tenantOnly: 'hikari-terapias', items: [
-    { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', tenantOnly: 'hikari-terapias' },
-    { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', tenantOnly: 'hikari-terapias' },
-    { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem — Pêndulo Hebraico', tenantOnly: 'hikari-terapias' },
+  mistica: { title: '🔮 Módulos Exclusivos', items: [
+    { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', modulo: 'mapaAlma' },
+    { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', modulo: 'cartomancia' },
+    { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem — Pêndulo Hebraico', modulo: 'triagemPendulo' },
     { view: 'reikiAlunos', icon: '🎓', label: 'Alunos Reiki', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
@@ -1728,6 +1729,17 @@ Object.entries(NAV_GROUPS).forEach(([groupKey, group]) => {
   group.items.forEach(it => { NAV_VIEW_TO_GROUP[it.view] = 'group_' + groupKey; });
 });
 
+// Módulos exclusivos: ligados pela plataforma (painel de admin) em tenants/{id}.modulos.{chave}.
+// A conta da Hikari Fafe tem sempre tudo.
+function temModulo(chave){
+  return tenantId === 'hikari-terapias' || (currentTenantDoc && currentTenantDoc.modulos && currentTenantDoc.modulos[chave] === true);
+}
+window.temModulo = temModulo;
+function atualizarMenuModulos(){
+  const b = document.getElementById('navMisticaBtn');
+  if (b) b.style.display = (temModulo('mapaAlma') || temModulo('cartomancia') || temModulo('triagemPendulo')) ? '' : 'none';
+}
+
 function renderGroupMenu(main, groupKey){
   const group = NAV_GROUPS[groupKey];
   if (!group) return;
@@ -1737,6 +1749,7 @@ function renderGroupMenu(main, groupKey){
     if (it.hideForOwner && tenantRole === 'owner') return false;
     if (it.gestorOnly && !ehGestor()) return false;
     if (it.tenantOnly && tenantId !== it.tenantOnly) return false;
+    if (it.modulo && !temModulo(it.modulo)) return false;
     if (it.peAccess && !window.temPesquisaEmocional?.()) return false;
     if (ehGestor() && !vistasDoGestor().includes(it.view)) return false;
     return true;
@@ -9890,7 +9903,7 @@ async function renderMapaAlma(main){
   // Bloqueio a sério, não só esconder o botão do menu — mesmo que alguém
   // tente chegar aqui diretamente (ex: escrevendo na barra de endereço),
   // esta ferramenta é exclusiva da conta da Hikari Fafe.
-  if (tenantId !== 'hikari-terapias'){
+  if (!temModulo('mapaAlma')){
     main.innerHTML = `<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">O Mapa da Alma é uma ferramenta exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>`;
     return;
   }
@@ -10244,7 +10257,7 @@ window.ctPreencherNome = function(){
 async function renderCartomancia(main){
   await carregarPacientes();
   // Mesmo bloqueio a sério do Mapa da Alma — exclusivo desta conta.
-  if (tenantId !== 'hikari-terapias'){
+  if (!temModulo('cartomancia')){
     main.innerHTML = `<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">A Cartomancia é uma ferramenta exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>`;
     return;
   }
@@ -11079,7 +11092,7 @@ async function carregarPacientes(){
 async function renderTriagemBaixaVibracao(main, opts){
   // Bloqueio a sério, como no Mapa da Alma e na Cartomancia: não basta
   // estar escondido do menu.
-  if (tenantId !== 'hikari-terapias'){
+  if (!temModulo('triagemPendulo')){
     (main || document.getElementById('mainView')).innerHTML = `<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">A Triagem com Pêndulo Hebraico é uma ferramenta exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>`;
     return;
   }

@@ -247,6 +247,12 @@ function vSubs(){
 }
 
 // ── Detalhe do subscritor ──────────────────────────────────────────────
+const MODULOS = [
+  ['pesquisaEmocional','🔬 Pesquisa Emocional Clínica','Ansiedade e depressão: questionários e métodos de atendimento da formação. Para quem tem essa formação.'],
+  ['mapaAlma','🔮 Mapa da Alma','Ferramenta exclusiva Hikari Fafe.'],
+  ['cartomancia','🃏 Cartomancia','Ferramenta exclusiva Hikari Fafe.'],
+  ['triagemPendulo','🎴 Triagem — Pêndulo Hebraico','Ferramenta exclusiva Hikari Fafe.']
+];
 function abrirDetalhe(id){
   const t = T.find(x => x.id === id); if (!t) return;
   const st = estado(t), fao = t.fullAccessOverride || {}, lo = t.limitOverrides || {};
@@ -273,6 +279,11 @@ function abrirDetalhe(id){
       </div>
       <label>Fim do período de teste</label>
       <div class="row"><input id="dTeste" type="date" value="${iso(t.trialEndsAt)}" style="flex:1;min-width:150px;"><button class="ghost small" data-act="mais" data-d="7">+7 dias</button><button class="ghost small" data-act="mais" data-d="14">+14 dias</button></div>
+    </div>
+
+    <div class="card"><h3>🔒 Módulos exclusivos</h3>
+      <p class="muted" style="margin-top:0;">Só quem tiver o módulo ligado o vê na app. Ficam escondidos para todos os outros subscritores. Lembre-se de tocar em "Guardar alterações".</p>
+      ${MODULOS.map(([k,nome,desc]) => `<div class="sw"><input type="checkbox" data-mod="${k}" id="mod_${k}" ${(t.modulos||{})[k]===true?'checked':''}><label for="mod_${k}" style="margin:0;color:var(--ink);"><b>${nome}</b><br><span class="muted">${desc}</span></label></div>`).join('')}
     </div>
 
     <div class="card"><h3>Permissões extra</h3>
@@ -318,6 +329,9 @@ async function guardar(){
   const lo = { staffExtra: +$('dLoStaff').value||0, portalPatientsExtra: +$('dLoPortal').value||0, kbBytesExtra: Math.round((+$('dLoKb').value||0)*MB) };
   const lo0 = t.limitOverrides || {};
   if (lo.staffExtra !== (lo0.staffExtra||0) || lo.portalPatientsExtra !== (lo0.portalPatientsExtra||0) || lo.kbBytesExtra !== (lo0.kbBytesExtra||0)) upd.limitOverrides = (lo.staffExtra||lo.portalPatientsExtra||lo.kbBytesExtra) ? lo : deleteField();
+  const mods = { ...(t.modulos || {}) }; let modMudou = false;
+  document.querySelectorAll('[data-mod]').forEach(c => { if (c.checked !== (mods[c.dataset.mod] === true)){ mods[c.dataset.mod] = c.checked; modMudou = true; } });
+  if (modMudou) upd.modulos = mods;
   const notas = $('dNotas').value.trim(); if (notas !== (t.adminNotes||'')) upd.adminNotes = notas || deleteField();
   if (!Object.keys(upd).length){ toast('Nada para guardar.'); return; }
   await updateDoc(doc(db, 'tenants', t.id), upd);
