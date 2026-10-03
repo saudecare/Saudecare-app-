@@ -13,7 +13,7 @@
     --font-display:'Fraunces',Georgia,serif; --font-body:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   *{box-sizing:border-box;margin:0;padding:0;font-family:var(--font-body);}
   body{background:var(--bg);color:var(--text);line-height:1.5;}
-  .hero{background:linear-gradient(150deg,var(--primary-dark),var(--primary) 65%);color:#fff;padding:34px 20px 28px;text-align:center;}
+  .hero{position:relative;background:linear-gradient(150deg,var(--primary-dark),var(--primary) 65%);color:#fff;padding:34px 20px 28px;text-align:center;}
   .hero img.logo{width:64px;height:64px;border-radius:14px;object-fit:cover;margin-bottom:12px;background:#fff;box-shadow:0 5px 14px rgba(0,0,0,.16);}
   .hero h1{font-family:var(--font-display);font-weight:600;font-size:23px;letter-spacing:-.01em;margin-bottom:5px;}
   .hero p{opacity:.9;font-size:14px;}
@@ -39,7 +39,7 @@
 </head>
 <body>
 <div class="hero" id="hero">
-  <p style="opacity:.85;">A carregar…</p>
+  <p style="opacity:.85;">…</p>
 </div>
 <div class="wrap">
   <div id="mainContent"></div>
@@ -47,11 +47,16 @@
 
 <script type="module">
 import { aplicarCorMarca } from "./marca.js";
+import { registar, t as _t, iniciarIdioma, definirIdioma, seletorIdiomaHtml, idioma } from "./i18n.js";
 import { fusoDe, dataNoFuso, formatarNoFuso, fusoDoDispositivo, chaveData, semanasDesde } from "./fuso.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, doc, getDoc, collection, getDocs, addDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+registar('marcar', {"carregar": {"pt": "A carregar…", "en": "Loading…", "es": "Cargando…", "fr": "Chargement…", "de": "Wird geladen…", "it": "Caricamento…"}, "invalido": {"pt": "Ligação inválida", "en": "Invalid link", "es": "Enlace no válido", "fr": "Lien invalide", "de": "Ungültiger Link", "it": "Link non valido"}, "naoEncontrada": {"pt": "Página não encontrada", "en": "Page not found", "es": "Página no encontrada", "fr": "Page introuvable", "de": "Seite nicht gefunden", "it": "Pagina non trovata"}, "titulo": {"pt": "Marcar Consulta", "en": "Book an appointment", "es": "Reservar cita", "fr": "Prendre rendez-vous", "de": "Termin buchen", "it": "Prenota un appuntamento"}, "intro": {"pt": "Preencha os seus dados — a marcação fica pendente até ser confirmada.", "en": "Fill in your details — the booking stays pending until it is confirmed.", "es": "Rellene sus datos: la reserva queda pendiente hasta que se confirme.", "fr": "Remplissez vos coordonnées : la demande reste en attente jusqu’à sa confirmation.", "de": "Füllen Sie Ihre Daten aus – die Buchung bleibt offen, bis sie bestätigt wird.", "it": "Compili i suoi dati: la prenotazione resta in sospeso fino alla conferma."}, "nome": {"pt": "O seu nome", "en": "Your name", "es": "Su nombre", "fr": "Votre nom", "de": "Ihr Name", "it": "Il suo nome"}, "nomePh": {"pt": "Nome completo", "en": "Full name", "es": "Nombre completo", "fr": "Nom complet", "de": "Vollständiger Name", "it": "Nome completo"}, "contacto": {"pt": "WhatsApp ou email", "en": "WhatsApp or email", "es": "WhatsApp o correo electrónico", "fr": "WhatsApp ou e-mail", "de": "WhatsApp oder E-Mail", "it": "WhatsApp o e-mail"}, "contactoPh": {"pt": "Telemóvel (com indicativo, ex: +351…) ou email", "en": "Mobile (with country code, e.g. +351…) or email", "es": "Móvil (con prefijo, p. ej. +351…) o correo", "fr": "Mobile (avec indicatif, ex. +351…) ou e-mail", "de": "Handy (mit Vorwahl, z. B. +351…) oder E-Mail", "it": "Cellulare (con prefisso, es. +351…) o e-mail"}, "servico": {"pt": "Serviço pretendido", "en": "Service you want", "es": "Servicio deseado", "fr": "Service souhaité", "de": "Gewünschte Leistung", "it": "Servizio desiderato"}, "gratis": {"pt": "Grátis", "en": "Free", "es": "Gratis", "fr": "Gratuit", "de": "Kostenlos", "it": "Gratis"}, "quando": {"pt": "Quando prefere?", "en": "When would you prefer?", "es": "¿Cuándo prefiere?", "fr": "Quand préférez-vous ?", "de": "Wann bevorzugen Sie?", "it": "Quando preferisce?"}, "quandoPh": {"pt": "ex: Quinta-feira de manhã, ou o que for mais conveniente", "en": "e.g. Thursday morning, or whatever suits you best", "es": "p. ej. jueves por la mañana, o lo que le venga mejor", "fr": "ex. jeudi matin, ou ce qui vous convient le mieux", "de": "z. B. Donnerstagvormittag oder wann es Ihnen passt", "it": "es. giovedì mattina, o quando le è più comodo"}, "semFixo": {"pt": "Este profissional não tem horário fixo — combina o horário diretamente consigo.", "en": "This professional has no fixed hours — they will arrange a time with you directly.", "es": "Este profesional no tiene horario fijo: acordará la hora directamente con usted.", "fr": "Ce professionnel n’a pas d’horaires fixes : il conviendra d’un horaire directement avec vous.", "de": "Diese Fachperson hat keine festen Zeiten – sie vereinbart den Termin direkt mit Ihnen.", "it": "Questo professionista non ha orari fissi: concorderà l’orario direttamente con lei."}, "data": {"pt": "Data", "en": "Date", "es": "Fecha", "fr": "Date", "de": "Datum", "it": "Data"}, "hora": {"pt": "Hora aproximada", "en": "Approximate time", "es": "Hora aproximada", "fr": "Heure approximative", "de": "Ungefähre Uhrzeit", "it": "Orario indicativo"}, "mensagem": {"pt": "Mensagem (opcional)", "en": "Message (optional)", "es": "Mensaje (opcional)", "fr": "Message (facultatif)", "de": "Nachricht (optional)", "it": "Messaggio (facoltativo)"}, "mensagemPh": {"pt": "Alguma informação extra que queira partilhar", "en": "Any extra information you would like to share", "es": "Cualquier información adicional que quiera compartir", "fr": "Toute information supplémentaire que vous souhaitez partager", "de": "Weitere Informationen, die Sie mitteilen möchten", "it": "Altre informazioni che desidera condividere"}, "btn": {"pt": "📅 Pedir Marcação", "en": "📅 Request booking", "es": "📅 Solicitar reserva", "fr": "📅 Demander un rendez-vous", "de": "📅 Termin anfragen", "it": "📅 Richiedi prenotazione"}, "aEnviar": {"pt": "A enviar…", "en": "Sending…", "es": "Enviando…", "fr": "Envoi…", "de": "Wird gesendet…", "it": "Invio in corso…"}, "habitual": {"pt": "Horário habitual neste dia: {a}–{b}.", "en": "Usual hours on this day: {a}–{b}.", "es": "Horario habitual este día: {a}–{b}.", "fr": "Horaires habituels ce jour-là : {a}–{b}.", "de": "Übliche Zeiten an diesem Tag: {a}–{b}.", "it": "Orario abituale in questo giorno: {a}–{b}."}, "naoAtende": {"pt": "⚠️ Este profissional normalmente não atende neste dia — pode pedir na mesma, fica sujeito a confirmação.", "en": "⚠️ This professional does not normally work on this day — you can still request it, subject to confirmation.", "es": "⚠️ Este profesional normalmente no atiende este día: puede solicitarlo igualmente, sujeto a confirmación.", "fr": "⚠️ Ce professionnel ne reçoit normalement pas ce jour-là : vous pouvez quand même demander, sous réserve de confirmation.", "de": "⚠️ Diese Fachperson arbeitet an diesem Tag normalerweise nicht – Sie können trotzdem anfragen, vorbehaltlich Bestätigung.", "it": "⚠️ Questo professionista di norma non riceve in questo giorno: può comunque richiederlo, salvo conferma."}, "fusoBase": {"pt": "Horas no fuso do profissional: {f}.", "en": "Times are in the professional’s time zone: {f}.", "es": "Horas en la zona horaria del profesional: {f}.", "fr": "Heures dans le fuseau du professionnel : {f}.", "de": "Zeiten in der Zeitzone der Fachperson: {f}.", "it": "Orari nel fuso del professionista: {f}."}, "fusoSeu": {"pt": " No teu fuso ({f}) será {q}.", "en": " In your time zone ({f}) it will be {q}.", "es": " En su zona horaria ({f}) será {q}.", "fr": " Dans votre fuseau ({f}) ce sera {q}.", "de": " In Ihrer Zeitzone ({f}) ist das {q}.", "it": " Nel suo fuso ({f}) sarà {q}."}, "errContacto": {"pt": "Preencha o nome e um contacto.", "en": "Please enter your name and a contact.", "es": "Indique su nombre y un contacto.", "fr": "Indiquez votre nom et un contact.", "de": "Bitte geben Sie Name und Kontakt an.", "it": "Inserisca nome e un contatto."}, "errContactoInv": {"pt": "O contacto não parece certo. Escreva um email válido ou um telemóvel com indicativo.", "en": "The contact does not look right. Enter a valid email or a mobile number with country code.", "es": "El contacto no parece correcto. Escriba un correo válido o un móvil con prefijo.", "fr": "Le contact semble incorrect. Saisissez un e-mail valide ou un mobile avec indicatif.", "de": "Der Kontakt scheint nicht korrekt. Geben Sie eine gültige E-Mail oder eine Handynummer mit Vorwahl ein.", "it": "Il contatto non sembra corretto. Inserisca un’e-mail valida o un cellulare con prefisso."}, "errQuando": {"pt": "Diga-nos quando prefere ser atendido.", "en": "Tell us when you would prefer to be seen.", "es": "Díganos cuándo prefiere ser atendido.", "fr": "Dites-nous quand vous préférez être reçu.", "de": "Sagen Sie uns, wann Sie gern kommen möchten.", "it": "Ci dica quando preferisce essere ricevuto."}, "errData": {"pt": "Escolha uma data.", "en": "Choose a date.", "es": "Elija una fecha.", "fr": "Choisissez une date.", "de": "Wählen Sie ein Datum.", "it": "Scelga una data."}, "errPassado": {"pt": "Escolha uma data e hora que ainda não tenham passado.", "en": "Choose a date and time that are not in the past.", "es": "Elija una fecha y hora que no hayan pasado.", "fr": "Choisissez une date et une heure qui ne sont pas passées.", "de": "Wählen Sie ein Datum und eine Uhrzeit in der Zukunft.", "it": "Scelga una data e un’ora non ancora trascorse."}, "errEnviar": {"pt": "Não foi possível enviar agora. Tente novamente.", "en": "Could not send right now. Please try again.", "es": "No se pudo enviar ahora. Inténtelo de nuevo.", "fr": "Envoi impossible pour le moment. Veuillez réessayer.", "de": "Senden derzeit nicht möglich. Bitte versuchen Sie es erneut.", "it": "Impossibile inviare ora. Riprovi."}, "enviado": {"pt": "Pedido enviado!", "en": "Request sent!", "es": "¡Solicitud enviada!", "fr": "Demande envoyée !", "de": "Anfrage gesendet!", "it": "Richiesta inviata!"}, "enviadoTxt": {"pt": "Vamos rever o seu pedido e confirmar consigo em breve, através do contacto que deixou.", "en": "We will review your request and confirm with you soon, using the contact you left.", "es": "Revisaremos su solicitud y se lo confirmaremos pronto a través del contacto que ha dejado.", "fr": "Nous allons examiner votre demande et vous confirmer bientôt, via le contact indiqué.", "de": "Wir prüfen Ihre Anfrage und bestätigen sie in Kürze über den angegebenen Kontakt.", "it": "Esamineremo la sua richiesta e la confermeremo a breve tramite il contatto indicato."}, "pediu": {"pt": "Pediu:", "en": "You requested:", "es": "Solicitó:", "fr": "Vous avez demandé :", "de": "Ihre Anfrage:", "it": "Ha richiesto:"}, "noSeuFuso": {"pt": "No seu fuso: {q}", "en": "In your time zone: {q}", "es": "En su zona horaria: {q}", "fr": "Dans votre fuseau : {q}", "de": "In Ihrer Zeitzone: {q}", "it": "Nel suo fuso: {q}"}});
+const t = (k, v) => _t('marcar', k, v);
+iniciarIdioma();
 
 const firebaseConfig = {
   apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
@@ -97,14 +102,28 @@ function getScheduleForDate(avail, dateObj){
 
 let profile, tenantId, services = [], categories = [], selectedService = null, FUSO = 'Europe/Lisbon';
 
+function ligarIdioma(){
+  const s = document.getElementById('vdLang');
+  if (s) s.addEventListener('change', () => { definirIdioma(s.value); if (profile){ desenharHero(); selectedService = null; renderForm(); } else { location.reload(); } });
+}
+function desenharHero(){
+  document.getElementById('hero').innerHTML = `
+    ${seletorIdiomaHtml()}
+    ${profile.logoUrl ? `<img class="logo" src="${escapeHtml(profile.logoUrl)}">` : ''}
+    <h1>${escapeHtml(profile.businessName || t('titulo'))}</h1>
+    <p>${t('intro')}</p>
+  `;
+  ligarIdioma();
+}
+
 async function load(){
   if (!tenantSlug){
-    document.getElementById('hero').innerHTML = '<h1>Ligação inválida</h1>';
+    document.getElementById('hero').innerHTML = seletorIdiomaHtml() + '<h1>' + t('invalido') + '</h1>'; ligarIdioma();
     return;
   }
   const profileSnap = await getDoc(doc(db, 'public_tenant_profiles', tenantSlug));
   if (!profileSnap.exists()){
-    document.getElementById('hero').innerHTML = '<h1>Página não encontrada</h1>';
+    document.getElementById('hero').innerHTML = seletorIdiomaHtml() + '<h1>' + t('naoEncontrada') + '</h1>'; ligarIdioma();
     return;
   }
   profile = profileSnap.data();
@@ -112,11 +131,7 @@ async function load(){
   aplicarCorMarca(profile.branding?.primaryColor);
   FUSO = fusoDe(profile);
 
-  document.getElementById('hero').innerHTML = `
-    ${profile.logoUrl ? `<img class="logo" src="${escapeHtml(profile.logoUrl)}">` : ''}
-    <h1>${escapeHtml(profile.businessName || 'Marcar Consulta')}</h1>
-    <p>Preencha os seus dados — a marcação fica pendente até ser confirmada.</p>
-  `;
+  desenharHero();
 
   const [catSnap, svcSnap] = await Promise.all([
     getDocs(collection(db, 'tenants', tenantId, 'serviceCategories')),
@@ -134,41 +149,41 @@ function renderForm(){
 
   main.innerHTML = `
     <div class="card">
-      <label>O seu nome</label>
-      <input id="fNome" placeholder="Nome completo">
-      <label>WhatsApp ou email</label>
-      <input id="fContacto" placeholder="Telemóvel (com indicativo, ex: +351…) ou email" autocomplete="email">
+      <label>${t('nome')}</label>
+      <input id="fNome" placeholder="${t('nomePh')}">
+      <label>${t('contacto')}</label>
+      <input id="fContacto" placeholder="${t('contactoPh')}" autocomplete="email">
       <input id="fSite" type="text" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;height:0;width:0;opacity:0;" aria-hidden="true">
 
       ${services.length ? `
-      <label>Serviço pretendido</label>
+      <label>${t('servico')}</label>
       <div id="serviceList">
         ${services.map(s => {
           const cat = categories.find(c => c.id === s.categoryId);
           return `<div class="service-option" data-id="${s.id}">
             <strong>${cat?.icon || '🩺'} ${escapeHtml(s.name)}</strong>
-            <div class="muted">${s.durationMinutes ? s.durationMinutes + ' min · ' : ''}${s.price ? s.price + '€' : 'Grátis'}</div>
+            <div class="muted">${s.durationMinutes ? s.durationMinutes + ' min · ' : ''}${s.price ? s.price + '€' : t('gratis')}</div>
           </div>`;
         }).join('')}
       </div>` : ''}
 
       ${semHorarioFixo ? `
-      <label>Quando prefere?</label>
-      <textarea id="fQuando" rows="2" placeholder="ex: Quinta-feira de manhã, ou o que for mais conveniente"></textarea>
-      <p class="muted" style="margin-top:4px;">Este profissional não tem horário fixo — combina o horário diretamente consigo.</p>
+      <label>${t('quando')}</label>
+      <textarea id="fQuando" rows="2" placeholder="${t('quandoPh')}"></textarea>
+      <p class="muted" style="margin-top:4px;">${t('semFixo')}</p>
       ` : `
-      <label>Data</label>
+      <label>${t('data')}</label>
       <input id="fData" type="date" min="${hojeNoFuso()}">
       <p class="muted" id="fDataInfo" style="margin-top:4px;"></p>
-      <label>Hora aproximada</label>
+      <label>${t('hora')}</label>
       <input id="fHora" type="time">
       <p class="muted" id="fFusoInfo" style="margin-top:4px;"></p>
       `}
 
-      <label>Mensagem (opcional)</label>
-      <textarea id="fMensagem" rows="2" placeholder="Alguma informação extra que queira partilhar"></textarea>
+      <label>${t('mensagem')}</label>
+      <textarea id="fMensagem" rows="2" placeholder="${t('mensagemPh')}"></textarea>
 
-      <button class="btn" id="btnEnviar">📅 Pedir Marcação</button>
+      <button class="btn" id="btnEnviar">${t('btn')}</button>
       <div id="formError"></div>
     </div>
   `;
@@ -195,10 +210,10 @@ function updateDateInfo(avail){
   const dateObj = new Date(dataVal + 'T00:00:00');
   const sched = getScheduleForDate(avail, dateObj);
   if (!sched || !sched.enabled){
-    infoEl.innerHTML = '⚠️ Este profissional normalmente não atende neste dia — pode pedir na mesma, fica sujeito a confirmação.';
+    infoEl.textContent = t('naoAtende');
     infoEl.style.color = '#a33';
   } else {
-    infoEl.textContent = `Horário habitual neste dia: ${sched.start}–${sched.end}.`;
+    infoEl.textContent = t('habitual', { a: sched.start, b: sched.end });
     infoEl.style.color = '';
   }
 }
@@ -216,7 +231,7 @@ function atualizarFuso(){
   const el = document.getElementById('fFusoInfo');
   if (!el) return;
   const meu = fusoDoDispositivo();
-  const base = 'Horas no fuso do profissional: ' + FUSO.replace('_', ' ') + '.';
+  const base = t('fusoBase', { f: FUSO.replace('_', ' ') });
   const data = document.getElementById('fData')?.value;
   const hora = document.getElementById('fHora')?.value;
   if (meu === FUSO || !data || !hora){
@@ -224,7 +239,7 @@ function atualizarFuso(){
     return;
   }
   const quando = dataNoFuso(data, hora, FUSO);
-  el.textContent = base + ' No teu fuso (' + meu.replace('_', ' ') + ') será ' + formatarNoFuso(quando, meu) + '.';
+  el.textContent = base + t('fusoSeu', { f: meu.replace('_', ' '), q: formatarNoFuso(quando, meu) });
 }
 
 async function onSubmit(){
@@ -235,17 +250,17 @@ async function onSubmit(){
   errorEl.innerHTML = '';
 
   if (!clientName || !clientContacto){
-    errorEl.innerHTML = '<div class="errorbox">Preencha o nome e um contacto.</div>';
+    errorEl.innerHTML = '<div class="errorbox">' + t('errContacto') + '</div>';
     return;
   }
   const eEmail = clientContacto.includes('@');
   if (eEmail ? !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(clientContacto) : clientContacto.replace(/\D/g, '').length < 7){
-    errorEl.innerHTML = '<div class="errorbox">O contacto não parece certo. Escreva um email válido ou um telemóvel com indicativo.</div>';
+    errorEl.innerHTML = '<div class="errorbox">' + t('errContactoInv') + '</div>';
     return;
   }
   // Campo-armadilha para robôs: pessoas não o veem nem o preenchem.
   if (document.getElementById('fSite')?.value){
-    main.innerHTML = '<div class="card success"><div class="check">✅</div><h2>Pedido enviado!</h2></div>';
+    main.innerHTML = '<div class="card success"><div class="check">✅</div><h2>' + t('enviado') + '</h2></div>';
     return;
   }
 
@@ -257,26 +272,26 @@ async function onSubmit(){
   if (semHorarioFixo){
     quandoTexto = document.getElementById('fQuando').value.trim();
     if (!quandoTexto){
-      errorEl.innerHTML = '<div class="errorbox">Diga-nos quando prefere ser atendido.</div>';
+      errorEl.innerHTML = '<div class="errorbox">' + t('errQuando') + '</div>';
       return;
     }
   } else {
     const data = document.getElementById('fData').value;
     const hora = document.getElementById('fHora').value;
     if (!data){
-      errorEl.innerHTML = '<div class="errorbox">Escolha uma data.</div>';
+      errorEl.innerHTML = '<div class="errorbox">' + t('errData') + '</div>';
       return;
     }
     const quando = dataNoFuso(data, hora || '09:00', FUSO);
     if (quando.getTime() < Date.now()){
-      errorEl.innerHTML = '<div class="errorbox">Escolha uma data e hora que ainda não tenham passado.</div>';
+      errorEl.innerHTML = '<div class="errorbox">' + t('errPassado') + '</div>';
       return;
     }
     requestedStart = quando.toISOString();
   }
 
   const btn = document.getElementById('btnEnviar');
-  btn.disabled = true; btn.textContent = 'A enviar…';
+  btn.disabled = true; btn.textContent = t('aEnviar');
 
   try{
     const contactoIsEmail = clientContacto.includes('@');
@@ -297,15 +312,15 @@ async function onSubmit(){
     main.innerHTML = `
       <div class="card success">
         <div class="check">✅</div>
-        <h2>Pedido enviado!</h2>
-        <p class="muted" style="margin-top:8px;">Vamos rever o seu pedido e confirmar consigo em breve, através do contacto que deixou.</p>
-        ${requestedStart ? `<p style="margin-top:10px;"><strong>Pediu:</strong> ${escapeHtml(formatarNoFuso(new Date(requestedStart), FUSO))} (${escapeHtml(FUSO.replace('_',' '))})${fusoDoDispositivo() !== FUSO ? '<br><span class="muted">No seu fuso: ' + escapeHtml(formatarNoFuso(new Date(requestedStart), fusoDoDispositivo())) + '</span>' : ''}</p>` : ''}
+        <h2>${t('enviado')}</h2>
+        <p class="muted" style="margin-top:8px;">${t('enviadoTxt')}</p>
+        ${requestedStart ? `<p style="margin-top:10px;"><strong>${t('pediu')}</strong> ${escapeHtml(formatarNoFuso(new Date(requestedStart), FUSO))} (${escapeHtml(FUSO.replace('_',' '))})${fusoDoDispositivo() !== FUSO ? '<br><span class="muted">' + escapeHtml(t('noSeuFuso', { q: formatarNoFuso(new Date(requestedStart), fusoDoDispositivo()) })) + '</span>' : ''}</p>` : ''}
       </div>
     `;
   }catch(e){
     console.error(e);
-    errorEl.innerHTML = '<div class="errorbox">Não foi possível enviar agora. Tente novamente.</div>';
-    btn.disabled = false; btn.textContent = '📅 Pedir Marcação';
+    errorEl.innerHTML = '<div class="errorbox">' + t('errEnviar') + '</div>';
+    btn.disabled = false; btn.textContent = t('btn');
   }
 }
 
