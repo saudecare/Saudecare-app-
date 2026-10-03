@@ -39,6 +39,7 @@ jobs:
           printf '%s' "$CHAVE" > "$RUNNER_TEMP/sa.json"
 
       - name: Diagnóstico e arranjo da chave (não mostra segredos)
+        id: chave
         run: |
           python3 - <<'PY'
           import json, os
@@ -55,11 +56,14 @@ jobs:
                   print("::warning::Falhou leitura %s: %s | %s" % (tentativa, e, info))
           if d:
               json.dump(d, open(f, 'w'))
+              open(os.environ['GITHUB_OUTPUT'], 'a').write('valida=sim\n')
           else:
-              print("::error::A chave guardada no GitHub não é um JSON válido. %s" % info)
+              print("::warning::A chave guardada no GitHub não é um JSON válido, por isso as regras NÃO foram publicadas por aqui. %s" % info)
+              open(os.environ['GITHUB_OUTPUT'], 'a').write('valida=nao\n')
           PY
 
       - name: Publicar regras
+        if: steps.chave.outputs.valida == 'sim'
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
