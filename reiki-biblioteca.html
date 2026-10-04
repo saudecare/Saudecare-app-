@@ -151,6 +151,20 @@ const ROTULOS = {
 };
 const ICONES = { manual:'📘', video:'🎬', audio:'🎧', documento:'📄', link:'🔗' };
 
+/* Mapa da Alma e Cartomancia, para os alunos praticarem. Abrem as páginas
+   da escola, no mesmo estilo do cartão dos Poemas do Imperador Meiji. */
+function cartaoFerramenta(href, icone, titulo, texto){
+  return '<a href="' + href + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;">'
+    + '<div class="cartao" style="display:flex;gap:16px;align-items:center;cursor:pointer;padding:16px;">'
+    + '<div style="width:96px;height:96px;border-radius:50%;flex:none;border:3px solid #b8893b;background:#f2ebdd;display:flex;align-items:center;justify-content:center;font-size:2.8rem;">' + icone + '</div>'
+    + '<div style="flex:1;"><strong style="font-size:1.1rem;">' + titulo + '</strong>'
+    + '<p class="desc" style="margin:4px 0 0;">' + texto + '</p></div><span style="font-size:1.5rem;">›</span></div></a>';
+}
+function cartoesFerramentas(){
+  return cartaoFerramenta('mapa-da-alma.html', '🔮', 'Mapa da Alma', 'Toca para abrir e descobrir o teu mapa. Para todos os níveis.')
+    + cartaoFerramenta('cartomancia.html', '🃏', 'Cartomancia', 'Toca para abrir e tirar as cartas. Para todos os níveis.');
+}
+
 /* Aviso nosso: o aviso() é bloqueado no browser do WhatsApp. */
 function aviso(texto){
   const f = document.createElement('div');
@@ -384,6 +398,8 @@ function verInicio(){
     + '<button class="botao" onclick="__mostrar(\'conversa\')">💬 Conversa da escola</button>'
     + '</div>';
 
+  h += '<h2>Para praticar</h2>' + cartoesFerramentas();
+
   if (aluno.turmaNome || aluno.turmaWhatsapp || aluno.turmaJitsi){
     h += '<h2>A tua turma</h2><div class="cartao" style="text-align:center;">'
       + (aluno.turmaNome ? '<p style="margin:0 0 10px;color:var(--suave);font-size:.9rem;">' + esc(aluno.turmaNome) + '</p>' : '')
@@ -447,7 +463,7 @@ function verBiblioteca(){
   const categorias = C.categorias || [];
   if (!recursos.length){
     alvo.innerHTML = '<div class="cartao vazio"><strong>Ainda sem materiais</strong>'
-      + '<p>O teu Mestre ainda não publicou materiais para o teu nível.</p></div>' + CARTAO_MEIJI;
+      + '<p>O teu Mestre ainda não publicou materiais para o teu nível.</p></div>' + CARTAO_MEIJI + cartoesFerramentas();
     return;
   }
   const catExiste = id => id && categorias.some(c => c.id === id);
@@ -464,7 +480,7 @@ function verBiblioteca(){
   NIVEIS.slice().reverse().forEach(n => { if (n !== emEstudo && presentes.includes(n)) ordemNiveis.push(n); });
   if (presentes.includes('0')) ordemNiveis.push('0');
 
-  let h = CARTAO_MEIJI;
+  let h = CARTAO_MEIJI + cartoesFerramentas();
   for (const nivel of ordemNiveis){
     const aberto = nivel === emEstudo || ordemNiveis.length === 1;
     h += '<details class="categoria pasta"' + (aberto ? ' open' : '') + '><summary>📁 ' + esc(ROTULOS[nivel] || nivel) + (nivel === emEstudo ? ' · a estudar' : '') + '</summary>';
