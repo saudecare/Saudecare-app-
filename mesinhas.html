@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Farmácia de A a Z — Hikari Fafe</title>
+<title>Ervas e Mesinhas Antigas — Hikari Fafe</title>
 <style>
   :root{--papel:#fdfaf1;--linha:#d9cbae;--verde:#2f6f5e;--bronze:#a8681f;--tinta:#332f29;--suave:#8d8375;--caixa:#f3f7f2;--aviso:#fcf4e2;}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -37,8 +37,8 @@
 </head>
 <body>
 <header>
-  <h1>🌿 Farmácia de A a Z</h1>
-  <p>Receitas e mesinhas de casa, ao jeito antigo</p>
+  <h1>🌿 Ervas e Mesinhas Antigas</h1>
+  <p>Ervas, receitas e mesinhas de casa, ao jeito antigo</p>
 </header>
 <main>
   <div class="busca"><input id="q" type="search" placeholder="Escreve o que procuras (ex.: tosse, dor de garganta, limpeza)" autocomplete="off"></div>
@@ -55,7 +55,7 @@ const P = new URLSearchParams(location.search);
 const TENANT = (P.get('t') || 'hikari-terapias').trim();
 const CODIGO = (P.get('c') || '').trim().toUpperCase();
 let ITENS = [], CAT = 'todas', LETRA = '';
-const ORDEM = ['Tosse, garganta e defesas','Digestão','Calma e sono','Pele','Banhos','Limpeza da casa e do ambiente','Plantas a evitar','Outras'];
+const ORDEM = ['Tosse, garganta e defesas','Digestão','Calma e sono','Dores e músculos','Pele','Cabelo e cuidados do corpo','Banhos','Limpeza da casa e do ambiente','Limpeza doméstica','Como preparar e guardar','Plantas a evitar','Outras'];
 const gr = i => i.grupo || 'Outras';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

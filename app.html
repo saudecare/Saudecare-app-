@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-16';
+const APP_VERSION = '2026-10-04-17';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1708,7 +1708,7 @@ const NAV_GROUPS = {
     { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', modulo: 'cartomancia' },
     { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem — Pêndulo Hebraico', modulo: 'triagemPendulo' },
     { view: 'reikiAlunos', icon: '🎓', label: 'Escola de Reiki', tenantOnly: 'hikari-terapias' },
-    { view: 'mesinhas', icon: '🌿', label: 'Mesinhas & Receitas', tenantOnly: 'hikari-terapias' }
+    { view: 'mesinhas', icon: '🌿', label: 'Ervas e Mesinhas Antigas', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -15681,16 +15681,16 @@ async function renderMesinhas(main){
     return;
   }
   if (!currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt || currentTenantDoc?.knowledgeBaseDisclaimerVersion !== KB_DISCLAIMER_VERSION){
-    m.innerHTML = `<h2>🌿 Mesinhas & Receitas</h2>
+    m.innerHTML = `<h2>🌿 Ervas e Mesinhas Antigas</h2>
       <div class="card"><p>Antes de usar esta secção tem de ler e aceitar o termo de responsabilidade (é o mesmo da Biblioteca de Conhecimento — aceita uma vez só).</p>
       <button class="primary" onclick="renderView('knowledge')">Ler e aceitar o termo</button></div>`;
     return;
   }
   if (!__mesBase){
-    m.innerHTML = '<h2>🌿 Mesinhas & Receitas</h2><p class="muted">A abrir a biblioteca…</p>';
+    m.innerHTML = '<h2>🌿 Ervas e Mesinhas Antigas</h2><p class="muted">A abrir a biblioteca…</p>';
     try { await mesCarregarBase(); }
     catch(e){
-      m.innerHTML = `<h2>🌿 Mesinhas & Receitas</h2>
+      m.innerHTML = `<h2>🌿 Ervas e Mesinhas Antigas</h2>
         <div class="card" style="border:1px solid #e0b4b4;background:#fdf3f3;">
           <strong>Não consegui abrir a biblioteca.</strong>
           <p class="muted" style="margin-top:6px;">${escapeHtml(e.message || String(e))}</p>
@@ -15700,7 +15700,7 @@ async function renderMesinhas(main){
     }
   }
   m.innerHTML = `
-    <div class="row"><h2>🌿 Mesinhas & Receitas</h2>
+    <div class="row"><h2>🌿 Ervas e Mesinhas Antigas</h2>
       <button class="primary" onclick="mesAbrirForm()">+ Nova</button></div>
     ${hintBox('Consulta de A a Z: escreve o que procuras (um sintoma, uma planta, “sono”, “descarrego”…) e vê as receitas tradicionais. São práticas populares e <strong>complementares</strong>: não substituem o médico. Antes de aconselhar a alguém que toma medicação, cruza em Farmácia & Interações.')}
     <div class="row" style="gap:8px;margin-top:8px;"><button class="ghost" onclick="renderView('farmacia')">💊 Farmácia & Interações</button></div>
