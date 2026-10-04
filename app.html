@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-9';
+const APP_VERSION = '2026-10-04-10';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12921,11 +12921,74 @@ function reikiRotuloNivelCurto(id){
 /* Botões pequenos, para caberem no telemóvel. */
 const REIKI_BTN_MINI = 'padding:5px 9px;font-size:.85rem;min-width:0;';
 
+let __reikiSel = { on:false, cats:new Set(), mats:new Set() };
+function reikiCheck(tipo, id){
+  if (!__reikiSel.on) return '';
+  const marc = (tipo === 'c' ? __reikiSel.cats : __reikiSel.mats).has(id) ? 'checked' : '';
+  return `<input type="checkbox" ${marc} style="width:22px;height:22px;flex:none;margin:0;" onchange="reikiSelToggle('${tipo}','${id}',this.checked)">`;
+}
+window.reikiSelToggle = function(tipo, id, on){
+  const set = tipo === 'c' ? __reikiSel.cats : __reikiSel.mats;
+  if (on) set.add(id); else set.delete(id);
+  reikiSelBarra();
+};
+function reikiSelBarra(){
+  const b = document.getElementById('reikiSelBtn');
+  const n = __reikiSel.cats.size + __reikiSel.mats.size;
+  if (b){ b.textContent = '🗑️ Apagar ' + n + ' selecionado' + (n === 1 ? '' : 's'); b.disabled = !n; }
+}
+window.reikiSelLigar = function(){
+  __reikiSel = { on:true, cats:new Set(), mats:new Set() };
+  reikiRenderBiblioteca();
+};
+window.reikiSelCancelar = function(){
+  __reikiSel = { on:false, cats:new Set(), mats:new Set() };
+  reikiRenderBiblioteca();
+};
+window.reikiSelTudo = function(){
+  const nivel = __reikiBibNivel;
+  const cats = __reikiCategorias.filter(c => String(c.nivel||'0') === nivel);
+  const mats = __reikiRecursos.filter(r => String(r.nivel||'0') === nivel);
+  const tudo = cats.every(c => __reikiSel.cats.has(c.id)) && mats.every(r => __reikiSel.mats.has(r.id));
+  __reikiSel.cats = new Set(tudo ? [] : cats.map(c => c.id));
+  __reikiSel.mats = new Set(tudo ? [] : mats.map(r => r.id));
+  reikiRenderBiblioteca();
+};
+window.reikiSelApagar = async function(){
+  const cats = new Set(__reikiSel.cats);
+  __reikiCategorias.forEach(c => { if (c.paiId && cats.has(c.paiId)) cats.add(c.id); });  // subcategorias vão com a categoria
+  const matsApagar = __reikiRecursos.filter(r => __reikiSel.mats.has(r.id));
+  const apagarIds = new Set(matsApagar.map(r => r.id));
+  const soltar = __reikiRecursos.filter(r => !apagarIds.has(r.id) && r.categoriaId && cats.has(r.categoriaId));
+  const nCat = cats.size, nMat = matsApagar.length;
+  if (!nCat && !nMat) return;
+  let texto = 'Vais apagar ' + [nCat ? nCat + ' categoria(s)' : '', nMat ? nMat + ' material(is)' : ''].filter(Boolean).join(' e ') + '.';
+  if (soltar.length) texto += '\n\nOs ' + soltar.length + ' material(is) que estavam nas categorias e não escolheste ficam soltos na pasta do nível.';
+  texto += '\n\nOs ficheiros no Drive não são apagados.';
+  if (!await reikiConfirmar('Apagar selecionados', texto, 'Apagar')) return;
+  try {
+    const ops = [];
+    matsApagar.forEach(r => ops.push(l => l.delete(doc(db, 'tenants', tenantId, 'reikiLibrary', r.id))));
+    soltar.forEach(r => ops.push(l => l.update(doc(db, 'tenants', tenantId, 'reikiLibrary', r.id), { categoriaId: '' })));
+    cats.forEach(id => ops.push(l => l.delete(doc(db, 'tenants', tenantId, 'reikiCategories', id))));
+    for (let i = 0; i < ops.length; i += 400){
+      const lote = writeBatch(db);
+      ops.slice(i, i + 400).forEach(f => f(lote));
+      await lote.commit();
+    }
+    __reikiSel = { on:false, cats:new Set(), mats:new Set() };
+    toast('Apagado.');
+    __reikiTab = 'biblioteca';
+    renderReikiAlunos();
+  } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
+};
+
 function reikiHtmlMaterial(r, irmaos, idx){
   const t = reikiTipoInfo(r.tipo);
   return `
     <div style="border:1px solid var(--border, #e5e5e5);border-radius:10px;padding:9px 10px;margin:6px 0;background:var(--card, #fff);">
       <div style="display:flex;gap:8px;align-items:flex-start;">
+        ${reikiCheck('m', r.id)}
         <span style="font-size:1.15rem;line-height:1.3;">${t.icone}</span>
         <div style="flex:1;min-width:0;">
           <strong style="word-break:break-word;">${escapeHtml(r.titulo || '(sem título)')}</strong>${r.pago ? ' <span class="badge">pago</span>' : ''}
@@ -12957,6 +13020,7 @@ function reikiHtmlCategoria(c, irmaos, idx, ehSub){
   return `
     <div class="${ehSub ? '' : 'card'}" style="${moldura}">
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        ${reikiCheck('c', c.id)}
         <strong style="flex:1;min-width:140px;font-size:${ehSub?'.95rem':'1.05rem'};">${ehSub ? '↳ ' : '📂 '}${escapeHtml(c.nome || '(sem nome)')}</strong>
         <button class="ghost" style="${REIKI_BTN_MINI}" ${idx===0?'disabled':''} onclick="reikiMoverCategoria('${c.id}',-1)" title="Subir">▲</button>
         <button class="ghost" style="${REIKI_BTN_MINI}" ${idx===irmaos-1?'disabled':''} onclick="reikiMoverCategoria('${c.id}',1)" title="Descer">▼</button>
@@ -13018,6 +13082,12 @@ function reikiRenderBiblioteca(){
     <div class="row" style="gap:8px;margin-bottom:10px;flex-wrap:wrap;">
       <button class="ghost" onclick="reikiBibVoltar()">← Pastas</button>
     </div>
+    ${__reikiSel.on ? `<div style="position:sticky;top:0;z-index:5;background:var(--card,#fff);border:1px solid var(--border,#ddd);border-radius:10px;padding:10px;margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <span class="muted" style="flex:1;min-width:150px;font-size:.88rem;">Marca as categorias e materiais que queres apagar.</span>
+      <button class="ghost" onclick="reikiSelTudo()">Marcar / desmarcar tudo</button>
+      <button class="danger" id="reikiSelBtn" onclick="reikiSelApagar()" disabled>🗑️ Apagar 0 selecionados</button>
+      <button class="ghost" onclick="reikiSelCancelar()">Cancelar</button>
+    </div>` : ''}
     <h3 style="margin:6px 0 4px;">📂 ${escapeHtml(reikiNivelBibLabel(nivel))}</h3>
     <p class="muted" style="font-size:.85rem;margin-bottom:10px;">${nivel === '0'
       ? 'Material visível a todos os alunos, de qualquer nível.'
@@ -13025,7 +13095,7 @@ function reikiRenderBiblioteca(){
     <div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:wrap;">
       <button class="primary" onclick="reikiAbrirRecurso('','','${nivel}')">➕ Material</button>
       <button class="ghost" onclick="reikiAbrirCategoria()" ${__reikiCategoriasOk?'':'disabled'}>➕ Subpasta</button>
-      ${(cats.length) ? `<button class="ghost" onclick="reikiAbrirApagarVarias()">🗑️ Apagar várias</button>` : ''}
+      ${__reikiSel.on ? '' : `<button class="ghost" onclick="reikiSelLigar()">☑️ Selecionar para apagar</button>`}
     </div>
     ${cats.map((c, i) => reikiHtmlCategoria(c, cats.length, i, false)).join('')}
     ${(soltos.length || !cats.length) ? `
@@ -13034,7 +13104,7 @@ function reikiRenderBiblioteca(){
       </div>` : ''}`;
 }
 
-window.reikiBibVoltar = function(){ __reikiBibAberta = false; reikiRenderBiblioteca(); };
+window.reikiBibVoltar = function(){ __reikiBibAberta = false; __reikiSel = { on:false, cats:new Set(), mats:new Set() }; reikiRenderBiblioteca(); };
 
 window.reikiBibEscolherNivel = function(nivel){
   __reikiBibNivel = String(nivel || '1');
