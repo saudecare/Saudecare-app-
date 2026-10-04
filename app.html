@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-12';
+const APP_VERSION = '2026-10-04-13';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11665,7 +11665,7 @@ function garantirManuais(lista){
   return lista;
 }
 let __reikiRecursos = [];
-let __reikiTab = 'alunos';
+let __reikiTab = 'resumo';
 
 async function renderReikiAlunos(main){
   // Bloqueio a sério, como no Mapa da Alma e na Cartomancia: não basta
@@ -11747,6 +11747,7 @@ function reikiRenderEcra(main){
   m.innerHTML = `
     <h2>🎓 Escola de Reiki</h2>
     <div class="row" style="gap:6px;margin:10px 0 14px;flex-wrap:wrap;">
+      <button class="${__reikiTab==='resumo'?'primary':'ghost'}" onclick="reikiMudarTab('resumo')">Resumo</button>
       <button class="${__reikiTab==='alunos'?'primary':'ghost'}" onclick="reikiMudarTab('alunos')">Alunos</button>
       <button class="${__reikiTab==='niveis'?'primary':'ghost'}" onclick="reikiMudarTab('niveis')">Níveis</button>
       <button class="${__reikiTab==='biblioteca'?'primary':'ghost'}" onclick="reikiMudarTab('biblioteca')">Biblioteca</button>
@@ -11756,7 +11757,8 @@ function reikiRenderEcra(main){
       <button class="${__reikiTab==='mensagens'?'primary':'ghost'}" onclick="reikiMudarTab('mensagens')">Mensagens</button>
     </div>
     <div id="reikiConteudo"></div>`;
-  if (__reikiTab === 'alunos') reikiRenderListaAlunos();
+  if (__reikiTab === 'resumo') reikiRenderResumo();
+  else if (__reikiTab === 'alunos') reikiRenderListaAlunos();
   else if (__reikiTab === 'biblioteca') reikiRenderBiblioteca();
   else if (__reikiTab === 'licoes') reikiRenderLicoes();
   else if (__reikiTab === 'turmas') reikiRenderTurmas();
@@ -13722,6 +13724,219 @@ window.reikiRenovarCodigo = async function(alunoId){
   } catch(e){ toast('Não consegui gerar: ' + (e.message || e), true); }
 };
 
+/* ─── Pagamentos dos alunos ──────────────────────────────────────────
+   Ficam no próprio documento do aluno (reikiStudents), por isso não
+   precisam de regras novas e o aluno nunca os vê:
+     valorCurso  — o que o aluno combinou pagar (€)
+     vencimento  — data limite do que falta (opcional, AAAA-MM-DD)
+     pagamentos  — [{ id, data, valor, metodo, nota }]
+   ────────────────────────────────────────────────────────────────── */
+function reikiEuros(n){
+  return (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).replace('.', ',') + ' €';
+}
+function reikiPagInfo(a){
+  const total = Number(a?.valorCurso) || 0;
+  const lista = Array.isArray(a?.pagamentos) ? a.pagamentos : [];
+  const pago = lista.reduce((t, x) => t + (Number(x.valor) || 0), 0);
+  const falta = Math.max(0, Math.round((total - pago) * 100) / 100);
+  let estado = 'semplano';
+  if (total > 0){
+    if (falta <= 0) estado = 'pago';
+    else if (a.vencimento && a.vencimento < reikiHojeISO()) estado = 'atraso';
+    else estado = 'pendente';
+  } else if (lista.length){
+    estado = 'recebido';
+  }
+  return { total, pago, falta, estado, lista };
+}
+function reikiHtmlBadgePag(a){
+  const p = reikiPagInfo(a);
+  if (p.estado === 'semplano') return '';
+  const txt = p.estado === 'pago' ? '💶 Pago'
+    : p.estado === 'recebido' ? '💶 Recebido ' + reikiEuros(p.pago)
+    : p.estado === 'atraso' ? '⚠️ Em atraso · falta ' + reikiEuros(p.falta)
+    : '💶 Falta ' + reikiEuros(p.falta);
+  const cor = p.estado === 'atraso' ? 'background:#f6e2e0;color:#b3413a;' : '';
+  return '<p style="margin-top:6px;"><span class="badge" style="' + cor + '">' + txt + '</span></p>';
+}
+
+/* Progresso do aluno na sala de estudo, lido das conversas (reikiThreads),
+   onde a sala guarda módulos feitos e resultados dos testes. */
+function reikiProgressoAluno(a){
+  const t = a.codigoAcesso ? __reikiConversas.find(c => c.id === a.codigoAcesso) : null;
+  if (!t) return null;
+  const modulos = Object.values(t.percurso || {}).filter(x => x && x.concluido).length;
+  const res = Array.isArray(t.resultados) ? t.resultados : [];
+  const testes = new Set(res.filter(r => r.aprovado).map(r => r.testeId)).size;
+  return { modulos, testes };
+}
+function reikiHtmlProgresso(a){
+  const p = reikiProgressoAluno(a);
+  if (!p) return '<p class="muted" style="margin-top:2px;font-size:.85rem;">Sem actividade na sala de estudo ainda.</p>';
+  return '<p class="muted" style="margin-top:2px;font-size:.85rem;">📖 ' + p.modulos + ' módulo(s) feito(s) · ✅ ' + p.testes + ' teste(s) aprovado(s)</p>';
+}
+
+function reikiRefrescarEcraAluno(){
+  if (document.getElementById('reikiConteudo')) reikiRenderEcra();
+}
+
+window.reikiAbrirPagamentos = function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  const p = reikiPagInfo(a);
+  const lista = p.lista.slice().sort((x, y) => String(y.data || '').localeCompare(String(x.data || '')));
+  showPatientOverlay('💶 Pagamentos', `
+    <div class="card">
+      <strong>${escapeHtml(a.nome || '')}</strong>
+      <p class="muted" style="margin-top:4px;">${p.total
+        ? 'Combinado: ' + reikiEuros(p.total) + ' · Pago: ' + reikiEuros(p.pago) + ' · Falta: ' + reikiEuros(p.falta)
+        : 'Ainda sem valor combinado.'}</p>
+      <label style="margin-top:12px;">Valor combinado do curso (€)</label>
+      <input id="reikiPagTotal" type="number" inputmode="decimal" min="0" step="0.01" value="${p.total || ''}">
+      <label style="margin-top:10px;">Pagar até (opcional)</label>
+      <input id="reikiPagVenc" type="date" value="${escapeHtml(a.vencimento || '')}">
+      <button class="primary" style="margin-top:12px;" onclick="reikiGuardarPlano('${a.id}')">Guardar valor</button>
+    </div>
+    <div class="card" style="margin-top:12px;">
+      <strong>Registar pagamento recebido</strong>
+      <label style="margin-top:10px;">Data</label>
+      <input id="reikiPagData" type="date" value="${reikiHojeISO()}">
+      <label style="margin-top:10px;">Valor (€)</label>
+      <input id="reikiPagValor" type="number" inputmode="decimal" min="0" step="0.01">
+      <label style="margin-top:10px;">Como pagou</label>
+      <select id="reikiPagMetodo">
+        <option>MB Way</option><option>Transferência</option><option>Numerário</option><option>Multibanco</option><option>Outro</option>
+      </select>
+      <label style="margin-top:10px;">Nota (opcional)</label>
+      <input id="reikiPagNota" type="text" placeholder="Ex.: 1.ª prestação">
+      <button class="primary" style="margin-top:12px;" onclick="reikiRegistarPagamento('${a.id}')">Registar</button>
+    </div>
+    <div class="card" style="margin-top:12px;">
+      <strong>Histórico</strong>
+      ${lista.length ? lista.map(x => `
+        <div class="appt-item" style="display:flex;justify-content:space-between;gap:8px;align-items:center;">
+          <div>
+            <strong>${reikiEuros(x.valor)}</strong>
+            <span class="muted">· ${escapeHtml(reikiDataPT(x.data))} · ${escapeHtml(x.metodo || '')}</span>
+            ${x.nota ? `<div class="muted" style="font-size:.85rem;">${escapeHtml(x.nota)}</div>` : ''}
+          </div>
+          <button class="ghost" onclick="reikiApagarPagamento('${a.id}','${escapeAttrJs(x.id || '')}')">🗑️</button>
+        </div>`).join('') : '<p class="muted" style="margin-top:6px;">Ainda sem pagamentos registados.</p>'}
+    </div>`);
+};
+
+async function reikiGravarCamposAluno(a, campos){
+  await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', a.id), { ...campos, atualizadoEm: serverTimestamp() });
+  Object.assign(a, campos);
+}
+
+window.reikiGuardarPlano = async function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  const bruto = String(document.getElementById('reikiPagTotal')?.value || '').replace(',', '.').trim();
+  const total = bruto === '' ? 0 : Number(bruto);
+  if (!isFinite(total) || total < 0){ toast('O valor não é válido.', true); return; }
+  const venc = document.getElementById('reikiPagVenc')?.value || '';
+  try {
+    await reikiGravarCamposAluno(a, { valorCurso: Math.round(total * 100) / 100, vencimento: venc });
+    toast('Valor guardado.');
+    reikiAbrirPagamentos(alunoId);
+    reikiRefrescarEcraAluno();
+  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
+};
+
+window.reikiRegistarPagamento = async function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  const valor = Number(String(document.getElementById('reikiPagValor')?.value || '').replace(',', '.'));
+  const data = document.getElementById('reikiPagData')?.value || '';
+  if (!isFinite(valor) || valor <= 0){ toast('Escreve o valor recebido.', true); return; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)){ toast('Escolhe a data do pagamento.', true); return; }
+  const novo = {
+    id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()),
+    data, valor: Math.round(valor * 100) / 100,
+    metodo: document.getElementById('reikiPagMetodo')?.value || '',
+    nota: (document.getElementById('reikiPagNota')?.value || '').trim()
+  };
+  try {
+    const lista = (Array.isArray(a.pagamentos) ? a.pagamentos : []).concat([novo]);
+    await reikiGravarCamposAluno(a, { pagamentos: lista });
+    toast('Pagamento registado.');
+    reikiAbrirPagamentos(alunoId);
+    reikiRefrescarEcraAluno();
+  } catch(e){ toast('Não consegui registar: ' + (e.message || e), true); }
+};
+
+window.reikiApagarPagamento = async function(alunoId, pagId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  const x = (a.pagamentos || []).find(q => q.id === pagId);
+  if (!x) return;
+  if (!await reikiConfirmar('Apagar pagamento', 'Apagar o pagamento de ' + reikiEuros(x.valor) + ' de ' + reikiDataPT(x.data) + '?')) return;
+  try {
+    await reikiGravarCamposAluno(a, { pagamentos: (a.pagamentos || []).filter(q => q.id !== pagId) });
+    toast('Pagamento apagado.');
+    reikiAbrirPagamentos(alunoId);
+    reikiRefrescarEcraAluno();
+  } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
+};
+
+/* ─── Resumo: o que precisa de atenção hoje ──────────────────────── */
+
+function reikiRenderResumo(){
+  const alvo = document.getElementById('reikiConteudo');
+  if (!alvo) return;
+  const novas = __reikiConversas.filter(c => c.ultimaDe === 'aluno' && c.lidoMestre !== true);
+  const pags = __reikiAlunos.map(a => ({ a, p: reikiPagInfo(a) }));
+  const aReceber = pags.reduce((t, x) => t + x.p.falta, 0);
+  const emAtraso = pags.filter(x => x.p.estado === 'atraso');
+  const porReceber = pags.filter(x => x.p.falta > 0 && x.p.estado !== 'atraso');
+  const semTurma = __reikiTurmas.length ? __reikiAlunos.filter(a => !a.turmaId) : [];
+  const semActividade = __reikiAlunos.filter(a => !reikiProgressoAluno(a) && !(a.codigoAcesso && __reikiConversas.some(c => c.id === a.codigoAcesso)));
+  const recentes = __reikiResultados.slice()
+    .sort((x, y) => (y.entregueEm?.toMillis?.() || 0) - (x.entregueEm?.toMillis?.() || 0)).slice(0, 5);
+
+  const caixa = (n, rotulo, extra) => `
+    <div class="card" style="text-align:center;margin:0;">
+      <div style="font-size:1.5rem;font-weight:700;color:var(--primary);${extra || ''}">${n}</div>
+      <div class="muted" style="font-size:.85rem;">${rotulo}</div>
+    </div>`;
+
+  const atencao = [];
+  if (novas.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiMudarTab('mensagens')">✉️ <strong>${novas.length}</strong> conversa(s) com mensagem por ler</div>`);
+  emAtraso.forEach(x => atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiAbrirPagamentos('${x.a.id}')">⚠️ <strong>${escapeHtml(x.a.nome || '')}</strong> — pagamento em atraso, falta ${reikiEuros(x.p.falta)}</div>`));
+  if (semTurma.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiMudarTab('alunos')">👥 <strong>${semTurma.length}</strong> aluno(s) sem turma</div>`);
+  if (semActividade.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiMudarTab('alunos')">🔗 <strong>${semActividade.length}</strong> aluno(s) ainda sem actividade na sala — envia-lhes o link</div>`);
+
+  alvo.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      ${caixa(__reikiAlunos.length, 'Alunos')}
+      ${caixa(novas.length, 'Mensagens por ler')}
+      ${caixa(reikiEuros(aReceber), 'Por receber')}
+      ${caixa(emAtraso.length, 'Em atraso', emAtraso.length ? 'color:#b3413a;' : '')}
+    </div>
+    <div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="primary" onclick="reikiAbrirForm()">➕ Novo aluno</button>
+      <button class="ghost" onclick="reikiNovaMensagem()">✉️ Nova mensagem</button>
+    </div>
+    <div class="card" style="margin-bottom:12px;">
+      <h3 style="margin:0 0 8px;">Precisa de atenção</h3>
+      ${atencao.length ? atencao.join('') : '<p class="muted">Tudo em ordem por agora.</p>'}
+    </div>
+    ${porReceber.length ? `
+    <div class="card" style="margin-bottom:12px;">
+      <h3 style="margin:0 0 8px;">A receber</h3>
+      ${porReceber.map(x => `<div class="appt-item" style="cursor:pointer;" onclick="reikiAbrirPagamentos('${x.a.id}')"><strong>${escapeHtml(x.a.nome || '')}</strong> — falta ${reikiEuros(x.p.falta)}${x.a.vencimento ? ' · até ' + escapeHtml(reikiDataPT(x.a.vencimento)) : ''}</div>`).join('')}
+    </div>` : ''}
+    <div class="card">
+      <h3 style="margin:0 0 8px;">Últimos testes entregues</h3>
+      ${recentes.length ? recentes.map(r => {
+        const t = __reikiTestes.find(q => q.id === r.testeId);
+        return `<div class="appt-item"><strong>${escapeHtml(r.alunoNome || 'Aluno')}</strong> — ${escapeHtml(t?.titulo || 'Teste')} · ${Number(r.percentagem) || 0}% ${r.aprovado ? '✅' : '❌'}</div>`;
+      }).join('') : '<p class="muted">Ainda nenhum teste entregue.</p>'}
+    </div>`;
+}
+
 function reikiRenderListaAlunos(){
   const alvo = document.getElementById('reikiConteudo');
   if (!alvo) return;
@@ -13744,12 +13959,15 @@ function reikiRenderListaAlunos(){
               <p class="muted" style="margin-top:4px;">${nivel ? '📜 ' + escapeHtml(nivel.nome) : '🌱 Inscrito, ainda sem nível'}</p>
               ${a.telefone ? `<p class="muted" style="margin-top:2px;">📞 ${escapeHtml(a.telefone)}</p>` : ''}
               ${a.email ? `<p class="muted" style="margin-top:2px;">✉️ ${escapeHtml(a.email)}</p>` : ''}
+              ${reikiHtmlProgresso(a)}
+              ${reikiHtmlBadgePag(a)}
             </div>
           </div>
           ${hist.length ? `<p class="muted" style="margin-top:8px;font-size:.85rem;">Percurso: ${hist.map(h => escapeHtml((reikiNivelInfo(h.nivel)?.certLabel) || h.nivel) + ' (' + escapeHtml(reikiDataPT(h.data)) + ')').join(' · ')}</p>` : ''}
           <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
             ${prox ? `<button class="primary" onclick="reikiAbrirSubirNivel('${a.id}')">⬆️ ${escapeHtml(prox.certLabel)}</button>` : '<span class="badge">Mestrado concluído</span>'}
             ${nivel ? `<button class="ghost" onclick="reikiAbrirCertificado('${a.id}')">📜 Certificado</button>` : ''}
+            <button class="ghost" onclick="reikiAbrirPagamentos('${a.id}')">💶 Pagamentos</button>
             <button class="ghost" onclick="reikiAbrirLinkAluno('${a.id}')">🔗 Link do aluno</button>
             <button class="ghost" onclick="reikiAbrirForm('${a.id}')">✏️ Editar</button>
             <button class="danger" onclick="reikiApagarAluno('${a.id}')">🗑️</button>
