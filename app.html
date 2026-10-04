@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-15';
+const APP_VERSION = '2026-10-04-16';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12085,7 +12085,7 @@ function reikiRenderTestes(){
         return `
         <div class="card" style="margin-bottom:10px;">
           <strong>${escapeHtml(t.titulo || '(sem título)')}</strong>
-          <p class="muted" style="margin-top:4px;">${escapeHtml(n ? n.certLabel : '')} · ${(t.perguntas||[]).length} pergunta(s) · mínimo ${t.notaMinima || 70}%</p>
+          <p class="muted" style="margin-top:4px;">${escapeHtml(n ? n.certLabel : '')} · ${t.modulo > 0 ? 'Módulo ' + t.modulo : 'Teste final'} · ${(t.perguntas||[]).length} pergunta(s) · mínimo ${t.notaMinima || 70}%</p>
           <p class="muted" style="margin-top:4px;font-size:.85rem;">${feitos.length} entrega(s), ${passou} aprovada(s)</p>
           <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
             <button class="ghost" onclick="reikiVerResultados('${t.id}')">📊 Resultados</button>
@@ -12110,8 +12110,8 @@ let __reikiRascunho = null;
 window.reikiAbrirTeste = function(testeId){
   const t = testeId ? __reikiTestes.find(x => x.id === testeId) : null;
   __reikiRascunho = t
-    ? JSON.parse(JSON.stringify({ titulo:t.titulo||'', nivel:String(t.nivel||'0'), notaMinima:t.notaMinima||70, perguntas:t.perguntas||[] }))
-    : { titulo:'', nivel:'1', notaMinima:70, perguntas:[] };
+    ? JSON.parse(JSON.stringify({ titulo:t.titulo||'', nivel:String(t.nivel||'0'), modulo:parseInt(t.modulo)||0, notaMinima:t.notaMinima||70, perguntas:t.perguntas||[] }))
+    : { titulo:'', nivel:'1', modulo:0, notaMinima:70, perguntas:[] };
   reikiDesenharEditorTeste(testeId || '');
 };
 
@@ -12128,7 +12128,11 @@ function reikiDesenharEditorTeste(testeId){
             ${REIKI_NIVEIS.map(n => `<option value="${n.id}" ${d.nivel===n.id?'selected':''}>${escapeHtml(n.certLabel)}</option>`).join('')}
           </select>
         </div>
-        <div style="width:110px;">
+        <div style="width:130px;">
+          <label>Módulo (0 = final)</label>
+          <input type="number" min="0" max="30" value="${d.modulo || 0}" onchange="reikiRascunhoCampo('modulo', this.value)">
+        </div>
+        <div style="width:90px;">
           <label>Mínimo %</label>
           <input type="number" min="1" max="100" value="${d.notaMinima}" onchange="reikiRascunhoCampo('notaMinima', this.value)">
         </div>
@@ -12159,7 +12163,8 @@ function reikiDesenharEditorTeste(testeId){
 
 window.reikiRascunhoCampo = function(campo, valor){
   if (!__reikiRascunho) return;
-  __reikiRascunho[campo] = campo === 'notaMinima' ? Math.max(1, Math.min(100, parseInt(valor)||70)) : valor;
+  __reikiRascunho[campo] = campo === 'notaMinima' ? Math.max(1, Math.min(100, parseInt(valor)||70))
+    : campo === 'modulo' ? Math.max(0, Math.min(30, parseInt(valor)||0)) : valor;
 };
 window.reikiRascunhoPergunta = function(i, campo, valor){
   if (!__reikiRascunho?.perguntas[i]) return;
@@ -12204,7 +12209,7 @@ window.reikiGuardarTeste = async function(testeId){
   if (!perguntas.length){
     toast('Cada pergunta precisa de texto, pelo menos duas opções, e a certa marcada.', true); return;
   }
-  const dados = { titulo: d.titulo.trim(), nivel: d.nivel, notaMinima: d.notaMinima || 70,
+  const dados = { titulo: d.titulo.trim(), nivel: d.nivel, modulo: d.modulo || 0, notaMinima: d.notaMinima || 70,
                   perguntas, atualizadoEm: serverTimestamp() };
   try {
     if (testeId) await updateDoc(doc(db, 'tenants', tenantId, 'reikiQuizzes', testeId), dados);
@@ -13777,8 +13782,37 @@ function reikiHtmlProgresso(a){
   if (!p) return '<p class="muted" style="margin-top:2px;font-size:.85rem;">' + (a.convidadoEm
     ? 'Convidado a ' + escapeHtml(reikiDataPT(a.convidadoEm)) + ' · ainda sem actividade na sala.'
     : 'Sem actividade na sala de estudo ainda.') + '</p>';
-  return '<p class="muted" style="margin-top:2px;font-size:.85rem;">📖 ' + p.modulos + ' módulo(s) feito(s) · ✅ ' + p.testes + ' teste(s) aprovado(s)</p>';
+  return '<p class="muted" style="margin-top:2px;font-size:.85rem;">📖 ' + p.modulos + ' módulo(s) feito(s) · ✅ ' + p.testes + ' teste(s) aprovado(s) · <a href="#" onclick="reikiAbrirNotas(\'' + a.id + '\');return false;">📊 Ver notas</a></p>';
 }
+
+/* Notas do aluno: módulos (pontuação automática) e testes, tudo guardado na
+   conversa do aluno e nos resultados dos testes. */
+window.reikiAbrirNotas = function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  const t = a.codigoAcesso ? __reikiConversas.find(c => c.id === a.codigoAcesso) : null;
+  const perc = Object.values((t && t.percurso) || {}).filter(x => x && x.moduloId)
+    .sort((x, y) => String(x.moduloId).localeCompare(String(y.moduloId), 'pt', { numeric: true }));
+  const res = (t && Array.isArray(t.resultados) ? t.resultados.slice() : []);
+  __reikiResultados.filter(r => a.codigoAcesso && r.codigo === a.codigoAcesso).forEach(r => {
+    if (!res.some(x => x.testeId === r.testeId)) res.push({ testeId: r.testeId, percentagem: r.percentagem, aprovado: r.aprovado });
+  });
+  const linhaMod = m => '<div class="row" style="justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee;">'
+    + '<span>Nível ' + escapeHtml(String(m.nivel || '')) + ' · ' + escapeHtml(m.moduloTitulo || m.moduloId) + '</span>'
+    + '<span class="badge">' + (m.concluido ? (m.totalPerguntas ? m.acertos + '/' + m.totalPerguntas : '✓') : 'em curso') + '</span></div>';
+  const linhaTeste = r => {
+    const q = __reikiTestes.find(x => x.id === r.testeId);
+    return '<div class="row" style="justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee;">'
+      + '<span>' + escapeHtml((q && q.titulo) || r.titulo || 'Teste') + ' · ' + (q && q.modulo > 0 ? 'Módulo ' + q.modulo : 'Final') + '</span>'
+      + '<span class="badge">' + r.percentagem + '%' + (r.aprovado ? ' ✓' : '') + '</span></div>';
+  };
+  showPatientOverlay('📊 Notas de ' + escapeHtml(a.nome || ''), `
+    <div class="card"><strong>Módulos</strong>
+      ${perc.length ? perc.map(linhaMod).join('') : '<p class="muted">Ainda sem módulos iniciados.</p>'}</div>
+    <div class="card" style="margin-top:8px;"><strong>Testes</strong>
+      ${res.length ? res.map(linhaTeste).join('') : '<p class="muted">Ainda sem testes entregues.</p>'}
+      <p class="muted" style="margin-top:12px;font-size:.82rem;">A pontuação é automática e fica guardada. Quem decide se o aluno avança és tu.</p></div>`);
+};
 
 function reikiRefrescarEcraAluno(){
   if (document.getElementById('reikiConteudo')) reikiRenderEcra();

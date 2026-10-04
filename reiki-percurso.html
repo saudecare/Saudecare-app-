@@ -94,7 +94,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where }
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -557,11 +557,19 @@ function desenharTestes(){
     return;
   }
   palco().innerHTML = `<div class="card"><p class="nota">Corrigido na hora. Precisas da nota mínima para passar — se não conseguires, podes repetir.</p></div>` +
-    TESTES.map(t => `<div class="card">
+    TESTES.map(t => {
+      const mn = parseInt(t.modulo) || 0, nv = String(t.nivel || '0');
+      const feito = mn > 0 && nv !== '0' && (PROGRESSO[nv + '-' + mn] || {}).concluido;
+      const noMeuNivel = nv === String(NIVEL);
+      const todosMod = MODULOS.length && MODULOS.every(m => (PROGRESSO[m.id] || {}).concluido);
+      let bloq = '';
+      if (noMeuNivel && mn > 0 && !feito) bloq = 'Abre quando concluíres o módulo ' + mn + '.';
+      else if (noMeuNivel && mn === 0 && !todosMod) bloq = 'O teste final abre quando concluíres todos os módulos.';
+      return `<div class="card">
       <strong>${esc(t.titulo || 'Teste')}</strong>
-      <p class="nota">${(t.perguntas||[]).length} perguntas · mínimo ${t.notaMinima || 70}%</p>
-      <button class="principal" onclick="abrirTeste('${t.id}')">Fazer o teste</button>
-    </div>`).join('');
+      <p class="nota">${mn > 0 ? 'Módulo ' + mn : 'Teste final'} · ${(t.perguntas||[]).length} perguntas · mínimo ${t.notaMinima || 70}%</p>
+      ${bloq ? `<p class="nota">🔒 ${bloq}</p>` : `<button class="principal" onclick="abrirTeste('${t.id}')">Fazer o teste</button>`}
+    </div>`; }).join('');
 }
 
 let TESTE_ABERTO = null;
@@ -604,16 +612,24 @@ window.entregarTeste = async function(){
   try {
     await setDoc(doc(collection(db, 'tenants', TENANT, 'reikiQuizResults')), {
       testeId: t.id, codigo: CODIGO, alunoId: ALUNO.alunoId || '', alunoNome: ALUNO.nome || '',
-      percentagem: pct, aprovado, respostas, entregueEm: new Date().toISOString()
+      percentagem: pct, aprovado, respostas, entregueEm: serverTimestamp()
     });
   } catch(e){ console.warn('não consegui entregar', e); }
+  try {
+    const ref = doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO);
+    const sn = await getDoc(ref);
+    const antigos = (sn.exists() && Array.isArray(sn.data().resultados)) ? sn.data().resultados : [];
+    const novos = antigos.filter(r => r.testeId !== t.id).concat([{ testeId: t.id, titulo: t.titulo || '',
+      percentagem: pct, aprovado, quando: new Date().toISOString() }]);
+    await setDoc(ref, { codigo: CODIGO, alunoNome: ALUNO.nome || '', resultados: novos }, { merge: true });
+  } catch(e){ console.warn('não consegui guardar a nota', e); }
   palco().innerHTML = `<div class="card" style="text-align:center;">
       <h3 style="color:var(--bronze);">${pct}%</h3>
       <p style="margin-top:8px;">${aprovado
         ? '🎉 Passaste! Parabéns pelo teu percurso até aqui.'
         : 'Ficaste abaixo do mínimo. Revê o manual e o Treino livre, e fala com o teu Mestre — podes repetir.'}</p>
     </div>
-    ${aprovado ? `<div class="card" style="text-align:center;">
+    ${aprovado && !(parseInt(t.modulo) > 0) ? `<div class="card" style="text-align:center;">
       <h4>🎓 O teu certificado está pronto</h4>
       <p class="nota" style="margin-top:6px;">Descarrega e guarda. Se precisares de outra via mais tarde, o teu Mestre também o pode emitir.</p>
       <button class="principal" onclick="descarregarCertificado('${t.nivel}', this)">Descarregar certificado (PDF)</button>

@@ -359,6 +359,7 @@ async function carregarDados(){
       await import(emEstudo === '1' ? './reiki-percurso-nivel1.js' : './reiki-percurso-niveis-2-3.js');
       const lista = window['MODULOS_NIVEL_' + emEstudo] || [];
       const p = C.percurso || {};
+      C.modulos = lista;
       C.modTotal = lista.length;
       C.modFeitos = lista.filter(m => (p[emEstudo + '-' + m.ordem] || {}).concluido).length;
     } catch(e){ console.warn('percurso indisponível', e); }
@@ -578,6 +579,13 @@ function verTestes(){
     + 'Só aparecem aqui os testes de <b>' + esc(ROTULOS[emEstudo]) + '</b>, o nível que '
     + 'estás a estudar. Os dos níveis seguintes abrem quando lá chegares.</p></div>';
 
+  const percNotas = Object.values(C.percurso || {}).filter(x => x && x.concluido && x.totalPerguntas);
+  if (percNotas.length){
+    h += '<div class="cartao"><strong>As minhas notas dos módulos</strong>'
+      + percNotas.sort((x, y) => String(x.moduloId).localeCompare(String(y.moduloId), 'pt', { numeric: true }))
+        .map(m => '<p style="margin:4px 0 0;">' + esc(m.moduloTitulo || m.moduloId) + ': <b>' + m.acertos + '/' + m.totalPerguntas + '</b></p>').join('')
+      + '</div>';
+  }
   for (const t of testes){
     const r = resultados.filter(x => x.testeId === t.id)
                         .sort((a,b) => String(b.quando||'').localeCompare(String(a.quando||'')))[0];
@@ -586,9 +594,22 @@ function verTestes(){
     // O teste do nível em estudo espera pelos módulos do percurso e
     // por todos os materiais de apoio vistos até ao fim.
     const doNivel = String(t.nivel || '0') === String(emEstudo);
-    const faltaModulos = doNivel && C.modTotal && C.modFeitos < C.modTotal;
-    const porVer = doNivel ? materiaisPorVer() : [];
-    if (!passou && (faltaModulos || porVer.length)){
+    const modN = parseInt(t.modulo) || 0;
+    const modFeito = !!((C.percurso || {})[emEstudo + '-' + modN] || {}).concluido;
+    if (!passou && doNivel && modN > 0 && !modFeito){
+      h += '<div class="cartao"><div class="recurso"><div class="icone">🔒</div><div style="flex:1;">'
+        + '<strong>' + esc(t.titulo || 'Teste') + '</strong>'
+        + '<p>Abre quando concluíres o módulo ' + modN + '.</p>'
+        + '<a class="abrir" href="reiki-percurso.html?t=' + encodeURIComponent(C.tenant)
+        + '&c=' + encodeURIComponent(C.codigo) + '">Ir para os módulos</a></div></div></div>';
+      continue;
+    }
+    const finalDoNivel = doNivel && modN === 0;
+    const faltaModulos = finalDoNivel && C.modTotal && C.modFeitos < C.modTotal;
+    const porVer = finalDoNivel ? materiaisPorVer() : [];
+    const testesModulo = finalDoNivel ? testes.filter(x => (parseInt(x.modulo) || 0) > 0
+      && !resultados.some(y => y.testeId === x.id && y.aprovado)) : [];
+    if (!passou && (faltaModulos || porVer.length || testesModulo.length)){
       const totalMat = materiaisObrigatorios().length;
       h += '<div class="cartao"><div class="recurso"><div class="icone">🔒</div><div style="flex:1;">'
         + '<strong>' + esc(t.titulo || 'Teste') + '</strong>'
@@ -597,16 +618,17 @@ function verTestes(){
             + C.modFeitos + ' de ' + C.modTotal + ')</p>' : '')
         + (totalMat ? '<p>' + (porVer.length ? '◻️' : '✅') + ' Materiais de apoio vistos até ao fim ('
             + (totalMat - porVer.length) + ' de ' + totalMat + ')</p>' : '')
+        + (testesModulo.length ? '<p>◻️ Testes dos módulos aprovados (faltam ' + testesModulo.length + ')</p>' : '')
         + (faltaModulos ? '<a class="abrir" href="reiki-percurso.html?t=' + encodeURIComponent(C.tenant)
             + '&c=' + encodeURIComponent(C.codigo) + '">Ir para os módulos</a>'
-          : '<button class="abrir" onclick="__mostrar(\'biblioteca\')">Ir para os materiais</button>')
+          : (porVer.length ? '<button class="abrir" onclick="__mostrar(\'biblioteca\')">Ir para os materiais</button>' : ''))
         + '</div></div></div>';
       continue;
     }
     h += '<div class="cartao' + (passou ? ' fechado' : '') + '"><div class="recurso">'
       + '<div class="icone">' + (passou ? '✅' : '📝') + '</div><div style="flex:1;">'
       + '<strong>' + esc(t.titulo || 'Teste') + '</strong>'
-      + '<p>' + (t.perguntas||[]).length + ' perguntas · mínimo ' + (t.notaMinima||70) + '%</p>'
+      + '<p>' + (modN > 0 ? 'Módulo ' + modN : 'Teste final') + ' · ' + (t.perguntas||[]).length + ' perguntas · mínimo ' + (t.notaMinima||70) + '%</p>'
       + (r ? '<p class="etiqueta' + (passou ? '' : ' mau') + '">'
              + (passou ? 'Concluído com ' + r.percentagem + '%' : 'Última tentativa: ' + r.percentagem + '%')
              + '</p>' : '')

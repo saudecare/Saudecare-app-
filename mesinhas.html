@@ -55,7 +55,8 @@ const P = new URLSearchParams(location.search);
 const TENANT = (P.get('t') || 'hikari-terapias').trim();
 const CODIGO = (P.get('c') || '').trim().toUpperCase();
 let ITENS = [], CAT = 'todas', LETRA = '';
-const CATS = [['todas','Todas'],['mesinha','Mesinhas'],['limpeza','Limpeza']];
+const ORDEM = ['Tosse, garganta e defesas','Digestão','Calma e sono','Pele','Banhos','Limpeza da casa e do ambiente','Plantas a evitar','Outras'];
+const gr = i => i.grupo || 'Outras';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -79,7 +80,7 @@ function entrada(i){
 function filtrar(){
   const q = norm($('q').value.trim());
   return ITENS.filter(i => {
-    if (CAT !== 'todas' && i.cat !== CAT) return false;
+    if (CAT !== 'todas' && gr(i) !== CAT) return false;
     if (LETRA && norm(i.nome).charAt(0).toUpperCase() !== LETRA) return false;
     if (!q) return true;
     const alvo = norm([i.nome, i.serve, (i.tags || []).join ? (i.tags || []).join(' ') : i.tags,
@@ -88,18 +89,23 @@ function filtrar(){
   }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
 }
 function desenhar(){
-  $('chips').innerHTML = CATS.map(c => '<button data-c="' + c[0] + '" class="' + (CAT === c[0] ? 'on' : '') + '">' + c[1] + '</button>').join('');
+  const presentes = ORDEM.filter(g => ITENS.some(i => gr(i) === g));
+  ITENS.forEach(i => { if (presentes.indexOf(gr(i)) < 0) presentes.push(gr(i)); });
+  const conta = g => ITENS.filter(i => gr(i) === g).length;
+  $('chips').innerHTML = [['todas','Todas (' + ITENS.length + ')']].concat(presentes.map(g => [g, g + ' (' + conta(g) + ')']))
+    .map(c => '<button data-c="' + esc(c[0]) + '" class="' + (CAT === c[0] ? 'on' : '') + '">' + esc(c[1]) + '</button>').join('');
   const usadas = {};
   ITENS.forEach(i => { usadas[norm(i.nome).charAt(0).toUpperCase()] = 1; });
   $('letras').innerHTML = 'ABCDEFGHIJLMNOPQRSTUVZ'.split('').map(l =>
     '<button data-l="' + l + '"' + (usadas[l] ? '' : ' disabled') + (LETRA === l ? ' style="background:#2f6f5e;color:#fff"' : '') + '>' + l + '</button>').join('');
   const r = filtrar();
   if (!r.length){ $('lista').innerHTML = '<div class="vazio">Não encontrei nada com isso. Experimenta outra palavra.</div>'; return; }
-  let h = '', ult = '';
-  r.forEach(i => {
-    const l = norm(i.nome).charAt(0).toUpperCase();
-    if (l !== ult){ h += '<h2 class="letra">' + esc(l) + '</h2>'; ult = l; }
-    h += entrada(i);
+  let h = '';
+  const grupos = ORDEM.concat(presentes.filter(g => ORDEM.indexOf(g) < 0));
+  grupos.forEach(g => {
+    const dentro = r.filter(i => gr(i) === g);
+    if (!dentro.length) return;
+    h += '<h2 class="letra">' + esc(g) + '</h2>' + dentro.map(entrada).join('');
   });
   $('lista').innerHTML = h;
 }
@@ -116,9 +122,6 @@ $('q').addEventListener('input', desenhar);
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'erro');
     ITENS = d.itens || [];
-    if (d.modo === 'publico'){
-      $('nota').innerHTML = '<div class="nota">Esta é uma pequena seleção. A farmácia completa, de A a Z, é para os alunos da Escola de Reiki.</div>';
-    }
     desenhar();
   } catch (e){
     $('lista').innerHTML = '<div class="vazio">Não foi possível abrir agora. Tenta outra vez daqui a pouco.</div>';
