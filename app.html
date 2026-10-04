@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-19';
+const APP_VERSION = '2026-10-04-20';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -15663,15 +15663,22 @@ function mesPalheiro(e){
   return stripAccents([e.nome, e.serve, e.tags, e.ingredientes, e.preparacao, e.uso].join(' '));
 }
 async function mesCarregarBase(){
-  const idToken = await auth.currentUser.getIdToken();
-  const res = await fetch(MESINHAS_FUNCTION_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
-    body: JSON.stringify({ tenantId })
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) throw new Error(data.error || 'Não consegui abrir a biblioteca.');
-  __mesBase = data.itens || [];
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(MESINHAS_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+      body: JSON.stringify({ tenantId })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Não consegui abrir a biblioteca.');
+    __mesBase = data.itens || [];
+  } catch(e){
+    // Plano B: a mesma biblioteca guardada com o site, para a secção abrir sempre.
+    const r2 = await fetch('mesinhas-dados.json', { cache: 'no-cache' });
+    const d2 = await r2.json();
+    __mesBase = d2.itens || [];
+  }
 }
 
 async function renderMesinhas(main){

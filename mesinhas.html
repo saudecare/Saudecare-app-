@@ -118,10 +118,15 @@ $('q').addEventListener('input', desenhar);
 
 (async function(){
   try {
-    const r = await fetch(URL_FN, { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(CODIGO ? { tenantId: TENANT, codigo: CODIGO } : { tenantId: TENANT }) });
-    const d = await r.json();
-    if (!d.ok) throw new Error(d.error || 'erro');
+    let d;
+    try {
+      const r = await fetch(URL_FN, { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(CODIGO ? { tenantId: TENANT, codigo: CODIGO } : { tenantId: TENANT }) });
+      d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'erro');
+    } catch (e1) {
+      d = await (await fetch('mesinhas-dados.json', { cache: 'no-cache' })).json();
+    }
     ITENS = d.itens || [];
     try { ILUS = (await import('./mesinhas-ilus.js')).ilustracao; } catch (e) { ILUS = null; }
     desenhar();
