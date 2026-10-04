@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-03-19';
+const APP_VERSION = '2026-10-04-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13000,6 +13000,7 @@ function reikiRenderBiblioteca(){
     <div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:wrap;">
       <button class="primary" onclick="reikiAbrirCategoria()" ${__reikiCategoriasOk?'':'disabled'}>➕ Categoria</button>
       <button class="ghost" onclick="reikiAbrirRecurso('','','${nivel}')">➕ Material</button>
+      <button class="ghost" onclick="reikiAbrirVideos()">🎬 Vídeos das apresentações</button>
     </div>
     ${cats.length ? cats.map((c, i) => reikiHtmlCategoria(c, cats.length, i, false)).join('') : `<p class="muted" style="margin-bottom:12px;">Ainda não há categorias neste nível.</p>`}
     ${(soltos.length || !cats.length) ? `
@@ -13286,6 +13287,93 @@ window.reikiApagarRecurso = async function(recursoId){
     __reikiTab = 'biblioteca';
     renderReikiAlunos();
   } catch(e){ toast('Não consegui apagar: ' + (e.message || e), true); }
+};
+
+
+/* ─── Vídeos das apresentações narradas (28 módulos, 4 níveis) ─────────
+   O Mestre cola o link de cada vídeo (YouTube não listado) e a app cria
+   o material no nível certo, dentro da categoria "Apresentações em vídeo".
+   Cada material guarda uma "chave" para voltar a abrir e acrescentar
+   links sem criar duplicados. */
+const REIKI_VIDEOS_APRES = [{"n": "1", "m": 1, "t": "O Reiki e o teu Mestre", "d": "5:54", "c": "Antes de começares, O que fica claro desde já, Quem te ensina, A Preta, Querer desistir é normal, O que é o Reiki, O que o Reiki não é, Complementar, e primeiro em ti, A visão holística"}, {"n": "1", "m": 2, "t": "História e princípios", "d": "4:48", "c": "A nossa linhagem, Mikao Usui, Como o Reiki chegou até nós, A ponte, e tantas versões, O monte Kurama, Os poemas do imperador Meiji, Os cinco princípios, Um a um, Recitar, e viver os princípios"}, {"n": "1", "m": 3, "t": "Pilares, prática diária e níveis", "d": "4:17", "c": "Gassho, as mãos juntas, Reiji-Ho, pedir e escutar, Hatsurei Ho, gerar energia, Kenyoku Ho, o banho seco, Joshin Kokyu Ho, Seishin Toitsu e Gassho Meiso, Os níveis, e o teu ritmo"}, {"n": "1", "m": 4, "t": "Chakras, cor e fluxo da energia", "d": "3:32", "c": "O corpo energético, Os sete chakras, Cor, elemento, glândula e mantra, Cromoterapia, a cor que acompanha, Como flui a energia, Ser canal, não bomba"}, {"n": "1", "m": 5, "t": "Byosen, sintonização e autotratamento", "d": "4:41", "c": "Byosen, aprender a sentir, O que as mãos podem dizer, Exercício para afinar as mãos, A sintonização, Os vinte e um dias, O teu autotratamento, As treze posições, Para fechar, e dias sem vontade"}, {"n": "1", "m": 6, "t": "Cho Ku Rei e as técnicas", "d": "4:47", "c": "Porque o Cho Ku Rei já no Nível 1, O que é um símbolo, Cho Ku Rei, o primeiro símbolo, Para que usas o Cho Ku Rei, Os nomes das técnicas, Enraizamento, Chuva e banho de Reiki, A limpeza do praticante"}, {"n": "1", "m": 7, "t": "Outras pessoas, ética e caminho", "d": "4:36", "c": "E aplicar a outras pessoas?, Alinhamento rápido, sentado, Práticas passo a passo, Ética, limites e bom senso, Perguntas que me fazem sempre, Exercícios e registo, Boa prática"}, {"n": "2", "m": 1, "t": "Bem-vindo ao Okuden", "d": "5:08", "c": "O que muda agora, Reiki complementa, nunca substitui, A vez em que quase desisti, Hikari — tornares-te luz, Os cinco princípios, mais fundo"}, {"n": "2", "m": 2, "t": "Os símbolos e os mantras", "d": "2:05", "c": "O que são os símbolos, Kotodama, jumon ou mantra, Um símbolo assenta em três coisas"}, {"n": "2", "m": 3, "t": "Os três símbolos", "d": "8:01", "c": "Cho Ku Rei — o símbolo do poder, Aplicações práticas, Protecção com o Cho Ku Rei, Sei He Ki — o símbolo da harmonia, Na prática, Hon Sha Ze Sho Nen — o símbolo da distância, Para que serve, Síntese dos três símbolos, Qual símbolo para quê"}, {"n": "2", "m": 4, "t": "Tratamento à distância", "d": "5:06", "c": "Enkaku Chiryo — o tratamento à distância, O envio completo, em quatro fases, O caderno e a caixa de Reiki, Perguntas sobre o envio à distância"}, {"n": "2", "m": 5, "t": "Técnicas tradicionais", "d": "6:24", "c": "Técnicas com nome japonês, Hatsurei Ho em oito passos, A técnica do sopro e a do olhar, Tratamento do ventre e do umbigo, Seikaku Kaizen Ho — melhorar o carácter"}, {"n": "2", "m": 6, "t": "Autotratamento e tratamento a outros", "d": "5:07", "c": "O teu autotratamento com símbolos, Tratamento a outros, passo a passo, A sessão completa, Descreve, não diagnostiques, Os 21 dias deste nível"}, {"n": "2", "m": 7, "t": "Ética e caminho de estudo", "d": "6:21", "c": "Ética, limites e bom senso, Os teus limites e o cobrar, Perguntas que me fazem sempre, Plano de estudo, Cinco exercícios, Este é o nível mais exigente"}, {"n": "3A", "m": 1, "t": "Bem-vindo ao Shinpiden", "d": "5:16", "c": "Os ensinamentos misteriosos, O que continua a valer, O que este nível me mexeu, A sessão que me fez voltar, A nossa linhagem, 3A e 3B, O que muda na prática"}, {"n": "3A", "m": 2, "t": "Rever, praticar e os cinco princípios", "d": "2:53", "c": "Matérias a rever, Seis meses de prática, Os cinco princípios, mais fundo, Kensho, A meditação deixa de ser opcional"}, {"n": "3A", "m": 3, "t": "Os símbolos um pouco mais além", "d": "3:09", "c": "Elementos e corpos subtis, Trabalhar mais profundamente, Os símbolos são como chaves, E se eu não praticar os símbolos?, Uma pequena história sobre os símbolos"}, {"n": "3A", "m": 4, "t": "Dai Ko Myo, a grande luz brilhante", "d": "4:01", "c": "O símbolo do Mestre, Origem e para que serve, O tradicional e o tibetano, Como se desenha, Activar e praticar, Os vários tipos de Dai Ko Myo"}, {"n": "3A", "m": 5, "t": "Aplicar o Dai Ko Myo", "d": "5:54", "c": "A ordem dos símbolos, No tratamento a outros, Meditação com o Dai Ko Myo, Meditação: a segunda metade, Na vida quotidiana, Na meditação e noutras situações, Tratar traumas e a filosofia de vida, Uma prática de reconciliação…"}, {"n": "3A", "m": 6, "t": "Técnicas, Antahkarana e a sessão", "d": "4:57", "c": "As técnicas neste nível, Jaki Kiri Joka Ho, Respiração com o Cho Ku Rei, O Antahkarana, Como usar o Antahkarana, A sessão de Nível 3A, Depois da sessão"}, {"n": "3A", "m": 7, "t": "O trabalho interior e o caminho", "d": "5:59", "c": "Olhar para o que evitas, A criança interior, O lado sombra e a carta, Reiki Tradicional e Reiki Essencial, Quando se faz o Gokukaiden, Ética de quem se aproxima do mestrado, Perguntas que me fazem sempre, Exercícios e registo, Bom caminho"}, {"n": "3B", "m": 1, "t": "O caminho de quem ensina", "d": "3:35", "c": "Antes de começares, O que continua a valer, A nossa linhagem, O que é ser Mestre"}, {"n": "3B", "m": 2, "t": "Os símbolos do mestrado", "d": "3:58", "c": "Dai Ko Myo tibetano, O tradicional e o tibetano, Raku, a serpente de fogo, Traçar o Raku e não o esquecer, Os seis símbolos, A ordem de elevação de um espaço"}, {"n": "3B", "m": 3, "t": "A postura e a anatomia da sintonização", "d": "2:34", "c": "Hui Yin e língua no palato, A respiração violeta, Os quatro momentos, O que diferencia os níveis e a intenção"}, {"n": "3B", "m": 4, "t": "Sintonização presencial", "d": "4:18", "c": "Preparação, Parte I, Abertura, Parte II, Transmissão, Parte III, Fecho, Parte IV, Bênção, As diferenças entre níveis"}, {"n": "3B", "m": 5, "t": "À distância e online", "d": "3:15", "c": "A energia não reconhece distância, Do teu lado: preparar a ligação, Do teu lado: conduzir e fechar, Formação online, O que não podes deixar cair"}, {"n": "3B", "m": 6, "t": "Dar formação", "d": "3:38", "c": "Antes e no dia, Depois, e o que ensinar, O que cada nível habilita, Avaliar um aluno, Certificados, registos e obrigações"}, {"n": "3B", "m": 7, "t": "Ética, dúvidas e compromisso", "d": "3:47", "c": "Ética do Mestre, primeira parte, Ética do Mestre, segunda parte, Perguntas que me fazem sempre, Exercícios e registo, Compromisso do Mestre, Bom caminho"}];
+const REIKI_CAT_VIDEOS = 'Apresentações em vídeo';
+function reikiChaveVideo(v){ return 'apr-' + v.n + '-' + v.m; }
+
+window.reikiAbrirVideos = function(){
+  const seccoes = REIKI_NIVEIS.map(n => {
+    const lista = REIKI_VIDEOS_APRES.filter(v => v.n === n.id);
+    const linhas = lista.map(v => {
+      const ex = __reikiRecursos.find(r => r.chave === reikiChaveVideo(v));
+      return `<div style="padding:10px 0;border-top:1px solid #eee;">
+        <strong>Módulo ${v.m} — ${escapeHtml(v.t)}</strong> <span class="muted" style="font-size:.82rem;">· ${escapeHtml(v.d)} min</span>
+        <p class="muted" style="margin:3px 0 6px;font-size:.82rem;">${escapeHtml(v.c)}</p>
+        <input type="url" class="reikiVidLink" data-chave="${reikiChaveVideo(v)}" value="${escapeHtml(ex?.url || '')}" placeholder="https://www.youtube.com/watch?v=..." style="width:100%;">
+        ${ex ? '<span class="muted" style="font-size:.78rem;">✔ Já está na biblioteca. Se mudares o link, actualiza.</span>' : ''}
+      </div>`;
+    }).join('');
+    return `<div class="card" style="margin-bottom:12px;"><h3 style="margin:0 0 4px;">${escapeHtml(n.certLabel)}</h3>${linhas}</div>`;
+  }).join('');
+  showPatientOverlay('🎬 Vídeos das apresentações', `
+    <p class="muted" style="margin-bottom:10px;">Cola o link de cada vídeo. Só os módulos com link aparecem aos alunos, cada um no seu nível. Podes guardar agora uns e voltar depois para acrescentar os outros.</p>
+    ${seccoes}
+    <div class="row" style="gap:8px;margin-top:12px;">
+      <button class="primary" onclick="reikiGuardarVideos()">Guardar</button>
+      <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+    </div>`);
+};
+
+window.reikiGuardarVideos = async function(){
+  const campos = Array.from(document.querySelectorAll('.reikiVidLink'));
+  const pedidos = [];
+  for (const el of campos){
+    const url = (el.value || '').trim();
+    if (!url) continue;
+    if (!/^https?:\/\//i.test(url)){ toast('Todos os links têm de começar por https://', true); return; }
+    const v = REIKI_VIDEOS_APRES.find(x => reikiChaveVideo(x) === el.dataset.chave);
+    if (v) pedidos.push({ v, url });
+  }
+  if (!pedidos.length){ toast('Cola pelo menos um link.', true); return; }
+  try {
+    const lote = writeBatch(db);
+    const catPorNivel = {};
+    // Uma categoria "Apresentações em vídeo" por nível, criada se faltar.
+    if (__reikiCategoriasOk){
+      for (const p of pedidos){
+        const n = p.v.n;
+        if (catPorNivel[n] !== undefined) continue;
+        const ex = reikiCatsDoNivel(n).find(c => c.nome === REIKI_CAT_VIDEOS);
+        if (ex){ catPorNivel[n] = ex.id; continue; }
+        const ref = doc(collection(db, 'tenants', tenantId, 'reikiCategories'));
+        lote.set(ref, { nome: REIKI_CAT_VIDEOS, nivel: n, descricao: 'Uma apresentação narrada por módulo, para ver ou rever o essencial do manual.',
+          paiId: '', ordem: reikiProximaOrdem(reikiCatsDoNivel(n)), criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp() });
+        catPorNivel[n] = ref.id;
+      }
+    }
+    for (const p of pedidos){
+      const chave = reikiChaveVideo(p.v);
+      const ex = __reikiRecursos.find(r => r.chave === chave);
+      const dados = {
+        titulo: 'Módulo ' + p.v.m + ' — ' + p.v.t,
+        url: p.url, tipo: 'video', nivel: p.v.n, chave,
+        categoriaId: catPorNivel[p.v.n] || '',
+        pago: false,
+        descricao: 'Apresentação narrada · ' + p.v.d + ' min. ' + p.v.c,
+        atualizadoEm: serverTimestamp()
+      };
+      if (ex){
+        lote.update(doc(db, 'tenants', tenantId, 'reikiLibrary', ex.id), dados);
+      } else {
+        dados.ordem = p.v.m;
+        dados.criadoEm = serverTimestamp();
+        lote.set(doc(collection(db, 'tenants', tenantId, 'reikiLibrary')), dados);
+      }
+    }
+    await lote.commit();
+    closePatientOverlay();
+    toast(pedidos.length + (pedidos.length === 1 ? ' vídeo guardado.' : ' vídeos guardados.'));
+    __reikiTab = 'biblioteca';
+    renderReikiAlunos();
+  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
 };
 
 /* ─── Link pessoal do aluno ──────────────────────────────────────── */
