@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-2';
+const APP_VERSION = '2026-10-04-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -9526,22 +9526,29 @@ window.saveAutoReminderSettings = async function(){
 };
 
 window.saveProfile = async function(){
+  // Cada secção do perfil mostra só alguns campos. Lê só os que existem no
+  // ecrã e mantém os valores atuais dos restantes (antes dava erro e podia
+  // apagar dados de outras secções).
+  const cur = currentTenantDoc?.profile || {};
+  const curSoc = cur.social || {};
+  const val = (id, fb) => { const e = document.getElementById(id); return e ? String(e.value || '').trim() : (fb || ''); };
   const profileData = {
-    tagline: document.getElementById('pfTagline').value.trim(),
-    about: document.getElementById('pfAbout').value.trim(),
-    phone: document.getElementById('pfPhone').value.trim(),
-    email: document.getElementById('pfEmail').value.trim(),
-    address: document.getElementById('pfAddress').value.trim(),
+    tagline: val('pfTagline', cur.tagline),
+    about: val('pfAbout', cur.about),
+    phone: val('pfPhone', cur.phone),
+    email: val('pfEmail', cur.email),
+    address: val('pfAddress', cur.address),
     social: {
-      facebook: document.getElementById('pfFacebook').value.trim(),
-      instagram: document.getElementById('pfInstagram').value.trim(),
-      whatsapp: document.getElementById('pfWhatsapp').value.trim(),
-      website: document.getElementById('pfWebsite').value.trim()
+      facebook: val('pfFacebook', curSoc.facebook),
+      instagram: val('pfInstagram', curSoc.instagram),
+      whatsapp: val('pfWhatsapp', curSoc.whatsapp),
+      website: val('pfWebsite', curSoc.website)
     }
   };
-  const businessName = document.getElementById('pfBusinessName').value.trim();
-  const logoUrl = document.getElementById('pfLogoUrl').value.trim();
-  const primaryColor = document.getElementById('pfColor').value;
+  const businessName = val('pfBusinessName', currentTenantDoc?.businessName);
+  const logoUrl = val('pfLogoUrl', currentTenantDoc?.branding?.logoUrl);
+  const colorEl = document.getElementById('pfColor');
+  const primaryColor = (colorEl && colorEl.value) || currentTenantDoc?.branding?.primaryColor || '#2f6f5e';
 
   await updateDoc(doc(db, 'tenants', tenantId), {
     businessName,
