@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-10';
+const APP_VERSION = '2026-10-04-11';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13061,6 +13061,8 @@ function reikiRenderBiblioteca(){
         <p class="muted">Uma pasta por nível, com os materiais lá dentro. Abre uma pasta para acrescentar ou mudar a ordem.</p>
         <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="ghost" onclick="reikiAbrirVideos()">🎬 Vídeos das apresentações</button>
+          <button class="ghost" onclick="reikiAbrirGerais()">📥 Materiais de Todos os níveis</button>
+          <a class="ghost" style="text-decoration:none;display:inline-block;padding:8px 12px;border-radius:8px;" href="poemas-meiji.html" target="_blank" rel="noopener">📜 Poemas do Imperador Meiji</a>
           <button class="ghost" onclick="reikiAbrirLimpeza()">🧹 Limpar biblioteca</button>
         </div>
       </div>
@@ -13571,6 +13573,62 @@ window.reikiExecutarLimpeza = async function(){
     __reikiTab = "biblioteca";
     renderReikiAlunos();
   } catch(e){ toast('Não consegui limpar: ' + (e.message || e), true); }
+};
+
+
+/* ─── Materiais gerais (Todos os níveis): pastas e materiais do curso ───
+   Cada material tem uma chave "geral-N", por isso carregar outra vez
+   actualiza em vez de duplicar. */
+const REIKI_GERAIS = [{"c": "Introdução ao Reiki", "t": "Introdução e história do Reiki", "k": "video", "u": "https://drive.google.com/file/d/1RIsuTHasWksC2ciTgVAZ-5Ks03OSmvFp/view?usp=sharing", "d": "Vídeo 01 do curso."}, {"c": "Introdução ao Reiki", "t": "O Imperador Meiji e os seus poemas", "k": "video", "u": "https://drive.google.com/file/d/1nvANnsNh4rz9KKpadQ3TX8lIsYpmgqz9/view?usp=sharing", "d": "Vídeo 02 do curso."}, {"c": "Introdução ao Reiki", "t": "Cho Ku Rei — a chave do poder", "k": "video", "u": "https://drive.google.com/file/d/1zNta5f7CgAN0HA_PWG28jBkxMtbOUGNx/view?usp=sharing", "d": "Vídeo 03 do curso."}, {"c": "Introdução ao Reiki", "t": "Preparação e limpeza", "k": "video", "u": "https://drive.google.com/file/d/10YqEVHjej4Xbh57CpFdygkwxH9El-B-L/view?usp=sharing", "d": "Vídeo 05 do curso."}, {"c": "Introdução ao Reiki", "t": "Introdução ao autotratamento", "k": "video", "u": "https://drive.google.com/file/d/1WB2h-MysabMpskPaGaDC4IODsDLa1_Sb/view?usp=sharing", "d": "Vídeo 10 do curso."}, {"c": "Chakras", "t": "Os 7 chakras", "k": "video", "u": "https://drive.google.com/file/d/1Xu-TM33cj_7AyOyY6Xlza-mYg7DE1iIL/view?usp=sharing", "d": "Vídeo 04 do curso."}, {"c": "Chakras", "t": "Localização dos chakras", "k": "documento", "u": "https://drive.google.com/file/d/1RVKW_2sc3vs90XwAinLvSmmEs4elWGYf/view?usp=sharing", "d": "Imagem para guardares e consultares."}, {"c": "Técnicas na prática", "t": "Banho seco — na prática", "k": "video", "u": "https://drive.google.com/file/d/1sN1CDWhz_uXPRimOHjMcceWS7RQmJfqt/view?usp=sharing", "d": ""}, {"c": "Técnicas na prática", "t": "Banho seco — técnica detalhada", "k": "video", "u": "https://drive.google.com/file/d/1WOGzlVvWWT_J4GEavKmHFNZQNm7HfiWE/view?usp=sharing", "d": ""}, {"c": "Técnicas na prática", "t": "Enraizamento — na prática", "k": "video", "u": "https://drive.google.com/file/d/1TL4wMcj8dBlhv0jUMEK7R244FF977afc/view?usp=sharing", "d": ""}, {"c": "Técnicas na prática", "t": "Enraizamento — técnica detalhada", "k": "video", "u": "https://drive.google.com/file/d/1ijZBaLGcI6rskkAFOEbAaOrM-Hy6sviP/view?usp=sharing", "d": ""}, {"c": "Técnicas na prática", "t": "Chuva de Reiki — na prática", "k": "video", "u": "https://drive.google.com/file/d/1wSWAm9zWETUUCevkYedLm6m8B5M23_kl/view?usp=sharing", "d": ""}, {"c": "Técnicas na prática", "t": "Chuva de Reiki — técnica detalhada", "k": "video", "u": "https://drive.google.com/file/d/1d6M-mj48BDkMwkRc_Nyqwc9BK2y09TRy/view?usp=sharing", "d": ""}, {"c": "21 dias de autotratamento guiado", "t": "Semana 1 — 3 técnicas de limpeza e autoaplicações de Reiki", "k": "video", "u": "https://drive.google.com/file/d/1YpFjSQsqmHf5Tp_JNBimJynQthvK32vB/view?usp=sharing", "d": "Meditação guiada da semana 1."}, {"c": "21 dias de autotratamento guiado", "t": "Semana 2 — Autotratamento com Reiki e códigos sagrados", "k": "video", "u": "https://drive.google.com/file/d/1ue-y82peHctW1NX10kNVTGrmSmhiOhXd/view?usp=sharing", "d": "Meditação guiada da semana 2."}, {"c": "21 dias de autotratamento guiado", "t": "Semana 3 — Autotratamento: o teu refúgio de Luz", "k": "video", "u": "https://drive.google.com/file/d/1Hc9vIlaXltU68yqq2jPw4aJOohEl9iAU/view?usp=sharing", "d": "Seguir a tua intuição."}, {"c": "Símbolos e bónus", "t": "1.º símbolo de Reiki — Cho Ku Rei", "k": "video", "u": "https://drive.google.com/file/d/1LxVwUYhJx5bEFgwr51CjbjMHXN1UozdW/view?usp=sharing", "d": ""}, {"c": "Símbolos e bónus", "t": "Bónus — Limpeza energética (PDF)", "k": "documento", "u": "https://drive.google.com/file/d/1e9n8FGTTjYMjNd0Mxj8s8ZPQ24st6cjN/view?usp=sharing", "d": "Guia em PDF."}];
+
+window.reikiAbrirGerais = function(){
+  const porCat = {};
+  REIKI_GERAIS.forEach(m => { (porCat[m.c] = porCat[m.c] || []).push(m); });
+  const lista = Object.keys(porCat).map(c => `<div style="margin-top:10px;"><strong>📂 ${escapeHtml(c)}</strong>
+    <ul style="margin:4px 0 0 18px;">${porCat[c].map(m => '<li>' + escapeHtml(m.t) + '</li>').join('')}</ul></div>`).join('');
+  showPatientOverlay('📥 Materiais de Todos os níveis', `
+    <p>Vai criar, na pasta <strong>Todos os níveis</strong>, ${Object.keys(porCat).length} subpastas com ${REIKI_GERAIS.length} materiais do curso. Visíveis a todos os alunos, de qualquer nível. Se já existirem, são actualizados, não duplicados.</p>
+    ${lista}
+    <p class="muted" style="font-size:.85rem;margin-top:10px;">Para os alunos conseguirem abrir, a pasta "Formação de Reiki Nível 1" no Drive tem de estar partilhada como "Qualquer pessoa com o link".</p>
+    <div class="row" style="gap:8px;margin-top:12px;">
+      <button class="primary" onclick="reikiGuardarGerais()">Publicar ${REIKI_GERAIS.length} materiais</button>
+      <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+    </div>`);
+};
+
+window.reikiGuardarGerais = async function(){
+  try {
+    const lote = writeBatch(db);
+    const catId = {};
+    const existentes = reikiCatsDoNivel('0');
+    let ordemCat = reikiProximaOrdem(existentes);
+    const ordemNaCat = {};
+    for (const m of REIKI_GERAIS){
+      if (catId[m.c] === undefined){
+        const ex = existentes.find(c => c.nome === m.c);
+        if (ex){ catId[m.c] = ex.id; }
+        else {
+          const ref = doc(collection(db, 'tenants', tenantId, 'reikiCategories'));
+          lote.set(ref, { nome: m.c, nivel: '0', descricao: '', paiId: '', ordem: ordemCat++, criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp() });
+          catId[m.c] = ref.id;
+        }
+      }
+    }
+    REIKI_GERAIS.forEach((m, i) => {
+      const chave = 'geral-' + (i + 1);
+      const ex = __reikiRecursos.find(r => r.chave === chave);
+      ordemNaCat[m.c] = (ordemNaCat[m.c] || 0) + 1;
+      const dados = { titulo: m.t, url: m.u, tipo: m.k, nivel: '0', chave, categoriaId: catId[m.c], pago: false,
+        descricao: m.d || '', atualizadoEm: serverTimestamp() };
+      if (ex) lote.update(doc(db, 'tenants', tenantId, 'reikiLibrary', ex.id), dados);
+      else { dados.ordem = ordemNaCat[m.c]; dados.criadoEm = serverTimestamp(); lote.set(doc(collection(db, 'tenants', tenantId, 'reikiLibrary')), dados); }
+    });
+    await lote.commit();
+    closePatientOverlay();
+    toast(REIKI_GERAIS.length + ' materiais publicados em Todos os níveis.');
+    __reikiTab = 'biblioteca';
+    renderReikiAlunos();
+  } catch(e){ toast('Não consegui publicar: ' + (e.message || e), true); }
 };
 
 
