@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-18';
+const APP_VERSION = '2026-10-04-19';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -15686,6 +15686,7 @@ async function renderMesinhas(main){
       <button class="primary" onclick="renderView('knowledge')">Ler e aceitar o termo</button></div>`;
     return;
   }
+  if (!window.__mesIlus){ try { window.__mesIlus = (await import('./mesinhas-ilus.js')).ilustracao; } catch(e){} }
   if (!__mesBase){
     m.innerHTML = '<h2>🌿 Ervas e Mesinhas Antigas</h2><p class="muted">A abrir a biblioteca…</p>';
     try { await mesCarregarBase(); }
@@ -15761,7 +15762,7 @@ function mesHtmlEntrada(e){
   return `<details class="card" style="margin-bottom:8px;padding:10px 12px;">
     <summary style="cursor:pointer;"><strong>${e.cat === 'limpeza' ? '🧹' : '🌿'} ${escapeHtml(e.nome || '')}</strong>${e.propria ? ' <span class="badge">minha</span>' : ''}
       <div class="muted" style="font-size:.88rem;margin-top:2px;">${escapeHtml(e.serve || '')}</div></summary>
-    ${/^https:\/\//i.test(e.imagem || '') ? `<img src="${escapeHtml(e.imagem)}" alt="" loading="lazy" style="width:100%;max-height:240px;object-fit:cover;border-radius:10px;margin-top:10px;">` : ''}
+    ${/^https:\/\//i.test(e.imagem || '') ? `<img src="${escapeHtml(e.imagem)}" alt="" loading="lazy" style="width:100%;max-height:240px;object-fit:cover;border-radius:10px;margin-top:10px;">` : (window.__mesIlus ? `<div style="margin-top:10px;">${window.__mesIlus(e)}</div>` : '')}
     ${bloco('Ingredientes', e.ingredientes)}${bloco('Preparação', e.preparacao)}${bloco('Como usar', e.uso)}
     ${e.cuidados ? `<div style="border-left:4px solid #e0a800;background:rgba(224,168,0,.1);padding:8px 10px;border-radius:6px;margin-top:12px;">
       <strong>⚠️ Cuidados</strong><div style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(e.cuidados)}</div></div>` : ''}

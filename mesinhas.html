@@ -54,7 +54,7 @@ const URL_FN = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/function
 const P = new URLSearchParams(location.search);
 const TENANT = (P.get('t') || 'hikari-terapias').trim();
 const CODIGO = (P.get('c') || '').trim().toUpperCase();
-let ITENS = [], CAT = 'todas', LETRA = '';
+let ITENS = [], CAT = 'todas', LETRA = '', ILUS = null;
 const ORDEM = ['Tosse, garganta e defesas','Digestão','Calma e sono','Dores e músculos','Pele','Cabelo e cuidados do corpo','Banhos','Limpeza da casa e do ambiente','Limpeza doméstica','Como preparar e guardar','Plantas a evitar','Outras'];
 const gr = i => i.grupo || 'Outras';
 const $ = id => document.getElementById(id);
@@ -71,7 +71,7 @@ function entrada(i){
   const prep = Array.isArray(i.preparacao) ? i.preparacao : String(i.preparacao || '').split('\n').filter(Boolean);
   return '<details data-id="' + esc(i.id) + '"><summary>' + esc(i.nome)
     + (i.serve ? '<small>' + esc(i.serve) + '</small>' : '') + '</summary><div class="corpo">'
-    + (/^https:\/\//i.test(i.imagem || '') ? '<img src="' + esc(i.imagem) + '" alt="" loading="lazy" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;margin:8px 0;">' : '')
+    + '<div style="margin:8px 0;">' + (/^https:\/\//i.test(i.imagem || '') ? '<img src="' + esc(i.imagem) + '" alt="" loading="lazy" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;">' : (ILUS ? ILUS(i) : '')) + '</div>'
     + (ing.length ? '<h4>Ingredientes</h4>' + lista(ing, false) : '')
     + (prep.length ? '<h4>Preparação</h4>' + lista(prep, true) : '')
     + (i.uso ? '<h4>Como usar</h4><p>' + esc(i.uso) + '</p>' : '')
@@ -123,6 +123,7 @@ $('q').addEventListener('input', desenhar);
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'erro');
     ITENS = d.itens || [];
+    try { ILUS = (await import('./mesinhas-ilus.js')).ilustracao; } catch (e) { ILUS = null; }
     desenhar();
   } catch (e){
     $('lista').innerHTML = '<div class="vazio">Não foi possível abrir agora. Tenta outra vez daqui a pouco.</div>';
