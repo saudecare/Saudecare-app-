@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-7';
+const APP_VERSION = '2026-10-04-8';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1707,7 +1707,7 @@ const NAV_GROUPS = {
     { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', modulo: 'mapaAlma' },
     { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', modulo: 'cartomancia' },
     { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem — Pêndulo Hebraico', modulo: 'triagemPendulo' },
-    { view: 'reikiAlunos', icon: '🎓', label: 'Alunos Reiki', tenantOnly: 'hikari-terapias' }
+    { view: 'reikiAlunos', icon: '🎓', label: 'Escola de Reiki', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -11745,7 +11745,7 @@ async function renderReikiAlunos(main){
 function reikiRenderEcra(main){
   const m = main || document.getElementById('mainView');
   m.innerHTML = `
-    <h2>🎓 Alunos Reiki</h2>
+    <h2>🎓 Escola de Reiki</h2>
     <div class="row" style="gap:6px;margin:10px 0 14px;flex-wrap:wrap;">
       <button class="${__reikiTab==='alunos'?'primary':'ghost'}" onclick="reikiMudarTab('alunos')">Alunos</button>
       <button class="${__reikiTab==='niveis'?'primary':'ghost'}" onclick="reikiMudarTab('niveis')">Níveis</button>
@@ -12973,19 +12973,39 @@ function reikiHtmlCategoria(c, irmaos, idx, ehSub){
     </div>`;
 }
 
+let __reikiBibAberta = false;     // false = vista de pastas; true = dentro de uma pasta
 function reikiRenderBiblioteca(){
   const alvo = document.getElementById('reikiConteudo');
   if (!alvo) return;
   const nivel = __reikiBibNivel;
 
-  const fichas = REIKI_NIVEIS_BIB.map(n => {
-    const conta = __reikiRecursos.filter(r => String(r.nivel||'0') === n.id).length;
-    const ativo = n.id === nivel;
-    return `<button class="${ativo?'primary':'ghost'}" style="${REIKI_BTN_MINI}padding:7px 11px;" onclick="reikiBibEscolherNivel('${n.id}')">${escapeHtml(reikiRotuloNivelCurto(n.id))} <span style="opacity:.7;">(${conta})</span></button>`;
-  }).join('');
+  if (!__reikiBibAberta){
+    const pastas = REIKI_NIVEIS_BIB.map(n => {
+      const mats = __reikiRecursos.filter(r => String(r.nivel||'0') === n.id);
+      const nm = mats.filter(r => r.tipo === 'manual').length;
+      const nv = mats.filter(r => r.tipo === 'video').length;
+      const resumo = mats.length
+        ? [nm ? nm + (nm === 1 ? ' manual' : ' manuais') : '', nv ? nv + (nv === 1 ? ' vídeo' : ' vídeos') : '',
+           (mats.length - nm - nv) ? (mats.length - nm - nv) + ' outros' : ''].filter(Boolean).join(' · ')
+        : 'vazia';
+      return `<button class="ghost" style="text-align:left;padding:14px;display:block;width:100%;margin-bottom:8px;" onclick="reikiBibEscolherNivel('${n.id}')">
+        <span style="font-size:1.4rem;">📁</span> <strong>${escapeHtml(n.certLabel)}</strong>
+        <span class="muted" style="display:block;font-size:.82rem;margin-top:2px;">${escapeHtml(resumo)}</span></button>`;
+    }).join('');
+    alvo.innerHTML = `
+      <div class="card" style="margin-bottom:12px;">
+        <p class="muted">Uma pasta por nível, com os materiais lá dentro. Abre uma pasta para acrescentar ou mudar a ordem.</p>
+        <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;">
+          <button class="ghost" onclick="reikiAbrirVideos()">🎬 Vídeos das apresentações</button>
+          <button class="ghost" onclick="reikiAbrirLimpeza()">🧹 Limpar biblioteca</button>
+        </div>
+      </div>
+      ${pastas}`;
+    return;
+  }
 
   const cats = reikiCatsDoNivel(nivel);
-  const soltos = reikiMateriaisEm(nivel, '');
+  const soltos = reikiMateriaisEm(nivel, '').slice().sort((a, b) => (b.tipo === 'manual') - (a.tipo === 'manual'));
 
   const avisoRegras = __reikiCategoriasOk ? '' : `
     <div class="card" style="border:1px solid #e0b4b4;background:#fdf3f3;margin-bottom:12px;">
@@ -12995,31 +13015,29 @@ function reikiRenderBiblioteca(){
 
   alvo.innerHTML = `
     ${avisoRegras}
-    <div class="card" style="margin-bottom:12px;">
-      <p class="muted">Organiza os materiais por nível e por categorias. As setas ▲ ▼ mudam a ordem, e é essa ordem que o aluno vê.</p>
-      <p class="muted" style="margin-top:6px;font-size:.85rem;">Os ficheiros ficam no teu Drive, partilhados como <strong>"Qualquer pessoa com o link"</strong>.</p>
-      <div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap;">${fichas}</div>
+    <div class="row" style="gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <button class="ghost" onclick="reikiBibVoltar()">← Pastas</button>
     </div>
-    <h3 style="margin:14px 0 4px;">${escapeHtml(reikiNivelBibLabel(nivel))}</h3>
+    <h3 style="margin:6px 0 4px;">📂 ${escapeHtml(reikiNivelBibLabel(nivel))}</h3>
     <p class="muted" style="font-size:.85rem;margin-bottom:10px;">${nivel === '0'
       ? 'Material visível a todos os alunos, de qualquer nível.'
-      : 'Visível a quem estuda este nível e a todos os que já passaram por ele.'}</p>
+      : 'Visível a quem estuda este nível e a todos os que já passaram por ele. As setas ▲ ▼ mudam a ordem. Os ficheiros ficam no teu Drive, partilhados como "Qualquer pessoa com o link".'}</p>
     <div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-      <button class="primary" onclick="reikiAbrirCategoria()" ${__reikiCategoriasOk?'':'disabled'}>➕ Categoria</button>
-      <button class="ghost" onclick="reikiAbrirRecurso('','','${nivel}')">➕ Material</button>
-      <button class="ghost" onclick="reikiAbrirVideos()">🎬 Vídeos das apresentações</button>
-      <button class="ghost" onclick="reikiAbrirLimpeza()">🧹 Limpar biblioteca</button>
+      <button class="primary" onclick="reikiAbrirRecurso('','','${nivel}')">➕ Material</button>
+      <button class="ghost" onclick="reikiAbrirCategoria()" ${__reikiCategoriasOk?'':'disabled'}>➕ Subpasta</button>
     </div>
-    ${cats.length ? cats.map((c, i) => reikiHtmlCategoria(c, cats.length, i, false)).join('') : `<p class="muted" style="margin-bottom:12px;">Ainda não há categorias neste nível.</p>`}
+    ${cats.map((c, i) => reikiHtmlCategoria(c, cats.length, i, false)).join('')}
     ${(soltos.length || !cats.length) ? `
       <div class="card" style="margin-bottom:12px;">
-        <strong>${cats.length ? '📎 Sem categoria' : '📎 Materiais'}</strong>
         ${reikiHtmlListaMateriais(soltos)}
       </div>` : ''}`;
 }
 
+window.reikiBibVoltar = function(){ __reikiBibAberta = false; reikiRenderBiblioteca(); };
+
 window.reikiBibEscolherNivel = function(nivel){
   __reikiBibNivel = String(nivel || '1');
+  __reikiBibAberta = true;
   reikiRenderBiblioteca();
 };
 

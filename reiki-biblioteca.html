@@ -461,7 +461,7 @@ function verBiblioteca(){
   let h = '';
   for (const nivel of ordemNiveis){
     const aberto = nivel === emEstudo || ordemNiveis.length === 1;
-    h += '<h2>' + esc(ROTULOS[nivel] || nivel) + (nivel === emEstudo ? ' · a estudar' : '') + '</h2>';
+    h += '<details class="categoria pasta"' + (aberto ? ' open' : '') + '><summary>📁 ' + esc(ROTULOS[nivel] || nivel) + (nivel === emEstudo ? ' · a estudar' : '') + '</summary>';
     const cats = ordenar(categorias.filter(c => !c.paiId && String(c.nivel||'0') === nivel), 'nome');
     for (const c of cats){
       const subs = ordenar(categorias.filter(s => s.paiId === c.id), 'nome');
@@ -483,8 +483,9 @@ function verBiblioteca(){
     const soltos = noSitio(nivel, '');
     if (soltos.length){
       if (cats.length) h += '<div class="subtitulo" style="margin:14px 0 6px;">Outros materiais</div>';
-      h += soltos.map(htmlMaterial).join('');
+      h += soltos.slice().sort((a, b) => (b.tipo === 'manual') - (a.tipo === 'manual')).map(htmlMaterial).join('');
     }
+    h += '</details>';
   }
   alvo.innerHTML = h;
   alvo.querySelectorAll('button[data-visto]').forEach(b => b.onclick = async () => {
