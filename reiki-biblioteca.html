@@ -439,8 +439,10 @@ function htmlMaterial(r){
 function verBiblioteca(){
   const { recursos, emEstudo } = C;
   const CARTAO_MEIJI = '<a href="poemas-meiji.html" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;">'
-      + '<div class="cartao" style="display:flex;gap:12px;align-items:center;cursor:pointer;"><span style="font-size:1.8rem;">📜</span>'
-      + '<div style="flex:1;"><strong>Os 125 Poemas do Imperador Meiji</strong><p class="desc" style="margin:2px 0 0;">Toca para abrir e ler. Para todos os níveis.</p></div><span style="font-size:1.2rem;">›</span></div></a>';
+    + '<div class="cartao" style="display:flex;gap:16px;align-items:center;cursor:pointer;padding:16px;">'
+    + '<img src="reiki-img/meiji-rosto.jpg" alt="Imperador Meiji" style="width:96px;height:96px;border-radius:50%;object-fit:cover;flex:none;border:3px solid #b8893b;background:#000;">'
+    + '<div style="flex:1;"><strong style="font-size:1.1rem;">Os 125 Poemas do Imperador Meiji</strong>'
+    + '<p class="desc" style="margin:4px 0 0;">Toca para abrir e ler. Para todos os níveis.</p></div><span style="font-size:1.5rem;">›</span></div></a>';
   
   const categorias = C.categorias || [];
   if (!recursos.length){

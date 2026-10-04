@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-11';
+const APP_VERSION = '2026-10-04-12';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13062,7 +13062,9 @@ function reikiRenderBiblioteca(){
         <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="ghost" onclick="reikiAbrirVideos()">🎬 Vídeos das apresentações</button>
           <button class="ghost" onclick="reikiAbrirGerais()">📥 Materiais de Todos os níveis</button>
-          <a class="ghost" style="text-decoration:none;display:inline-block;padding:8px 12px;border-radius:8px;" href="poemas-meiji.html" target="_blank" rel="noopener">📜 Poemas do Imperador Meiji</a>
+          <a href="poemas-meiji.html" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:flex;gap:12px;align-items:center;width:100%;border:1px solid var(--border,#ddd);border-radius:12px;padding:10px 12px;">
+            <img src="reiki-img/meiji-rosto.jpg" alt="Imperador Meiji" style="width:72px;height:72px;border-radius:50%;object-fit:cover;flex:none;border:3px solid #b8893b;background:#000;">
+            <span><strong>Poemas do Imperador Meiji</strong><span class="muted" style="display:block;font-size:.82rem;">Abrir a página dos 125 poemas</span></span></a>
           <button class="ghost" onclick="reikiAbrirLimpeza()">🧹 Limpar biblioteca</button>
         </div>
       </div>
