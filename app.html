@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-17';
+const APP_VERSION = '2026-10-04-18';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -15761,6 +15761,7 @@ function mesHtmlEntrada(e){
   return `<details class="card" style="margin-bottom:8px;padding:10px 12px;">
     <summary style="cursor:pointer;"><strong>${e.cat === 'limpeza' ? '🧹' : '🌿'} ${escapeHtml(e.nome || '')}</strong>${e.propria ? ' <span class="badge">minha</span>' : ''}
       <div class="muted" style="font-size:.88rem;margin-top:2px;">${escapeHtml(e.serve || '')}</div></summary>
+    ${/^https:\/\//i.test(e.imagem || '') ? `<img src="${escapeHtml(e.imagem)}" alt="" loading="lazy" style="width:100%;max-height:240px;object-fit:cover;border-radius:10px;margin-top:10px;">` : ''}
     ${bloco('Ingredientes', e.ingredientes)}${bloco('Preparação', e.preparacao)}${bloco('Como usar', e.uso)}
     ${e.cuidados ? `<div style="border-left:4px solid #e0a800;background:rgba(224,168,0,.1);padding:8px 10px;border-radius:6px;margin-top:12px;">
       <strong>⚠️ Cuidados</strong><div style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(e.cuidados)}</div></div>` : ''}
@@ -15793,6 +15794,8 @@ window.mesAbrirForm = function(id){
       <textarea id="mesUso" rows="2">${escapeHtml(e?.uso || '')}</textarea>
       <label style="margin-top:10px;">Cuidados e contra-indicações</label>
       <textarea id="mesCuid" rows="3" placeholder="Gravidez, medicação, alergias, crianças…">${escapeHtml(e?.cuidados || '')}</textarea>
+      <label style="margin-top:10px;">Foto ou ilustração (link https, opcional)</label>
+      <input id="mesImg" type="url" value="${escapeHtml(e?.imagem || '')}" placeholder="https://…">
       <label style="margin-top:12px;display:flex;gap:8px;align-items:center;">
         <input id="mesAlunos" type="checkbox" ${e && e.escondida ? '' : 'checked'}> Mostrar aos alunos
       </label>
@@ -15815,6 +15818,7 @@ window.mesGuardar = async function(id){
     nome, cat: v('mesCat') === 'limpeza' ? 'limpeza' : 'saude',
     serve: v('mesServe'), tags: v('mesTags'), ingredientes: v('mesIngr'),
     preparacao: v('mesPrep'), uso: v('mesUso'), cuidados: v('mesCuid'),
+    imagem: /^https:\/\//i.test((document.getElementById('mesImg')?.value || '').trim()) ? document.getElementById('mesImg').value.trim() : '',
     publica: !!document.getElementById('mesPublica')?.checked,
     escondida: !document.getElementById('mesAlunos')?.checked
   };
