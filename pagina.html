@@ -77,6 +77,7 @@
 <div class="wrap">
   <section id="ofertasSection"></section>
   <section id="espiritualidadeSection"></section>
+  <section id="partilhaSection"></section>
   <section id="aboutSection"></section>
   <section id="servicesSection"></section>
   <section id="teamSection"></section>
@@ -149,6 +150,34 @@ async function load(){
   // Alma e para a Cartomancia. Não aparece a mais ninguém (outros
   // subscritores não têm esta funcionalidade ativa), e cada um só aparece
   // se a Hikari o deixar visível nas suas definições.
+  if (tenantId === 'hikari-terapias'){
+    document.getElementById('partilhaSection').innerHTML = `<div class="vd-partilha" style="margin:18px 0;padding:18px;border-radius:16px;background:#fff;border:1px solid #d9cbae;text-align:center;">
+  <strong style="font-size:17px;">💛 Partilha com quem gostas</strong>
+  <p style="margin:6px 0 12px;font-size:14px;color:#6b6252;">Envia a um amigo ou a alguém da família. Cada pessoa pode fazer a sua primeira leitura grátis.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+    <button type="button" onclick="vdPartilhar('mapa')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Mapa da Alma</button>
+    <button type="button" onclick="vdPartilhar('carta')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Tarot</button>
+    <button type="button" onclick="vdPartilhar('meiji')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Poemas Meiji</button>
+    <button type="button" onclick="vdPartilhar('ervas')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Ervas e Mesinhas</button>
+  </div>
+</div>
+`;
+
+  window.vdPartilhar = async function(k){
+    const base = new URL('.', location.href).href;
+    const P = {
+      mapa:  ['Mapa da Alma', 'Descobre o teu Mapa da Alma com a Hikari Fafe. A primeira leitura é grátis:', 'mapa-da-alma.html'],
+      carta: ['Tarot', 'Experimenta uma leitura de Tarot com a Hikari Fafe. A primeira leitura é grátis:', 'cartomancia.html'],
+      meiji: ['Poemas do Imperador Meiji', 'Tira um poema do Imperador Meiji e lê a mensagem para o teu momento:', 'poemas-meiji.html?t=hikari-terapias'],
+      ervas: ['Ervas e Mesinhas Antigas', 'Ervas e mesinhas antigas, com receitas de casa. Escreve o que procuras e aparece:', 'mesinhas.html?t=hikari-terapias']
+    }[k];
+    if (!P) return;
+    const url = base + P[2];
+    try { if (navigator.share){ await navigator.share({ title: P[0], text: P[1], url: url }); return; } }
+    catch(e){ if (e && e.name === 'AbortError') return; }
+    window.open('https://wa.me/?text=' + encodeURIComponent(P[1] + ' ' + url), '_blank');
+  };
+  }
   if (tenantId === 'hikari-terapias'){
     const mapaUrl = window.location.href.replace('pagina.html', 'mapa-da-alma.html').split('?')[0];
     const cartoUrl = window.location.href.replace('pagina.html', 'cartomancia.html').split('?')[0];
