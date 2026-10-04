@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-14';
+const APP_VERSION = '2026-10-04-15';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1707,7 +1707,8 @@ const NAV_GROUPS = {
     { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', modulo: 'mapaAlma' },
     { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', modulo: 'cartomancia' },
     { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem — Pêndulo Hebraico', modulo: 'triagemPendulo' },
-    { view: 'reikiAlunos', icon: '🎓', label: 'Escola de Reiki', tenantOnly: 'hikari-terapias' }
+    { view: 'reikiAlunos', icon: '🎓', label: 'Escola de Reiki', tenantOnly: 'hikari-terapias' },
+    { view: 'mesinhas', icon: '🌿', label: 'Mesinhas & Receitas', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1816,6 +1817,7 @@ function renderView(view, opts){
   else if (view === 'cartomancia') renderCartomancia(main);
   else if (view === 'triagemBaixaVibracao') renderTriagemBaixaVibracao(main, opts);
   else if (view === 'reikiAlunos') renderReikiAlunos(main);
+  else if (view === 'mesinhas') renderMesinhas(main);
   else if (view === 'pesquisaEmocional') window.renderPesquisaEmocional?.(main);
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
@@ -15602,6 +15604,208 @@ window.farmPacNatural = function(){
   }
   if (r.semRegisto.length) h += `<p class="muted">Não encontrei na Farmácia: ${r.semRegisto.map(escapeHtml).join(', ')}.</p>`;
   out.innerHTML = h;
+};
+
+/* ══════════════════════════════════════════════════════════════════════
+   MESINHAS & RECEITAS — biblioteca exclusiva da Hikari Fafe
+   O conteúdo da biblioteca NÃO está neste ficheiro: vem da função
+   "mesinhas" (repositório privado), que só responde à equipa da Hikari Fafe,
+   a alunos com o código pessoal e, ao público, só a uma seleção.
+   As receitas que ela própria acrescenta ficam no documento do negócio
+   (campo mesinhasCustom) e são geridas aqui.
+   ══════════════════════════════════════════════════════════════════════ */
+const MESINHAS_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/mesinhas';
+let __mesBase = null;
+let __mesCat = 'todas';
+let __mesBusca = '';
+
+function mesTodas(){
+  const proprias = Array.isArray(currentTenantDoc?.mesinhasCustom)
+    ? currentTenantDoc.mesinhasCustom.map(x => ({ ...x, propria: true })) : [];
+  return (__mesBase || []).concat(proprias)
+    .sort((a, b) => stripAccents(a.nome || '').localeCompare(stripAccents(b.nome || ''), 'pt'));
+}
+function mesPalheiro(e){
+  return stripAccents([e.nome, e.serve, e.tags, e.ingredientes, e.preparacao, e.uso].join(' '));
+}
+async function mesCarregarBase(){
+  const idToken = await auth.currentUser.getIdToken();
+  const res = await fetch(MESINHAS_FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+    body: JSON.stringify({ tenantId })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || 'Não consegui abrir a biblioteca.');
+  __mesBase = data.itens || [];
+}
+
+async function renderMesinhas(main){
+  const m = main || document.getElementById('mainView');
+  if (tenantId !== 'hikari-terapias'){
+    m.innerHTML = `<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta biblioteca é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>`;
+    return;
+  }
+  if (!currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt || currentTenantDoc?.knowledgeBaseDisclaimerVersion !== KB_DISCLAIMER_VERSION){
+    m.innerHTML = `<h2>🌿 Mesinhas & Receitas</h2>
+      <div class="card"><p>Antes de usar esta secção tem de ler e aceitar o termo de responsabilidade (é o mesmo da Biblioteca de Conhecimento — aceita uma vez só).</p>
+      <button class="primary" onclick="renderView('knowledge')">Ler e aceitar o termo</button></div>`;
+    return;
+  }
+  if (!__mesBase){
+    m.innerHTML = '<h2>🌿 Mesinhas & Receitas</h2><p class="muted">A abrir a biblioteca…</p>';
+    try { await mesCarregarBase(); }
+    catch(e){
+      m.innerHTML = `<h2>🌿 Mesinhas & Receitas</h2>
+        <div class="card" style="border:1px solid #e0b4b4;background:#fdf3f3;">
+          <strong>Não consegui abrir a biblioteca.</strong>
+          <p class="muted" style="margin-top:6px;">${escapeHtml(e.message || String(e))}</p>
+          <button class="primary" style="margin-top:10px;" onclick="renderView('mesinhas')">Tentar outra vez</button>
+        </div>`;
+      return;
+    }
+  }
+  m.innerHTML = `
+    <div class="row"><h2>🌿 Mesinhas & Receitas</h2>
+      <button class="primary" onclick="mesAbrirForm()">+ Nova</button></div>
+    ${hintBox('Consulta de A a Z: escreve o que procuras (um sintoma, uma planta, “sono”, “descarrego”…) e vê as receitas tradicionais. São práticas populares e <strong>complementares</strong>: não substituem o médico. Antes de aconselhar a alguém que toma medicação, cruza em Farmácia & Interações.')}
+    <div class="row" style="gap:8px;margin-top:8px;"><button class="ghost" onclick="renderView('farmacia')">💊 Farmácia & Interações</button></div>
+    <input id="mesBusca" type="search" placeholder="O que procuras? (ex.: tosse, nervos, descarrego)" oninput="mesFiltrar(this.value)" value="${escapeHtml(__mesBusca)}" style="margin-top:10px;">
+    <div id="mesChips" class="row" style="gap:6px;margin:10px 0;flex-wrap:wrap;"></div>
+    <div id="mesLetras" style="margin-bottom:8px;"></div>
+    <div id="mesLista"></div>`;
+  mesDesenhar();
+}
+
+window.mesFiltrar = function(v){ __mesBusca = v || ''; mesDesenhar(); };
+window.mesCategoria = function(c){ __mesCat = c; mesDesenhar(); };
+window.mesIrLetra = function(l){
+  const el = document.getElementById('mesL-' + l);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+function mesDesenhar(){
+  const lista = document.getElementById('mesLista');
+  if (!lista) return;
+  const palavras = stripAccents(__mesBusca).split(/\s+/).filter(w => w.length > 1);
+  const todas = mesTodas();
+  const res = todas.filter(e =>
+    (__mesCat === 'todas' || e.cat === __mesCat) && palavras.every(w => mesPalheiro(e).includes(w)));
+
+  const chip = (id, rotulo) => `<button class="${__mesCat === id ? 'primary' : 'ghost'}" onclick="mesCategoria('${id}')">${rotulo}</button>`;
+  document.getElementById('mesChips').innerHTML =
+    chip('todas', 'Todas (' + todas.length + ')') + chip('saude', '🌿 Mesinhas') + chip('limpeza', '🧹 Limpeza');
+
+  const letraDe = e => {
+    const l = stripAccents(e.nome || '').trim().charAt(0).toUpperCase();
+    return /[A-Z]/.test(l) ? l : '#';
+  };
+  const letras = [...new Set(res.map(letraDe))];
+  document.getElementById('mesLetras').innerHTML = letras.length > 1
+    ? letras.map(l => `<button class="ghost" style="padding:4px 9px;margin:2px;" onclick="mesIrLetra('${l}')">${l}</button>`).join('')
+    : '';
+
+  if (!res.length){
+    lista.innerHTML = '<p class="muted">Não encontrei nada com isso. Experimenta outra palavra, ou acrescenta tu uma receita em “+ Nova”.</p>';
+    return;
+  }
+  let h = '', atual = '';
+  res.forEach(e => {
+    const l = letraDe(e);
+    if (l !== atual){
+      atual = l;
+      h += `<h3 id="mesL-${l}" style="margin:14px 0 6px;color:var(--primary);">${l}</h3>`;
+    }
+    h += mesHtmlEntrada(e);
+  });
+  lista.innerHTML = `<p class="muted" style="margin-bottom:4px;">${res.length} resultado(s)</p>` + h;
+}
+
+function mesHtmlEntrada(e){
+  const bloco = (titulo, texto) => texto
+    ? `<p style="margin:10px 0 2px;"><strong>${titulo}</strong></p><p class="muted" style="white-space:pre-wrap;margin:0;">${escapeHtml(texto)}</p>` : '';
+  return `<details class="card" style="margin-bottom:8px;padding:10px 12px;">
+    <summary style="cursor:pointer;"><strong>${e.cat === 'limpeza' ? '🧹' : '🌿'} ${escapeHtml(e.nome || '')}</strong>${e.propria ? ' <span class="badge">minha</span>' : ''}
+      <div class="muted" style="font-size:.88rem;margin-top:2px;">${escapeHtml(e.serve || '')}</div></summary>
+    ${bloco('Ingredientes', e.ingredientes)}${bloco('Preparação', e.preparacao)}${bloco('Como usar', e.uso)}
+    ${e.cuidados ? `<div style="border-left:4px solid #e0a800;background:rgba(224,168,0,.1);padding:8px 10px;border-radius:6px;margin-top:12px;">
+      <strong>⚠️ Cuidados</strong><div style="white-space:pre-wrap;margin-top:4px;">${escapeHtml(e.cuidados)}</div></div>` : ''}
+    ${e.propria ? `<div class="row" style="gap:8px;margin-top:12px;">
+      <button class="ghost" onclick="mesAbrirForm('${escapeAttrJs(e.id || '')}')">✏️ Editar</button>
+      <button class="danger" onclick="mesApagar('${escapeAttrJs(e.id || '')}')">🗑️</button></div>` : ''}
+  </details>`;
+}
+
+window.mesAbrirForm = function(id){
+  const e = id ? (currentTenantDoc?.mesinhasCustom || []).find(x => x.id === id) : null;
+  showPatientOverlay(e ? '✏️ Editar receita' : '➕ Nova receita', `
+    <div class="card">
+      <label>Nome</label>
+      <input id="mesNome" type="text" value="${escapeHtml(e?.nome || '')}">
+      <label style="margin-top:10px;">Tipo</label>
+      <select id="mesCat">
+        <option value="saude" ${e?.cat !== 'limpeza' ? 'selected' : ''}>🌿 Mesinha</option>
+        <option value="limpeza" ${e?.cat === 'limpeza' ? 'selected' : ''}>🧹 Limpeza</option>
+      </select>
+      <label style="margin-top:10px;">Para que serve</label>
+      <textarea id="mesServe" rows="2">${escapeHtml(e?.serve || '')}</textarea>
+      <label style="margin-top:10px;">Palavras para a pesquisa (opcional)</label>
+      <input id="mesTags" type="text" value="${escapeHtml(e?.tags || '')}" placeholder="ex.: tosse, garganta, frio">
+      <label style="margin-top:10px;">Ingredientes</label>
+      <textarea id="mesIngr" rows="3">${escapeHtml(e?.ingredientes || '')}</textarea>
+      <label style="margin-top:10px;">Preparação</label>
+      <textarea id="mesPrep" rows="3">${escapeHtml(e?.preparacao || '')}</textarea>
+      <label style="margin-top:10px;">Como usar</label>
+      <textarea id="mesUso" rows="2">${escapeHtml(e?.uso || '')}</textarea>
+      <label style="margin-top:10px;">Cuidados e contra-indicações</label>
+      <textarea id="mesCuid" rows="3" placeholder="Gravidez, medicação, alergias, crianças…">${escapeHtml(e?.cuidados || '')}</textarea>
+      <label style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+        <input id="mesAlunos" type="checkbox" ${e && e.escondida ? '' : 'checked'}> Mostrar aos alunos
+      </label>
+      <label style="margin-top:6px;display:flex;gap:8px;align-items:center;">
+        <input id="mesPublica" type="checkbox" ${e?.publica ? 'checked' : ''}> Mostrar também na página pública
+      </label>
+      <div class="row" style="gap:8px;margin-top:14px;">
+        <button class="primary" onclick="mesGuardar('${escapeAttrJs(id || '')}')">Guardar</button>
+        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+      </div>
+    </div>`);
+};
+
+window.mesGuardar = async function(id){
+  const v = k => (document.getElementById(k)?.value || '').trim();
+  const nome = v('mesNome');
+  if (!nome){ toast('Escreve o nome da receita.', true); return; }
+  const item = {
+    id: id || ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
+    nome, cat: v('mesCat') === 'limpeza' ? 'limpeza' : 'saude',
+    serve: v('mesServe'), tags: v('mesTags'), ingredientes: v('mesIngr'),
+    preparacao: v('mesPrep'), uso: v('mesUso'), cuidados: v('mesCuid'),
+    publica: !!document.getElementById('mesPublica')?.checked,
+    escondida: !document.getElementById('mesAlunos')?.checked
+  };
+  try {
+    const atual = Array.isArray(currentTenantDoc?.mesinhasCustom) ? currentTenantDoc.mesinhasCustom : [];
+    const lista = id ? atual.map(x => x.id === id ? item : x) : atual.concat([item]);
+    await updateDoc(doc(db, 'tenants', tenantId), { mesinhasCustom: lista });
+    currentTenantDoc.mesinhasCustom = lista;
+    closePatientOverlay();
+    toast('Receita guardada.');
+    renderView('mesinhas');
+  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
+};
+
+window.mesApagar = async function(id){
+  const e = (currentTenantDoc?.mesinhasCustom || []).find(x => x.id === id);
+  if (!e) return;
+  if (!await reikiConfirmar('Apagar receita', 'Apagar "' + (e.nome || '') + '"?\n\nEsta acção não pode ser desfeita.')) return;
+  try {
+    const lista = (currentTenantDoc.mesinhasCustom || []).filter(x => x.id !== id);
+    await updateDoc(doc(db, 'tenants', tenantId), { mesinhasCustom: lista });
+    currentTenantDoc.mesinhasCustom = lista;
+    toast('Receita apagada.');
+    renderView('mesinhas');
+  } catch(err){ toast('Não consegui apagar: ' + (err.message || err), true); }
 };
 
 async function renderFarmacia(main){

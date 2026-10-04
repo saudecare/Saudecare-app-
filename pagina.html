@@ -152,6 +152,7 @@ async function load(){
   if (tenantId === 'hikari-terapias'){
     const mapaUrl = window.location.href.replace('pagina.html', 'mapa-da-alma.html').split('?')[0];
     const cartoUrl = window.location.href.replace('pagina.html', 'cartomancia.html').split('?')[0];
+    const mesinhasUrl = window.location.href.replace('pagina.html', 'mesinhas.html').split('?')[0] + '?t=hikari-terapias';
     const poemasUrl = window.location.href.replace('pagina.html', 'poemas-meiji.html').split('?')[0] + '?t=hikari-terapias';
 
     fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/mapaAlma', {
@@ -171,6 +172,9 @@ async function load(){
           <div class="spirit-icon">🃏</div><div class="spirit-label">Tarot</div><div class="spirit-tag">grátis</div>
         </a>`);
       }
+      tiles.push(`<a href="${escapeHtml(mesinhasUrl)}" class="spirit-tile" target="_blank" rel="noopener">
+        <div class="spirit-icon">🌿</div><div class="spirit-label">Farmácia A–Z</div><div class="spirit-tag">grátis</div>
+      </a>`);
       tiles.push(`<a href="${escapeHtml(poemasUrl)}" class="spirit-tile" target="_blank" rel="noopener">
         <div class="spirit-icon">🎴</div><div class="spirit-label">Poemas Meiji</div><div class="spirit-tag">grátis</div>
       </a>`);

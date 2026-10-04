@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Farmácia de A a Z — Hikari Fafe</title>
+<style>
+  :root{--papel:#fdfaf1;--linha:#d9cbae;--verde:#2f6f5e;--bronze:#a8681f;--tinta:#332f29;--suave:#8d8375;--caixa:#f3f7f2;--aviso:#fcf4e2;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--papel);color:var(--tinta);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.55;padding-bottom:60px;}
+  header{background:linear-gradient(160deg,#245a4c,var(--verde));color:#fff;padding:26px 18px 22px;text-align:center;}
+  header h1{font-size:21px;margin-bottom:4px;}
+  header p{opacity:.9;font-size:13.5px;}
+  main{max-width:680px;margin:0 auto;padding:0 16px;}
+  .busca{margin:16px 0 10px;}
+  input{width:100%;padding:13px;border:1px solid var(--linha);border-radius:10px;font-size:16px;background:#fff;color:var(--tinta);}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  .chips button{padding:8px 13px;border:1px solid var(--linha);background:#fff;border-radius:20px;font-size:13.5px;cursor:pointer;color:var(--tinta);}
+  .chips button.on{background:var(--verde);color:#fff;border-color:var(--verde);}
+  .letras{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;}
+  .letras button{width:32px;height:32px;border:1px solid var(--linha);background:#fff;border-radius:8px;font-size:13px;cursor:pointer;color:var(--tinta);}
+  .letras button:disabled{opacity:.3;cursor:default;}
+  .aviso{background:var(--aviso);border:1px solid var(--linha);border-radius:12px;padding:12px 14px;font-size:12.5px;color:var(--suave);margin:12px 0;}
+  .nota{background:var(--caixa);border:1px solid #cfe0d4;border-radius:12px;padding:12px 14px;font-size:13.5px;margin:12px 0;}
+  h2.letra{font-size:15px;color:var(--bronze);margin:16px 0 6px;}
+  details{background:#fff;border:1px solid var(--linha);border-radius:12px;margin-bottom:8px;}
+  summary{padding:13px 14px;cursor:pointer;font-weight:600;list-style:none;}
+  summary small{display:block;font-weight:400;color:var(--suave);font-size:12.5px;margin-top:2px;}
+  .corpo{padding:0 14px 14px;font-size:14.5px;}
+  .corpo h4{font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--verde);margin:12px 0 4px;}
+  .corpo ul,.corpo ol{padding-left:20px;}
+  .cuidados{background:var(--aviso);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13.5px;}
+  .vazio{text-align:center;color:var(--suave);padding:30px 14px;font-size:14px;}
+  footer{text-align:center;color:var(--suave);font-size:12px;padding:24px 16px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌿 Farmácia de A a Z</h1>
+  <p>Receitas e mesinhas de casa, ao jeito antigo</p>
+</header>
+<main>
+  <div class="busca"><input id="q" type="search" placeholder="Escreve o que procuras (ex.: tosse, dor de garganta, limpeza)" autocomplete="off"></div>
+  <div class="chips" id="chips"></div>
+  <div class="letras" id="letras"></div>
+  <div id="nota"></div>
+  <div id="lista"><div class="vazio">A carregar…</div></div>
+  <div class="aviso">As receitas e mesinhas são de uso complementar, vêm da tradição popular e não substituem o acompanhamento médico. Em caso de dúvida, doença, gravidez, amamentação, crianças pequenas ou medicação em curso, fala primeiro com o teu médico ou farmacêutico.</div>
+</main>
+<footer>Hikari Fafe</footer>
+<script>
+const URL_FN = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/mesinhas';
+const P = new URLSearchParams(location.search);
+const TENANT = (P.get('t') || 'hikari-terapias').trim();
+const CODIGO = (P.get('c') || '').trim().toUpperCase();
+let ITENS = [], CAT = 'todas', LETRA = '';
+const CATS = [['todas','Todas'],['mesinha','Mesinhas'],['limpeza','Limpeza']];
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+function lista(arr, ord){
+  if (!arr || !arr.length) return '';
+  const t = ord ? 'ol' : 'ul';
+  return '<' + t + '>' + arr.map(x => '<li>' + esc(x) + '</li>').join('') + '</' + t + '>';
+}
+function entrada(i){
+  const ing = Array.isArray(i.ingredientes) ? i.ingredientes : String(i.ingredientes || '').split('\n').filter(Boolean);
+  const prep = Array.isArray(i.preparacao) ? i.preparacao : String(i.preparacao || '').split('\n').filter(Boolean);
+  return '<details data-id="' + esc(i.id) + '"><summary>' + esc(i.nome)
+    + (i.serve ? '<small>' + esc(i.serve) + '</small>' : '') + '</summary><div class="corpo">'
+    + (ing.length ? '<h4>Ingredientes</h4>' + lista(ing, false) : '')
+    + (prep.length ? '<h4>Preparação</h4>' + lista(prep, true) : '')
+    + (i.uso ? '<h4>Como usar</h4><p>' + esc(i.uso) + '</p>' : '')
+    + (i.cuidados ? '<div class="cuidados"><b>Cuidados:</b> ' + esc(i.cuidados) + '</div>' : '')
+    + '</div></details>';
+}
+function filtrar(){
+  const q = norm($('q').value.trim());
+  return ITENS.filter(i => {
+    if (CAT !== 'todas' && i.cat !== CAT) return false;
+    if (LETRA && norm(i.nome).charAt(0).toUpperCase() !== LETRA) return false;
+    if (!q) return true;
+    const alvo = norm([i.nome, i.serve, (i.tags || []).join ? (i.tags || []).join(' ') : i.tags,
+      Array.isArray(i.ingredientes) ? i.ingredientes.join(' ') : i.ingredientes].join(' '));
+    return q.split(/\s+/).every(w => alvo.indexOf(w) >= 0);
+  }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+}
+function desenhar(){
+  $('chips').innerHTML = CATS.map(c => '<button data-c="' + c[0] + '" class="' + (CAT === c[0] ? 'on' : '') + '">' + c[1] + '</button>').join('');
+  const usadas = {};
+  ITENS.forEach(i => { usadas[norm(i.nome).charAt(0).toUpperCase()] = 1; });
+  $('letras').innerHTML = 'ABCDEFGHIJLMNOPQRSTUVZ'.split('').map(l =>
+    '<button data-l="' + l + '"' + (usadas[l] ? '' : ' disabled') + (LETRA === l ? ' style="background:#2f6f5e;color:#fff"' : '') + '>' + l + '</button>').join('');
+  const r = filtrar();
+  if (!r.length){ $('lista').innerHTML = '<div class="vazio">Não encontrei nada com isso. Experimenta outra palavra.</div>'; return; }
+  let h = '', ult = '';
+  r.forEach(i => {
+    const l = norm(i.nome).charAt(0).toUpperCase();
+    if (l !== ult){ h += '<h2 class="letra">' + esc(l) + '</h2>'; ult = l; }
+    h += entrada(i);
+  });
+  $('lista').innerHTML = h;
+}
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-c]'); if (c){ CAT = c.dataset.c; desenhar(); return; }
+  const l = e.target.closest('[data-l]'); if (l && !l.disabled){ LETRA = LETRA === l.dataset.l ? '' : l.dataset.l; desenhar(); }
+});
+$('q').addEventListener('input', desenhar);
+
+(async function(){
+  try {
+    const r = await fetch(URL_FN, { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(CODIGO ? { tenantId: TENANT, codigo: CODIGO } : { tenantId: TENANT }) });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'erro');
+    ITENS = d.itens || [];
+    if (d.modo === 'publico'){
+      $('nota').innerHTML = '<div class="nota">Esta é uma pequena seleção. A farmácia completa, de A a Z, é para os alunos da Escola de Reiki.</div>';
+    }
+    desenhar();
+  } catch (e){
+    $('lista').innerHTML = '<div class="vazio">Não foi possível abrir agora. Tenta outra vez daqui a pouco.</div>';
+  }
+})();
+</script>
+</body>
+</html>
