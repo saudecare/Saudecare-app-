@@ -165,6 +165,45 @@ function cartoesFerramentas(){
     + cartaoFerramenta('cartomancia.html', '🃏', 'Cartomancia', 'Toca para abrir e tirar as cartas. Para todos os níveis.');
 }
 
+/* Cartão dos Poemas do Imperador Meiji (Início e Estudo). */
+function cartaoMeiji(){
+  return '<a href="poemas-meiji.html" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;">'
+    + '<div class="cartao" style="display:flex;gap:16px;align-items:center;cursor:pointer;padding:16px;">'
+    + '<img src="reiki-img/meiji-rosto.jpg" alt="Imperador Meiji" style="width:96px;height:96px;border-radius:50%;object-fit:cover;flex:none;border:3px solid #b8893b;background:#000;">'
+    + '<div style="flex:1;"><strong style="font-size:1.1rem;">Os 125 Poemas do Imperador Meiji</strong>'
+    + '<p class="desc" style="margin:4px 0 0;">Toca para abrir e ler. Para todos os níveis.</p></div><span style="font-size:1.5rem;">›</span></div></a>';
+}
+
+/* Partilha com amigos e família: cada pessoa faz a sua primeira leitura grátis
+   nas páginas públicas (onde deixa o contacto e aceita o tratamento de dados).
+   O link é montado só com o nome da página, sem o código de acesso do aluno. */
+const PARTILHAS = {
+  mapa:  { ficheiro:'mapa-da-alma.html', titulo:'Mapa da Alma',
+           texto:'Fiz o meu Mapa da Alma na Escola de Reiki do Mestre Hikari Fafe e gostei. Podes descobrir o teu, a primeira leitura é grátis:' },
+  carta: { ficheiro:'cartomancia.html', titulo:'Cartomancia',
+           texto:'Experimenta uma leitura de cartas da Escola de Reiki do Mestre Hikari Fafe, a primeira leitura é grátis:' }
+};
+window.__partilhar = async function(k){
+  const p = PARTILHAS[k];
+  if (!p) return;
+  const url = new URL(p.ficheiro, location.href).href;
+  try {
+    if (navigator.share){ await navigator.share({ title: p.titulo, text: p.texto, url: url }); return; }
+  } catch(e){
+    if (e && e.name === 'AbortError') return;
+  }
+  window.open('https://wa.me/?text=' + encodeURIComponent(p.texto + ' ' + url), '_blank');
+};
+function cartaoPartilha(){
+  return '<div class="cartao" style="text-align:center;">'
+    + '<strong>💛 Partilha com os teus amigos</strong>'
+    + '<p style="margin:6px 0 10px;color:var(--suave);font-size:.9rem;">Envia estes links a amigos e família. '
+    + 'Cada um pode fazer a sua primeira leitura grátis.</p>'
+    + '<button class="abrir" style="margin:4px;" onclick="__partilhar(\'mapa\')">📲 Partilhar Mapa da Alma</button><br>'
+    + '<button class="abrir" style="margin:4px;" onclick="__partilhar(\'carta\')">📲 Partilhar Cartomancia</button>'
+    + '</div>';
+}
+
 /* Aviso nosso: o aviso() é bloqueado no browser do WhatsApp. */
 function aviso(texto){
   const f = document.createElement('div');
@@ -398,7 +437,7 @@ function verInicio(){
     + '<button class="botao" onclick="__mostrar(\'conversa\')">💬 Conversa da escola</button>'
     + '</div>';
 
-  h += '<h2>Para praticar</h2>' + cartoesFerramentas();
+  h += '<h2>Para praticar</h2>' + cartaoMeiji() + cartoesFerramentas() + cartaoPartilha();
 
   if (aluno.turmaNome || aluno.turmaWhatsapp || aluno.turmaJitsi){
     h += '<h2>A tua turma</h2><div class="cartao" style="text-align:center;">'
@@ -454,12 +493,8 @@ function htmlMaterial(r){
 
 function verBiblioteca(){
   const { recursos, emEstudo } = C;
-  const CARTAO_MEIJI = '<a href="poemas-meiji.html" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;">'
-    + '<div class="cartao" style="display:flex;gap:16px;align-items:center;cursor:pointer;padding:16px;">'
-    + '<img src="reiki-img/meiji-rosto.jpg" alt="Imperador Meiji" style="width:96px;height:96px;border-radius:50%;object-fit:cover;flex:none;border:3px solid #b8893b;background:#000;">'
-    + '<div style="flex:1;"><strong style="font-size:1.1rem;">Os 125 Poemas do Imperador Meiji</strong>'
-    + '<p class="desc" style="margin:4px 0 0;">Toca para abrir e ler. Para todos os níveis.</p></div><span style="font-size:1.5rem;">›</span></div></a>';
-  
+  const CARTAO_MEIJI = cartaoMeiji();
+
   const categorias = C.categorias || [];
   if (!recursos.length){
     alvo.innerHTML = '<div class="cartao vazio"><strong>Ainda sem materiais</strong>'
