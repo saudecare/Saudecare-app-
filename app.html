@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-5';
+const APP_VERSION = '2026-10-04-6';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13008,6 +13008,7 @@ function reikiRenderBiblioteca(){
       <button class="primary" onclick="reikiAbrirCategoria()" ${__reikiCategoriasOk?'':'disabled'}>➕ Categoria</button>
       <button class="ghost" onclick="reikiAbrirRecurso('','','${nivel}')">➕ Material</button>
       <button class="ghost" onclick="reikiAbrirVideos()">🎬 Vídeos das apresentações</button>
+      <button class="ghost" onclick="reikiAbrirLimpeza()">🧹 Limpar biblioteca</button>
     </div>
     ${cats.length ? cats.map((c, i) => reikiHtmlCategoria(c, cats.length, i, false)).join('') : `<p class="muted" style="margin-bottom:12px;">Ainda não há categorias neste nível.</p>`}
     ${(soltos.length || !cats.length) ? `
@@ -13382,6 +13383,58 @@ window.reikiGuardarVideos = async function(){
     renderReikiAlunos();
   } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
 };
+
+/* ─── Limpar a biblioteca: fica só o que é Manual e as apresentações em vídeo ─── */
+function reikiPlanoLimpeza(){
+  const mantem = r => r.tipo === 'manual' || String(r.chave || '').indexOf('apr-') === 0;
+  const ficam = __reikiRecursos.filter(mantem);
+  const saem = __reikiRecursos.filter(r => !mantem(r));
+  const catsUsadas = new Set();
+  ficam.forEach(r => { if (r.categoriaId) catsUsadas.add(r.categoriaId); });
+  // sobe pelos pais: uma categoria com filhos úteis também fica
+  let mudou = true;
+  while (mudou){ mudou = false;
+    __reikiCategorias.forEach(c => { if (catsUsadas.has(c.id) && c.paiId && !catsUsadas.has(c.paiId)){ catsUsadas.add(c.paiId); mudou = true; } });
+  }
+  const catsSaem = __reikiCategorias.filter(c => !catsUsadas.has(c.id));
+  return { ficam, saem, catsSaem };
+}
+
+window.reikiAbrirLimpeza = function(){
+  const p = reikiPlanoLimpeza();
+  const lista = p.saem.length
+    ? '<ul style="margin:6px 0 10px 18px;">' + p.saem.map(r => '<li>' + escapeHtml(r.titulo || '(sem título)') + ' <span class="muted">· ' + escapeHtml(reikiTipoInfo(r.tipo).rotulo) + '</span></li>').join('') + '</ul>'
+    : '<p class="muted">Não há materiais para retirar.</p>';
+  const cats = p.catsSaem.length
+    ? '<p style="margin:0 0 6px;"><strong>Categorias que ficam vazias e saem:</strong> ' + p.catsSaem.map(c => escapeHtml(c.nome || '')).join(', ') + '</p>' : '';
+  showPatientOverlay('🧹 Limpar biblioteca', `
+    <p>Fica só o que é <strong>Manual</strong> e os <strong>vídeos das apresentações</strong> (${p.ficam.length} materiais).</p>
+    <p style="margin:10px 0 0;"><strong>Vão ser retirados ${p.saem.length} materiais:</strong></p>
+    ${lista}${cats}
+    <p class="muted" style="font-size:.85rem;">Isto retira-os da app e não se pode desfazer. Os ficheiros no Drive não são apagados. Não mexe em alunos, clientes, turmas nem noutras partes da app.</p>
+    <div class="row" style="gap:8px;margin-top:12px;">
+      <button class="primary" onclick="reikiExecutarLimpeza()" ${(p.saem.length||p.catsSaem.length)?'':'disabled'}>Retirar ${p.saem.length} materiais</button>
+      <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+    </div>`);
+};
+
+window.reikiExecutarLimpeza = async function(){
+  const p = reikiPlanoLimpeza();
+  const refs = p.saem.map(r => doc(db, 'tenants', tenantId, 'reikiLibrary', r.id))
+    .concat(p.catsSaem.map(c => doc(db, 'tenants', tenantId, 'reikiCategories', c.id)));
+  try {
+    for (let i = 0; i < refs.length; i += 400){
+      const lote = writeBatch(db);
+      refs.slice(i, i + 400).forEach(rf => lote.delete(rf));
+      await lote.commit();
+    }
+    closePatientOverlay();
+    toast('Biblioteca limpa: ' + p.saem.length + ' materiais retirados.');
+    __reikiTab = "biblioteca";
+    renderReikiAlunos();
+  } catch(e){ toast('Não consegui limpar: ' + (e.message || e), true); }
+};
+
 
 /* ─── Link pessoal do aluno ──────────────────────────────────────── */
 
