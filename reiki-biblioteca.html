@@ -181,7 +181,9 @@ const PARTILHAS = {
   mapa:  { ficheiro:'mapa-da-alma.html', titulo:'Mapa da Alma',
            texto:'Fiz o meu Mapa da Alma na Escola de Reiki do Mestre Hikari Fafe e gostei. Podes descobrir o teu, a primeira leitura é grátis:' },
   carta: { ficheiro:'cartomancia.html', titulo:'Cartomancia',
-           texto:'Experimenta uma leitura de cartas da Escola de Reiki do Mestre Hikari Fafe, a primeira leitura é grátis:' }
+           texto:'Experimenta uma leitura de cartas da Escola de Reiki do Mestre Hikari Fafe, a primeira leitura é grátis:' },
+  meiji: { ficheiro:'poemas-meiji.html', titulo:'Os 125 Poemas do Imperador Meiji',
+           texto:'Os 125 Poemas do Imperador Meiji, que estudamos na Escola de Reiki do Mestre Hikari Fafe. Podes ler aqui:' }
 };
 window.__partilhar = async function(k){
   const p = PARTILHAS[k];
@@ -198,9 +200,10 @@ function cartaoPartilha(){
   return '<div class="cartao" style="text-align:center;">'
     + '<strong>💛 Partilha com os teus amigos</strong>'
     + '<p style="margin:6px 0 10px;color:var(--suave);font-size:.9rem;">Envia estes links a amigos e família. '
-    + 'Cada um pode fazer a sua primeira leitura grátis.</p>'
+    + 'Cada um pode fazer a sua primeira leitura grátis e ler os poemas.</p>'
     + '<button class="abrir" style="margin:4px;" onclick="__partilhar(\'mapa\')">📲 Partilhar Mapa da Alma</button><br>'
-    + '<button class="abrir" style="margin:4px;" onclick="__partilhar(\'carta\')">📲 Partilhar Cartomancia</button>'
+    + '<button class="abrir" style="margin:4px;" onclick="__partilhar(\'carta\')">📲 Partilhar Cartomancia</button><br>'
+    + '<button class="abrir" style="margin:4px;" onclick="__partilhar(\'meiji\')">📲 Partilhar Poemas do Meiji</button>'
     + '</div>';
 }
 
