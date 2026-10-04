@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-1';
+const APP_VERSION = '2026-10-04-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13291,7 +13291,7 @@ window.reikiApagarRecurso = async function(recursoId){
 
 
 /* ─── Vídeos das apresentações narradas (28 módulos, 4 níveis) ─────────
-   O Mestre cola o link de cada vídeo (YouTube não listado) e a app cria
+   O Mestre cola o link de cada vídeo (Drive) e a app cria
    o material no nível certo, dentro da categoria "Apresentações em vídeo".
    Cada material guarda uma "chave" para voltar a abrir e acrescentar
    links sem criar duplicados. */
@@ -13307,14 +13307,14 @@ window.reikiAbrirVideos = function(){
       return `<div style="padding:10px 0;border-top:1px solid #eee;">
         <strong>Módulo ${v.m} — ${escapeHtml(v.t)}</strong> <span class="muted" style="font-size:.82rem;">· ${escapeHtml(v.d)} min</span>
         <p class="muted" style="margin:3px 0 6px;font-size:.82rem;">${escapeHtml(v.c)}</p>
-        <input type="url" class="reikiVidLink" data-chave="${reikiChaveVideo(v)}" value="${escapeHtml(ex?.url || '')}" placeholder="https://www.youtube.com/watch?v=..." style="width:100%;">
+        <input type="url" class="reikiVidLink" data-chave="${reikiChaveVideo(v)}" value="${escapeHtml(ex?.url || '')}" placeholder="https://drive.google.com/file/d/..." style="width:100%;">
         ${ex ? '<span class="muted" style="font-size:.78rem;">✔ Já está na biblioteca. Se mudares o link, actualiza.</span>' : ''}
       </div>`;
     }).join('');
     return `<div class="card" style="margin-bottom:12px;"><h3 style="margin:0 0 4px;">${escapeHtml(n.certLabel)}</h3>${linhas}</div>`;
   }).join('');
   showPatientOverlay('🎬 Vídeos das apresentações', `
-    <p class="muted" style="margin-bottom:10px;">Cola o link de cada vídeo. Só os módulos com link aparecem aos alunos, cada um no seu nível. Podes guardar agora uns e voltar depois para acrescentar os outros.</p>
+    <p class="muted" style="margin-bottom:10px;">Cola o link do Drive de cada vídeo (partilhado como "Qualquer pessoa com o link"). Só os módulos com link aparecem aos alunos, cada um no seu nível. Podes guardar agora uns e voltar depois para acrescentar os outros.</p>
     ${seccoes}
     <div class="row" style="gap:8px;margin-top:12px;">
       <button class="primary" onclick="reikiGuardarVideos()">Guardar</button>
