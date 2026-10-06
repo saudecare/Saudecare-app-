@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-04-20';
+const APP_VERSION = '2026-10-06-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4957,7 +4957,7 @@ window.openPatientMirrorSection = async function(section){
         ${rows.length ? rows.map(r => `
           <div class="appt-item" style="cursor:pointer;" onclick="document.getElementById('mirrorReport_${r.id}').classList.toggle('hidden')">
             <div class="row"><strong>${escapeHtml(r.protocolName||'Relatório')}</strong><span class="muted">${r.generatedAt?.toDate ? r.generatedAt.toDate().toLocaleDateString('pt-PT') : ''}</span></div>
-            <div id="mirrorReport_${r.id}" class="hidden" style="margin-top:8px;white-space:pre-wrap;font-size:13px;background:#f6f8f7;border-radius:8px;padding:10px;">${escapeHtml(r.reportText||'Sem conteúdo disponível.')}</div>
+            <div id="mirrorReport_${r.id}" class="hidden" style="margin-top:8px;white-space:pre-wrap;font-size:13px;background:#f6f8f7;border-radius:8px;padding:10px;">${escapeHtml(r.reportTextCliente||r.reportText||'Sem conteúdo disponível.')}</div>
           </div>`).join('') : '<p class="muted">Ainda sem relatórios partilhados.</p>'}
       </div>
       <button class="ghost" style="width:100%;" onclick="viewPatientEvolution('${patientId}','${escapeAttrJs(p.fullName||'')}')">📈 Ver linha do tempo de evolução</button>
@@ -5441,7 +5441,8 @@ window.viewSavedReport = async function(patientId, reportId){
   showPatientOverlay(r.protocolName, `
     <div class="card">
       <button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button>
-      <textarea id="savedReportText" rows="14" readonly style="margin-top:10px;">${escapeHtml(r.reportText)}</textarea>
+      <textarea id="savedReportText" rows="14" readonly style="margin-top:10px;">${escapeHtml(r.reportTextCliente || r.reportText)}</textarea>
+      ${r.reportTextCliente ? `<details style="margin-top:8px;"><summary class="muted">🔒 Ver relatório técnico (interno)</summary><div style="white-space:pre-wrap;font-size:13px;background:#f6f8f7;border-radius:8px;padding:10px;margin-top:6px;">${escapeHtml(r.reportText||'')}</div></details>` : ''}
       <div class="row" style="margin-top:8px;">
         <button class="primary" onclick="downloadReportPDF('${escapeHtml(r.protocolName)}', document.getElementById('savedReportText').value)">📄 Descarregar PDF</button>
         <button class="ghost" onclick="shareReportPDF('${escapeHtml(r.protocolName)}', document.getElementById('savedReportText').value)">📤 Partilhar</button>
@@ -14398,6 +14399,191 @@ const TRIAGEM_LIMIAR_CHAKRA_ATENCAO = 70; // % abaixo do qual o chakra é sinali
    subscritor (já definida pelo portal a partir do branding do tenant).
    Não mostra as etiquetas hebraicas (ferramenta interna da terapeuta) —
    fala só do que interessa ao paciente perceber. */
+/* ─── Relatório para a pessoa e para a família ──────────────────────────
+   Escrito em texto corrido, com o nome da pessoa e o que a triagem mostrou
+   sobre ELA: como é, como pode estar a sentir-se agora e o que pode ajudar.
+   Não leva números técnicos, códigos nem etiquetas — esses ficam só no
+   relatório interno. É um rascunho que o Mestre pode editar antes de enviar. */
+const TRI_CAUSA_HUMANA = {
+  1:['Peso acumulado','um cansaço que parece não ter explicação, como se carregasse um peso que não é seu'],
+  2:['Energia de fora que pesa','a sensação de que, depois de certos contactos ou elogios insistentes, as coisas deixam de fluir'],
+  3:['Influência de fora, com intenção','a impressão de que algo ou alguém trabalha contra si, sem conseguir explicar porquê'],
+  4:['Palavras e desejos negativos de outras pessoas','um mal-estar que aparece depois de conflitos e que fica a pesar'],
+  5:['Algo dirigido de fora','dificuldades que começaram de repente e sem causa lógica, sobretudo nas relações ou nos projetos'],
+  6:['Energia que voltou para trás','fases em que tudo parece cair de uma só vez'],
+  7:['Uma presença que interfere','pensamentos que não parecem seus, desânimo súbito ou vontade de se isolar'],
+  8:['Momentos de afastamento de si','a sensação, em certos momentos, de não agir como é no seu íntimo, com reações que surpreendem até a própria pessoa'],
+  9:['Energia densa junto ao campo','cansaço, sono agitado e dificuldade em largar hábitos que não lhe fazem bem'],
+  10:['Pressão constante','um estado de alerta permanente, como se estivesse sempre sob pressão'],
+  11:['Limitação invisível','a sensação de que há algo que o(a) impede de avançar'],
+  12:['Pensamento sempre ligado','dificuldade em desligar a cabeça e em sentir os pensamentos como seus e livres'],
+  13:['Sensibilidade aos espaços e aparelhos','irritação, sono leve e cansaço em certos locais ou perto de aparelhos'],
+  14:['Local que cansa','dormir mal ou acordar sem descansar num determinado sítio'],
+  15:['Ligação que desgasta','estar preso(a) a uma pessoa ou situação que cansa e de que custa libertar-se'],
+  16:['Dificuldade em soltar','custar afastar-se de uma pessoa ou de um ciclo, mesmo sabendo que não faz bem'],
+  17:['Pessoa que esvazia','ficar sem energia depois de estar com determinada pessoa'],
+  18:['Peso que vem da família','um peso que já vinha de trás, antes de si'],
+  19:['Dificuldades que se repetem na família','situações difíceis que se repetem ao longo das gerações'],
+  20:['Padrões herdados','viver situações muito parecidas às de pais ou avós'],
+  21:['Temas de muito longe','assuntos que parecem vir de muito longe e que se repetem sem explicação'],
+  22:['Dificuldade em ter abundância','dificuldade em prosperar ou em sentir que merece ter'],
+  23:['Dificuldade em deixar alguém entrar','dificuldade em manter relações próximas ou em abrir o coração'],
+  24:['Dificuldade em dizer o que sente','dificuldade em expressar o que sente ou em ser ouvido(a)'],
+  25:['Dependência dos outros','tendência a apoiar-se demasiado nos outros ou a duvidar de que consegue sozinho(a)'],
+  26:['Emoções guardadas','emoções que ainda não encontraram saída'],
+  27:['Uma vivência por digerir','uma experiência difícil desta vida que ainda não foi totalmente digerida'],
+  28:['Voz interior crítica','uma voz interior dura, que trava as decisões'],
+  29:['Culpa antiga','uma culpa que pesa, mesmo sem saber bem de onde vem'],
+  30:['Medo de fundo','um medo que trava, sobretudo perante mudanças'],
+  31:['Inquietação constante','inquietação, dificuldade em relaxar e a sensação de estar sempre em tensão'],
+  32:['Memória do corpo','reações do corpo a situações que a cabeça já esqueceu'],
+  33:['Peso do ambiente','o peso do ambiente, das pessoas e dos pensamentos à volta'],
+  34:['Desligar-se de si','a sensação de estar desligado(a) de si, como se uma parte não estivesse presente'],
+  35:['Sono perturbado','sono agitado, pesadelos ou sonhos que deixam cansaço'],
+  36:['Absorver o que os outros sentem','absorver as emoções dos outros e chegar ao fim do dia sem energia'],
+  37:['Cansaço sem causa','um cansaço persistente que não tem explicação física'],
+  38:['Teto invisível','a sensação de um teto invisível quando tenta prosperar'],
+  39:['Receio de brilhar','tendência a atrasar-se ou a desistir quando está perto de alcançar algo importante, por receio das consequências de ter sucesso'],
+  40:['Criatividade travada','dificuldade em criar, em começar projetos ou em deixar algo novo nascer']
+};
+const TRI_CHAKRA_HUMANO = {
+  'Raiz':['uma base firme: sente-se seguro(a) e presente no corpo','falta de chão e de segurança, com dificuldade em sentir-se estável','criar rotinas simples e regulares, passar tempo na natureza e fazer refeições em família sem pressa'],
+  'Sacro':['muita vitalidade, criatividade e gosto de viver','emoções e prazer contidos, com a criatividade em baixo','dar espaço ao que gosta de fazer, sem ter de justificar'],
+  'Plexo Solar':['confiança e vontade de ação','dúvida sobre o próprio valor, dificuldade em decidir e em impor limites','valorizar as pequenas decisões e conquistas, sem críticas'],
+  'Coração':['capacidade de amar e de se ligar aos outros','dificuldade em dar e receber afeto, com mágoas por sarar','mostrar carinho sem pressionar e dar tempo para as emoções'],
+  'Garganta':['boa capacidade de se expressar','dificuldade em dizer o que sente e em ser ouvido(a)','ouvir sem interromper nem julgar'],
+  'Terceiro Olho':['clareza e boa intuição','confusão mental e intuição abafada','dar momentos de silêncio e de menos ecrãs'],
+  'Coroa':['uma ligação saudável ao sentido da vida e ao que é maior','afastamento do sentido da vida, da fé ou do que é maior do que nós','pequenos momentos de silêncio, de oração ou de meditação, ao ritmo da pessoa'],
+  'Timo / Coração Superior':['generosidade e capacidade de perdoar','dificuldade em perdoar e em ter compaixão por si','lembrar que errar faz parte e que há sempre recomeço'],
+  'Estrela da Alma':['proximidade ao seu propósito','a sensação de estar longe do seu caminho','conversar sobre o que a pessoa sonha e deseja ser']
+};
+const TRI_CARTA_NOTA = {
+  13:' Esta carta não fala de morte física: fala de um ciclo que se fecha para que outro possa começar.',
+  16:' Uma mudança súbita assusta, mas costuma abrir espaço para uma estrutura mais verdadeira.',
+  15:' Esta carta fala de padrões a que se está preso, e que se podem largar com apoio.',
+  12:' Uma pausa assim, mesmo desconfortável, dá uma nova perspetiva.',
+  18:' Costuma refletir dúvidas e medos que, ao serem ditos, perdem força.'
+};
+const TRI_ARCANO_NOTA = {
+  13:' (o Arcano da Morte não fala de morte física, mas de transformação e de recomeços)',
+  16:' (a Torre fala de mudanças que derrubam o que já não serve)',
+  15:' (o Diabo fala de aprender a largar o que prende)',
+  12:' (o Enforcado fala de parar para ver as coisas de outra forma)'
+};
+const triLista = (a) => a.length <= 1 ? (a[0]||'') : a.slice(0,-1).join(', ') + ' e ' + a[a.length-1];
+const triMin = (s) => { s = String(s||''); return s.charAt(0).toLowerCase() + s.slice(1); };
+
+function triagemRelatorioCliente(d){
+  const nome = d.primeiroNome;
+  const perfil = d.perfil;
+  const sec = [];
+  const hoje = new Date().toLocaleDateString('pt-PT');
+  const idade = d.dataNascimento ? Math.floor((Date.now() - new Date(d.dataNascimento+'T12:00:00').getTime()) / 31557600000) : null;
+
+  sec.push({ titulo:`Para ${nome} e para quem o(a) acompanha`, paras:[
+    `Este relatório resume a triagem energética de ${nome}, feita em ${hoje}. Foi escrito em palavras simples, para que ${nome} e a família percebam como a pessoa está neste momento, o que se sente e o que pode ajudar.`,
+    `Não é um diagnóstico nem uma sentença. É um retrato do momento, para ajudar a compreender e a escolher o melhor caminho.`
+  ]});
+
+  if (perfil){
+    const p = [];
+    let intro = `${nome}${idade ? `, com ${idade} anos,` : ''} nasceu sob o signo de ${perfil.signo.nome}`;
+    const dom = DONS_NUMERICOS[perfil.cv];
+    if (dom) intro += ` e traz um Caminho de Vida ${perfil.cv}, o de ${triMin(dom.nome)}. ${dom.texto}`;
+    else intro += '.';
+    p.push(intro);
+    if (perfil.anjo && perfil.anjo.tipo === 'anjo'){
+      p.push(`O Anjo do seu nascimento é ${perfil.anjo.nome}. ${perfil.anjo.virtude}${perfil.anjo.sombra ? ` O ponto de atenção desta influência é ${triMin(perfil.anjo.sombra).replace(/\.$/,'')}.` : ''}`);
+    } else if (perfil.anjo){
+      p.push(`${nome} não tem um Anjo fixo do nascimento: liga-se diretamente aos Anjos Universais.`);
+    }
+    const arc = ARCANOS_MAIORES[perfil.arcanoP];
+    if (arc) p.push(`O seu Arcano pessoal é ${arc.nome}${TRI_ARCANO_NOTA[perfil.arcanoP]||''}. ${arc.texto}`);
+    const sul = perfil.nodos.nodoSul.signo, norte = perfil.nodos.nodoNorte.signo;
+    const sulTxt = (NODO_SUL_TEXTOS[sul]||'').replace(/^Já dominou/,'Já traz de longe o domínio de');
+    const norteTxt = NODO_NORTE_TEXTOS[norte] ? NODO_NORTE_TEXTOS[norte].replace(/^O seu caminho de crescimento/,'O caminho de crescimento de '+nome) : `O caminho de crescimento aponta para as qualidades de ${norte}.`;
+    p.push(`${sulTxt} ${norteTxt}`.trim());
+    sec.push({ titulo:`Quem é ${nome}`, paras:p });
+  }
+
+  const fortes = d.chakrasTodos.filter(c => c.percentagem >= 90);
+  const fracos = d.chakrasTodos.filter(c => c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO);
+  const agora = [];
+  if (fortes.length) agora.push(`Há muita força em ${nome}: ${fortes.slice(0,4).map(c => `no centro ${c.nome} (${TRI_CHAKRA_HUMANO[c.nome]?.[0]||'bem aberto'})`).join('; ')}.`);
+  if (fracos.length) agora.push(`Neste momento, o que mais pede cuidado ${fracos.length === 1 ? 'é o centro' : 'são os centros'} ${triLista(fracos.map(c => c.nome))}. Na prática, isto pode traduzir-se em ${triLista(fracos.map(c => TRI_CHAKRA_HUMANO[c.nome]?.[1]||'cansaço'))}.`);
+  else agora.push(`Os centros de energia estão, no geral, bem abertos, o que é um bom sinal.`);
+  if (d.aberturaNivel && d.aberturaNivel !== 'Aberto'){
+    const lv = { 'Parcialmente Aberto':'algo travado', 'Bloqueado':'bastante travado', 'Muito Bloqueado':'muito travado' }[d.aberturaNivel] || 'travado';
+    agora.push(`O caminho à frente de ${nome} parece ${lv} neste momento: é como se, por mais que se esforce, as portas custassem a abrir. Isto não é uma sentença, é algo que se pode trabalhar.`);
+  } else agora.push(`O caminho à frente de ${nome} está aberto, o que ajuda a avançar.`);
+  sec.push({ titulo:'Como está neste momento', paras:agora });
+
+  if (d.causasDetetadas.length){
+    const sc = { titulo:'O que foi percebido, em palavras simples',
+      paras:[`A triagem encontrou ${d.causasDetetadas.length === 1 ? 'um ponto' : d.causasDetetadas.length + ' pontos'} que podem estar a pesar em ${nome}. Não são culpa de ninguém e não são motivo para alarme. São a forma de dar nome ao que pode estar a sentir.`],
+      lista: d.causasDetetadas.map(c => { const h = TRI_CAUSA_HUMANA[c.n]; return h ? `${h[0]}: ${h[1]}.` : `${c.nome}: ${c.descricao}`; }) };
+    if (d.cruzamento) sc.paras.push(`Algumas destas questões podem ter raízes mais fundas, ligadas ao que ${nome} traz de longe, e vão-se trabalhando com tempo.`);
+    sec.push(sc);
+  } else {
+    sec.push({ titulo:'O que foi percebido', paras:[`A triagem não encontrou nada de especial a pesar em ${nome}. O campo está equilibrado.`] });
+  }
+
+  const L = d.leituraComplementar;
+  if (L){
+    sec.push({ titulo:'O que as cartas mostram', paras:[
+      `No momento atual, a carta ${L.momento.nome} fala de ${L.momento.tema}.${TRI_CARTA_NOTA[L.momento.n]||''}`,
+      `Por baixo disso, a carta ${L.porTras.nome} fala de ${L.porTras.tema}, ligado a ${L.porTras.area}.${TRI_CARTA_NOTA[L.porTras.n]||''}`,
+      `Se nada mudar, a carta ${L.tendencia.nome} aponta para ${L.tendencia.tema}.${TRI_CARTA_NOTA[L.tendencia.n]||''} A boa notícia é que ter consciência disto já é o primeiro passo para mudar o rumo.`
+    ]});
+  }
+
+  if (d.comparacao){
+    const c = d.comparacao, p = [];
+    if (c.resolvidas.length) p.push(`Desde a última sessão, ${c.resolvidas.length === 1 ? 'ficou resolvido um ponto' : 'ficaram resolvidos ' + c.resolvidas.length + ' pontos'}, o que é uma boa notícia.`);
+    if (c.persistentes.length) p.push(`${c.persistentes.length === 1 ? 'Um ponto continua' : c.persistentes.length + ' pontos continuam'} a precisar de atenção.`);
+    if (c.novas.length) p.push(`Surgiram ${c.novas.length === 1 ? 'um ponto novo' : c.novas.length + ' pontos novos'} desde a última vez.`);
+    if (p.length) sec.push({ titulo:'Desde a última sessão', paras:p });
+  }
+
+  const ajudar = [];
+  if (d.sessoesNecessarias) ajudar.push(`Recomendam-se ${d.sessoesNecessarias} ${Number(d.sessoesNecessarias) === 1 ? 'sessão' : 'sessões'} de limpeza energética, feitas aos poucos, uma de cada vez, ao ritmo de ${nome}.${d.preco ? ` Valor indicado: ${d.preco}€.` : ''}`);
+  if (d.temAlgumaCoisaDetetada) ajudar.push(`Nos 1 a 3 dias a seguir a cada sessão, é normal sentir mais cansaço, emotividade ou sono alterado, e por vezes um mal-estar ligeiro e passageiro. É o corpo a processar o que foi trabalhado e não significa que piorou. Ajuda beber água, descansar e não julgar o resultado nestes primeiros dias.`);
+  sec.push({ titulo:'O que pode ajudar', paras:ajudar,
+    lista: fracos.map(c => `Em casa, para o centro ${c.nome}: ${TRI_CHAKRA_HUMANO[c.nome]?.[2]||'dar tempo e carinho'}.`) });
+
+  sec.push({ titulo:'Uma nota importante', paras:[
+    `Este trabalho é complementar e não substitui o acompanhamento médico ou psicológico. Se notarem tristeza profunda, ideias de se magoar ou alterações marcadas de comportamento, procurem ajuda médica sem demora, ligando para o SNS 24 (808 24 24 24) ou, em emergência, para o 112.`,
+    `Estamos disponíveis para esclarecer qualquer dúvida. Com carinho,`,
+    `Hikari Fafe`
+  ]});
+
+  const texto = sec.map(s => `== ${s.titulo} ==\n` + s.paras.join('\n\n') + (s.lista && s.lista.length ? '\n\n' + s.lista.map(x => '- ' + x).join('\n') : '')).join('\n\n');
+  return { texto, html: triagemTextoParaHtml(texto) };
+}
+
+function triagemTextoParaHtml(texto){
+  const esc = (s) => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let h = `<div style="font-family:-apple-system,sans-serif;color:#2a2a2a;line-height:1.6;">`;
+  String(texto||'').split(/\n{2,}/).forEach(bloco => {
+    bloco.split('\n').forEach(l => {
+      if (/^== .* ==$/.test(l)) h += `<h3 style="color:var(--primary);margin:20px 0 6px;">${esc(l.replace(/^== | ==$/g,''))}</h3>`;
+      else if (/^- /.test(l)) h += `<p style="margin:4px 0 4px 14px;">• ${esc(l.slice(2))}</p>`;
+      else if (l.trim()) h += `<p style="margin:8px 0;">${esc(l)}</p>`;
+    });
+  });
+  return h + `</div>`;
+}
+
+window.__triagemGuardarEdicao = async function(){
+  const ta = document.getElementById('triagemTextoCliente');
+  if (!ta || !window.__triagemUltimoReportId){ toast('Ainda não há relatório guardado para editar.', true); return; }
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports', window.__triagemUltimoReportId),
+      { reportTextCliente: ta.value, reportHtml: triagemTextoParaHtml(ta.value) });
+    toast('Relatório atualizado ✓');
+  } catch(e){ toast('Não consegui guardar a edição: ' + (e.message || e), true); }
+};
+
 function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, aberturaNivel, comparacao, sessoesNecessarias, preco, temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA, perfil, ehPrimeiraSessao, cruzamento, leituraComplementar }){
   const esc = (s) => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   let html = `<div style="font-family:-apple-system,sans-serif;color:#2a2a2a;line-height:1.55;">`;
@@ -14572,8 +14758,15 @@ async function triagemGerarRelatorio(){
   reportText += `\n== Sessões de Limpeza Recomendadas ==\n${__triagem.sessoesNecessarias || '—'} sessão(ões) · Preço indicado: ${__triagem.preco ? __triagem.preco+'€' : '—'}\n`;
   if (temAlgumaCoisaDetetada) reportText += `\n== Aviso ao Paciente — Reações Pós-Limpeza ==\n${NOTA_CRISE_DE_CURA}\n`;
 
-  // ── Versão bonita para a Área do Paciente (HTML, não texto cru) ────────
-  const reportHtml = gerarReportHtmlPaciente({
+  // ── Relatório para a pessoa e a família: texto corrido e pessoal ───────
+  const clienteRel = triagemRelatorioCliente({
+    primeiroNome: __triagem.patientNome.split(/\s+/)[0], dataNascimento: __triagem.dataNascimento,
+    perfil, causasDetetadas, chakrasTodos, aberturaNivel, comparacao, cruzamento: cruzamentoVidasPassadas,
+    leituraComplementar: __triagem.leituraComplementar, sessoesNecessarias: __triagem.sessoesNecessarias,
+    preco: __triagem.preco, temAlgumaCoisaDetetada
+  });
+  window.__triagemTextoClienteAtual = clienteRel.texto;
+  const reportHtmlAntigo = gerarReportHtmlPaciente({
     primeiroNome: __triagem.patientNome.split(/\s+/)[0],
     causasDetetadas, chakrasTodos, aberturaNivel, comparacao,
     sessoesNecessarias: __triagem.sessoesNecessarias, preco: __triagem.preco,
@@ -14584,7 +14777,7 @@ async function triagemGerarRelatorio(){
 
   const payloadParaGuardar = {
     protocolName: 'Triagem de Baixa Vibração',
-    reportText, reportHtml,
+    reportText, reportTextCliente: clienteRel.texto, reportHtml: clienteRel.html,
     bovisInicial: __triagem.bovisIni || null, bovisFinal: __triagem.bovisFin || null,
     baixaVibracaoDetetada: causasDetetadas.map(c => c.nome),
     chakras: chakrasTodos.map(c => ({ nome:c.nome, percentagem:c.percentagem })),
@@ -14618,9 +14811,10 @@ async function triagemGerarRelatorio(){
 // sem ter de refazer a triagem toda.
 async function triagemTentarGravar(payload){
   try{
-    await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
+    const refNovo = await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
       tipo: 'triagem-energetica', ...payload, generatedAt: serverTimestamp()
     });
+    window.__triagemUltimoReportId = refNovo.id;
     toast('Triagem guardada na ficha do paciente ✓');
     return true;
   }catch(e){
@@ -14650,6 +14844,18 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
       <button class="primary" style="margin-top:8px;" onclick="window.__triagemTentarGravarNovamente()">🔄 Tentar gravar novamente</button>
     </div>`}
     <div class="card"><p>${sintese}</p></div>
+    <div class="card" style="border:2px solid var(--primary);">
+      <h3>✉️ Relatório para ${escapeHtml(__triagem.patientNome.split(/\s+/)[0])} e para a família</h3>
+      <p class="muted" style="margin:4px 0 8px;">Texto pessoal, em palavras simples, sem códigos nem números. Lê, corrige o que quiseres e só depois envia. É este que a pessoa e a família recebem.</p>
+      <textarea id="triagemTextoCliente" rows="18" style="width:100%;">${escapeHtml(window.__triagemTextoClienteAtual || '')}</textarea>
+      <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <button class="primary" onclick="window.__triagemGuardarEdicao()">💾 Guardar alterações</button>
+        <button class="ghost" onclick="downloadReportPDF('Relatório de ${escapeAttrJs(__triagem.patientNome)}', document.getElementById('triagemTextoCliente').value)">📄 Descarregar PDF</button>
+        <button class="ghost" onclick="shareReportPDF('Relatório de ${escapeAttrJs(__triagem.patientNome)}', document.getElementById('triagemTextoCliente').value)">📤 Partilhar</button>
+      </div>
+    </div>
+    <details class="card"><summary><strong>🔒 Relatório técnico (só para ti)</strong></summary><div style="margin-top:8px;"></div>
+    <p class="muted">Com os códigos, etiquetas e números, mais abaixo neste ecrã.</p></details>
     ${perfil ? (ehPrimeiraSessao ? `<div class="card" style="border:1px solid var(--primary);">
       <h3>✨ Perfil do Mapa da Alma (1ª sessão)</h3>
       <p class="muted">Caminho de Vida <strong>${perfil.cv}</strong> — ${escapeHtml(perfil.cvNome||'')} · Signo de <strong>${escapeHtml(perfil.signo.nome)}</strong></p>
