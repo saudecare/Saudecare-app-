@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-06-01';
+const APP_VERSION = '2026-10-08-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -14473,6 +14473,176 @@ const TRI_ARCANO_NOTA = {
 const triLista = (a) => a.length <= 1 ? (a[0]||'') : a.slice(0,-1).join(', ') + ' e ' + a[a.length-1];
 const triMin = (s) => { s = String(s||''); return s.charAt(0).toLowerCase() + s.slice(1); };
 
+// ── Relações e áreas da vida (saúde, amor, trabalho, dinheiro) para o relatório do cliente ──
+const TRI_ELEM_SIGNO = { carneiro:'fogo', aries:'fogo', leao:'fogo', sagitario:'fogo', touro:'terra', virgem:'terra', capricornio:'terra',
+  gemeos:'ar', balanca:'ar', aquario:'ar', caranguejo:'agua', cancer:'agua', escorpiao:'agua', peixes:'agua' };
+const TRI_ELEM = {
+  terra:{ aparencia:'alguém sério, calmo e reservado, que pode parecer distante sem o ser',
+    tende:'mostra o afeto mais por atos do que por palavras: ajuda, resolve, está presente e assume responsabilidades',
+    custa:'custa-lhe dizer que está mal ou que precisa de alguém, e tende a guardar tudo para si',
+    ajuda:'dar-lhe tempo e segurança, sem exigir que fale de tudo de uma só vez', conflito:'recolhe-se em silêncio e vai acumulando',
+    amigos:'poucos, mas leais e duradouros' },
+  fogo:{ aparencia:'alguém com presença, energia e franqueza, que se faz notar',
+    tende:'entrega-se com intensidade, é direto(a) e generoso(a), mas pode ter reações vivas quando se sente contrariado(a)',
+    custa:'precisa de reconhecimento e de liberdade, e magoa-se quando o(a) ignoram ou querem controlar',
+    ajuda:'dizer as coisas de forma clara, sem rodeios, e reconhecer o que faz de bom', conflito:'enfrenta de frente, por vezes com demasiada força',
+    amigos:'muitos e intensos, com grande vontade de partilhar' },
+  ar:{ aparencia:'alguém comunicativo, curioso e leve, com quem é fácil conversar',
+    tende:'gosta de conversar, de ideias e de leveza, mas pode ficar na cabeça e fugir ao que é mais emocional',
+    custa:'pode sentir-se incompreendido(a) ou desconfortável quando a emoção pesa',
+    ajuda:'conversas calmas e honestas, ouvindo sem julgar', conflito:'tenta resolver tudo a falar e racionaliza em vez de sentir',
+    amigos:'muitos e variados, de círculos diferentes' },
+  agua:{ aparencia:'alguém sensível, reservado ao início e muito atento aos outros',
+    tende:'sente tudo muito a fundo, é protetor(a) com quem ama e absorve o estado de espírito de quem está por perto',
+    custa:'magoa-se com facilidade e pode fechar-se numa concha',
+    ajuda:'ternura, paciência e ambientes calmos, evitando críticas duras', conflito:'foge do confronto e fecha-se, mas fica a remoer',
+    amigos:'poucos e muito profundos' }
+};
+const TRI_CV_REL = {
+  1:'gosta de decidir e de ser independente; pode ser mandão(ã) ou ter dificuldade em pedir ajuda',
+  2:'procura harmonia e parceria, cede muito e pode anular-se para evitar conflito',
+  3:'é expressivo(a), sociável e simpático(a), e pode fugir das conversas pesadas através do humor',
+  4:'é fiável, leal e protetor(a), mas pode ser rígido(a) e ter dificuldade em mostrar ternura em palavras',
+  5:'precisa de liberdade e de movimento, e pode ter dificuldade em assentar e em se comprometer',
+  6:'cuida de todos e põe a família à frente, podendo esquecer-se de si e sentir-se responsável pelos outros',
+  7:'precisa de tempo a sós e de profundidade, e pode parecer distante ou reservado(a)',
+  8:'tem força e sentido de responsabilidade, mas pode ser exigente e dar demasiado valor ao que se consegue',
+  9:'é generoso(a) e idealista, dá muito e pode ficar com mágoas por fechar',
+  11:'é muito intuitivo(a) e sensível, e absorve o clima emocional à volta',
+  22:'carrega muita responsabilidade pelos outros e exige-se imenso',
+  33:'ama de forma incondicional e pode sacrificar-se demasiado pelos outros'
+};
+const TRI_CV_FILHOS = {
+  4:'um pai ou uma mãe presente e dedicado(a), que ensina pelo exemplo e pela disciplina', 8:'um pai ou uma mãe firme e dedicado(a), que quer dar segurança e boas bases',
+  6:'um pai ou uma mãe muito protetor(a) e carinhoso(a), sempre disponível', 22:'um pai ou uma mãe muito dedicado(a), que quer construir um futuro sólido para os filhos',
+  3:'um pai ou uma mãe divertido(a), conversador(a) e criativo(a)', 5:'um pai ou uma mãe aventureiro(a), que dá liberdade e mostra o mundo',
+  1:'um pai ou uma mãe que incentiva a independência e a coragem', 2:'um pai ou uma mãe atento(a) e sensível às emoções dos filhos',
+  7:'um pai ou uma mãe reflexivo(a), que valoriza a sabedoria e o silêncio', 9:'um pai ou uma mãe generoso(a) e compreensivo(a)',
+  11:'um pai ou uma mãe muito intuitivo(a), que sente o que os filhos não dizem', 33:'um pai ou uma mãe de amor incondicional'
+};
+const TRI_CHAKRA_CORPO = {
+  'Raiz':'a base do corpo: pernas, ossos, intestino e a sensação de segurança',
+  'Sacro':'a zona da bacia e da lombar, a digestão e a vitalidade',
+  'Plexo Solar':'o estômago, a digestão e a tensão no abdómen',
+  'Coração':'o peito, a respiração e a tensão nos ombros',
+  'Garganta':'a garganta, o pescoço e a voz',
+  'Terceiro Olho':'a cabeça, a vista e o sono',
+  'Coroa':'a cabeça, a mente e o descanso',
+  'Timo':'as defesas do corpo e o cansaço',
+  'Estrela':'a sensação geral de energia e de vitalidade'
+};
+
+function triagemAreasVida(d, nome, idade){
+  const out = [];
+  const pc = (inicio) => { const c = d.chakrasTodos.find(x => String(x.nome).indexOf(inicio) === 0); return c ? c.percentagem : null; };
+  const baixo = (inicio) => { const p = pc(inicio); return p !== null && p < TRIAGEM_LIMIAR_CHAKRA_ATENCAO; };
+  const alto  = (inicio) => { const p = pc(inicio); return p !== null && p >= 90; };
+  const ns = d.causasDetetadas.map(c => Number(c.n));
+  const tem = (...l) => l.some(x => ns.indexOf(x) >= 0);
+  const cv = d.perfil ? d.perfil.cv : null;
+  const signoNome = d.perfil ? String(d.perfil.signo.nome).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase() : '';
+  const el = TRI_ELEM[TRI_ELEM_SIGNO[signoNome]] || null;
+  const menor = idade !== null && idade < 18;
+  const adulto = idade !== null && idade >= 18;
+  const caminhoBloq = d.aberturaNivel && d.aberturaNivel !== 'Aberto';
+
+  // ── Relações ──
+  const rp = [];
+  if (el) rp.push(`Como os outros veem ${nome}: ${el.aparencia}.`);
+  if (baixo('Plexo')) rp.push(`Como ${nome} se vê a si: tende a ser duro(a) consigo e a duvidar do próprio valor. Esta dúvida acompanha-o(a) em todas as relações e leva-o(a) a procurar aprovação, a ter dificuldade em dizer que não, ou a afastar-se.`);
+  else if (pc('Plexo') !== null && pc('Plexo') >= 80) rp.push(`Como ${nome} se vê a si: tem uma confiança razoável em si, o que lhe dá firmeza para pôr limites e para se relacionar de igual para igual.`);
+  const atr = [];
+  if (el) atr.push(el.tende);
+  if (cv && TRI_CV_REL[cv]) atr.push(TRI_CV_REL[cv]);
+  if (atr.length) rp.push(`O que atravessa as relações de ${nome}: ${atr.map(x => x.charAt(0).toUpperCase() + x.slice(1) + '.').join(' Além disso, ')}`.replace('. Além disso, M','. Além disso, m').replace('. Além disso, É','. Além disso, é').replace(/\. Além disso, ([A-Z])/g,(m0,c)=>'. Além disso, '+c.toLowerCase()));
+  const ch = [];
+  if (alto('Coração')) ch.push('ama a fundo e cria laços fortes');
+  else if (baixo('Coração')) ch.push('abre-se devagar e tem receio de se magoar');
+  if (alto('Sacro')) ch.push('sente as emoções com muita intensidade');
+  else if (baixo('Sacro')) ch.push('tem as emoções e o prazer um pouco contidos');
+  if (baixo('Garganta')) ch.push('custa-lhe dizer em voz alta o que sente');
+  if (baixo('Raiz')) ch.push('precisa de sentir a família como porto seguro');
+  if (ch.length) rp.push(`Pelos centros de energia, ${nome} ${triLista(ch)}.`);
+  if (el && el.custa) rp.push(`Por dentro, ${triMin(el.custa).replace(/^custa-lhe/,'custa-lhe')}.`);
+  if (tem(7,8,9,10,33,34,36)) rp.push(`Há momentos em que a energia que pesa em ${nome} o(a) faz reagir de forma diferente do habitual, com irritação, silêncio ou afastamento. Quem está por perto tende a levar isso a peito, mas não é contra ninguém.`);
+  out.push({ titulo:'Como se relaciona com a família e com os outros', paras:rp });
+
+  const pessoas = [];
+  const pais = [];
+  if (el) pais.push(el.tende.charAt(0).toUpperCase() + el.tende.slice(1) + '.');
+  if (baixo('Plexo')) pais.push('Pode ter receio de desiludir e guardar o que o(a) aflige para não preocupar.');
+  if (baixo('Garganta')) pais.push('Custa-lhe dizer o que sente em voz alta.');
+  if (tem(18,19,20,21)) pais.push('Foi percebido um peso que vem da família e se repete ao longo das gerações, convém olhá-lo sem culpa.');
+  if (el) pais.push(`O que ajuda: ${el.ajuda}.`);
+  pessoas.push(`Com a mãe e o pai: ${pais.join(' ')}`);
+  const irm = [];
+  if ([4,6,8,22].indexOf(cv) >= 0) irm.push('Tende a ficar no papel do(a) responsável, aquele(a) que cumpre e resolve.');
+  else if ([3,5].indexOf(cv) >= 0) irm.push('Tende a ser o elo leve e divertido da família.');
+  else if ([2,9,33].indexOf(cv) >= 0) irm.push('Tende a ser o(a) mediador(a), que procura manter a paz.');
+  else irm.push('Mantém o seu lugar próprio no meio dos irmãos.');
+  if (el) irm.push(`Nos conflitos, ${el.conflito}.`);
+  irm.push('Se houver comparações entre irmãos, dói-lhe mais do que mostra.');
+  pessoas.push(`Com os irmãos: ${irm.join(' ')}`);
+  if (adulto || idade === null){
+    const par = [];
+    if (cv && TRI_CV_REL[cv]) par.push(`No amor, ${TRI_CV_REL[cv]}.`);
+    if (alto('Coração') || alto('Sacro')) par.push('Quando se entrega, é de coração inteiro.');
+    if (baixo('Coração')) par.push('Abre-se devagar e precisa de sentir segurança antes de se entregar.');
+    if (tem(15,16,17,23,25,39)) par.push('Foi percebido um padrão a trabalhar nas relações: ' + triLista([tem(15,16)&&'prender-se a ligações que desgastam', tem(17)&&'ficar sem energia junto de certas pessoas', tem(23)&&'dificuldade em deixar alguém entrar', tem(25)&&'apoiar-se demais nos outros', tem(39)&&'afastar-se justamente quando as coisas correm bem'].filter(Boolean)) + '.');
+    par.push('O que ajuda: alguém que dê segurança, paciência e tempo, e que peça para falar sem acusar.');
+    pessoas.push(`Com o(a) companheiro(a), se tiver ou vier a ter: ${par.join(' ')}`);
+    const f = TRI_CV_FILHOS[cv] || 'um pai ou uma mãe presente e dedicado(a)';
+    const risco = baixo('Plexo') ? ' O risco é passar-lhes a própria autoexigência, por isso convém lembrar que não tem de ser perfeito(a).' : '';
+    pessoas.push(`Com os filhos, se os tiver ou vier a ter: seria ${f}.${risco} Um abraço e tempo de qualidade valem mais do que ter tudo em ordem.`);
+  }
+  pessoas.push(`Com os amigos: tem ${el ? el.amigos : 'um círculo próprio'}.${tem(17,36) ? ' Cansa-se depois de estar com certas pessoas, por isso precisa de tempo para recuperar.' : ''}`);
+  out.push({ titulo:'Em cada relação', paras:[`Aqui fica a leitura por pessoa, a rever e a ajustar à realidade de ${nome}.`], lista:pessoas });
+
+  // ── Saúde e energia ──
+  const sp = [];
+  const fr = d.chakrasTodos.filter(c => c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO);
+  if (fr.length){
+    sp.push(`Os centros com menos abertura costumam associar-se a: ${fr.map(c => { const k = Object.keys(TRI_CHAKRA_CORPO).find(x => String(c.nome).indexOf(x) === 0); return TRI_CHAKRA_CORPO[k] || c.nome; }).join('; ')}. É uma indicação do que pode estar mais sensível, e não um diagnóstico.`);
+  //fr.map(c => { const k = Object.keys(TRI_CHAKRA_CORPO).find(x => String(c.nome).indexOf(x) === 0); return TRI_CHAKRA_CORPO[k] || c.nome; }))}. É uma indicação do que pode estar mais sensível, e não um diagnóstico.`);
+  } else sp.push(`Os centros de energia estão bem abertos, o que é um bom sinal para a vitalidade de ${nome}.`);
+  const dorm = [tem(35)&&'sono agitado ou pesadelos', tem(37)&&'cansaço persistente sem causa física', tem(31,10)&&'tensão e dificuldade em relaxar', tem(13,14)&&'sono leve ou cansaço em certos locais'].filter(Boolean);
+  if (dorm.length) sp.push(`Foi percebido também ${triLista(dorm)}. Convém cuidar do descanso, da rotina do sono e de pausas ao longo do dia.`);
+  sp.push('Se houver sintomas físicos, o melhor é falar com o médico de família. Este trabalho serve para apoiar, nunca para substituir.');
+  out.push({ titulo:'Saúde e energia', paras:sp });
+
+  // ── Amor ──
+  const ap = [];
+  if (alto('Coração') || alto('Sacro')) ap.push(`${nome} tem muita capacidade de amar e de sentir, o que é uma grande riqueza no amor.`);
+  else if (baixo('Coração')) ap.push(`O centro do coração está um pouco fechado, o que pode traduzir-se em receio de se magoar e dificuldade em deixar entrar alguém.`);
+  else ap.push(`${nome} tem uma capacidade normal de se ligar e de amar.`);
+  const amp = [tem(15,16)&&'ligações que prendem e desgastam', tem(23)&&'dificuldade em deixar alguém entrar', tem(24)&&'dificuldade em dizer o que sente', tem(25)&&'tendência a apoiar-se demasiado no outro', tem(39)&&'afastar-se quando as coisas correm bem'].filter(Boolean);
+  if (amp.length) ap.push(`O que pode estar a travar o amor: ${triLista(amp)}.`);
+  if (caminhoBloq) ap.push('Com o caminho à frente algo travado, é normal que as relações também custem a avançar. Isto vai-se desbloqueando com as sessões.');
+  out.push({ titulo:'Amor', paras:ap });
+
+  // ── Trabalho e realização ──
+  const tp = [];
+  const dom = cv ? DONS_NUMERICOS[cv] : null;
+  if (dom && dom.profissoes) tp.push(`Pelo seu Caminho de Vida, ${nome} tem jeito natural para áreas como ${String(dom.profissoes).replace(/\.$/,'')}.`);
+  const L2 = d.leituraComplementar;
+  if (L2 && L2.porTras && L2.porTras.area) tp.push(`As cartas falam, por trás de tudo, de ${triMin(L2.porTras.area)}.`);
+  const tr = [tem(28)&&'uma voz interior crítica que trava as decisões', tem(39)&&'o receio de brilhar, que faz atrasar ou desistir perto da meta', tem(40)&&'a criatividade travada', tem(11,38)&&'a sensação de um teto invisível', baixo('Plexo')&&'a pouca confiança em si'].filter(Boolean);
+  if (tr.length) tp.push(`O que pode estar a travar a realização: ${triLista(tr)}.`);
+  else tp.push('Não foram encontrados bloqueios marcados na área do trabalho.');
+  out.push({ titulo:'Trabalho e realização', paras:tp });
+
+  // ── Dinheiro e abundância ──
+  const dp = [];
+  const dd = [tem(22)&&'dificuldade em prosperar ou em sentir que merece ter', tem(38)&&'a sensação de um teto invisível', tem(11)&&'a sensação de que algo impede de avançar', tem(29)&&'uma culpa que pesa', tem(39)&&'o receio de ter sucesso', baixo('Raiz')&&'pouca segurança de base'].filter(Boolean);
+  if (dd.length) dp.push(`Na área do dinheiro e da abundância, foi percebido: ${triLista(dd)}. É como se houvesse um limite interior ao que ${nome} se permite ter.`);
+  else dp.push('Na área do dinheiro e da abundância não foram encontrados bloqueios marcados.');
+  if (cv === 8) dp.push('O seu Caminho de Vida 8 favorece a gestão do dinheiro, mas pede cuidado para não o ligar ao valor pessoal.');
+  else if (cv === 4) dp.push('O seu Caminho de Vida 4 favorece a estabilidade e a poupança, com construção passo a passo.');
+  if (caminhoBloq) dp.push('Com o caminho algo travado, é possível que o esforço não se traduza no resultado esperado. Isto vai-se abrindo com as sessões.');
+  out.push({ titulo:'Dinheiro e abundância', paras:dp });
+  return out;
+}
+
 function triagemRelatorioCliente(d){
   const nome = d.primeiroNome;
   const perfil = d.perfil;
@@ -14517,6 +14687,8 @@ function triagemRelatorioCliente(d){
     agora.push(`O caminho à frente de ${nome} parece ${lv} neste momento: é como se, por mais que se esforce, as portas custassem a abrir. Isto não é uma sentença, é algo que se pode trabalhar.`);
   } else agora.push(`O caminho à frente de ${nome} está aberto, o que ajuda a avançar.`);
   sec.push({ titulo:'Como está neste momento', paras:agora });
+
+  triagemAreasVida(d, nome, idade).forEach(x => sec.push(x));
 
   if (d.causasDetetadas.length){
     const sc = { titulo:'O que foi percebido, em palavras simples',
