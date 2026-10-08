@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-08-02';
+const APP_VERSION = '2026-10-08-03';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11309,7 +11309,8 @@ function triagemPasso1Data(main){
       <input id="triagemDataNasc" type="date" value="${__triagem.dataNascimento}">
       <label style="display:block;margin-top:10px;font-weight:600;">País de nascimento (opcional)</label>
       <input id="triagemPaisNasc" list="triagemListaPaises" placeholder="Ex.: Portugal" value="${escapeHtml(__triagem.paisNascimento||'')}">
-      <datalist id="triagemListaPaises">${['Portugal','Brasil','Angola','Moçambique','Cabo Verde','Guiné-Bissau','São Tomé e Príncipe','Timor-Leste','França','Espanha','Suíça','Alemanha','Luxemburgo','Reino Unido','Itália','Venezuela','Estados Unidos','Canadá','Índia','Argentina','México','Bélgica','Países Baixos','Roménia'].map(x => `<option value="${x}">`).join('')}</datalist>
+      <datalist id="triagemListaPaises">${TRI_PAISES_LISTA.map(x => `<option value="${x}">`).join('')}</datalist>
+      <p class="muted" id="triagemPaisHint" style="margin-top:4px;"></p>
       <p class="muted" style="margin-top:6px;">A terra onde se nasce deixa marca na língua, nos costumes e nos ritmos que se absorvem desde cedo. Entra no Mapa da Alma como uma leitura simbólica.</p>
     </div>
     <div class="row" style="margin-top:12px;">
@@ -11317,7 +11318,9 @@ function triagemPasso1Data(main){
       <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
     </div>`;
   document.getElementById('triagemDataNasc').addEventListener('input', e => __triagem.dataNascimento = e.target.value);
-  document.getElementById('triagemPaisNasc').addEventListener('input', e => __triagem.paisNascimento = e.target.value);
+  const triPaisHint = () => { const r = triPaisLeitura(__triagem.paisNascimento); const h = document.getElementById('triagemPaisHint'); if (h) h.textContent = r ? `Número do nome: ${r.soma} → ${r.numero} (${(DONS_NUMERICOS[r.numero]||{}).nome||''})` : ''; };
+  document.getElementById('triagemPaisNasc').addEventListener('input', e => { __triagem.paisNascimento = e.target.value; triPaisHint(); });
+  triPaisHint();
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
   window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
 }
@@ -14624,6 +14627,27 @@ function triPais(pais){
   const alias = { 'brazil':'brasil', 'eua':'estados unidos', 'usa':'estados unidos', 'franca':'franca', 'uk':'reino unido', 'guine bissau':'guine-bissau' };
   return TRI_PAISES[alias[k] || k] || null;
 }
+const TRI_PAISES_LISTA = ["Afeganistão", "África do Sul", "Alanda", "Albânia", "Alemanha", "Andorra", "Angola", "Anguila", "Antígua e Barbuda", "Arábia Saudita", "Argélia", "Argentina", "Arménia", "Aruba", "Austrália", "Áustria", "Azerbaijão", "Baamas", "Bangladeche", "Barbados", "Barém", "Bélgica", "Belize", "Benim", "Bermudas", "Bielorrússia", "Bolívia", "Bósnia e Herzegovina", "Botsuana", "Brasil", "Brunei", "Bulgária", "Burquina Faso", "Burundi", "Butão", "Cabo Verde", "Camarões", "Camboja", "Canadá", "Catar", "Cazaquistão", "Ceuta e Melilha", "Chade", "Chéquia", "Chile", "China", "Chipre", "Cidade do Vaticano", "Colômbia", "Comores", "Congo-Brazzaville", "Congo-Kinshasa", "Coreia do Norte", "Coreia do Sul", "Costa do Marfim", "Costa Rica", "Croácia", "Cuba", "Curaçau", "Diego Garcia", "Dinamarca", "Domínica", "Egito", "Emirados Árabes Unidos", "Equador", "Eritreia", "Eslováquia", "Eslovénia", "Espanha", "Essuatíni", "Estados Unidos", "Estónia", "Etiópia", "Fiji", "Filipinas", "Finlândia", "França", "Gabão", "Gâmbia", "Gana", "Geórgia", "Gibraltar", "Granada", "Grécia", "Gronelândia", "Guadalupe", "Guame", "Guatemala", "Guernesey", "Guiana", "Guiana Francesa", "Guiné", "Guiné Equatorial", "Guiné-Bissau", "Haiti", "Honduras", "Hong Kong", "Hungria", "Iémen", "Ilha de Ascensão", "Ilha de Clipperton", "Ilha de Man", "Ilha do Natal", "Ilha Norfolk", "Ilhas Caimão", "Ilhas Canárias", "Ilhas Cook", "Ilhas dos Cocos (Keeling)", "Ilhas Falkland", "Ilhas Faroé", "Ilhas Marianas do Norte", "Ilhas Marshall", "Ilhas Pitcairn", "Ilhas Salomão", "Ilhas Turcas e Caicos", "Ilhas Virgens Britânicas", "Ilhas Virgens dos EUA", "Índia", "Indonésia", "Irão", "Iraque", "Irlanda", "Islândia", "Israel", "Itália", "Jamaica", "Japão", "Jersey", "Jibuti", "Jordânia", "Kosovo", "Koweit", "Laos", "Lesoto", "Letónia", "Líbano", "Libéria", "Líbia", "Listenstaine", "Lituânia", "Luxemburgo", "Macau", "Macedónia do Norte", "Madagáscar", "Maiote", "Malásia", "Maláui", "Maldivas", "Mali", "Malta", "Marrocos", "Martinica", "Maurícia", "Mauritânia", "México", "Mianmar (Birmânia)", "Micronésia", "Moçambique", "Moldávia", "Mónaco", "Mongólia", "Monserrate", "Montenegro", "Namíbia", "Nauru", "Nepal", "Nicarágua", "Níger", "Nigéria", "Niuê", "Noruega", "Nova Caledónia", "Nova Zelândia", "Omã", "Países Baixos", "Palau", "Palestina", "Panamá", "Papua-Nova Guiné", "Paquistão", "Paraguai", "Peru", "Polinésia Francesa", "Polónia", "Porto Rico", "Portugal", "Quénia", "Quirguistão", "Quiribáti", "Reino Unido", "República Centro-Africana", "República Dominicana", "Reunião", "Roménia", "Ruanda", "Rússia", "Salvador", "Samoa", "Samoa Americana", "Santa Helena", "Santa Lúcia", "Santa Sé", "São Bartolomeu", "São Cristóvão e Neves", "São Marinho", "São Martinho", "São Pedro e Miquelão", "São Tomé e Príncipe", "São Vicente e Granadinas", "Sara Ocidental", "Seicheles", "Senegal", "Serra Leoa", "Sérvia", "Singapura", "Síria", "Somália", "Sri Lanca", "Sudão", "Sudão do Sul", "Suécia", "Suíça", "Suriname", "Svalbard e Jan Mayen", "Tailândia", "Taiwan", "Tajiquistão", "Tanzânia", "Timor-Leste", "Togo", "Tonga", "Toquelau", "Trindade e Tobago", "Tristão da Cunha", "Tunísia", "Turquemenistão", "Turquia", "Tuvalu", "Ucrânia", "Uganda", "Uruguai", "Usbequistão", "Vanuatu", "Venezuela", "Vietname", "Wallis e Futuna", "Zâmbia", "Zimbabué"];
+// Tabela pitagórica (A,J,S=1 · B,K,T=2 · C,L,U=3 · D,M,V=4 · E,N,W=5 · F,O,X=6 · G,P,Y=7 · H,Q,Z=8 · I,R=9); reduz-se até 1-9, mantendo 11, 22 e 33
+function triNumeroNome(nome){
+  const letras = String(nome||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z]/g,'');
+  if (!letras) return null;
+  const val = c => ((c.charCodeAt(0) - 65) % 9) + 1; // A=1 ... I=9, J=1 ... R=9, S=1 ... Z=8
+  const soma = letras.split('').reduce((a,c) => a + val(c), 0);
+  let n = soma;
+  while (n > 9 && n !== 11 && n !== 22 && n !== 33) n = String(n).split('').reduce((a,b) => a + Number(b), 0);
+  return { soma, numero:n };
+}
+function triPaisLeitura(pais){
+  const num = triNumeroNome(pais);
+  if (!num) return null;
+  const dom = DONS_NUMERICOS[num.numero];
+  const curada = triPais(pais);
+  const partes = [];
+  if (curada) partes.push(curada[0], curada[1]);
+  if (dom) partes.push(`Pela tabela pitagórica, o nome "${pais}" soma ${num.soma} e reduz-se a ${num.numero}, o número de «${dom.nome}». ${dom.texto}`);
+  return { texto: partes.join(' '), numero: num.numero, soma: num.soma, curada: !!curada };
+}
 
 function triagemAreasVida(d, nome, idade){
   const out = [];
@@ -14772,8 +14796,8 @@ function triagemRelatorioCliente(d){
       p.push(`O chakra dominante de ${nome}, pela data de nascimento, é o ${L9.nome} (${L9.titulo}). Na sua melhor versão, ${L9.luz}. O desafio que mais se repete tem a ver com ${L9.sombra}. O caminho de equilíbrio passa por ${L9.caminho}.`);
     }
     if (d.paisNascimento){
-      const pa = triPais(d.paisNascimento);
-      p.push(pa ? `${nome} nasceu em ${d.paisNascimento}. ${pa[0]} ${pa[1]} É uma leitura simbólica, que ajuda a perceber a marca da terra de origem.` : `${nome} nasceu em ${d.paisNascimento}. A terra de origem deixa marca na língua, nos costumes e nos ritmos que se absorvem desde cedo, e faz parte do que ${nome} traz consigo.`);
+      const pa = triPaisLeitura(d.paisNascimento);
+      p.push(pa ? `${nome} nasceu em ${d.paisNascimento}. ${pa.texto} É uma leitura simbólica, que ajuda a perceber a marca da terra de origem.` : `${nome} nasceu em ${d.paisNascimento}. A terra de origem deixa marca na língua, nos costumes e nos ritmos que se absorvem desde cedo, e faz parte do que ${nome} traz consigo.`);
     }
     sec.push({ titulo:`Quem é ${nome}`, paras:p });
   }
@@ -15013,7 +15037,7 @@ async function triagemGerarRelatorio(){
       reportText += perfil.anjo.tipo === 'anjo' ? `Anjo do Nascimento: ${perfil.anjo.nome} (virtude: ${perfil.anjo.virtude})\n` : `Ligação directa aos Anjos Universais (${perfil.anjo.elemento})\n`;
       reportText += `Arcano Pessoal: ${perfil.arcanoPNome}\n`;
       { const cdx = triChakraDominante(__triagem.dataNascimento); if (cdx && TRI_CHAKRA_LIVRO[cdx]) reportText += `Chakra dominante: ${cdx} — ${TRI_CHAKRA_LIVRO[cdx].nome} (${TRI_CHAKRA_LIVRO[cdx].titulo})\n`; }
-      if (__triagem.paisNascimento){ const pax = triPais(__triagem.paisNascimento); reportText += `País de nascimento: ${__triagem.paisNascimento}${pax ? ' — ' + pax[0] + ' ' + pax[1] : ''}\n`; }
+      if (__triagem.paisNascimento){ const pax = triPaisLeitura(__triagem.paisNascimento); reportText += `País de nascimento: ${__triagem.paisNascimento}${pax ? ' — ' + pax.texto + ' (Fonte do cálculo: tabela pitagórica de numerologia; leitura simbólica.)' : ''}\n`; }
       reportText += `Nodo Sul (vidas passadas): ${perfil.nodos.nodoSul.signo} — ${NODO_SUL_TEXTOS[perfil.nodos.nodoSul.signo]||''}\n`;
       reportText += `Nodo Norte (propósito): ${perfil.nodos.nodoNorte.signo}\n`;
       reportText += `Signo: ${perfil.signo.nome} · Pináculo ${perfil.pinAtivo.indice+1}º (${perfil.pinAtivo.pinaculo.faixa})\n\n`;
