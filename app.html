@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-08-01';
+const APP_VERSION = '2026-10-08-02';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10683,8 +10683,8 @@ const TRIAGEM_CHAKRAS_9 = [
   { n:5, nome:"Garganta", temas:["Verdade","Vontade"], descricao:"Rege a comunicação e a expressão da verdade pessoal." },
   { n:6, nome:"Terceiro Olho", temas:["Clareza","Silêncio mental"], descricao:"Rege a intuição e a clareza mental." },
   { n:7, nome:"Coroa", temas:["Rendição ao Divino","Protecção Divina","Fé"], descricao:"Rege a ligação espiritual e o propósito de vida." },
-  { n:8, nome:"Timo / Coração Superior", temas:["Compaixão","Perdoar","Amor Próprio"], descricao:"Rege a compaixão incondicional e o perdão profundo." },
-  { n:9, nome:"Estrela da Alma", temas:["Conexão com a fonte","Rendição ao Divino"], descricao:"Rege a ligação com o propósito da alma e o plano espiritual." }
+  { n:8, nome:"Estrela da Alma", temas:["Conexão com a fonte","Rendição ao Divino"], descricao:"Rege a ligação com o propósito da alma e a missão de vida." },
+  { n:9, nome:"Portal Estelar", temas:["Unidade com o Todo","Serviço à humanidade"], descricao:"Rege a ligação à consciência universal e o serviço aos outros." }
 ];
 const TRIAGEM_NIVEIS_ABERTURA = ['Aberto','Parcialmente Aberto','Bloqueado','Muito Bloqueado'];
 
@@ -11188,6 +11188,7 @@ function __triagemReset(){
   __triagem = {
     passo: 0, patientId: null, patientNome: '',
     dataNascimento: '',
+    paisNascimento: '',
     bovisIni: '', bovisFin: '',
     baixaVibracao: TRIAGEM_BAIXA_VIBRACAO.map(() => false),
     chakras: TRIAGEM_CHAKRAS_9.map(() => 100), // percentagem de abertura, pesquisada com o pêndulo
@@ -11304,14 +11305,19 @@ function triagemPasso1Data(main){
     <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
     ${triagemProgressoHTML()}
     <div class="card">
-      <h3>2. Data de nascimento</h3>
+      <h3>2. Data e país de nascimento</h3>
       <input id="triagemDataNasc" type="date" value="${__triagem.dataNascimento}">
+      <label style="display:block;margin-top:10px;font-weight:600;">País de nascimento (opcional)</label>
+      <input id="triagemPaisNasc" list="triagemListaPaises" placeholder="Ex.: Portugal" value="${escapeHtml(__triagem.paisNascimento||'')}">
+      <datalist id="triagemListaPaises">${['Portugal','Brasil','Angola','Moçambique','Cabo Verde','Guiné-Bissau','São Tomé e Príncipe','Timor-Leste','França','Espanha','Suíça','Alemanha','Luxemburgo','Reino Unido','Itália','Venezuela','Estados Unidos','Canadá','Índia','Argentina','México','Bélgica','Países Baixos','Roménia'].map(x => `<option value="${x}">`).join('')}</datalist>
+      <p class="muted" style="margin-top:6px;">A terra onde se nasce deixa marca na língua, nos costumes e nos ritmos que se absorvem desde cedo. Entra no Mapa da Alma como uma leitura simbólica.</p>
     </div>
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
       <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
     </div>`;
   document.getElementById('triagemDataNasc').addEventListener('input', e => __triagem.dataNascimento = e.target.value);
+  document.getElementById('triagemPaisNasc').addEventListener('input', e => __triagem.paisNascimento = e.target.value);
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
   window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
 }
@@ -11370,6 +11376,7 @@ function triagemPassoChakras(main){
     <div class="card">
       <h3>5. Chakras (1 a 9) — Percentagem de Abertura</h3>
       <p class="muted">Pesquise cada chakra com o pêndulo e registe a percentagem de abertura (100% = totalmente aberto).</p>
+      <p class="muted" style="font-size:.85rem;">Referência de trabalho: 70% a 89% = equilibrado · 90% a 100% = muito aberto (sente-se com intensidade, convém aterrar) · 40% a 69% = pouco aberto, a trabalhar · abaixo de 40% = muito fechado. Não há um valor universal validado: é uma escala de apoio à leitura.</p>
       ${TRIAGEM_CHAKRAS_9.map((c,i) => `
         <div class="row" style="margin-bottom:10px;align-items:center;">
           <label style="font-weight:700;flex:1;">${c.n} — ${escapeHtml(c.nome)}</label>
@@ -14454,7 +14461,8 @@ const TRI_CHAKRA_HUMANO = {
   'Garganta':['boa capacidade de se expressar','dificuldade em dizer o que sente e em ser ouvido(a)','ouvir sem interromper nem julgar'],
   'Terceiro Olho':['clareza e boa intuição','confusão mental e intuição abafada','dar momentos de silêncio e de menos ecrãs'],
   'Coroa':['uma ligação saudável ao sentido da vida e ao que é maior','afastamento do sentido da vida, da fé ou do que é maior do que nós','pequenos momentos de silêncio, de oração ou de meditação, ao ritmo da pessoa'],
-  'Timo / Coração Superior':['generosidade e capacidade de perdoar','dificuldade em perdoar e em ter compaixão por si','lembrar que errar faz parte e que há sempre recomeço'],
+  'Portal Estelar':['ligação ao todo e vontade de servir os outros','sensação de desligamento do mundo à volta e dificuldade em sentir que pertence','passar tempo na natureza e em gestos simples de serviço, guardando também tempo para si'],
+  '_antigo_Timo':['generosidade e capacidade de perdoar','dificuldade em perdoar e em ter compaixão por si','lembrar que errar faz parte e que há sempre recomeço'],
   'Estrela da Alma':['proximidade ao seu propósito','a sensação de estar longe do seu caminho','conversar sobre o que a pessoa sonha e deseja ser']
 };
 const TRI_CARTA_NOTA = {
@@ -14528,9 +14536,94 @@ const TRI_CHAKRA_CORPO = {
   'Garganta':'a garganta, o pescoço e a voz',
   'Terceiro Olho':'a cabeça, a vista e o sono',
   'Coroa':'a cabeça, a mente e o descanso',
-  'Timo':'as defesas do corpo e o cansaço',
+  'Portal':'o cansaço, a sensibilidade ao mundo e a sensação geral de energia',
   'Estrela':'a sensação geral de energia e de vitalidade'
 };
+
+// ── Os 9 chakras (segundo o ebook "O Mapa dos Chakras"), chakra dominante e país de nascimento ──
+const TRI_CHAKRA_LIVRO = {
+  1:{ nome:'Raiz', sans:'Muladhara', titulo:'O Realizador', cor:'vermelho', local:'base da coluna',
+      luz:'é o alicerce: prático, resiliente, leal e com grande força vital, é quem constrói, provê e protege',
+      sombra:'insegurança, sobretudo financeira, medo da perda, teimosia e, nos dias maus, apatia e a sensação de estar preso(a)',
+      caminho:'aterrar (caminhar descalço(a) na terra), confiar na vida e praticar o desapego do que é excessivo' },
+  2:{ nome:'Sacro', sans:'Svadhishthana', titulo:'O Criativo', cor:'laranja', local:'dois dedos abaixo do umbigo',
+      luz:'é o artista da vida: sente fundo, cria com paixão e tem um magnetismo natural',
+      sombra:'instabilidade emocional, excessos que viram vícios, culpa, vergonha e a ideia de não merecer',
+      caminho:'encontrar prazer em coisas simples, trabalhar o merecimento e aceitar as emoções sem julgamento' },
+  3:{ nome:'Plexo Solar', sans:'Manipura', titulo:'O Líder', cor:'amarelo', local:'acima do umbigo',
+      luz:'tem força de vontade, disciplina, confiança e capacidade de transformar ideias em realidade',
+      sombra:'ansiedade de desempenho, medo de falhar, a ideia de nunca ser suficiente e, em excesso, cansaço por controlar tudo',
+      caminho:'aprender a ser e não só a fazer, dar-se valor independentemente dos resultados e respirar fundo para soltar o nó no estômago' },
+  4:{ nome:'Coração', sans:'Anahata', titulo:'O Curador', cor:'verde ou rosa', local:'centro do peito',
+      luz:'é empático(a), compassivo(a) e diplomata, e a sua vida é um exercício de amor e de ligação',
+      sombra:'auto-sacrifício, mágoas guardadas, dependência emocional e medo de perder as ligações',
+      caminho:'pôr limites saudáveis, praticar o perdão e fazer do amor-próprio a base' },
+  5:{ nome:'Garganta', sans:'Vishuddha', titulo:'O Comunicador', cor:'azul claro', local:'base da garganta',
+      luz:'vive a sua verdade: exprime-se com clareza e honestidade e alinha o que diz com o que faz',
+      sombra:'medo de se expressar, dificuldade em dizer não, opiniões engolidas para evitar conflito ou, no extremo, falar demais sem ouvir',
+      caminho:'comunicar com assertividade, escutar com atenção e usar a criatividade (escrever, cantar, pintar)' },
+  6:{ nome:'Terceiro Olho', sans:'Ajna', titulo:'O Visionário', cor:'azul índigo', local:'centro da testa',
+      luz:'tem intuição, clareza mental e capacidade de distinguir a verdade da ilusão',
+      sombra:'prisão mental: pensar demais, cenários catastróficos, preocupação em círculo e dores de cabeça',
+      caminho:'sair da cabeça e voltar ao corpo, com exercício, respiração e aterramento' },
+  7:{ nome:'Coroa', sans:'Sahasrara', titulo:'O Espiritual', cor:'violeta ou branco-dourado', local:'topo da cabeça',
+      luz:'sente uma forte ligação ao divino e ao sentido maior da vida, e vê o quadro geral',
+      sombra:'fuga à realidade, sensação de desligamento do corpo e das emoções e falta de propósito',
+      caminho:'trazer o céu para a terra, ativando a raiz com dança, jardinagem e tarefas práticas' },
+  8:{ nome:'Estrela da Alma', sans:'Causal', titulo:'O Manifestador', cor:'branco-perolado, prateado ou magenta', local:'acima da cabeça',
+      luz:'tem uma ligação forte à alma e à missão de vida, e o poder de ligar o espírito à matéria',
+      sombra:'autoritarismo ou obsessão material, impaciência, sobrecarga mental e sensação de desfasamento',
+      caminho:'juntar visão espiritual e ação compassiva, ter paciência com o ritmo do plano físico e aterrar' },
+  9:{ nome:'Portal Estelar', sans:'Cósmico', titulo:'O Humanitário', cor:'dourado, platina ou luz branca', local:'bem acima da cabeça',
+      luz:'vive em unidade com o Todo e dedica-se ao serviço incondicional dos outros',
+      sombra:'sofrer demais com as dores do mundo, esgotamento, isolamento e dificuldade em viver o aqui e agora',
+      caminho:'proteger o campo energético, servir de forma sustentável e fazer do autocuidado um ato sagrado' }
+};
+// Referência de trabalho (não há um valor universal validado): <40 muito fechado · 40-69 pouco aberto · 70-89 equilibrado · 90-100 muito aberto
+function triChakraNivel(p){ return p < 40 ? 'muito fechado' : p < 70 ? 'pouco aberto' : p < 90 ? 'equilibrado' : 'muito aberto'; }
+function triChakraDominante(dataStr){
+  if (!dataStr) return null;
+  let n = String(dataStr).replace(/\D/g,'').split('').reduce((a,b) => a + Number(b), 0);
+  while (n > 9) n = String(n).split('').reduce((a,b) => a + Number(b), 0);
+  return n >= 1 ? n : null;
+}
+const TRI_PAISES = {
+  'portugal':['O nome vem de Portus Cale, o antigo porto na foz do Douro, entre o Porto e Gaia.','É a terra dos navegadores e da saudade: uma energia de partir e de voltar, de coragem para atravessar o desconhecido e de ligação funda à família e às raízes.'],
+  'brasil':['O nome vem do pau-brasil, a madeira cor de brasa que os primeiros exploradores procuravam.','É uma energia de mistura, de calor, alegria e criatividade, onde muitas culturas se encontram.'],
+  'angola':['O nome vem de "ngola", título dos reis do antigo reino do Ndongo.','É uma energia de força ancestral, de resistência e de memória de um povo que se reconstrói.'],
+  'mocambique':['O nome ficou associado a Mussa Bin Bique, ligado à ilha de Moçambique no tempo da chegada dos navegadores.','É uma energia de encontro entre o mar e a terra, de paciência e de resiliência.'],
+  'cabo verde':['O nome vem do Cabo Verde, no Senegal, que os navegadores portugueses avistaram no século XV.','É uma energia de ilhas e de travessias: a "morabeza", a saudade e a ligação a quem partiu e a quem ficou.'],
+  'guine-bissau':['O nome junta a região da Guiné à capital, Bissau, para a distinguir de outros territórios com o mesmo nome.','É uma energia de rios, de comunidade e de união à volta da família alargada.'],
+  'sao tome e principe':['A ilha de São Tomé recebeu o nome do apóstolo, no dia em que foi avistada.','É uma energia de ilha, de natureza exuberante, de calma e de ritmo próprio.'],
+  'timor-leste':['"Timor" vem do malaio "timur", que quer dizer leste, e "Leste" repete a ideia.','É uma energia de coragem, de fé e de resistência, ligada à terra e aos antepassados.'],
+  'franca':['O nome vem dos francos, povo germânico, e "franco" quer também dizer livre.','É uma energia de arte, de ideias e de gosto pela liberdade e pela beleza.'],
+  'espanha':['O nome vem de Hispânia, como os romanos lhe chamavam.','É uma energia de paixão, de festa e de orgulho nas raízes, com muita força de comunidade.'],
+  'suica':['O nome vem de Schwyz, um dos cantões fundadores.','É uma energia de ordem, de precisão e de neutralidade, com respeito pelo tempo e pelo espaço de cada um.'],
+  'alemanha':['O nome vem dos alamanos, povo germânico cujo nome sugere "todos os homens".','É uma energia de disciplina, de método e de sentido de dever.'],
+  'luxemburgo':['O nome vem de Lucilinburhuc, "pequeno castelo".','É uma energia de proteção, de encontro de culturas e de pequena terra com grande abertura.'],
+  'reino unido':['O nome liga-se à Britânia, a terra dos bretões.','É uma energia de tradição, de reserva e de humor, com respeito pelas regras.'],
+  'inglaterra':['O nome vem de "Angle-land", a terra dos anglos.','É uma energia de tradição, de reserva e de humor, com respeito pelas regras.'],
+  'italia':['O nome vem dos povos itálicos, de origem antiga e discutida.','É uma energia de família, de arte, de sabor e de expressão calorosa.'],
+  'venezuela':['O nome quer dizer "pequena Veneza", dado pelos exploradores às casas sobre a água do lago de Maracaibo.','É uma energia de calor, de alegria e de resistência perante as dificuldades.'],
+  'estados unidos':['O nome vem de América, em homenagem a Américo Vespúcio.','É uma energia de iniciativa, de recomeços e de busca de oportunidades.'],
+  'canada':['O nome vem de "kanata", "aldeia" numa língua iroquesa.','É uma energia de espaço, de acolhimento e de respeito pela natureza.'],
+  'india':['O nome vem do rio Indo, "Sindhu" em sânscrito.','É uma energia de espiritualidade, de tradição e de ligação ao sagrado no dia a dia.'],
+  'china':['O nome local, "Zhongguo", quer dizer "país do meio".','É uma energia de continuidade, de sabedoria antiga e de respeito pelos antepassados.'],
+  'japao':['O nome local, "Nihon", quer dizer "origem do sol".','É uma energia de disciplina, de delicadeza e de atenção ao pormenor.'],
+  'argentina':['O nome vem do latim "argentum", prata.','É uma energia de paixão, de expressão e de grande sentido de pertença.'],
+  'mexico':['O nome vem dos mexicas, povo do antigo império asteca.','É uma energia de cor, de festa e de ligação à memória dos antepassados.'],
+  'belgica':['O nome vem dos belgas, povo celta antigo.','É uma energia de encontro entre línguas e culturas e de gosto pelos pequenos prazeres.'],
+  'paises baixos':['O nome quer dizer "terras baixas".','É uma energia de pragmatismo, de abertura e de gosto pela liberdade.'],
+  'holanda':['O nome quer dizer "terra de bosques" e designa, por extensão, os Países Baixos.','É uma energia de pragmatismo, de abertura e de gosto pela liberdade.'],
+  'roménia':['O nome vem de "romano".','É uma energia de resiliência, de tradição e de laços fortes de família.'],
+  'romenia':['O nome vem de "romano".','É uma energia de resiliência, de tradição e de laços fortes de família.']
+};
+function triPais(pais){
+  const k = String(pais||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  if (!k) return null;
+  const alias = { 'brazil':'brasil', 'eua':'estados unidos', 'usa':'estados unidos', 'franca':'franca', 'uk':'reino unido', 'guine bissau':'guine-bissau' };
+  return TRI_PAISES[alias[k] || k] || null;
+}
 
 function triagemAreasVida(d, nome, idade){
   const out = [];
@@ -14583,17 +14676,17 @@ function triagemAreasVida(d, nome, idade){
   if (el) irm.push(`Nos conflitos, ${el.conflito}.`);
   irm.push('Se houver comparações entre irmãos, dói-lhe mais do que mostra.');
   pessoas.push(`Com os irmãos: ${irm.join(' ')}`);
-  if (adulto || idade === null){
+  {
     const par = [];
-    if (cv && TRI_CV_REL[cv]) par.push(`No amor, ${TRI_CV_REL[cv]}.`);
+    if (cv && TRI_CV_REL[cv]) par.push(`${menor ? 'Mais tarde, no amor' : 'No amor'}, ${TRI_CV_REL[cv]}.`);
     if (alto('Coração') || alto('Sacro')) par.push('Quando se entrega, é de coração inteiro.');
     if (baixo('Coração')) par.push('Abre-se devagar e precisa de sentir segurança antes de se entregar.');
     if (tem(15,16,17,23,25,39)) par.push('Foi percebido um padrão a trabalhar nas relações: ' + triLista([tem(15,16)&&'prender-se a ligações que desgastam', tem(17)&&'ficar sem energia junto de certas pessoas', tem(23)&&'dificuldade em deixar alguém entrar', tem(25)&&'apoiar-se demais nos outros', tem(39)&&'afastar-se justamente quando as coisas correm bem'].filter(Boolean)) + '.');
     par.push('O que ajuda: alguém que dê segurança, paciência e tempo, e que peça para falar sem acusar.');
-    pessoas.push(`Com o(a) companheiro(a), se tiver ou vier a ter: ${par.join(' ')}`);
+    pessoas.push(`Com o(a) companheiro(a), ${menor ? 'quando o(a) tiver' : 'se tiver ou vier a ter'}: ${par.join(' ')}`);
     const f = TRI_CV_FILHOS[cv] || 'um pai ou uma mãe presente e dedicado(a)';
     const risco = baixo('Plexo') ? ' O risco é passar-lhes a própria autoexigência, por isso convém lembrar que não tem de ser perfeito(a).' : '';
-    pessoas.push(`Com os filhos, se os tiver ou vier a ter: seria ${f}.${risco} Um abraço e tempo de qualidade valem mais do que ter tudo em ordem.`);
+    pessoas.push(`Com os filhos, ${menor ? 'quando os tiver' : 'se os tiver ou vier a ter'}: seria ${f}.${risco} Um abraço e tempo de qualidade valem mais do que ter tudo em ordem.`);
   }
   pessoas.push(`Com os amigos: tem ${el ? el.amigos : 'um círculo próprio'}.${tem(17,36) ? ' Cansa-se depois de estar com certas pessoas, por isso precisa de tempo para recuperar.' : ''}`);
   out.push({ titulo:'Em cada relação', paras:[`Aqui fica a leitura por pessoa, a rever e a ajustar à realidade de ${nome}.`], lista:pessoas });
@@ -14673,6 +14766,15 @@ function triagemRelatorioCliente(d){
     const sulTxt = (NODO_SUL_TEXTOS[sul]||'').replace(/^Já dominou/,'Já traz de longe o domínio de');
     const norteTxt = NODO_NORTE_TEXTOS[norte] ? NODO_NORTE_TEXTOS[norte].replace(/^O seu caminho de crescimento/,'O caminho de crescimento de '+nome) : `O caminho de crescimento aponta para as qualidades de ${norte}.`;
     p.push(`${sulTxt} ${norteTxt}`.trim());
+    const cd = triChakraDominante(d.dataNascimento);
+    if (cd && TRI_CHAKRA_LIVRO[cd]){
+      const L9 = TRI_CHAKRA_LIVRO[cd];
+      p.push(`O chakra dominante de ${nome}, pela data de nascimento, é o ${L9.nome} (${L9.titulo}). Na sua melhor versão, ${L9.luz}. O desafio que mais se repete tem a ver com ${L9.sombra}. O caminho de equilíbrio passa por ${L9.caminho}.`);
+    }
+    if (d.paisNascimento){
+      const pa = triPais(d.paisNascimento);
+      p.push(pa ? `${nome} nasceu em ${d.paisNascimento}. ${pa[0]} ${pa[1]} É uma leitura simbólica, que ajuda a perceber a marca da terra de origem.` : `${nome} nasceu em ${d.paisNascimento}. A terra de origem deixa marca na língua, nos costumes e nos ritmos que se absorvem desde cedo, e faz parte do que ${nome} traz consigo.`);
+    }
     sec.push({ titulo:`Quem é ${nome}`, paras:p });
   }
 
@@ -14687,6 +14789,18 @@ function triagemRelatorioCliente(d){
     agora.push(`O caminho à frente de ${nome} parece ${lv} neste momento: é como se, por mais que se esforce, as portas custassem a abrir. Isto não é uma sentença, é algo que se pode trabalhar.`);
   } else agora.push(`O caminho à frente de ${nome} está aberto, o que ajuda a avançar.`);
   sec.push({ titulo:'Como está neste momento', paras:agora });
+  {
+    const linhas = d.chakrasTodos.map(c => {
+      const L9 = TRI_CHAKRA_LIVRO[c.n]; if (!L9) return null;
+      const niv = triChakraNivel(c.percentagem);
+      let t = `${L9.nome} (${c.percentagem}%, ${niv}): `;
+      if (c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO) t += `o que pode sentir-se é ${L9.sombra}. Ajuda ${L9.caminho}.`;
+      else if (c.percentagem >= 90) t += `${nome} ${L9.luz}. Por estar muito aberto, sente-se com intensidade, por isso convém manter o aterramento.`;
+      else t += `${nome} ${L9.luz}.`;
+      return t;
+    }).filter(Boolean);
+    sec.push({ titulo:'Os nove centros de energia, um a um', paras:[`Os chakras são centros de energia ao longo do corpo e acima dele. Esta é a leitura de cada um, em palavras simples. Não é um diagnóstico.`], lista:linhas });
+  }
 
   triagemAreasVida(d, nome, idade).forEach(x => sec.push(x));
 
@@ -14898,6 +15012,8 @@ async function triagemGerarRelatorio(){
       reportText += `Caminho de Vida ${perfil.cv} — ${perfil.cvNome||''}\n`;
       reportText += perfil.anjo.tipo === 'anjo' ? `Anjo do Nascimento: ${perfil.anjo.nome} (virtude: ${perfil.anjo.virtude})\n` : `Ligação directa aos Anjos Universais (${perfil.anjo.elemento})\n`;
       reportText += `Arcano Pessoal: ${perfil.arcanoPNome}\n`;
+      { const cdx = triChakraDominante(__triagem.dataNascimento); if (cdx && TRI_CHAKRA_LIVRO[cdx]) reportText += `Chakra dominante: ${cdx} — ${TRI_CHAKRA_LIVRO[cdx].nome} (${TRI_CHAKRA_LIVRO[cdx].titulo})\n`; }
+      if (__triagem.paisNascimento){ const pax = triPais(__triagem.paisNascimento); reportText += `País de nascimento: ${__triagem.paisNascimento}${pax ? ' — ' + pax[0] + ' ' + pax[1] : ''}\n`; }
       reportText += `Nodo Sul (vidas passadas): ${perfil.nodos.nodoSul.signo} — ${NODO_SUL_TEXTOS[perfil.nodos.nodoSul.signo]||''}\n`;
       reportText += `Nodo Norte (propósito): ${perfil.nodos.nodoNorte.signo}\n`;
       reportText += `Signo: ${perfil.signo.nome} · Pináculo ${perfil.pinAtivo.indice+1}º (${perfil.pinAtivo.pinaculo.faixa})\n\n`;
@@ -14932,7 +15048,7 @@ async function triagemGerarRelatorio(){
 
   // ── Relatório para a pessoa e a família: texto corrido e pessoal ───────
   const clienteRel = triagemRelatorioCliente({
-    primeiroNome: __triagem.patientNome.split(/\s+/)[0], dataNascimento: __triagem.dataNascimento,
+    primeiroNome: __triagem.patientNome.split(/\s+/)[0], dataNascimento: __triagem.dataNascimento, paisNascimento: __triagem.paisNascimento,
     perfil, causasDetetadas, chakrasTodos, aberturaNivel, comparacao, cruzamento: cruzamentoVidasPassadas,
     leituraComplementar: __triagem.leituraComplementar, sessoesNecessarias: __triagem.sessoesNecessarias,
     preco: __triagem.preco, temAlgumaCoisaDetetada
