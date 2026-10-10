@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-08-03';
+const APP_VERSION = '2026-10-10-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -989,6 +989,51 @@ window.attachInvoiceToAppointment = async function(fileInputEl, appointmentId, p
   }
   fileInputEl.value = '';
 };
+
+
+// ── Quem pede em nome do paciente (mãe, pai, cônjuge...) ─────────────────
+// Se o atendimento for pedido por outra pessoa, as mensagens, faturas e relatórios vão para ela e não para o paciente.
+function destinoPaciente(p){
+  p = p || {};
+  const r = p.requester;
+  if (r && r.enviarParaResponsavel && (r.nome || r.phone || r.email)){
+    return { viaResponsavel:true, nome:r.nome || p.fullName || '', relacao:r.relacao || '', phone:r.phone || p.phone || '', email:r.email || p.email || '' };
+  }
+  return { viaResponsavel:false, nome:p.fullName || '', relacao:'', phone:p.phone || '', email:p.email || '' };
+}
+function pacienteExtraCamposHTML(p){
+  p = p || {};
+  const r = p.requester || {};
+  const rel = ['Mãe','Pai','Cônjuge / companheiro(a)','Filho(a)','Irmão / irmã','Avó / avô','Tutor(a) legal','Outra pessoa'];
+  return `
+    <label>Data de nascimento</label><input id="pBirthDate" type="date" value="${escapeHtml(p.birthDate||'')}">
+    <label>País de nascimento (opcional)</label><input id="pBirthCountry" list="pBirthCountryList" placeholder="Ex.: Portugal" value="${escapeHtml(p.birthCountry||'')}">
+    <datalist id="pBirthCountryList">${TRI_PAISES_LISTA.map(x => `<option value="${x}">`).join('')}</datalist>
+    <div style="margin-top:12px;padding:12px;background:#f4f8f6;border-radius:10px;">
+      <label style="margin-top:0;">Quem pediu o atendimento?</label>
+      <select id="pReqTipo" onchange="document.getElementById('pReqBox').style.display = this.value === 'outro' ? 'block' : 'none'">
+        <option value="proprio" ${r.nome ? '' : 'selected'}>O próprio paciente</option>
+        <option value="outro" ${r.nome ? 'selected' : ''}>Outra pessoa, em nome do paciente</option>
+      </select>
+      <div id="pReqBox" style="display:${r.nome ? 'block' : 'none'};margin-top:6px;">
+        <label>Nome de quem pediu</label><input id="pReqNome" value="${escapeHtml(r.nome||'')}" placeholder="Ex.: Ana Silva">
+        <label>Quem é para o paciente?</label>
+        <select id="pReqRelacao">${rel.map(x => `<option ${r.relacao === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
+        <label>Telefone de quem pediu</label><input id="pReqPhone" value="${escapeHtml(r.phone||'')}">
+        <label>Email de quem pediu (opcional)</label><input id="pReqEmail" type="email" value="${escapeHtml(r.email||'')}">
+        <label style="display:flex;gap:8px;align-items:center;margin-top:10px;"><input id="pReqEnviar" type="checkbox" style="width:auto;" ${r.enviarParaResponsavel === false ? '' : 'checked'}> Enviar relatórios, faturas e mensagens para esta pessoa</label>
+      </div>
+    </div>`;
+}
+function lerPacienteExtra(){
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const outro = g('pReqTipo') === 'outro' && g('pReqNome');
+  return {
+    birthDate: g('pBirthDate'),
+    birthCountry: g('pBirthCountry'),
+    requester: outro ? { nome:g('pReqNome'), relacao:g('pReqRelacao'), phone:g('pReqPhone'), email:g('pReqEmail'), enviarParaResponsavel: !!document.getElementById('pReqEnviar')?.checked } : null
+  };
+}
 
 window.sendInvoiceToPatient = function(invoiceUrl, phone, patientName, channel){
   const text = `Olá ${patientName}! Aqui está a sua fatura: ${invoiceUrl}`;
@@ -2910,7 +2955,7 @@ window.joinOnlineConsult = async function(patientId){
       // do consultório — esse é para o paciente chamar o consultório, não
       // o inverso.
       const pSnap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId));
-      const patientPhone = pSnap.exists() ? (pSnap.data().phone || '') : '';
+      const patientPhone = pSnap.exists() ? destinoPaciente(pSnap.data()).phone : '';
       if (!patientPhone){
         toast('Este paciente não tem telefone registado na ficha — não é possível abrir o WhatsApp dele.', true);
         return;
@@ -3062,7 +3107,7 @@ window.saveWaitlistEntry = async function(){
 
   await addDoc(collection(db, 'tenants', tenantId, 'waitlist'), {
     patientId, patientName: patient?.fullName || '',
-    patientPhone: patient?.phone || '', patientEmail: patient?.email || '',
+    patientPhone: destinoPaciente(patient).phone, patientEmail: destinoPaciente(patient).email,
     serviceId: serviceId || null, serviceName: service?.name || '',
     note: document.getElementById('wlNote').value.trim(),
     createdAt: serverTimestamp()
@@ -3425,7 +3470,7 @@ window.saveAppointment = async function(){
   const data = {
     patientId: patientSel.value,
     patientName: patientSel.selectedOptions[0].dataset.name,
-    patientPhone: window.__apptPatientsCache?.[patientSel.value]?.phone || '',
+    patientPhone: destinoPaciente(window.__apptPatientsCache?.[patientSel.value]).phone,
     serviceId: serviceSel.value,
     serviceName: serviceSel.selectedOptions[0].dataset.name,
     staffUid: staffSel.value,
@@ -3560,7 +3605,7 @@ window.updateAppointment = async function(appointmentId){
   const updateData = {
     patientId: patientSel.value,
     patientName: patientSel.selectedOptions[0].dataset.name,
-    patientPhone: window.__apptPatientsCache?.[patientSel.value]?.phone || '',
+    patientPhone: destinoPaciente(window.__apptPatientsCache?.[patientSel.value]).phone,
     serviceId: serviceSel.value,
     serviceName: serviceSel.selectedOptions[0].dataset.name,
     roomId,
@@ -3825,6 +3870,7 @@ window.openNewPatient = async function(){
       <label>Telefone</label><input id="pPhone">
       <label>Email</label><input id="pEmail" type="email">
       <label>NIF / Contribuinte (opcional)</label><input id="pNif">
+      ${pacienteExtraCamposHTML(null)}
       <label>Foto do paciente (opcional)</label><input id="pPhotoUrl" placeholder="https://... (ou escolha uma foto abaixo)">
       ${imageUploadFieldHTML('pPhotoUrl', `tenants/${tenantId}/patients`)}
       <label>Notas clínicas iniciais</label><textarea id="pNotes" rows="3"></textarea>
@@ -3995,6 +4041,7 @@ window.editPatient = async function(patientId){
       <label>Telefone</label><input id="pPhone" value="${escapeHtml(p.phone||'')}">
       <label>Email</label><input id="pEmail" type="email" value="${escapeHtml(p.email||'')}">
       <label>NIF / Contribuinte (opcional)</label><input id="pNif" value="${escapeHtml(p.nif||'')}">
+      ${pacienteExtraCamposHTML(p)}
       <label>Foto do paciente (opcional)</label><input id="pPhotoUrl" value="${escapeHtml(p.photoUrl||'')}" placeholder="https://... (ou escolha uma foto abaixo)">
       ${imageUploadFieldHTML('pPhotoUrl', `tenants/${tenantId}/patients`)}
       <label>Notas clínicas</label><textarea id="pNotes" rows="3">${escapeHtml(p.clinicalNotes||'')}</textarea>
@@ -4028,6 +4075,7 @@ window.updatePatient = async function(patientId){
     phone: document.getElementById('pPhone').value.trim(),
     email: document.getElementById('pEmail').value.trim(),
     nif: document.getElementById('pNif').value.trim(),
+    ...lerPacienteExtra(),
     photoUrl: document.getElementById('pPhotoUrl').value.trim(),
     clinicalNotes: document.getElementById('pNotes').value.trim(),
     assignedStaffUid: document.getElementById('pAssignedStaff')?.value || null,
@@ -4083,6 +4131,7 @@ window.clearSignaturePad = function(){
 window.savePatient = async function(){
   const fullName = document.getElementById('pFullName').value.trim();
   if (!fullName){ toast('Nome é obrigatório.', true); return; }
+  const extraPac = lerPacienteExtra();
 
   const method = window.__consentMethod || 'check';
   let consentData = {};
@@ -4104,6 +4153,7 @@ window.savePatient = async function(){
     phone: document.getElementById('pPhone').value.trim(),
     email: document.getElementById('pEmail').value.trim(),
     nif: document.getElementById('pNif').value.trim(),
+    ...extraPac,
     photoUrl: document.getElementById('pPhotoUrl').value.trim(),
     clinicalNotes: document.getElementById('pNotes').value.trim(),
     assignedStaffUid: document.getElementById('pAssignedStaff')?.value || null,
@@ -4126,6 +4176,7 @@ window.savePatient = async function(){
     window.__triagemAVoltarDePaciente = false;
     __triagem.patientId = novoPatientRef.id;
     __triagem.patientNome = fullName;
+    { const ex = extraPac; if (ex.birthDate) __triagem.dataNascimento = ex.birthDate; if (ex.birthCountry) __triagem.paisNascimento = ex.birthCountry; __triagem.requester = ex.requester && ex.requester.enviarParaResponsavel ? ex.requester : null; }
     renderView('triagemBaixaVibracao', { manterEstado: true });
   } else {
     renderView('patients');
@@ -4349,8 +4400,8 @@ window.viewPatient = async function(patientId){
         <div><strong>${date}</strong> — ${escapeHtml(a.serviceName||'')}<div class="muted">${a.price}€</div></div>
         <div class="row" style="margin-top:6px;flex-wrap:wrap;">
           <a href="${escapeAttrJs(a.invoiceUrl)}" target="_blank" rel="noopener"><button class="ghost" type="button">📄 Ver fatura</button></a>
-          ${p.phone ? `<button class="ghost" onclick="sendInvoiceToPatient('${escapeAttrJs(a.invoiceUrl)}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','whatsapp')">📱 Enviar WhatsApp</button>` : ''}
-          ${p.phone ? `<button class="ghost" onclick="sendInvoiceToPatient('${escapeAttrJs(a.invoiceUrl)}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName||'')}','sms')">💬 Enviar SMS</button>` : ''}
+          ${destinoPaciente(p).phone ? `<button class="ghost" onclick="sendInvoiceToPatient('${escapeAttrJs(a.invoiceUrl)}','${escapeAttrJs(destinoPaciente(p).phone)}','${escapeAttrJs(destinoPaciente(p).nome)}','whatsapp')">📱 Enviar WhatsApp${destinoPaciente(p).viaResponsavel ? ' a ' + escapeHtml(destinoPaciente(p).nome) : ''}</button>` : ''}
+          ${destinoPaciente(p).phone ? `<button class="ghost" onclick="sendInvoiceToPatient('${escapeAttrJs(a.invoiceUrl)}','${escapeAttrJs(destinoPaciente(p).phone)}','${escapeAttrJs(destinoPaciente(p).nome)}','sms')">💬 Enviar SMS</button>` : ''}
         </div>
       </div>`;
     } else {
@@ -4383,6 +4434,8 @@ window.viewPatient = async function(patientId){
         <button class="ghost" onclick="editPatient('${patientId}')">✏️ Editar</button>
       </div>
       <p class="muted">${escapeHtml(p.phone||'')} · ${escapeHtml(p.email||'')}</p>
+      ${p.birthDate || p.birthCountry ? `<p class="muted">Nascimento: ${escapeHtml(p.birthDate ? new Date(p.birthDate+'T12:00:00').toLocaleDateString('pt-PT') : '—')}${p.birthCountry ? ' · ' + escapeHtml(p.birthCountry) : ''}</p>` : ''}
+      ${p.requester ? `<div style="margin-top:6px;padding:10px 12px;background:#eef6f2;border-radius:10px;"><strong>Pedido por ${escapeHtml(p.requester.nome)}</strong> (${escapeHtml(p.requester.relacao||'')})<div class="muted">${escapeHtml(p.requester.phone||'')}${p.requester.email ? ' · ' + escapeHtml(p.requester.email) : ''}</div><div class="muted">${p.requester.enviarParaResponsavel ? 'Relatórios, faturas e mensagens são enviados para esta pessoa.' : 'Os envios vão para o próprio paciente.'}</div></div>` : ''}
       ${!p.consentGivenAt ? `
       <div style="margin-top:10px;padding:12px;background:#fff8e6;border:1.5px solid #f0d078;border-radius:10px;">
         <strong style="color:#8a5a00;">⚠️ Sem consentimento informado registado</strong>
@@ -4408,12 +4461,12 @@ window.viewPatient = async function(patientId){
       <details style="margin-top:12px;" open>
         <summary style="cursor:pointer;font-weight:700;">💻 Videochamada</summary>
         <div style="margin-top:8px;">
-          ${p.phone ? `
+          ${destinoPaciente(p).phone ? `
           <div style="padding:10px 12px;background:#eef6f2;border-radius:10px;">
             <p class="muted" style="margin-bottom:8px;"><strong>Para a videochamada, nenhuma app (nem o WhatsApp) consegue avisar o paciente sozinha — são precisos sempre estes 2 toques, um a seguir ao outro:</strong></p>
             <div class="row">
-              <button class="primary" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName)}','${escapeAttrJs(p.portalToken||'')}','whatsapp')">1️⃣ Avisar por WhatsApp</button>
-              <button class="ghost" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(p.phone)}','${escapeAttrJs(p.fullName)}','${escapeAttrJs(p.portalToken||'')}','sms')">1️⃣ Avisar por SMS</button>
+              <button class="primary" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(destinoPaciente(p).phone)}','${escapeAttrJs(destinoPaciente(p).nome)}','${escapeAttrJs(p.portalToken||'')}','whatsapp')">1️⃣ Avisar por WhatsApp</button>
+              <button class="ghost" onclick="notifyPatientForCall('${patientId}','${escapeAttrJs(destinoPaciente(p).phone)}','${escapeAttrJs(destinoPaciente(p).nome)}','${escapeAttrJs(p.portalToken||'')}','sms')">1️⃣ Avisar por SMS</button>
               <button class="primary" onclick="joinOnlineConsult('${patientId}')">2️⃣ Entrar na videochamada</button>
             </div>
           </div>` : `
@@ -11293,6 +11346,8 @@ function triagemPasso0Paciente(main){
   };
   window.__triagemEscolherPaciente = function(id, nome){
     __triagem.patientId = id; __triagem.patientNome = nome;
+    const pc = (window.__allPatientsCache || []).find(x => x.id === id);
+    if (pc){ if (pc.birthDate && !__triagem.dataNascimento) __triagem.dataNascimento = pc.birthDate; if (pc.birthCountry && !__triagem.paisNascimento) __triagem.paisNascimento = pc.birthCountry; __triagem.requester = pc.requester && pc.requester.enviarParaResponsavel ? pc.requester : null; }
     renderTriagemPasso(main);
   };
   window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
@@ -15158,6 +15213,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
     <div class="card"><p>${sintese}</p></div>
     <div class="card" style="border:2px solid var(--primary);">
       <h3>✉️ Relatório para ${escapeHtml(__triagem.patientNome.split(/\s+/)[0])} e para a família</h3>
+      ${__triagem.requester ? `<p style="margin:4px 0 8px;padding:8px 10px;background:#eef6f2;border-radius:8px;">📨 Enviar para <strong>${escapeHtml(__triagem.requester.nome)}</strong> (${escapeHtml(__triagem.requester.relacao||'')}), que pediu este atendimento, e não diretamente para ${escapeHtml(__triagem.patientNome.split(/\s+/)[0])}.${__triagem.requester.phone ? ` <a href="https://wa.me/${telefoneParaDigitos(__triagem.requester.phone)}" target="_blank" rel="noopener">Abrir WhatsApp de ${escapeHtml(__triagem.requester.nome)}</a>` : ''}</p>` : ''}
       <p class="muted" style="margin:4px 0 8px;">Texto pessoal, em palavras simples, sem códigos nem números. Lê, corrige o que quiseres e só depois envia. É este que a pessoa e a família recebem.</p>
       <textarea id="triagemTextoCliente" rows="18" style="width:100%;">${escapeHtml(window.__triagemTextoClienteAtual || '')}</textarea>
       <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;">
