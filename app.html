@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-10-09';
+const APP_VERSION = '2026-10-10-10';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10543,6 +10543,8 @@ async function renderCartomancia(main){
         </div>`).join('') : '<p class="muted">Ainda sem consultas guardadas.</p>'}
     </div>
     <div id="ctResultado"></div>`;
+  } else if (__cartoTab === 'perguntas'){
+    bodyHtml = cpFormHTML();
   } else if (__cartoTab === 'nova'){
     bodyHtml = `
     <div class="card">
@@ -10606,11 +10608,13 @@ async function renderCartomancia(main){
         ${tabBtn('leituras', `🌐 Triagens online (${leituras.length})`)}
         ${tabBtn('consultas', `🗂️ As minhas consultas (${__cartoConsultas.length})`)}
         ${tabBtn('nova', '✨ Nova consulta')}
+        ${tabBtn('perguntas', '🧩 Várias perguntas')}
       </div>
     </div>
     ${bodyHtml}
   `;
   if (__cartoTab === 'nova') montarCamposCartas();
+  if (__cartoTab === 'perguntas') cpPintarPerguntas();
 }
 
 
@@ -15800,6 +15804,127 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
     </div>`;
 }
 
+
+/* ─── Cartomancia: várias perguntas numa só consulta ──────────────────────
+   Para quem pergunta várias coisas (ex.: uma mãe sobre o filho): cada pergunta
+   tem as suas próprias cartas e recebe a sua resposta, em linguagem simples,
+   num relatório pronto a rever e enviar. Os significados são os do método
+   Hikari Fafe (os mesmos da leitura em 1, 3 e 5 cartas). */
+const CP_SIGNIF = {
+  paus: { A:'novo projeto ou faísca de iniciativa a nascer', 2:'escolha entre dois caminhos de ação', 3:'expansão, primeiros resultados de um esforço', 4:'estabilidade conquistada, celebração merecida', 5:'competição ou tensão que exige ação', 6:'vitória reconhecida publicamente', 7:'defender uma posição com persistência', 8:'movimento rápido, notícias a caminho', 9:'resiliência, quase lá apesar do cansaço', 10:'sobrecarga: pedir ajuda ou delegar', J:'mensageiro entusiasta, ideia nova a explorar', Q:'pessoa confiante e independente que inspira ação', K:'liderança visionária, agir com autoridade' },
+  copas: { A:'novo sentimento a nascer, abertura emocional', 2:'ligação, parceria ou reconciliação', 3:'celebração em conjunto, amizade que floresce', 4:'apatia ou oportunidade emocional a ser vista', 5:'perda a lamentar, mas ainda resta algo', 6:'nostalgia, reencontro com o passado', 7:'escolhas emocionais confusas, ilusões a clarificar', 8:'afastar-se do que já não nutre', 9:'satisfação e desejo realizado', 10:'harmonia familiar plena', J:'mensagem afetuosa ou pessoa sensível a chegar', Q:'pessoa intuitiva e compassiva, cuidado emocional', K:'maturidade emocional, equilíbrio entre razão e sentimento' },
+  espadas: { A:'clareza mental repentina, verdade que emerge', 2:'impasse, decisão adiada por medo de escolher', 3:'dor ou desilusão que precisa de ser sentida', 4:'pausa necessária, descanso da mente', 5:'conflito com custo maior que o ganho', 6:'transição para águas mais calmas', 7:'estratégia discreta, cuidado com meias-verdades', 8:'sensação de estar preso, mas a saída existe', 9:'ansiedade noturna, medos maiores na mente que na realidade', 10:'fim de um ciclo doloroso, o pior já passou', J:'notícia direta ou pessoa muito analítica a chegar', Q:'pessoa clara e independente, corte necessário', K:'autoridade racional, decisão justa e fria' },
+  ouros: { A:'nova oportunidade material ou financeira', 2:'equilibrar duas prioridades práticas', 3:'trabalho em equipa a dar frutos', 4:'segurança conquistada, com cuidado para não fechar demasiado a mão', 5:'dificuldade material passageira, ajuda por perto', 6:'partilha justa de recursos', 7:'paciência: o investimento ainda está a amadurecer', 8:'dedicação e aperfeiçoamento de uma competência', 9:'independência conquistada pelo próprio esforço', 10:'estabilidade duradoura, legado a construir', J:'proposta prática ou pessoa jovem e trabalhadora', Q:'pessoa prática e generosa, cuidado com o concreto', K:'sucesso material consolidado, visão estratégica de longo prazo' }
+};
+const CP_BLOQUEIO = ['espadas:5','espadas:7','espadas:8','espadas:9','espadas:10','copas:4','copas:5','copas:8'];
+const CP_FAVORAVEL = ['ouros:A','ouros:3','ouros:6','ouros:8','ouros:9','ouros:10','copas:A','copas:9','copas:10'];
+let __cpPerguntas = [];
+let __cpUltimo = null;
+function cpNomeCarta(c){ const esp = { A:'Ás', J:'Valete', Q:'Dama', K:'Rei' }; return `${esp[c.valor] || c.valor} de ${(CARTO_NAIPES[c.naipe] || '').replace(/^\S+\s/, '')}`; }
+function cpMin(t){ t = String(t || ''); return t.charAt(0).toLowerCase() + t.slice(1); }
+function cpEtiquetas(n){ return n === 3 ? ['Como está agora', 'O que pesa', 'Para onde vai'] : (n === 5 ? ['Situação atual', 'Desafio', 'Passado recente', 'Futuro próximo', 'Conselho'] : ['Resposta']); }
+function cpNovaPergunta(){ return { texto: '', n: 3, cartas: [0,1,2,3,4].map(() => ({ naipe: 'paus', valor: 'A' })) }; }
+function cpFormHTML(){
+  if (!__cpPerguntas.length) __cpPerguntas = [cpNovaPergunta()];
+  return `<div class="card">
+    <p class="muted" style="margin-bottom:8px;">Para quem faz várias perguntas numa só consulta. Cada pergunta tem as suas cartas e a sua resposta.</p>
+    <label>Paciente (para ficar no histórico dele)</label>
+    <select id="cpPaciente"><option value="">— sem ficha —</option>${(window.__allPatientsCache || []).map(p => `<option value="${p.id}">${escapeHtml(p.fullName || '')}</option>`).join('')}</select>
+    <label>Leitura sobre (a pessoa de quem se fala)</label><input id="cpSobre" placeholder="ex: Rafael">
+    <label>Relatório para (quem perguntou)</label><input id="cpPara" placeholder="ex: Ana, mãe do Rafael">
+    <label>Tratar por</label><select id="cpTrat"><option value="tu">Tu</option><option value="voce">Você</option></select>
+    <div id="cpLista" style="margin-top:10px;"></div>
+    <button class="ghost" onclick="cpAddPergunta()">+ Adicionar pergunta</button>
+    <div class="row" style="margin-top:14px;"><button class="primary" onclick="cpGerar()">✨ Gerar relatório</button></div>
+  </div><div id="ctResultado"></div>`;
+}
+window.cpAddPergunta = function(){ __cpPerguntas.push(cpNovaPergunta()); cpPintarPerguntas(); };
+window.cpRemPergunta = function(i){ __cpPerguntas.splice(i, 1); if (!__cpPerguntas.length) __cpPerguntas.push(cpNovaPergunta()); cpPintarPerguntas(); };
+window.cpSetTexto = function(i, v){ __cpPerguntas[i].texto = v; };
+window.cpSetN = function(i, v){ __cpPerguntas[i].n = parseInt(v, 10); cpPintarPerguntas(); };
+window.cpSetCarta = function(i, j, campo, v){ __cpPerguntas[i].cartas[j][campo] = v; };
+function cpPintarPerguntas(){
+  const box = document.getElementById('cpLista'); if (!box) return;
+  box.innerHTML = __cpPerguntas.map((q, i) => `
+    <div class="appt-item" style="margin-bottom:10px;">
+      <div class="row" style="align-items:center;"><strong>Pergunta ${i + 1}</strong><button class="ghost" style="width:auto;" onclick="cpRemPergunta(${i})">🗑️</button></div>
+      <input value="${escapeHtml(q.texto)}" placeholder="ex: Como está a relação com os irmãos?" oninput="cpSetTexto(${i}, this.value)">
+      <label style="margin-top:6px;">Número de cartas</label>
+      <select onchange="cpSetN(${i}, this.value)"><option value="1" ${q.n === 1 ? 'selected' : ''}>1 carta</option><option value="3" ${q.n === 3 ? 'selected' : ''}>3 cartas</option><option value="5" ${q.n === 5 ? 'selected' : ''}>5 cartas</option></select>
+      ${cpEtiquetas(q.n).map((lbl, j) => `<label style="margin-top:6px;">${lbl}</label>
+        <div class="row"><select style="flex:1;" onchange="cpSetCarta(${i},${j},'naipe',this.value)">${Object.entries(CARTO_NAIPES).map(([k, v]) => `<option value="${k}" ${q.cartas[j].naipe === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+        <select style="flex:1;" onchange="cpSetCarta(${i},${j},'valor',this.value)">${CARTO_VALORES.map(v => `<option value="${v}" ${q.cartas[j].valor === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>`).join('')}
+    </div>`).join('');
+}
+function cpTextoRelatorio(d){
+  const tu = d.trat === 'tu';
+  const T = { tens: tu ? 'tens' : 'tem', teu: tu ? 'teu' : 'seu', ti: tu ? 'ti' : 'si', fica: tu ? 'Fica' : 'Fique', podes: tu ? 'podes' : 'pode' };
+  const quem = d.para ? d.para.split(',')[0].trim() : '';
+  const sobre = d.sobre || 'a pessoa';
+  const sec = [];
+  sec.push({ t: quem ? `Para ${quem}` : 'Introdução', p: [`Como combinado, tirei as cartas a pensar nas perguntas que me fizeste sobre ${sobre}. Escrevi as respostas em palavras simples e tentei ser sincero, sem assustar e sem enfeitar. É uma leitura simbólica: mostra tendências e o que está por trás das situações, não é uma certeza nem uma sentença. O futuro depende sempre das escolhas de cada um.`.replace('me fizeste', tu ? 'me fizeste' : 'me fez')] });
+  const todas = []; d.perguntas.forEach(q => q.cartas.forEach(c => todas.push(c)));
+  sec.push({ t: 'As cartas que saíram', p: [], l: todas.map(c => `${cpNomeCarta(c)}: ${CP_SIGNIF[c.naipe][c.valor]}.`).filter((x, i, a) => a.indexOf(x) === i) });
+  d.perguntas.forEach((q, i) => {
+    const lbs = cpEtiquetas(q.cartas.length);
+    const chaves = q.cartas.map(c => `${c.naipe}:${c.valor}`);
+    const nB = chaves.filter(k => CP_BLOQUEIO.indexOf(k) >= 0).length, nF = chaves.filter(k => CP_FAVORAVEL.indexOf(k) >= 0).length;
+    const p = [`Cartas: ${q.cartas.map((c, j) => `${lbs[j]} (${cpNomeCarta(c)})`).join('; ')}.`];
+    if (q.cartas.length === 1) p.push(`A resposta aponta para ${CP_SIGNIF[q.cartas[0].naipe][q.cartas[0].valor]}.`);
+    else if (q.cartas.length === 3) p.push(`Neste momento, a leitura fala de ${CP_SIGNIF[q.cartas[0].naipe][q.cartas[0].valor]}. O que mais pesa tem a ver com ${CP_SIGNIF[q.cartas[1].naipe][q.cartas[1].valor]}. Daqui para a frente, a tendência aponta para ${CP_SIGNIF[q.cartas[2].naipe][q.cartas[2].valor]}.`);
+    else p.push(`A situação atual fala de ${CP_SIGNIF[q.cartas[0].naipe][q.cartas[0].valor]}. O desafio tem a ver com ${CP_SIGNIF[q.cartas[1].naipe][q.cartas[1].valor]}. Do passado recente vem ${CP_SIGNIF[q.cartas[2].naipe][q.cartas[2].valor]}. Mais à frente, aponta para ${CP_SIGNIF[q.cartas[3].naipe][q.cartas[3].valor]}. O conselho das cartas é ${CP_SIGNIF[q.cartas[4].naipe][q.cartas[4].valor]}.`);
+    p.push(nB > nF ? 'No conjunto, esta é uma leitura que pede cuidado e paciência.' : (nF > nB ? 'No conjunto, a tendência é favorável.' : 'No conjunto, a leitura tem luzes e sombras: nem tudo é fácil, nem tudo é difícil.'));
+    const pessoas = q.cartas.filter(c => ['J','Q','K'].indexOf(c.valor) >= 0).map(c => `${cpNomeCarta(c)} (${CP_SIGNIF[c.naipe][c.valor]})`);
+    if (pessoas.length) p.push(`Uma carta de corte representa uma pessoa ou uma energia a entrar em cena: ${pessoas.join('; ')}.`);
+    sec.push({ t: `${i + 1}. ${q.texto || 'Pergunta ' + (i + 1)}`, p });
+  });
+  const damas = todas.filter(c => c.valor === 'Q').length;
+  const sinais = [];
+  if (!damas) sinais.push('Não saiu nenhuma dama. Nesta leitura, nenhuma figura feminina ocupa o centro da mesa.');
+  const chavesTodas = todas.map(c => `${c.naipe}:${c.valor}`);
+  if (chavesTodas.filter(k => CP_BLOQUEIO.indexOf(k) >= 0).length >= 3) sinais.push('Saíram várias cartas de energia mais densa. Vale a pena confirmar, com uma avaliação mais profunda, se há algo mais a pesar.');
+  if (chavesTodas.filter(k => CP_FAVORAVEL.indexOf(k) >= 0).length >= 3) sinais.push('Há uma boa concentração de cartas de crescimento e realização, uma energia favorável para o que está a nascer.');
+  if (sinais.length) sec.push({ t: 'O que a mesa mostra no conjunto', p: sinais });
+  sec.push({ t: 'Uma nota importante', p: ['As cartas mostram tendências e não certezas. Este trabalho é complementar e não substitui o acompanhamento médico ou psicológico. As decisões são sempre da própria pessoa.', `Estou disponível para o que precisares. Com carinho,`.replace('precisares', tu ? 'precisares' : 'precisar'), d.assinatura || ''] });
+  return sec.map(x => `== ${x.t} ==\n` + [(x.p || []).filter(Boolean).join('\n\n'), (x.l && x.l.length ? x.l.map(y => '- ' + y).join('\n') : '')].filter(Boolean).join('\n\n')).join('\n\n');
+}
+window.cpGerar = function(){
+  const perguntas = __cpPerguntas.map(q => ({ texto: q.texto.trim(), cartas: q.cartas.slice(0, q.n) }));
+  if (!perguntas.length || perguntas.some(q => !q.texto)){ toast('Escreve o texto de cada pergunta.', true); return; }
+  const d = { perguntas, sobre: document.getElementById('cpSobre').value.trim(), para: document.getElementById('cpPara').value.trim(),
+    trat: document.getElementById('cpTrat').value, patientId: document.getElementById('cpPaciente').value,
+    assinatura: (currentTenantDoc?.businessName || currentUserDisplayName || '') };
+  __cpUltimo = d;
+  const texto = cpTextoRelatorio(d);
+  document.getElementById('ctResultado').innerHTML = `<div class="card" style="border:2px solid var(--primary);">
+    <h3>✉️ Relatório${d.para ? ' para ' + escapeHtml(d.para) : ''}</h3>
+    <p class="muted" style="margin:4px 0 8px;">Rascunho feito com os significados do método. Lê, acrescenta a tua interpretação onde quiseres e só depois guarda ou envia.</p>
+    <textarea id="cpTexto" rows="22" style="width:100%;">${escapeHtml(texto)}</textarea>
+    <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;">
+      <button class="primary" onclick="cpGuardar()">💾 Guardar</button>
+      <button class="ghost" onclick="downloadReportPDF('Leitura das cartas', document.getElementById('cpTexto').value)">📄 Descarregar PDF</button>
+      <button class="ghost" onclick="shareReportPDF('Leitura das cartas', document.getElementById('cpTexto').value)">📤 Partilhar</button>
+    </div></div>`;
+  document.getElementById('ctResultado').scrollIntoView({ behavior: 'smooth' });
+};
+window.cpGuardar = async function(){
+  const d = __cpUltimo; if (!d) return;
+  const texto = document.getElementById('cpTexto').value;
+  const todas = []; d.perguntas.forEach((q, i) => q.cartas.forEach((c, j) => todas.push({ i, j, c, q })));
+  const rel = { multi: true, nome: d.sobre || d.para || 'Cliente', foco: 'várias perguntas', pergunta: d.perguntas.map(q => q.texto).join(' | '), texto,
+    cartas: todas.map(x => ({ nomeCarta: cpNomeCarta(x.c) })),
+    leituraPorPosicao: todas.map(x => ({ posicao: `Pergunta ${x.i + 1} · ${cpEtiquetas(x.q.cartas.length)[x.j]}`, simbolo: (CARTO_NAIPES[x.c.naipe] || '').charAt(0), carta: cpNomeCarta(x.c), significado: CP_SIGNIF[x.c.naipe][x.c.valor] })),
+    tendenciaGeral: '', bloqueios: [], conselhoPratico: '' };
+  await guardarConsultaCartomancia(rel);
+  let msg = 'Consulta guardada nas tuas consultas.';
+  if (d.patientId){
+    const ok = await guardarNaFicha(d.patientId, { tipo: 'cartomancia', titulo: 'Leitura de cartas — várias perguntas', texto,
+      dados: { perguntas: d.perguntas.map(q => ({ texto: q.texto, cartas: q.cartas.map(cpNomeCarta) })) } });
+    msg = ok ? 'Guardado nas tuas consultas e no histórico do paciente ✓' : 'Guardado nas tuas consultas, mas não entrou na ficha do paciente.';
+  }
+  toast(msg);
+};
+
 window.montarCamposCartas = function(){
   const n = parseInt(document.getElementById('ctNumCartas').value, 10);
   const box = document.getElementById('ctCamposCartas');
@@ -15910,7 +16035,10 @@ window.desenharComparacao = function(){
 window.abrirConsultaGuardada = function(id){
   const c = __cartoConsultas.find(x => x.id === id);
   if (!c?.relatorio) return;
-  mostrarRelatorioCartomancia(c.relatorio, true);
+  if (c.relatorio.multi){
+    document.getElementById('ctResultado').innerHTML = `<div class="card"><h3>🔮 ${escapeHtml(c.nome || '')}</h3><textarea rows="22" style="width:100%;" readonly>${escapeHtml(c.relatorio.texto || '')}</textarea>
+      <div class="row" style="gap:8px;margin-top:8px;"><button class="ghost" onclick="downloadReportPDF('Leitura das cartas', ${JSON.stringify(c.relatorio.texto || '').replace(/"/g, '&quot;')})">📄 Descarregar PDF</button></div></div>`;
+  } else mostrarRelatorioCartomancia(c.relatorio, true);
   document.getElementById('ctResultado')?.scrollIntoView({ behavior:'smooth' });
 };
 
