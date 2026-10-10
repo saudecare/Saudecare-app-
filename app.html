@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-10-07';
+const APP_VERSION = '2026-10-10-08';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2346,6 +2346,7 @@ async function renderFinances(main){
     const a = d.data();
     if (a.status === 'cancelled' || !a.price) return;
     if (a.paymentStatus === 'paid'){ totalPaid += a.price; countPaid++; }
+    else if (a.paymentStatus === 'partial' && typeof a.amountPaid === 'number'){ totalPaid += a.amountPaid; totalPartial += a.amountPaid; totalPending += (a.price - a.amountPaid); countPending++; }
     else if (a.paymentStatus === 'partial'){ totalPartial += a.price; countPending++; }
     else { totalPending += a.price; countPending++; }
 
@@ -2358,7 +2359,7 @@ async function renderFinances(main){
       </div>
       <div style="text-align:right;">
         <span class="badge ${statusClass}">${statusLabel}</span>
-        <div class="muted" style="margin-top:2px;">${a.price}€</div>
+        <div class="muted" style="margin-top:2px;">${a.paymentStatus==='partial' && typeof a.amountPaid === 'number' ? `${a.amountPaid}€ de ${a.price}€` : a.price + '€'}</div>
       </div>
     </div>`;
   });
@@ -2383,7 +2384,7 @@ async function renderFinances(main){
       </div>
       <div class="stat-card" style="background:#fff;border-radius:12px;padding:14px;text-align:center;">
         <div style="font-size:22px;font-weight:700;color:#8a5a00;">${totalPartial.toFixed(2)}€</div>
-        <div class="muted">Parcial</div>
+        <div class="muted">Recebido em parciais</div>
       </div>
       <div class="stat-card" style="background:#fff;border-radius:12px;padding:14px;text-align:center;">
         <div style="font-size:22px;font-weight:700;color:var(--danger);">${totalPending.toFixed(2)}€</div>
@@ -3267,6 +3268,19 @@ window.toggleApptNoTime = function(){
   document.getElementById('apptStartDateWrap')?.classList.toggle('hidden', !noTime);
 };
 
+// Quanto já foi recebido: pago = tudo, parcial = o valor escrito, pendente = 0.
+function lerAmountPaid(price, status){
+  if (status === 'paid') return price;
+  if (status === 'partial'){ const v = parseFloat(document.getElementById('apptAmountPaid')?.value || '0') || 0; return Math.max(0, Math.min(v, price)); }
+  return 0;
+}
+// Em falta numa marcação (compatível com marcações antigas, sem amountPaid).
+function valorEmFalta(a){
+  const p = a.price || 0;
+  if (a.paymentStatus === 'paid') return 0;
+  if (typeof a.amountPaid === 'number') return Math.max(0, p - a.amountPaid);
+  return p;
+}
 // Campos de pagamento — reutilizados na criação e edição de marcações.
 function paymentFieldsHTML(a){
   const status = a?.paymentStatus || 'pending';
@@ -3275,11 +3289,15 @@ function paymentFieldsHTML(a){
     <label>Preço (€)</label>
     <input id="apptPrice" type="number" step="0.01" value="${a?.price ?? ''}">
     <label>Estado do pagamento</label>
-    <select id="apptPaymentStatus">
+    <select id="apptPaymentStatus" onchange="document.getElementById('apptAmountPaidWrap').style.display = this.value==='partial' ? '' : 'none'">
       <option value="pending" ${status==='pending'?'selected':''}>Pendente</option>
       <option value="paid" ${status==='paid'?'selected':''}>Pago</option>
       <option value="partial" ${status==='partial'?'selected':''}>Pago parcialmente</option>
     </select>
+    <div id="apptAmountPaidWrap" style="${status==='partial' ? '' : 'display:none;'}">
+      <label>Valor já recebido (€)</label>
+      <input id="apptAmountPaid" type="number" step="0.01" min="0" value="${a?.amountPaid ?? ''}" placeholder="ex: 20">
+    </div>
     <label>Método (opcional)</label>
     <select id="apptPaymentMethod">
       <option value="">—</option>
@@ -3488,8 +3506,9 @@ window.saveAppointment = async function(){
     paymentMethod: document.getElementById('apptPaymentMethod').value,
     createdAt: serverTimestamp()
   };
+  data.amountPaid = lerAmountPaid(data.price, data.paymentStatus);
   if (usePackageIdx != null){
-    data.paymentStatus = 'paid';
+    data.paymentStatus = 'paid'; data.amountPaid = data.price;
     data.paymentMethod = 'pacote';
     data.packagePatientIdx = usePackageIdx;
     await consumePackageSession(patientSel.value, usePackageIdx);
@@ -3621,6 +3640,7 @@ window.updateAppointment = async function(appointmentId){
     paymentStatus: document.getElementById('apptPaymentStatus').value,
     paymentMethod: document.getElementById('apptPaymentMethod').value
   };
+  updateData.amountPaid = lerAmountPaid(updateData.price, updateData.paymentStatus);
   await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), updateData);
   const syncResult = await syncAppointmentToGoogle('update', { ...updateData, startsAt: start, endsAt: end }, appointmentId, existingGoogleEventId);
   if (!syncResult.ok && !syncResult.skipped){
@@ -3631,14 +3651,19 @@ window.updateAppointment = async function(appointmentId){
   renderView('agenda');
 };
 
+async function marcarPagoDoc(appointmentId){
+  const ref = doc(db, 'tenants', tenantId, 'appointments', appointmentId);
+  const sn = await getDoc(ref);
+  await updateDoc(ref, { paymentStatus: 'paid', amountPaid: (sn.data() || {}).price || 0 });
+}
 window.markAppointmentPaid = async function(appointmentId){
-  await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { paymentStatus: 'paid' });
+  await marcarPagoDoc(appointmentId);
   toast('Marcado como pago.');
   renderView('agenda');
 };
 
 window.markAppointmentPaidFromPatient = async function(appointmentId, patientId){
-  await updateDoc(doc(db, 'tenants', tenantId, 'appointments', appointmentId), { paymentStatus: 'paid' });
+  await marcarPagoDoc(appointmentId);
   toast('Marcado como pago.');
   viewPatient(patientId);
 };
@@ -3689,7 +3714,7 @@ async function renderPatients(main){
   apptsSnap.forEach(ad => {
     const a = ad.data();
     if (a.status === 'cancelled' || !a.price || a.paymentStatus === 'paid' || !a.patientId) return;
-    owedByPatient[a.patientId] = (owedByPatient[a.patientId] || 0) + a.price;
+    owedByPatient[a.patientId] = (owedByPatient[a.patientId] || 0) + valorEmFalta(a);
   });
   window.__allPatientsCache.forEach(p => { p.totalOwed = owedByPatient[p.id] || 0; });
 
@@ -4388,10 +4413,10 @@ window.viewPatient = async function(patientId){
     const date = a.startsAt?.toDate ? a.startsAt.toDate().toLocaleDateString('pt-PT', {day:'2-digit',month:'2-digit',year:'numeric'}) : '';
 
     if (a.paymentStatus !== 'paid'){
-      totalOwed += a.price;
+      totalOwed += valorEmFalta(a);
       const statusLabel = a.paymentStatus === 'partial' ? 'Parcial' : 'Pendente';
       paymentsHtml += `<div class="appt-item row">
-        <div><strong>${date}</strong> — ${escapeHtml(a.serviceName||'')}<div class="muted">${statusLabel} · ${a.price}€</div></div>
+        <div><strong>${date}</strong> — ${escapeHtml(a.serviceName||'')}<div class="muted">${statusLabel} · ${typeof a.amountPaid === 'number' && a.paymentStatus === 'partial' ? `recebido ${a.amountPaid}€ de ${a.price}€, faltam ${valorEmFalta(a)}€` : a.price + '€'}</div></div>
         <button class="ghost" onclick="markAppointmentPaidFromPatient('${ad.id}','${patientId}')">💶 Marcar pago</button>
       </div>`;
     }
@@ -11244,7 +11269,7 @@ function __triagemReset(){
     dataNascimento: '',
     paisNascimento: '',
     bovisIni: '', bovisFin: '',
-    aplicadas: [], continuacaoDe: null, motivoPlano: '', _ultimaSemTratamento: null, _penultima: null, _avisoFalta: false,
+    aplicadas: [], continuacaoDe: null, motivoPlano: '', pagoAntes: 0, pagamentoValor: '', pagamentoMetodo: '', _ultimaSemTratamento: null, _penultima: null, _avisoFalta: false,
     baixaVibracao: TRIAGEM_BAIXA_VIBRACAO.map(() => false),
     chakras: TRIAGEM_CHAKRAS_9.map(() => 100), // percentagem de abertura, pesquisada com o pêndulo
     aberturaCaminhos: 0, // índice em TRIAGEM_NIVEIS_ABERTURA
@@ -11332,6 +11357,7 @@ async function triagemCarregarAnterior(patientId){
       if (!__triagem.dataNascimento && a) __triagem.dataNascimento = a.dataNascimento;
       if (!__triagem.paisNascimento && a && a.paisNascimento) __triagem.paisNascimento = a.paisNascimento;
       if (!__triagem.preco && todas[0].preco) __triagem.preco = String(todas[0].preco);
+      __triagem.pagoAntes = Number(todas[0].pagamento?.pagoTotal) || 0;
       if (!(todas[0].etiquetasAplicadas && todas[0].etiquetasAplicadas.length)){ __triagem._ultimaSemTratamento = todas[0]; __triagem._penultima = todas[1] || null; __triagem._totalTriagens = todas.length; }
     }
   }catch(e){ console.warn('Não foi possível ver a última triagem:', e); }
@@ -11344,6 +11370,7 @@ window.__triagemContinuar = function(){
   __triagem.anterior = __triagem._penultima || null;
   __triagem.numConsulta = __triagem._totalTriagens || 1;
   __triagem.bovisIni = u.bovisInicial || ''; __triagem.bovisFin = ''; __triagem.aplicadas = [];
+  __triagem.pagoAntes = Number(u.pagamento?.pagoTotal) || 0; __triagem.pagamentoValor = '';
   __triagem.baixaVibracao = TRIAGEM_BAIXA_VIBRACAO.map(c => (u.baixaVibracaoDetetada || []).indexOf(c.nome) >= 0);
   __triagem.chakras = TRIAGEM_CHAKRAS_9.map(c => { const f = (u.chakras || []).find(x => x.nome === c.nome); return f ? f.percentagem : 100; });
   __triagem.aberturaCaminhos = Math.max(0, TRIAGEM_NIVEIS_ABERTURA.indexOf(u.aberturaCaminhos));
@@ -11503,6 +11530,17 @@ function triagemPassoTratamento(main){
       <p id="triagemEtqContagem" class="muted" style="margin-top:8px;"></p>
       <button class="ghost" id="triagemEtqTodas" style="margin-top:6px;">Marcar todas como aplicadas</button>
     </div>
+    <div class="card" style="border:2px solid var(--primary);">
+      <h3>💶 Pagamento (antes de começar)</h3>
+      <label>Valor total do tratamento (€)</label>
+      <input id="triagemPagTotal" type="number" step="0.01" min="0" value="${escapeHtml(__triagem.preco)}">
+      ${__triagem.pagoAntes ? `<p class="muted" style="margin-top:6px;">Já recebido nas consultas anteriores: <strong>${__triagem.pagoAntes}€</strong></p>` : ''}
+      <label style="margin-top:8px;">Recebido agora (€)</label>
+      <input id="triagemPagValor" type="number" step="0.01" min="0" value="${escapeHtml(__triagem.pagamentoValor)}" placeholder="0 se não recebeu nada hoje">
+      <label style="margin-top:8px;">Método</label>
+      <select id="triagemPagMetodo">${['', 'dinheiro', 'mbway', 'transferencia', 'cartao'].map(m => `<option value="${m}" ${__triagem.pagamentoMetodo === m ? 'selected' : ''}>${{ '': '—', dinheiro:'Dinheiro', mbway:'MB WAY', transferencia:'Transferência', cartao:'Cartão / TPA' }[m]}</option>`).join('')}</select>
+      <p id="triagemPagResumo" class="muted" style="margin-top:8px;"></p>
+    </div>
     <div class="card">
       <h3>Energia Vital — Bovis Final</h3>
       <p class="muted">Mede só no fim, depois de aplicar todas as etiquetas, para comparar com o Bovis inicial${__triagem.bovisIni ? ' (' + escapeHtml(__triagem.bovisIni) + ')' : ''}.</p>
@@ -11533,6 +11571,14 @@ function triagemPassoTratamento(main){
   document.getElementById('triagemEtqTodas').onclick = function(){ __triagem.aplicadas = itens.map(it => it.heb); pintar(); };
   pintar();
   document.getElementById('triagemBovisInput').addEventListener('input', e => { __triagem.bovisFin = e.target.value; });
+  const resumoPag = () => {
+    const tot = parseFloat(__triagem.preco) || 0, ja = (__triagem.pagoAntes || 0) + (parseFloat(__triagem.pagamentoValor) || 0);
+    document.getElementById('triagemPagResumo').textContent = tot ? (ja >= tot ? `✅ Pago na totalidade (${ja}€ de ${tot}€).` : ja > 0 ? `🟡 Pagamento parcial: ${ja}€ de ${tot}€. Faltam ${(tot - ja).toFixed(2)}€.` : `🔴 Ainda nada recebido. Em falta: ${tot}€.`) : '';
+  };
+  document.getElementById('triagemPagTotal').addEventListener('input', e => { __triagem.preco = e.target.value; resumoPag(); });
+  document.getElementById('triagemPagValor').addEventListener('input', e => { __triagem.pagamentoValor = e.target.value; resumoPag(); });
+  document.getElementById('triagemPagMetodo').addEventListener('change', e => { __triagem.pagamentoMetodo = e.target.value; });
+  resumoPag();
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
   window.__triagemAvancar = function(){
     const falta = itens.filter(it => __triagem.aplicadas.indexOf(it.heb) < 0).length;
@@ -15096,7 +15142,9 @@ function triagemRelatorioCliente(d){
   }
 
   const ajudar = [];
-  if (Number(d.sessoesNecessarias) > (d.numConsulta || 1)) ajudar.push(`Esta foi a ${d.numConsulta || 1}.ª de ${d.sessoesNecessarias} sessões. Faltam ${Number(d.sessoesNecessarias) - (d.numConsulta || 1)}, com pelo menos 7 dias de intervalo entre cada uma.`);
+  if (d.pagamento && d.pagamento.total && d.pagamento.pagoTotal && d.pagamento.falta > 0) ajudar.push(`Do valor total do tratamento (${d.pagamento.total}€), já recebi ${d.pagamento.pagoTotal}€. Faltam ${d.pagamento.falta.toFixed(2)}€.`);
+  if (d.pagamento && d.pagamento.estado === 'pago') ajudar.push(`O tratamento está pago na totalidade. Obrigado.`);
+  if (Number(d.sessoesNecessarias) > (d.numConsulta || 1)) ajudar.push(`Esta foi a ${d.numConsulta || 1}.ª de ${d.sessoesNecessarias} sessões. Faltam ${Number(d.sessoesNecessarias) - (d.numConsulta || 1)}${triagemIntervaloMinimo() >= 7 ? ', com pelo menos 7 dias de intervalo entre cada uma' : ''}.`);
   if (d.sessoesNecessarias) ajudar.push(`Recomendam-se ${d.sessoesNecessarias} ${Number(d.sessoesNecessarias) === 1 ? 'sessão' : 'sessões'} de limpeza energética, feitas aos poucos, uma de cada vez, ao ritmo de ${nome}.${d.preco ? ` Valor indicado: ${d.preco}€.` : ''}`);
   if (d.temAlgumaCoisaDetetada) ajudar.push(`Nos 1 a 3 dias a seguir a cada sessão, é normal sentir mais cansaço, emotividade ou sono alterado, e por vezes um mal-estar ligeiro e passageiro. É o corpo a processar o que foi trabalhado e não significa que piorou. Ajuda beber água, descansar e não julgar o resultado nestes primeiros dias.`);
   sec.push({ titulo:'O que pode ajudar', paras:ajudar,
@@ -15254,6 +15302,7 @@ async function triagemGerarRelatorio(){
   let anteriorDoc = null;
   const itensAplicar = triagemItensAplicar();
   const etiquetasAplicadas = itensAplicar.filter(it => __triagem.aplicadas.indexOf(it.heb) >= 0);
+  const pagamentoInfo = await triagemRegistarPagamento();
   try{
     const todosSnap = await getDocs(query(
       collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'),
@@ -15332,7 +15381,7 @@ async function triagemGerarRelatorio(){
     leituraComplementar: __triagem.leituraComplementar, sessoesNecessarias: __triagem.sessoesNecessarias,
     preco: __triagem.preco, temAlgumaCoisaDetetada,
     aplicadas: etiquetasAplicadas, numConsulta: __triagem.numConsulta || 1, bovisIni: __triagem.bovisIni, bovisFin: __triagem.bovisFin,
-    sessoesAntes: anteriorDoc ? anteriorDoc.sessoesNecessarias : null, motivoPlano: __triagem.motivoPlano
+    sessoesAntes: anteriorDoc ? anteriorDoc.sessoesNecessarias : null, motivoPlano: __triagem.motivoPlano, pagamento: pagamentoInfo
   });
   window.__triagemTextoClienteAtual = clienteRel.texto;
   const reportHtmlAntigo = gerarReportHtmlPaciente({
@@ -15360,6 +15409,7 @@ async function triagemGerarRelatorio(){
     protocolo: protocoloFinal.map(p => ({ fonte:p.fonte, heb:p.item.heb, pt:p.item.pt, numero:p.item.numero||null, motivo:p.motivo })),
     sessoesNecessarias: __triagem.sessoesNecessarias || null,
     preco: __triagem.preco || null,
+    pagamento: pagamentoInfo,
     etiquetasAplicadas: etiquetasAplicadas.map(it => ({ heb: it.heb, pt: it.pt, fase: it.fase })),
     tratamentoAplicado: etiquetasAplicadas.length > 0,
     continuacaoDe: __triagem.continuacaoDe || null,
@@ -15502,6 +15552,28 @@ function triagemProtocoloCompletoTexto(causasDetetadas, chakrasTodos, aberturaNi
   });
   return t + '\n';
 }
+// Guarda o pagamento recebido nesta consulta como uma entrada de dinheiro (aparece em Finanças)
+// e devolve o ponto da situação: total, recebido até agora e o que falta.
+async function triagemRegistarPagamento(){
+  const total = parseFloat(__triagem.preco) || 0, novo = parseFloat(__triagem.pagamentoValor) || 0;
+  const pagoTotal = (__triagem.pagoAntes || 0) + novo;
+  const info = { total, pagoTotal, falta: Math.max(0, total - pagoTotal), recebidoNestaConsulta: novo, metodo: __triagem.pagamentoMetodo || null,
+    estado: total && pagoTotal >= total ? 'pago' : (pagoTotal > 0 ? 'parcial' : 'por pagar') };
+  if (novo > 0 && !__triagem._pagamentoRegistado){
+    try{
+      const agora = new Date();
+      await addDoc(collection(db, 'tenants', tenantId, 'appointments'), {
+        patientId: __triagem.patientId, patientName: __triagem.patientNome, patientPhone: '', serviceId: '',
+        serviceName: `Pagamento do tratamento (${info.estado === 'pago' ? 'total' : 'parcial'})`,
+        staffUid: currentUser.uid, staffName: currentUserDisplayName || '', local: 'online', roomId: '', roomName: '',
+        noFixedTime: true, bufferMinutes: 0, startsAt: Timestamp.fromDate(agora), endsAt: Timestamp.fromDate(agora),
+        status: 'completed', price: novo, paymentStatus: 'paid', amountPaid: novo, paymentMethod: __triagem.pagamentoMetodo || '',
+        origem: 'pagamento-triagem', createdAt: serverTimestamp() });
+      __triagem._pagamentoRegistado = true;
+    }catch(e){ console.error('Pagamento não registado em Finanças:', e); toast('⚠️ O pagamento ficou no relatório, mas não foi registado em Finanças.', true); }
+  }
+  return info;
+}
 function triagemAplicadasHTML(aplicadas, total){
   return `<div class="card" style="border:2px solid var(--primary);">
     <h3>✅ Tratamento aplicado nesta sessão</h3>
@@ -15511,18 +15583,26 @@ function triagemAplicadasHTML(aplicadas, total){
 }
 function triagemDataLocalISO(d){ const z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; }
 // Marca as sessões que faltam do plano, com pelo menos 7 dias entre cada uma.
+function triagemPagamentoCardHTML(){
+  const tot = parseFloat(__triagem.preco) || 0; if (!tot) return '';
+  const ja = (__triagem.pagoAntes || 0) + (parseFloat(__triagem.pagamentoValor) || 0);
+  return `<div class="card"><h3>💶 Pagamento</h3><p class="muted">Total ${tot}€ · recebido ${ja}€ · ${ja >= tot ? '✅ pago na totalidade' : 'em falta ' + (tot - ja).toFixed(2) + '€'}</p></div>`;
+}
+// No método da Hikari Fafe o intervalo entre sessões é, no mínimo, uma semana. Nas outras contas cada um escolhe.
+function triagemIntervaloMinimo(){ return tenantId === 'hikari-terapias' ? 7 : 1; }
 function triagemMarcarSessoesHTML(){
   const total = parseInt(__triagem.sessoesNecessarias, 10) || 0, feitas = __triagem.numConsulta || 1;
   if (!total) return '';
   const resto = Math.max(0, total - feitas);
   if (!resto) return `<div class="card"><h3>📅 Sessões</h3><p class="muted">Esta foi a ${feitas}.ª de ${total}. O plano está completo, não há mais sessões a marcar.</p></div>`;
-  const d0 = new Date(); d0.setDate(d0.getDate() + 7); const iso = triagemDataLocalISO(d0);
+  const MIN = triagemIntervaloMinimo();
+  const d0 = new Date(); d0.setDate(d0.getDate() + MIN); const iso = triagemDataLocalISO(d0);
   return `<div class="card" style="border:2px solid var(--primary);" id="triagemAgCard">
     <h3>📅 Marcar as ${resto} ${resto === 1 ? 'sessão que falta' : 'sessões que faltam'}</h3>
-    <p class="muted">Esta foi a ${feitas}.ª de ${total}. Entre cada sessão passam pelo menos 7 dias.</p>
+    <p class="muted">Esta foi a ${feitas}.ª de ${total}. ${MIN >= 7 ? 'Entre cada sessão passam pelo menos 7 dias: a sugestão é o mesmo dia da semana, uma semana depois. Se não der nesse dia, escolhe um dia mais tarde.' : 'Escolhe as datas que preferires.'}</p>
     <label>Data da próxima sessão</label><input type="date" id="triagemAgData" min="${iso}" value="${iso}">
     <label style="margin-top:8px;">Hora</label><input type="time" id="triagemAgHora" value="10:00">
-    <label style="margin-top:8px;">Dias entre sessões (mínimo 7)</label><input type="number" id="triagemAgInt" min="7" value="7">
+    <label style="margin-top:8px;">Dias entre sessões${MIN >= 7 ? ' (mínimo 7)' : ''}</label><input type="number" id="triagemAgInt" min="${MIN}" value="7">
     <button class="primary" id="triagemAgBtn" style="margin-top:10px;" onclick="window.__triagemMarcarSessoes()">Marcar ${resto} ${resto === 1 ? 'sessão' : 'sessões'}</button>
     <div id="triagemAgRes" class="muted" style="margin-top:8px;"></div>
   </div>`;
@@ -15532,11 +15612,12 @@ window.__triagemMarcarSessoes = async function(){
   try{
     const total = parseInt(__triagem.sessoesNecessarias, 10) || 0, feitas = __triagem.numConsulta || 1, resto = Math.max(0, total - feitas);
     const dataStr = document.getElementById('triagemAgData').value, hora = document.getElementById('triagemAgHora').value || '10:00';
-    const inter = Math.max(7, parseInt(document.getElementById('triagemAgInt').value, 10) || 7);
+    const MIN = triagemIntervaloMinimo();
+    const inter = Math.max(MIN, parseInt(document.getElementById('triagemAgInt').value, 10) || 7);
     if (!dataStr || !resto){ toast('Escolhe a data da próxima sessão.', true); return; }
-    const minimo = new Date(); minimo.setHours(0, 0, 0, 0); minimo.setDate(minimo.getDate() + 7);
+    const minimo = new Date(); minimo.setHours(0, 0, 0, 0); minimo.setDate(minimo.getDate() + MIN);
     let base = new Date(dataStr + 'T' + hora + ':00');
-    if (isNaN(base.getTime()) || base < minimo){ toast('A próxima sessão tem de ser, no mínimo, daqui a 7 dias.', true); return; }
+    if (isNaN(base.getTime()) || base < minimo){ toast(MIN >= 7 ? 'A próxima sessão tem de ser, no mínimo, daqui a 7 dias.' : 'Escolhe uma data válida.', true); return; }
     btn.disabled = true; res.textContent = 'A marcar…';
     const pc = (window.__allPatientsCache || []).find(x => x.id === __triagem.patientId);
     let tel = ''; try{ tel = (typeof destinoPaciente === 'function' && pc) ? (destinoPaciente(pc).phone || '') : (pc?.phone || ''); }catch(e){}
@@ -15594,6 +15675,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
       </div>
     </div>
     ${etiquetasAplicadas.length ? triagemAplicadasHTML(etiquetasAplicadas, itensAplicar.length) : (ehPrimeiraSessao ? triagemProtocoloCompletoHTML(causasDetetadas, chakrasTodos, aberturaNivel) : triagemProtocoloSessaoHTML(causasDetetadas, chakrasTodos, aberturaNivel))}
+    ${triagemPagamentoCardHTML()}
     ${triagemMarcarSessoesHTML()}
     <details class="card"><summary><strong>🔒 Relatório técnico (só para ti)</strong></summary><div style="margin-top:8px;"></div>
     <p class="muted">Com os códigos, etiquetas e números, mais abaixo neste ecrã.</p></details>
