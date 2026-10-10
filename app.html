@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-10-03';
+const APP_VERSION = '2026-10-10-04';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4176,6 +4176,7 @@ window.savePatient = async function(){
     window.__triagemAVoltarDePaciente = false;
     __triagem.patientId = novoPatientRef.id;
     __triagem.patientNome = fullName;
+    __triagem.anterior = null; __triagem.numConsulta = 1;
     { const ex = extraPac; if (ex.birthDate) __triagem.dataNascimento = ex.birthDate; if (ex.birthCountry) __triagem.paisNascimento = ex.birthCountry; __triagem.requester = ex.requester && ex.requester.enviarParaResponsavel ? ex.requester : null; }
     renderView('triagemBaixaVibracao', { manterEstado: true });
   } else {
@@ -11310,8 +11311,26 @@ function triagemProgressoHTML(){
     `<div style="flex:1;height:5px;border-radius:3px;background:${i <= __triagem.passo ? 'var(--primary)' : '#e5e5e5'};"></div>`).join('')}</div>`;
 }
 
+function triagemPodePularData(){ return !!(__triagem.anterior && __triagem.dataNascimento); }
+// Na 2.ª consulta e seguintes não se repetem os dados que já ficaram na 1.ª (data e país de nascimento).
+async function triagemCarregarAnterior(patientId){
+  __triagem.anterior = null; __triagem.numConsulta = 1;
+  try{
+    const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), orderBy('generatedAt', 'desc')));
+    const todas = snap.docs.map(d => d.data()).filter(r => r.protocolName === 'Triagem de Baixa Vibração' && !r.editadoDe);
+    if (todas.length){
+      __triagem.anterior = todas[0]; __triagem.numConsulta = todas.length + 1;
+      const a = todas.find(r => r.dataNascimento) || null;
+      if (!__triagem.dataNascimento && a) __triagem.dataNascimento = a.dataNascimento;
+      if (!__triagem.paisNascimento && a && a.paisNascimento) __triagem.paisNascimento = a.paisNascimento;
+      if (!__triagem.preco && todas[0].preco) __triagem.preco = String(todas[0].preco);
+    }
+  }catch(e){ console.warn('Não foi possível ver a última triagem:', e); }
+}
 function renderTriagemPasso(main){
   const m = main || document.getElementById('mainView');
+  if (__triagem.passo === 1 && triagemPodePularData()){ __triagem.passo = (__triagem._ultimo > 1) ? 0 : 2; }
+  __triagem._ultimo = __triagem.passo;
   if (__triagem.passo === 0) return triagemPasso0Paciente(m);
   if (__triagem.passo === 1) return triagemPasso1Data(m);
   if (__triagem.passo === 2) return triagemPassoBovis(m, 'ini');
@@ -11333,7 +11352,7 @@ function triagemPasso0Paciente(main){
       <input id="triagemBuscaPaciente" placeholder="🔍 Pesquisar paciente por nome…" oninput="window.__triagemFiltrarPacientes()">
       <div id="triagemListaPacientes" style="max-height:240px;overflow-y:auto;margin-top:8px;"></div>
       <p class="muted" style="margin-top:10px;">Não encontra o paciente? <button class="ghost" style="width:auto;display:inline;" onclick="window.__triagemAVoltarDePaciente = true; openNewPatient();">+ Criar novo paciente</button></p>
-      ${__triagem.patientId ? `<div class="row" style="margin-top:10px;background:#eef7ee;padding:8px;border-radius:8px;"><strong>✓ Selecionado: ${escapeHtml(__triagem.patientNome)}</strong></div>` : ''}
+      ${__triagem.patientId ? `<div class="row" style="margin-top:10px;background:#eef7ee;padding:8px;border-radius:8px;"><strong>✓ Selecionado: ${escapeHtml(__triagem.patientNome)}</strong>${__triagem.anterior ? ` · ${__triagem.numConsulta}.ª consulta (última triagem em ${__triagem.anterior.generatedAt?.toDate ? __triagem.anterior.generatedAt.toDate().toLocaleDateString('pt-PT') : '—'}). Os dados da 1.ª consulta não se repetem.` : ' · 1.ª consulta'}</div>` : ''}
     </div>
     <div class="row" style="margin-top:12px;">
       <button class="primary" ${__triagem.patientId ? '' : 'disabled'} onclick="window.__triagemAvancar()">Seguinte →</button>
@@ -11344,10 +11363,11 @@ function triagemPasso0Paciente(main){
     const box = document.getElementById('triagemListaPacientes');
     box.innerHTML = lista.map(p => `<div class="row" style="padding:8px;cursor:pointer;border-bottom:1px solid #eee;" onclick="window.__triagemEscolherPaciente('${p.id}','${escapeAttrJs(p.fullName)}')"><span>${escapeHtml(p.fullName)}</span></div>`).join('') || '<p class="muted">Sem resultados.</p>';
   };
-  window.__triagemEscolherPaciente = function(id, nome){
+  window.__triagemEscolherPaciente = async function(id, nome){
     __triagem.patientId = id; __triagem.patientNome = nome;
     const pc = (window.__allPatientsCache || []).find(x => x.id === id);
     if (pc){ if (pc.birthDate && !__triagem.dataNascimento) __triagem.dataNascimento = pc.birthDate; if (pc.birthCountry && !__triagem.paisNascimento) __triagem.paisNascimento = pc.birthCountry; __triagem.requester = pc.requester && pc.requester.enviarParaResponsavel ? pc.requester : null; }
+    await triagemCarregarAnterior(id);
     renderTriagemPasso(main);
   };
   window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
@@ -11388,6 +11408,7 @@ function triagemPassoBovis(main, qual){
     ${triagemProgressoHTML()}
     <div class="card">
       <h3>${qual==='ini' ? '3. Energia Vital — Bovis Inicial' : '7. Energia Vital — Bovis Final'}</h3>
+      ${__triagem.anterior ? `<p class="muted">Última consulta: Bovis inicial ${escapeHtml(__triagem.anterior.bovisInicial||'—')} · final ${escapeHtml(__triagem.anterior.bovisFinal||'—')}</p>` : ''}
       <label>Valor medido com o pêndulo/biómetro (Unidades Bovis)</label>
       <input id="triagemBovisInput" type="number" placeholder="ex: 6500" value="${escapeHtml(valorAtual)}">
     </div>
@@ -11414,7 +11435,7 @@ function triagemPassoBaixaVibracao(main){
         <div class="row" style="align-items:flex-start;padding:7px 0;border-bottom:1px solid #f0f0f0;">
           <span style="width:24px;height:24px;border-radius:50%;background:#eef2ee;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;">${item.n}</span>
           <input type="checkbox" id="triagem-bv-${item.n}" style="width:20px;height:20px;margin:0 8px;flex-shrink:0;" ${__triagem.baixaVibracao[item.n-1]?'checked':''} onchange="window.__triagemToggleBV(${item.n}, this.checked)">
-          <label for="triagem-bv-${item.n}" style="flex:1;font-size:14px;">${escapeHtml(item.nome)}</label>
+          <label for="triagem-bv-${item.n}" style="flex:1;font-size:14px;">${escapeHtml(item.nome)}${(__triagem.anterior?.baixaVibracaoDetetada || []).indexOf(item.nome) >= 0 ? ' <span class="muted" style="font-size:12px;">(confirmada na última consulta)</span>' : ''}</label>
         </div>`).join('')}
     </div>
     <div class="row" style="margin-top:12px;">
@@ -11427,6 +11448,7 @@ function triagemPassoBaixaVibracao(main){
 }
 
 /* PASSO 4 — Chakras 1-9 (nível escolhido, sem cartas) */
+function triagemChakraAntes(nome){ const c = (__triagem.anterior?.chakras || []).find(x => x.nome === nome); return c ? c.percentagem : null; }
 function triagemPassoChakras(main){
   main.innerHTML = `
     <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
@@ -11437,7 +11459,7 @@ function triagemPassoChakras(main){
       <p class="muted" style="font-size:.85rem;">Referência de trabalho: 70% a 89% = equilibrado · 90% a 100% = muito aberto (sente-se com intensidade, convém aterrar) · 40% a 69% = pouco aberto, a trabalhar · abaixo de 40% = muito fechado. Não há um valor universal validado: é uma escala de apoio à leitura.</p>
       ${TRIAGEM_CHAKRAS_9.map((c,i) => `
         <div class="row" style="margin-bottom:10px;align-items:center;">
-          <label style="font-weight:700;flex:1;">${c.n} — ${escapeHtml(c.nome)}</label>
+          <label style="font-weight:700;flex:1;">${c.n} — ${escapeHtml(c.nome)}${triagemChakraAntes(c.nome) != null ? ` <span class="muted" style="font-weight:400;font-size:12px;">(última vez: ${triagemChakraAntes(c.nome)}%)</span>` : ''}</label>
           <input type="number" min="0" max="100" style="width:90px;" value="${__triagem.chakras[i]}" oninput="window.__triagemSetChakra(${i}, this.value)"> %
         </div>`).join('')}
     </div>
@@ -11460,6 +11482,7 @@ function triagemPassoAbertura(main){
     ${triagemProgressoHTML()}
     <div class="card">
       <h3>6. Nível de Abertura de Caminhos</h3>
+      ${__triagem.anterior?.aberturaCaminhos ? `<p class="muted">Última consulta: ${escapeHtml(__triagem.anterior.aberturaCaminhos)}</p>` : ''}
       <select id="triagemSelAbertura">
         ${TRIAGEM_NIVEIS_ABERTURA.map((niv, idx) => `<option value="${idx}" ${__triagem.aberturaCaminhos===idx?'selected':''}>${niv}</option>`).join('')}
       </select>
@@ -11615,7 +11638,13 @@ function compararComAnterior(anterior, atual){
   const bovisInicialAtual = atual.bovisInicial ? parseFloat(atual.bovisInicial) : null;
   const deltaEntreSessoes = (bovisFinalAnterior != null && bovisInicialAtual != null && !isNaN(bovisFinalAnterior) && !isNaN(bovisInicialAtual)) ? (bovisInicialAtual - bovisFinalAnterior) : null;
 
-  return { resolvidas, novas, persistentes, chakrasComparados, deltaEntreSessoes, bovisFinalAnterior, bovisInicialAtual, dataAnterior: anterior.generatedAt };
+  const dia = (ts) => ts?.toDate ? ts.toDate() : null;
+  const dA = dia(anterior.generatedAt);
+  const diasEntre = dA ? Math.round((Date.now() - dA.getTime()) / 86400000) : null;
+  const melhoraram = chakrasComparados.filter(c => c.delta > 0).length, pioraram = chakrasComparados.filter(c => c.delta < 0).length;
+  return { resolvidas, novas, persistentes, chakrasComparados, deltaEntreSessoes, bovisFinalAnterior, bovisInicialAtual, dataAnterior: anterior.generatedAt,
+    aberturaAntes: anterior.aberturaCaminhos || null, aberturaAgora: atual.aberturaCaminhos || null, diasEntre, melhoraram, pioraram,
+    numeroConsulta: (anterior.numeroConsulta || 1) + 1 };
 }
 
 // Vista de evolução na própria ficha do paciente — compara TODAS as
@@ -11629,7 +11658,7 @@ window.viewTriagemEvolucao = async function(patientId){
     orderBy('generatedAt', 'asc')
   ));
   const sessoes = [];
-  snap.forEach(d => { const r = d.data(); if (r.protocolName === 'Triagem de Baixa Vibração') sessoes.push(r); });
+  snap.forEach(d => { const r = d.data(); if (r.protocolName === 'Triagem de Baixa Vibração' && !r.editadoDe) sessoes.push(r); });
   if (sessoes.length < 2){ toast('É preciso pelo menos 2 sessões de Triagem para ver evolução.', true); return; }
 
   const dataFmt = (ts) => ts?.toDate ? ts.toDate().toLocaleDateString('pt-PT') : '—';
@@ -15070,13 +15099,13 @@ async function triagemGerarRelatorio(){
       collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'),
       orderBy('generatedAt', 'desc')
     ));
-    const anteriorDoc = todosSnap.docs.map(d => d.data()).find(r => r.protocolName === 'Triagem de Baixa Vibração');
+    const anteriorDoc = todosSnap.docs.map(d => d.data()).find(r => r.protocolName === 'Triagem de Baixa Vibração' && !r.editadoDe);
     if (anteriorDoc){
       ehPrimeiraSessao = false;
       comparacao = compararComAnterior(anteriorDoc, {
         baixaVibracaoDetetada: causasDetetadas.map(c => c.nome),
         chakras: chakrasTodos.map(c => ({ nome:c.nome, percentagem:c.percentagem })),
-        bovisInicial: __triagem.bovisIni
+        bovisInicial: __triagem.bovisIni, bovisFinal: __triagem.bovisFin, aberturaCaminhos: aberturaNivel
       });
     }
   }catch(e){ console.warn('Não foi possível carregar a sessão anterior para comparação:', e); }
@@ -15125,7 +15154,7 @@ async function triagemGerarRelatorio(){
   if (__triagem.leituraComplementar){
     reportText += `== Leitura Complementar (Cartas) ==\n${triagemSintetizarLeitura(__triagem.patientNome.split(/\s+/)[0], __triagem.leituraComplementar)}\n\n`;
   }
-  reportText += triagemProtocoloCompletoTexto(causasDetetadas, chakrasTodos, aberturaNivel);
+  reportText += ehPrimeiraSessao ? triagemProtocoloCompletoTexto(causasDetetadas, chakrasTodos, aberturaNivel) : triagemProtocoloSessaoTexto(causasDetetadas, chakrasTodos, aberturaNivel);
   reportText += `== Protocolo de Limpeza (etiquetas a usar) ==\n`;
   protocoloFinal.forEach(p => { reportText += `• ${p.item.heb}  —  ${p.item.pt}${p.item.numero ? ' (Nome '+p.item.numero+' dos 72 Nomes de Deus)' : ''}  [${p.fonte} · ${p.motivo}]\n`; });
   reportText += `\n== Sessões de Limpeza Recomendadas ==\n${__triagem.sessoesNecessarias || '—'} sessão(ões) · Preço indicado: ${__triagem.preco ? __triagem.preco+'€' : '—'}\n`;
@@ -15150,6 +15179,7 @@ async function triagemGerarRelatorio(){
 
   const payloadParaGuardar = {
     protocolName: 'Triagem de Baixa Vibração',
+    dataNascimento: __triagem.dataNascimento || null, paisNascimento: __triagem.paisNascimento || null, numeroConsulta: __triagem.numConsulta || 1,
     reportText, reportTextCliente: clienteRel.texto, reportHtml: clienteRel.html,
     bovisInicial: __triagem.bovisIni || null, bovisFinal: __triagem.bovisFin || null,
     baixaVibracaoDetetada: causasDetetadas.map(c => c.nome),
@@ -15264,6 +15294,25 @@ function triagemProtocoloCompletoHTML(causasDetetadas, chakrasTodos, aberturaNiv
     </details>
   </div>`;
 }
+// 2.ª consulta e seguintes: só as fases que a triagem de hoje pede, mais o fecho.
+function triagemFasesDaSessao(causasDetetadas, chakrasTodos, aberturaNivel){
+  return TRIAGEM_PROTOCOLO_COMPLETO.filter((f, i) => i === TRIAGEM_PROTOCOLO_COMPLETO.length - 1 || (!f.sempre && triagemFasePrioritaria(f, causasDetetadas, chakrasTodos, aberturaNivel)));
+}
+function triagemProtocoloSessaoHTML(causasDetetadas, chakrasTodos, aberturaNivel){
+  const fases = triagemFasesDaSessao(causasDetetadas, chakrasTodos, aberturaNivel);
+  return `<div class="card" style="border:2px solid var(--primary);">
+    <h3>📋 Protocolo desta consulta — conforme o relatório</h3>
+    <p class="muted" style="margin:4px 0 8px;">Só as fases que a triagem de hoje pede, mais o fecho. O protocolo completo foi usado na 1.ª consulta. Os pontos já resolvidos saem do protocolo.</p>
+    ${fases.map(f => `<div style="margin-top:10px;padding:10px;border-radius:10px;background:#eef7ee;"><strong>${escapeHtml(f.fase)}</strong>
+      ${f.itens.map(i => `<div style="margin-top:4px;"><span style="font-size:1.1rem;" dir="rtl">${escapeHtml(i.heb)}</span> — ${escapeHtml(i.pt)}</div>`).join('')}</div>`).join('')}
+    <p class="muted" style="margin-top:8px;">Etiquetas ajustadas aos pontos de hoje: ver "Protocolo de Limpeza — Etiquetas a Usar" mais abaixo.</p>
+  </div>`;
+}
+function triagemProtocoloSessaoTexto(causasDetetadas, chakrasTodos, aberturaNivel){
+  let t = `== Protocolo desta consulta (conforme o relatório) ==\n`;
+  triagemFasesDaSessao(causasDetetadas, chakrasTodos, aberturaNivel).forEach(f => { t += `${f.fase}: ${f.itens.map(i => i.pt).join(' · ')}\n`; });
+  return t + '\n';
+}
 function triagemProtocoloCompletoTexto(causasDetetadas, chakrasTodos, aberturaNivel){
   let t = `== Protocolo completo (por ordem de uso) ==\n`;
   TRIAGEM_PROTOCOLO_COMPLETO.forEach(f => {
@@ -15296,7 +15345,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
         <button class="ghost" onclick="shareReportPDF('Relatório de ${escapeAttrJs(__triagem.patientNome)}', document.getElementById('triagemTextoCliente').value)">📤 Partilhar</button>
       </div>
     </div>
-    ${triagemProtocoloCompletoHTML(causasDetetadas, chakrasTodos, aberturaNivel)}
+    ${ehPrimeiraSessao ? triagemProtocoloCompletoHTML(causasDetetadas, chakrasTodos, aberturaNivel) : triagemProtocoloSessaoHTML(causasDetetadas, chakrasTodos, aberturaNivel)}
     <details class="card"><summary><strong>🔒 Relatório técnico (só para ti)</strong></summary><div style="margin-top:8px;"></div>
     <p class="muted">Com os códigos, etiquetas e números, mais abaixo neste ecrã.</p></details>
     ${perfil ? (ehPrimeiraSessao ? `<div class="card" style="border:1px solid var(--primary);">
@@ -15323,13 +15372,15 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
       ${chakrasTodos.map(c => `<p class="muted">${escapeHtml(c.nome)}: <strong>${c.percentagem}%</strong>${c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO ? ' ⚠️ a vigiar' : ''}</p>`).join('')}
     </div>
     <div class="card"><h3>🛤️ Abertura de Caminhos</h3><p><strong>${escapeHtml(aberturaNivel)}</strong></p></div>
-    ${comparacao ? `<div class="card" style="border:1px solid #4a9d5f;">
-      <h3>📈 Evolução desde a última sessão${comparacao.dataAnterior?.toDate ? ' ('+comparacao.dataAnterior.toDate().toLocaleDateString('pt-PT')+')' : ''}</h3>
+    ${comparacao ? `<div class="card" style="border:2px solid #4a9d5f;">
+      <h3>📈 Evolução desde a última consulta${comparacao.dataAnterior?.toDate ? ' ('+comparacao.dataAnterior.toDate().toLocaleDateString('pt-PT')+(comparacao.diasEntre != null ? ', há '+comparacao.diasEntre+' dias' : '')+')' : ''}</h3>
+      <p style="margin-top:6px;"><strong>${comparacao.resolvidas.length}</strong> resolvida(s) · <strong>${comparacao.persistentes.length}</strong> persistente(s) · <strong>${comparacao.novas.length}</strong> nova(s) · chakras: <strong style="color:#2e7d32;">${comparacao.melhoraram} melhoraram</strong>, <strong style="color:#c0392b;">${comparacao.pioraram} desceram</strong></p>
       ${comparacao.resolvidas.length ? `<p style="margin-top:6px;">✅ <strong>Resolvidas:</strong> ${comparacao.resolvidas.map(escapeHtml).join(', ')}</p>` : ''}
-      ${comparacao.persistentes.length ? `<p style="margin-top:6px;">🔁 <strong>Persistentes (continuam a precisar de atenção):</strong> ${comparacao.persistentes.map(escapeHtml).join(', ')}</p>` : ''}
-      ${comparacao.novas.length ? `<p style="margin-top:6px;">🆕 <strong>Novas desde a última vez:</strong> ${comparacao.novas.map(escapeHtml).join(', ')}</p>` : ''}
-      ${comparacao.deltaEntreSessoes != null ? `<p style="margin-top:6px;">⚡ Bovis ${comparacao.deltaEntreSessoes >= 0 ? 'manteve-se ou subiu' : 'desceu'} ${Math.abs(comparacao.deltaEntreSessoes)} unidades desde a última sessão (${comparacao.bovisFinalAnterior} → ${comparacao.bovisInicialAtual}).</p>` : ''}
-      ${comparacao.chakrasComparados.length ? comparacao.chakrasComparados.map(c => `<p class="muted" style="margin-top:4px;">Chakra ${escapeHtml(c.nome)}: ${c.antes}% → ${c.agora}% (${c.delta>=0?'+':''}${c.delta})</p>`).join('') : ''}
+      ${comparacao.persistentes.length ? `<p style="margin-top:6px;">🔁 <strong>Persistentes:</strong> ${comparacao.persistentes.map(escapeHtml).join(', ')}</p>` : ''}
+      ${comparacao.novas.length ? `<p style="margin-top:6px;">🆕 <strong>Novas:</strong> ${comparacao.novas.map(escapeHtml).join(', ')}</p>` : ''}
+      ${comparacao.aberturaAntes && comparacao.aberturaAgora ? `<p style="margin-top:6px;">🛤️ Abertura de caminhos: ${escapeHtml(comparacao.aberturaAntes)} → <strong>${escapeHtml(comparacao.aberturaAgora)}</strong></p>` : ''}
+      ${comparacao.deltaEntreSessoes != null ? `<p style="margin-top:6px;">⚡ Bovis entre consultas: ${comparacao.bovisFinalAnterior} → ${comparacao.bovisInicialAtual} (${comparacao.deltaEntreSessoes >= 0 ? '+' : ''}${comparacao.deltaEntreSessoes})</p>` : ''}
+      ${comparacao.chakrasComparados.length ? `<div style="margin-top:6px;">${comparacao.chakrasComparados.map(c => `<div class="row" style="justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f0f0;"><span>${escapeHtml(c.nome)}</span><span>${c.antes}% → <strong>${c.agora}%</strong> <span style="color:${c.delta>0?'#2e7d32':(c.delta<0?'#c0392b':'#777')};">${c.delta>0?'▲ +':(c.delta<0?'▼ ':'= ')}${c.delta!==0?c.delta:''}</span></span></div>`).join('')}</div>` : ''}
     </div>` : ''}
     ${__triagem.leituraComplementar ? `<div class="card"><h3>🃏 Leitura Complementar</h3>
       <p>${escapeHtml(triagemSintetizarLeitura(__triagem.patientNome.split(/\s+/)[0], __triagem.leituraComplementar))}</p>
