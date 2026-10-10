@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-10-08';
+const APP_VERSION = '2026-10-10-09';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4470,7 +4470,8 @@ window.viewPatient = async function(patientId){
       </div>` : ''}
       ${totalOwed > 0 ? `
       <div style="margin-top:10px;padding:10px 12px;background:#fdf2f0;border:1px solid #f0c9c2;border-radius:10px;">
-        <strong style="color:#b3413a;">💶 Valor em dívida: ${totalOwed.toFixed(2)}€</strong>
+        <div class="row" style="align-items:center;gap:8px;"><strong style="color:#b3413a;">💶 Valor em dívida: ${totalOwed.toFixed(2)}€</strong>
+        <button class="primary" style="width:auto;" onclick="receberPagamento('${patientId}','${escapeAttrJs(p.fullName)}')">Receber pagamento</button></div>
         <p class="muted" style="margin-top:4px;font-size:11.5px;">Registo interno — não é fatura/recibo. Emita o documento fiscal através do seu software certificado.</p>
       </div>` : `
       <div style="margin-top:10px;padding:8px 12px;background:#eef6f2;border-radius:10px;">
@@ -11269,7 +11270,7 @@ function __triagemReset(){
     dataNascimento: '',
     paisNascimento: '',
     bovisIni: '', bovisFin: '',
-    aplicadas: [], continuacaoDe: null, motivoPlano: '', pagoAntes: 0, pagamentoValor: '', pagamentoMetodo: '', _ultimaSemTratamento: null, _penultima: null, _avisoFalta: false,
+    aplicadas: [], continuacaoDe: null, motivoPlano: '', pagoAntes: 0, pagamentoApptId: null, pagamentoValor: '', pagamentoMetodo: '', _ultimaSemTratamento: null, _penultima: null, _avisoFalta: false,
     baixaVibracao: TRIAGEM_BAIXA_VIBRACAO.map(() => false),
     chakras: TRIAGEM_CHAKRAS_9.map(() => 100), // percentagem de abertura, pesquisada com o pêndulo
     aberturaCaminhos: 0, // índice em TRIAGEM_NIVEIS_ABERTURA
@@ -11341,6 +11342,17 @@ function triagemPodePularData(){ return !!(__triagem.anterior && __triagem.dataN
 // Na 2.ª consulta e seguintes não se repetem os dados que já ficaram na 1.ª (data e país de nascimento).
 // Triagens válidas de um paciente: sem as cópias de texto editado e sem as que já foram
 // continuadas (a versão com tratamento aplicado substitui a original).
+// Vai buscar à marcação do tratamento quanto já foi pago (valor atual, mesmo que tenha havido
+// pagamentos feitos pela ficha do paciente depois da última consulta).
+async function triagemLerPagamentoAnterior(rel){
+  __triagem.pagoAntes = Number(rel.pagamento?.pagoTotal) || 0; __triagem.pagamentoApptId = rel.pagamento?.apptId || null;
+  if (__triagem.pagamentoApptId){
+    try{
+      const sn = await getDoc(doc(db, 'tenants', tenantId, 'appointments', __triagem.pagamentoApptId));
+      if (sn.exists()){ const a = sn.data(); __triagem.pagoAntes = a.paymentStatus === 'paid' ? (a.price || 0) : (Number(a.amountPaid) || 0); if (a.price) __triagem.preco = String(a.price); }
+    }catch(e){ console.warn('Pagamento anterior:', e); }
+  }
+}
 function triagemTriagensValidas(docs){
   const tri = docs.filter(r => r.protocolName === 'Triagem de Baixa Vibração');
   const sup = new Set(); tri.forEach(r => { if (r.continuacaoDe) sup.add(r.continuacaoDe); });
@@ -11357,20 +11369,20 @@ async function triagemCarregarAnterior(patientId){
       if (!__triagem.dataNascimento && a) __triagem.dataNascimento = a.dataNascimento;
       if (!__triagem.paisNascimento && a && a.paisNascimento) __triagem.paisNascimento = a.paisNascimento;
       if (!__triagem.preco && todas[0].preco) __triagem.preco = String(todas[0].preco);
-      __triagem.pagoAntes = Number(todas[0].pagamento?.pagoTotal) || 0;
+      await triagemLerPagamentoAnterior(todas[0]);
       if (!(todas[0].etiquetasAplicadas && todas[0].etiquetasAplicadas.length)){ __triagem._ultimaSemTratamento = todas[0]; __triagem._penultima = todas[1] || null; __triagem._totalTriagens = todas.length; }
     }
   }catch(e){ console.warn('Não foi possível ver a última triagem:', e); }
 }
 // Continuar uma triagem já feita (sem tratamento aplicado): carrega os dados dela e salta direto
 // para a aplicação das etiquetas. Guarda uma nova versão, que substitui a original.
-window.__triagemContinuar = function(){
+window.__triagemContinuar = async function(){
   const u = __triagem._ultimaSemTratamento; if (!u){ toast('Não há triagem para continuar.', true); return; }
   __triagem.continuacaoDe = u._id;
   __triagem.anterior = __triagem._penultima || null;
   __triagem.numConsulta = __triagem._totalTriagens || 1;
   __triagem.bovisIni = u.bovisInicial || ''; __triagem.bovisFin = ''; __triagem.aplicadas = [];
-  __triagem.pagoAntes = Number(u.pagamento?.pagoTotal) || 0; __triagem.pagamentoValor = '';
+  __triagem.pagamentoValor = ''; await triagemLerPagamentoAnterior(u);
   __triagem.baixaVibracao = TRIAGEM_BAIXA_VIBRACAO.map(c => (u.baixaVibracaoDetetada || []).indexOf(c.nome) >= 0);
   __triagem.chakras = TRIAGEM_CHAKRAS_9.map(c => { const f = (u.chakras || []).find(x => x.nome === c.nome); return f ? f.percentagem : 100; });
   __triagem.aberturaCaminhos = Math.max(0, TRIAGEM_NIVEIS_ABERTURA.indexOf(u.aberturaCaminhos));
@@ -15557,23 +15569,75 @@ function triagemProtocoloCompletoTexto(causasDetetadas, chakrasTodos, aberturaNi
 async function triagemRegistarPagamento(){
   const total = parseFloat(__triagem.preco) || 0, novo = parseFloat(__triagem.pagamentoValor) || 0;
   const pagoTotal = (__triagem.pagoAntes || 0) + novo;
+  const estado = total && pagoTotal >= total ? 'paid' : (pagoTotal > 0 ? 'partial' : 'pending');
   const info = { total, pagoTotal, falta: Math.max(0, total - pagoTotal), recebidoNestaConsulta: novo, metodo: __triagem.pagamentoMetodo || null,
-    estado: total && pagoTotal >= total ? 'pago' : (pagoTotal > 0 ? 'parcial' : 'por pagar') };
-  if (novo > 0 && !__triagem._pagamentoRegistado){
-    try{
+    estado: estado === 'paid' ? 'pago' : (estado === 'partial' ? 'parcial' : 'por pagar'), apptId: __triagem.pagamentoApptId || null };
+  if (!total && !novo) return info;
+  if (__triagem._pagamentoRegistado){ return info; }
+  try{
+    const sessoes = parseInt(__triagem.sessoesNecessarias, 10) || 0;
+    if (info.apptId){
+      // consultas seguintes: atualiza a mesma marcação do tratamento
+      const ref = doc(db, 'tenants', tenantId, 'appointments', info.apptId);
+      const upd = { price: total, amountPaid: Math.min(pagoTotal, total || pagoTotal), paymentStatus: estado };
+      if (novo > 0 && __triagem.pagamentoMetodo) upd.paymentMethod = __triagem.pagamentoMetodo;
+      await updateDoc(ref, upd);
+    } else {
+      // 1.ª consulta: cria UMA marcação com o valor do tratamento, que é o que aparece em Finanças e na ficha
       const agora = new Date();
-      await addDoc(collection(db, 'tenants', tenantId, 'appointments'), {
+      const ref = await addDoc(collection(db, 'tenants', tenantId, 'appointments'), {
         patientId: __triagem.patientId, patientName: __triagem.patientNome, patientPhone: '', serviceId: '',
-        serviceName: `Pagamento do tratamento (${info.estado === 'pago' ? 'total' : 'parcial'})`,
+        serviceName: `Tratamento energético${sessoes ? ' (' + sessoes + ' sessões)' : ''}`,
         staffUid: currentUser.uid, staffName: currentUserDisplayName || '', local: 'online', roomId: '', roomName: '',
         noFixedTime: true, bufferMinutes: 0, startsAt: Timestamp.fromDate(agora), endsAt: Timestamp.fromDate(agora),
-        status: 'completed', price: novo, paymentStatus: 'paid', amountPaid: novo, paymentMethod: __triagem.pagamentoMetodo || '',
-        origem: 'pagamento-triagem', createdAt: serverTimestamp() });
-      __triagem._pagamentoRegistado = true;
-    }catch(e){ console.error('Pagamento não registado em Finanças:', e); toast('⚠️ O pagamento ficou no relatório, mas não foi registado em Finanças.', true); }
-  }
+        status: 'completed', price: total, amountPaid: Math.min(pagoTotal, total || pagoTotal), paymentStatus: estado, paymentMethod: __triagem.pagamentoMetodo || '',
+        origem: 'tratamento-triagem', createdAt: serverTimestamp() });
+      info.apptId = ref.id; __triagem.pagamentoApptId = ref.id;
+    }
+    __triagem._pagamentoRegistado = true;
+  }catch(e){ console.error('Pagamento não registado:', e); toast('⚠️ O pagamento ficou no relatório, mas não foi registado em Finanças.', true); }
   return info;
 }
+// ── Receber pagamento (um só botão, na ficha do paciente, para todas as contas) ──
+// O valor recebido abate às marcações em dívida, da mais antiga para a mais recente.
+window.receberPagamento = async function(patientId, nome){
+  const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'appointments'), where('patientId', '==', patientId)));
+  const lista = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.status !== 'cancelled' && a.price > 0 && valorEmFalta(a) > 0.004)
+    .sort((x, y) => (x.startsAt?.toMillis?.() || 0) - (y.startsAt?.toMillis?.() || 0));
+  const divida = lista.reduce((t, a) => t + valorEmFalta(a), 0);
+  if (!lista.length){ await mostrarAviso('Sem valores em dívida', `${nome} não tem nada por pagar.`); return; }
+  const fundo = document.createElement('div');
+  fundo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;';
+  fundo.innerHTML = `<div class="card" style="max-width:420px;width:100%;background:#fff;">
+    <strong>💶 Receber pagamento de ${escapeHtml(nome)}</strong>
+    <p class="muted" style="margin-top:6px;">Em dívida: <strong>${divida.toFixed(2)}€</strong></p>
+    <label style="margin-top:8px;">Valor recebido (€)</label>
+    <input id="recValor" type="number" step="0.01" min="0" value="${divida.toFixed(2)}">
+    <label style="margin-top:8px;">Método</label>
+    <select id="recMetodo"><option value="dinheiro">Dinheiro</option><option value="mbway">MB WAY</option><option value="transferencia">Transferência</option><option value="cartao">Cartão / TPA</option></select>
+    <p id="recAviso" class="muted" style="margin-top:6px;"></p>
+    <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;"><button class="ghost" data-nao>Cancelar</button><button class="primary" data-ok>Receber</button></div></div>`;
+  document.body.appendChild(fundo);
+  fundo.querySelector('[data-nao]').onclick = () => fundo.remove();
+  fundo.onclick = e => { if (e.target === fundo) fundo.remove(); };
+  fundo.querySelector('[data-ok]').onclick = async () => {
+    let v = parseFloat(fundo.querySelector('#recValor').value) || 0;
+    const metodo = fundo.querySelector('#recMetodo').value;
+    if (v <= 0){ fundo.querySelector('#recAviso').textContent = 'Escreve um valor maior que 0.'; return; }
+    if (v > divida + 0.004){ fundo.querySelector('#recAviso').textContent = `O valor é maior do que o que está em dívida (${divida.toFixed(2)}€).`; return; }
+    fundo.querySelector('[data-ok]').disabled = true;
+    try{
+      for (const a of lista){
+        if (v <= 0.004) break;
+        const falta = valorEmFalta(a), parte = Math.min(falta, v);
+        const novoPago = (a.paymentStatus === 'paid' ? a.price : (Number(a.amountPaid) || 0)) + parte;
+        await updateDoc(doc(db, 'tenants', tenantId, 'appointments', a.id), { amountPaid: Math.min(novoPago, a.price), paymentStatus: novoPago >= a.price - 0.004 ? 'paid' : 'partial', paymentMethod: metodo });
+        v -= parte;
+      }
+      fundo.remove(); toast('Pagamento registado.'); viewPatient(patientId);
+    }catch(e){ console.error(e); fundo.querySelector('[data-ok]').disabled = false; fundo.querySelector('#recAviso').textContent = 'Não foi possível registar: ' + (e.message || e); }
+  };
+};
 function triagemAplicadasHTML(aplicadas, total){
   return `<div class="card" style="border:2px solid var(--primary);">
     <h3>✅ Tratamento aplicado nesta sessão</h3>
