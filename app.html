@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-10-05';
+const APP_VERSION = '2026-10-10-06';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -15238,34 +15238,33 @@ window.__triagemTentarGravarNovamente = async function(){
 // ── Protocolo completo (as melhores etiquetas, por ordem de uso) ──
 const TRIAGEM_PROTOCOLO_COMPLETO = [
   { fase:'1. Desfazer e limpar', porque:'abre o trabalho: desfaz o que está atado e limpa o campo', sempre:true, itens:[
-    {heb:'התיר יהשוה', pt:'Desfazer', nota:'magia, trabalhos e olho gordo'},
-    {heb:'נקיי', pt:'Limpeza de impurezas', nota:'limpeza rápida do campo'},
+    {base:1, heb:'התיר יהשוה', pt:'Desfazer', nota:'magia, trabalhos e olho gordo'},
+    {base:1, heb:'נקיי', pt:'Limpeza de impurezas', nota:'limpeza rápida do campo'},
     {heb:'נקוי רגשי', pt:'Limpeza emocional', nota:'emoções presas'} ] },
   { fase:'2. Afastar o que vem de fora', porque:'obsessores, magia, olho gordo e pessoas negativas', causas:[2,3,4,5,6,7,8,9,10,33,36], itens:[
-    {heb:'לאו', pt:'Expulsar os Resíduos do Mal e Purificar os lugares', nota:'Nome 11, obsessores e ambientes'},
+    {base:1, heb:'לאו', pt:'Expulsar os Resíduos do Mal e Purificar os lugares', nota:'Nome 11, obsessores e ambientes'},
     {heb:'ייי', pt:'Cura mental e psicológica e Para afastar pessoas negativas', nota:'Nome 22, mente e pessoas negativas'} ] },
   { fase:'3. Soltar o passado e a autossabotagem', porque:'memórias, karma, ciclos repetidos e projetos por acabar', causas:[15,16,17,18,19,20,21,27,28,29,39], itens:[
-    {heb:'לחסל זכרונות כואבים מן העבר', pt:'Libertar memórias dolorosas do passado', nota:'trauma e memórias'},
+    {base:1, heb:'לחסל זכרונות כואבים מן העבר', pt:'Libertar memórias dolorosas do passado', nota:'trauma e memórias'},
     {heb:'לכב', pt:'Para retirar o carma e a auto-obsessão e para terminar projetos inacabados', nota:'Nome 31, karma e autossabotagem'} ] },
   { fase:'4. Emoções, vícios e alegria de viver', porque:'vícios, ciúme, inveja, depressão e falta de ânimo', causas:[9,23,24,25,26,29,30,31,37], itens:[
-    {heb:'והו', pt:'Libertar-se do ciúme, inveja, dor, sofrimento e vícios', nota:'Nome 24'},
+    {base:1, heb:'והו', pt:'Libertar-se do ciúme, inveja, dor, sofrimento e vícios', nota:'Nome 24'},
     {heb:'הקם', pt:'Livre-se da depressão e Anime-se completamente', nota:'Nome 16, energia e alegria'} ] },
   { fase:'5. Corpo, órgãos e imunidade', porque:'cura do corpo, regeneração e defesas', causas:[13,14,35,37], chakras:true, itens:[
-    {heb:'מהש', pt:'Cura o Corpo, a Mente e a Alma', nota:'Nome 5, cura global'},
+    {base:1, heb:'מהש', pt:'Cura o Corpo, a Mente e a Alma', nota:'Nome 5, cura global'},
     {heb:'התחדשות תאים', pt:'Regeneração Celular', nota:'células e imunidade'},
-    {heb:'אלד', pt:'Regeneração de Órgãos Doentes ou Danificados e Proteção contra Inveja e Pesadelos', nota:'Nome 10, órgãos, inveja e pesadelos'} ] },
+    {base:1, heb:'אלד', pt:'Regeneração de Órgãos Doentes ou Danificados e Proteção contra Inveja e Pesadelos', nota:'Nome 10, órgãos, inveja e pesadelos'} ] },
   { fase:'6. Abrir caminhos e prosperidade', porque:'bloqueios, portas fechadas e boa sorte', causas:[11,22,38,39,40], caminhos:true, itens:[
-    {heb:'הלץ', pt:'Desbloqueio', nota:'abertura de caminhos'},
+    {base:1, heb:'הלץ', pt:'Desbloqueio', nota:'abertura de caminhos'},
     {heb:'הזי', pt:'Atraia Anjos de Luz e a Boa Sorte', nota:'Nome 9, proteção e sorte'} ] },
   { fase:'7. Dar energia e fechar', porque:'recarrega, alinha e liga à fonte', sempre:true, itens:[
-    {heb:'ילי', pt:'Resgate da Centelha Divina, Recuperar a energia', nota:'Nome 2'},
+    {base:1, heb:'ילי', pt:'Resgate da Centelha Divina, Recuperar a energia', nota:'Nome 2'},
     {heb:'כח חיוני תם', pt:'Força vital perfeita', nota:'vitalidade'},
     {heb:'תעלה מריהיה שלמה', pt:'Canal central perfeito', nota:'alinhamento'},
-    {heb:'הגנה אלהית', pt:'Proteção Divina', nota:'blindagem'},
-    {heb:'מוזי', pt:'Afastar a negatividade e Ativar o magnetismo físico e espiritual', nota:'Nome 64, blindagem e magnetismo'},
-    {heb:'חבור בהעין', pt:'Conexão com a fonte', nota:'fecho'} ] }
+    {base:1, heb:'חבור בהעין', pt:'Conexão com a fonte', nota:'fecho'} ] }
 ];
 const TRIAGEM_PROTOCOLO_RESERVA = [
+  'Afastar a negatividade e Ativar o magnetismo físico e espiritual (Nome 64), para reforçar a proteção',
   'Purificação Espiritual (Nome 72), para limpar ambientes e resíduos energéticos',
   'Liberdade - Liberte-se da depressão e das limitações físicas e espirituais (Nome 60), parecida com a do Nome 16',
   'Memórias - Quebrando o ciclo (Nome 32), para padrões que se repetem na família',
@@ -15283,13 +15282,16 @@ function triagemFasePrioritaria(f, causasDetetadas, chakrasTodos, aberturaNivel)
 function triagemProtocoloCompletoHTML(causasDetetadas, chakrasTodos, aberturaNivel){
   return `<div class="card" style="border:2px solid var(--primary);">
     <h3>📋 Protocolo completo — etiquetas por ordem de uso</h3>
-    <p class="muted" style="margin:4px 0 8px;">As melhores etiquetas, sem repetir as parecidas. As fases marcadas com ⭐ são as que a triagem desta pessoa mais pede; as outras ficam como complemento.</p>
+    <p class="muted" style="margin:4px 0 8px;">São só 10 etiquetas, para não gastar demasiado o campo da pessoa numa só sessão. As fases marcadas com ⭐ são as que a triagem desta pessoa mais pede; as outras ficam como complemento.</p>
     ${TRIAGEM_PROTOCOLO_COMPLETO.map(f => { const pri = triagemFasePrioritaria(f, causasDetetadas, chakrasTodos, aberturaNivel); return `
       <div style="margin-top:10px;padding:10px;border-radius:10px;background:${pri ? '#eef7ee' : '#f7f7f5'};">
         <strong>${pri ? '⭐ ' : ''}${escapeHtml(f.fase)}</strong>
         <div class="muted" style="font-size:.85rem;">${escapeHtml(f.porque)}</div>
-        ${f.itens.map(i => `<div style="margin-top:4px;"><span style="font-size:1.1rem;" dir="rtl">${escapeHtml(i.heb)}</span> — ${escapeHtml(i.pt)} <span class="muted">(${escapeHtml(i.nota)})</span></div>`).join('')}
+        ${f.itens.filter(i => i.base).map(i => `<div style="margin-top:4px;"><span style="font-size:1.1rem;" dir="rtl">${escapeHtml(i.heb)}</span> — ${escapeHtml(i.pt)} <span class="muted">(${escapeHtml(i.nota)})</span></div>`).join('')}
       </div>`; }).join('')}
+    <details style="margin-top:10px;"><summary class="muted">Guardadas para as próximas consultas</summary>
+      ${TRIAGEM_PROTOCOLO_COMPLETO.map(f => f.itens.filter(i => !i.base).map(i => `<p class="muted" style="margin-top:4px;">• ${escapeHtml(i.pt)} (${escapeHtml(f.fase)})</p>`).join('')).join('')}
+    </details>
     <details style="margin-top:10px;"><summary class="muted">Reserva, para quando for preciso</summary>
       ${TRIAGEM_PROTOCOLO_RESERVA.map(x => `<p class="muted" style="margin-top:4px;">• ${escapeHtml(x)}</p>`).join('')}
     </details>
@@ -15297,7 +15299,15 @@ function triagemProtocoloCompletoHTML(causasDetetadas, chakrasTodos, aberturaNiv
 }
 // 2.ª consulta e seguintes: só as fases que a triagem de hoje pede, mais o fecho.
 function triagemFasesDaSessao(causasDetetadas, chakrasTodos, aberturaNivel){
-  return TRIAGEM_PROTOCOLO_COMPLETO.filter((f, i) => i === TRIAGEM_PROTOCOLO_COMPLETO.length - 1 || (!f.sempre && triagemFasePrioritaria(f, causasDetetadas, chakrasTodos, aberturaNivel)));
+    const lista = TRIAGEM_PROTOCOLO_COMPLETO.filter((f, i) => i === TRIAGEM_PROTOCOLO_COMPLETO.length - 1 || (!f.sempre && triagemFasePrioritaria(f, causasDetetadas, chakrasTodos, aberturaNivel)));
+  // máximo de 8 etiquetas por sessão: o fecho (só as base) tem sempre lugar
+  const fecho = lista[lista.length-1];
+  const fechoItens = fecho.itens.filter(i => i.base);
+  let resto = 8 - fechoItens.length;
+  const out = [];
+  lista.slice(0, -1).forEach(f => { if (resto <= 0) return; const it = f.itens.slice(0, resto); resto -= it.length; out.push(Object.assign({}, f, {itens: it})); });
+  out.push(Object.assign({}, fecho, {itens: fechoItens}));
+  return out;
 }
 function triagemProtocoloSessaoHTML(causasDetetadas, chakrasTodos, aberturaNivel){
   const fases = triagemFasesDaSessao(causasDetetadas, chakrasTodos, aberturaNivel);
@@ -15317,7 +15327,7 @@ function triagemProtocoloSessaoTexto(causasDetetadas, chakrasTodos, aberturaNive
 function triagemProtocoloCompletoTexto(causasDetetadas, chakrasTodos, aberturaNivel){
   let t = `== Protocolo completo (por ordem de uso) ==\n`;
   TRIAGEM_PROTOCOLO_COMPLETO.forEach(f => {
-    t += `${triagemFasePrioritaria(f, causasDetetadas, chakrasTodos, aberturaNivel) ? '(prioridade) ' : ''}${f.fase}: ${f.itens.map(i => i.pt).join(' · ')}\n`;
+    t += `${triagemFasePrioritaria(f, causasDetetadas, chakrasTodos, aberturaNivel) ? '(prioridade) ' : ''}${f.fase}: ${f.itens.filter(i => i.base).map(i => i.pt).join(' · ')}\n`;
   });
   return t + '\n';
 }
