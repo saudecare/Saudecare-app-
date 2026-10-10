@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-10-06';
+const APP_VERSION = '2026-10-10-07';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11244,6 +11244,7 @@ function __triagemReset(){
     dataNascimento: '',
     paisNascimento: '',
     bovisIni: '', bovisFin: '',
+    aplicadas: [], continuacaoDe: null, motivoPlano: '', _ultimaSemTratamento: null, _penultima: null, _avisoFalta: false,
     baixaVibracao: TRIAGEM_BAIXA_VIBRACAO.map(() => false),
     chakras: TRIAGEM_CHAKRAS_9.map(() => 100), // percentagem de abertura, pesquisada com o pêndulo
     aberturaCaminhos: 0, // índice em TRIAGEM_NIVEIS_ABERTURA
@@ -11313,19 +11314,51 @@ function triagemProgressoHTML(){
 
 function triagemPodePularData(){ return !!(__triagem.anterior && __triagem.dataNascimento); }
 // Na 2.ª consulta e seguintes não se repetem os dados que já ficaram na 1.ª (data e país de nascimento).
+// Triagens válidas de um paciente: sem as cópias de texto editado e sem as que já foram
+// continuadas (a versão com tratamento aplicado substitui a original).
+function triagemTriagensValidas(docs){
+  const tri = docs.filter(r => r.protocolName === 'Triagem de Baixa Vibração');
+  const sup = new Set(); tri.forEach(r => { if (r.continuacaoDe) sup.add(r.continuacaoDe); });
+  return tri.filter(r => !r.editadoDe && !sup.has(r._id));
+}
 async function triagemCarregarAnterior(patientId){
-  __triagem.anterior = null; __triagem.numConsulta = 1;
+  __triagem.anterior = null; __triagem.numConsulta = 1; __triagem._ultimaSemTratamento = null; __triagem._penultima = null; __triagem.continuacaoDe = null;
   try{
     const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), orderBy('generatedAt', 'desc')));
-    const todas = snap.docs.map(d => d.data()).filter(r => r.protocolName === 'Triagem de Baixa Vibração' && !r.editadoDe);
+    const todas = triagemTriagensValidas(snap.docs.map(d => ({ ...d.data(), _id: d.id })));
     if (todas.length){
       __triagem.anterior = todas[0]; __triagem.numConsulta = todas.length + 1;
       const a = todas.find(r => r.dataNascimento) || null;
       if (!__triagem.dataNascimento && a) __triagem.dataNascimento = a.dataNascimento;
       if (!__triagem.paisNascimento && a && a.paisNascimento) __triagem.paisNascimento = a.paisNascimento;
       if (!__triagem.preco && todas[0].preco) __triagem.preco = String(todas[0].preco);
+      if (!(todas[0].etiquetasAplicadas && todas[0].etiquetasAplicadas.length)){ __triagem._ultimaSemTratamento = todas[0]; __triagem._penultima = todas[1] || null; __triagem._totalTriagens = todas.length; }
     }
   }catch(e){ console.warn('Não foi possível ver a última triagem:', e); }
+}
+// Continuar uma triagem já feita (sem tratamento aplicado): carrega os dados dela e salta direto
+// para a aplicação das etiquetas. Guarda uma nova versão, que substitui a original.
+window.__triagemContinuar = function(){
+  const u = __triagem._ultimaSemTratamento; if (!u){ toast('Não há triagem para continuar.', true); return; }
+  __triagem.continuacaoDe = u._id;
+  __triagem.anterior = __triagem._penultima || null;
+  __triagem.numConsulta = __triagem._totalTriagens || 1;
+  __triagem.bovisIni = u.bovisInicial || ''; __triagem.bovisFin = ''; __triagem.aplicadas = [];
+  __triagem.baixaVibracao = TRIAGEM_BAIXA_VIBRACAO.map(c => (u.baixaVibracaoDetetada || []).indexOf(c.nome) >= 0);
+  __triagem.chakras = TRIAGEM_CHAKRAS_9.map(c => { const f = (u.chakras || []).find(x => x.nome === c.nome); return f ? f.percentagem : 100; });
+  __triagem.aberturaCaminhos = Math.max(0, TRIAGEM_NIVEIS_ABERTURA.indexOf(u.aberturaCaminhos));
+  __triagem.sessoesNecessarias = u.sessoesNecessarias ? String(u.sessoesNecessarias) : ''; if (u.preco) __triagem.preco = String(u.preco);
+  const L = u.leituraComplementar;
+  if (L){ const arc = (nome) => TRIAGEM_ARCANOS.find(x => x.nome === nome); const m = arc(L.momento), p = arc(L.porTras), t = arc(L.tendencia); __triagem.leituraComplementar = (m && p && t) ? { momento:m, porTras:p, tendencia:t } : null; }
+  __triagem.passo = 6;
+  renderTriagemPasso(document.getElementById('mainView'));
+};
+function triagemCartaoContinuar(){
+  const u = __triagem._ultimaSemTratamento; if (!__triagem.patientId || !u) return '';
+  const dt = u.generatedAt?.toDate ? u.generatedAt.toDate().toLocaleDateString('pt-PT') : '';
+  return `<div class="card" style="border:2px solid var(--primary);margin-top:10px;"><h3>▶ Continuar a triagem${dt ? ' de ' + dt : ''}</h3>
+    <p class="muted">Esta triagem ainda não tem o tratamento aplicado. Podes continuar daqui, aplicar as etiquetas e medir o Bovis final, sem repetir nada.</p>
+    <button class="primary" onclick="window.__triagemContinuar()">Aplicar o tratamento agora</button></div>`;
 }
 function renderTriagemPasso(main){
   const m = main || document.getElementById('mainView');
@@ -11337,7 +11370,7 @@ function renderTriagemPasso(main){
   if (__triagem.passo === 3) return triagemPassoBaixaVibracao(m);
   if (__triagem.passo === 4) return triagemPassoChakras(m);
   if (__triagem.passo === 5) return triagemPassoAbertura(m);
-  if (__triagem.passo === 6) return triagemPassoBovis(m, 'fin');
+  if (__triagem.passo === 6) return triagemPassoTratamento(m);
   if (__triagem.passo === 7) return triagemPassoComplementar(m);
   if (__triagem.passo === 8) return triagemPassoSessoesPreco(m);
 }
@@ -11354,8 +11387,9 @@ function triagemPasso0Paciente(main){
       <p class="muted" style="margin-top:10px;">Não encontra o paciente? <button class="ghost" style="width:auto;display:inline;" onclick="window.__triagemAVoltarDePaciente = true; openNewPatient();">+ Criar novo paciente</button></p>
       ${__triagem.patientId ? `<div class="row" style="margin-top:10px;background:#eef7ee;padding:8px;border-radius:8px;"><strong>✓ Selecionado: ${escapeHtml(__triagem.patientNome)}</strong>${__triagem.anterior ? ` · ${__triagem.numConsulta}.ª consulta (última triagem em ${__triagem.anterior.generatedAt?.toDate ? __triagem.anterior.generatedAt.toDate().toLocaleDateString('pt-PT') : '—'}). Os dados da 1.ª consulta não se repetem.` : ' · 1.ª consulta'}</div>` : ''}
     </div>
+    ${triagemCartaoContinuar()}
     <div class="row" style="margin-top:12px;">
-      <button class="primary" ${__triagem.patientId ? '' : 'disabled'} onclick="window.__triagemAvancar()">Seguinte →</button>
+      <button class="primary" ${__triagem.patientId ? '' : 'disabled'} onclick="window.__triagemAvancar()">${__triagem._ultimaSemTratamento ? 'Nova triagem →' : 'Seguinte →'}</button>
     </div>`;
   window.__triagemFiltrarPacientes = function(){
     const q = stripAccents(document.getElementById('triagemBuscaPaciente').value.trim());
@@ -11421,6 +11455,91 @@ function triagemPassoBovis(main, qual){
   });
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
   window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
+}
+
+/* PASSO 7 — aplicar as etiquetas, uma a uma, e só no fim medir o Bovis final */
+const TRI_ETQ_SIMPLES = {
+  'התיר יהשוה':'Desfazer o que está atado (trabalhos, magia, olho gordo)',
+  'נקיי':'Limpar as impurezas do campo energético',
+  'נקוי רגשי':'Limpar emoções presas',
+  'לאו':'Afastar influências que vêm de fora e purificar os ambientes',
+  'ייי':'Acalmar a mente e afastar pessoas e energias negativas',
+  'לחסל זכרונות כואבים מן העבר':'Libertar memórias dolorosas do passado',
+  'לכב':'Soltar padrões repetidos, o peso do passado e projetos por acabar',
+  'והו':'Libertar ciúme, inveja, dor e vícios',
+  'הקם':'Afastar o desânimo e devolver a alegria de viver',
+  'מהש':'Cura do corpo, da mente e da alma',
+  'התחדשות תאים':'Regeneração das células e reforço das defesas',
+  'אלד':'Regenerar os órgãos e proteger de inveja e pesadelos',
+  'הלץ':'Desbloquear os caminhos',
+  'הזי':'Atrair luz, proteção e boa sorte',
+  'ילי':'Recuperar a energia e a vitalidade',
+  'כח חיוני תם':'Reforçar a força vital',
+  'תעלה מריהיה שלמה':'Alinhar o canal central de energia',
+  'חבור בהעין':'Fechar com a ligação à fonte'
+};
+function triagemSimples(i){ return TRI_ETQ_SIMPLES[i.heb] || i.pt; }
+function triagemItensAplicar(){
+  const causas = TRIAGEM_BAIXA_VIBRACAO.filter((x, i) => __triagem.baixaVibracao[i]);
+  const chakrasTodos = TRIAGEM_CHAKRAS_9.map((c, i) => ({ ...c, percentagem: __triagem.chakras[i] }));
+  const ab = TRIAGEM_NIVEIS_ABERTURA[__triagem.aberturaCaminhos];
+  const fases = (__triagem.numConsulta || 1) === 1
+    ? TRIAGEM_PROTOCOLO_COMPLETO.map(f => ({ ...f, itens: f.itens.filter(i => i.base) }))
+    : triagemFasesDaSessao(causas, chakrasTodos, ab);
+  const out = [];
+  fases.forEach(f => f.itens.forEach(i => out.push({ heb: i.heb, pt: i.pt, fase: f.fase, simples: triagemSimples(i) })));
+  return out;
+}
+function triagemPassoTratamento(main){
+  const itens = triagemItensAplicar();
+  const n1 = (__triagem.numConsulta || 1) === 1;
+  main.innerHTML = `
+    <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
+    ${triagemProgressoHTML()}
+    <div class="card">
+      <h3>7. Aplicar o protocolo</h3>
+      <p class="muted">${n1 ? '1.ª consulta: protocolo completo.' : 'Etiquetas escolhidas pelo que saiu na triagem de hoje.'} São ${itens.length} etiquetas, por ordem. Toca em cada uma quando a aplicares.</p>
+      <div id="triagemEtqLista" style="margin-top:8px;"></div>
+      <p id="triagemEtqContagem" class="muted" style="margin-top:8px;"></p>
+      <button class="ghost" id="triagemEtqTodas" style="margin-top:6px;">Marcar todas como aplicadas</button>
+    </div>
+    <div class="card">
+      <h3>Energia Vital — Bovis Final</h3>
+      <p class="muted">Mede só no fim, depois de aplicar todas as etiquetas, para comparar com o Bovis inicial${__triagem.bovisIni ? ' (' + escapeHtml(__triagem.bovisIni) + ')' : ''}.</p>
+      <input id="triagemBovisInput" type="number" placeholder="ex: 6500" value="${escapeHtml(__triagem.bovisFin)}">
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
+      <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
+    </div>`;
+  function pintar(){
+    const feitas = new Set(__triagem.aplicadas);
+    let fase = '';
+    document.getElementById('triagemEtqLista').innerHTML = itens.map((it, i) => {
+      const cab = it.fase !== fase ? (fase = it.fase, `<div class="muted" style="margin-top:10px;font-weight:600;">${escapeHtml(it.fase)}</div>`) : '';
+      const on = feitas.has(it.heb);
+      return cab + `<div class="row" style="gap:10px;padding:10px;margin-top:4px;border-radius:10px;cursor:pointer;background:${on ? '#eef7ee' : '#f7f7f5'};" onclick="window.__triagemTogEtq(${i})">
+        <span style="font-size:1.4rem;">${on ? '☑' : '⬜'}</span>
+        <span style="flex:1;"><strong>${i + 1}.</strong> <span dir="rtl" style="font-size:1.1rem;">${escapeHtml(it.heb)}</span><br><span class="muted">${escapeHtml(it.pt)}</span></span></div>`;
+    }).join('');
+    const n = itens.filter(it => feitas.has(it.heb)).length;
+    document.getElementById('triagemEtqContagem').textContent = `${n} de ${itens.length} aplicadas`;
+  }
+  window.__triagemTogEtq = function(i){
+    const h = itens[i].heb, k = __triagem.aplicadas.indexOf(h);
+    if (k >= 0) __triagem.aplicadas.splice(k, 1); else __triagem.aplicadas.push(h);
+    pintar();
+  };
+  document.getElementById('triagemEtqTodas').onclick = function(){ __triagem.aplicadas = itens.map(it => it.heb); pintar(); };
+  pintar();
+  document.getElementById('triagemBovisInput').addEventListener('input', e => { __triagem.bovisFin = e.target.value; });
+  window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
+  window.__triagemAvancar = function(){
+    const falta = itens.filter(it => __triagem.aplicadas.indexOf(it.heb) < 0).length;
+    if (falta && !__triagem._avisoFalta){ __triagem._avisoFalta = true; toast(`Faltam ${falta} etiquetas por marcar. Toca outra vez em Seguinte para continuar mesmo assim.`, true); return; }
+    __triagem._avisoFalta = false;
+    __triagem.passo++; renderTriagemPasso(main);
+  };
 }
 
 /* PASSO 3 — Baixa Vibração numerada (seleção direta, sem cartas) */
@@ -11554,14 +11673,22 @@ function triagemPassoSessoesPreco(main){
       <p class="muted">Pergunte ao pêndulo quantas sessões são necessárias e o valor indicado.</p>
       <label>Nº de sessões de limpeza necessárias</label>
       <input id="triagemSessoes" type="number" min="1" value="${escapeHtml(__triagem.sessoesNecessarias)}">
+      ${__triagem.anterior && __triagem.anterior.sessoesNecessarias ? `<p class="muted">Plano da consulta anterior: ${escapeHtml(__triagem.anterior.sessoesNecessarias)} sessões.</p>` : ''}
       <label style="margin-top:10px;">Preço indicado (€)</label>
       <input id="triagemPreco" type="number" step="0.01" value="${escapeHtml(__triagem.preco)}">
+      <div id="triagemMotivoBox" style="margin-top:10px;display:none;">
+        <label>Porque mudou o plano? (aparece no relatório para a família)</label>
+        <textarea id="triagemMotivoPlano" rows="3" placeholder="Se deixares em branco, uso uma explicação simples e geral.">${escapeHtml(__triagem.motivoPlano)}</textarea>
+      </div>
     </div>
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
       <button class="primary" onclick="window.__triagemGerarRelatorio()">🔮 Gerar Relatório</button>
     </div>`;
-  document.getElementById('triagemSessoes').addEventListener('input', e => __triagem.sessoesNecessarias = e.target.value);
+  const mostrarMotivo = () => { const ant = Number(__triagem.anterior?.sessoesNecessarias), at = Number(__triagem.sessoesNecessarias); document.getElementById('triagemMotivoBox').style.display = (ant && at && ant !== at) ? 'block' : 'none'; };
+  document.getElementById('triagemSessoes').addEventListener('input', e => { __triagem.sessoesNecessarias = e.target.value; mostrarMotivo(); });
+  document.getElementById('triagemMotivoPlano').addEventListener('input', e => { __triagem.motivoPlano = e.target.value; });
+  mostrarMotivo();
   document.getElementById('triagemPreco').addEventListener('input', e => __triagem.preco = e.target.value);
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
   window.__triagemGerarRelatorio = triagemGerarRelatorio;
@@ -11658,7 +11785,7 @@ window.viewTriagemEvolucao = async function(patientId){
     orderBy('generatedAt', 'asc')
   ));
   const sessoes = [];
-  snap.forEach(d => { const r = d.data(); if (r.protocolName === 'Triagem de Baixa Vibração' && !r.editadoDe) sessoes.push(r); });
+  triagemTriagensValidas(snap.docs.map(d => ({ ...d.data(), _id: d.id }))).forEach(r => sessoes.push(r));
   if (sessoes.length < 2){ toast('É preciso pelo menos 2 sessões de Triagem para ver evolução.', true); return; }
 
   const dataFmt = (ts) => ts?.toDate ? ts.toDate().toLocaleDateString('pt-PT') : '—';
@@ -14931,15 +15058,45 @@ function triagemRelatorioCliente(d){
     ]});
   }
 
+  const lvTxt = { 'Aberto':'aberto', 'Parcialmente Aberto':'algo travado', 'Bloqueado':'bastante travado', 'Muito Bloqueado':'muito travado' };
+  const humanoCausa = (nomeC) => { const it = TRIAGEM_BAIXA_VIBRACAO.find(x => x.nome === nomeC); const h = it && TRI_CAUSA_HUMANA[it.n]; return h ? `${h[0]}: ${h[1]}` : nomeC; };
   if (d.comparacao){
-    const c = d.comparacao, p = [];
-    if (c.resolvidas.length) p.push(`Desde a última sessão, ${c.resolvidas.length === 1 ? 'ficou resolvido um ponto' : 'ficaram resolvidos ' + c.resolvidas.length + ' pontos'}, o que é uma boa notícia.`);
-    if (c.persistentes.length) p.push(`${c.persistentes.length === 1 ? 'Um ponto continua' : c.persistentes.length + ' pontos continuam'} a precisar de atenção.`);
-    if (c.novas.length) p.push(`Surgiram ${c.novas.length === 1 ? 'um ponto novo' : c.novas.length + ' pontos novos'} desde a última vez.`);
-    if (p.length) sec.push({ titulo:'Desde a última sessão', paras:p });
+    const c = d.comparacao, p = [], lista = [];
+    const dataAnt = c.dataAnterior?.toDate ? c.dataAnterior.toDate().toLocaleDateString('pt-PT') : null;
+    p.push(`Comparei a avaliação de hoje com a da última consulta${dataAnt ? ' (' + dataAnt + ')' : ''}, para ver o que melhorou, o que ficou igual e o que pede mais cuidado.`);
+    c.resolvidas.forEach(x => lista.push(`Melhorou, já não aparece: ${humanoCausa(x)}.`));
+    c.chakrasComparados.filter(x => x.delta >= 10).forEach(x => lista.push(`Melhorou: o centro ${x.nome} passou de ${x.antes}% para ${x.agora}%.`));
+    const iA = TRIAGEM_NIVEIS_ABERTURA.indexOf(c.aberturaAntes), iG = TRIAGEM_NIVEIS_ABERTURA.indexOf(c.aberturaAgora);
+    if (iA >= 0 && iG >= 0 && iG < iA) lista.push(`Melhorou: o caminho à frente, que estava ${lvTxt[c.aberturaAntes]}, está agora ${lvTxt[c.aberturaAgora]}.`);
+    c.persistentes.forEach(x => lista.push(`Continua a pedir atenção: ${humanoCausa(x)}.`));
+    c.chakrasComparados.filter(x => x.delta <= -10).forEach(x => lista.push(`Mais fechado: o centro ${x.nome} passou de ${x.antes}% para ${x.agora}%.`));
+    if (iA >= 0 && iG >= 0 && iG > iA) lista.push(`Mais travado: o caminho à frente, que estava ${lvTxt[c.aberturaAntes]}, está agora ${lvTxt[c.aberturaAgora]}.`);
+    c.novas.forEach(x => lista.push(`Surgiu agora: ${humanoCausa(x)}.`));
+    if (c.bovisFinalAnterior != null && c.bovisInicialAtual != null) p.push(`A vitalidade (medida em unidades Bovis) terminou a última consulta em ${c.bovisFinalAnterior} e começou hoje em ${c.bovisInicialAtual}.`);
+    if (c.novas.length || c.chakrasComparados.some(x => x.delta <= -10) || (iA >= 0 && iG > iA))
+      p.push(`Quando algo piora ou aparece de novo, não quer dizer que o trabalho não esteja a resultar. Depois de uma limpeza, é frequente surgirem camadas mais profundas ou a pessoa ficar mais sensível durante uns dias. Por isso volto a medir tudo em cada sessão.`);
+    sec.push({ titulo:'Desde a última consulta', paras:p, lista });
+  }
+
+  if (d.aplicadas && d.aplicadas.length){
+    const pa = [`Nesta consulta (a ${d.numConsulta}.ª) trabalhei à distância, com autorização radiestésica, ${d.aplicadas.length} ${d.aplicadas.length === 1 ? 'etiqueta' : 'etiquetas'}, escolhidas para não gastar demasiado o campo de ${nome} numa só sessão:`];
+    if (d.bovisIni && d.bovisFin) pa.push(`A vitalidade (unidades Bovis) estava em ${d.bovisIni} no início e ficou em ${d.bovisFin} no fim do trabalho.`);
+    sec.push({ titulo:'O que fiz nesta sessão', paras:pa, lista: d.aplicadas.map(it => it.simples || it.pt) });
+  }
+
+  if (d.sessoesAntes && Number(d.sessoesNecessarias) && Number(d.sessoesNecessarias) !== Number(d.sessoesAntes)){
+    const mais = Number(d.sessoesNecessarias) > Number(d.sessoesAntes);
+    const pp = [`Na avaliação anterior, o plano indicava ${d.sessoesAntes} sessões. Hoje indica ${d.sessoesNecessarias}.`];
+    if (d.motivoPlano && d.motivoPlano.trim()) pp.push(d.motivoPlano.trim());
+    else pp.push(mais
+      ? `A situação de ${nome} mudou entre as duas avaliações e o plano acompanhou essa mudança. As sessões a mais servem para trabalhar com calma o que surgiu, sem sobrecarregar o campo energético numa só sessão, e para consolidar o que já melhorou.`
+      : `A evolução está a ser melhor do que o previsto, por isso o plano ficou mais curto.`);
+    pp.push(`O número de sessões não é fixo: em cada consulta volto a medir tudo e ajusto o plano ao que for preciso.`);
+    sec.push({ titulo:`Porque o plano passou de ${d.sessoesAntes} para ${d.sessoesNecessarias} sessões`, paras:pp });
   }
 
   const ajudar = [];
+  if (Number(d.sessoesNecessarias) > (d.numConsulta || 1)) ajudar.push(`Esta foi a ${d.numConsulta || 1}.ª de ${d.sessoesNecessarias} sessões. Faltam ${Number(d.sessoesNecessarias) - (d.numConsulta || 1)}, com pelo menos 7 dias de intervalo entre cada uma.`);
   if (d.sessoesNecessarias) ajudar.push(`Recomendam-se ${d.sessoesNecessarias} ${Number(d.sessoesNecessarias) === 1 ? 'sessão' : 'sessões'} de limpeza energética, feitas aos poucos, uma de cada vez, ao ritmo de ${nome}.${d.preco ? ` Valor indicado: ${d.preco}€.` : ''}`);
   if (d.temAlgumaCoisaDetetada) ajudar.push(`Nos 1 a 3 dias a seguir a cada sessão, é normal sentir mais cansaço, emotividade ou sono alterado, e por vezes um mal-estar ligeiro e passageiro. É o corpo a processar o que foi trabalhado e não significa que piorou. Ajuda beber água, descansar e não julgar o resultado nestes primeiros dias.`);
   sec.push({ titulo:'O que pode ajudar', paras:ajudar,
@@ -15094,12 +15251,15 @@ async function triagemGerarRelatorio(){
   // no browser, tal como já se faz noutros sítios da app.
   let comparacao = null;
   let ehPrimeiraSessao = true;
+  let anteriorDoc = null;
+  const itensAplicar = triagemItensAplicar();
+  const etiquetasAplicadas = itensAplicar.filter(it => __triagem.aplicadas.indexOf(it.heb) >= 0);
   try{
     const todosSnap = await getDocs(query(
       collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'),
       orderBy('generatedAt', 'desc')
     ));
-    const anteriorDoc = todosSnap.docs.map(d => d.data()).find(r => r.protocolName === 'Triagem de Baixa Vibração' && !r.editadoDe);
+    anteriorDoc = triagemTriagensValidas(todosSnap.docs.map(d => ({ ...d.data(), _id: d.id }))).find(r => r._id !== __triagem.continuacaoDe) || null;
     if (anteriorDoc){
       ehPrimeiraSessao = false;
       comparacao = compararComAnterior(anteriorDoc, {
@@ -15155,6 +15315,11 @@ async function triagemGerarRelatorio(){
     reportText += `== Leitura Complementar (Cartas) ==\n${triagemSintetizarLeitura(__triagem.patientNome.split(/\s+/)[0], __triagem.leituraComplementar)}\n\n`;
   }
   reportText += ehPrimeiraSessao ? triagemProtocoloCompletoTexto(causasDetetadas, chakrasTodos, aberturaNivel) : triagemProtocoloSessaoTexto(causasDetetadas, chakrasTodos, aberturaNivel);
+  if (etiquetasAplicadas.length){
+    reportText += `== Etiquetas aplicadas nesta sessão (${etiquetasAplicadas.length} de ${itensAplicar.length}) ==\n`;
+    etiquetasAplicadas.forEach((it, i) => { reportText += `${i + 1}. ${it.pt}\n`; });
+    reportText += `Bovis: ${__triagem.bovisIni || '—'} → ${__triagem.bovisFin || '—'}\n\n`;
+  }
   reportText += `== Protocolo de Limpeza (etiquetas a usar) ==\n`;
   protocoloFinal.forEach(p => { reportText += `• ${p.item.heb}  —  ${p.item.pt}${p.item.numero ? ' (Nome '+p.item.numero+' dos 72 Nomes de Deus)' : ''}  [${p.fonte} · ${p.motivo}]\n`; });
   reportText += `\n== Sessões de Limpeza Recomendadas ==\n${__triagem.sessoesNecessarias || '—'} sessão(ões) · Preço indicado: ${__triagem.preco ? __triagem.preco+'€' : '—'}\n`;
@@ -15165,7 +15330,9 @@ async function triagemGerarRelatorio(){
     primeiroNome: __triagem.patientNome.split(/\s+/)[0], dataNascimento: __triagem.dataNascimento, paisNascimento: __triagem.paisNascimento,
     perfil, causasDetetadas, chakrasTodos, aberturaNivel, comparacao, cruzamento: cruzamentoVidasPassadas,
     leituraComplementar: __triagem.leituraComplementar, sessoesNecessarias: __triagem.sessoesNecessarias,
-    preco: __triagem.preco, temAlgumaCoisaDetetada
+    preco: __triagem.preco, temAlgumaCoisaDetetada,
+    aplicadas: etiquetasAplicadas, numConsulta: __triagem.numConsulta || 1, bovisIni: __triagem.bovisIni, bovisFin: __triagem.bovisFin,
+    sessoesAntes: anteriorDoc ? anteriorDoc.sessoesNecessarias : null, motivoPlano: __triagem.motivoPlano
   });
   window.__triagemTextoClienteAtual = clienteRel.texto;
   const reportHtmlAntigo = gerarReportHtmlPaciente({
@@ -15193,6 +15360,10 @@ async function triagemGerarRelatorio(){
     protocolo: protocoloFinal.map(p => ({ fonte:p.fonte, heb:p.item.heb, pt:p.item.pt, numero:p.item.numero||null, motivo:p.motivo })),
     sessoesNecessarias: __triagem.sessoesNecessarias || null,
     preco: __triagem.preco || null,
+    etiquetasAplicadas: etiquetasAplicadas.map(it => ({ heb: it.heb, pt: it.pt, fase: it.fase })),
+    tratamentoAplicado: etiquetasAplicadas.length > 0,
+    continuacaoDe: __triagem.continuacaoDe || null,
+    motivoPlano: __triagem.motivoPlano || null,
     perfilMapaAlma: perfil ? {
       caminhoDeVida: perfil.cv,
       anjo: perfil.anjo.tipo === 'anjo' ? perfil.anjo.nome : ('Universal: '+perfil.anjo.elemento),
@@ -15331,8 +15502,74 @@ function triagemProtocoloCompletoTexto(causasDetetadas, chakrasTodos, aberturaNi
   });
   return t + '\n';
 }
+function triagemAplicadasHTML(aplicadas, total){
+  return `<div class="card" style="border:2px solid var(--primary);">
+    <h3>✅ Tratamento aplicado nesta sessão</h3>
+    <p class="muted">${aplicadas.length} de ${total} etiquetas · Bovis ${escapeHtml(__triagem.bovisIni || '—')} → ${escapeHtml(__triagem.bovisFin || '—')}</p>
+    ${aplicadas.map((it, i) => `<div style="margin-top:4px;">${i + 1}. <span dir="rtl">${escapeHtml(it.heb)}</span> — ${escapeHtml(it.pt)}</div>`).join('')}
+  </div>`;
+}
+function triagemDataLocalISO(d){ const z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; }
+// Marca as sessões que faltam do plano, com pelo menos 7 dias entre cada uma.
+function triagemMarcarSessoesHTML(){
+  const total = parseInt(__triagem.sessoesNecessarias, 10) || 0, feitas = __triagem.numConsulta || 1;
+  if (!total) return '';
+  const resto = Math.max(0, total - feitas);
+  if (!resto) return `<div class="card"><h3>📅 Sessões</h3><p class="muted">Esta foi a ${feitas}.ª de ${total}. O plano está completo, não há mais sessões a marcar.</p></div>`;
+  const d0 = new Date(); d0.setDate(d0.getDate() + 7); const iso = triagemDataLocalISO(d0);
+  return `<div class="card" style="border:2px solid var(--primary);" id="triagemAgCard">
+    <h3>📅 Marcar as ${resto} ${resto === 1 ? 'sessão que falta' : 'sessões que faltam'}</h3>
+    <p class="muted">Esta foi a ${feitas}.ª de ${total}. Entre cada sessão passam pelo menos 7 dias.</p>
+    <label>Data da próxima sessão</label><input type="date" id="triagemAgData" min="${iso}" value="${iso}">
+    <label style="margin-top:8px;">Hora</label><input type="time" id="triagemAgHora" value="10:00">
+    <label style="margin-top:8px;">Dias entre sessões (mínimo 7)</label><input type="number" id="triagemAgInt" min="7" value="7">
+    <button class="primary" id="triagemAgBtn" style="margin-top:10px;" onclick="window.__triagemMarcarSessoes()">Marcar ${resto} ${resto === 1 ? 'sessão' : 'sessões'}</button>
+    <div id="triagemAgRes" class="muted" style="margin-top:8px;"></div>
+  </div>`;
+}
+window.__triagemMarcarSessoes = async function(){
+  const res = document.getElementById('triagemAgRes'), btn = document.getElementById('triagemAgBtn');
+  try{
+    const total = parseInt(__triagem.sessoesNecessarias, 10) || 0, feitas = __triagem.numConsulta || 1, resto = Math.max(0, total - feitas);
+    const dataStr = document.getElementById('triagemAgData').value, hora = document.getElementById('triagemAgHora').value || '10:00';
+    const inter = Math.max(7, parseInt(document.getElementById('triagemAgInt').value, 10) || 7);
+    if (!dataStr || !resto){ toast('Escolhe a data da próxima sessão.', true); return; }
+    const minimo = new Date(); minimo.setHours(0, 0, 0, 0); minimo.setDate(minimo.getDate() + 7);
+    let base = new Date(dataStr + 'T' + hora + ':00');
+    if (isNaN(base.getTime()) || base < minimo){ toast('A próxima sessão tem de ser, no mínimo, daqui a 7 dias.', true); return; }
+    btn.disabled = true; res.textContent = 'A marcar…';
+    const pc = (window.__allPatientsCache || []).find(x => x.id === __triagem.patientId);
+    let tel = ''; try{ tel = (typeof destinoPaciente === 'function' && pc) ? (destinoPaciente(pc).phone || '') : (pc?.phone || ''); }catch(e){}
+    const marcadas = [];
+    for (let k = 0; k < resto; k++){
+      let start = new Date(base.getTime() + k * inter * 86400000), end = null, ok = false;
+      for (let t = 0; t < 8 && !ok; t++){
+        const s2 = new Date(start.getTime() + t * 3600000), e2 = new Date(s2.getTime() + 50 * 60000);
+        const chk = await checkAppointmentConflict({ staffUid: currentUser.uid, local: 'online', start: s2, end: e2, roomId: '' });
+        if (!chk.conflict){ start = s2; end = e2; ok = true; }
+      }
+      if (!ok){ end = new Date(start.getTime() + 50 * 60000); }
+      const data = { patientId: __triagem.patientId, patientName: __triagem.patientNome, patientPhone: tel,
+        serviceId: '', serviceName: `Sessão de limpeza energética (${feitas + k + 1}/${total})`,
+        staffUid: currentUser.uid, staffName: currentUserDisplayName || '', local: 'online', roomId: '', roomName: '',
+        noFixedTime: false, bufferMinutes: 0, startsAt: Timestamp.fromDate(start), endsAt: Timestamp.fromDate(end),
+        status: 'confirmed', price: 0, paymentStatus: 'pending', paymentMethod: '', origem: 'triagem', sessaoNumero: feitas + k + 1, sessaoTotal: total,
+        createdAt: serverTimestamp() };
+      const ref = await addDoc(collection(db, 'tenants', tenantId, 'appointments'), data);
+      try{ await syncAppointmentToGoogle('create', { ...data, startsAt: start, endsAt: end }, ref.id); }catch(e){ console.warn('Google Calendar:', e); }
+      marcadas.push(`${feitas + k + 1}/${total} · ${start.toLocaleDateString('pt-PT')} às ${start.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' })}${ok ? '' : ' (hora já ocupada, confirma)'}`);
+    }
+    res.innerHTML = '✅ Marcadas na agenda:<br>' + marcadas.map(escapeHtml).join('<br>');
+    toast('Sessões marcadas na agenda.');
+  }catch(e){
+    console.error(e); btn.disabled = false; res.textContent = '';
+    toast('Não foi possível marcar as sessões: ' + (e.message || e), true);
+  }
+};
 function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfetados, aberturaNivel, protocoloFinal, comparacao, temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA, perfil, ehPrimeiraSessao, cruzamentoVidasPassadas, guardadoComSucesso){
   const main = document.getElementById('mainView');
+  const itensAplicar = triagemItensAplicar();
+  const etiquetasAplicadas = itensAplicar.filter(it => __triagem.aplicadas.indexOf(it.heb) >= 0);
   const sintese = causasDetetadas.length
     ? `A triagem de ${escapeHtml(__triagem.patientNome)} detetou ${causasDetetadas.length} causa(s) — descritas abaixo em linguagem simples.`
     : `A triagem de ${escapeHtml(__triagem.patientNome)} não revelou causas — campo equilibrado.`;
@@ -15356,7 +15593,8 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
         <button class="ghost" onclick="shareReportPDF('Relatório de ${escapeAttrJs(__triagem.patientNome)}', document.getElementById('triagemTextoCliente').value)">📤 Partilhar</button>
       </div>
     </div>
-    ${ehPrimeiraSessao ? triagemProtocoloCompletoHTML(causasDetetadas, chakrasTodos, aberturaNivel) : triagemProtocoloSessaoHTML(causasDetetadas, chakrasTodos, aberturaNivel)}
+    ${etiquetasAplicadas.length ? triagemAplicadasHTML(etiquetasAplicadas, itensAplicar.length) : (ehPrimeiraSessao ? triagemProtocoloCompletoHTML(causasDetetadas, chakrasTodos, aberturaNivel) : triagemProtocoloSessaoHTML(causasDetetadas, chakrasTodos, aberturaNivel))}
+    ${triagemMarcarSessoesHTML()}
     <details class="card"><summary><strong>🔒 Relatório técnico (só para ti)</strong></summary><div style="margin-top:8px;"></div>
     <p class="muted">Com os códigos, etiquetas e números, mais abaixo neste ecrã.</p></details>
     ${perfil ? (ehPrimeiraSessao ? `<div class="card" style="border:1px solid var(--primary);">
