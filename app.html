@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-10-01';
+const APP_VERSION = '2026-10-10-02';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -14941,11 +14941,16 @@ function triagemTextoParaHtml(texto){
 
 window.__triagemGuardarEdicao = async function(){
   const ta = document.getElementById('triagemTextoCliente');
-  if (!ta || !window.__triagemUltimoReportId){ toast('Ainda não há relatório guardado para editar.', true); return; }
+  if (!ta || !window.__triagemUltimoPayload){ toast('Ainda não há relatório para guardar. Gere o relatório primeiro.', true); return; }
   try {
-    await updateDoc(doc(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports', window.__triagemUltimoReportId),
-      { reportTextCliente: ta.value, reportHtml: triagemTextoParaHtml(ta.value) });
-    toast('Relatório atualizado ✓');
+    // Os relatórios da ficha não se alteram depois de criados (regra de segurança), por isso a versão editada fica como um novo registo.
+    const ref = await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
+      tipo: 'triagem-energetica', ...window.__triagemUltimoPayload,
+      reportTextCliente: ta.value, reportHtml: triagemTextoParaHtml(ta.value),
+      editadoDe: window.__triagemUltimoReportId || null, generatedAt: serverTimestamp()
+    });
+    window.__triagemUltimoReportId = ref.id;
+    toast('Versão editada guardada na ficha ✓');
   } catch(e){ toast('Não consegui guardar a edição: ' + (e.message || e), true); }
 };
 
@@ -15182,6 +15187,7 @@ async function triagemTentarGravar(payload){
       tipo: 'triagem-energetica', ...payload, generatedAt: serverTimestamp()
     });
     window.__triagemUltimoReportId = refNovo.id;
+    window.__triagemUltimoPayload = payload;
     toast('Triagem guardada na ficha do paciente ✓');
     return true;
   }catch(e){
