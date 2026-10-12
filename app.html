@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-12-03';
+const APP_VERSION = '2026-10-12-04';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -7584,6 +7584,7 @@ window.openMapPositionPicker = function(gIdx, pIdx){
   document.getElementById('mapPickerContainer').scrollIntoView({ behavior:'smooth', block:'center' });
 };
 
+window.renderMapPositionPicker = renderMapPositionPicker;
 function renderMapPositionPicker(){
   const { gIdx, pIdx } = window.__mapPickerTarget;
   const pt = protocolGroupsDraft[gIdx].points[pIdx];
@@ -12700,6 +12701,7 @@ function reikiLicNormalizar(d){
   d.desafio = String(d.desafio || '');
   d.manual = String(d.manual || '');
   d.video = String(d.video || '');
+  d.capa = String(d.capa || '');
   d.ler = Array.isArray(d.ler) ? d.ler : [];
   d.ler = d.ler.map(b => {
     const tipo = REIKI_LIC_TIPOS[b.tipo] ? b.tipo : 'texto';
@@ -12745,6 +12747,7 @@ window.reikiLicAbrir = function(id){
   reikiLicDesenhar();
 };
 
+window.reikiLicDesenhar = reikiLicDesenhar;
 function reikiLicDesenhar(){
   const d = __reikiLicRasc;
   if (!d) return;
@@ -12819,6 +12822,12 @@ function reikiLicDesenhar(){
           <input type="text" value="${escapeHtml(d.duracao)}" placeholder="20 min" oninput="reikiLicCampo('duracao',this.value)">
         </div>
       </div>
+      <label style="margin-top:10px;">🖼️ Imagem de capa do módulo (opcional)</label>
+      <input type="url" id="licCapa" value="${escapeHtml(d.capa)}" placeholder="Link da imagem (ou escolhe uma foto abaixo)"
+        oninput="reikiLicCampo('capa',this.value)" onchange="reikiLicCampo('capa',this.value);reikiLicDesenhar()">
+      ${imageUploadFieldHTML('licCapa', 'tenants/' + tenantId + '/reiki-licoes')}
+      ${d.capa ? `<div style="text-align:center;margin:6px 0;"><img src="${escapeHtml(d.capa)}" style="max-width:100%;max-height:160px;border-radius:8px;border:1px solid #ddd;" onerror="this.style.display='none'"></div>` : ''}
+      <p class="muted" style="margin-top:4px;font-size:.82rem;">Aparece no cartão do módulo na sala do aluno, como nas áreas de membros. Se não puseres, mostra o número do módulo.</p>
       <label style="margin-top:10px;">▶️ Vídeo do módulo (opcional)</label>
       <input type="url" value="${escapeHtml(d.video)}" placeholder="Cola aqui o link do vídeo (Drive ou YouTube)" oninput="reikiLicCampo('video',this.value)">
       <p class="muted" style="margin-top:4px;font-size:.82rem;">Se puseres um vídeo, o aluno vê-o primeiro (passo 1 do módulo), depois lê, pratica e responde. No Drive, partilha o vídeo como “qualquer pessoa com o link”.</p>
@@ -12964,6 +12973,7 @@ window.reikiLicGuardar = async function(){
     nivel: String(d.nivel),
     ordem: Number(d.ordem),
     video,
+    capa: (d.capa || '').trim(),
     titulo: d.titulo.trim(),
     subtitulo: d.subtitulo.trim(),
     duracao: d.duracao.trim(),

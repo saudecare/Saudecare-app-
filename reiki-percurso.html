@@ -62,6 +62,28 @@
     margin-bottom:8px;text-decoration:none;color:var(--tinta);font-size:14.5px;background:#fff;}
   .recurso{margin-bottom:8px;}
   .hidden{display:none!important;}
+  .hero{background:linear-gradient(135deg,#6f4313,var(--bronze));color:#fff;border-radius:16px;overflow:hidden;margin-bottom:14px;}
+  .hero .capa{height:120px;background-size:cover;background-position:center;background-color:#8a5518;}
+  .hero .corpo{padding:16px;}
+  .hero .peq{font-size:12px;opacity:.85;letter-spacing:.06em;text-transform:uppercase;}
+  .hero h2{font-size:18px;margin:4px 0 2px;line-height:1.3;}
+  .hero p{font-size:13.5px;opacity:.92;}
+  .hero .barra{background:rgba(255,255,255,.25);}
+  .hero .barra i{background:#fff;}
+  .hero button{width:100%;margin-top:14px;padding:13px;border:none;border-radius:11px;background:#fff;color:var(--bronze);font-size:15.5px;font-weight:600;}
+  .mod{display:flex;gap:12px;align-items:stretch;padding:10px;}
+  .mod .thumb{width:84px;min-height:84px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:26px;font-weight:700;background:linear-gradient(135deg,var(--bronze2),#8a5518);background-size:cover;background-position:center;position:relative;}
+  .mod .thumb .play{position:absolute;right:5px;bottom:5px;font-size:12px;background:rgba(0,0,0,.45);border-radius:999px;padding:1px 6px;font-weight:400;}
+  .mod .info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}
+  .mod h3{font-size:15px;color:var(--tinta);line-height:1.3;}
+  .mod .meta{font-size:12.5px;color:var(--suave);margin-top:3px;}
+  .mod .barra{margin-top:8px;height:5px;}
+  .mod.trancado{opacity:.55;}
+  .mod.feito .thumb{background:linear-gradient(135deg,#3f8a74,var(--verde));}
+  .estado{font-size:11.5px;margin-top:6px;color:var(--suave);}
+  .estado.feito{color:var(--verde);font-weight:600;}
+  .sec{font-size:12.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--suave);margin:18px 2px 8px;font-weight:600;}
   footer{text-align:center;color:var(--suave);font-size:12px;padding:22px 16px;}
 </style>
 </head>
@@ -458,6 +480,7 @@ window.abrirRecursoTexto = function(id){
   window.scrollTo({top:0,behavior:'smooth'});
 };
 
+window.desenharLista = desenharLista;
 function desenharLista(){
   if (!MODULOS.length){
     palco().innerHTML = `<div class="card"><h3>Ainda não há módulos publicados</h3><p class="nota">A escola está a preparar o teu percurso. Volta daqui a uns dias.</p></div>`;
@@ -467,16 +490,43 @@ function desenharLista(){
   const pct = Math.round(concluidos / MODULOS.length * 100);
   const tudoFeito = concluidos === MODULOS.length;
 
-  const listaModulos = MODULOS.map((m, i) => {
+  const passosDe = m => (m.video ? 1 : 0) + 3;
+  const feitosDe = (m, p) => p.concluido ? passosDe(m) : ((m.video && (p.videoVisto || p.lido) ? 1 : 0) + (p.lido ? 1 : 0) + (p.praticaFeita ? 1 : 0));
+  const capaStyle = m => m.capa ? `background-image:url('${esc(m.capa)}');` : '';
+
+  const idxProximo = MODULOS.findIndex(m => !(PROGRESSO[m.id] || {}).concluido);
+  const proximo = idxProximo >= 0 ? MODULOS[idxProximo] : null;
+  const pProx = proximo ? (PROGRESSO[proximo.id] || {}) : {};
+  const hero = proximo ? `
+    <div class="hero">
+      <div class="capa" style="${capaStyle(proximo)}"></div>
+      <div class="corpo">
+        <div class="peq">${concluidos === 0 ? 'Começa aqui' : 'Continua de onde paraste'}</div>
+        <h2>${proximo.ordem}. ${esc(proximo.titulo)}</h2>
+        ${proximo.subtitulo ? `<p>${esc(proximo.subtitulo)}</p>` : ''}
+        <div class="barra"><i style="width:${pct}%"></i></div>
+        <p style="margin-top:6px;font-size:12.5px;">${concluidos} de ${MODULOS.length} módulos concluídos · ${pct}%</p>
+        <button onclick="abrirModulo('${proximo.id}')">▶ ${concluidos === 0 && !pProx.lido && !pProx.videoVisto ? 'Começar' : 'Continuar'}</button>
+      </div>
+    </div>` : '';
+
+  const listaModulos = `<div class="sec">Módulos do Nível ${esc(NIVEL)}</div>` + MODULOS.map((m, i) => {
     const p = PROGRESSO[m.id] || {};
     const anterior = i === 0 ? { concluido: true } : (PROGRESSO[MODULOS[i-1].id] || {});
     const trancado = !anterior.concluido;
     const onclickAttr = trancado ? '' : `onclick="abrirModulo('${m.id}')"`;
-    return `<div class="card modulo" ${onclickAttr} style="${trancado ? 'opacity:.55;' : ''}">
-      <div class="topo"><div><h3>${m.ordem}. ${esc(m.titulo)}</h3>
-      ${m.subtitulo ? `<p>${esc(m.subtitulo)}</p>` : ''}
-      ${m.duracao ? `<p>⏱️ ${esc(m.duracao)}</p>` : ''}</div>
-      <span class="selo ${p.concluido ? 'feito' : ''}">${p.concluido ? '✓ feito' : (trancado ? '🔒' : (p.lido ? 'a meio' : 'por começar'))}</span></div></div>`;
+    const tot = passosDe(m), fe = feitosDe(m, p);
+    const estado = p.concluido ? '<div class="estado feito">✓ Concluído</div>'
+      : trancado ? '<div class="estado">🔒 Conclui o módulo anterior para abrir</div>'
+      : `<div class="estado">${fe ? 'A meio · ' + fe + ' de ' + tot + ' passos' : 'Por começar'}</div>`;
+    const nq = (m.responder || []).length;
+    const meta = [m.duracao ? '⏱️ ' + esc(m.duracao) : '', m.video ? '▶️ vídeo' : '', nq ? '✍️ ' + nq + ' pergunta' + (nq > 1 ? 's' : '') : ''].filter(Boolean).join(' · ');
+    return `<div class="card mod ${p.concluido ? 'feito' : ''} ${trancado ? 'trancado' : ''}" ${onclickAttr}>
+      <div class="thumb" style="${capaStyle(m)}">${m.capa ? '' : (p.concluido ? '✓' : (trancado ? '🔒' : m.ordem))}${m.video && !trancado ? '<span class="play">▶</span>' : ''}</div>
+      <div class="info"><h3>${m.ordem}. ${esc(m.titulo)}</h3>
+        ${meta ? `<div class="meta">${meta}</div>` : ''}
+        <div class="barra"><i style="width:${Math.round(fe / tot * 100)}%"></i></div>
+        ${estado}</div></div>`;
   }).join('');
 
   const blocoTreino = MODULOS.some(m => (PROGRESSO[m.id]||{}).lido)
@@ -499,10 +549,11 @@ function desenharLista(){
        <p class="nota">Traz as dúvidas ao grupo. Nenhuma é demasiado básica.</p></div>`
     : '';
 
-  palco().innerHTML = `<div class="card"><strong>${concluidos} de ${MODULOS.length} módulos concluídos</strong>
-    <div class="barra"><i style="width:${pct}%"></i></div>
-    <p class="nota">Faz um módulo de cada vez, sem pressa. O que escreveres fica guardado e a escola acompanha o teu percurso.</p></div>
-    ${listaModulos}${blocoTreino}${blocoFeito}${blocoTurma}`;
+  const resumo = tudoFeito ? `<div class="card"><strong>${concluidos} de ${MODULOS.length} módulos concluídos</strong>
+    <div class="barra"><i style="width:100%"></i></div></div>` : '';
+  palco().innerHTML = `${hero}${resumo}${listaModulos}
+    <p class="nota" style="text-align:center;margin:4px 0 14px;">Faz um módulo de cada vez, sem pressa. O que escreveres fica guardado e a escola acompanha o teu percurso.</p>
+    ${blocoTreino}${blocoFeito}${blocoTurma}`;
 }
 
 async function carregarModeloCert(){
@@ -772,9 +823,24 @@ window.marcarPratica = async function(){
 window.concluirModulo = async function(){
   const qs = ABERTO.responder || [];
   const acertos = qs.reduce((n, q, i) => n + (RESPOSTAS[i] === q.correta ? 1 : 0), 0);
+  const feito = ABERTO;
   await gravar({ respostas: RESPOSTAS, acertos, totalPerguntas: qs.length, concluido: true, concluidoEm: new Date().toISOString() });
-  desenharLista(); window.scrollTo({top:0,behavior:'smooth'});
+  desenharConclusao(feito, acertos, qs.length); window.scrollTo({top:0,behavior:'smooth'});
 };
+
+function desenharConclusao(m, acertos, total){
+  const i = MODULOS.findIndex(x => x.id === m.id);
+  const prox = MODULOS[i + 1];
+  const ultimo = !prox;
+  palco().innerHTML = `<div class="card" style="text-align:center;">
+    <div style="font-size:2.6rem;">${ultimo ? '🏆' : '🎉'}</div>
+    <h3 style="color:var(--bronze);margin-top:6px;">${ultimo ? 'Concluíste o último módulo!' : 'Módulo concluído!'}</h3>
+    <p class="nota" style="font-size:14px;">${esc(m.titulo)}</p>
+    ${total ? `<p class="nota">Acertaste ${acertos} de ${total} perguntas.</p>` : ''}
+    ${prox ? `<button class="principal" onclick="abrirModulo('${prox.id}')">Próximo módulo ▶<br><span style="font-size:13px;opacity:.9;">${prox.ordem}. ${esc(prox.titulo)}</span></button>` : ''}
+    <button class="leve" style="width:100%;margin-top:10px;" onclick="desenharLista();window.scrollTo(0,0)">${ultimo ? 'Ver o meu percurso' : 'Ver todos os módulos'}</button>
+  </div>`;
+}
 
 let TREINO = [], TI = 0, TACERTOS = 0, TRESP = null, TFALHADAS = [];
 
