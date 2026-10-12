@@ -653,7 +653,7 @@ window.abrirModulo = function(id){
   ABERTO = MODULOS.find(m => m.id === id);
   if (!ABERTO) return;
   const p = PROGRESSO[id] || {};
-  PASSO = !p.lido ? 'ler' : (!p.praticaFeita ? 'praticar' : 'responder');
+  PASSO = (ABERTO.video && !p.videoVisto && !p.lido) ? 'ver' : (!p.lido ? 'ler' : (!p.praticaFeita ? 'praticar' : 'responder'));
   RESPOSTAS = Object.assign({}, p.respostas || {});
   desenharModulo();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -673,9 +673,18 @@ function desenharModulo(){
   const cab = `<button class="leve" onclick="desenharLista();window.scrollTo(0,0)">← Voltar</button>
     <div class="card" style="margin-top:12px;"><h3 style="color:var(--bronze);">${m.ordem}. ${esc(m.titulo)}</h3>
     ${m.subtitulo ? `<p class="nota">${esc(m.subtitulo)}</p>` : ''}
-    <div class="passos"><div class="${PASSO==='ler'?'on':(p.lido?'ok':'')}">📖 Ler</div>
+    <div class="passos">${m.video ? `<div class="${PASSO==='ver'?'on':((p.videoVisto||p.lido)?'ok':'')}">▶️ Ver</div>` : ''}<div class="${PASSO==='ler'?'on':(p.lido?'ok':'')}">📖 Ler</div>
     <div class="${PASSO==='praticar'?'on':(p.praticaFeita?'ok':'')}">🤲 Praticar</div>
     <div class="${PASSO==='responder'?'on':(p.concluido?'ok':'')}">✍️ Responder</div></div></div>`;
+
+  if (PASSO === 'ver'){
+    const emb = urlVideoEmbed(m.video);
+    palco().innerHTML = cab + `<div class="card"><h4>▶️ Vê o vídeo deste módulo</h4>
+      ${emb ? `<div style="position:relative;padding-top:56.25%;margin-top:8px;"><iframe src="${esc(emb)}" allow="autoplay; fullscreen" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:10px;background:#000;"></iframe></div>` : ''}
+      <p class="nota" style="margin-top:8px;"><a href="${esc(m.video)}" target="_blank" rel="noopener">Abrir o vídeo noutra janela</a> se não carregar aqui.</p>
+      <button class="principal" onclick="marcarVideo()">Já vi — seguir para a leitura</button></div>`;
+    return;
+  }
 
   if (PASSO === 'ler'){
     palco().innerHTML = cab + `<div class="card">${(m.ler||[]).map(blocoHtml).join('')}
@@ -733,6 +742,21 @@ async function gravar(dados, mod){
     { codigo: CODIGO, alunoNome: ALUNO.nome || '', percurso: { [mod.id]: junto } }, { merge: true }); }
   catch(e){ console.warn('não consegui gravar', e); }
 }
+
+function urlVideoEmbed(u){
+  u = String(u || '').trim();
+  let m = u.match(/drive\.google\.com\/file\/d\/([^/?#]+)/);
+  if (m) return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+  m = u.match(/[?&]id=([^&#]+)/);
+  if (m && /drive\.google\.com/.test(u)) return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+  m = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{6,})/);
+  if (m) return 'https://www.youtube-nocookie.com/embed/' + m[1];
+  return '';
+}
+window.marcarVideo = async function(){
+  await gravar({ videoVisto: true, videoVistoEm: new Date().toISOString() });
+  PASSO = 'ler'; desenharModulo(); window.scrollTo({top:0,behavior:'smooth'});
+};
 
 window.marcarLido = async function(){
   await gravar({ lido: true, lidoEm: new Date().toISOString() });

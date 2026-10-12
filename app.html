@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-12-01';
+const APP_VERSION = '2026-10-12-02';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12032,6 +12032,8 @@ async function renderReikiAlunos(main){
   reikiRenderEcra(m);
 }
 
+const REIKI_GRUPO_CONTEUDO = ['licoes','biblioteca','testes','niveis'];
+
 function reikiRenderEcra(main){
   const m = main || document.getElementById('mainView');
   m.innerHTML = `
@@ -12039,13 +12041,16 @@ function reikiRenderEcra(main){
     <div class="row" style="gap:6px;margin:10px 0 14px;flex-wrap:wrap;">
       <button class="${__reikiTab==='resumo'?'primary':'ghost'}" onclick="reikiMudarTab('resumo')">Resumo</button>
       <button class="${__reikiTab==='alunos'?'primary':'ghost'}" onclick="reikiMudarTab('alunos')">Alunos</button>
-      <button class="${__reikiTab==='niveis'?'primary':'ghost'}" onclick="reikiMudarTab('niveis')">Níveis</button>
-      <button class="${__reikiTab==='biblioteca'?'primary':'ghost'}" onclick="reikiMudarTab('biblioteca')">Biblioteca</button>
-      <button class="${__reikiTab==='licoes'?'primary':'ghost'}" onclick="reikiMudarTab('licoes')">Lições</button>
       <button class="${__reikiTab==='turmas'?'primary':'ghost'}" onclick="reikiMudarTab('turmas')">Turmas</button>
-      <button class="${__reikiTab==='testes'?'primary':'ghost'}" onclick="reikiMudarTab('testes')">Testes</button>
+      <button class="${REIKI_GRUPO_CONTEUDO.includes(__reikiTab)?'primary':'ghost'}" onclick="reikiMudarTab(REIKI_GRUPO_CONTEUDO.includes(__reikiTab)?__reikiTab:'licoes')">Conteúdo</button>
       <button class="${__reikiTab==='mensagens'?'primary':'ghost'}" onclick="reikiMudarTab('mensagens')">Mensagens</button>
     </div>
+    ${REIKI_GRUPO_CONTEUDO.includes(__reikiTab) ? `<div class="row" style="gap:6px;margin:-4px 0 14px;flex-wrap:wrap;">
+      <button class="${__reikiTab==='licoes'?'primary':'ghost'}" onclick="reikiMudarTab('licoes')">📖 Módulos</button>
+      <button class="${__reikiTab==='biblioteca'?'primary':'ghost'}" onclick="reikiMudarTab('biblioteca')">📚 Manuais e vídeos</button>
+      <button class="${__reikiTab==='testes'?'primary':'ghost'}" onclick="reikiMudarTab('testes')">📝 Testes</button>
+      <button class="${__reikiTab==='niveis'?'primary':'ghost'}" onclick="reikiMudarTab('niveis')">🎓 Níveis</button>
+    </div>` : ''}
     <div id="reikiConteudo"></div>`;
   if (__reikiTab === 'resumo') reikiRenderResumo();
   else if (__reikiTab === 'alunos') reikiRenderListaAlunos();
@@ -12667,6 +12672,7 @@ function reikiLicNormalizar(d){
   d.duracao = String(d.duracao || '');
   d.desafio = String(d.desafio || '');
   d.manual = String(d.manual || '');
+  d.video = String(d.video || '');
   d.ler = Array.isArray(d.ler) ? d.ler : [];
   d.ler = d.ler.map(b => {
     const tipo = REIKI_LIC_TIPOS[b.tipo] ? b.tipo : 'texto';
@@ -12786,6 +12792,9 @@ function reikiLicDesenhar(){
           <input type="text" value="${escapeHtml(d.duracao)}" placeholder="20 min" oninput="reikiLicCampo('duracao',this.value)">
         </div>
       </div>
+      <label style="margin-top:10px;">▶️ Vídeo do módulo (opcional)</label>
+      <input type="url" value="${escapeHtml(d.video)}" placeholder="Cola aqui o link do vídeo (Drive ou YouTube)" oninput="reikiLicCampo('video',this.value)">
+      <p class="muted" style="margin-top:4px;font-size:.82rem;">Se puseres um vídeo, o aluno vê-o primeiro (passo 1 do módulo), depois lê, pratica e responde. No Drive, partilha o vídeo como “qualquer pessoa com o link”.</p>
       <label style="display:flex;gap:8px;align-items:center;margin-top:12px;">
         <input type="checkbox" style="width:auto;" ${d.publicado ? 'checked' : ''} onchange="reikiLicCampo('publicado',this.checked)">
         Mostrar esta lição aos alunos
@@ -12922,9 +12931,12 @@ window.reikiLicGuardar = async function(){
   const treino = limparPerguntas('treino', 'A pergunta extra de treino');
   if (!treino) return;
 
+  const video = (d.video || '').trim();
+  if (video && !/^https:\/\//i.test(video)){ toast('O link do vídeo tem de começar por https://', true); return; }
   const dados = {
     nivel: String(d.nivel),
     ordem: Number(d.ordem),
+    video,
     titulo: d.titulo.trim(),
     subtitulo: d.subtitulo.trim(),
     duracao: d.duracao.trim(),

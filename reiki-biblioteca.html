@@ -360,11 +360,21 @@ async function carregarDados(){
     try {
       window.firebaseConfig = firebaseConfig;
       await import(emEstudo === '1' ? './reiki-percurso-nivel1.js' : './reiki-percurso-niveis-2-3.js');
-      const lista = window['MODULOS_NIVEL_' + emEstudo] || [];
+      // Originais com as edições do Mestre por cima (iguais às do percurso):
+      // lições novas contam, as escondidas deixam de contar.
+      const mapa = {};
+      (window['MODULOS_NIVEL_' + emEstudo] || []).forEach(m => { mapa[emEstudo + '-' + m.ordem] = Object.assign({}, m, { publicado: true }); });
+      try {
+        const msnap = await getDocs(collection(db, 'tenants', tenant, 'reikiModules'));
+        msnap.forEach(d => { const x = d.data() || {}; if (String(x.nivel) === String(emEstudo)) mapa[d.id] = x; });
+      } catch(e){ console.warn('lições editadas indisponíveis', e); }
+      const lista = Object.values(mapa).filter(m => m.publicado !== false).sort((x, y) => (x.ordem || 0) - (y.ordem || 0));
       const p = C.percurso || {};
       C.modulos = lista;
       C.modTotal = lista.length;
       C.modFeitos = lista.filter(m => (p[emEstudo + '-' + m.ordem] || {}).concluido).length;
+      C.proximoModulo = lista.slice().sort((x, y) => (x.ordem || 0) - (y.ordem || 0))
+        .find(m => !(p[emEstudo + '-' + m.ordem] || {}).concluido) || null;
     } catch(e){ console.warn('percurso indisponível', e); }
   }
 }
@@ -436,7 +446,9 @@ function verInicio(){
       + ' módulos feitos (' + pm + '%). Em cada módulo: ler, praticar e responder.</p>'
       + '<a class="abrir" href="reiki-percurso.html?t=' + encodeURIComponent(C.tenant)
       + '&c=' + encodeURIComponent(C.codigo) + '">'
-      + (C.modFeitos === 0 ? 'Começar' : (C.modFeitos === C.modTotal ? 'Rever os módulos' : 'Continuar')) + '</a></div>';
+      + (C.modFeitos === 0 ? 'Começar' : (C.modFeitos === C.modTotal ? 'Rever os módulos' : 'Continuar')) + '</a>'
+      + (C.proximoModulo ? '<p style="margin:10px 0 0;color:var(--suave);font-size:.86rem;">A seguir: <b>Módulo ' + esc(String(C.proximoModulo.ordem)) + ' — ' + esc(C.proximoModulo.titulo || '') + '</b></p>' : '')
+      + '</div>';
   }
   h += '<h2>Onde continuar</h2><div class="cartao">'
     + '<button class="botao" onclick="__mostrar(\'biblioteca\')">📚 Materiais (' + recursos.length + ')</button>'
