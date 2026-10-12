@@ -636,7 +636,10 @@ function desenharLista(){
        <p class="nota">Traz as dúvidas ao grupo. Nenhuma é demasiado básica.</p></div>`
     : '';
 
-  palco().innerHTML = `${hero}${listaModulos}
+  const cartaoOficina = `<div class="card aviso" style="margin-top:12px;"><h4>✍️ Oficina dos símbolos</h4>
+    <p class="nota" style="margin-top:0;">Aprende o traçado dos símbolos do teu nível: ver, traçar na tela, papel e de memória.</p>
+    <a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="reiki-simbolos.html?t=${encodeURIComponent(TENANT)}&c=${encodeURIComponent(CODIGO)}">Abrir a oficina</a></div>`;
+  palco().innerHTML = `${hero}${cartaoOficina}${listaModulos}
     <p class="nota" style="text-align:center;margin:4px 0 14px;">Faz um passo de cada vez, sem pressa. O que escreveres fica guardado e a escola acompanha o teu percurso.</p>
     ${blocoTreino}${blocoFeito}${blocoTurma}`;
 }
@@ -817,7 +820,7 @@ function blocoHtml(b){
   if (b.tipo === 'lista') return `<div class="bloco">${b.titulo ? `<h4>${esc(b.titulo)}</h4>` : ''}<ul>${(b.itens||[]).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`;
   if (b.tipo === 'imagem' && simboloDeUrl(b.url)){
     const sid = simboloDeUrl(b.url);
-    return `<div class="bloco" style="text-align:center;"><div style="height:300px;padding:8px;border-radius:10px;border:1px solid var(--linha);background:#fffdf7;">${svgSimbolo(sid, { numeros: true })}</div>
+    return `<div class="bloco" style="text-align:center;"><div style="width:100%;max-width:380px;height:300px;margin:0 auto;padding:8px;border-radius:10px;border:1px solid var(--linha);background:#fffdf7;display:flex;justify-content:center;"><div style="height:100%;aspect-ratio:${(SIMBOLOS[sid].vb[2] / SIMBOLOS[sid].vb[3]).toFixed(3)};max-width:100%;">${svgSimbolo(sid, { numeros: true })}</div></div>
       <p class="nota">${esc(SIMBOLOS[sid].nome)} — ordem dos traços (1 a ${SIMBOLOS[sid].strokes.length}).</p></div>`;
   }
   if (b.tipo === 'imagem') return b.url ? `<div class="bloco" style="text-align:center;">
@@ -848,6 +851,8 @@ function slidesDoModulo(m){
   const L = [];
   L.push({ k: 'capa', html: `<p style="font-size:.6em;letter-spacing:.14em;text-transform:uppercase;">Nível ${esc(NIVEL)} · Módulo ${esc(m.ordem)}</p>
     <h2>${esc(m.titulo)}</h2>${m.subtitulo ? `<p>${esc(m.subtitulo)}</p>` : ''}${m.duracao ? `<p>⏱️ ${esc(m.duracao)}</p>` : ''}` });
+  if (m.video) L.push({ k: 'media', html: `<h3>▶️ Vídeo do módulo</h3><div style="width:100%;max-width:640px;">${midiaHtml(m.video, 'video')}</div>` });
+  if (m.audio) L.push({ k: 'media', html: `<h3>🎧 Áudio do módulo</h3><div style="width:100%;max-width:560px;">${midiaHtml(m.audio, 'audio')}</div>` });
   (m.ler || []).forEach(b => {
     if (b.tipo === 'destaque'){
       dividirTexto(b.conteudo, 340).forEach(t => L.push({ k: 'dest', html: `<div class="ic">✨</div><p>${esc(t)}</p>` }));
@@ -945,10 +950,7 @@ function desenharModulo(){
 
   if (PASSO === 'ler'){
     if (SL.modo === 'slides'){
-      const midia = (m.video || m.audio) ? `<div class="card" style="margin-bottom:12px;">
-        ${m.video ? `<h4>▶️ Vídeo do módulo</h4>${midiaHtml(m.video, 'video')}` : ''}
-        ${m.audio ? `<h4 style="margin-top:${m.video ? '14px' : '0'};">🎧 Áudio do módulo</h4>${midiaHtml(m.audio, 'audio')}` : ''}</div>` : '';
-      palco().innerHTML = cab + midia + desenharSlides(m, seguinte, rotSeguinte);
+      palco().innerHTML = cab + desenharSlides(m, seguinte, rotSeguinte);
       return;
     }
     palco().innerHTML = cab + `<div class="card">
