@@ -335,6 +335,7 @@ import { aplicarCorMarca } from './marca.js';
 import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
 import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
+import { corpoMensagem as reikiCorpoMsg, escolherFoto as reikiEscolherFoto } from './reiki-midia-chat.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
@@ -350,7 +351,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-12-09';
+const APP_VERSION = '2026-10-12-10';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12176,12 +12177,12 @@ window.reikiConversaComAluno = async function(alunoId){
 };
 
 /* Grava uma mensagem do Mestre na conversa privada de um aluno. */
-async function reikiEnviarPrivada(codigo, aluno, texto){
+async function reikiEnviarPrivada(codigo, aluno, texto, imagem){
   await addDoc(collection(db, 'tenants', tenantId, 'reikiThreads', codigo, 'mensagens'),
-    { de:'mestre', texto, criadoEm: serverTimestamp() });
+    Object.assign({ de:'mestre', texto, criadoEm: serverTimestamp() }, imagem ? { imagem } : {}));
   await setDoc(doc(db, 'tenants', tenantId, 'reikiThreads', codigo), {
     alunoNome: aluno?.nome || '', alunoId: aluno?.id || '', codigo,
-    ultima: texto.slice(0,120), ultimaDe: 'mestre', lidoAluno: false, lidoMestre: true,
+    ultima: (imagem ? '📷 ' : '') + texto.slice(0,110), ultimaDe: 'mestre', lidoAluno: false, lidoMestre: true,
     atualizadoEm: serverTimestamp()
   }, { merge: true });
 }
@@ -12272,7 +12273,8 @@ function reikiCaixaHtml(titulo, aviso){
         <p class="muted">A abrir…</p>
       </div>
       <div class="row" style="gap:8px;margin-top:12px;align-items:flex-end;">
-        <textarea id="reikiMsgTexto" rows="2" placeholder="Escreve aqui…" style="flex:1;"></textarea>
+        <textarea id="reikiMsgTexto" rows="2" placeholder="Escreve aqui… (podes colar links do Drive)" style="flex:1;"></textarea>
+        <button class="ghost" id="reikiMsgFoto" title="Enviar foto">📷</button>
         <button class="primary" id="reikiMsgEnviar">Enviar</button>
       </div>
     </div>`;
@@ -12291,7 +12293,7 @@ function reikiDesenharMensagens(lista, souEu){
       <div class="muted" style="font-size:.76rem;margin-bottom:2px;">${escapeHtml(x.de === 'mestre' ? 'Eu' : (x.nome || 'Aluno'))}</div>
       <div style="display:inline-block;padding:9px 13px;border-radius:13px;max-width:88%;
         white-space:pre-wrap;word-break:break-word;text-align:left;
-        background:${meu?'#b8893b':'#f2ebdd'};color:${meu?'#fff':'inherit'};">${escapeHtml(x.texto || '')}</div>
+        background:${meu?'#b8893b':'#f2ebdd'};color:${meu?'#fff':'inherit'};">${reikiCorpoMsg(x)}</div>
     </div>`;
   }).join('');
   caixa.scrollTop = caixa.scrollHeight;
@@ -12354,6 +12356,18 @@ window.reikiAbrirConversa = function(codigo, nome){
       await reikiEnviarPrivada(codigo, a || { nome: nome || '' }, texto);
     } catch(e){ toast('Não consegui enviar: ' + (e.message || e), true); ta.value = texto; }
   };
+
+  document.getElementById('reikiMsgFoto').onclick = async () => {
+    const img = await reikiEscolherFoto();
+    if (!img) return;
+    const ta = document.getElementById('reikiMsgTexto');
+    const texto = (ta.value || '').trim() || '📷 Foto';
+    ta.value = '';
+    try {
+      const a = __reikiAlunos.find(x => x.codigoAcesso === codigo);
+      await reikiEnviarPrivada(codigo, a || { nome: nome || '' }, texto, img);
+    } catch(e){ toast('Não consegui enviar a foto: ' + (e.message || e), true); }
+  };
 };
 
 window.reikiAbrirSala = function(sala, nome){
@@ -12379,6 +12393,17 @@ window.reikiAbrirSala = function(sala, nome){
     try {
       await addDoc(ref, { de:'mestre', nome:'Mestre', texto, criadoEm: serverTimestamp() });
     } catch(e){ toast('Não consegui enviar: ' + (e.message || e), true); ta.value = texto; }
+  };
+
+  document.getElementById('reikiMsgFoto').onclick = async () => {
+    const img = await reikiEscolherFoto();
+    if (!img) return;
+    const ta = document.getElementById('reikiMsgTexto');
+    const texto = (ta.value || '').trim() || '📷 Foto';
+    ta.value = '';
+    try {
+      await addDoc(ref, { de:'mestre', nome:'Mestre', texto, imagem: img, criadoEm: serverTimestamp() });
+    } catch(e){ toast('Não consegui enviar a foto: ' + (e.message || e), true); }
   };
 };
 
@@ -13254,6 +13279,10 @@ function reikiRenderTurmas(){
           <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
             ${t.whatsappUrl ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(t.whatsappUrl)}" target="_blank" rel="noopener">💬 Grupo</a>` : '<span class="muted" style="font-size:.85rem;">sem grupo</span>'}
             ${jitsi ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(jitsi)}" target="_blank" rel="noopener">🎥 Sala</a>` : ''}
+            ${t.ativa === false ? '' : (t.aulaAoVivo
+              ? `<button class="primary" style="background:#c0392b;" onclick="reikiTerminarAula('${t.id}')">⏹ Terminar aula</button><button class="ghost" onclick="reikiEntrarAula('${t.id}')">🎥 Entrar</button>`
+              : `<button class="primary" onclick="reikiIniciarAula('${t.id}')">🔴 Iniciar aula</button>`)}
+            ${t.ativa === false ? '' : `<button class="ghost" onclick="reikiMarcarAula('${t.id}')">📅 Marcar aula${t.proximaAula && new Date(t.proximaAula) > new Date() ? ' · ' + escapeHtml(new Date(t.proximaAula).toLocaleString('pt-PT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})) : ''}</button>`}
             <button class="ghost" onclick="reikiAbrirLinkInscricao('${t.id}')">🔗 Link de inscrição</button>
             <button class="ghost" onclick="reikiAbrirTurma('${t.id}')">✏️ Editar</button>
             <button class="danger" onclick="reikiApagarTurma('${t.id}')">🗑️</button>
@@ -13270,6 +13299,86 @@ function reikiRenderTurmas(){
     </div>
     ${cartoes}`;
 }
+
+/* ─── Aula em direto ───
+   "Iniciar aula" acende o cartão vermelho na sala de cada aluno da turma e
+   escreve um aviso com o link na conversa da turma. A sala é a Jitsi da turma
+   (se ainda não houver nome, cria-se um difícil de adivinhar). */
+function reikiLinkAulaMestre(t){
+  const sala = String(t.jitsiSala || '').trim().replace(/\s+/g, '-').replace(/[^A-Za-z0-9\-]/g, '');
+  return sala ? 'https://meet.jit.si/' + sala + '#config.disableDeepLinking=true&config.prejoinPageEnabled=false&userInfo.displayName=%22Mestre%22' : '';
+}
+window.reikiEntrarAula = function(turmaId){
+  const t = reikiTurmaInfo(turmaId);
+  const l = t && reikiLinkAulaMestre(t);
+  if (l) window.open(l, '_blank', 'noopener');
+};
+window.reikiIniciarAula = async function(turmaId){
+  const t = reikiTurmaInfo(turmaId);
+  if (!t) return;
+  let sala = String(t.jitsiSala || '').trim();
+  const dados = { aulaAoVivo: true, aulaInicio: serverTimestamp() };
+  if (!sala){
+    sala = 'hikari-' + String(turmaId).slice(0, 6).toLowerCase() + '-' + Math.random().toString(36).slice(2, 8);
+    dados.jitsiSala = sala;
+  }
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId), dados);
+    t.aulaAoVivo = true; if (dados.jitsiSala) t.jitsiSala = sala;
+    const link = 'https://meet.jit.si/' + sala.replace(/\s+/g, '-').replace(/[^A-Za-z0-9\-]/g, '');
+    try {
+      await addDoc(collection(db, 'tenants', tenantId, 'reikiChat', 'turma-' + turmaId, 'mensagens'),
+        { de:'mestre', nome:'Mestre', texto: '🔴 A aula começou! Entra aqui: ' + link, criadoEm: serverTimestamp() });
+    } catch(_){}
+    toast('Aula iniciada. Os alunos já veem o botão para entrar.');
+    window.open(reikiLinkAulaMestre(t), '_blank', 'noopener');
+    reikiRenderTurmas();
+  } catch(e){ toast('Não consegui iniciar a aula: ' + (e.message || e), true); }
+};
+window.reikiTerminarAula = async function(turmaId){
+  const t = reikiTurmaInfo(turmaId);
+  if (!t) return;
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId), { aulaAoVivo: false });
+    t.aulaAoVivo = false;
+    toast('Aula terminada.');
+    reikiRenderTurmas();
+  } catch(e){ toast('Não consegui terminar: ' + (e.message || e), true); }
+};
+window.reikiMarcarAula = function(turmaId){
+  const t = reikiTurmaInfo(turmaId);
+  if (!t) return;
+  const v = t.proximaAula ? new Date(t.proximaAula) : null;
+  const local = v && !isNaN(v) ? new Date(v.getTime() - v.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
+  showPatientOverlay('📅 Marcar aula · ' + (t.nome || ''), `
+    <div class="card">
+      <label>Dia e hora</label>
+      <input id="reikiAulaQuando" type="datetime-local" value="${local}">
+      <label style="margin-top:10px;">Tema (opcional)</label>
+      <input id="reikiAulaTema" type="text" value="${escapeHtml(t.proximaAulaTitulo || '')}" placeholder="Ex.: Módulo 3 — Cho Ku Rei">
+      <p class="muted" style="margin-top:6px;font-size:.85rem;">Os alunos veem "Próxima aula" na sala. Quando carregares em "Iniciar aula", passa a "Aula em direto".</p>
+      <div class="row" style="gap:8px;margin-top:12px;">
+        <button class="primary" onclick="reikiGuardarAulaMarcada('${turmaId}')">Guardar</button>
+        <button class="ghost" onclick="reikiGuardarAulaMarcada('${turmaId}', true)">Limpar</button>
+        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+      </div>
+    </div>`);
+};
+window.reikiGuardarAulaMarcada = async function(turmaId, limpar){
+  const t = reikiTurmaInfo(turmaId);
+  if (!t) return;
+  const v = document.getElementById('reikiAulaQuando')?.value || '';
+  if (!limpar && !v){ toast('Escolhe o dia e a hora.', true); return; }
+  const dados = limpar ? { proximaAula: '', proximaAulaTitulo: '' }
+    : { proximaAula: new Date(v).toISOString(), proximaAulaTitulo: (document.getElementById('reikiAulaTema')?.value || '').trim() };
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId), dados);
+    Object.assign(t, dados);
+    closePatientOverlay();
+    toast(limpar ? 'Aula desmarcada.' : 'Aula marcada.');
+    reikiRenderTurmas();
+  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
+};
 
 window.reikiAbrirTurma = function(turmaId){
   const t = turmaId ? __reikiTurmas.find(x => x.id === turmaId) : null;

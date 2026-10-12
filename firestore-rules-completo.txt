@@ -261,7 +261,10 @@ service cloud.firestore {
           allow read: if true;
           allow create: if request.resource.data.texto is string &&
                           request.resource.data.texto.size() > 0 &&
-                          request.resource.data.texto.size() < 4000;
+                          request.resource.data.texto.size() < 4000 &&
+                          (!('imagem' in request.resource.data) ||
+                            (request.resource.data.imagem is string &&
+                             request.resource.data.imagem.size() < 400000));
           allow update: if false;
           allow delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
         }
@@ -275,7 +278,10 @@ service cloud.firestore {
           allow create: if request.resource.data.texto is string &&
                           request.resource.data.texto.size() > 0 &&
                           request.resource.data.texto.size() < 4000 &&
-                          request.resource.data.nome is string;
+                          request.resource.data.nome is string &&
+                          (!('imagem' in request.resource.data) ||
+                            (request.resource.data.imagem is string &&
+                             request.resource.data.imagem.size() < 400000));
           allow update: if false;
           allow delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
         }

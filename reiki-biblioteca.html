@@ -83,7 +83,13 @@
   .msg.meu{text-align:right;}
   .msg.meu .bolha{background:var(--destaque);color:#fff;text-align:left;}
   .msg.mestre .bolha{background:#efe6d2;border:1px solid var(--destaque);}
-  .escrever{display:flex;gap:8px;margin-top:12px;}
+  .escrever{display:flex;gap:8px;margin-top:12px;align-items:flex-end;}
+  .msg .bolha img{max-width:100%;}
+  .aula{border:2px solid var(--destaque);}
+  .aula.vivo{border-color:#c0392b;background:#fff5f3;}
+  .aula .ponto{display:inline-block;width:10px;height:10px;border-radius:50%;background:#c0392b;margin-right:6px;animation:pisca 1.2s infinite;}
+  @keyframes pisca{50%{opacity:.25;}}
+  .btfoto{margin:0 !important;background:#f3ece0 !important;color:var(--texto) !important;padding:10px 12px !important;}
   .escrever textarea{
     flex:1;resize:none;font-family:inherit;font-size:.95rem;padding:10px;
     border:1px solid var(--linha);border-radius:10px;background:var(--papel);
@@ -139,6 +145,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { mesclarPratica, praticaId } from "./reiki-pratica.js";
+import { corpoMensagem, escolherFoto } from "./reiki-midia-chat.js";
 import { getFirestore, doc, getDoc, collection, getDocs, addDoc, setDoc,
          query, orderBy, onSnapshot, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -293,6 +300,7 @@ async function arrancar(){
     + (aluno.turmaNome ? ' · ' + aluno.turmaNome : '');
 
   await carregarDados();
+  iniciarAula();
   desenharBarra();
   mostrar('inicio');
 }
@@ -620,12 +628,62 @@ function verPlano(){
   });
 }
 
+/* ─── Aula em direto da turma ─── */
+function salaJitsi(t){ return String((t && t.jitsiSala) || '').trim().replace(/\s+/g, '-').replace(/[^A-Za-z0-9\-]/g, ''); }
+function linkAula(t){
+  const sala = salaJitsi(t);
+  if (!sala) return '';
+  const nome = encodeURIComponent('"' + String((C.aluno && C.aluno.nome) || 'Aluno').replace(/"/g, '') + '"');
+  return 'https://meet.jit.si/' + sala + '#config.disableDeepLinking=true&config.prejoinPageEnabled=false&userInfo.displayName=' + nome;
+}
+function dataBonita(iso){
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return d.toLocaleString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+}
+function cartaoAulaHtml(){
+  const t = C.turma;
+  if (!t || t.ativa === false) return '';
+  const wa = t.whatsappUrl && /^https:\/\/chat\.whatsapp\.com\//.test(t.whatsappUrl)
+    ? '<a class="botao" href="' + esc(t.whatsappUrl) + '" target="_blank" rel="noopener">💬 Grupo de WhatsApp</a>' : '';
+  const link = linkAula(t);
+  if (t.aulaAoVivo && link){
+    return '<div class="cartao aula vivo" style="text-align:center;"><strong><span class="ponto"></span>Aula em direto</strong>'
+      + (t.aulaTitulo ? '<p style="margin:6px 0 0;">' + esc(t.aulaTitulo) + '</p>' : '')
+      + '<p style="margin:4px 0 0;color:var(--suave);font-size:.85rem;">' + esc(t.nome || C.aluno.turmaNome || 'A tua turma') + '</p>'
+      + '<a class="abrir" href="' + esc(link) + '" target="_blank" rel="noopener">🎥 Entrar na aula</a>' + wa + '</div>';
+  }
+  const quando = t.proximaAula && new Date(t.proximaAula) > new Date(Date.now() - 3600000) ? dataBonita(t.proximaAula) : '';
+  if (quando || wa){
+    return '<div class="cartao aula" style="text-align:center;"><strong>📅 ' + (quando ? 'Próxima aula' : 'A tua turma') + '</strong>'
+      + (quando ? '<p style="margin:6px 0 0;">' + esc(quando) + (t.proximaAulaTitulo ? '<br><span style="color:var(--suave);font-size:.88rem;">' + esc(t.proximaAulaTitulo) + '</span>' : '') + '</p>'
+        + '<p style="margin:6px 0 0;color:var(--suave);font-size:.82rem;">Quando a aula começar, o botão para entrar aparece aqui.</p>' : '')
+      + wa + '</div>';
+  }
+  return '';
+}
+function atualizarAula(){
+  const h = cartaoAulaHtml();
+  document.querySelectorAll('.slotAula').forEach(el => { el.innerHTML = h; });
+}
+let __aulaOn = null;
+function iniciarAula(){
+  if (!C.aluno.turmaId || __aulaOn) return;
+  try {
+    __aulaOn = onSnapshot(doc(db, 'tenants', C.tenant, 'reikiClasses', C.aluno.turmaId), function(s){
+      C.turma = s.exists() ? s.data() : null;
+      atualizarAula();
+    }, function(){});
+  } catch(e){}
+}
+
 function verInicio(){
   const { aluno, concluido, emEstudo, testes, resultados, recursos } = C;
   const feitos = testes.filter(t => resultados.some(r => r.testeId === t.id && r.aprovado)).length;
   const pct = testes.length ? Math.round(feitos / testes.length * 100) : 0;
 
-  let h = '<div class="cartao" style="text-align:center;">'
+  let h = '<div class="slotAula">' + cartaoAulaHtml() + '</div>'
+    + '<div class="cartao" style="text-align:center;">'
     + '<strong style="font-size:1.08rem;">' + esc(aluno.nome || 'Bem-vindo') + '</strong><br>'
     + (emEstudo
         ? '<span class="selo" style="margin-top:9px;">A estudar: ' + esc(ROTULOS[emEstudo]) + '</span>'
@@ -680,7 +738,6 @@ function verInicio(){
     h += '<h2>A tua turma</h2><div class="cartao" style="text-align:center;">'
       + (aluno.turmaNome ? '<p style="margin:0 0 10px;color:var(--suave);font-size:.9rem;">' + esc(aluno.turmaNome) + '</p>' : '')
       + (aluno.turmaWhatsapp ? '<a class="botao" href="' + esc(aluno.turmaWhatsapp) + '" target="_blank" rel="noopener">💬 Grupo da turma</a>' : '')
-      + (aluno.turmaJitsi ? '<a class="botao" href="' + esc(aluno.turmaJitsi) + '" target="_blank" rel="noopener">🎥 Entrar na sala</a>' : '')
       + '</div>';
   }
 
@@ -952,6 +1009,7 @@ function verMensagens(){
     + '<div class="cartao"><div class="msgs" id="caixa">'
     + '<p class="vazio">A abrir…</p></div>'
     + '<div class="escrever"><textarea id="txt" rows="2" placeholder="Escreve aqui…"></textarea>'
+    + '<button class="abrir btfoto" id="btFoto" title="Enviar foto">📷</button>'
     + '<button class="abrir" id="btEnviar" style="margin:0;">Enviar</button></div></div>';
 
   const caixa = document.getElementById('caixa');
@@ -969,7 +1027,7 @@ function verMensagens(){
     caixa.innerHTML = m.map(function(x){
       return '<div class="msg ' + (x.de === 'aluno' ? 'meu' : 'mestre') + '">'
         + '<div class="quem">' + (x.de === 'aluno' ? 'Tu' : 'Mestre') + '</div>'
-        + '<div class="bolha">' + esc(x.texto) + '</div></div>';
+        + '<div class="bolha">' + corpoMensagem(x) + '</div></div>';
     }).join('');
     caixa.scrollTop = caixa.scrollHeight;
   }, function(){
@@ -992,6 +1050,23 @@ function verMensagens(){
           atualizadoEm: serverTimestamp() }, { merge: true });
     } catch(e){ aviso('Não consegui enviar. Tenta outra vez.'); ta.value = texto; }
   };
+
+  document.getElementById('btFoto').onclick = async function(){
+    const img = await escolherFoto();
+    if (!img) return;
+    const ta = document.getElementById('txt');
+    const texto = ta.value.trim() || '📷 Foto';
+    ta.value = '';
+    try {
+      await addDoc(ref, { de:'aluno', texto: texto, imagem: img, nome: C.aluno.nome || '',
+                          codigo: C.codigo, criadoEm: serverTimestamp() });
+      await setDoc(doc(db, 'tenants', C.tenant, 'reikiThreads', C.codigo),
+        { alunoNome: C.aluno.nome || '', alunoId: C.aluno.alunoId || '',
+          codigo: C.codigo, ultima: '📷 ' + texto.slice(0,110),
+          ultimaDe: 'aluno', lidoMestre: false, lidoAluno: true,
+          atualizadoEm: serverTimestamp() }, { merge: true });
+    } catch(e){ aviso('Não consegui enviar a foto. Tenta outra vez.'); }
+  };
 }
 
 let salaAtual = 'geral';
@@ -1002,7 +1077,8 @@ function verConversa(){
   const salaTurma = C.aluno.turmaId ? 'turma-' + C.aluno.turmaId : null;
   if (![ 'geral', salaNivel, salaTurma ].includes(salaAtual)) salaAtual = 'geral';
 
-  alvo.innerHTML = '<div class="cartao" style="text-align:center;">'
+  alvo.innerHTML = '<div class="slotAula">' + cartaoAulaHtml() + '</div>'
+    + '<div class="cartao" style="text-align:center;">'
     + '<button class="botao" id="sGeral">🌍 Toda a escola</button>'
     + (salaTurma ? '<button class="botao" id="sTurma">👥 ' + esc(C.aluno.turmaNome || 'A minha turma') + '</button>' : '')
     + (salaNivel ? '<button class="botao" id="sNivel">' + esc(ROTULOS[emEstudo]) + '</button>' : '')
@@ -1010,6 +1086,7 @@ function verConversa(){
     + 'Aqui escrevem os alunos da escola. Trata os outros como gostarias de ser tratado.</p></div>'
     + '<div class="cartao"><div class="msgs" id="caixa"><p class="vazio">A abrir…</p></div>'
     + '<div class="escrever"><textarea id="txt" rows="2" placeholder="Escreve para o grupo…"></textarea>'
+    + '<button class="abrir btfoto" id="btFoto" title="Enviar foto">📷</button>'
     + '<button class="abrir" id="btEnviar" style="margin:0;">Enviar</button></div></div>';
 
   const bG = document.getElementById('sGeral'), bN = document.getElementById('sNivel'), bT = document.getElementById('sTurma');
@@ -1031,7 +1108,7 @@ function verConversa(){
     caixa.innerHTML = m.slice(-120).map(function(x){
       return '<div class="msg ' + (x.codigo === C.codigo ? 'meu' : (x.de === 'mestre' ? 'mestre' : '')) + '">'
         + '<div class="quem">' + esc(x.de === 'mestre' ? 'Mestre' : (x.nome || 'Aluno')) + '</div>'
-        + '<div class="bolha">' + esc(x.texto) + '</div></div>';
+        + '<div class="bolha">' + corpoMensagem(x) + '</div></div>';
     }).join('');
     caixa.scrollTop = caixa.scrollHeight;
   }, function(){
@@ -1048,6 +1125,18 @@ function verConversa(){
       await addDoc(ref, { de:'aluno', nome: C.aluno.nome || 'Aluno',
                           codigo: C.codigo, texto: texto, criadoEm: serverTimestamp() });
     } catch(e){ aviso('Não consegui enviar. Tenta outra vez.'); ta.value = texto; }
+  };
+
+  document.getElementById('btFoto').onclick = async function(){
+    const img = await escolherFoto();
+    if (!img) return;
+    const ta = document.getElementById('txt');
+    const texto = ta.value.trim() || '📷 Foto';
+    ta.value = '';
+    try {
+      await addDoc(ref, { de:'aluno', nome: C.aluno.nome || 'Aluno',
+                          codigo: C.codigo, texto: texto, imagem: img, criadoEm: serverTimestamp() });
+    } catch(e){ aviso('Não consegui enviar a foto. Tenta outra vez.'); }
   };
 }
 
