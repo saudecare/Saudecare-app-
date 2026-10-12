@@ -136,6 +136,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { svgSimbolo, simboloDeUrl, simbolosDoModulo, SIMBOLOS } from "./reiki-simbolos.js";
+import { apresentacoesDoModulo } from './reiki-apresentacoes.js';
 import { praticaId, praticaPadrao, mesclarPratica, semanaDe, audioDoDia, hojeISO, urlEmbed, midiaHtml }
   from "./reiki-pratica.js";
 
@@ -557,7 +558,7 @@ function desenharLista(){
   const feitosDe = (m, p) => {
     if (p.concluido) return passosDe(m);
     const ps = passosDoModulo(m);
-    return ps.reduce((n, k) => n + ((k === 'ler' && p.lido) || (k === 'praticar' && p.praticaFeita) ? 1 : 0), 0);
+    return ps.reduce((n, k) => n + ((k === 'ver' && (p.visto || p.lido)) || (k === 'ler' && p.lido) || (k === 'praticar' && p.praticaFeita) ? 1 : 0), 0);
   };
   const capaStyle = m => m.capa ? `background-image:url('${esc(m.capa)}');` : '';
 
@@ -606,7 +607,7 @@ function desenharLista(){
       : trancado ? '<div class="estado">🔒 ' + (i > 0 && ehPratica(seq[i-1]) ? 'Começa a prática dos 21 dias para abrir' : 'Conclui o módulo anterior para abrir') + '</div>'
       : `<div class="estado">${fe ? 'A meio · ' + fe + ' de ' + tot + ' passos' : 'Por começar'}</div>`;
     const nq = (m.responder || []).length, at = temAtividade(m);
-    const meta = [m.duracao ? '⏱️ ' + esc(m.duracao) : '', m.video ? '▶️ vídeo' : '', m.audio ? '🎧 áudio' : '',
+    const meta = [m.duracao ? '⏱️ ' + esc(m.duracao) : '', apresentacoesDoModulo(NIVEL, m).length ? '▶️ apresentação' : '', m.audio ? '🎧 áudio' : '',
       nq ? '✍️ teste' : '', (!nq && at.pratica) ? (m.praticar && m.praticar.instrucoes ? '🤲 prática' : '🎯 desafio') : ''].filter(Boolean).join(' · ');
     return `<div class="card mod ${p.concluido ? 'feito' : ''} ${trancado ? 'trancado' : ''}" ${onclickAttr}>
       <div class="thumb" style="${capaStyle(m)}">${m.capa ? '' : (p.concluido ? '✓' : (trancado ? '🔒' : m.ordem))}${(m.video || m.audio) && !trancado ? '<span class="play">' + (m.video ? '▶' : '🎧') + '</span>' : ''}</div>
@@ -791,7 +792,7 @@ let ABERTO = null, PASSO = 'ler', RESPOSTAS = {};
 /* Passos do módulo: aprender (vídeo/áudio + introdução em texto), depois
    a prática ou o desafio, e o teste — só os que o módulo tem. */
 function passosDoModulo(m){
-  const passos = ['ler'];
+  const passos = apresentacoesDoModulo(NIVEL, m).length ? ['ver', 'ler'] : ['ler'];
   const pr = m.praticar || {};
   if ((pr.instrucoes && String(pr.instrucoes).trim()) || (m.desafio && String(m.desafio).trim())) passos.push('praticar');
   if ((m.responder || []).length) passos.push('responder');
@@ -806,7 +807,7 @@ window.abrirModulo = function(id){
   const p = PROGRESSO[id] || {};
   const ps = passosDoModulo(ABERTO);
   if (p.concluido) PASSO = ps[ps.length - 1];
-  else if (!p.lido) PASSO = 'ler';
+  else if (!p.lido) PASSO = (ps[0] === 'ver' && !p.visto) ? 'ver' : 'ler';
   else if (ps.includes('praticar') && !p.praticaFeita) PASSO = 'praticar';
   else PASSO = ps[ps.length - 1];
   RESPOSTAS = Object.assign({}, p.respostas || {});
@@ -851,7 +852,6 @@ function slidesDoModulo(m){
   const L = [];
   L.push({ k: 'capa', html: `<p style="font-size:.6em;letter-spacing:.14em;text-transform:uppercase;">Nível ${esc(NIVEL)} · Módulo ${esc(m.ordem)}</p>
     <h2>${esc(m.titulo)}</h2>${m.subtitulo ? `<p>${esc(m.subtitulo)}</p>` : ''}${m.duracao ? `<p>⏱️ ${esc(m.duracao)}</p>` : ''}` });
-  if (m.video) L.push({ k: 'media', html: `<h3>▶️ Vídeo do módulo</h3><div style="width:100%;max-width:640px;">${midiaHtml(m.video, 'video')}</div>` });
   if (m.audio) L.push({ k: 'media', html: `<h3>🎧 Áudio do módulo</h3><div style="width:100%;max-width:560px;">${midiaHtml(m.audio, 'audio')}</div>` });
   (m.ler || []).forEach(b => {
     if (b.tipo === 'destaque'){
@@ -937,16 +937,27 @@ function desenharModulo(){
   const m = ABERTO, p = PROGRESSO[m.id] || {};
   const ps = passosDoModulo(m);
   const pr = m.praticar || {};
-  const rotulo = k => k === 'ler' ? ((m.video || m.audio) ? '▶️ Aprender' : '📖 Ler')
+  const rotulo = k => k === 'ver' ? '▶️ Apresentação' : k === 'ler' ? '📖 Ler'
     : k === 'praticar' ? ((pr.instrucoes && String(pr.instrucoes).trim()) ? '🤲 Prática' : '🎯 Desafio')
     : '✍️ Teste';
-  const feitoDe = k => k === 'ler' ? p.lido : k === 'praticar' ? p.praticaFeita : p.concluido;
+  const feitoDe = k => k === 'ver' ? (p.visto || p.lido) : k === 'ler' ? p.lido : k === 'praticar' ? p.praticaFeita : p.concluido;
   const cab = `<button class="leve" onclick="desenharLista();window.scrollTo(0,0)">← Voltar</button>
     <div class="card" style="margin-top:12px;"><h3 style="color:var(--bronze);">${m.ordem}. ${esc(m.titulo)}</h3>
     ${m.subtitulo ? `<p class="nota">${esc(m.subtitulo)}</p>` : ''}
     <div class="passos">${ps.map(k => `<div class="${PASSO===k?'on':(feitoDe(k)?'ok':'')}">${rotulo(k)}</div>`).join('')}</div></div>`;
   const seguinte = proximoPasso(m, PASSO);
-  const rotSeguinte = k => k === 'praticar' ? ((pr.instrucoes && String(pr.instrucoes).trim()) ? 'a prática' : 'o desafio') : 'o teste';
+  const rotSeguinte = k => k === 'ler' ? 'a leitura' : k === 'praticar' ? ((pr.instrucoes && String(pr.instrucoes).trim()) ? 'a prática' : 'o desafio') : 'o teste';
+
+  if (PASSO === 'ver'){
+    const vs = apresentacoesDoModulo(NIVEL, m);
+    palco().innerHTML = cab + `<div class="card">
+      <h4>▶️ Vê e ouve a apresentação</h4>
+      <p class="nota" style="margin-top:0;">Slides com voz narrada${vs.length > 1 ? ' (' + vs.length + ' partes)' : ''}. Se preferires, podes saltar e ler.</p>
+      ${vs.map(v => `<div style="margin:12px 0;">${vs.length > 1 || v.d ? `<p class="nota" style="margin:0 0 4px;"><b>${esc(v.t)}</b>${v.d ? ' · ' + esc(v.d) + ' min' : ''}</p>` : ''}${midiaHtml(v.u, 'video')}</div>`).join('')}
+      <button class="principal" onclick="marcarVisto()">Já vi — seguir para a leitura</button>
+      <button class="leve" style="margin-top:10px;width:100%;" onclick="PASSO='ler';desenharModulo();window.scrollTo(0,0)">📖 Prefiro ler</button></div>`;
+    return;
+  }
 
   if (PASSO === 'ler'){
     if (SL.modo === 'slides'){
@@ -955,9 +966,8 @@ function desenharModulo(){
     }
     palco().innerHTML = cab + `<div class="card">
       <button class="leve" style="margin-bottom:12px;" onclick="slideModo('slides')">🖼️ Ver em slides</button>
-      ${m.video ? `<h4>▶️ Vídeo do módulo</h4>${midiaHtml(m.video, 'video')}` : ''}
-      ${m.audio ? `<h4 style="margin-top:${m.video ? '14px' : '0'};">🎧 Áudio do módulo</h4>${midiaHtml(m.audio, 'audio')}` : ''}
-      <div style="margin-top:${(m.video || m.audio) ? '16px' : '0'};">${(m.video || m.audio) ? '<h4>📖 Introdução</h4>' : ''}${(m.ler||[]).map(blocoHtml).join('')}</div>
+      ${m.audio ? `<h4 style="margin-top:0;">🎧 Áudio do módulo</h4>${midiaHtml(m.audio, 'audio')}` : ''}
+      <div style="margin-top:${m.audio ? '16px' : '0'};">${m.audio ? '<h4>📖 Introdução</h4>' : ''}${(m.ler||[]).map(blocoHtml).join('')}</div>
       ${cartaoSimbolos(m)}
       <button class="principal" onclick="marcarLido()">${seguinte ? 'Li — seguir para ' + rotSeguinte(seguinte) : 'Concluir este módulo'}</button></div>`;
     return;
@@ -1001,6 +1011,11 @@ function desenharModulo(){
     </button></div>`;
 }
 
+window.marcarVisto = async function(){
+  await gravar({ visto: true, vistoEm: new Date().toISOString() });
+  PASSO = 'ler'; desenharModulo(); window.scrollTo(0, 0);
+};
+
 window.responder = function(i, oi){ RESPOSTAS[i] = oi; desenharModulo(); };
 
 async function gravar(dados, mod){
@@ -1016,7 +1031,7 @@ async function gravar(dados, mod){
 
 window.marcarLido = async function(){
   const m = ABERTO;
-  await gravar({ lido: true, videoVisto: !!m.video, lidoEm: new Date().toISOString() });
+  await gravar({ lido: true, videoVisto: apresentacoesDoModulo(NIVEL, m).length > 0, lidoEm: new Date().toISOString() });
   const prox = proximoPasso(m, 'ler');
   if (!prox){ await concluirSemTeste(); return; }
   PASSO = prox; desenharModulo(); window.scrollTo({top:0,behavior:'smooth'});
