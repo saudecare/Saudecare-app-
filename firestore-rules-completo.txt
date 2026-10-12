@@ -217,6 +217,29 @@ service cloud.firestore {
         allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
+      // Pedidos de inscrição feitos pelo link da turma (página pública).
+      // Qualquer pessoa com o link ativo cria um pedido pendente; só a
+      // equipa clínica o lê, aceita ou apaga.
+      match /reikiInscricoes/{inscId} {
+        allow create: if tenantIsActive(tenantId) &&
+          request.resource.data.keys().hasOnly(['nome','telefone','email','turmaId','turmaNome','nivel','token','estado','criadoEm']) &&
+          request.resource.data.nome is string &&
+          request.resource.data.nome.size() >= 2 && request.resource.data.nome.size() <= 120 &&
+          request.resource.data.telefone is string &&
+          request.resource.data.telefone.size() >= 6 && request.resource.data.telefone.size() <= 30 &&
+          request.resource.data.email is string && request.resource.data.email.size() <= 120 &&
+          request.resource.data.turmaId is string &&
+          request.resource.data.turmaNome is string && request.resource.data.turmaNome.size() <= 120 &&
+          request.resource.data.nivel is string && request.resource.data.nivel.size() <= 3 &&
+          request.resource.data.token is string && request.resource.data.token.size() >= 8 &&
+          request.resource.data.estado == 'pendente' &&
+          request.resource.data.criadoEm == request.time &&
+          get(/databases/$(database)/documents/tenants/$(tenantId)/reikiClasses/$(request.resource.data.turmaId)).data.get('conviteToken', '') == request.resource.data.token &&
+          get(/databases/$(database)/documents/tenants/$(tenantId)/reikiClasses/$(request.resource.data.turmaId)).data.get('conviteAtivo', true) == true &&
+          get(/databases/$(database)/documents/tenants/$(tenantId)/reikiClasses/$(request.resource.data.turmaId)).data.get('ativa', true) != false;
+        allow read, update, delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+      }
+
       match /reikiQuizzes/{testeId} {
         allow read: if true;
         allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);

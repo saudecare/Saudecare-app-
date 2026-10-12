@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-10-10';
+const APP_VERSION = '2026-10-12-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11974,14 +11974,15 @@ async function renderReikiAlunos(main){
         return { forEach: () => {}, empty: true };
       }
     };
-    const [alunosSnap, configSnap, bibSnap, turmasSnap, testesSnap, resSnap, convSnap] = await Promise.all([
+    const [alunosSnap, configSnap, bibSnap, turmasSnap, testesSnap, resSnap, convSnap, pedidosSnap] = await Promise.all([
       lerColecao('reikiStudents'),
       lerColecao('reikiConfig'),
       lerColecao('reikiLibrary'),
       lerColecao('reikiClasses'),
       lerColecao('reikiQuizzes'),
       lerColecao('reikiQuizResults'),
-      lerColecao('reikiThreads')
+      lerColecao('reikiThreads'),
+      lerColecao('reikiInscricoes')
     ]);
     // Categorias à parte, para saber se a leitura falhou (regras por
     // publicar) e avisar em vez de fingir que não há categorias.
@@ -12004,6 +12005,9 @@ async function renderReikiAlunos(main){
     __reikiTurmas = [];
     turmasSnap.forEach(d => __reikiTurmas.push({ id: d.id, ...d.data() }));
     __reikiTurmas.sort((a, b) => String(a.nome||'').localeCompare(String(b.nome||''), 'pt'));
+    __reikiPedidos = [];
+    pedidosSnap.forEach(d => { const x = d.data() || {}; if (x.estado === 'pendente') __reikiPedidos.push({ id: d.id, ...x }); });
+    __reikiPedidos.sort((a, b) => (a.criadoEm?.toMillis?.()||0) - (b.criadoEm?.toMillis?.()||0));
     __reikiRecursos = [];
     bibSnap.forEach(d => __reikiRecursos.push(manualPadrao({ id: d.id, ...d.data() })));
     garantirManuais(__reikiRecursos);
@@ -12985,6 +12989,8 @@ window.reikiLicApagar = async function(){
    ────────────────────────────────────────────────────────────────── */
 
 let __reikiTurmas = [];
+let __reikiPedidos = [];
+let __reikiPedidosFeitos = {};
 
 function reikiTurmaInfo(id){ return __reikiTurmas.find(t => t.id === id) || null; }
 
@@ -13019,6 +13025,7 @@ function reikiRenderTurmas(){
           <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
             ${t.whatsappUrl ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(t.whatsappUrl)}" target="_blank" rel="noopener">💬 Grupo</a>` : '<span class="muted" style="font-size:.85rem;">sem grupo</span>'}
             ${jitsi ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(jitsi)}" target="_blank" rel="noopener">🎥 Sala</a>` : ''}
+            <button class="ghost" onclick="reikiAbrirLinkInscricao('${t.id}')">🔗 Link de inscrição</button>
             <button class="ghost" onclick="reikiAbrirTurma('${t.id}')">✏️ Editar</button>
             <button class="danger" onclick="reikiApagarTurma('${t.id}')">🗑️</button>
           </div>
@@ -13028,6 +13035,7 @@ function reikiRenderTurmas(){
   alvo.innerHTML = `
     <div class="card" style="margin-bottom:12px;">
       <p class="muted">Cada turma tem o seu grupo de WhatsApp e a sua sala de encontros. Os alunos chegam lá pelo link pessoal que lhes dás — não precisam de conta nenhuma.</p>
+      <p class="muted" style="margin-top:6px;font-size:.85rem;">Para encher a turma sem escreveres nada: em cada turma toca em <strong>🔗 Link de inscrição</strong> e envia-o no WhatsApp. Cada turma (e por isso cada nível) tem o seu link.</p>
       <p class="muted" style="margin-top:6px;font-size:.85rem;">No WhatsApp, cria o grupo e usa <strong>Convidar através de link</strong>. A sala Jitsi é só um nome à tua escolha, e abre sem instalar nada.</p>
       <button class="primary" style="margin-top:12px;" onclick="reikiAbrirTurma()">➕ Nova turma</button>
     </div>
@@ -14225,6 +14233,7 @@ function reikiRenderResumo(){
     </div>`;
 
   const atencao = [];
+  if (__reikiPedidos.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiAbrirPedidos()">📥 <strong>${__reikiPedidos.length}</strong> pedido(s) de inscrição por aceitar</div>`);
   if (novas.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiMudarTab('mensagens')">✉️ <strong>${novas.length}</strong> conversa(s) com mensagem por ler</div>`);
   emAtraso.forEach(x => atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiAbrirPagamentos('${x.a.id}')">⚠️ <strong>${escapeHtml(x.a.nome || '')}</strong> — pagamento em atraso, falta ${reikiEuros(x.p.falta)}</div>`));
   if (semTurma.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiMudarTab('alunos')">👥 <strong>${semTurma.length}</strong> aluno(s) sem turma</div>`);
@@ -14364,6 +14373,225 @@ window.reikiCopiarConvite = function(alunoId){
   else alternativa();
 };
 
+/* ─── Inscrição por link da turma ────────────────────────────────────
+   Cada turma tem o seu link (e por isso cada nível). O aluno escreve o
+   nome e o telemóvel numa página pública; o pedido fica pendente e é a
+   Mestra quem aceita. Ao aceitar, o aluno é criado já na turma e sai o
+   WhatsApp com o link pessoal da Sala de Estudo. */
+
+function reikiUrlInscricao(t){
+  const base = window.location.href.replace(/[^/]*$/, '');
+  return base + 'reiki-inscricao.html?t=' + encodeURIComponent(tenantId)
+    + '&turma=' + encodeURIComponent(t.id) + '&k=' + encodeURIComponent(t.conviteToken || '');
+}
+
+function reikiTextoInscricao(t){
+  return 'Olá! Inscrição na turma "' + (t.nome || '') + '" da Hikari Fafe Escola de Reiki.\n'
+    + 'Toca no link, escreve o teu nome e telemóvel, e eu envio-te o teu acesso à Sala de Estudo:\n'
+    + reikiUrlInscricao(t);
+}
+
+async function reikiGarantirTokenTurma(t){
+  if (t.conviteToken) return t.conviteToken;
+  const token = reikiGerarCodigo();
+  await updateDoc(doc(db, 'tenants', tenantId, 'reikiClasses', t.id), { conviteToken: token, conviteAtivo: true });
+  t.conviteToken = token;
+  t.conviteAtivo = true;
+  return token;
+}
+
+window.reikiAbrirLinkInscricao = async function(turmaId){
+  const t = __reikiTurmas.find(x => x.id === turmaId);
+  if (!t) return;
+  showPatientOverlay('🔗 Link de inscrição', '<div class="card"><p class="muted">A preparar…</p></div>');
+  try {
+    await reikiGarantirTokenTurma(t);
+  } catch(e){
+    showPatientOverlay('🔗 Link de inscrição', `<div class="card"><p>Não consegui preparar o link.</p><p class="muted" style="margin-top:6px;">${escapeHtml(e.message || String(e))}</p></div>`);
+    return;
+  }
+  const nivel = reikiNivelInfo(t.nivel);
+  const ativo = t.conviteAtivo !== false;
+  const url = reikiUrlInscricao(t);
+  const pendentes = __reikiPedidos.filter(p => p.turmaId === t.id).length;
+  showPatientOverlay('🔗 Link de inscrição', `
+    <div class="card">
+      <strong>${escapeHtml(t.nome || '')}</strong>
+      <p class="muted" style="margin-top:4px;">${nivel ? escapeHtml(nivel.certLabel) : 'Sem nível definido'} · ${ativo ? 'link ativo' : '⏸ link desligado'}</p>
+      ${t.ativa === false ? '<p class="muted" style="margin-top:6px;">Esta turma está encerrada, por isso o link não aceita inscrições.</p>' : ''}
+      <label style="margin-top:12px;">Link da turma</label>
+      <input id="reikiInscCampo" type="text" readonly value="${escapeHtml(url)}" onclick="this.select()">
+      <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <button class="primary" onclick="reikiCopiarLinkInscricao()">📋 Copiar</button>
+        <a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(reikiTextoInscricao(t))}">💬 Enviar no WhatsApp</a>
+      </div>
+      <p class="muted" style="margin-top:12px;font-size:.85rem;">Cola este link no grupo de WhatsApp da turma. Cada aluno escreve o nome e o telemóvel e o pedido aparece em <strong>📥 Pedidos</strong>, onde aceitas com um toque.${pendentes ? ' Tens <strong>' + pendentes + '</strong> pedido(s) desta turma por aceitar.' : ''}</p>
+      <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap;">
+        ${pendentes ? '<button class="ghost" onclick="reikiAbrirPedidos()">📥 Ver pedidos</button>' : ''}
+        <button class="ghost" onclick="reikiAlternarLinkInscricao('${t.id}')">${ativo ? '⏸ Desligar link' : '▶️ Ligar link'}</button>
+        <button class="ghost" onclick="reikiRenovarLinkInscricao('${t.id}')">🔄 Novo link</button>
+      </div>
+      <p class="muted" style="margin-top:10px;font-size:.8rem;">“Novo link” faz o antigo deixar de funcionar — usa se o link foi parar a quem não devia.</p>
+    </div>`);
+};
+
+window.reikiCopiarLinkInscricao = function(){
+  const c = document.getElementById('reikiInscCampo');
+  if (!c) return;
+  c.select();
+  navigator.clipboard?.writeText(c.value)
+    .then(() => toast('Link copiado.'))
+    .catch(() => { try { document.execCommand('copy'); toast('Link copiado.'); } catch(_){ toast('Copia à mão o texto do campo.', true); } });
+};
+
+window.reikiAlternarLinkInscricao = async function(turmaId){
+  const t = __reikiTurmas.find(x => x.id === turmaId);
+  if (!t) return;
+  const novo = t.conviteAtivo === false;
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId), { conviteAtivo: novo });
+    t.conviteAtivo = novo;
+    toast(novo ? 'Link ligado.' : 'Link desligado.');
+    window.reikiAbrirLinkInscricao(turmaId);
+  } catch(e){ toast('Não consegui alterar: ' + (e.message || e), true); }
+};
+
+window.reikiRenovarLinkInscricao = async function(turmaId){
+  const t = __reikiTurmas.find(x => x.id === turmaId);
+  if (!t) return;
+  if (!await reikiConfirmar('Novo link', 'Gerar um link novo para "' + (t.nome||'') + '"?\n\nO link antigo deixa de funcionar. Pedidos já enviados mantêm-se.', 'Gerar')) return;
+  try {
+    const token = reikiGerarCodigo();
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId), { conviteToken: token, conviteAtivo: true });
+    t.conviteToken = token;
+    t.conviteAtivo = true;
+    toast('Link novo gerado.');
+    window.reikiAbrirLinkInscricao(turmaId);
+  } catch(e){ toast('Não consegui gerar: ' + (e.message || e), true); }
+};
+
+/* Cria o aluno a partir de um pedido. Se já existir um aluno com o mesmo
+   telemóvel (ou e-mail), não duplica: passa-o para a turma do pedido. */
+async function reikiAplicarPedido(p){
+  const dig = p.telefone ? telefoneParaDigitos(p.telefone) : '';
+  const mail = String(p.email || '').trim().toLowerCase();
+  let a = __reikiAlunos.find(x =>
+    (dig && x.telefone && telefoneParaDigitos(x.telefone) === dig) ||
+    (mail && x.email && String(x.email).trim().toLowerCase() === mail)) || null;
+  let jaExistia = !!a;
+  if (a){
+    if (p.turmaId && a.turmaId !== p.turmaId){
+      await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', a.id), { turmaId: p.turmaId, atualizadoEm: serverTimestamp() });
+      a.turmaId = p.turmaId;
+    }
+    if (a.codigoAcesso) await reikiGravarAcesso(a.codigoAcesso, a);
+  } else {
+    const dados = {
+      nome: String(p.nome || '').trim(),
+      telefone: String(p.telefone || '').trim(),
+      email: String(p.email || '').trim(),
+      turmaId: p.turmaId || '',
+      notas: '',
+      nivelAtual: null, historico: [],
+      origem: 'link-turma',
+      criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
+    };
+    const ref = await addDoc(collection(db, 'tenants', tenantId, 'reikiStudents'), dados);
+    a = { ...dados, id: ref.id, criadoEm: null, atualizadoEm: null };
+    __reikiAlunos.push(a);
+    __reikiAlunos.sort((x, y) => String(x.nome||'').localeCompare(String(y.nome||''), 'pt'));
+  }
+  await reikiGarantirCodigo(a);
+  await updateDoc(doc(db, 'tenants', tenantId, 'reikiInscricoes', p.id), { estado: 'aceite', alunoId: a.id, aceiteEm: serverTimestamp() });
+  __reikiPedidos = __reikiPedidos.filter(x => x.id !== p.id);
+  __reikiPedidosFeitos[p.id] = { alunoId: a.id, nome: a.nome || p.nome || '', jaExistia };
+}
+
+window.reikiAbrirPedidos = function(){
+  reikiDesenharPedidos();
+};
+
+function reikiDesenharPedidos(){
+  const turmaNome = id => (reikiTurmaInfo(id)?.nome) || '';
+  const pend = __reikiPedidos.map(p => {
+    const nivel = reikiNivelInfo(p.nivel);
+    const tn = turmaNome(p.turmaId) || p.turmaNome || '';
+    return `
+      <div class="appt-item" id="ped-${p.id}">
+        <strong>${escapeHtml(p.nome || '')}</strong>
+        <div class="muted" style="font-size:.85rem;">📞 ${escapeHtml(p.telefone || '')}${p.email ? ' · ✉️ ' + escapeHtml(p.email) : ''}</div>
+        <div class="muted" style="font-size:.85rem;">👥 ${escapeHtml(tn)}${nivel ? ' · ' + escapeHtml(nivel.certLabel) : ''}</div>
+        <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap;">
+          <button class="primary" onclick="reikiAceitarPedido('${p.id}')">✅ Aceitar</button>
+          <button class="danger" onclick="reikiRecusarPedido('${p.id}')">Recusar</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  const feitos = Object.keys(__reikiPedidosFeitos).map(pid => {
+    const f = __reikiPedidosFeitos[pid];
+    const a = __reikiAlunos.find(x => x.id === f.alunoId);
+    if (!a || !a.codigoAcesso) return '';
+    const digitos = a.telefone ? telefoneParaDigitos(a.telefone) : '';
+    const wa = 'https://wa.me/' + (digitos ? encodeURIComponent(digitos) : '') + '?text=' + encodeURIComponent(reikiTextoConvite(a));
+    return `
+      <div class="appt-item">
+        <strong>${escapeHtml(a.nome || '')}</strong>
+        <div class="muted" style="font-size:.85rem;">✅ ${f.jaExistia ? 'Já era aluno — passou para a turma' : 'Aceite'}${a.turmaId ? ': ' + escapeHtml(turmaNome(a.turmaId)) : ''}</div>
+        <div id="convSt-${a.id}" class="muted" style="font-size:.85rem;margin-top:2px;">${a.convidadoEm ? '✓ Convidado a ' + escapeHtml(reikiDataPT(a.convidadoEm)) : 'Falta enviar o link pessoal'}</div>
+        <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap;">
+          <a href="${wa}" target="_blank" rel="noopener" onclick="reikiMarcarConvidado('${a.id}')"
+             style="text-decoration:none;display:inline-block;background:var(--primary);color:#fff;padding:10px 18px;border-radius:8px;">💬 Enviar acesso</a>
+        </div>
+      </div>`;
+  }).join('');
+
+  showPatientOverlay('📥 Pedidos de inscrição', `
+    <div class="card">
+      <p class="muted">${__reikiPedidos.length ? __reikiPedidos.length + ' pedido(s) por aceitar.' : 'Não há pedidos por aceitar.'} Ao aceitar, o aluno fica logo na turma e podes enviar-lhe o link pessoal por WhatsApp.</p>
+      ${__reikiPedidos.length > 1 ? '<button class="primary" style="margin-top:10px;" onclick="reikiAceitarTodosPedidos()">✅ Aceitar todos</button>' : ''}
+    </div>
+    ${pend ? `<div class="card" style="margin-top:12px;">${pend}</div>` : ''}
+    ${feitos ? `<div class="card" style="margin-top:12px;"><strong>Aceites agora</strong><div style="margin-top:8px;">${feitos}</div></div>` : ''}`);
+}
+
+window.reikiAceitarPedido = async function(pedidoId){
+  const p = __reikiPedidos.find(x => x.id === pedidoId);
+  if (!p) return;
+  try {
+    await reikiAplicarPedido(p);
+    toast('Aluno aceite.');
+  } catch(e){ toast('Não consegui aceitar: ' + (e.message || e), true); return; }
+  try { reikiRenderEcra(); } catch(_){}
+  reikiDesenharPedidos();
+};
+
+window.reikiAceitarTodosPedidos = async function(){
+  const lista = __reikiPedidos.slice();
+  let falhas = 0;
+  for (const p of lista){
+    try { await reikiAplicarPedido(p); }
+    catch(e){ falhas++; console.warn('Reiki: não consegui aceitar', p.id, e); }
+  }
+  try { reikiRenderEcra(); } catch(_){}
+  toast(falhas ? ('Aceites ' + (lista.length - falhas) + '; ' + falhas + ' falharam.') : (lista.length + ' aluno(s) aceite(s).'), !!falhas);
+  reikiDesenharPedidos();
+};
+
+window.reikiRecusarPedido = async function(pedidoId){
+  const p = __reikiPedidos.find(x => x.id === pedidoId);
+  if (!p) return;
+  if (!await reikiConfirmar('Recusar pedido', 'Recusar o pedido de ' + (p.nome||'') + '?', 'Recusar')) return;
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiInscricoes', pedidoId), { estado: 'recusado', recusadoEm: serverTimestamp() });
+    __reikiPedidos = __reikiPedidos.filter(x => x.id !== pedidoId);
+    toast('Pedido recusado.');
+    try { reikiRenderEcra(); } catch(_){}
+    reikiDesenharPedidos();
+  } catch(e){ toast('Não consegui recusar: ' + (e.message || e), true); }
+};
+
+
 function reikiRenderListaAlunos(){
   const alvo = document.getElementById('reikiConteudo');
   if (!alvo) return;
@@ -14412,6 +14640,8 @@ function reikiRenderListaAlunos(){
       <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap;">
         <button class="primary" onclick="reikiAbrirForm()">➕ Novo aluno</button>
         <button class="ghost" onclick="reikiAbrirConvites()">📲 Convidar alunos</button>
+        ${__reikiPedidos.length ? `<button class="primary" onclick="reikiAbrirPedidos()">📥 Pedidos (${__reikiPedidos.length})</button>` : ''}
+        <button class="ghost" onclick="reikiMudarTab('turmas')">🔗 Links das turmas</button>
       </div>
     </div>
     ${cartoes}`;
