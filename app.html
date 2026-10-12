@@ -334,6 +334,7 @@
 import { aplicarCorMarca } from './marca.js';
 import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
+import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
@@ -349,7 +350,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-12-05';
+const APP_VERSION = '2026-10-12-06';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12629,7 +12630,7 @@ function reikiLicLista(nivel){
     const id = nivel + '-' + m.ordem;
     itens[id] = { id, ordem: m.ordem, dados: m, temOriginal: true, editada: false };
   });
-  __reikiLicEditadas.filter(m => String(m.nivel) === nivel).forEach(m => {
+  __reikiLicEditadas.filter(m => String(m.nivel) === nivel && m.tipo !== 'pratica').forEach(m => {
     const it = itens[m.id] || { id: m.id, temOriginal: false };
     it.dados = m;
     it.editada = true;
@@ -12686,7 +12687,8 @@ async function reikiRenderLicoes(){
       <button class="primary" style="margin-top:12px;" onclick="reikiLicAbrir()">➕ Nova lição</button>
     </div>
     ${aviso}
-    ${cartoes}`;
+    ${cartoes}
+    ${reikiPratCartao(__reikiLicNivel)}`;
 }
 
 window.reikiLicEscolherNivel = function(nivel){
@@ -12701,6 +12703,7 @@ function reikiLicNormalizar(d){
   d.desafio = String(d.desafio || '');
   d.manual = String(d.manual || '');
   d.video = String(d.video || '');
+  d.audio = String(d.audio || '');
   d.capa = String(d.capa || '');
   d.ler = Array.isArray(d.ler) ? d.ler : [];
   d.ler = d.ler.map(b => {
@@ -12830,7 +12833,10 @@ function reikiLicDesenhar(){
       <p class="muted" style="margin-top:4px;font-size:.82rem;">Aparece no cartão do módulo na sala do aluno, como nas áreas de membros. Se não puseres, mostra o número do módulo.</p>
       <label style="margin-top:10px;">▶️ Vídeo do módulo (opcional)</label>
       <input type="url" value="${escapeHtml(d.video)}" placeholder="Cola aqui o link do vídeo (Drive ou YouTube)" oninput="reikiLicCampo('video',this.value)">
-      <p class="muted" style="margin-top:4px;font-size:.82rem;">Se puseres um vídeo, o aluno vê-o primeiro (passo 1 do módulo), depois lê, pratica e responde. No Drive, partilha o vídeo como “qualquer pessoa com o link”.</p>
+      <label style="margin-top:10px;">🎧 Áudio do módulo (opcional)</label>
+      <input type="url" value="${escapeHtml(d.audio)}" placeholder="Cola aqui o link do áudio (Drive, YouTube ou .mp3)" oninput="reikiLicCampo('audio',this.value)">
+      <p class="muted" style="margin-top:4px;font-size:.82rem;">O aluno vê o vídeo e/ou ouve o áudio, lê a introdução em texto e só depois faz a prática, o desafio ou o teste. No Drive, partilha o ficheiro como “qualquer pessoa com o link”.</p>
+      <p class="muted" style="margin-top:4px;font-size:.82rem;"><strong>Cada módulo precisa de um teste (perguntas), um desafio ou uma prática.</strong></p>
       <label style="display:flex;gap:8px;align-items:center;margin-top:12px;">
         <input type="checkbox" style="width:auto;" ${d.publicado ? 'checked' : ''} onchange="reikiLicCampo('publicado',this.checked)">
         Mostrar esta lição aos alunos
@@ -12969,10 +12975,16 @@ window.reikiLicGuardar = async function(){
 
   const video = (d.video || '').trim();
   if (video && !/^https:\/\//i.test(video)){ toast('O link do vídeo tem de começar por https://', true); return; }
+  const audio = (d.audio || '').trim();
+  if (audio && !/^https:\/\//i.test(audio)){ toast('O link do áudio tem de começar por https://', true); return; }
+  if (d.publicado !== false && !responder.length && !d.desafio.trim() && !d.praticar.instrucoes.trim()){
+    toast('Cada módulo precisa de um teste (perguntas), um desafio ou uma prática. Acrescenta um deles ou desmarca "Mostrar esta lição".', true); return;
+  }
   const dados = {
     nivel: String(d.nivel),
     ordem: Number(d.ordem),
     video,
+    audio,
     capa: (d.capa || '').trim(),
     titulo: d.titulo.trim(),
     subtitulo: d.subtitulo.trim(),
@@ -13001,6 +13013,174 @@ window.reikiLicGuardar = async function(){
     console.error('reikiLicGuardar:', e);
     toast('Não consegui guardar: ' + (e.message || e), true);
   }
+};
+
+/* ─── Prática de autoaplicação (21 dias) ─── */
+let __reikiPratRasc = null;
+
+function reikiPratAtual(nivel){
+  const doc0 = __reikiLicEditadas.find(m => m.id === praticaId(nivel) && m.tipo === 'pratica');
+  return { p: mesclarPratica(nivel, doc0), editada: !!doc0 };
+}
+
+function reikiPratCartao(nivel){
+  const { p, editada } = reikiPratAtual(nivel);
+  const nAud = (p.audios || []).filter(a => a.url).length;
+  const resumo = nivel === '1'
+    ? `${p.dias} dias · ${nAud} de ${p.audios.length} áudios de meditação com link`
+    : `${p.dias} dias · desafio de autoaplicação (sem áudios guiados)`;
+  return `
+    <div class="card" style="margin-top:14px;border:2px solid #d9c9a6;${p.publicado === false ? 'opacity:.7;' : ''}">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;">
+          <strong>🌿 ${escapeHtml(p.titulo)}</strong>
+          <p class="muted" style="margin-top:4px;">Entra no percurso a seguir ao módulo ${escapeHtml(String(p.depoisDe))} · ${escapeHtml(resumo)}${p.obrigatoria ? ' · obrigatória' : ''}</p>
+        </div>
+        <span class="badge">${p.publicado === false ? '🙈 Escondida' : (editada ? '✏️ Editada' : 'Original')}</span>
+      </div>
+      <div class="row" style="gap:6px;margin-top:10px;"><button class="ghost" onclick="reikiPratAbrir()">✏️ Editar prática</button></div>
+    </div>`;
+}
+
+window.reikiPratAbrir = function(){
+  const nivel = __reikiLicNivel;
+  __reikiPratRasc = JSON.parse(JSON.stringify(reikiPratAtual(nivel).p));
+  reikiPratDesenhar();
+};
+
+window.reikiPratCampo = function(c, v){ if (__reikiPratRasc) __reikiPratRasc[c] = v; };
+window.reikiPratAudio = function(i, c, v){ const a = __reikiPratRasc?.audios[i]; if (a) a[c] = v; };
+window.reikiPratSemana = function(i, c, v){ const a = __reikiPratRasc?.semanas[i]; if (a) a[c] = v; };
+window.reikiPratAddAudio = function(){
+  const p = __reikiPratRasc; if (!p) return;
+  p.audios.push({ titulo: 'Meditação guiada ' + (p.audios.length + 1), url: '' });
+  reikiPratDesenhar();
+};
+window.reikiPratRemAudio = function(i){
+  const p = __reikiPratRasc; if (!p) return;
+  p.audios.splice(i, 1);
+  reikiPratDesenhar();
+};
+
+function reikiPratDesenhar(){
+  const p = __reikiPratRasc;
+  if (!p) return;
+  const lista = reikiLicLista(p.nivel);
+  const opcoes = [`<option value="0" ${Number(p.depoisDe) === 0 ? 'selected' : ''}>No início do percurso</option>`]
+    .concat(lista.map(it => `<option value="${it.ordem}" ${Number(p.depoisDe) === Number(it.ordem) ? 'selected' : ''}>Depois do módulo ${escapeHtml(String(it.ordem))} · ${escapeHtml((it.dados || {}).titulo || '')}</option>`)).join('');
+  const audios = p.audios.map((a, i) => `
+    <div class="card" style="margin-bottom:8px;">
+      <label>Título do áudio ${i + 1}</label>
+      <input type="text" value="${escapeHtml(a.titulo)}" oninput="reikiPratAudio(${i},'titulo',this.value)">
+      <label style="margin-top:6px;">Link (Drive, YouTube ou .mp3)</label>
+      <input type="url" value="${escapeHtml(a.url)}" placeholder="https://…" oninput="reikiPratAudio(${i},'url',this.value)">
+      <button class="ghost" style="margin-top:6px;" onclick="reikiPratRemAudio(${i})">Remover</button>
+    </div>`).join('');
+  const semanas = p.semanas.map((s, i) => `
+    <div class="card" style="margin-bottom:8px;">
+      <label>Semana ${i + 1} · título</label>
+      <input type="text" value="${escapeHtml(s.titulo)}" oninput="reikiPratSemana(${i},'titulo',this.value)">
+      <label style="margin-top:6px;">Texto</label>
+      <textarea rows="3" oninput="reikiPratSemana(${i},'texto',this.value)">${escapeHtml(s.texto)}</textarea>
+    </div>`).join('');
+  const n1 = String(p.nivel) === '1';
+  showPatientOverlay('🌿 Prática de autoaplicação · Nível ' + p.nivel, `
+    <div class="card">
+      <label>Título</label>
+      <input type="text" value="${escapeHtml(p.titulo)}" oninput="reikiPratCampo('titulo',this.value)">
+      <label style="margin-top:10px;">Subtítulo</label>
+      <input type="text" value="${escapeHtml(p.subtitulo)}" oninput="reikiPratCampo('subtitulo',this.value)">
+      <label style="margin-top:10px;">Introdução</label>
+      <textarea rows="4" oninput="reikiPratCampo('intro',this.value)">${escapeHtml(p.intro)}</textarea>
+      <label style="margin-top:10px;">Nota final (ex.: seguir a intuição)</label>
+      <textarea rows="3" oninput="reikiPratCampo('nota',this.value)">${escapeHtml(p.nota)}</textarea>
+      <div class="row" style="gap:8px;margin-top:10px;">
+        <div style="flex:1;"><label>Número de dias</label>
+          <input type="number" min="1" max="90" value="${escapeHtml(String(p.dias))}" oninput="reikiPratCampo('dias',this.value)"></div>
+      </div>
+      <label style="margin-top:10px;">Onde entra no percurso</label>
+      <select onchange="reikiPratCampo('depoisDe',this.value)">${opcoes}</select>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:12px;">
+        <input type="checkbox" style="width:auto;" ${p.obrigatoria ? 'checked' : ''} onchange="reikiPratCampo('obrigatoria',this.checked)">
+        Obrigatória para fazer o teste final
+      </label>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+        <input type="checkbox" style="width:auto;" ${p.publicado !== false ? 'checked' : ''} onchange="reikiPratCampo('publicado',this.checked)">
+        Mostrar aos alunos
+      </label>
+      <label style="margin-top:10px;">▶️ Vídeo de apresentação (opcional)</label>
+      <input type="url" value="${escapeHtml(p.video || '')}" placeholder="https://…" oninput="reikiPratCampo('video',this.value)">
+      <label style="margin-top:10px;">🖼️ Imagem de capa (opcional)</label>
+      <input type="url" value="${escapeHtml(p.capa || '')}" placeholder="https://…" oninput="reikiPratCampo('capa',this.value)">
+    </div>
+    <h3 style="margin:16px 0 4px;">🎧 Meditações guiadas</h3>
+    <p class="muted" style="margin-bottom:6px;">${n1 ? 'Na 1.ª semana o aluno ouve uma por dia (a 1.ª no dia 1, a 2.ª no dia 2…). Depois podem ser repetidas à vontade.' : 'Estes níveis não têm meditações guiadas. Podes juntar se quiseres.'}</p>
+    ${audios}
+    <div class="card"><button class="ghost" onclick="reikiPratAddAudio()">➕ Adicionar áudio</button></div>
+    <h3 style="margin:16px 0 4px;">🗓️ Plano por semana</h3>
+    ${semanas}
+    <div class="card" style="margin-top:12px;">
+      <div class="row" style="gap:8px;flex-wrap:wrap;">
+        <button class="primary" onclick="reikiPratGuardar()">Guardar prática</button>
+        <button class="ghost" onclick="closePatientOverlay()">Cancelar</button>
+        ${reikiPratAtual(p.nivel).editada ? '<button class="ghost" onclick="reikiPratRepor()">↩️ Repor original</button>' : ''}
+      </div>
+    </div>`);
+}
+
+window.reikiPratGuardar = async function(){
+  const p = __reikiPratRasc;
+  if (!p) return;
+  if (!String(p.titulo || '').trim()){ toast('A prática precisa de um título.', true); return; }
+  const httpsOk = u => !u || /^https:\/\//i.test(u);
+  const audios = [];
+  for (const a of p.audios){
+    const url = String(a.url || '').trim();
+    const titulo = String(a.titulo || '').trim();
+    if (!url && !titulo) continue;
+    if (!httpsOk(url)){ toast('O link de "' + (titulo || 'áudio') + '" tem de começar por https://', true); return; }
+    audios.push({ titulo: titulo || 'Meditação guiada', url });
+  }
+  const video = String(p.video || '').trim(), capa = String(p.capa || '').trim();
+  if (!httpsOk(video) || !httpsOk(capa)){ toast('Os links têm de começar por https://', true); return; }
+  const dados = {
+    nivel: String(p.nivel), tipo: 'pratica', ordem: 0,
+    titulo: String(p.titulo).trim(),
+    subtitulo: String(p.subtitulo || '').trim(),
+    intro: String(p.intro || '').trim(),
+    nota: String(p.nota || '').trim(),
+    dias: Math.max(1, Math.min(90, Number(p.dias) || 21)),
+    depoisDe: Number(p.depoisDe) || 0,
+    obrigatoria: p.obrigatoria !== false,
+    publicado: p.publicado !== false,
+    audios,
+    semanas: p.semanas.map(s => ({ titulo: String(s.titulo || '').trim(), texto: String(s.texto || '').trim() })),
+    video, capa,
+    atualizadoEm: serverTimestamp()
+  };
+  try {
+    await setDoc(doc(db, 'tenants', tenantId, 'reikiModules', praticaId(p.nivel)), dados);
+    closePatientOverlay();
+    toast('Prática guardada.');
+    __reikiTab = 'licoes';
+    reikiRenderEcra();
+  } catch(e){
+    console.error('reikiPratGuardar:', e);
+    toast('Não consegui guardar: ' + (e.message || e), true);
+  }
+};
+
+window.reikiPratRepor = async function(){
+  const p = __reikiPratRasc;
+  if (!p) return;
+  if (!await reikiConfirmar('Repor original', 'Voltar à prática original deste nível?\n\nAs tuas edições perdem-se.', 'Repor')) return;
+  try {
+    await deleteDoc(doc(db, 'tenants', tenantId, 'reikiModules', praticaId(p.nivel)));
+    closePatientOverlay();
+    toast('Prática reposta.');
+    __reikiTab = 'licoes';
+    reikiRenderEcra();
+  } catch(e){ toast('Não consegui repor: ' + (e.message || e), true); }
 };
 
 window.reikiLicRepor = async function(){
@@ -14113,17 +14293,21 @@ function reikiHtmlBadgePag(a){
 function reikiProgressoAluno(a){
   const t = a.codigoAcesso ? __reikiConversas.find(c => c.id === a.codigoAcesso) : null;
   if (!t) return null;
-  const modulos = Object.values(t.percurso || {}).filter(x => x && x.concluido).length;
+  const itens = Object.values(t.percurso || {}).filter(x => x);
+  const isPrat = x => /-pratica$/.test(String(x.moduloId || ''));
+  const modulos = itens.filter(x => x.concluido && !isPrat(x)).length;
+  const pr = itens.find(x => isPrat(x) && x.dias);
+  const pratica = pr ? { dias: Object.keys(pr.dias || {}).length, concluida: !!pr.concluido } : null;
   const res = Array.isArray(t.resultados) ? t.resultados : [];
   const testes = new Set(res.filter(r => r.aprovado).map(r => r.testeId)).size;
-  return { modulos, testes };
+  return { modulos, testes, pratica };
 }
 function reikiHtmlProgresso(a){
   const p = reikiProgressoAluno(a);
   if (!p) return '<p class="muted" style="margin-top:2px;font-size:.85rem;">' + (a.convidadoEm
     ? 'Convidado a ' + escapeHtml(reikiDataPT(a.convidadoEm)) + ' · ainda sem actividade na sala.'
     : 'Sem actividade na sala de estudo ainda.') + '</p>';
-  return '<p class="muted" style="margin-top:2px;font-size:.85rem;">📖 ' + p.modulos + ' módulo(s) feito(s) · ✅ ' + p.testes + ' teste(s) aprovado(s) · <a href="#" onclick="reikiAbrirNotas(\'' + a.id + '\');return false;">📊 Ver notas</a></p>';
+  return '<p class="muted" style="margin-top:2px;font-size:.85rem;">📖 ' + p.modulos + ' módulo(s) feito(s)' + (p.pratica ? ' · 🌿 ' + p.pratica.dias + ' dia(s) de prática' + (p.pratica.concluida ? ' ✓' : '') : '') + ' · ✅ ' + p.testes + ' teste(s) aprovado(s) · <a href="#" onclick="reikiAbrirNotas(\'' + a.id + '\');return false;">📊 Ver notas</a></p>';
 }
 
 /* Notas do aluno: módulos (pontuação automática) e testes, tudo guardado na
@@ -14140,7 +14324,7 @@ window.reikiAbrirNotas = function(alunoId){
   });
   const linhaMod = m => '<div class="row" style="justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee;">'
     + '<span>Nível ' + escapeHtml(String(m.nivel || '')) + ' · ' + escapeHtml(m.moduloTitulo || m.moduloId) + '</span>'
-    + '<span class="badge">' + (m.concluido ? (m.totalPerguntas ? m.acertos + '/' + m.totalPerguntas : '✓') : 'em curso') + '</span></div>';
+    + '<span class="badge">' + (/-pratica$/.test(String(m.moduloId || '')) ? '🌿 ' + Object.keys(m.dias || {}).length + ' dia(s)' + (m.concluido ? ' ✓' : '') : m.concluido ? (m.totalPerguntas ? m.acertos + '/' + m.totalPerguntas : '✓') : 'em curso') + '</span></div>';
   const linhaTeste = r => {
     const q = __reikiTestes.find(x => x.id === r.testeId);
     return '<div class="row" style="justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee;">'

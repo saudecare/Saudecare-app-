@@ -138,6 +138,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { mesclarPratica, praticaId } from "./reiki-pratica.js";
 import { getFirestore, doc, getDoc, collection, getDocs, addDoc, setDoc,
          query, orderBy, onSnapshot, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -368,7 +369,7 @@ async function carregarDados(){
 
   /* Módulos do percurso do nível em estudo: quantos há e quantos feitos.
      O teste final desse nível só abre com todos feitos. */
-  C.modTotal = 0; C.modFeitos = 0;
+  C.modTotal = 0; C.modFeitos = 0; C.pratica = null;
   if (emEstudo){
     try {
       window.firebaseConfig = firebaseConfig;
@@ -377,10 +378,18 @@ async function carregarDados(){
       // lições novas contam, as escondidas deixam de contar.
       const mapa = {};
       (window['MODULOS_NIVEL_' + emEstudo] || []).forEach(m => { mapa[emEstudo + '-' + m.ordem] = Object.assign({}, m, { id: emEstudo + '-' + m.ordem, publicado: true }); });
+      let docPratica = null;
       try {
         const msnap = await getDocs(collection(db, 'tenants', tenant, 'reikiModules'));
-        msnap.forEach(d => { const x = d.data() || {}; if (String(x.nivel) === String(emEstudo)) mapa[d.id] = Object.assign({}, x, { id: d.id }); });
+        msnap.forEach(d => {
+          const x = d.data() || {};
+          if (String(x.nivel) !== String(emEstudo)) return;
+          if (x.tipo === 'pratica'){ docPratica = x; return; }
+          mapa[d.id] = Object.assign({}, x, { id: d.id });
+        });
       } catch(e){ console.warn('lições editadas indisponíveis', e); }
+      const prat = mesclarPratica(emEstudo, docPratica);
+      C.pratica = prat.publicado === false ? null : prat;
       const lista = Object.values(mapa).filter(m => m.publicado !== false).sort((x, y) => (x.ordem || 0) - (y.ordem || 0));
       const p = C.percurso || {};
       C.modulos = lista;
@@ -442,6 +451,23 @@ function calcularPlano(){
 
   const etapas = [];
   let anteriorFeito = true;
+  const PR = C.pratica;
+  const pp = PR ? (perc[PR.id] || {}) : {};
+  const pratFeita = !!(PR && pp.concluido);
+  const pratIniciada = !!(PR && (pp.iniciada || pp.concluido));
+  const diasFeitos = PR ? Object.keys(pp.dias || {}).length : 0;
+  let pratPosta = false;
+  const poePratica = () => {
+    if (!PR || pratPosta) return;
+    pratPosta = true;
+    etapas.push({ k: 'pratica', id: PR.id, titulo: '🌿 ' + PR.titulo,
+      sub: pratFeita ? 'Concluída · ' + PR.dias + ' dias'
+        : pratIniciada ? 'Dia ' + diasFeitos + ' de ' + PR.dias + ' · continua quando puderes'
+        : PR.dias + ' dias de autotratamento' + ((PR.audios || []).some(a => a.url) ? ' com meditações guiadas' : ' · desafio obrigatório'),
+      feito: pratFeita, bloq: !anteriorFeito });
+    anteriorFeito = pratIniciada;
+  };
+  if (PR && Number(PR.depoisDe) === 0) poePratica();
   mods.forEach(m => {
     const feito = modFeito(m);
     const pm = perc[modId(m)] || {};
@@ -458,7 +484,9 @@ function calcularPlano(){
         sub: ok ? 'Aprovado com ' + r.percentagem + '%' : ((t.perguntas || []).length + ' perguntas · mínimo ' + (t.notaMinima || 70) + '%' + (r ? ' · última tentativa ' + r.percentagem + '%' : '')),
         feito: ok, bloq: !feito });
     }
+    if (PR && Number(PR.depoisDe) === Number(m.ordem)) poePratica();
   });
+  poePratica(); // se o módulo indicado não existe, fica no fim
 
   const obrig = materiaisObrigatorios();
   const porVer = materiaisPorVer();
@@ -466,9 +494,11 @@ function calcularPlano(){
   const modulosPorFazer = mods.filter(m => !modFeito(m)).length;
   const testesModuloPorFazer = testes.filter(t => doNivel(t) && (parseInt(t.modulo) || 0) > 0 && !passou(t)).length;
   const finalPassou = !!(testeFinal && passou(testeFinal));
-  const finalBloq = !!testeFinal && !finalPassou && (modulosPorFazer > 0 || porVer.length > 0 || testesModuloPorFazer > 0);
+  const faltaPratica = !!(PR && PR.obrigatoria && !pratFeita);
+  const finalBloq = !!testeFinal && !finalPassou && (modulosPorFazer > 0 || porVer.length > 0 || testesModuloPorFazer > 0 || faltaPratica);
 
-  let atual = etapas.find(e => !e.feito && !e.bloq) || null;
+  const emCurso = e => e.k === 'pratica' && !e.feito && pratIniciada;
+  let atual = etapas.find(e => !e.feito && !e.bloq && !emCurso(e)) || etapas.find(e => !e.feito && !e.bloq) || null;
   let atualMat = false, atualFinal = false;
   if (!atual && obrig.length && !matFeito) atualMat = true;
   else if (!atual && testeFinal && !finalPassou && !finalBloq) atualFinal = true;
@@ -476,7 +506,7 @@ function calcularPlano(){
   const total = etapas.length + (obrig.length ? 1 : 0) + (testeFinal ? 1 : 0);
   const feitos = etapas.filter(e => e.feito).length + ((obrig.length && matFeito) ? 1 : 0) + (finalPassou ? 1 : 0);
   return { etapas, atual, atualMat, atualFinal, obrig, porVer, matFeito, testeFinal, finalPassou, finalBloq,
-           modulosPorFazer, testesModuloPorFazer, total, feitos, mods };
+           modulosPorFazer, testesModuloPorFazer, faltaPratica, total, feitos, mods };
 }
 
 function verPlano(){
@@ -513,9 +543,11 @@ function verPlano(){
     let botao = '';
     if (!e.feito && !e.bloq){
       botao = e.k === 'modulo' ? btn('modulo:' + e.id, ehAtual ? '▶ Abrir módulo' : 'Abrir módulo')
-                               : btn('teste:' + e.id, ehAtual ? '▶ Fazer o teste' : 'Fazer o teste');
+            : e.k === 'pratica' ? btn('modulo:' + e.id, ehAtual ? '▶ Continuar a prática' : 'Abrir a prática')
+            : btn('teste:' + e.id, ehAtual ? '▶ Fazer o teste' : 'Fazer o teste');
     } else if (e.bloq){
       e.sub = (e.k === 'teste' ? 'Abre quando concluíres o módulo.' : 'Abre quando concluíres o módulo anterior.');
+      if (e.k === 'pratica') e.sub = 'Abre quando concluíres o módulo anterior.';
     }
     return linha(estado, num, e.titulo, esc(e.sub || ''), botao);
   }).join('');
@@ -537,6 +569,7 @@ function verPlano(){
     const faltas = [];
     if (P.modulosPorFazer) faltas.push('concluir ' + P.modulosPorFazer + ' módulo(s)');
     if (P.testesModuloPorFazer) faltas.push('passar ' + P.testesModuloPorFazer + ' teste(s) de módulo');
+    if (P.faltaPratica) faltas.push('concluir os dias da prática');
     if (P.porVer.length) faltas.push('ver ' + P.porVer.length + ' material(ais) até ao fim');
     blocoFinal = linha(P.finalPassou ? 'feito' : (P.atualFinal ? 'atual' : (P.finalBloq ? 'bloq' : '')),
       P.finalPassou ? '✓' : (P.finalBloq ? '🔒' : n),
@@ -551,7 +584,7 @@ function verPlano(){
   // botão principal
   let cta = '';
   if (P.atual){
-    cta = '<button class="abrir" data-ir="' + (P.atual.k === 'modulo' ? 'modulo:' : 'teste:') + esc(P.atual.id) + '">'
+    cta = '<button class="abrir" data-ir="' + (P.atual.k === 'teste' ? 'teste:' : 'modulo:') + esc(P.atual.id) + '">'
       + (iniciar ? '▶ Iniciar formação' : '▶ Continuar: ' + esc(P.atual.titulo)) + '</button>';
   } else if (P.atualMat){
     cta = '<button class="abrir" data-ir="materiais">▶ Continuar: materiais de apoio</button>';
@@ -569,7 +602,7 @@ function verPlano(){
     + '<p style="margin:8px 0 0;color:var(--suave);font-size:.88rem;">' + P.feitos + ' de ' + P.total + ' etapas feitas (' + pct + '%)</p>'
     + cta + '</div>'
     + '<div class="cartao"><h3>1 · Módulos e testes</h3>'
-    + '<p class="desc">Faz por ordem: cada módulo tem vídeo (se existir), leitura, prática e perguntas.</p>'
+    + '<p class="desc">Faz por ordem: cada módulo tem vídeo ou áudio, uma introdução e depois o teste, o desafio ou a prática.</p>'
     + (linhasA || '<p class="desc">Ainda sem módulos publicados.</p>') + '</div>'
     + (blocoMat ? '<div class="cartao"><h3>2 · Materiais de apoio</h3>' + blocoMat + '</div>' : '')
     + (blocoFinal ? '<div class="cartao"><h3>' + (blocoMat ? '3' : '2') + ' · Teste final</h3>' + blocoFinal + '</div>' : '')
@@ -800,19 +833,21 @@ function verTestes(){
     const finalDoNivel = doNivel && modN === 0;
     const faltaModulos = finalDoNivel && C.modTotal && C.modFeitos < C.modTotal;
     const porVer = finalDoNivel ? materiaisPorVer() : [];
+    const faltaPrat = !!(finalDoNivel && C.pratica && C.pratica.obrigatoria && !((C.percurso || {})[C.pratica.id] || {}).concluido);
     const testesModulo = finalDoNivel ? testes.filter(x => (parseInt(x.modulo) || 0) > 0
       && !resultados.some(y => y.testeId === x.id && y.aprovado)) : [];
-    if (!passou && (faltaModulos || porVer.length || testesModulo.length)){
+    if (!passou && (faltaModulos || faltaPrat || porVer.length || testesModulo.length)){
       const totalMat = materiaisObrigatorios().length;
       h += '<div class="cartao"><div class="recurso"><div class="icone">🔒</div><div style="flex:1;">'
         + '<strong>' + esc(t.titulo || 'Teste') + '</strong>'
         + '<p>Abre quando terminares:</p>'
         + (C.modTotal ? '<p>' + (faltaModulos ? '◻️' : '✅') + ' Módulos do Estudo passo a passo ('
             + C.modFeitos + ' de ' + C.modTotal + ')</p>' : '')
+        + (faltaPrat ? '<p>◻️ 🌿 ' + esc(C.pratica.titulo) + ' (' + Object.keys(((C.percurso || {})[C.pratica.id] || {}).dias || {}).length + ' de ' + C.pratica.dias + ' dias)</p>' : '')
         + (totalMat ? '<p>' + (porVer.length ? '◻️' : '✅') + ' Materiais de apoio vistos até ao fim ('
             + (totalMat - porVer.length) + ' de ' + totalMat + ')</p>' : '')
         + (testesModulo.length ? '<p>◻️ Testes dos módulos aprovados (faltam ' + testesModulo.length + ')</p>' : '')
-        + (faltaModulos ? '<a class="abrir" href="reiki-percurso.html?t=' + encodeURIComponent(C.tenant)
+        + ((faltaModulos || faltaPrat) ? '<a class="abrir" href="reiki-percurso.html?t=' + encodeURIComponent(C.tenant)
             + '&c=' + encodeURIComponent(C.codigo) + '">Ir para os módulos</a>'
           : (porVer.length ? '<button class="abrir" onclick="__mostrar(\'biblioteca\')">Ir para os materiais</button>' : ''))
         + '</div></div></div>';
