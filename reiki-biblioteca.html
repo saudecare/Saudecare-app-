@@ -398,7 +398,9 @@ async function carregarDados(){
       } catch(e){ console.warn('lições editadas indisponíveis', e); }
       const prat = mesclarPratica(emEstudo, docPratica);
       C.pratica = prat.publicado === false ? null : prat;
-      const lista = Object.values(mapa).filter(m => m.publicado !== false).sort((x, y) => (x.ordem || 0) - (y.ordem || 0));
+      const porOrdem = {};
+      Object.values(mapa).forEach(m => { const k = String(m.ordem); if (!porOrdem[k] || m.id === emEstudo + '-' + m.ordem) porOrdem[k] = m; });
+      const lista = Object.values(porOrdem).filter(m => m.publicado !== false).sort((x, y) => (x.ordem || 0) - (y.ordem || 0));
       const p = C.percurso || {};
       C.modulos = lista;
       C.modTotal = lista.length;

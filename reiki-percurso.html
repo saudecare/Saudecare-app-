@@ -207,7 +207,13 @@ async function carregarModulos(nivel){
     });
   } catch(e){ console.warn('lições editadas indisponíveis', e); }
   PRATICA = mesclarPratica(nivel, docPratica);
-  return Object.values(mapa)
+  /* Um só módulo por número: se houver cópias com o mesmo número, ganha a de id certo ("nível-número"). */
+  const porOrdem = {};
+  Object.values(mapa).forEach(m => {
+    const k = String(m.ordem);
+    if (!porOrdem[k] || m.id === nivel + '-' + m.ordem) porOrdem[k] = m;
+  });
+  return Object.values(porOrdem)
     .filter(m => m.publicado !== false)
     .sort((a,b) => (a.ordem||0) - (b.ordem||0));
 }
