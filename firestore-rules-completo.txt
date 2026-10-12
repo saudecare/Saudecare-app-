@@ -212,6 +212,14 @@ service cloud.firestore {
         allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
+      // Sala de videochamada aberta ao paciente: só o terapeuta escreve (ao
+      // entrar na sala); o Portal do Paciente lê um único documento pelo id.
+      match /salasAbertas/{pacienteId} {
+        allow get: if true;
+        allow list: if false;
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+      }
+
       match /reikiClasses/{turmaId} {
         allow read: if true;
         allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);

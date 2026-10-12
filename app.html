@@ -351,7 +351,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-12-10';
+const APP_VERSION = '2026-10-12-11';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2919,9 +2919,14 @@ function dateKey(d){
 window.notifyPatientForCall = function(patientId, phone, patientName, portalToken, channel){
   const oc = currentTenantDoc?.onlineConsult || { tool: 'whatsapp' };
   let text;
-  if (oc.tool === 'jitsi'){
-    // Link direto da sala — o paciente entra com um único toque, sem
-    // precisar de passar pelo Portal primeiro.
+  if (oc.tool === 'jitsi' && portalToken){
+    // O paciente passa sempre pelo Portal, onde o botão de entrar só aparece
+    // depois de o terapeuta ter entrado na sala.
+    const portalLink = `${window.location.origin}${window.location.pathname.replace('app.html','portal.html')}?t=${tenantId}&p=${patientId}&k=${portalToken}`;
+    text = `Olá ${patientName}! Vamos começar a nossa consulta online agora — abra o seu Portal e, assim que eu entrar, toque em "Entrar na videochamada": ${portalLink} (é preciso estar ligado à internet, wifi ou dados móveis)`;
+  } else if (oc.tool === 'jitsi'){
+    // Sem Portal criado: link direto da sala. O Jitsi mantém quem chega
+    // primeiro à espera do anfitrião.
     const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
     const jitsiLink = `https://meet.jit.si/${jitsiRoom}#config.disableDeepLinking=true&config.deeplinking.disabled=true&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
     text = `Olá ${patientName}! Vamos começar a nossa consulta online agora — toque aqui para entrar na videochamada: ${jitsiLink} (é preciso estar ligado à internet, wifi ou dados móveis)`;
@@ -2948,6 +2953,16 @@ function openExternalLink(url){
 }
 window.openExternalLink = openExternalLink;
 
+/* A sala só abre ao paciente depois de o terapeuta entrar: ao entrar, fica
+   registado que a sala está aberta durante 3 horas. O Portal do Paciente lê
+   isto e só mostra o botão de entrar nessa altura. */
+async function marcarSalaAberta(patientId){
+  try {
+    await setDoc(doc(db, 'tenants', tenantId, 'salasAbertas', patientId),
+      { ateMs: Date.now() + 3 * 3600 * 1000, atualizadoEm: serverTimestamp() });
+  } catch(e){ console.warn('Não consegui registar a sala aberta', e); }
+}
+
 window.joinOnlineConsult = async function(patientId){
   try{
     const oc = currentTenantDoc?.onlineConsult || { tool: 'whatsapp' };
@@ -2973,6 +2988,7 @@ window.joinOnlineConsult = async function(patientId){
       // ligado, sem pedir mais nada.
       const jitsiRoom = 'saudecare-' + tenantId.slice(0,8) + '-' + patientId.slice(0,8);
       const displayName = encodeURIComponent(currentTenantDoc?.businessName || currentUser?.email || 'Terapeuta');
+      await marcarSalaAberta(patientId);
       openExternalLink(`https://meet.jit.si/${jitsiRoom}#config.disableDeepLinking=true&config.deeplinking.disabled=true&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&userInfo.displayName=%22${displayName}%22`);
     }
   }catch(e){
@@ -13281,6 +13297,8 @@ function reikiRenderTurmas(){
             ${jitsi ? `<a class="ghost" style="text-decoration:none;" href="${escapeHtml(jitsi)}" target="_blank" rel="noopener">🎥 Sala</a>` : ''}
             ${t.ativa === false ? '' : (t.aulaAoVivo
               ? `<button class="primary" style="background:#c0392b;" onclick="reikiTerminarAula('${t.id}')">⏹ Terminar aula</button><button class="ghost" onclick="reikiEntrarAula('${t.id}')">🎥 Entrar</button>`
+              : t.aulaPreparar
+              ? `<button class="primary" onclick="reikiAbrirAosAlunos('${t.id}')">✅ Já estou na sala — abrir aos alunos</button><button class="ghost" onclick="reikiEntrarAula('${t.id}')">🎥 Voltar à sala</button><button class="ghost" onclick="reikiTerminarAula('${t.id}')">Cancelar</button>`
               : `<button class="primary" onclick="reikiIniciarAula('${t.id}')">🔴 Iniciar aula</button>`)}
             ${t.ativa === false ? '' : `<button class="ghost" onclick="reikiMarcarAula('${t.id}')">📅 Marcar aula${t.proximaAula && new Date(t.proximaAula) > new Date() ? ' · ' + escapeHtml(new Date(t.proximaAula).toLocaleString('pt-PT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})) : ''}</button>`}
             <button class="ghost" onclick="reikiAbrirLinkInscricao('${t.id}')">🔗 Link de inscrição</button>
@@ -13317,30 +13335,40 @@ window.reikiIniciarAula = async function(turmaId){
   const t = reikiTurmaInfo(turmaId);
   if (!t) return;
   let sala = String(t.jitsiSala || '').trim();
-  const dados = { aulaAoVivo: true, aulaInicio: serverTimestamp() };
+  const dados = { aulaAoVivo: false, aulaPreparar: true };
   if (!sala){
     sala = 'hikari-' + String(turmaId).slice(0, 6).toLowerCase() + '-' + Math.random().toString(36).slice(2, 8);
     dados.jitsiSala = sala;
   }
   try {
     await updateDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId), dados);
-    t.aulaAoVivo = true; if (dados.jitsiSala) t.jitsiSala = sala;
-    const link = 'https://meet.jit.si/' + sala.replace(/\s+/g, '-').replace(/[^A-Za-z0-9\-]/g, '');
+    t.aulaAoVivo = false; t.aulaPreparar = true; if (dados.jitsiSala) t.jitsiSala = sala;
+    toast('Entra na sala e, se o Jitsi pedir, faz login com Google ou GitHub. Depois volta aqui e carrega em "Já estou na sala — abrir aos alunos".');
+    window.open(reikiLinkAulaMestre(t), '_blank', 'noopener');
+    reikiRenderTurmas();
+  } catch(e){ toast('Não consegui iniciar a aula: ' + (e.message || e), true); }
+};
+window.reikiAbrirAosAlunos = async function(turmaId){
+  const t = reikiTurmaInfo(turmaId);
+  if (!t) return;
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId), { aulaAoVivo: true, aulaPreparar: false, aulaInicio: serverTimestamp() });
+    t.aulaAoVivo = true; t.aulaPreparar = false;
+    const link = 'https://meet.jit.si/' + String(t.jitsiSala || '').trim().replace(/\s+/g, '-').replace(/[^A-Za-z0-9\-]/g, '');
     try {
       await addDoc(collection(db, 'tenants', tenantId, 'reikiChat', 'turma-' + turmaId, 'mensagens'),
         { de:'mestre', nome:'Mestre', texto: '🔴 A aula começou! Entra aqui: ' + link, criadoEm: serverTimestamp() });
     } catch(_){}
-    toast('Aula iniciada. Os alunos já veem o botão para entrar.');
-    window.open(reikiLinkAulaMestre(t), '_blank', 'noopener');
+    toast('Aula aberta. Os alunos já veem o botão para entrar.');
     reikiRenderTurmas();
-  } catch(e){ toast('Não consegui iniciar a aula: ' + (e.message || e), true); }
+  } catch(e){ toast('Não consegui abrir aos alunos: ' + (e.message || e), true); }
 };
 window.reikiTerminarAula = async function(turmaId){
   const t = reikiTurmaInfo(turmaId);
   if (!t) return;
   try {
-    await updateDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId), { aulaAoVivo: false });
-    t.aulaAoVivo = false;
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiClasses', turmaId), { aulaAoVivo: false, aulaPreparar: false });
+    t.aulaAoVivo = false; t.aulaPreparar = false;
     toast('Aula terminada.');
     reikiRenderTurmas();
   } catch(e){ toast('Não consegui terminar: ' + (e.message || e), true); }

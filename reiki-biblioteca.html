@@ -653,6 +653,10 @@ function cartaoAulaHtml(){
       + '<p style="margin:4px 0 0;color:var(--suave);font-size:.85rem;">' + esc(t.nome || C.aluno.turmaNome || 'A tua turma') + '</p>'
       + '<a class="abrir" href="' + esc(link) + '" target="_blank" rel="noopener">🎥 Entrar na aula</a>' + wa + '</div>';
   }
+  if (t.aulaPreparar){
+    return '<div class="cartao aula" style="text-align:center;"><strong>⏳ A aula vai começar</strong>'
+      + '<p style="margin:6px 0 0;color:var(--suave);font-size:.88rem;">O Mestre está a preparar a sala. O botão para entrar aparece aqui assim que ele abrir. Não precisas de recarregar.</p>' + wa + '</div>';
+  }
   const quando = t.proximaAula && new Date(t.proximaAula) > new Date(Date.now() - 3600000) ? dataBonita(t.proximaAula) : '';
   if (quando || wa){
     return '<div class="cartao aula" style="text-align:center;"><strong>📅 ' + (quando ? 'Próxima aula' : 'A tua turma') + '</strong>'
