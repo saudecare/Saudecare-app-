@@ -118,6 +118,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { svgSimbolo, simboloDeUrl, simbolosDoModulo, SIMBOLOS } from "./reiki-simbolos.js";
 import { praticaId, praticaPadrao, mesclarPratica, semanaDe, audioDoDia, hojeISO, urlEmbed, midiaHtml }
   from "./reiki-pratica.js";
 
@@ -460,17 +461,17 @@ function desenharBiblioteca(){
 // Imagens reais dos símbolos (ficheiros em /reiki-img). Cada ficha só mostra os
 // símbolos do seu nível. Se uma imagem não carregar, volta ao esquema simples.
 const IMAGENS_ILUSTRACAO = {
-  'cho-ku-rei':    ['reiki-img/cho-ku-rei.png'],
-  'simbolos-n2':   ['reiki-img/cho-ku-rei.png', 'reiki-img/sei-he-ki.png', 'reiki-img/hon-sha-ze-sho-nen.png'],
-  'dai-ko-myo':    ['reiki-img/dai-ko-myo.png'],
-  'raku-tibetano': ['reiki-img/dai-ko-myo-tibetano.png', 'reiki-img/raku.png']
+  'cho-ku-rei':    ['cho-ku-rei'],
+  'simbolos-n2':   ['cho-ku-rei', 'sei-he-ki', 'hon-sha-ze-sho-nen'],
+  'dai-ko-myo':    ['dai-ko-myo'],
+  'raku-tibetano': ['dai-ko-myo-tibetano', 'raku']
 };
 function ilustracaoHtml(chave){
   const esquema = ILUSTRACOES[chave] || '';
   const imgs = IMAGENS_ILUSTRACAO[chave];
   if (!imgs) return esquema ? `<div style="margin:14px 0;">${esquema}</div>` : '';
   return `<div style="margin:14px 0;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:flex-end;">${
-    imgs.map(u => `<img src="${esc(u)}" alt="" style="max-width:100%;max-height:260px;border-radius:10px;border:1px solid var(--linha);background:#fff;" onerror="this.remove()">`).join('')
+    imgs.map(id => `<div style="height:240px;max-width:46%;padding:8px;border-radius:10px;border:1px solid var(--linha);background:#fffdf7;">${svgSimbolo(id, { numeros: true })}</div>`).join('')
   }</div>`;
 }
 
@@ -796,10 +797,24 @@ window.abrirModulo = function(id){
 function blocoHtml(b){
   if (b.tipo === 'destaque') return `<div class="bloco destaque">${esc(b.conteudo)}</div>`;
   if (b.tipo === 'lista') return `<div class="bloco">${b.titulo ? `<h4>${esc(b.titulo)}</h4>` : ''}<ul>${(b.itens||[]).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`;
+  if (b.tipo === 'imagem' && simboloDeUrl(b.url)){
+    const sid = simboloDeUrl(b.url);
+    return `<div class="bloco" style="text-align:center;"><div style="height:300px;padding:8px;border-radius:10px;border:1px solid var(--linha);background:#fffdf7;">${svgSimbolo(sid, { numeros: true })}</div>
+      <p class="nota">${esc(SIMBOLOS[sid].nome)} — ordem dos traços (1 a ${SIMBOLOS[sid].strokes.length}).</p></div>`;
+  }
   if (b.tipo === 'imagem') return b.url ? `<div class="bloco" style="text-align:center;">
       <img src="${esc(b.url)}" style="max-width:100%;border-radius:10px;border:1px solid var(--linha);">
       ${b.legenda ? `<p class="nota">${esc(b.legenda)}</p>` : ''}</div>` : '';
   return `<div class="bloco" style="white-space:pre-line;">${esc(b.conteudo)}</div>`;
+}
+
+function cartaoSimbolos(m){
+  const ids = simbolosDoModulo(m);
+  if (!ids.length) return '';
+  const base = 'reiki-simbolos.html?t=' + encodeURIComponent(TENANT) + '&c=' + encodeURIComponent(CODIGO);
+  return `<div class="card aviso" style="margin-top:12px;"><h4>✍️ Treinar o traçado</h4>
+    <p class="nota" style="margin-top:0;">A mão aprende repetindo: traça na tela, passa ao papel e depois de memória.</p>
+    ${ids.map(id => `<a class="leve" style="display:inline-block;margin:8px 8px 0 0;text-decoration:none;" href="${base}#${id}">${esc(SIMBOLOS[id].nome)}</a>`).join('')}</div>`;
 }
 
 function desenharModulo(){
@@ -822,6 +837,7 @@ function desenharModulo(){
       ${m.video ? `<h4>▶️ Vídeo do módulo</h4>${midiaHtml(m.video, 'video')}` : ''}
       ${m.audio ? `<h4 style="margin-top:${m.video ? '14px' : '0'};">🎧 Áudio do módulo</h4>${midiaHtml(m.audio, 'audio')}` : ''}
       <div style="margin-top:${(m.video || m.audio) ? '16px' : '0'};">${(m.video || m.audio) ? '<h4>📖 Introdução</h4>' : ''}${(m.ler||[]).map(blocoHtml).join('')}</div>
+      ${cartaoSimbolos(m)}
       <button class="principal" onclick="marcarLido()">${seguinte ? 'Li — seguir para ' + rotSeguinte(seguinte) : 'Concluir este módulo'}</button></div>`;
     return;
   }

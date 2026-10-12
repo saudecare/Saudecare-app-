@@ -350,7 +350,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-12-06';
+const APP_VERSION = '2026-10-12-07';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -14300,14 +14300,20 @@ function reikiProgressoAluno(a){
   const pratica = pr ? { dias: Object.keys(pr.dias || {}).length, concluida: !!pr.concluido } : null;
   const res = Array.isArray(t.resultados) ? t.resultados : [];
   const testes = new Set(res.filter(r => r.aprovado).map(r => r.testeId)).size;
-  return { modulos, testes, pratica };
+  const simb = t.simbolos || {};
+  const feitosSim = Object.keys(simb).filter(k => {
+    const x = simb[k] || {};
+    return (x.tela || 0) >= 3 && x.papelGuia && x.papelSem && (x.memoriaTela || 0) >= 1 && x.memoriaPapel;
+  }).length;
+  const treinoSim = Object.keys(simb).length;
+  return { modulos, testes, pratica, simbolos: treinoSim ? { treino: treinoSim, dominados: feitosSim } : null };
 }
 function reikiHtmlProgresso(a){
   const p = reikiProgressoAluno(a);
   if (!p) return '<p class="muted" style="margin-top:2px;font-size:.85rem;">' + (a.convidadoEm
     ? 'Convidado a ' + escapeHtml(reikiDataPT(a.convidadoEm)) + ' · ainda sem actividade na sala.'
     : 'Sem actividade na sala de estudo ainda.') + '</p>';
-  return '<p class="muted" style="margin-top:2px;font-size:.85rem;">📖 ' + p.modulos + ' módulo(s) feito(s)' + (p.pratica ? ' · 🌿 ' + p.pratica.dias + ' dia(s) de prática' + (p.pratica.concluida ? ' ✓' : '') : '') + ' · ✅ ' + p.testes + ' teste(s) aprovado(s) · <a href="#" onclick="reikiAbrirNotas(\'' + a.id + '\');return false;">📊 Ver notas</a></p>';
+  return '<p class="muted" style="margin-top:2px;font-size:.85rem;">📖 ' + p.modulos + ' módulo(s) feito(s)' + (p.pratica ? ' · 🌿 ' + p.pratica.dias + ' dia(s) de prática' + (p.pratica.concluida ? ' ✓' : '') : '') + (p.simbolos ? ' · ✍️ ' + p.simbolos.dominados + '/' + p.simbolos.treino + ' símbolo(s) dominado(s)' : '') + ' · ✅ ' + p.testes + ' teste(s) aprovado(s) · <a href="#" onclick="reikiAbrirNotas(\'' + a.id + '\');return false;">📊 Ver notas</a></p>';
 }
 
 /* Notas do aluno: módulos (pontuação automática) e testes, tudo guardado na

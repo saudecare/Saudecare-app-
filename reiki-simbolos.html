@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Oficina dos símbolos — Hikari Fafe Escola de Reiki</title>
+<style>
+  :root{ --papel:#fdfaf1; --linha:#d9cbae; --bronze:#a8681f; --bronze2:#b8873a;
+         --tinta:#332f29; --suave:#8d8375; --caixa:#fcf4e2; --verde:#2f6f5e; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--papel);color:var(--tinta);line-height:1.6;padding-bottom:60px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  header{background:linear-gradient(160deg,#8a5518,var(--bronze));color:#fff;padding:20px 18px 16px;text-align:center;}
+  header h1{font-size:19px;} header p{opacity:.92;font-size:13.5px;margin-top:2px;}
+  main{max-width:640px;margin:0 auto;padding:16px;}
+  .card{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:16px;margin-bottom:12px;}
+  h2{font-size:16px;color:var(--bronze);margin-bottom:6px;} h3{font-size:15px;color:var(--bronze);}
+  h4{color:var(--bronze2);font-size:14px;margin-bottom:4px;}
+  p{font-size:14.5px;} .nota{font-size:12.5px;color:var(--suave);margin-top:6px;}
+  button,a.bt{font-family:inherit;cursor:pointer;}
+  .principal{display:block;width:100%;text-align:center;text-decoration:none;background:var(--bronze);color:#fff;border:none;padding:13px;border-radius:11px;font-size:15px;margin-top:10px;}
+  .leve{display:inline-block;text-decoration:none;background:none;border:1px solid var(--linha);color:var(--tinta);padding:9px 14px;border-radius:9px;font-size:14px;}
+  .topo{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .grelha{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .sim{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:10px;text-align:center;cursor:pointer;}
+  .sim .mini{height:130px;display:flex;align-items:center;justify-content:center;}
+  .sim .mini svg{max-height:130px;max-width:100%;width:auto;}
+  .sim b{display:block;font-size:14px;margin-top:4px;color:var(--bronze);}
+  .degraus{display:flex;gap:4px;justify-content:center;margin-top:6px;}
+  .degraus i{width:14px;height:6px;border-radius:4px;background:#e8dcc4;display:block;}
+  .degraus i.ok{background:var(--verde);}
+  .palco-sim{background:#fffdf7;border:1px solid var(--linha);border-radius:12px;padding:10px;height:min(62vh,420px);display:flex;align-items:center;justify-content:center;}
+  .palco-sim svg{max-height:100%;max-width:100%;width:auto;height:100%;}
+  .passo{border-left:4px solid #e8dcc4;padding:2px 0 2px 12px;margin:16px 0;}
+  .passo.ok{border-color:var(--verde);}
+  .passo .n{font-weight:700;color:var(--bronze);}
+  .passo.ok .n::after{content:" ✓";color:var(--verde);}
+  label.cx{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:14px;}
+  label.cx input{width:20px;height:20px;}
+  .caixa{background:var(--caixa);border:1px solid var(--linha);border-radius:12px;padding:12px;font-size:14px;margin-top:8px;}
+  /* tela grande */
+  #tela{position:fixed;inset:0;z-index:50;background:var(--papel);display:none;flex-direction:column;}
+  #tela.on{display:flex;}
+  #tela .barra{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-bottom:1px solid var(--linha);}
+  #tela .barra b{flex:1;font-size:14px;color:var(--bronze);}
+  #tela .barra button{border:1px solid var(--linha);background:#fff;border-radius:9px;padding:7px 12px;font-size:14px;}
+  #palco{flex:1;display:flex;align-items:center;justify-content:center;padding:8px;min-height:0;}
+  #quadro{position:relative;background:#fffdf7;border:1px solid var(--linha);border-radius:12px;overflow:hidden;touch-action:none;}
+  #quadro svg,#quadro canvas{position:absolute;inset:0;width:100%;height:100%;}
+  #quadro canvas{touch-action:none;cursor:crosshair;}
+  #msg{padding:6px 14px;text-align:center;font-size:14px;min-height:30px;color:var(--tinta);}
+  #ctl{display:flex;gap:8px;justify-content:center;padding:6px 12px 14px;flex-wrap:wrap;}
+  #ctl button{border:1px solid var(--linha);background:#fff;border-radius:10px;padding:10px 14px;font-size:14.5px;}
+  #ctl button.p{background:var(--bronze);color:#fff;border-color:var(--bronze);}
+  /* folha para imprimir */
+  #folha{display:none;}
+  @media print{
+    body>*:not(#folha){display:none !important;}
+    #folha{display:block;padding:0;color:#000;font-family:Georgia,serif;}
+    #folha h1{font-size:20pt;text-align:center;margin:0;}
+    #folha .sub{text-align:center;font-size:10pt;color:#555;margin-bottom:8mm;}
+    #folha .grande{height:115mm;display:flex;justify-content:center;}
+    #folha .grande svg{height:100%;width:auto;}
+    #folha .linha{display:flex;gap:6mm;margin-top:6mm;}
+    #folha .cx{flex:1;height:48mm;border:1.5px dashed #999;border-radius:3mm;display:flex;align-items:center;justify-content:center;}
+    #folha .cx svg{height:42mm;width:auto;}
+    #folha .leg{font-size:10pt;margin-top:5mm;color:#333;}
+    @page{size:A4;margin:12mm;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>✍️ Oficina dos símbolos</h1>
+  <p id="sub">A abrir…</p>
+</header>
+<main></main>
+
+<div id="tela" aria-modal="true">
+  <div class="barra"><b id="telaNome"></b><button id="telaFechar">✕ Fechar</button></div>
+  <div id="palco2"></div>
+</div>
+<div id="folha"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { SIMBOLOS, ORDEM_NIVEIS, simbolosDoNivel, svgSimbolo, vbSimbolo, animar }
+  from "./reiki-simbolos.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const db = getFirestore(initializeApp(firebaseConfig));
+const params = new URLSearchParams(location.search);
+const TENANT = params.get('t') || 'hikari-terapias';
+const CODIGO = (params.get('c') || '').trim();
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+let ALUNO = null, NIVEL = '1', IDS = [], PROG = {}, PARAR_ANIM = null;
+const MIN_TELA = 3;
+
+function nivelEmEstudo(concluido){
+  if (!concluido) return '1';
+  const i = ORDEM_NIVEIS.indexOf(String(concluido));
+  return i >= 0 && i < ORDEM_NIVEIS.length - 1 ? ORDEM_NIVEIS[i + 1] : String(concluido);
+}
+const linkVolta = () => 'reiki-percurso.html?t=' + encodeURIComponent(TENANT) + '&c=' + encodeURIComponent(CODIGO);
+const linkBiblioteca = () => 'reiki-biblioteca.html?t=' + encodeURIComponent(TENANT) + '&c=' + encodeURIComponent(CODIGO);
+
+/* ─── Progresso ─── */
+const PASSOS = ['ver', 'tela', 'papelGuia', 'papelSem', 'memoria'];
+function estadoPassos(id){
+  const p = PROG[id] || {};
+  return {
+    ver: !!p.ver,
+    tela: (p.tela || 0) >= MIN_TELA,
+    papelGuia: !!p.papelGuia,
+    papelSem: !!p.papelSem,
+    memoria: (p.memoriaTela || 0) >= 1 && !!p.memoriaPapel
+  };
+}
+async function gravar(id, patch){
+  const p = Object.assign({}, PROG[id] || {}, patch, { ult: new Date().toISOString() });
+  PROG[id] = p;
+  try {
+    await setDoc(doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO),
+      { codigo: CODIGO, alunoNome: ALUNO.nome || '', simbolos: { [id]: p } }, { merge: true });
+  } catch(e){ console.warn('não consegui gravar', e); }
+}
+
+/* ─── Arranque ─── */
+async function arrancar(){
+  const main = document.querySelector('main');
+  if (!CODIGO){ main.innerHTML = '<div class="card"><h2>Falta o teu código</h2><p class="nota">Usa o link pessoal que a escola te enviou.</p></div>'; return; }
+  try {
+    const c = await getDoc(doc(db, 'tenants', TENANT, 'reikiAccess', CODIGO));
+    if (!c.exists()){ main.innerHTML = '<div class="card"><h2>Código não reconhecido</h2><p class="nota">Confirma o link com a escola.</p></div>'; return; }
+    ALUNO = c.data();
+  } catch(e){ main.innerHTML = '<div class="card"><h2>Não consegui ligar-me</h2></div>'; return; }
+  if (ALUNO.suspenso){ main.innerHTML = '<div class="card"><h2>Acesso suspenso</h2><p class="nota">Fala com a escola.</p></div>'; return; }
+  NIVEL = nivelEmEstudo(ALUNO.nivel);
+  IDS = simbolosDoNivel(NIVEL);
+  document.getElementById('sub').textContent = 'Nível ' + NIVEL + ' · ' + IDS.length + ' símbolo' + (IDS.length === 1 ? '' : 's');
+  try {
+    const t = await getDoc(doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO));
+    PROG = (t.exists() && t.data().simbolos) || {};
+  } catch(e){ PROG = {}; }
+  roteador();
+}
+window.addEventListener('hashchange', roteador);
+function roteador(){
+  const id = location.hash.replace('#', '');
+  if (id && IDS.includes(id)) verSimbolo(id); else verLista();
+}
+
+/* ─── Lista ─── */
+function verLista(){
+  if (PARAR_ANIM) PARAR_ANIM();
+  const main = document.querySelector('main');
+  const cartoes = IDS.map(id => {
+    const e = estadoPassos(id);
+    return '<div class="sim" data-id="' + id + '"><div class="mini">' + svgSimbolo(id, { numeros: false }) + '</div>'
+      + '<b>' + esc(SIMBOLOS[id].nome) + '</b>'
+      + '<div class="degraus">' + PASSOS.map(p => '<i class="' + (e[p] ? 'ok' : '') + '"></i>').join('') + '</div></div>';
+  }).join('');
+  main.innerHTML = '<div class="topo"><a class="leve" href="' + linkVolta() + '">← Módulos</a><a class="leve" href="' + linkBiblioteca() + '">🏠 Início</a></div>'
+    + '<div class="card"><h2>Como se aprende um símbolo</h2>'
+    + '<p>Só com a vista não chega: a mão tem de aprender o caminho. Cada símbolo tem <b>5 degraus</b>, do mais apoiado ao mais livre:</p>'
+    + '<ol style="margin:8px 0 0 20px;font-size:14.5px;">'
+    + '<li><b>Ver</b> o desenho a formar-se, traço a traço.</li>'
+    + '<li><b>Traçar na tela</b>, por cima do modelo, ' + MIN_TELA + ' vezes.</li>'
+    + '<li><b>Papel com guia:</b> imprime a folha ou copia à mão, ' + MIN_TELA + ' vezes.</li>'
+    + '<li><b>Papel sem guia:</b> só com o modelo pequeno ao lado.</li>'
+    + '<li><b>De memória:</b> na tela e no papel, sem modelo.</li></ol>'
+    + '<p class="nota">A tela serve para aprender o caminho. O papel é o que fica na mão: não saltes essa parte.</p></div>'
+    + '<div class="grelha">' + cartoes + '</div>'
+    + (IDS.length ? '' : '<div class="card"><p>Ainda não tens símbolos neste nível.</p></div>');
+  main.querySelectorAll('.sim').forEach(el => el.onclick = () => { location.hash = el.dataset.id; });
+  window.scrollTo(0, 0);
+}
+
+/* ─── Um símbolo ─── */
+function verSimbolo(id){
+  if (PARAR_ANIM) PARAR_ANIM();
+  const s = SIMBOLOS[id], p = PROG[id] || {}, e = estadoPassos(id);
+  const main = document.querySelector('main');
+  const cl = (k, extra) => 'passo' + (e[k] ? ' ok' : '') + (extra || '');
+  main.innerHTML = '<div class="topo"><a class="leve" href="#">← Símbolos</a></div>'
+    + '<div class="card"><h2>' + esc(s.nome) + '</h2><p class="nota">' + esc(s.dica) + '</p>'
+    + '<div class="palco-sim" id="demo">' + svgSimbolo(id, {}) + '</div>'
+    + '<div class="topo" style="margin-top:10px;"><button class="leve" id="repetir">▶ Ver outra vez</button></div></div>'
+
+    + '<div class="card">'
+    + '<div class="' + cl('ver') + '"><div class="n">1 · Ver</div><p>Vê o símbolo a desenhar-se uma vez, atento à ordem das bolinhas e ao sítio onde cada traço começa e acaba.</p></div>'
+    + '<div class="' + cl('tela') + '"><div class="n">2 · Traçar na tela (' + Math.min(p.tela || 0, MIN_TELA) + ' de ' + MIN_TELA + ')</div>'
+    + '<p>Segue o modelo com o dedo, a caneta ou o rato. A tela diz-te quando um traço está certo e passa ao seguinte.</p>'
+    + '<button class="principal" id="bTela">✍️ Abrir a tela grande</button>'
+    + '<p class="nota">No telemóvel ou tablet, usa o dedo; num computador, carrega e arrasta o rato. Se o rato custar, o botão "Passar traço" deixa-te avançar.</p></div>'
+    + '<div class="' + cl('papelGuia') + '"><div class="n">3 · Papel com guia</div>'
+    + '<p>Imprime a folha do símbolo (ou copia-o à mão para o teu caderno) e desenha-o ' + MIN_TELA + ' vezes, sempre pela ordem das bolinhas. Diz o traço baixinho enquanto o fazes.</p>'
+    + '<button class="leve" id="bImprimir" style="margin-top:8px;">🖨️ Imprimir a folha</button>'
+    + '<label class="cx"><input type="checkbox" id="cPG"' + (p.papelGuia ? ' checked' : '') + '> Já o desenhei ' + MIN_TELA + ' vezes no papel</label></div>'
+    + '<div class="' + cl('papelSem') + '"><div class="n">4 · Papel sem guia</div>'
+    + '<p>Fecha o ecrã por um momento e desenha-o ' + MIN_TELA + ' vezes. Só podes espreitar o modelo pequeno ao lado, nunca por cima.</p>'
+    + '<label class="cx"><input type="checkbox" id="cPS"' + (p.papelSem ? ' checked' : '') + '> Já o desenhei ' + MIN_TELA + ' vezes sem guia</label></div>'
+    + '<div class="' + cl('memoria') + '"><div class="n">5 · De memória</div>'
+    + '<p>Desenha-o na tela em branco, sem modelo (' + Math.min(p.memoriaTela || 0, 1) + ' de 1). Depois compara com o modelo e faz o mesmo no papel.</p>'
+    + '<button class="principal" id="bMem">🧠 Tela em branco</button>'
+    + '<label class="cx"><input type="checkbox" id="cMP"' + (p.memoriaPapel ? ' checked' : '') + '> Desenhei-o de memória no papel</label></div>'
+    + '</div>'
+    + '<div class="card"><h4>Para manter</h4><p>Faz um <b>caderno dos símbolos</b>: no fim de cada autotratamento, desenha o símbolo do teu nível 3 vezes. Em poucas semanas a mão faz sozinha.</p>'
+    + '<p class="nota">Uma boa folha de treino: um símbolo grande à esquerda e, ao lado, várias tentativas. Não apagues as primeiras: vais ver a mão a melhorar.</p></div>'
+    + '<p class="nota" style="text-align:center;">Os caracteres do Dai Ko Myo usam traços do KanjiVG (CC BY-SA 3.0).</p>';
+
+  document.getElementById('repetir').onclick = () => tocar(id);
+  document.getElementById('bTela').onclick = () => abrirTela(id, 'guia');
+  document.getElementById('bMem').onclick = () => abrirTela(id, 'livre');
+  document.getElementById('bImprimir').onclick = () => imprimir(id);
+  document.getElementById('cPG').onchange = ev => { gravar(id, { papelGuia: ev.target.checked }).then(() => verSimbolo(id)); };
+  document.getElementById('cPS').onchange = ev => { gravar(id, { papelSem: ev.target.checked }).then(() => verSimbolo(id)); };
+  document.getElementById('cMP').onchange = ev => { gravar(id, { memoriaPapel: ev.target.checked }).then(() => verSimbolo(id)); };
+  tocar(id, true);
+  window.scrollTo(0, 0);
+}
+
+function tocar(id, primeira){
+  if (PARAR_ANIM) PARAR_ANIM();
+  const el = document.getElementById('demo');
+  if (!el) return;
+  const n = SIMBOLOS[id].strokes.length;
+  PARAR_ANIM = animar(el, n > 12 ? 450 : 900);
+  if (!(PROG[id] || {}).ver){
+    setTimeout(() => { if (!(PROG[id] || {}).ver) gravar(id, { ver: true }); }, (n * (n > 12 ? 630 : 1080)) + 400);
+  }
+}
+
+/* ─── Folha para imprimir ─── */
+function imprimir(id){
+  const s = SIMBOLOS[id];
+  const fraco = svgSimbolo(id, { numeros: false, cor: '#c9c9c9' });
+  const pequeno = svgSimbolo(id, { numeros: false, cor: '#000' });
+  document.getElementById('folha').innerHTML =
+    '<h1>' + esc(s.nome) + '</h1><div class="sub">Hikari Fafe Escola de Reiki · folha de treino · ' + esc((ALUNO && ALUNO.nome) || '') + '</div>'
+    + '<div class="grande">' + svgSimbolo(id, { cor: '#000' }) + '</div>'
+    + '<div class="leg"><b>Com guia:</b> desenha por cima do símbolo cinzento, 3 vezes.</div>'
+    + '<div class="linha"><div class="cx">' + fraco + '</div><div class="cx">' + fraco + '</div><div class="cx">' + fraco + '</div></div>'
+    + '<div class="leg"><b>Sem guia:</b> tapa o modelo e desenha 3 vezes.</div>'
+    + '<div class="linha"><div class="cx"></div><div class="cx"></div><div class="cx"></div></div>';
+  setTimeout(() => window.print(), 100);
+}
+
+/* ─── Tela grande ─── */
+const tela = document.getElementById('tela');
+let T = null; // estado da tela
+document.getElementById('telaFechar').onclick = fecharTela;
+
+function fecharTela(){
+  tela.classList.remove('on');
+  document.body.style.overflow = '';
+  const pal = document.getElementById('palco2');
+  pal.innerHTML = '';
+  T = null;
+  roteador();
+}
+
+function abrirTela(id, modo){
+  const s = SIMBOLOS[id];
+  document.getElementById('telaNome').textContent = (modo === 'guia' ? '✍️ Traçar · ' : '🧠 De memória · ') + s.nome;
+  tela.classList.add('on');
+  document.body.style.overflow = 'hidden';
+  const pal = document.getElementById('palco2');
+  pal.style.cssText = 'flex:1;display:flex;flex-direction:column;min-height:0;';
+  pal.innerHTML = '<div id="palco" style="flex:1;display:flex;align-items:center;justify-content:center;padding:8px;min-height:0;"><div id="quadro"></div></div>'
+    + '<div id="msg"></div><div id="ctl"></div>';
+  T = { id, modo, feitos: 0, tracos: [], atual: null, vb: vbSimbolo(id), ok: false, comparar: false };
+  const q = document.getElementById('quadro');
+  q.innerHTML = '<div id="guiaSvg" style="position:absolute;inset:0;"></div><canvas id="cv"></canvas>';
+  desenharGuia();
+  const ctl = document.getElementById('ctl');
+  if (modo === 'guia'){
+    ctl.innerHTML = '<button id="bDesf">↶ Desfazer</button><button id="bPassar">⏭ Passar traço</button><button id="bRec">🔄 Recomeçar</button>';
+    document.getElementById('bDesf').onclick = desfazer;
+    document.getElementById('bPassar').onclick = passarTraco;
+    document.getElementById('bRec').onclick = recomecar;
+    msg('Começa na bolinha ' + 1 + ' e segue a direção do traço.');
+  } else {
+    ctl.innerHTML = '<button id="bDesf">↶ Desfazer</button><button id="bLimpar">🗑️ Limpar</button><button id="bComp" class="p">👁️ Comparar com o modelo</button><button id="bGuardar">💾 Guardar imagem</button>';
+    document.getElementById('bDesf').onclick = desfazer;
+    document.getElementById('bLimpar').onclick = () => { T.tracos = []; T.comparar = false; redesenhar(); desenharGuia(); msg('Desenha o símbolo de memória, traço a traço.'); };
+    document.getElementById('bComp').onclick = comparar;
+    document.getElementById('bGuardar').onclick = guardarImagem;
+    msg('Desenha o símbolo de memória, sem modelo.');
+  }
+  dimensionar();
+  window.onresize = dimensionar;
+  ligarCanvas();
+}
+
+function msg(t, cor){ const m = document.getElementById('msg'); if (m){ m.textContent = t; m.style.color = cor || ''; } }
+
+function dimensionar(){
+  if (!T) return;
+  const pal = document.getElementById('palco');
+  const q = document.getElementById('quadro');
+  const cv = document.getElementById('cv');
+  const w = pal.clientWidth - 16, h = pal.clientHeight - 16;
+  const lado = Math.max(120, Math.floor(Math.min(w, h)));
+  q.style.width = lado + 'px'; q.style.height = lado + 'px';
+  const r = window.devicePixelRatio || 1;
+  cv.width = Math.round(lado * r); cv.height = Math.round(lado * r);
+  T.lado = lado; T.r = r;
+  redesenhar();
+}
+
+function desenharGuia(){
+  if (!T) return;
+  const box = document.getElementById('guiaSvg');
+  if (T.modo === 'guia'){
+    box.innerHTML = svgSimbolo(T.id, { numeros: true, feitos: T.feitos, atual: T.feitos, fraco: 0.45 });
+  } else if (T.comparar){
+    box.innerHTML = svgSimbolo(T.id, { numeros: false, cor: '#d28b4f' });
+    box.style.opacity = '0.55';
+  } else {
+    box.innerHTML = ''; box.style.opacity = '1';
+  }
+  const svg = box.querySelector('svg');
+  if (svg){ svg.style.height = '100%'; svg.style.maxHeight = 'none'; svg.setAttribute('preserveAspectRatio', 'xMidYMid meet'); }
+}
+
+/* conversões entre pixéis do quadro e coordenadas do símbolo */
+function paraVista(px, py){
+  const [vx, vy, vw, vh] = T.vb, L = T.lado;
+  const sc = Math.min(L / vw, L / vh);
+  const ox = (L - vw * sc) / 2, oy = (L - vh * sc) / 2;
+  return [vx + (px - ox) / sc, vy + (py - oy) / sc];
+}
+
+function redesenhar(){
+  if (!T) return;
+  const cv = document.getElementById('cv');
+  const c = cv.getContext('2d');
+  c.setTransform(T.r, 0, 0, T.r, 0, 0);
+  c.clearRect(0, 0, T.lado, T.lado);
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  const largura = Math.max(4, T.lado * 0.016);
+  const todos = T.atual ? T.tracos.concat([{ pts: T.atual, ok: true }]) : T.tracos;
+  todos.forEach(t => {
+    if (!t.pts.length) return;
+    c.strokeStyle = '#2b2118'; c.lineWidth = largura;
+    c.beginPath(); c.moveTo(t.pts[0][0], t.pts[0][1]);
+    if (t.pts.length === 1) c.lineTo(t.pts[0][0] + 0.1, t.pts[0][1]);
+    t.pts.forEach(p => c.lineTo(p[0], p[1]));
+    c.stroke();
+  });
+}
+
+function ligarCanvas(){
+  const cv = document.getElementById('cv');
+  const pos = ev => { const r = cv.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
+  cv.onpointerdown = ev => {
+    if (!T || T.ok) return;
+    ev.preventDefault();
+    cv.setPointerCapture(ev.pointerId);
+    T.atual = [pos(ev)];
+    redesenhar();
+  };
+  cv.onpointermove = ev => {
+    if (!T || !T.atual) return;
+    ev.preventDefault();
+    const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
+    (evs.length ? evs : [ev]).forEach(e => T.atual.push(pos(e)));
+    redesenhar();
+  };
+  const fim = ev => {
+    if (!T || !T.atual) return;
+    const pts = T.atual; T.atual = null;
+    if (pts.length < 2){ redesenhar(); return; }
+    if (T.modo === 'livre'){ T.tracos.push({ pts }); redesenhar(); return; }
+    avaliar(pts);
+  };
+  cv.onpointerup = fim; cv.onpointercancel = fim;
+}
+
+/* amostra pontos ao longo de um traço do modelo, em coordenadas do símbolo */
+function amostrar(i, n){
+  const svg = document.querySelector('#guiaSvg svg');
+  const path = svg && svg.querySelectorAll('path.tr')[i];
+  if (!path) return [];
+  const t = SIMBOLOS[T.id].strokes[i].t || [0, 0];
+  const len = path.getTotalLength(), out = [];
+  for (let k = 0; k <= n; k++){ const p = path.getPointAtLength(len * k / n); out.push([p.x + t[0], p.y + t[1]]); }
+  return out;
+}
+
+function avaliar(pts){
+  const i = T.feitos;
+  const s = amostrar(i, 20);
+  if (!s.length){ return; }
+  const [, , vw, vh] = T.vb;
+  const tol = Math.max(vw, vh) * 0.085;
+  const u = pts.map(p => paraVista(p[0], p[1]));
+  // densifica o traço do aluno
+  const dens = [];
+  for (let k = 1; k < u.length; k++){
+    const a = u[k - 1], b = u[k];
+    const m = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (tol / 3)));
+    for (let j = 0; j < m; j++) dens.push([a[0] + (b[0] - a[0]) * j / m, a[1] + (b[1] - a[1]) * j / m]);
+  }
+  dens.push(u[u.length - 1]);
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const cobertos = s.filter(p => dens.some(q => dist(p, q) <= tol)).length / s.length;
+  const fora = dens.filter(q => s.some(p => dist(p, q) <= tol * 1.6)).length / dens.length;
+  const comeco = dist(u[0], s[0]) <= tol * 2.2;
+  const idx = q => { let b = 0, d = 1e9; s.forEach((p, k) => { const dd = dist(p, q); if (dd < d){ d = dd; b = k; } }); return b; };
+  const sentidoOk = idx(u[0]) <= idx(u[u.length - 1]);
+  if (cobertos >= 0.7 && fora >= 0.7 && comeco && sentidoOk){
+    T.tracos.push({ pts });
+    T.feitos++;
+    if (T.feitos >= SIMBOLOS[T.id].strokes.length) concluir(); else {
+      msg('✓ Muito bem. Agora o traço ' + (T.feitos + 1) + '.', 'var(--verde)');
+    }
+    desenharGuia(); redesenhar();
+  } else {
+    let dica = 'Tenta outra vez, segue o traço dourado.';
+    if (!comeco || !sentidoOk) dica = 'Começa na bolinha ' + (i + 1) + ' e vai no sentido do traço.';
+    else if (cobertos < 0.7) dica = 'Faz o traço até ao fim, seguindo o modelo.';
+    else if (fora < 0.7) dica = 'Fica um pouco mais perto do modelo.';
+    msg(dica, '#9a5b3d');
+    redesenhar();
+  }
+}
+
+function concluir(){
+  T.ok = true;
+  const id = T.id, p = PROG[id] || {};
+  const n = (p.tela || 0) + 1;
+  gravar(id, { tela: n });
+  msg('🎉 Símbolo completo! Traçados: ' + n + (n >= MIN_TELA ? ' · degrau 2 feito ✓' : ' de ' + MIN_TELA), 'var(--verde)');
+  const ctl = document.getElementById('ctl');
+  ctl.innerHTML = '<button id="bOutra" class="p">🔁 Traçar outra vez</button><button id="bSair">Terminar</button>';
+  document.getElementById('bOutra').onclick = () => abrirTela(id, 'guia');
+  document.getElementById('bSair').onclick = fecharTela;
+}
+
+function desfazer(){
+  if (!T || T.ok) return;
+  if (T.modo === 'livre'){ T.tracos.pop(); redesenhar(); return; }
+  if (!T.tracos.length) return;
+  T.tracos.pop(); T.feitos = Math.max(0, T.feitos - 1);
+  desenharGuia(); redesenhar();
+  msg('Refaz o traço ' + (T.feitos + 1) + '.');
+}
+function passarTraco(){
+  if (!T || T.ok) return;
+  T.tracos.push({ pts: [] });
+  T.feitos++;
+  if (T.feitos >= SIMBOLOS[T.id].strokes.length) { T.feitos = SIMBOLOS[T.id].strokes.length; T.ok = true; msg('Fim do modelo. Esta volta não conta, porque passaste traços: faz outra sem os passar.', '#9a5b3d');
+    document.getElementById('ctl').innerHTML = '<button id="bOutra" class="p">🔁 Traçar outra vez</button><button id="bSair">Terminar</button>';
+    document.getElementById('bOutra').onclick = () => abrirTela(T.id, 'guia'); document.getElementById('bSair').onclick = fecharTela; }
+  else msg('Passaste. Agora o traço ' + (T.feitos + 1) + '.');
+  desenharGuia(); redesenhar();
+}
+function recomecar(){ if (T) abrirTela(T.id, T.modo); }
+
+function comparar(){
+  if (!T) return;
+  if (!T.tracos.length){ msg('Desenha primeiro o símbolo.', '#9a5b3d'); return; }
+  T.comparar = !T.comparar;
+  desenharGuia();
+  if (T.comparar && !T.contou){
+    T.contou = true;
+    const p = PROG[T.id] || {};
+    gravar(T.id, { memoriaTela: (p.memoriaTela || 0) + 1 });
+    msg('Compara: o que ficou igual e o que mudou? Anota para o papel. (degrau 5: tela feita ✓)');
+  } else msg(T.comparar ? 'A mostrar o modelo por cima.' : 'Modelo escondido.');
+}
+
+function guardarImagem(){
+  if (!T) return;
+  const cv = document.getElementById('cv');
+  const out = document.createElement('canvas');
+  out.width = cv.width; out.height = cv.height;
+  const c = out.getContext('2d');
+  c.fillStyle = '#fffdf7'; c.fillRect(0, 0, out.width, out.height);
+  c.drawImage(cv, 0, 0);
+  const a = document.createElement('a');
+  a.download = 'simbolo-' + T.id + '.png';
+  a.href = out.toDataURL('image/png');
+  a.click();
+}
+
+arrancar();
+</script>
+</body>
+</html>

@@ -661,6 +661,12 @@ function verInicio(){
         + (P.feitos === 0 ? '▶ Iniciar formação' : (P.feitos === P.total ? 'Ver o plano' : '▶ Continuar formação')) + '</button></div>';
     }
   }
+  if (emEstudo){
+    h += '<div class="cartao" style="text-align:center;">'
+      + '<strong>✍️ Oficina dos símbolos</strong>'
+      + '<p style="margin:6px 0;color:var(--suave);font-size:.9rem;">Aprende o traçado de cada símbolo: ver, traçar na tela, papel e de memória.</p>'
+      + '<a class="abrir" href="reiki-simbolos.html?t=' + encodeURIComponent(C.tenant) + '&c=' + encodeURIComponent(C.codigo) + '">Abrir a oficina</a></div>';
+  }
   h += '<h2>Onde continuar</h2><div class="cartao">'
     + '<button class="botao" onclick="__mostrar(\'biblioteca\')">📚 Materiais (' + recursos.length + ')</button>'
     + '<button class="botao" onclick="__mostrar(\'testes\')">📝 Testes</button>'
