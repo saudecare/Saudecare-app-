@@ -944,7 +944,7 @@ function desenharModulo(){
   const cab = `<button class="leve" onclick="desenharLista();window.scrollTo(0,0)">← Voltar</button>
     <div class="card" style="margin-top:12px;"><h3 style="color:var(--bronze);">${m.ordem}. ${esc(m.titulo)}</h3>
     ${m.subtitulo ? `<p class="nota">${esc(m.subtitulo)}</p>` : ''}
-    <div class="passos">${ps.map(k => `<div class="${PASSO===k?'on':(feitoDe(k)?'ok':'')}">${rotulo(k)}</div>`).join('')}</div></div>`;
+    <div class="passos">${ps.map(k => `<div class="${PASSO===k?'on':(feitoDe(k)?'ok':'')}" style="cursor:pointer;" onclick="irPasso('${k}')">${rotulo(k)}</div>`).join('')}</div></div>`;
   const seguinte = proximoPasso(m, PASSO);
   const rotSeguinte = k => k === 'ler' ? 'a leitura' : k === 'praticar' ? ((pr.instrucoes && String(pr.instrucoes).trim()) ? 'a prática' : 'o desafio') : 'o teste';
 
@@ -1010,6 +1010,8 @@ function desenharModulo(){
       ${faltam > 0 ? `Faltam ${faltam} resposta(s)` : 'Concluir este módulo'}
     </button></div>`;
 }
+
+window.irPasso = function(k){ if (!ABERTO || !passosDoModulo(ABERTO).includes(k)) return; PASSO = k; desenharModulo(); window.scrollTo(0, 0); };
 
 window.marcarVisto = async function(){
   await gravar({ visto: true, vistoEm: new Date().toISOString() });
