@@ -281,14 +281,19 @@ async function arrancar(){
     const snapT = await getDocs(collection(db, 'tenants', TENANT, 'reikiQuizzes'));
     TESTES = [];
     snapT.forEach(d => TESTES.push({ id: d.id, ...d.data() }));
+    // Só os testes do nível em estudo (não são cumulativos) e os gerais.
     TESTES = TESTES.filter(t => {
       const nv = String(t.nivel || '0');
-      if (nv === '0') return true;
-      const i = ORDEM_NIVEIS.indexOf(nv);
-      return i >= 0 && i <= meuIndice;
+      return nv === '0' || nv === String(NIVEL);
     });
   } catch(e){ console.warn('testes indisponíveis', e); }
 
+  const abrirM = params.get('m');
+  const iM = abrirM ? MODULOS.findIndex(x => x.id === abrirM) : -1;
+  if (iM >= 0 && (iM === 0 || (PROGRESSO[MODULOS[iM - 1].id] || {}).concluido)){
+    window.abrirModulo(abrirM);
+    return;
+  }
   desenharLista();
 }
 

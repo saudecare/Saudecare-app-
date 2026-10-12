@@ -109,6 +109,19 @@
   .subtitulo{font-size:.86rem;font-weight:600;color:var(--destaque);margin:12px 0 6px;}
   .sub{border-left:2px solid var(--linha);padding-left:10px;margin-bottom:8px;}
   p.desc{margin:0 0 8px;color:var(--suave);font-size:.86rem;}
+  .plano .linha{display:flex;gap:11px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--linha);}
+  .plano .linha:last-child{border-bottom:0;}
+  .plano .num{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.88rem;background:var(--linha);color:var(--suave);}
+  .plano .feito .num{background:var(--verde);color:#fff;}
+  .plano .atual{background:#fbf3e3;margin:0 -8px;padding:11px 8px;border-radius:10px;border-bottom:0;}
+  .plano .atual .num{background:var(--destaque);color:#fff;}
+  .plano .bloq{opacity:.6;}
+  .plano .corpo{flex:1;min-width:0;}
+  .plano .t{font-weight:600;line-height:1.35;}
+  .plano .s{font-size:.82rem;color:var(--suave);margin-top:2px;}
+  .plano .tag{font-size:.72rem;font-weight:700;color:var(--destaque);letter-spacing:.04em;text-transform:uppercase;}
+  .plano .abrir{margin-top:8px;}
+  .plano h3{margin:0 0 4px;font-size:.92rem;}
 </style>
 </head>
 <body>
@@ -363,10 +376,10 @@ async function carregarDados(){
       // Originais com as edições do Mestre por cima (iguais às do percurso):
       // lições novas contam, as escondidas deixam de contar.
       const mapa = {};
-      (window['MODULOS_NIVEL_' + emEstudo] || []).forEach(m => { mapa[emEstudo + '-' + m.ordem] = Object.assign({}, m, { publicado: true }); });
+      (window['MODULOS_NIVEL_' + emEstudo] || []).forEach(m => { mapa[emEstudo + '-' + m.ordem] = Object.assign({}, m, { id: emEstudo + '-' + m.ordem, publicado: true }); });
       try {
         const msnap = await getDocs(collection(db, 'tenants', tenant, 'reikiModules'));
-        msnap.forEach(d => { const x = d.data() || {}; if (String(x.nivel) === String(emEstudo)) mapa[d.id] = x; });
+        msnap.forEach(d => { const x = d.data() || {}; if (String(x.nivel) === String(emEstudo)) mapa[d.id] = Object.assign({}, x, { id: d.id }); });
       } catch(e){ console.warn('lições editadas indisponíveis', e); }
       const lista = Object.values(mapa).filter(m => m.publicado !== false).sort((x, y) => (x.ordem || 0) - (y.ordem || 0));
       const p = C.percurso || {};
@@ -400,16 +413,179 @@ function desenharBarra(){
 
 function mostrar(id){
   limparEscutas();
-  aba = id;
+  aba = (id === 'plano') ? 'inicio' : id;
   desenharBarra();
   window.scrollTo(0,0);
   if (id === 'inicio') verInicio();
+  else if (id === 'plano') verPlano();
   else if (id === 'biblioteca') verBiblioteca();
   else if (id === 'testes') verTestes();
   else if (id === 'mensagens') verMensagens();
   else if (id === 'conversa') verConversa();
 }
 window.__mostrar = mostrar;
+
+/* ─── Plano da formação ──────────────────────────────────────────────
+   O caminho todo do nível em estudo, por ordem: módulos e testes,
+   materiais de apoio, teste final e certificado. Mostra o que já está
+   feito, o que é a seguir e o que ainda está fechado. */
+function calcularPlano(){
+  const { emEstudo, testes, resultados } = C;
+  const perc = C.percurso || {};
+  const mods = (C.modulos || []).slice().sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  const modId = m => emEstudo + '-' + m.ordem;
+  const modFeito = m => !!(perc[modId(m)] || {}).concluido;
+  const passou = t => resultados.some(r => r.testeId === t.id && r.aprovado);
+  const doNivel = t => String(t.nivel || '0') === String(emEstudo);
+  const testeDoModulo = m => testes.find(t => doNivel(t) && (parseInt(t.modulo) || 0) === Number(m.ordem));
+  const testeFinal = testes.find(t => doNivel(t) && (parseInt(t.modulo) || 0) === 0) || null;
+
+  const etapas = [];
+  let anteriorFeito = true;
+  mods.forEach(m => {
+    const feito = modFeito(m);
+    const pm = perc[modId(m)] || {};
+    etapas.push({ k: 'modulo', id: modId(m), titulo: 'Módulo ' + m.ordem + ' — ' + (m.titulo || ''),
+      sub: feito ? (pm.totalPerguntas ? 'Concluído · ' + pm.acertos + ' de ' + pm.totalPerguntas + ' certas' : 'Concluído')
+        : [m.video ? '▶️ vídeo' : '', '📖 ler', '🤲 praticar', '✍️ responder'].filter(Boolean).join(' · ') + (m.duracao ? ' · ⏱️ ' + m.duracao : ''),
+      feito, bloq: !anteriorFeito });
+    anteriorFeito = feito;
+    const t = testeDoModulo(m);
+    if (t){
+      const ok = passou(t);
+      const r = resultados.filter(x => x.testeId === t.id).sort((a, b) => String(b.quando || '').localeCompare(String(a.quando || '')))[0];
+      etapas.push({ k: 'teste', id: t.id, titulo: 'Teste do módulo ' + m.ordem,
+        sub: ok ? 'Aprovado com ' + r.percentagem + '%' : ((t.perguntas || []).length + ' perguntas · mínimo ' + (t.notaMinima || 70) + '%' + (r ? ' · última tentativa ' + r.percentagem + '%' : '')),
+        feito: ok, bloq: !feito });
+    }
+  });
+
+  const obrig = materiaisObrigatorios();
+  const porVer = materiaisPorVer();
+  const matFeito = obrig.length === 0 || porVer.length === 0;
+  const modulosPorFazer = mods.filter(m => !modFeito(m)).length;
+  const testesModuloPorFazer = testes.filter(t => doNivel(t) && (parseInt(t.modulo) || 0) > 0 && !passou(t)).length;
+  const finalPassou = !!(testeFinal && passou(testeFinal));
+  const finalBloq = !!testeFinal && !finalPassou && (modulosPorFazer > 0 || porVer.length > 0 || testesModuloPorFazer > 0);
+
+  let atual = etapas.find(e => !e.feito && !e.bloq) || null;
+  let atualMat = false, atualFinal = false;
+  if (!atual && obrig.length && !matFeito) atualMat = true;
+  else if (!atual && testeFinal && !finalPassou && !finalBloq) atualFinal = true;
+
+  const total = etapas.length + (obrig.length ? 1 : 0) + (testeFinal ? 1 : 0);
+  const feitos = etapas.filter(e => e.feito).length + ((obrig.length && matFeito) ? 1 : 0) + (finalPassou ? 1 : 0);
+  return { etapas, atual, atualMat, atualFinal, obrig, porVer, matFeito, testeFinal, finalPassou, finalBloq,
+           modulosPorFazer, testesModuloPorFazer, total, feitos, mods };
+}
+
+function verPlano(){
+  const { emEstudo } = C;
+  if (!emEstudo){
+    alvo.innerHTML = '<div class="cartao vazio"><strong>Percurso completo</strong><p>Já concluíste todos os níveis.</p></div>';
+    return;
+  }
+  const P = calcularPlano();
+  if (!P.total){
+    alvo.innerHTML = '<button class="botao" data-ir="inicio" style="margin:0 0 10px;">← Início</button>'
+      + '<div class="cartao vazio"><strong>O teu plano está a ser preparado</strong><p>Assim que o teu Mestre publicar os módulos e os testes deste nível, o caminho aparece aqui.</p></div>';
+    alvo.querySelector('[data-ir]').onclick = () => mostrar('inicio');
+    return;
+  }
+  const pct = Math.round(P.feitos / P.total * 100);
+  const iniciar = P.feitos === 0;
+
+  const linha = (estado, num, titulo, sub, botao) =>
+    '<div class="linha ' + estado + '"><div class="num">' + num + '</div><div class="corpo">'
+    + (estado === 'atual' ? '<div class="tag">▶ A seguir</div>' : '')
+    + '<div class="t">' + esc(titulo) + '</div>'
+    + (sub ? '<div class="s">' + sub + '</div>' : '')
+    + (botao || '') + '</div></div>';
+  const btn = (ir, rotulo) => '<button class="abrir" data-ir="' + esc(ir) + '">' + rotulo + '</button>';
+
+  const idAtual = P.atual ? P.atual.k + ':' + P.atual.id : '';
+  let n = 0;
+  const linhasA = P.etapas.map(e => {
+    n++;
+    const ehAtual = (e.k + ':' + e.id) === idAtual;
+    const estado = e.feito ? 'feito' : (ehAtual ? 'atual' : (e.bloq ? 'bloq' : ''));
+    const num = e.feito ? '✓' : (e.bloq ? '🔒' : n);
+    let botao = '';
+    if (!e.feito && !e.bloq){
+      botao = e.k === 'modulo' ? btn('modulo:' + e.id, ehAtual ? '▶ Abrir módulo' : 'Abrir módulo')
+                               : btn('teste:' + e.id, ehAtual ? '▶ Fazer o teste' : 'Fazer o teste');
+    } else if (e.bloq){
+      e.sub = (e.k === 'teste' ? 'Abre quando concluíres o módulo.' : 'Abre quando concluíres o módulo anterior.');
+    }
+    return linha(estado, num, e.titulo, esc(e.sub || ''), botao);
+  }).join('');
+
+  let blocoMat = '';
+  if (P.obrig.length){
+    const v = C.vistos || {};
+    n++;
+    blocoMat = linha(P.matFeito ? 'feito' : (P.atualMat ? 'atual' : ''), P.matFeito ? '✓' : n,
+      'Materiais de apoio — ver até ao fim',
+      (P.obrig.length - P.porVer.length) + ' de ' + P.obrig.length + ' vistos. Podes ir vendo ao mesmo tempo que fazes os módulos.'
+        + '<div style="margin-top:6px;">' + P.obrig.map(r => (v[r.id] ? '✅ ' : '◻️ ') + esc(r.titulo || '')).join('<br>') + '</div>',
+      P.matFeito ? '' : btn('materiais', 'Ir para os materiais'));
+  }
+
+  let blocoFinal = '';
+  if (P.testeFinal){
+    n++;
+    const faltas = [];
+    if (P.modulosPorFazer) faltas.push('concluir ' + P.modulosPorFazer + ' módulo(s)');
+    if (P.testesModuloPorFazer) faltas.push('passar ' + P.testesModuloPorFazer + ' teste(s) de módulo');
+    if (P.porVer.length) faltas.push('ver ' + P.porVer.length + ' material(ais) até ao fim');
+    blocoFinal = linha(P.finalPassou ? 'feito' : (P.atualFinal ? 'atual' : (P.finalBloq ? 'bloq' : '')),
+      P.finalPassou ? '✓' : (P.finalBloq ? '🔒' : n),
+      'Teste final do nível',
+      P.finalPassou ? 'Aprovado.' : (P.finalBloq ? 'Abre depois de: ' + faltas.join(', ') + '.' : 'Já podes fazê-lo. Mínimo ' + (P.testeFinal.notaMinima || 70) + '%.'),
+      (!P.finalPassou && !P.finalBloq) ? btn('teste:' + P.testeFinal.id, '▶ Fazer o teste final') : '');
+  }
+  n++;
+  const blocoCert = linha('', '🎓', 'Certificado e passagem de nível',
+    'Depois do teste final, o teu Mestre regista a conclusão e dá-te o certificado.', '');
+
+  // botão principal
+  let cta = '';
+  if (P.atual){
+    cta = '<button class="abrir" data-ir="' + (P.atual.k === 'modulo' ? 'modulo:' : 'teste:') + esc(P.atual.id) + '">'
+      + (iniciar ? '▶ Iniciar formação' : '▶ Continuar: ' + esc(P.atual.titulo)) + '</button>';
+  } else if (P.atualMat){
+    cta = '<button class="abrir" data-ir="materiais">▶ Continuar: materiais de apoio</button>';
+  } else if (P.atualFinal){
+    cta = '<button class="abrir" data-ir="teste:' + esc(P.testeFinal.id) + '">▶ Fazer o teste final</button>';
+  } else if (P.feitos === P.total){
+    cta = '<p style="margin:10px 0 0;"><b>🎉 Concluíste tudo!</b> Fala com o teu Mestre para o certificado.</p>';
+  }
+
+  alvo.innerHTML = '<div class="plano">'
+    + '<button class="botao" data-ir="inicio" style="margin:0 0 10px;">← Início</button>'
+    + '<div class="cartao" style="text-align:center;">'
+    + '<strong style="font-size:1.05rem;">🎓 ' + esc(ROTULOS[emEstudo]) + '</strong>'
+    + '<div class="barra"><i style="width:' + pct + '%"></i></div>'
+    + '<p style="margin:8px 0 0;color:var(--suave);font-size:.88rem;">' + P.feitos + ' de ' + P.total + ' etapas feitas (' + pct + '%)</p>'
+    + cta + '</div>'
+    + '<div class="cartao"><h3>1 · Módulos e testes</h3>'
+    + '<p class="desc">Faz por ordem: cada módulo tem vídeo (se existir), leitura, prática e perguntas.</p>'
+    + (linhasA || '<p class="desc">Ainda sem módulos publicados.</p>') + '</div>'
+    + (blocoMat ? '<div class="cartao"><h3>2 · Materiais de apoio</h3>' + blocoMat + '</div>' : '')
+    + (blocoFinal ? '<div class="cartao"><h3>' + (blocoMat ? '3' : '2') + ' · Teste final</h3>' + blocoFinal + '</div>' : '')
+    + '<div class="cartao"><h3>Meta</h3>' + blocoCert + '</div>'
+    + '</div>';
+
+  alvo.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => {
+    const ir = b.dataset.ir;
+    if (ir === 'inicio') mostrar('inicio');
+    else if (ir === 'materiais') mostrar('biblioteca');
+    else if (ir.indexOf('modulo:') === 0){
+      location.href = 'reiki-percurso.html?t=' + encodeURIComponent(C.tenant) + '&c=' + encodeURIComponent(C.codigo) + '&m=' + encodeURIComponent(ir.slice(7));
+    }
+    else if (ir.indexOf('teste:') === 0) abrirTeste(ir.slice(6));
+  });
+}
 
 function verInicio(){
   const { aluno, concluido, emEstudo, testes, resultados, recursos } = C;
@@ -438,17 +614,19 @@ function verInicio(){
       + '<strong>✉️ O teu Mestre deixou-te uma mensagem</strong><br>'
       + '<button class="abrir" onclick="__mostrar(\'mensagens\')">Ler agora</button></div>';
   }
-  if (C.modTotal){
-    const pm = Math.round(C.modFeitos / C.modTotal * 100);
-    h += '<div class="cartao" style="text-align:center;">'
-      + '<strong>📖 Estudo passo a passo</strong>'
-      + '<p style="margin:6px 0;color:var(--suave);font-size:.9rem;">' + C.modFeitos + ' de ' + C.modTotal
-      + ' módulos feitos (' + pm + '%). Em cada módulo: ler, praticar e responder.</p>'
-      + '<a class="abrir" href="reiki-percurso.html?t=' + encodeURIComponent(C.tenant)
-      + '&c=' + encodeURIComponent(C.codigo) + '">'
-      + (C.modFeitos === 0 ? 'Começar' : (C.modFeitos === C.modTotal ? 'Rever os módulos' : 'Continuar')) + '</a>'
-      + (C.proximoModulo ? '<p style="margin:10px 0 0;color:var(--suave);font-size:.86rem;">A seguir: <b>Módulo ' + esc(String(C.proximoModulo.ordem)) + ' — ' + esc(C.proximoModulo.titulo || '') + '</b></p>' : '')
-      + '</div>';
+  if (emEstudo){
+    const P = calcularPlano();
+    if (P.total){
+      const pf = Math.round(P.feitos / P.total * 100);
+      h += '<div class="cartao" style="text-align:center;">'
+        + '<strong>🎓 A minha formação</strong>'
+        + '<div class="barra"><i style="width:' + pf + '%"></i></div>'
+        + '<p style="margin:6px 0;color:var(--suave);font-size:.9rem;">' + P.feitos + ' de ' + P.total + ' etapas feitas (' + pf + '%). '
+        + 'Todos os módulos, materiais e testes, por ordem.</p>'
+        + (P.atual ? '<p style="margin:0 0 4px;font-size:.88rem;">A seguir: <b>' + esc(P.atual.titulo) + '</b></p>' : '')
+        + '<button class="abrir" onclick="__mostrar(\'plano\')">'
+        + (P.feitos === 0 ? '▶ Iniciar formação' : (P.feitos === P.total ? 'Ver o plano' : '▶ Continuar formação')) + '</button></div>';
+    }
   }
   h += '<h2>Onde continuar</h2><div class="cartao">'
     + '<button class="botao" onclick="__mostrar(\'biblioteca\')">📚 Materiais (' + recursos.length + ')</button>'
