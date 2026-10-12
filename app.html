@@ -349,7 +349,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-12-02';
+const APP_VERSION = '2026-10-12-03';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12038,14 +12038,14 @@ function reikiRenderEcra(main){
   const m = main || document.getElementById('mainView');
   m.innerHTML = `
     <h2>🎓 Escola de Reiki</h2>
-    <div class="row" style="gap:6px;margin:10px 0 14px;flex-wrap:wrap;">
+    <div class="row" style="gap:6px;margin:10px 0 14px;flex-wrap:wrap;justify-content:flex-start;">
       <button class="${__reikiTab==='resumo'?'primary':'ghost'}" onclick="reikiMudarTab('resumo')">Resumo</button>
       <button class="${__reikiTab==='alunos'?'primary':'ghost'}" onclick="reikiMudarTab('alunos')">Alunos</button>
       <button class="${__reikiTab==='turmas'?'primary':'ghost'}" onclick="reikiMudarTab('turmas')">Turmas</button>
       <button class="${REIKI_GRUPO_CONTEUDO.includes(__reikiTab)?'primary':'ghost'}" onclick="reikiMudarTab(REIKI_GRUPO_CONTEUDO.includes(__reikiTab)?__reikiTab:'licoes')">Conteúdo</button>
       <button class="${__reikiTab==='mensagens'?'primary':'ghost'}" onclick="reikiMudarTab('mensagens')">Mensagens</button>
     </div>
-    ${REIKI_GRUPO_CONTEUDO.includes(__reikiTab) ? `<div class="row" style="gap:6px;margin:-4px 0 14px;flex-wrap:wrap;">
+    ${REIKI_GRUPO_CONTEUDO.includes(__reikiTab) ? `<div class="row" style="gap:6px;margin:-4px 0 14px;flex-wrap:wrap;justify-content:flex-start;">
       <button class="${__reikiTab==='licoes'?'primary':'ghost'}" onclick="reikiMudarTab('licoes')">📖 Módulos</button>
       <button class="${__reikiTab==='biblioteca'?'primary':'ghost'}" onclick="reikiMudarTab('biblioteca')">📚 Manuais e vídeos</button>
       <button class="${__reikiTab==='testes'?'primary':'ghost'}" onclick="reikiMudarTab('testes')">📝 Testes</button>
@@ -12295,13 +12295,40 @@ function reikiDesenharMensagens(lista, souEu){
   caixa.scrollTop = caixa.scrollHeight;
 }
 
+/* Redesenha o ecrã por trás (Resumo ou Mensagens) para o selo "novo" e os
+   alertas desaparecerem logo que a conversa é lida. */
+function reikiRefrescarFundo(){
+  try {
+    if (document.getElementById('reikiConteudo') && (__reikiTab === 'resumo' || __reikiTab === 'mensagens')) reikiRenderEcra();
+  } catch(_){}
+}
+
+window.reikiMarcarTodasLidas = async function(){
+  const lista = __reikiConversas.filter(c => c.ultimaDe === 'aluno' && c.lidoMestre !== true);
+  if (!lista.length) return;
+  let falhas = 0;
+  for (const c of lista){
+    try {
+      await setDoc(doc(db, 'tenants', tenantId, 'reikiThreads', c.id), { lidoMestre: true }, { merge: true });
+      c.lidoMestre = true;
+    } catch(e){ falhas++; console.warn('Reiki: não consegui marcar como lida', c.id, e); }
+  }
+  toast(falhas ? ('Não consegui marcar ' + falhas + ' conversa(s).') : 'Marcadas como lidas.', !!falhas);
+  reikiRefrescarFundo();
+};
+
 window.reikiAbrirConversa = function(codigo, nome){
   reikiPararEscuta();
   __reikiMsgAberta = { tipo:'privada', codigo };
   const conv = __reikiConversas.find(c => c.id === codigo);
   if (conv && conv.ultimaDe === 'aluno' && conv.lidoMestre !== true){
     conv.lidoMestre = true;
-    setDoc(doc(db, 'tenants', tenantId, 'reikiThreads', codigo), { lidoMestre: true }, { merge: true }).catch(()=>{});
+    reikiRefrescarFundo();
+    setDoc(doc(db, 'tenants', tenantId, 'reikiThreads', codigo), { lidoMestre: true }, { merge: true }).catch(e => {
+      conv.lidoMestre = false;
+      reikiRefrescarFundo();
+      toast('Não consegui marcar como lida: ' + (e.message || e), true);
+    });
   }
   showPatientOverlay('✉️ ' + (nome || codigo),
     reikiCaixaHtml(nome, 'Só tu e este aluno leem esta conversa.'));
@@ -14234,7 +14261,14 @@ function reikiRenderResumo(){
   const emAtraso = pags.filter(x => x.p.estado === 'atraso');
   const porReceber = pags.filter(x => x.p.falta > 0 && x.p.estado !== 'atraso');
   const semTurma = __reikiTurmas.length ? __reikiAlunos.filter(a => !a.turmaId) : [];
-  const semActividade = __reikiAlunos.filter(a => !reikiProgressoAluno(a) && !(a.codigoAcesso && __reikiConversas.some(c => c.id === a.codigoAcesso)));
+  const semSala = __reikiAlunos.filter(a => !reikiProgressoAluno(a) && !(a.codigoAcesso && __reikiConversas.some(c => c.id === a.codigoAcesso)));
+  // Quem ainda não foi convidado: convida-se. Quem já foi: só avisa passados 3 dias.
+  const semActividade = semSala.filter(a => !a.convidadoEm);
+  const convidadosParados = semSala.filter(a => {
+    if (!a.convidadoEm) return false;
+    const dias = (new Date(reikiHojeISO()) - new Date(a.convidadoEm)) / 86400000;
+    return dias >= 3;
+  });
   const recentes = __reikiResultados.slice()
     .sort((x, y) => (y.entregueEm?.toMillis?.() || 0) - (x.entregueEm?.toMillis?.() || 0)).slice(0, 5);
 
@@ -14246,9 +14280,11 @@ function reikiRenderResumo(){
 
   const atencao = [];
   if (__reikiPedidos.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiAbrirPedidos()">📥 <strong>${__reikiPedidos.length}</strong> pedido(s) de inscrição por aceitar</div>`);
-  if (novas.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiMudarTab('mensagens')">✉️ <strong>${novas.length}</strong> conversa(s) com mensagem por ler</div>`);
+  if (novas.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiMudarTab('mensagens')">✉️ <strong>${novas.length}</strong> conversa(s) com mensagem por ler
+    <button class="ghost" style="margin-left:8px;padding:4px 10px;" onclick="event.stopPropagation();reikiMarcarTodasLidas()">✓ Marcar como lidas</button></div>`);
   emAtraso.forEach(x => atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiAbrirPagamentos('${x.a.id}')">⚠️ <strong>${escapeHtml(x.a.nome || '')}</strong> — pagamento em atraso, falta ${reikiEuros(x.p.falta)}</div>`));
   if (semTurma.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiMudarTab('alunos')">👥 <strong>${semTurma.length}</strong> aluno(s) sem turma</div>`);
+  if (convidadosParados.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiAbrirConvites('todos')">⏳ <strong>${convidadosParados.length}</strong> aluno(s) convidado(s) há mais de 3 dias ainda não entraram na sala</div>`);
   if (semActividade.length) atencao.push(`<div class="appt-item" style="cursor:pointer;" onclick="reikiAbrirConvites('porconvidar')">🔗 <strong>${semActividade.length}</strong> aluno(s) ainda sem actividade na sala — convida-os</div>`);
 
   alvo.innerHTML = `
@@ -14362,6 +14398,7 @@ window.reikiMarcarConvidado = function(alunoId){
       a.convidadoEm = hoje;
       const el = document.getElementById('convSt-' + alunoId);
       if (el) el.textContent = '✓ Convidado a ' + reikiDataPT(hoje);
+      reikiRefrescarFundo();
     })
     .catch(e => console.warn('Reiki: não consegui registar o convite', e));
 };
