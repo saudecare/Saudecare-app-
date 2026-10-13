@@ -1,6 +1,6 @@
 /* Poema do dia: a app escolhe um por dia (percorre os 125 sem repetir),
    ou a pessoa escolhe o seu. Tudo fica só neste aparelho. */
-const CH_DIA = 'meiji_dia', CH_MED = 'meiji_medit';
+const CH_DIA = 'meiji_dia', CH_MED = 'meiji_medit', CH_MODO = 'meiji_modo', CH_SORT = 'meiji_sorteio';
 
 export function hojeISO(){
   const d = new Date();
@@ -17,13 +17,36 @@ export function indiceDoDia(n, iso){
   return ((dias * passo) % n + n) % n;
 }
 
-/* O poema de hoje: o que a pessoa escolheu hoje, ou o da app. */
+/* Modo do poema de cada dia: 'dia' = a app avança um poema por dia (sem repetir até passar por todos);
+   'sorteio' = a app sorteia ao acaso, e o sorteado fica o mesmo durante o dia. */
+export function modoPoema(){ return ler(CH_MODO, 'dia') === 'sorteio' ? 'sorteio' : 'dia'; }
+export function definirModo(m){ gravar(CH_MODO, m === 'sorteio' ? 'sorteio' : 'dia'); }
+
+/* Sorteia um poema ao acaso (diferente do que está agora, se possível) e guarda-o para hoje. */
+export function sortearHoje(lista){
+  if (!lista || !lista.length) return null;
+  const antes = ler(CH_SORT, null);
+  let p = lista[Math.floor(Math.random() * lista.length)];
+  for (let i = 0; i < 20 && lista.length > 1 && antes && Number(p.numero) === Number(antes.numero); i++){
+    p = lista[Math.floor(Math.random() * lista.length)];
+  }
+  gravar(CH_SORT, { data: hojeISO(), numero: Number(p.numero) });
+  return p;
+}
+
+/* O poema de hoje: o que a pessoa escolheu hoje; senão o sorteado (modo sorteio) ou o da app. */
 export function escolhaDoDia(lista){
   if (!lista || !lista.length) return null;
   const e = ler(CH_DIA, null);
   if (e && e.data === hojeISO()){
     const p = lista.find(x => Number(x.numero) === Number(e.numero));
     if (p) return { poema: p, manual: true };
+  }
+  if (modoPoema() === 'sorteio'){
+    const s = ler(CH_SORT, null);
+    let p = s && s.data === hojeISO() ? lista.find(x => Number(x.numero) === Number(s.numero)) : null;
+    if (!p) p = sortearHoje(lista);
+    return { poema: p, manual: false, sorteado: true };
   }
   return { poema: lista[indiceDoDia(lista.length, hojeISO())], manual: false };
 }

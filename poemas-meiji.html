@@ -118,7 +118,7 @@
 </footer>
 
 <script type="module">
-import { escolhaDoDia, escolherHoje, voltarAoDaApp, registarMeditacao, sequencia, hojeISO } from './reiki-poema-dia.js';
+import { escolhaDoDia, escolherHoje, voltarAoDaApp, registarMeditacao, sequencia, hojeISO, modoPoema, definirModo, sortearHoje } from './reiki-poema-dia.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, getDocs }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -272,7 +272,7 @@ window.desenharHoje = function(){
     <div class="card" style="text-align:center;">
       <div style="font-size:13px;color:var(--suave);text-transform:capitalize;">${esc(data)}</div>
       <strong style="font-size:17px;">Poema de hoje</strong>
-      <div class="nota" style="margin-top:4px;">${e.manual ? 'Escolhido por ti.' : 'Escolhido para ti pela app.'}${s.seguidos ? ' · 🔥 ' + s.seguidos + ' dia(s) seguido(s)' : ''}</div>
+      <div class="nota" style="margin-top:4px;">${e.manual ? 'Escolhido por ti.' : (e.sorteado ? 'Sorteado para ti pela app.' : 'Escolhido para ti pela app.')}${s.seguidos ? ' · 🔥 ' + s.seguidos + ' dia(s) seguido(s)' : ''}</div>
     </div>
     ${htmlPoemaBase(p)}
     ${g ? `<div class="card" style="text-align:center;"><label>O princípio de hoje</label>
@@ -286,9 +286,14 @@ window.desenharHoje = function(){
       <p class="nota" id="avisoGuardado"></p>
     </div>
     <div class="card" style="text-align:center;">
+      <label>Como queres receber o poema de cada dia?</label>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="${modoPoema()==='dia' ? 'primary' : 'ghost'}" style="flex:1;" onclick="mudarModo('dia')">📅 Um por dia<br><span style="font-size:11.5px;font-weight:400;">a app avança, sem repetir</span></button>
+        <button class="${modoPoema()==='sorteio' ? 'primary' : 'ghost'}" style="flex:1;" onclick="mudarModo('sorteio')">🎲 Sorteado<br><span style="font-size:11.5px;font-weight:400;">ao acaso, só para ti</span></button>
+      </div>
       <button class="ghost" onclick="outroDeHoje()">🎲 Outro poema para hoje</button>
       <button class="ghost" onclick="mudarAba('lista')">📖 Escolher na lista</button>
-      ${e.manual ? '<br><button class="ghost" style="margin-top:8px;" onclick="voltarDaApp()">↩ Voltar ao da app</button>' : ''}
+      ${e.manual ? '<br><button class="ghost" style="margin-top:8px;" onclick="voltarDaApp()">↩ Voltar ' + (modoPoema()==='sorteio' ? 'ao sorteado' : 'ao da app') + '</button>' : ''}
     </div>`;
 };
 function htmlPoemaBase(p){
@@ -311,7 +316,12 @@ window.meditei = function(numero){
   const a = document.getElementById('avisoGuardado');
   if (a) a.textContent = '✓ Que o dia te seja leve. Guardado neste aparelho, só para ti.';
 };
+window.mudarModo = function(modo){
+  definirModo(modo); voltarAoDaApp();        // o modo novo passa a valer já hoje
+  desenharHoje(); window.scrollTo({top:0,behavior:'smooth'});
+};
 window.outroDeHoje = function(){
+  if (modoPoema() === 'sorteio'){ voltarAoDaApp(); sortearHoje(POEMAS); desenharHoje(); window.scrollTo({top:0,behavior:'smooth'}); return; }
   const atual = escolhaDoDia(POEMAS).poema;
   let p = atual;
   for (let i = 0; i < 20 && p === atual; i++) p = POEMAS[Math.floor(Math.random()*POEMAS.length)];
