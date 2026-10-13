@@ -12,7 +12,10 @@ window.tocarMusicaEscola = function(btn){
   btn.style.display = 'none';
 };
 
-export function cartaoMusicaHtml(titulo, texto){
+/* Exclusivo da Hikari Fafe (tenant hikari-terapias): para qualquer outro subscritor devolve vazio. */
+export const TENANT_MUSICA = 'hikari-terapias';
+export function cartaoMusicaHtml(tenant, titulo, texto){
+  if (tenant !== TENANT_MUSICA) return '';
   return '<div data-musica style="text-align:center;margin:16px auto;max-width:560px;padding:14px;border-radius:14px;border:1px solid rgba(128,128,128,.25);background:rgba(255,255,255,.55);">' +
     '<strong>🎵 ' + (titulo || 'Música para meditar e praticar') + '</strong>' +
     '<p style="margin:6px 0 10px;font-size:.9rem;opacity:.85;">' + (texto || 'Os Cinco Princípios, o Eu Sou e outras canções de Reiki e espiritualidade.') + '</p>' +
