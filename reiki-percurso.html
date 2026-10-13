@@ -278,6 +278,7 @@ async function arrancar(){
   }
 
   NIVEL = nivelEmEstudo(ALUNO.nivel);
+  if (ALUNO.nivel && ALUNO.proximoLiberto === false && NIVEL !== String(ALUNO.nivel)) NIVEL = String(ALUNO.nivel); // próximo nível fechado: revê o concluído
   document.getElementById('subcab').innerHTML = NIVEL
     ? '<span class="selo-nivel">A estudar o Nível ' + esc(NIVEL) + '</span>'
     : '<span class="selo-nivel">Percurso a começar</span>';

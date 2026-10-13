@@ -351,7 +351,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-13-03';
+const APP_VERSION = '2026-10-13-04';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -14341,6 +14341,7 @@ async function reikiGravarAcesso(codigo, aluno){
     alunoId: aluno.id,
     nome: aluno.nome || '',
     nivel: aluno.nivelAtual || null,
+    proximoLiberto: aluno.proximoLiberto !== false,
     turmaId: (t && t.ativa !== false) ? t.id : '',
     turmaNome: (t && t.ativa !== false) ? (t.nome || '') : '',
     turmaWhatsapp: (t && t.ativa !== false) ? (t.whatsappUrl || '') : '',
@@ -15028,10 +15029,12 @@ function reikiRenderListaAlunos(){
               ${a.email ? `<p class="muted" style="margin-top:2px;">✉️ ${escapeHtml(a.email)}</p>` : ''}
               ${reikiHtmlProgresso(a)}
               ${reikiHtmlBadgePag(a)}
+              ${reikiHtmlPedidoContinuar(a)}
             </div>
           </div>
           ${hist.length ? `<p class="muted" style="margin-top:8px;font-size:.85rem;">Percurso: ${hist.map(h => escapeHtml((reikiNivelInfo(h.nivel)?.certLabel) || h.nivel) + ' (' + escapeHtml(reikiDataPT(h.data)) + ')').join(' · ')}</p>` : ''}
           <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap;">
+            ${(prox && a.nivelAtual) ? `<button class="${a.proximoLiberto === false ? 'primary' : 'ghost'}" onclick="reikiAlternarLiberto('${a.id}')">${a.proximoLiberto === false ? '🔒 Libertar estudo do ' + escapeHtml(prox.certLabel) : '🔓 Estudo do ' + escapeHtml(prox.certLabel) + ' liberto (fechar)'}</button>` : ''}
             ${prox ? `<button class="primary" onclick="reikiAbrirSubirNivel('${a.id}')">⬆️ ${escapeHtml(prox.certLabel)}</button>` : '<span class="badge">Mestrado concluído</span>'}
             ${nivel ? `<button class="ghost" onclick="reikiAbrirCertificado('${a.id}')">📜 Certificado</button>` : ''}
             <button class="ghost" onclick="reikiAbrirPagamentos('${a.id}')">💶 Pagamentos</button>
@@ -15132,6 +15135,27 @@ window.reikiApagarAluno = async function(alunoId){
 
 /* ─── Subida de nível (sempre manual) ────────────────────────────── */
 
+function reikiHtmlPedidoContinuar(a){
+  const t = a.codigoAcesso ? __reikiConversas.find(c => c.id === a.codigoAcesso) : null;
+  const p = t && t.pedidoContinuar;
+  const prox = reikiProximoNivel(a.nivelAtual);
+  if (!p || !prox || a.proximoLiberto !== false || String(p.nivel) !== String(prox.id)) return '';
+  return '<p style="margin-top:4px;font-size:.88rem;"><span class="badge" style="background:#fff3d6;">🙋 Quer continuar para o ' + escapeHtml(prox.certLabel) + '</span></p>';
+}
+
+window.reikiAlternarLiberto = async function(alunoId){
+  const a = __reikiAlunos.find(x => x.id === alunoId);
+  if (!a) return;
+  const novo = a.proximoLiberto === false;   // estava fechado → liberta
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId), { proximoLiberto: novo, atualizadoEm: serverTimestamp() });
+    a.proximoLiberto = novo;
+    if (a.codigoAcesso) await reikiGravarAcesso(a.codigoAcesso, a).catch(()=>{});
+    toast(novo ? 'Estudo do nível seguinte liberto.' : 'Nível seguinte fechado.');
+    await renderReikiAlunos();
+  } catch(e){ toast('Não consegui alterar: ' + (e.message || e), true); }
+};
+
 window.reikiAbrirSubirNivel = function(alunoId){
   const a = __reikiAlunos.find(x => x.id === alunoId);
   if (!a) return;
@@ -15169,11 +15193,12 @@ window.reikiConfirmarSubirNivel = async function(alunoId){
   try {
     await updateDoc(doc(db, 'tenants', tenantId, 'reikiStudents', alunoId), {
       nivelAtual: prox.id,
+      proximoLiberto: false,
       historico: arrayUnion(entrada),
       atualizadoEm: serverTimestamp()
     });
     if (a.codigoAcesso){
-      await reikiGravarAcesso(a.codigoAcesso, { id: alunoId, nome: a.nome, nivelAtual: prox.id, turmaId: a.turmaId }).catch(()=>{});
+      await reikiGravarAcesso(a.codigoAcesso, { id: alunoId, nome: a.nome, nivelAtual: prox.id, proximoLiberto: false, turmaId: a.turmaId }).catch(()=>{});
     }
     closePatientOverlay();
     toast('Nível actualizado.');

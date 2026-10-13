@@ -291,9 +291,11 @@ async function arrancar(){
   }
 
   const concluido = aluno.nivel || null;
-  const emEstudo  = nivelEmEstudo(concluido);
+  const proxN = concluido ? NIVEIS[NIVEIS.indexOf(String(concluido)) + 1] : null;
+  const fechado = !!(proxN && aluno.proximoLiberto === false);
+  const emEstudo  = fechado ? null : nivelEmEstudo(concluido);
 
-  C = { tenant, codigo, aluno, concluido, emEstudo,
+  C = { tenant, codigo, aluno, concluido, emEstudo, fechado, proxN,
         recursos: [], testes: [], resultados: [] };
 
   document.getElementById('subtitulo').textContent =
@@ -374,6 +376,7 @@ async function carregarDados(){
       C.percurso = d.percurso || {};
       C.vistos = d.vistos || {};
       C.foto = d.foto || '';
+      C.pedido = d.pedidoContinuar || null;
     }
   } catch(e){}
 
@@ -444,6 +447,14 @@ function mostrar(id){
   else if (id === 'mensagens') verMensagens();
   else if (id === 'conversa') verConversa();
 }
+window.__quererContinuar = async function(){
+  try {
+    await setDoc(doc(db, 'tenants', C.tenant, 'reikiThreads', C.codigo),
+      { codigo: C.codigo, alunoNome: (C.aluno && C.aluno.nome) || '', pedidoContinuar: { nivel: C.proxN, em: new Date().toISOString() } }, { merge: true });
+    C.pedido = { nivel: C.proxN };
+    mostrar('inicio');
+  } catch(e){ alert('Não consegui enviar o pedido. Tenta outra vez.'); }
+};
 window.__trocarFoto = async function(){
   const f = await escolherAvatar();
   if (!f) return;
@@ -710,11 +721,21 @@ function verInicio(){
     + fotoCx + '<strong style="font-size:1.08rem;">' + esc(aluno.nome || 'Bem-vindo') + '</strong><br>'
     + (emEstudo
         ? '<span class="selo" style="margin-top:9px;">A estudar: ' + esc(ROTULOS[emEstudo]) + '</span>'
-        : '<span class="selo" style="margin-top:9px;">Percurso completo — Mestre</span>')
+        : (C.fechado ? '<span class="selo" style="margin-top:9px;">Nível concluído 🌿</span>' : '<span class="selo" style="margin-top:9px;">Percurso completo — Mestre</span>'))
     + (concluido
         ? '<div style="margin-top:7px;"><span class="selo cinza">Concluído: ' + esc(ROTULOS[concluido]) + '</span></div>'
         : '')
     + '<div>' + fotoBtn + '</div></div>';
+
+  if (C.fechado){
+    const pedido = C.pedido && String(C.pedido.nivel) === String(C.proxN);
+    h += '<div class="cartao" style="text-align:center;"><strong>Queres continuar o caminho?</strong>'
+      + '<p style="margin:6px 0 10px;color:var(--suave);font-size:.9rem;">Parabéns por concluíres o ' + esc(ROTULOS[C.concluido]) + '. Continuas a ter acesso a tudo o que já fizeste. '
+      + 'O ' + esc(ROTULOS[C.proxN]) + ' abre quando combinares com o teu Mestre.</p>'
+      + (pedido ? '<span class="selo">🙋 Pedido enviado — o Mestre vai falar contigo</span>'
+                : '<button class="abrir" onclick="__quererContinuar()">🙋 Quero continuar para o ' + esc(ROTULOS[C.proxN]) + '</button>')
+      + '</div>';
+  }
 
   if (emEstudo && testes.length){
     h += '<div class="cartao"><strong>O teu progresso neste nível</strong>'
