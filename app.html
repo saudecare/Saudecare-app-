@@ -351,7 +351,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-13-02';
+const APP_VERSION = '2026-10-13-03';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12140,7 +12140,7 @@ function reikiRenderMensagens(){
     ? '<p class="muted">Ainda nenhum aluno escreveu. Assim que escreverem, a conversa aparece aqui.</p>'
     : __reikiConversas.map(c => `
         <div class="appt-item" style="cursor:pointer;" onclick="reikiAbrirConversa('${c.id}','${escapeAttrJs(c.alunoNome||'')}')">
-          <strong>${escapeHtml(c.alunoNome || c.codigo)}</strong>
+          ${reikiAvatar(c.foto, 34)}<strong>${escapeHtml(c.alunoNome || c.codigo)}</strong>
           ${(c.ultimaDe === 'aluno' && c.lidoMestre !== true) ? '<span class="badge" style="margin-left:6px;">novo</span>' : ''}
           <div class="muted" style="margin-top:3px;font-size:.86rem;">${escapeHtml(c.ultima || '')}</div>
         </div>`).join('');
@@ -12202,6 +12202,23 @@ async function reikiEnviarPrivada(codigo, aluno, texto, imagem){
     atualizadoEm: serverTimestamp()
   }, { merge: true });
 }
+
+/* Pede a foto, na conversa privada, a cada aluno que ainda não tem. */
+window.reikiPedirFotos = async function(){
+  const sem = __reikiAlunos.filter(a => !reikiFotoDoAluno(a));
+  if (!sem.length){ toast('Todos os alunos já têm foto.'); return; }
+  if (!confirm('Enviar um pedido de foto a ' + sem.length + ' aluno(s) que ainda não têm?')) return;
+  let ok = 0;
+  for (const a of sem){
+    try {
+      const codigo = await reikiGarantirCodigo(a);
+      const nome = (a.nome || '').split(' ')[0];
+      await reikiEnviarPrivada(codigo, a, 'Olá' + (nome ? ' ' + nome : '') + '! 🌿 Gostava de pôr uma cara em cada aluno da escola. Abre a tua sala de estudo e carrega em "📷 Adicionar a minha foto" (escolhes uma foto do telemóvel ou do computador): ' + reikiUrlBiblioteca(codigo));
+      ok++;
+    } catch(e){ console.warn('pedido de foto falhou', e); }
+  }
+  toast('Pedido enviado a ' + ok + ' aluno(s).');
+};
 
 /* ─── Nova mensagem: para um aluno, uma turma, um nível ou todos ───
    Chega a cada aluno na conversa privada dele, com aviso de "nova". */
@@ -14427,6 +14444,14 @@ function reikiHtmlBadgePag(a){
 
 /* Progresso do aluno na sala de estudo, lido das conversas (reikiThreads),
    onde a sala guarda módulos feitos e resultados dos testes. */
+function reikiAvatar(foto, tam){
+  tam = tam || 40;
+  return `<span style="flex:none;width:${tam}px;height:${tam}px;border-radius:50%;overflow:hidden;background:#efe6d6;display:inline-flex;align-items:center;justify-content:center;font-size:${Math.round(tam*0.5)}px;vertical-align:middle;margin-right:8px;">${foto ? `<img src="${escapeHtml(foto)}" alt="" style="width:100%;height:100%;object-fit:cover;">` : '👤'}</span>`;
+}
+function reikiFotoDoAluno(a){
+  const t = a && a.codigoAcesso ? __reikiConversas.find(c => c.id === a.codigoAcesso) : null;
+  return (t && t.foto) || '';
+}
 function reikiProgressoAluno(a){
   const t = a.codigoAcesso ? __reikiConversas.find(c => c.id === a.codigoAcesso) : null;
   if (!t) return null;
@@ -14635,6 +14660,7 @@ function reikiRenderResumo(){
       <button class="primary" onclick="reikiAbrirForm()">➕ Novo aluno</button>
       <button class="ghost" onclick="reikiAbrirConvites()">📲 Convidar alunos</button>
       <button class="ghost" onclick="reikiNovaMensagem()">✉️ Nova mensagem</button>
+      <button class="ghost" onclick="reikiPedirFotos()">📸 Pedir foto aos alunos</button>
     </div>
     <div class="card" style="margin-bottom:12px;">
       <h3 style="margin:0 0 8px;">Precisa de atenção</h3>
@@ -14996,7 +15022,7 @@ function reikiRenderListaAlunos(){
         <div class="card" style="margin-bottom:10px;">
           <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;">
             <div>
-              <strong>${escapeHtml(a.nome || '(sem nome)')}</strong>
+              ${reikiAvatar(reikiFotoDoAluno(a), 44)}<strong>${escapeHtml(a.nome || '(sem nome)')}</strong>
               <p class="muted" style="margin-top:4px;">${nivel ? '📜 ' + escapeHtml(nivel.nome) : '🌱 Inscrito, ainda sem nível'}</p>
               ${a.telefone ? `<p class="muted" style="margin-top:2px;">📞 ${escapeHtml(a.telefone)}</p>` : ''}
               ${a.email ? `<p class="muted" style="margin-top:2px;">✉️ ${escapeHtml(a.email)}</p>` : ''}

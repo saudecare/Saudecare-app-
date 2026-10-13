@@ -146,7 +146,7 @@
 import { cartaoMusicaHtml } from './musica-escola.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { mesclarPratica, praticaId } from "./reiki-pratica.js";
-import { corpoMensagem, escolherFoto } from "./reiki-midia-chat.js";
+import { corpoMensagem, escolherFoto, escolherAvatar } from "./reiki-midia-chat.js";
 import { getFirestore, doc, getDoc, collection, getDocs, addDoc, setDoc,
          query, orderBy, onSnapshot, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -373,6 +373,7 @@ async function carregarDados(){
       porLer = (d.ultimaDe === 'mestre' && d.lidoAluno === false) ? 1 : 0;
       C.percurso = d.percurso || {};
       C.vistos = d.vistos || {};
+      C.foto = d.foto || '';
     }
   } catch(e){}
 
@@ -443,6 +444,16 @@ function mostrar(id){
   else if (id === 'mensagens') verMensagens();
   else if (id === 'conversa') verConversa();
 }
+window.__trocarFoto = async function(){
+  const f = await escolherAvatar();
+  if (!f) return;
+  try {
+    await setDoc(doc(db, 'tenants', C.tenant, 'reikiThreads', C.codigo),
+      { codigo: C.codigo, alunoNome: (C.aluno && C.aluno.nome) || '', foto: f, fotoEm: new Date().toISOString() }, { merge: true });
+    C.foto = f;
+    mostrar('inicio');
+  } catch(e){ alert('Não consegui guardar a foto. Tenta outra vez.'); }
+};
 window.__mostrar = mostrar;
 
 /* ─── Plano da formação ──────────────────────────────────────────────
@@ -689,16 +700,21 @@ function verInicio(){
   const feitos = testes.filter(t => resultados.some(r => r.testeId === t.id && r.aprovado)).length;
   const pct = testes.length ? Math.round(feitos / testes.length * 100) : 0;
 
+  const fotoCx = '<div style="display:flex;justify-content:center;margin-bottom:8px;"><div style="width:84px;height:84px;border-radius:50%;overflow:hidden;background:#efe6d6;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;font-size:2rem;">'
+    + (C.foto ? '<img src="' + esc(C.foto) + '" alt="" style="width:100%;height:100%;object-fit:cover;">' : '👤') + '</div></div>';
+  const fotoBtn = '<button type="button" class="' + (C.foto ? 'leve' : 'abrir') + '" style="margin-top:8px;" onclick="__trocarFoto()">'
+    + (C.foto ? '📷 Mudar a minha foto' : '📷 Adicionar a minha foto') + '</button>'
+    + (C.foto ? '' : '<p style="margin:6px 0 0;font-size:.82rem;color:var(--suave);">Escolhe uma foto tua no telemóvel ou computador. O teu Mestre passa a ver quem és.</p>');
   let h = '<div class="slotAula">' + cartaoAulaHtml() + '</div>'
     + '<div class="cartao" style="text-align:center;">'
-    + '<strong style="font-size:1.08rem;">' + esc(aluno.nome || 'Bem-vindo') + '</strong><br>'
+    + fotoCx + '<strong style="font-size:1.08rem;">' + esc(aluno.nome || 'Bem-vindo') + '</strong><br>'
     + (emEstudo
         ? '<span class="selo" style="margin-top:9px;">A estudar: ' + esc(ROTULOS[emEstudo]) + '</span>'
         : '<span class="selo" style="margin-top:9px;">Percurso completo — Mestre</span>')
     + (concluido
         ? '<div style="margin-top:7px;"><span class="selo cinza">Concluído: ' + esc(ROTULOS[concluido]) + '</span></div>'
         : '')
-    + '</div>';
+    + '<div>' + fotoBtn + '</div></div>';
 
   if (emEstudo && testes.length){
     h += '<div class="cartao"><strong>O teu progresso neste nível</strong>'

@@ -87,3 +87,44 @@ export function escolherFoto(){
     i.click();
   });
 }
+
+/* Foto de perfil: recorte quadrado, 240 px, JPEG pequeno (cabe no cartão do aluno). */
+export function comprimirAvatar(ficheiro){
+  return new Promise((resolve, reject) => {
+    if (!ficheiro || !/^image\//.test(ficheiro.type)){ reject(new Error('Escolhe uma imagem.')); return; }
+    const url = URL.createObjectURL(ficheiro);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const lado = Math.min(img.width, img.height);
+        const sx = (img.width - lado) / 2, sy = (img.height - lado) / 2;
+        let tam = 240, q = 0.8, saida = '';
+        for (let t = 0; t < 4; t++){
+          const c = document.createElement('canvas'); c.width = c.height = tam;
+          const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, tam, tam);
+          g.drawImage(img, sx, sy, lado, lado, 0, 0, tam, tam);
+          saida = c.toDataURL('image/jpeg', q);
+          if (saida.length <= 40000) break;
+          tam = Math.round(tam * 0.8); q = Math.max(0.5, q - 0.1);
+        }
+        URL.revokeObjectURL(url);
+        resolve(saida);
+      } catch(e){ reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não consegui abrir a imagem.')); };
+    img.src = url;
+  });
+}
+export function escolherAvatar(){
+  return new Promise(resolve => {
+    const i = document.createElement('input');
+    i.type = 'file'; i.accept = 'image/*';
+    i.onchange = async () => {
+      const f = i.files && i.files[0];
+      if (!f){ resolve(null); return; }
+      try { resolve(await comprimirAvatar(f)); }
+      catch(e){ alert(e.message || 'Não consegui usar essa foto.'); resolve(null); }
+    };
+    i.click();
+  });
+}

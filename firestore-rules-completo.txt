@@ -263,7 +263,8 @@ service cloud.firestore {
       match /reikiThreads/{codigo} {
         allow get: if true;
         allow list: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
-        allow write: if true;
+        allow write: if !('foto' in request.resource.data) ||
+                        (request.resource.data.foto is string && request.resource.data.foto.size() < 60000);
 
         match /mensagens/{msgId} {
           allow read: if true;
