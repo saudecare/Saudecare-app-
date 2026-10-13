@@ -351,7 +351,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-13-04';
+const APP_VERSION = '2026-10-13-05';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -15048,8 +15048,12 @@ function reikiRenderListaAlunos(){
   alvo.innerHTML = `
     <div class="card" style="margin-bottom:12px;">
       <div class="row" style="gap:10px;flex-wrap:wrap;">
-        ${semNivel ? `<span class="badge">🌱 Inscritos: ${semNivel}</span>` : ''}
-        ${contagem.filter(c => c.total).map(c => `<span class="badge">${escapeHtml(c.n.certLabel)}: ${c.total}</span>`).join('')}
+        ${REIKI_NIVEIS.map(n => {
+          const r = reikiAlunosDoNivel(n.id);
+          return `<button class="ghost" style="flex:1 1 140px;text-align:left;padding:10px 12px;line-height:1.35;" onclick="reikiAbrirNivel('${n.id}')">
+            <strong>${escapeHtml(n.certLabel)}</strong><br>
+            <span class="muted" style="font-size:.82rem;">📖 ${r.estudar.length} a estudar · 🙋 ${r.espera.length} à espera · 📜 ${r.concluiram.length} concluíram</span></button>`;
+        }).join('')}
         ${__reikiAlunos.length ? '' : '<span class="muted">Sem alunos.</span>'}
       </div>
       <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap;">
@@ -15142,6 +15146,66 @@ function reikiHtmlPedidoContinuar(a){
   if (!p || !prox || a.proximoLiberto !== false || String(p.nivel) !== String(prox.id)) return '';
   return '<p style="margin-top:4px;font-size:.88rem;"><span class="badge" style="background:#fff3d6;">🙋 Quer continuar para o ' + escapeHtml(prox.certLabel) + '</span></p>';
 }
+
+/* Alunos de um nível: a estudar (nível aberto), à espera de continuar (nível fechado) e já concluídos. */
+function reikiAlunosDoNivel(id){
+  const idx = reikiIndiceNivel(id);
+  const prev = idx > 0 ? REIKI_NIVEIS[idx - 1].id : null;
+  const estudar = [], espera = [], concluiram = [];
+  __reikiAlunos.forEach(a => {
+    const c = a.nivelAtual || null;
+    if (c && reikiIndiceNivel(c) >= idx) { concluiram.push(a); return; }
+    if (c === prev) {
+      if (prev && a.proximoLiberto === false) espera.push(a); else estudar.push(a);
+    }
+  });
+  return { estudar, espera, concluiram };
+}
+
+window.reikiAbrirNivel = function(id){
+  const n = reikiNivelInfo(id);
+  if (!n) return;
+  const r = reikiAlunosDoNivel(id);
+  const turmas = __reikiTurmas.filter(t => t.nivel === id);
+  const linhaAluno = (a, estado) => {
+    const p = reikiProgressoAluno(a);
+    const tn = a.turmaId ? (reikiTurmaInfo(a.turmaId)?.nome || '') : '';
+    const info = [tn ? '👥 ' + escapeHtml(tn) : '', p ? '📖 ' + p.modulos + ' módulo(s)' + (p.testes ? ' · ✅ ' + p.testes + ' teste(s)' : '') : 'sem actividade ainda'].filter(Boolean).join(' · ');
+    return `<div class="row" style="align-items:center;gap:8px;padding:9px 0;border-top:1px solid #eee;flex-wrap:wrap;">
+      <div style="flex:1 1 200px;min-width:0;">${reikiAvatar(reikiFotoDoAluno(a), 36)}<strong>${escapeHtml(a.nome || '(sem nome)')}</strong>
+        <div class="muted" style="font-size:.82rem;margin-top:2px;">${info}</div>
+        ${reikiHtmlBadgePag(a)}${estado === 'espera' ? reikiHtmlPedidoContinuar(a) : ''}</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap;">
+        ${estado === 'espera' ? `<button class="primary" onclick="reikiAlternarLiberto('${a.id}').then(()=>reikiAbrirNivel('${id}'))">🔓 Libertar</button>` : ''}
+        ${a.codigoAcesso ? `<button class="ghost" onclick="reikiAbrirNotas('${a.id}')">📊 Notas</button>` : ''}
+        <button class="ghost" onclick="reikiAbrirPagamentos('${a.id}')">💶</button>
+        <button class="ghost" onclick="reikiConversaComAluno('${a.id}')">💬</button>
+      </div></div>`;
+  };
+  const bloco = (titulo, lista, estado) => `<div class="card" style="margin-bottom:10px;"><h3 style="margin:0 0 4px;">${titulo} <span class="badge">${lista.length}</span></h3>
+    ${lista.length ? lista.map(a => linhaAluno(a, estado)).join('') : '<p class="muted" style="margin:6px 0 0;">Ninguém por agora.</p>'}</div>`;
+  const cartaoTurma = t => {
+    const q = __reikiAlunos.filter(a => a.turmaId === t.id).length;
+    const prox = t.proximaAula && new Date(t.proximaAula) > new Date() ? ' · 📅 ' + escapeHtml(new Date(t.proximaAula).toLocaleString('pt-PT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })) : '';
+    return `<div class="row" style="justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #eee;flex-wrap:wrap;">
+      <div><strong>${escapeHtml(t.nome || '(sem nome)')}</strong> ${t.ativa === false ? '<span class="badge">encerrada</span>' : ''}
+        <div class="muted" style="font-size:.82rem;">${q} aluno(s)${t.aulaAoVivo ? ' · 🔴 em direto' : prox}</div></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap;">
+        <button class="ghost" onclick="reikiAbrirLinkInscricao('${t.id}')">🔗 Inscrição</button>
+        <button class="ghost" onclick="closePatientOverlay();reikiMudarTab('turmas')">⚙️ Gerir</button></div></div>`;
+  };
+  showPatientOverlay('🎓 ' + n.certLabel, `
+    <p class="muted" style="margin-bottom:10px;">${escapeHtml(n.subtitulo || '')}</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <span class="badge">📖 ${r.estudar.length} a estudar</span><span class="badge">🙋 ${r.espera.length} à espera</span><span class="badge">📜 ${r.concluiram.length} concluíram</span>
+      <button class="primary" onclick="closePatientOverlay();reikiAbrirForm()">➕ Novo aluno</button>
+    </div>
+    <div class="card" style="margin-bottom:10px;"><h3 style="margin:0 0 4px;">👥 Turmas deste nível <span class="badge">${turmas.length}</span></h3>
+      ${turmas.length ? turmas.map(cartaoTurma).join('') : '<p class="muted" style="margin:6px 0 0;">Ainda sem turma para este nível. Cria uma em "Links das turmas".</p>'}</div>
+    ${bloco('📖 A estudar este nível', r.estudar, 'estudar')}
+    ${r.espera.length ? bloco('🙋 À espera de continuar', r.espera, 'espera') : ''}
+    ${bloco('📜 Já concluíram', r.concluiram, 'concluiu')}`);
+};
 
 window.reikiAlternarLiberto = async function(alunoId){
   const a = __reikiAlunos.find(x => x.id === alunoId);
