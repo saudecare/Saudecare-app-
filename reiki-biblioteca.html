@@ -143,6 +143,7 @@
 <nav id="barra" style="display:none;"></nav>
 
 <script type="module">
+import { cartaoMusicaHtml } from './musica-escola.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { mesclarPratica, praticaId } from "./reiki-pratica.js";
 import { corpoMensagem, escolherFoto } from "./reiki-midia-chat.js";
@@ -731,6 +732,7 @@ function verInicio(){
       + '<p style="margin:6px 0;color:var(--suave);font-size:.9rem;">Aprende o traçado de cada símbolo: ver, traçar na tela, papel e de memória.</p>'
       + '<a class="abrir" href="reiki-simbolos.html?t=' + encodeURIComponent(C.tenant) + '&c=' + encodeURIComponent(C.codigo) + '">Abrir a oficina</a></div>';
   }
+  h += cartaoMusicaHtml();
   h += '<h2>Onde continuar</h2><div class="cartao">'
     + '<button class="botao" onclick="__mostrar(\'biblioteca\')">📚 Materiais (' + recursos.length + ')</button>'
     + '<button class="botao" onclick="__mostrar(\'testes\')">📝 Testes</button>'

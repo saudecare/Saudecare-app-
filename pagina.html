@@ -87,11 +87,13 @@
   <section id="contactSection"></section>
 </div>
 
+<div id="musicaPublica"></div>
 <div id="livroReclamacoesLink" style="display:none;text-align:center;padding:0 16px;"></div>
 <footer>Powered by Vindora<br><select id="vdLang" aria-label="Language" style="margin-top:8px;font-size:12px;padding:4px 8px;border-radius:8px;"></select></footer>
 
 <script type="module">
 import { aplicarCorMarca } from "./marca.js";
+import { cartaoMusicaHtml } from "./musica-escola.js";
 import { registar, t as _t, iniciarIdioma, definirIdioma, IDIOMAS, idioma } from "./i18n.js";
 import { fusoDe, fusoDoDispositivo, chaveData, semanasDesde } from "./fuso.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -141,6 +143,7 @@ async function load(){
   const tenantId = profile.tenantId || tenantSlug;
 
   aplicarCorMarca(profile.branding?.primaryColor);
+  try { const el = document.getElementById('musicaPublica'); if (el) el.innerHTML = cartaoMusicaHtml('Músicas para ouvir', 'Canções de Reiki e espiritualidade — para relaxar e meditar.'); } catch(e){}
 
   renderHero(profile, tenantSlug);
   renderAbout(profile);
