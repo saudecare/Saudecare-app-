@@ -780,8 +780,9 @@ function categoriasSala(){
   cats['cat:templo'] = { ic:'🌿', nome:'Templo de paz', desc:'Para respirar, meditar e inspirar.',
     subs:(hikari ? ['Músicas'] : []).concat(temPrat ? ['Meditações'] : []).concat(['Poemas','Mapa da Alma','Cartas','Ervas']),
     musica: hikari,
-    itens:(temPrat ? [{ ic:'🧘', t:'Meditações guiadas', d:'Áudios para acompanhar a prática dos 21 dias.', href:praticaHref }] : []).concat([
-      { ic:'🎴', t:'Poemas do Imperador Meiji', d:'125 poemas para ler, meditar e tirar uma intenção.', href:'poemas-meiji.html', novo:true },
+    itens:[{ ic:'☀️', t:'Poema do dia', d:'Um poema e o seu princípio para meditar hoje. A app escolhe, ou escolhes tu.', href:'poemas-meiji.html' }]
+      .concat(temPrat ? [{ ic:'🧘', t:'Meditações guiadas', d:'Áudios para acompanhar a prática dos 21 dias.', href:praticaHref }] : []).concat([
+      { ic:'🎴', t:'Todos os poemas do Meiji', d:'125 poemas para ler, tirar um ao acaso ou escolher por princípio.', href:'poemas-meiji.html', novo:true },
       { ic:'🔮', t:'Mapa da Alma', d:'Descobre o teu mapa.', href:'mapa-da-alma.html', novo:true },
       { ic:'🃏', t:'Cartomancia', d:'Tira as cartas.', href:'cartomancia.html', novo:true },
       { ic:'🌿', t:'Ervas e Mesinhas Antigas', d:'Escreve o que procuras e aparece. Só para alunos.', href:urlP('mesinhas.html'), novo:true }]) };
@@ -865,6 +866,7 @@ function verInicio(){
     }
   }
 
+  h += '<div id="poemaDia"></div>';
   h += '<h2>As tuas áreas</h2><div class="grade">';
   ['cat:estudar','cat:biblioteca','cat:oficina','cat:templo','cat:comunidade','cat:eu'].forEach(id => {
     const c = cats[id];
@@ -880,6 +882,30 @@ function verInicio(){
     + 'se partilha com quem não foi sintonizado.<br>O Reiki é uma prática '
     + 'complementar e não substitui acompanhamento médico.</p>';
   alvo.innerHTML = h;
+  carregarPoemaDia();
+}
+
+/* Poema do dia no início: lê os poemas só quando a sala abre. */
+async function carregarPoemaDia(){
+  const el = document.getElementById('poemaDia');
+  if (!el) return;
+  try {
+    window.firebaseConfig = window.firebaseConfig || firebaseConfig;
+    await import('./reiki-poemas-seed.js');
+    const dia = await import('./reiki-poema-dia.js');
+    const lista = (window.POEMAS_HIKARI || []).map(x => ({ numero: x.n, titulo: x.t, texto: x.p, principio: x.g }));
+    const e = dia.escolhaDoDia(lista);
+    if (!e || !document.getElementById('poemaDia')) return;
+    const p = e.poema, s = dia.sequencia();
+    const g = { 'sou calmo':'🌊 Sou calmo', 'confio':'🏔️ Confio', 'sou grato':'🌾 Sou grato', 'trabalho honestamente':'🪵 Trabalho honestamente', 'sou bondoso':'🤲 Sou bondoso' }[p.principio] || '';
+    el.innerHTML = '<a href="poemas-meiji.html" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;">'
+      + '<div class="cartao" style="border-color:var(--destaque);background:linear-gradient(160deg,#fffaf0,#f7efde);">'
+      + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;"><strong>☀️ Poema de hoje</strong>'
+      + (s.seguidos ? '<span class="chip">🔥 ' + s.seguidos + ' dia(s)</span>' : (s.hoje ? '<span class="chip">✓ meditado hoje</span>' : '')) + '</div>'
+      + '<p style="margin:8px 0 2px;font-style:italic;">' + esc((p.texto || '').split('\n')[0]) + '…</p>'
+      + '<div style="font-size:.82rem;color:var(--suave);">Poema ' + esc(p.numero) + (p.titulo ? ' · ' + esc(p.titulo) : '') + (g ? ' · ' + esc(g) : '') + '</div>'
+      + '<span class="abrir" style="margin-top:10px;">🙏 Meditar agora</span></div></a>';
+  } catch(e){ console.warn('poema do dia indisponível', e); }
 }
 
 /* Ordem definida pelo Mestre no painel; sem número, vai para o fim

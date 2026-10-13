@@ -69,13 +69,19 @@
 
 <main>
   <div class="tabs">
-    <button id="tabSorteio" class="on" onclick="mudarAba('sorteio')">🎴 Tirar</button>
+    <button id="tabHoje" class="on" onclick="mudarAba('hoje')">☀️ Hoje</button>
+    <button id="tabSorteio" onclick="mudarAba('sorteio')">🎴 Tirar</button>
     <button id="tabPrincipio" onclick="mudarAba('principio')">🪷 Princípio</button>
     <button id="tabLista" onclick="mudarAba('lista')">📖 Ler</button>
   </div>
 
   <!-- ─── Sorteio ─────────────────────────────────────────────── -->
-  <section id="paineSorteio">
+  <!-- ─── Poema do dia ────────────────────────────────────────── -->
+  <section id="paineHoje">
+    <div id="hoje"><div class="vazio">A preparar o poema de hoje…</div></div>
+  </section>
+
+  <section id="paineSorteio" class="hidden">
     <div class="card">
       <label>A tua intenção — a questão que trazes hoje</label>
       <textarea id="intencao" rows="2" placeholder="ex: como lidar com a impaciência no trabalho"></textarea>
@@ -112,6 +118,7 @@
 </footer>
 
 <script type="module">
+import { escolhaDoDia, escolherHoje, voltarAoDaApp, registarMeditacao, sequencia, hojeISO } from './reiki-poema-dia.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, getDocs }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -174,6 +181,7 @@ async function carregar(){
   POEMAS.sort((a,b) => (Number(a.numero)||0) - (Number(b.numero)||0));
   desenharLista();
   desenharGokai();
+  desenharHoje();
 }
 
 function esc(s){
@@ -199,6 +207,7 @@ function htmlPoema(p, intencao){
     <button class="primary" onclick="guardarReflexao(${Number(p.numero)||0})">Guardar no meu caderno</button>
     <p class="nota" id="avisoGuardado"></p>
   </div>
+  <button class="ghost" style="width:100%;margin-bottom:8px;" onclick="fazerDeHoje(${Number(p.numero)||0})">☀️ Fazer deste o meu poema de hoje</button>
   <button class="ghost" style="width:100%;" onclick="tirarPoema()">Tirar outro</button>`;
 }
 
@@ -241,6 +250,78 @@ window.tirarPoema = function(){
   document.getElementById('resultado').scrollIntoView({behavior:'smooth', block:'start'});
 };
 
+/* ─── Poema do dia ─── */
+const PASSOS = [
+  'Senta-te com as costas direitas, de mãos juntas em gassho.',
+  'Respira fundo três vezes, devagar.',
+  'Lê o poema duas vezes, em voz baixa, sem pressa.',
+  'Pergunta a ti: onde está isto na minha vida, hoje?',
+  'Recita três vezes o princípio, como uma promessa só para hoje.',
+  'Agradece. Leva uma palavra do poema contigo durante o dia.'
+];
+window.desenharHoje = function(){
+  const alvo = document.getElementById('hoje');
+  if (!alvo || !POEMAS.length) return;
+  const e = escolhaDoDia(POEMAS);
+  if (!e) return;
+  const p = e.poema;
+  const g = GOKAI.find(x => x.id === (p.principio||''));
+  const s = sequencia();
+  const data = new Date().toLocaleDateString('pt-PT', { weekday:'long', day:'numeric', month:'long' });
+  alvo.innerHTML = `
+    <div class="card" style="text-align:center;">
+      <div style="font-size:13px;color:var(--suave);text-transform:capitalize;">${esc(data)}</div>
+      <strong style="font-size:17px;">Poema de hoje</strong>
+      <div class="nota" style="margin-top:4px;">${e.manual ? 'Escolhido por ti.' : 'Escolhido para ti pela app.'}${s.seguidos ? ' · 🔥 ' + s.seguidos + ' dia(s) seguido(s)' : ''}</div>
+    </div>
+    ${htmlPoemaBase(p)}
+    ${g ? `<div class="card" style="text-align:center;"><label>O princípio de hoje</label>
+      <div style="font-size:19px;font-weight:600;color:#2f6f5e;">${g.icone} Só por hoje, ${esc(g.rotulo.toLowerCase())}</div></div>` : ''}
+    <div class="card"><strong>Meditar em 5 minutos</strong>
+      <ol style="margin:10px 0 0 20px;font-size:14.5px;line-height:1.7;">${PASSOS.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>
+    <div class="card">
+      <label>O que este poema te diz hoje</label>
+      <textarea id="reflexao" rows="3" placeholder="Escreve sem pensar muito. É para ti."></textarea>
+      <button class="primary" onclick="meditei(${Number(p.numero)||0})">${s.hoje ? '✓ Já meditaste hoje — guardar de novo' : '🙏 Meditei hoje'}</button>
+      <p class="nota" id="avisoGuardado"></p>
+    </div>
+    <div class="card" style="text-align:center;">
+      <button class="ghost" onclick="outroDeHoje()">🎲 Outro poema para hoje</button>
+      <button class="ghost" onclick="mudarAba('lista')">📖 Escolher na lista</button>
+      ${e.manual ? '<br><button class="ghost" style="margin-top:8px;" onclick="voltarDaApp()">↩ Voltar ao da app</button>' : ''}
+    </div>`;
+};
+function htmlPoemaBase(p){
+  return `<div class="poema">
+    <div class="num">Poema ${esc(p.numero)}${p.japones ? ' · ' + esc(p.japones) : ''}</div>
+    ${p.titulo ? `<div class="titulo">${esc(p.titulo)}</div>` : ''}
+    <div class="texto">${esc(p.texto)}</div>
+    ${p.interpretacao ? `<div class="interp">${esc(p.interpretacao)}</div>` : ''}
+  </div>`;
+}
+window.meditei = function(numero){
+  const texto = (document.getElementById('reflexao').value||'').trim();
+  if (texto){
+    const caderno = JSON.parse(localStorage.getItem('meiji_caderno')||'[]');
+    caderno.unshift({ numero, intencao:'', reflexao: texto, data: new Date().toISOString() });
+    localStorage.setItem('meiji_caderno', JSON.stringify(caderno.slice(0,300)));
+  }
+  registarMeditacao(numero);
+  desenharHoje();
+  const a = document.getElementById('avisoGuardado');
+  if (a) a.textContent = '✓ Que o dia te seja leve. Guardado neste aparelho, só para ti.';
+};
+window.outroDeHoje = function(){
+  const atual = escolhaDoDia(POEMAS).poema;
+  let p = atual;
+  for (let i = 0; i < 20 && p === atual; i++) p = POEMAS[Math.floor(Math.random()*POEMAS.length)];
+  escolherHoje(p.numero); desenharHoje(); window.scrollTo({top:0,behavior:'smooth'});
+};
+window.voltarDaApp = function(){ voltarAoDaApp(); desenharHoje(); window.scrollTo({top:0,behavior:'smooth'}); };
+window.fazerDeHoje = function(numero){
+  escolherHoje(numero); mudarAba('hoje'); desenharHoje(); window.scrollTo({top:0,behavior:'smooth'});
+};
+
 window.guardarReflexao = function(numero){
   const texto = (document.getElementById('reflexao').value||'').trim();
   if (!texto){ document.getElementById('avisoGuardado').textContent = 'Escreve alguma coisa primeiro.'; return; }
@@ -257,7 +338,7 @@ window.guardarReflexao = function(numero){
 };
 
 window.mudarAba = function(qual){
-  ['Sorteio','Principio','Lista'].forEach(x => {
+  ['Hoje','Sorteio','Principio','Lista'].forEach(x => {
     document.getElementById('tab'+x).classList.toggle('on', qual===x.toLowerCase());
     document.getElementById('paine'+x).classList.toggle('hidden', qual!==x.toLowerCase());
   });
