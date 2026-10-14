@@ -162,7 +162,8 @@
 <body>
 
 <div class="envolve">
-  <header>
+  <header style="position:relative;">
+    <button id="lupa" type="button" aria-label="Pesquisar" onclick="__mostrar('pesquisa')" style="position:absolute;right:0;top:14px;width:42px;height:42px;border-radius:50%;border:1px solid var(--linha);background:var(--papel);font-size:1.15rem;cursor:pointer;">🔍</button>
     <h1>Hikari Fafe · Escola de Reiki</h1>
     <p id="subtitulo">Sala de estudo</p>
   </header>
@@ -176,6 +177,8 @@
 import { cartaoMusicaHtml, TENANT_MUSICA } from './musica-escola.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { mesclarPratica, praticaId } from "./reiki-pratica.js";
+import { prepararApp, jaInstalada } from "./sala-app.js";
+import { SIMBOLOS } from "./reiki-simbolos.js";
 import { corpoMensagem, escolherFoto, escolherAvatar } from "./reiki-midia-chat.js";
 import { getFirestore, doc, getDoc, collection, getDocs, addDoc, setDoc,
          query, orderBy, onSnapshot, serverTimestamp }
@@ -328,6 +331,7 @@ async function arrancar(){
 
   C = { tenant, codigo, aluno, concluido, emEstudo, fechado, proxN,
         recursos: [], testes: [], resultados: [] };
+  prepararApp(aluno.nome);
 
   document.getElementById('subtitulo').textContent =
     (aluno.nome ? aluno.nome.split(' ')[0] : 'Sala de estudo')
@@ -408,6 +412,8 @@ async function carregarDados(){
       C.vistos = d.vistos || {};
       C.foto = d.foto || '';
       C.pedido = d.pedidoContinuar || null;
+      C.atividade = d.atividade || {};
+      try { if (d.preferencias && d.preferencias.poemaModo) localStorage.setItem('meiji_modo', JSON.stringify(d.preferencias.poemaModo)); } catch(e){}
     }
   } catch(e){}
 
@@ -455,8 +461,8 @@ const ABAS = [
   { id:'cat:eu',        ic:'👤', nome:'Eu' }
 ];
 /* Ecrãs "de dentro": mostram um botão para voltar à categoria a que pertencem. */
-const PAI = { plano:'cat:estudar', testes:'cat:estudar', biblioteca:'cat:estudar', mensagens:'cat:comunidade', conversa:'cat:comunidade' };
-const NOME_CAT = { 'cat:estudar':'Estudar', 'cat:templo':'Templo de paz', 'cat:comunidade':'Comunidade', 'cat:eu':'O meu espaço' };
+const PAI = { plano:'cat:estudar', testes:'cat:estudar', biblioteca:'cat:estudar', mensagens:'cat:comunidade', conversa:'cat:comunidade', caderno:'cat:eu', conquistas:'cat:eu', lembrete:'cat:eu', pesquisa:'inicio' };
+const NOME_CAT = { inicio:'Início', 'cat:estudar':'Estudar', 'cat:templo':'Templo de paz', 'cat:comunidade':'Comunidade', 'cat:eu':'O meu espaço' };
 
 function desenharBarra(){
   barra.style.display = 'flex';
@@ -478,6 +484,10 @@ function mostrar(id){
   topo.innerHTML = pai ? '<button class="botao" style="margin:0 0 6px;" onclick="__mostrar(\'' + pai + '\')">← ' + esc(NOME_CAT[pai]) + '</button>' : '';
   if (id === 'inicio') verInicio();
   else if (id.indexOf('cat:') === 0) verCategoria(id);
+  else if (id === 'caderno') verCaderno();
+  else if (id === 'conquistas') verConquistas();
+  else if (id === 'lembrete') verLembrete();
+  else if (id === 'pesquisa') verPesquisa();
   else if (id === 'plano') verPlano();
   else if (id === 'biblioteca') verBiblioteca();
   else if (id === 'testes') verTestes();
@@ -740,11 +750,194 @@ function iniciarAula(){
   } catch(e){}
 }
 
+
+/* ─── Dias ativos, sequência e conquistas ─── */
+function isoLocal(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function lerLocal(k, def){ try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? def : v; } catch(e){ return def; } }
+function isoDeData(s){ const d = new Date(s); return isNaN(d) ? null : isoLocal(d); }
+
+/* Um dia conta como ativo se o aluno estudou, praticou ou meditou nesse dia. */
+function diasAtivos(){
+  const set = new Set();
+  Object.keys(C.atividade || {}).forEach(k => set.add(k));
+  Object.values(C.percurso || {}).forEach(p => {
+    if (!p) return;
+    ['lidoEm','praticaEm','concluidoEm','actualizadoEm'].forEach(k => { const i = p[k] && isoDeData(p[k]); if (i && (k !== 'actualizadoEm' || p.lido || p.praticaFeita || p.concluido)) set.add(i); });
+    Object.values(p.dias || {}).forEach(v => { if (/^\d{4}-\d{2}-\d{2}$/.test(String(v))) set.add(String(v)); });
+  });
+  lerLocal('meiji_medit', []).forEach(x => x && x.data && set.add(x.data));
+  return set;
+}
+function sequenciaAtual(){
+  const set = diasAtivos();
+  const d = new Date();
+  if (!set.has(isoLocal(d))) d.setDate(d.getDate() - 1);   // hoje ainda pode contar
+  let n = 0;
+  while (set.has(isoLocal(d))){ n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function melhorSequencia(){
+  const dias = [...diasAtivos()].sort();
+  let melhor = 0, atual = 0, ant = null;
+  dias.forEach(s => {
+    const t = Date.parse(s + 'T12:00:00Z');
+    atual = (ant !== null && Math.round((t - ant) / 86400000) === 1) ? atual + 1 : 1;
+    ant = t; if (atual > melhor) melhor = atual;
+  });
+  return melhor;
+}
+function listaConquistas(){
+  const perc = Object.values(C.percurso || {}).filter(Boolean);
+  const modFeitos = perc.filter(p => p.concluido && !/-pratica$/.test(String(p.moduloId || ''))).length;
+  const prat = perc.find(p => /-pratica$/.test(String(p.moduloId || '')));
+  const diasPrat = prat ? Object.keys(prat.dias || {}).length : 0;
+  const testes = new Set((C.resultados || []).filter(r => r.aprovado).map(r => r.testeId)).size;
+  const medit = lerLocal('meiji_medit', []).length;
+  const melhor = Math.max(melhorSequencia(), sequenciaAtual());
+  const marcos = [
+    { ic:'🌱', t:'Primeiro passo', d:'Terminaste o teu primeiro módulo.', ok: modFeitos >= 1 },
+    { ic:'📖', t:'Estudante dedicado', d:'5 módulos concluídos.', ok: modFeitos >= 5 },
+    { ic:'📝', t:'Primeiro teste aprovado', d:'Passaste num teste.', ok: testes >= 1 },
+    { ic:'🔥', t:'3 dias seguidos', d:'Três dias seguidos de estudo ou prática.', ok: melhor >= 3 },
+    { ic:'🌿', t:'Uma semana', d:'7 dias seguidos.', ok: melhor >= 7 },
+    { ic:'🪷', t:'21 dias seguidos', d:'O ciclo completo da prática.', ok: melhor >= 21 },
+    { ic:'🌕', t:'30 dias seguidos', d:'Um mês inteiro de constância.', ok: melhor >= 30 },
+    { ic:'🧘', t:'Prática dos 21 dias', d:'Concluíste os dias da tua prática de autoaplicação.', ok: !!(prat && prat.concluido) },
+    { ic:'🎴', t:'Sete poemas meditados', d:'Meditaste sete poemas do Meiji.', ok: medit >= 7 },
+    { ic:'🎓', t:'Nível concluído', d:'O teu Mestre registou a conclusão de um nível.', ok: !!C.concluido }
+  ];
+  return { marcos, modFeitos, diasPrat, testes, medit, melhor, atual: sequenciaAtual() };
+}
+function verConquistas(){
+  const L = listaConquistas();
+  const feitas = L.marcos.filter(m => m.ok).length;
+  alvo.innerHTML = '<div class="catcab"><div class="ic">🏅</div><h2>Conquistas</h2><p>' + feitas + ' de ' + L.marcos.length + ' marcos alcançados</p></div>'
+    + '<div class="hero" style="justify-content:space-around;text-align:center;flex-wrap:wrap;">'
+    + '<div><div style="font-size:1.8rem;font-weight:700;color:var(--destaque);">🔥 ' + L.atual + '</div><div style="font-size:.8rem;color:var(--suave);">dias seguidos</div></div>'
+    + '<div><div style="font-size:1.8rem;font-weight:700;color:var(--destaque);">' + L.melhor + '</div><div style="font-size:.8rem;color:var(--suave);">melhor sequência</div></div>'
+    + '<div><div style="font-size:1.8rem;font-weight:700;color:var(--destaque);">' + L.modFeitos + '</div><div style="font-size:.8rem;color:var(--suave);">módulos feitos</div></div></div>'
+    + '<div class="lista">' + L.marcos.map(m => '<div class="item" style="cursor:default;' + (m.ok ? '' : 'opacity:.5;') + '"><div class="ci" style="' + (m.ok ? 'background:#f3e2bd;' : 'filter:grayscale(1);') + '">' + m.ic + '</div>'
+      + '<div><b>' + esc(m.t) + '</b><span class="d">' + esc(m.d) + '</span></div><span class="seta">' + (m.ok ? '✓' : '🔒') + '</span></div>').join('') + '</div>'
+    + '<p class="nota" style="border:0;margin-top:0;">Um dia conta quando estudas, praticas ou meditas um poema.</p>';
+}
+
+/* ─── Caderno de paz ─── */
+function chaveNotas(){ return 'sala_notas_' + C.codigo; }
+function dataPT(s){ const d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString('pt-PT', { day:'numeric', month:'long', year:'numeric' }); }
+window.__guardarNota = function(){
+  const t = document.getElementById('notaLivre');
+  const txt = (t && t.value || '').trim();
+  if (!txt) return;
+  const l = lerLocal(chaveNotas(), []);
+  l.unshift({ data: new Date().toISOString(), texto: txt });
+  try { localStorage.setItem(chaveNotas(), JSON.stringify(l.slice(0, 400))); } catch(e){}
+  verCaderno();
+};
+window.__apagarNota = function(i){
+  const l = lerLocal(chaveNotas(), []);
+  l.splice(i, 1);
+  try { localStorage.setItem(chaveNotas(), JSON.stringify(l)); } catch(e){}
+  verCaderno();
+};
+function verCaderno(){
+  const perc = Object.values(C.percurso || {}).filter(Boolean);
+  const entradas = [];
+  perc.forEach(p => {
+    const tit = p.moduloTitulo || p.moduloId || 'Módulo';
+    if (p.registo) entradas.push({ tipo:'modulo', data: p.praticaEm || p.actualizadoEm, t: tit, txt: p.registo });
+    if (p.desafioRegisto) entradas.push({ tipo:'modulo', data: p.praticaEm || p.actualizadoEm, t: tit + ' · desafio', txt: p.desafioRegisto });
+    Object.keys(p.notas || {}).forEach(n => entradas.push({ tipo:'pratica', data: (p.dias || {})[n] || p.actualizadoEm, t: 'Prática · dia ' + n, txt: p.notas[n] }));
+  });
+  lerLocal('meiji_caderno', []).forEach(x => x && x.reflexao && entradas.push({ tipo:'poema', data: x.data, t: 'Poema ' + x.numero, txt: x.reflexao + (x.intencao ? '\n(Intenção: ' + x.intencao + ')' : '') }));
+  const notas = lerLocal(chaveNotas(), []);
+  notas.forEach((n, i) => entradas.push({ tipo:'nota', data: n.data, t: 'Nota livre', txt: n.texto, i }));
+  entradas.sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+  const rot = { modulo:'📖', pratica:'🌿', poema:'🎴', nota:'✍️' };
+  const origem = { modulo:'A escola lê', pratica:'A escola lê', poema:'Só neste aparelho', nota:'Só neste aparelho' };
+  alvo.innerHTML = '<div class="catcab"><div class="ic">📓</div><h2>Caderno de paz</h2><p>Tudo o que escreveste, por ordem.</p></div>'
+    + '<div class="cartao"><label style="display:block;font-size:.85rem;color:var(--suave);margin-bottom:6px;">Escrever uma nota</label>'
+    + '<textarea id="notaLivre" rows="3" placeholder="O que sentes, o que reparaste, uma palavra para hoje…" style="width:100%;font-family:inherit;font-size:1rem;padding:10px;border:1px solid var(--linha);border-radius:10px;background:var(--papel);color:var(--texto);"></textarea>'
+    + '<button class="abrir" onclick="__guardarNota()">Guardar no caderno</button>'
+    + '<p class="nota" style="border:0;margin:8px 0 0;padding:0;text-align:left;">As notas livres e as reflexões dos poemas ficam só neste aparelho. O que escreves nos módulos e na prática também chega à escola.</p></div>'
+    + (entradas.length ? entradas.map(x => '<div class="cartao"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.8rem;color:var(--suave);"><span>' + rot[x.tipo] + ' ' + esc(x.t) + '</span><span>' + esc(dataPT(x.data)) + '</span></div>'
+        + '<p style="margin:8px 0 6px;white-space:pre-wrap;">' + esc(x.txt) + '</p>'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;"><span class="chip">' + origem[x.tipo] + '</span>'
+        + (x.tipo === 'nota' ? '<button class="botao" style="margin:0;padding:4px 10px;font-size:.78rem;" onclick="__apagarNota(' + x.i + ')">Apagar</button>' : '') + '</div></div>').join('')
+      : '<div class="cartao vazio">O teu caderno está vazio. Escreve a primeira nota, ou medita o poema de hoje.</div>');
+}
+
+/* ─── Lembrete diário: um alarme no calendário do telemóvel ─── */
+function verLembrete(){
+  const hora = lerLocal('sala_lembrete_hora', '08:00');
+  alvo.innerHTML = '<div class="catcab"><div class="ic">⏰</div><h2>Lembrete diário</h2><p>Um alarme no teu calendário, todos os dias, para o poema e a prática.</p></div>'
+    + '<div class="cartao"><label style="display:block;font-size:.85rem;color:var(--suave);margin-bottom:6px;">A que horas?</label>'
+    + '<input id="horaLembrete" type="time" value="' + esc(hora) + '" style="font-size:1.4rem;padding:10px;border:1px solid var(--linha);border-radius:10px;background:var(--papel);color:var(--texto);">'
+    + '<label style="display:block;font-size:.85rem;color:var(--suave);margin:14px 0 6px;">Mensagem</label>'
+    + '<input id="textoLembrete" type="text" value="Respira. O teu poema e a tua prática de hoje esperam por ti." style="width:100%;font-size:1rem;padding:10px;border:1px solid var(--linha);border-radius:10px;background:var(--papel);color:var(--texto);">'
+    + '<button class="abrir" style="margin-top:14px;" onclick="__descarregarLembrete()">📅 Adicionar ao meu calendário</button>'
+    + '<p class="nota" style="border:0;text-align:left;margin:10px 0 0;padding:0;">Abre o ficheiro que descarregar e confirma no calendário do telemóvel. O alarme toca todos os dias, mesmo com a app fechada. Para parar, apaga o evento "Sala de Estudo" no calendário.</p></div>';
+}
+window.__descarregarLembrete = function(){
+  const h = (document.getElementById('horaLembrete').value || '08:00');
+  const msg = (document.getElementById('textoLembrete').value || '').trim() || 'Poema e prática de hoje';
+  try { localStorage.setItem('sala_lembrete_hora', JSON.stringify(h)); } catch(e){}
+  const [hh, mm] = h.split(':');
+  const hoje = new Date(); hoje.setDate(hoje.getDate() + (new Date() > new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), +hh, +mm) ? 1 : 0));
+  const ds = hoje.getFullYear() + String(hoje.getMonth() + 1).padStart(2, '0') + String(hoje.getDate()).padStart(2, '0') + 'T' + hh + mm + '00';
+  const link = location.href.split('#')[0];
+  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Escola de Reiki//Sala de Estudo//PT','BEGIN:VEVENT',
+    'UID:sala-' + C.codigo + '@escola-reiki','DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, ''),
+    'DTSTART:' + ds,'DURATION:PT10M','RRULE:FREQ=DAILY','SUMMARY:🌿 Sala de Estudo — poema e prática','DESCRIPTION:' + msg.replace(/[,;\\]/g, ' ') + '\\n' + link,'URL:' + link,
+    'BEGIN:VALARM','TRIGGER:PT0S','ACTION:DISPLAY','DESCRIPTION:' + msg.replace(/[,;\\]/g, ' '),'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+  a.download = 'lembrete-sala-de-estudo.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+};
+
+/* ─── Pesquisa ─── */
+let INDICE_POEMAS = null;
+async function carregarIndicePoemas(){
+  if (INDICE_POEMAS) return INDICE_POEMAS;
+  try { window.firebaseConfig = window.firebaseConfig || firebaseConfig; await import('./reiki-poemas-seed.js'); INDICE_POEMAS = (window.POEMAS_HIKARI || []).map(x => ({ n: x.n, t: x.t || '', p: x.p || '' })); }
+  catch(e){ INDICE_POEMAS = []; }
+  return INDICE_POEMAS;
+}
+const semAcentos = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function verPesquisa(){
+  alvo.innerHTML = '<div class="catcab"><div class="ic">🔍</div><h2>Pesquisar</h2><p>Módulos, símbolos, poemas, materiais e testes.</p></div>'
+    + '<input id="termo" type="search" placeholder="Escreve o que procuras…" autocomplete="off" style="width:100%;font-size:1.05rem;padding:13px;border:1px solid var(--linha);border-radius:14px;background:var(--papel);color:var(--texto);margin-bottom:12px;" oninput="__pesquisar(this.value)">'
+    + '<div id="resultadosPesq" class="lista"><div class="vazio" style="grid-column:1/-1;">Escreve duas ou mais letras.</div></div>';
+  setTimeout(() => { const t = document.getElementById('termo'); if (t) t.focus(); }, 50);
+}
+window.__pesquisar = async function(v){
+  const q = semAcentos(v).trim();
+  const el = document.getElementById('resultadosPesq');
+  if (!el) return;
+  if (q.length < 2){ el.innerHTML = '<div class="vazio" style="grid-column:1/-1;">Escreve duas ou mais letras.</div>'; return; }
+  const r = [];
+  const bate = s => semAcentos(s).includes(q);
+  (C.modulos || []).forEach(m => { if (bate(m.titulo) || bate(m.subtitulo)) r.push({ ic:'📖', t:m.titulo, d:'Módulo ' + m.ordem, href:urlP('reiki-percurso.html', '&m=' + encodeURIComponent((C.emEstudo || '1') + '-' + m.ordem)) }); });
+  Object.keys(SIMBOLOS || {}).forEach(id => { const s = SIMBOLOS[id]; if (bate(s.nome)) r.push({ ic:'✍️', t:s.nome, d:'Oficina dos símbolos', href:urlP('reiki-simbolos.html') + '#' + id }); });
+  (C.testes || []).forEach(t => { if (bate(t.titulo)) r.push({ ic:'📝', t:t.titulo, d:'Teste', fn:"__ir('teste:" + t.id + "')" }); });
+  (C.recursos || []).forEach(x => { if (bate(x.titulo) || bate(x.descricao)) r.push({ ic:ICONES[x.tipo] || '📄', t:x.titulo, d:'Material', fn:"__mostrar('biblioteca')" }); });
+  const cats = categoriasSala();
+  Object.keys(cats).forEach(id => (cats[id].itens || []).forEach(i => { if (bate(i.t) || bate(i.d)) r.push(i); }));
+  const poemas = await carregarIndicePoemas();
+  poemas.forEach(p => { if (bate(p.t) || bate(p.p) || String(p.n) === q) r.push({ ic:'🎴', t:'Poema ' + p.n + (p.t ? ' · ' + p.t : ''), d:String(p.p).split('\n')[0].slice(0, 70) + '…', href:urlP('poemas-meiji.html') }); });
+  const el2 = document.getElementById('resultadosPesq');
+  if (!el2) return;
+  const vistos = new Set();
+  const unicos = r.filter(x => { const k = x.t + '|' + (x.href || x.fn); if (vistos.has(k)) return false; vistos.add(k); return true; }).slice(0, 40);
+  el2.innerHTML = unicos.length ? unicos.map(linhaItem).join('') : '<div class="vazio" style="grid-column:1/-1;">Nada encontrado para "' + esc(v) + '".</div>';
+};
+
 function saudacao(){
   const h = new Date().getHours();
   return h < 6 ? 'Boa noite' : h < 13 ? 'Bom dia' : h < 20 ? 'Boa tarde' : 'Boa noite';
 }
 const urlP = (ficheiro, extra) => ficheiro + '?t=' + encodeURIComponent(C.tenant) + '&c=' + encodeURIComponent(C.codigo) + (extra || '');
+window.__fecharBannerApp = function(){ try { localStorage.setItem('sala_banner_app', '1'); } catch(e){} mostrar('inicio'); };
 window.__ir = function(ir){
   if (ir === 'inicio') mostrar('inicio');
   else if (ir === 'materiais') mostrar('biblioteca');
@@ -780,9 +973,9 @@ function categoriasSala(){
   cats['cat:templo'] = { ic:'🌿', nome:'Templo de paz', desc:'Para respirar, meditar e inspirar.',
     subs:(hikari ? ['Músicas'] : []).concat(temPrat ? ['Meditações'] : []).concat(['Poemas','Mapa da Alma','Cartas','Ervas']),
     musica: hikari,
-    itens:[{ ic:'☀️', t:'Poema do dia', d:'Um poema e o seu princípio para meditar hoje. A app escolhe, ou escolhes tu.', href:'poemas-meiji.html' }]
+    itens:[{ ic:'☀️', t:'Poema do dia', d:'Um poema e o seu princípio para meditar hoje. A app escolhe, ou escolhes tu.', href:urlP('poemas-meiji.html') }]
       .concat(temPrat ? [{ ic:'🧘', t:'Meditações guiadas', d:'Áudios para acompanhar a prática dos 21 dias.', href:praticaHref }] : []).concat([
-      { ic:'🎴', t:'Todos os poemas do Meiji', d:'125 poemas para ler, tirar um ao acaso ou escolher por princípio.', href:'poemas-meiji.html', novo:true },
+      { ic:'🎴', t:'Todos os poemas do Meiji', d:'125 poemas para ler, tirar um ao acaso ou escolher por princípio.', href:urlP('poemas-meiji.html'), novo:true },
       { ic:'🔮', t:'Mapa da Alma', d:'Descobre o teu mapa.', href:'mapa-da-alma.html', novo:true },
       { ic:'🃏', t:'Cartomancia', d:'Tira as cartas.', href:'cartomancia.html', novo:true },
       { ic:'🌿', t:'Ervas e Mesinhas Antigas', d:'Escreve o que procuras e aparece. Só para alunos.', href:urlP('mesinhas.html'), novo:true }]) };
@@ -797,12 +990,18 @@ function categoriasSala(){
       { ic:'✉️', t:'Falar com o Mestre', d: porLer ? 'Tens uma mensagem nova.' : 'Escreve-lhe em privado.', fn:"__mostrar('mensagens')", novo: !!porLer }
     ].concat(wa ? [{ ic:'📲', t:'Grupo de WhatsApp da turma', d:(C.aluno.turmaNome || 'A tua turma'), href:wa }] : []) };
 
-  cats['cat:eu'] = { ic:'👤', nome:'O meu espaço', desc:'O teu perfil, o teu progresso.',
-    subs:['Foto','Resultados','Partilhar'],
+  const seq = sequenciaAtual();
+  cats['cat:eu'] = { ic:'👤', nome:'O meu espaço', desc:'O teu caderno, as tuas conquistas e o teu perfil.',
+    subs:['Caderno','Conquistas','Lembrete'].concat(seq ? ['🔥 ' + seq + ' dias'] : []),
     itens:[
+      { ic:'📓', t:'Caderno de paz', d:'Tudo o que escreveste: poemas, módulos, prática e notas livres.', fn:"__mostrar('caderno')" },
+      { ic:'🏅', t:'Conquistas', d: seq ? seq + ' dia(s) seguido(s). Vê os marcos que já alcançaste.' : 'Os marcos do teu caminho: 7, 21 e 30 dias, módulos, testes.', fn:"__mostrar('conquistas')" },
+      { ic:'⏰', t:'Lembrete diário', d:'Um alarme no teu calendário para o poema e a prática de cada dia.', fn:"__mostrar('lembrete')" }
+    ].concat(jaInstalada() ? [] : [{ ic:'📲', t:'Instalar como app', d:'Ícone no ecrã inicial, abre em ecrã inteiro, como qualquer app.', fn:'__instalarApp()' }])
+     .concat([
       { ic:'📷', t: C.foto ? 'Mudar a minha foto' : 'Adicionar a minha foto', d:'Para o teu Mestre e os colegas saberem quem és.', fn:'__trocarFoto()' },
       { ic:'📊', t:'Os meus resultados', d:'Notas dos testes e o que já concluíste.', fn:"__mostrar('testes')" }
-    ], partilha:true };
+    ]), partilha:true };
   return cats;
 }
 
@@ -832,12 +1031,14 @@ function verInicio(){
   const P = emEstudo ? calcularPlano() : null;
   const pf = P && P.total ? Math.round(P.feitos / P.total * 100) : null;
   const nome = (aluno.nome || '').split(' ')[0];
+  const seqHoje = sequenciaAtual();
 
   let h = '<div class="hero"><div class="foto" onclick="__trocarFoto()" title="Mudar a minha foto">'
     + (C.foto ? '<img src="' + esc(C.foto) + '" alt="">' : '👤') + '<i>' + (C.foto ? 'mudar' : '+ foto') + '</i></div>'
     + '<div style="flex:1;min-width:0;"><h2>' + saudacao() + (nome ? ', ' + esc(nome) : '') + '</h2>'
     + '<p>' + (emEstudo ? 'A estudar: <b>' + esc(ROTULOS[emEstudo]) + '</b>' : (C.fechado ? 'Nível concluído 🌿' : 'Percurso completo — Mestre')) + '</p>'
     + (pf !== null ? '<div class="barra" style="margin-top:8px;"><i style="width:' + pf + '%"></i></div><p style="font-size:.78rem;">' + pf + '% da formação feita</p>' : '')
+    + (seqHoje ? '<p style="margin-top:6px;"><span class="chip" style="font-size:.8rem;">🔥 ' + seqHoje + ' dia' + (seqHoje === 1 ? '' : 's') + ' seguido' + (seqHoje === 1 ? '' : 's') + '</span></p>' : '')
     + '<p style="font-style:italic;margin-top:6px;">Respira. Este é o teu templo de estudo e de paz.</p></div></div>';
 
   h += '<div class="slotAula">' + cartaoAulaHtml() + '</div>';
@@ -867,6 +1068,13 @@ function verInicio(){
   }
 
   h += '<div id="poemaDia"></div>';
+  let fechado = false; try { fechado = localStorage.getItem('sala_banner_app') === '1'; } catch(e){}
+  if (!jaInstalada() && !fechado){
+    h += '<div class="cartao" style="display:flex;gap:12px;align-items:center;"><div style="font-size:1.8rem;">📲</div>'
+      + '<div style="flex:1;min-width:0;"><b>Instala a sala como app</b><div style="font-size:.82rem;color:var(--suave);">Ícone no ecrã inicial e abre em ecrã inteiro.</div></div>'
+      + '<button class="abrir" style="margin:0;" onclick="__instalarApp()">Instalar</button>'
+      + '<button class="botao" style="margin:0;padding:6px 10px;" aria-label="Fechar" onclick="__fecharBannerApp()">✕</button></div>';
+  }
   h += '<h2>As tuas áreas</h2><div class="grade">';
   ['cat:estudar','cat:biblioteca','cat:oficina','cat:templo','cat:comunidade','cat:eu'].forEach(id => {
     const c = cats[id];
@@ -898,7 +1106,7 @@ async function carregarPoemaDia(){
     if (!e || !document.getElementById('poemaDia')) return;
     const p = e.poema, s = dia.sequencia();
     const g = { 'sou calmo':'🌊 Sou calmo', 'confio':'🏔️ Confio', 'sou grato':'🌾 Sou grato', 'trabalho honestamente':'🪵 Trabalho honestamente', 'sou bondoso':'🤲 Sou bondoso' }[p.principio] || '';
-    el.innerHTML = '<a href="poemas-meiji.html" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;">'
+    el.innerHTML = '<a href="' + esc(urlP('poemas-meiji.html')) + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;">'
       + '<div class="cartao" style="border-color:var(--destaque);background:linear-gradient(160deg,#fffaf0,#f7efde);">'
       + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;"><strong>☀️ Poema de hoje</strong>'
       + (s.seguidos ? '<span class="chip">🔥 ' + s.seguidos + ' dia(s)</span>' : (s.hoje ? '<span class="chip">✓ meditado hoje</span>' : '')) + '</div>'

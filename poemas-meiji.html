@@ -120,7 +120,7 @@
 <script type="module">
 import { escolhaDoDia, escolherHoje, voltarAoDaApp, registarMeditacao, sequencia, hojeISO, modoPoema, definirModo, sortearHoje } from './reiki-poema-dia.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs }
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -132,6 +132,30 @@ const firebaseConfig = {
   appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
 };
 const TENANT = 'hikari-terapias';
+/* Quando a página é aberta a partir da sala do aluno (?t=…&c=…), a preferência do modo e os dias
+   meditados ficam na conta dele e acompanham-no noutro aparelho. As reflexões escritas ficam só no aparelho. */
+const PQ = new URLSearchParams(location.search);
+const T_CONTA = PQ.get('t') || TENANT, C_CONTA = (PQ.get('c') || '').trim();
+const refConta = () => doc(db, 'tenants', T_CONTA, 'reikiThreads', C_CONTA);
+async function lerConta(){
+  if (!C_CONTA) return;
+  try {
+    const s = await getDoc(refConta());
+    const d = s.exists() ? s.data() : {};
+    const pref = d.preferencias || {};
+    if ((pref.poemaModo === 'sorteio' || pref.poemaModo === 'dia') && pref.poemaModo !== modoPoema()) definirModo(pref.poemaModo);
+    // dias meditados noutros aparelhos entram na sequência local
+    const ativ = d.atividade || {};
+    const ls = JSON.parse(localStorage.getItem('meiji_medit') || '[]');
+    const ja = new Set(ls.map(x => x.data));
+    Object.keys(ativ).forEach(k => { if (!ja.has(k)) ls.push({ data: k, numero: 0 }); });
+    localStorage.setItem('meiji_medit', JSON.stringify(ls.slice(-400)));
+  } catch(e){ console.warn('conta indisponível', e); }
+}
+function gravarConta(dados){
+  if (!C_CONTA) return;
+  setDoc(refConta(), Object.assign({ codigo: C_CONTA }, dados), { merge: true }).catch(e => console.warn('não gravou na conta', e));
+}
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -179,6 +203,7 @@ async function carregar(){
     }
   }
   POEMAS.sort((a,b) => (Number(a.numero)||0) - (Number(b.numero)||0));
+  await lerConta();
   desenharLista();
   desenharGokai();
   desenharHoje();
@@ -312,12 +337,13 @@ window.meditei = function(numero){
     localStorage.setItem('meiji_caderno', JSON.stringify(caderno.slice(0,300)));
   }
   registarMeditacao(numero);
+  gravarConta({ atividade: { [hojeISO()]: true } });
   desenharHoje();
   const a = document.getElementById('avisoGuardado');
   if (a) a.textContent = '✓ Que o dia te seja leve. Guardado neste aparelho, só para ti.';
 };
 window.mudarModo = function(modo){
-  definirModo(modo); voltarAoDaApp();        // o modo novo passa a valer já hoje
+  definirModo(modo); voltarAoDaApp(); gravarConta({ preferencias: { poemaModo: modo } });        // o modo novo passa a valer já hoje
   desenharHoje(); window.scrollTo({top:0,behavior:'smooth'});
 };
 window.outroDeHoje = function(){
