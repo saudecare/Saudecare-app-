@@ -351,7 +351,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-16-02';
+const APP_VERSION = '2026-10-16-03';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12135,6 +12135,8 @@ async function reikiRenderInscricoes(){
 
 let __reikiSubInsc = 'semana';
 let __reikiFiltroPag = 'pendentes';
+let __reikiFiltroRes = 'todas';
+window.reikiFiltrarRes = function(k){ __reikiFiltroRes = k; reikiDesenharInscricoes([]); };
 const REIKI_SUB_INSC = [['semana', '📅 Esta semana'], ['pagamentos', '💶 Pagamentos'], ['reservas', 'Reservas'], ['workshop', 'Workshop'], ['links', '🔗 Links']];
 const REIKI_TZ = 'Europe/Lisbon';
 
@@ -12145,7 +12147,7 @@ function reikiFmtISO(iso){
 }
 function reikiDadosPagamentoTxt(){
   const O = __reikiOferta, d = [];
-  if (O.PAGAMENTO.mbway) d.push('MB Way: ' + O.PAGAMENTO.mbway);
+  if (O.PAGAMENTO.mbway) d.push('MB Way: ' + O.PAGAMENTO.mbway + (O.PAGAMENTO.titular ? ' (' + O.PAGAMENTO.titular + ')' : ''));
   if (O.PAGAMENTO.iban) d.push('IBAN: ' + O.PAGAMENTO.iban);
   return d.join(' · ');
 }
@@ -12171,8 +12173,23 @@ function reikiLembreteUrl(p){
   const dig = reikiDigitosWa(r.telefone);
   const dados = reikiDadosPagamentoTxt();
   const msg = 'Olá ' + reikiPrimeiroNome(r.nome) + '! Um lembrete simpático: está por pagar ' + p.rotulo.toLowerCase() + ' (' + O.euros(p.valor) + ') da formação de Reiki'
-    + (p.vence ? ', a vencer a ' + reikiFmtISO(p.vence) : '') + '. ' + (dados ? dados + '. ' : 'Diz-me como preferes pagar. ') + 'Obrigado!';
+    + (p.vence ? ', a vencer a ' + reikiFmtISO(p.vence) : '') + '. ' + (dados ? dados + '. ' : 'Diz-me como preferes pagar. ') + 'Na descrição escreve: Reiki ' + O.codigoReserva(r.id) + '. Obrigado!';
   return 'https://wa.me/' + (dig ? encodeURIComponent(dig) : '') + '?text=' + encodeURIComponent(msg);
+}
+
+/* Estado de pagamento de uma reserva: pago, parcial, por pagar ou em atraso. */
+function reikiEstadoPagamento(r){
+  const partes = reikiPartes(r);
+  const hoje = reikiHojeISO();
+  const pagas = partes.filter(p => p.pago).length;
+  if (partes.length && pagas === partes.length) return 'pago';
+  if (partes.some(p => !p.pago && p.vence && p.vence < hoje)) return 'atraso';
+  return pagas ? 'parcial' : 'porpagar';
+}
+function reikiSeloPagamento(r){
+  const e = reikiEstadoPagamento(r);
+  const m = { pago: ['🟢 Pago', '#2f6b3a', '#e6f3e8'], parcial: ['🟡 Pagou parte', '#7a5a10', '#fbf2d9'], porpagar: ['⚪ Por pagar', '#555', '#eee'], atraso: ['🔴 Em atraso', '#8c2f1f', '#fbe5e0'] }[e];
+  return `<span style="white-space:nowrap;font-size:.78rem;font-weight:700;padding:3px 9px;border-radius:999px;color:${m[1]};background:${m[2]};">${m[0]}</span>`;
 }
 
 function reikiHtmlReserva(r){
@@ -12194,11 +12211,12 @@ function reikiHtmlReserva(r){
   const dig = reikiDigitosWa(r.telefone);
   const wa = dig ? 'https://wa.me/' + encodeURIComponent(dig) + '?text=' + encodeURIComponent(
     'Olá ' + reikiPrimeiroNome(r.nome) + '! Recebi a tua reserva da formação (' + (niv ? niv.nome : r.nivel) + '). Para garantir o lugar, o sinal é de ' + O.euros(partes[0]?.valor || O.SINAL)
-    + (r.lancamento ? ' até ' + O.PRAZO_TEXTO : '') + '. ' + (reikiDadosPagamentoTxt() || 'Diz-me se preferes MB Way ou transferência.')) : '';
+    + (r.lancamento ? ' até ' + O.PRAZO_TEXTO : '') + '. ' + (reikiDadosPagamentoTxt() || 'Diz-me se preferes MB Way ou transferência.') + ' Na descrição escreve: Reiki ' + O.codigoReserva(r.id)) : '';
   const manual = sinalATempo && niv && niv.manuais;
   return `
     <div class="appt-item" style="display:block;">
-      <strong>${escapeHtml(r.nome || '')}</strong> <span class="muted">· ${reikiDataCurta(r.criadoEm)}${r.origem === 'manual' ? ' · à mão' : ''}</span>
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;"><span><strong>${escapeHtml(r.nome || '')}</strong> <span class="muted">· ${reikiDataCurta(r.criadoEm)}${r.origem === 'manual' ? ' · à mão' : ''}</span></span>${reikiSeloPagamento(r)}</div>
+      <div class="muted" style="font-size:.8rem;">Referência: <strong>Reiki ${escapeHtml(__reikiOferta.codigoReserva(r.id))}</strong></div>
       <div class="muted" style="margin-top:2px;">${escapeHtml(niv ? niv.nome : r.nivel)} · ${r.modalidade === 'presencial' ? 'Presencial' : 'Online'}${dia ? ' (' + dia + ')' : ''} · ${r.pagamento === 'faseado' ? 'Faseado' : 'Pagamento total'} · ${O.euros(r.preco)}</div>
       <div class="muted">${escapeHtml(r.telefone || '')}${r.email ? ' · ' + escapeHtml(r.email) : ''}</div>
       ${selo ? '<div style="margin-top:2px;">' + selo + '</div>' : ''}
@@ -12268,7 +12286,7 @@ function reikiHtmlAgendaItem(it){
     acoes = `<button class="ghost" onclick="reikiManualEnviado('${it.reservaId}')">✅ Já enviei</button>`;
   } else if (it.tipo === 'contactar'){
     const dig = reikiDigitosWa(it.reserva.telefone);
-    const msg = 'Olá ' + reikiPrimeiroNome(it.reserva.nome) + '! Recebi a tua reserva da formação de Reiki. Para garantir o lugar, falta o sinal de ' + O.euros(O.SINAL) + '. ' + (reikiDadosPagamentoTxt() || 'Diz-me se preferes MB Way ou transferência.');
+    const msg = 'Olá ' + reikiPrimeiroNome(it.reserva.nome) + '! Recebi a tua reserva da formação de Reiki. Para garantir o lugar, falta o sinal de ' + O.euros(O.SINAL) + '. ' + (reikiDadosPagamentoTxt() || 'Diz-me se preferes MB Way ou transferência.') + ' Na descrição escreve: Reiki ' + O.codigoReserva(it.reserva.id);
     if (dig) acoes = `<a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/${encodeURIComponent(dig)}?text=${encodeURIComponent(msg)}">💬 WhatsApp</a>`;
   }
   const atraso = it.iso && it.iso < hoje;
@@ -12320,6 +12338,40 @@ window.reikiAgendaICS = function(){
   document.body.appendChild(a); a.click(); a.remove();
 };
 
+function reikiHtmlQuemPagou(){
+  const O = __reikiOferta;
+  const ativas = __reikiReservas.filter(r => r.estado !== 'arquivada');
+  const grupos = { pago: [], parcial: [], atraso: [], porpagar: [] };
+  ativas.forEach(r => grupos[reikiEstadoPagamento(r)].push(r));
+  const falta = r => Math.max(0, Math.round(((Number(r.preco) || 0) - reikiPartes(r).reduce((t, p) => t + (p.pago ? p.valor : 0), 0)) * 100) / 100);
+  const linha = (r, extra) => `<div style="padding:4px 0;border-top:1px solid #eee;">${escapeHtml(r.nome || '')} <span class="muted">· Reiki ${escapeHtml(O.codigoReserva(r.id))}${extra ? ' · ' + extra : ''}</span></div>`;
+  const bloco = (titulo, lista, extra) => lista.length
+    ? `<details ${titulo.startsWith('🔴') || titulo.startsWith('⚪') ? 'open' : ''} style="margin-top:8px;"><summary style="cursor:pointer;font-weight:600;">${titulo} (${lista.length})</summary>${lista.map(r => linha(r, extra ? extra(r) : '')).join('')}</details>` : '';
+  return `<div class="card" style="margin-bottom:10px;">
+    <strong>Quem pagou</strong>
+    ${ativas.length ? '' : '<p class="muted" style="margin-top:6px;">Ainda não há reservas.</p>'}
+    ${bloco('🔴 Em atraso', grupos.atraso, r => 'falta ' + O.euros(falta(r)))}
+    ${bloco('⚪ Ainda não pagou nada', grupos.porpagar, r => 'falta ' + O.euros(falta(r)))}
+    ${bloco('🟡 Pagou parte', grupos.parcial, r => 'falta ' + O.euros(falta(r)))}
+    ${bloco('🟢 Pagou tudo', grupos.pago, null)}
+    <input id="pagBusca" type="text" placeholder="Procurar por nome, telemóvel ou referência (ex.: Reiki K3F9A)" oninput="reikiBuscaPag(this.value)" style="margin-top:12px;">
+    <div id="pagBuscaRes"></div>
+  </div>`;
+}
+window.reikiBuscaPag = function(q){
+  const alvo = document.getElementById('pagBuscaRes');
+  if (!alvo) return;
+  const t = String(q || '').toLowerCase().replace(/^reiki\s*/, '').trim();
+  const dig = t.replace(/\D/g, '');
+  if (t.length < 2){ alvo.innerHTML = ''; return; }
+  const O = __reikiOferta;
+  const res = __reikiReservas.filter(r =>
+    String(r.nome || '').toLowerCase().includes(t) ||
+    O.codigoReserva(r.id).toLowerCase().startsWith(t) ||
+    (dig.length >= 4 && String(r.telefone || '').replace(/\D/g, '').includes(dig)));
+  alvo.innerHTML = res.length ? res.map(reikiHtmlReserva).join('') : '<p class="muted" style="margin-top:8px;">Nenhuma reserva encontrada.</p>';
+};
+
 function reikiHtmlPagamentos(){
   const O = __reikiOferta, hoje = reikiHojeISO();
   const todas = __reikiReservas.flatMap(reikiPartes);
@@ -12333,7 +12385,7 @@ function reikiHtmlPagamentos(){
   const filtros = { pendentes: ['Por receber', pend], atraso: ['Em atraso', atraso], semana: ['Próx. 7 dias', semana], semdata: ['Sem data', semData] };
   const lista = (filtros[__reikiFiltroPag] || filtros.pendentes)[1].slice().sort((a, b) => (a.vence || '9').localeCompare(b.vence || '9'));
   const csv = 'data;nome;pagamento;valor\n' + recebidos.map(p => reikiDataCurta(p.em) + ';' + (p.r.nome || '') + ';' + p.rotulo + ';' + String(p.valor).replace('.', ',')).join('\n');
-  return `
+  return reikiHtmlQuemPagou() + `
     <div class="card" style="margin-bottom:10px;">
       <div class="row" style="gap:16px;flex-wrap:wrap;justify-content:flex-start;">
         <div><div style="font-size:1.5rem;font-weight:700;">${O.euros(somar(recebidos))}</div><div class="muted">recebido</div></div>
@@ -12403,7 +12455,10 @@ function reikiHtmlReservas(){
   const ativas = __reikiReservas.filter(r => r.estado !== 'arquivada');
   const arquivadas = __reikiReservas.filter(r => r.estado === 'arquivada');
   return `<button class="primary" style="margin-bottom:10px;" onclick="reikiNovaReservaManual()">➕ Nova reserva à mão</button>
-    ${ativas.length ? ativas.map(reikiHtmlReserva).join('') : '<p class="muted">Ainda não há reservas.</p>'}
+    <div class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-start;margin-bottom:10px;">
+      ${[['todas', 'Todas'], ['porpagar', '⚪ Por pagar'], ['parcial', '🟡 Parcial'], ['atraso', '🔴 Atraso'], ['pago', '🟢 Pago']].map(([k, t]) => `<button class="${__reikiFiltroRes === k ? 'primary' : 'ghost'}" onclick="reikiFiltrarRes('${k}')">${t}</button>`).join('')}
+    </div>
+    ${ativas.filter(r => __reikiFiltroRes === 'todas' || reikiEstadoPagamento(r) === __reikiFiltroRes).length ? ativas.filter(r => __reikiFiltroRes === 'todas' || reikiEstadoPagamento(r) === __reikiFiltroRes).map(reikiHtmlReserva).join('') : '<p class="muted">Ainda não há reservas.</p>'}
     ${arquivadas.length ? '<details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--primary);font-weight:600;">Arquivadas (' + arquivadas.length + ')</summary>' + arquivadas.map(reikiHtmlReserva).join('') + '</details>' : ''}`;
 }
 

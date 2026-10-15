@@ -61,10 +61,10 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp }
+import { getFirestore, collection, doc, setDoc, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { TENANT_ESCOLA, NIVEIS, TURMAS, SINAL, PRAZO_TEXTO, CONDICOES, AVISO_COMPLEMENTAR, PAGAMENTO,
-         nivelPorId, temPromo, precoDe, planoPagamento, euros } from "./reiki-oferta.js";
+         nivelPorId, temPromo, precoDe, planoPagamento, euros, codigoReserva } from "./reiki-oferta.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
@@ -104,15 +104,16 @@ const chave = 'reikiReserva-2026';
 const jaReservou = () => { try { return localStorage.getItem(chave) === '1'; } catch(_){ return false; } };
 const marcar = () => { try { localStorage.setItem(chave, '1'); } catch(_){} };
 
-function mostrarObrigado(r){
+function mostrarObrigado(r, codigo){
   const plano = r ? planoPagamento(r.preco, r.pagamento) : [];
   const dados = [];
-  if (PAGAMENTO.mbway) dados.push('MB Way: ' + esc(PAGAMENTO.mbway));
+  if (PAGAMENTO.mbway) dados.push('MB Way: <b>' + esc(PAGAMENTO.mbway) + '</b>' + (PAGAMENTO.titular ? ' (' + esc(PAGAMENTO.titular) + ')' : ''));
   if (PAGAMENTO.iban) dados.push('IBAN: ' + esc(PAGAMENTO.iban) + (PAGAMENTO.titular ? ' (' + esc(PAGAMENTO.titular) + ')' : ''));
   alvo.innerHTML = '<div class="ok"><div class="grande">✅</div><h3>Reserva recebida</h3>'
     + '<p class="suave" style="margin-top:6px;">Para garantir o lugar, falta pagar o sinal de ' + euros(SINAL)
     + (promoAtiva ? ' até ' + esc(PRAZO_TEXTO) : '') + '.</p></div>'
-    + (dados.length ? '<div class="destaque">' + dados.join('<br>') + '</div>'
+    + (dados.length ? '<div class="destaque">' + dados.join('<br>')
+        + (codigo ? '<br>Na descrição do pagamento escreve: <b>Reiki ' + esc(codigo) + '</b>' : '') + '</div>'
         : '<div class="destaque">Vou enviar-te por WhatsApp os dados para o pagamento do sinal.</div>')
     + (r ? '<div class="resumo">' + plano.map(p => '<div class="linha"><span>' + esc(p.rotulo) + '</span><b>' + euros(p.valor) + '</b></div>').join('') + '</div>' : '')
     + '<p class="suave" style="margin-top:12px;">Assim que o sinal estiver pago, recebes o acesso à app e o manual em PDF.</p>';
@@ -128,7 +129,7 @@ function mostrarForm(){
     + '<label for="nivel">Formação</label><select id="nivel">' + NIVEIS.map(n => '<option value="' + n.id + '">' + esc(n.nome) + '</option>').join('') + '</select>'
     + '<label>Como queres fazer</label>'
     + '<label class="opcao"><input type="radio" name="mod" value="online" checked><span>Online<small>Segunda, 20h30 às 22h00 (ou quarta, se houver turma)</small></span></label>'
-    + '<label class="opcao"><input type="radio" name="mod" value="presencial"><span>Presencial<small>Sábado à tarde, máximo ' + TURMAS.presencial.vagas + ' lugares</small></span></label>'
+    + '<label class="opcao"><input type="radio" name="mod" value="presencial"><span>Presencial<small>Sábado, horário a combinar com a turma, máximo ' + TURMAS.presencial.vagas + ' lugares</small></span></label>'
     + '<div id="blocoDia"><label for="dia">Dia preferido (online)</label><select id="dia"><option value="seg">Segunda-feira</option><option value="qua">Quarta-feira</option><option value="qualquer">Tanto faz</option></select></div>'
     + '<label>Pagamento</label>'
     + '<label class="opcao"><input type="radio" name="pag" value="total" checked><span>Pagamento total<small>Sinal na reserva e o restante até à 1.ª aula</small></span></label>'
@@ -184,8 +185,11 @@ function mostrarForm(){
     };
     botao.disabled = true; botao.textContent = 'A enviar…';
     try {
-      await addDoc(collection(db, 'tenants', TENANT_ESCOLA, 'reikiReservas'), r);
-      marcar(); mostrarObrigado(r);
+      const ref = doc(collection(db, 'tenants', TENANT_ESCOLA, 'reikiReservas'));
+      await setDoc(ref, r);
+      const codigo = codigoReserva(ref.id);
+      try { localStorage.setItem(chave + '-cod', codigo); } catch(_){}
+      marcar(); mostrarObrigado(r, codigo);
     } catch(e){
       console.warn('Reserva: falhou', e);
       botao.disabled = false; botao.textContent = 'Reservar o meu lugar';
@@ -194,7 +198,8 @@ function mostrarForm(){
   });
 }
 
-if (jaReservou()) alvo.innerHTML = '<div class="ok"><div class="grande">✅</div><h3>Já recebi a tua reserva</h3><p class="suave" style="margin-top:6px;">Vou falar contigo por WhatsApp. Se precisares de outra reserva, escreve-me.</p></div>';
+let cod = ''; try { cod = localStorage.getItem(chave + '-cod') || ''; } catch(_){}
+if (jaReservou()) alvo.innerHTML = '<div class="ok"><div class="grande">✅</div><h3>Já recebi a tua reserva</h3><p class="suave" style="margin-top:6px;">Vou falar contigo por WhatsApp.' + (cod ? ' A tua referência de pagamento é <b>Reiki ' + esc(cod) + '</b>.' : '') + ' Se precisares de outra reserva, escreve-me.</p></div>';
 else mostrarForm();
 </script>
 </body>

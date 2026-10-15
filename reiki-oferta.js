@@ -12,7 +12,13 @@ export const GRUPO_NOME = 'Workshop Reiki Hikari Fafe';
 
 /* Dados para o sinal. Enquanto estiverem vazios, a página diz que os dados
    seguem por WhatsApp. */
-export const PAGAMENTO = { mbway: '', iban: '', titular: '' };
+export const PAGAMENTO = { mbway: '928122918', iban: '', titular: 'Ricardo Correia' };
+
+export const MESTRE = { nome: 'Ricardo Correia', nomeReiki: 'Hikari Fafe' };
+
+/* Referência curta de cada reserva (vem do id da reserva). O aluno escreve-a
+   na descrição do MB Way e tu reconheces logo quem pagou. */
+export function codigoReserva(id){ return String(id || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 5).toUpperCase(); }
 
 export const WORKSHOP = {
   hora: '21h00',
@@ -53,7 +59,7 @@ export const TURMAS = {
   inicioOnline: '2 de novembro',
   online:     { rotulo: 'Online · segunda-feira, 20h30 às 22h00', vagas: 15 },
   onlineQua:  { rotulo: 'Online · quarta-feira, 20h30 às 22h00 (abre quando a de segunda estiver cheia)', vagas: 15 },
-  presencial: { rotulo: 'Presencial · sábado à tarde, em pequeno grupo', vagas: 6 }
+  presencial: { rotulo: 'Presencial · sábado, horário a combinar com a turma', vagas: 6 }
 };
 
 export function nivelPorId(id){ return NIVEIS.find(n => n.id === id) || null; }
