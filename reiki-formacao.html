@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Formação de Reiki · Nível 1 — Hikari Fafe Escola de Reiki</title>
+<meta name="description" content="Formação de Reiki Nível 1, online ou presencial, com app de estudo, manuais, vídeos narrados, prática de 21 dias e acompanhamento do Mestre.">
+<link rel="stylesheet" href="reiki-publico.css">
+</head>
+<body>
+<div class="envolve">
+  <header class="topo">
+    <h1>HIKARI FAFE</h1>
+    <p>Escola de Reiki</p>
+  </header>
+
+  <div class="heroi">
+    <span class="selo">Online · Presencial</span>
+    <h2>Formação de Reiki</h2>
+    <p>Aulas ao vivo uma vez por semana, à noite, com app de estudo e acompanhamento do Mestre.</p>
+  </div>
+
+  <div class="cartao">
+    <h3>Valores</h3>
+    <p class="suave">O preço é o mesmo online e presencial.</p>
+    <table class="precos" id="precos"></table>
+    <div class="destaque" id="promo"></div>
+  </div>
+
+  <div class="cartao">
+    <h3>O que recebes</h3>
+    <ul class="lista">
+      <li>Aulas ao vivo, uma vez por semana, à noite</li>
+      <li>Sintonização e certificado do nível</li>
+      <li>Manual em PDF, vídeos narrados e testes na app</li>
+      <li>Prática de 21 dias, poema do Imperador Meiji do dia e caderno de paz</li>
+      <li>Acompanhamento do Mestre no chat da app</li>
+    </ul>
+  </div>
+
+  <div class="cartao">
+    <h3>Turmas</h3>
+    <ul class="lista" id="turmas"></ul>
+  </div>
+
+  <div class="cartao">
+    <h3>Pagamento</h3>
+    <ul class="lista">
+      <li><b>Pagamento total:</b> sinal de 50€ na reserva e o restante até à 1.ª aula.</li>
+      <li><b>Faseado em 3 vezes:</b> sinal de 50€ e o resto em duas prestações iguais, na 1.ª e na 3.ª aula.</li>
+      <li>A sintonização e o certificado são dados quando o pagamento está completo.</li>
+    </ul>
+    <div class="condicoes" id="condicoes"></div>
+  </div>
+
+  <div class="cartao" id="reserva"><span class="suave">A abrir…</span></div>
+
+  <p class="nota" id="aviso"></p>
+  <p class="nota"><a href="reiki-workshop.html">Workshop gratuito de 3 noites</a></p>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { TENANT_ESCOLA, NIVEIS, TURMAS, SINAL, PRAZO_TEXTO, CONDICOES, AVISO_COMPLEMENTAR, PAGAMENTO,
+         nivelPorId, temPromo, precoDe, planoPagamento, euros } from "./reiki-oferta.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const db = getFirestore(initializeApp(firebaseConfig));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = id => document.getElementById(id);
+const agora = new Date();
+const promoAtiva = NIVEIS.some(n => temPromo(n, agora));
+
+$('aviso').textContent = AVISO_COMPLEMENTAR;
+$('condicoes').innerHTML = '<b>Condições:</b> ' + esc(CONDICOES);
+
+$('precos').innerHTML = NIVEIS.map(n => {
+  const promo = temPromo(n, agora);
+  return '<tr><td>' + esc(n.nome) + (n.nota ? '<span class="nota-nivel">' + esc(n.nota) + '</span>' : '')
+    + '</td><td class="valor">' + (promo ? '<span class="antes">' + euros(n.preco) + '</span><span class="promo">' + euros(n.lanc) + '</span>' : euros(n.preco)) + '</td></tr>';
+}).join('');
+
+$('promo').innerHTML = promoAtiva
+  ? '<b>Preço de lançamento.</b> Reserva até ' + esc(PRAZO_TEXTO) + ' e paga o sinal de ' + euros(SINAL)
+    + ' dentro do prazo: recebes o preço de lançamento e o <b>manual em papel</b> (só pagas os portes de envio, para Portugal).'
+  : '<b>Reservas abertas.</b> O preço de lançamento já terminou. Os manuais são em PDF e ficam na app.';
+
+$('turmas').innerHTML =
+  '<li>' + esc(TURMAS.online.rotulo) + ' · até ' + TURMAS.online.vagas + ' lugares · início previsto a ' + esc(TURMAS.inicioOnline) + '</li>'
+  + '<li>' + esc(TURMAS.onlineQua.rotulo) + '</li>'
+  + '<li>' + esc(TURMAS.presencial.rotulo) + ' · <b>máximo ' + TURMAS.presencial.vagas + ' lugares</b></li>';
+
+const alvo = $('reserva');
+const chave = 'reikiReserva-2026';
+const jaReservou = () => { try { return localStorage.getItem(chave) === '1'; } catch(_){ return false; } };
+const marcar = () => { try { localStorage.setItem(chave, '1'); } catch(_){} };
+
+function mostrarObrigado(r){
+  const plano = r ? planoPagamento(r.preco, r.pagamento) : [];
+  const dados = [];
+  if (PAGAMENTO.mbway) dados.push('MB Way: ' + esc(PAGAMENTO.mbway));
+  if (PAGAMENTO.iban) dados.push('IBAN: ' + esc(PAGAMENTO.iban) + (PAGAMENTO.titular ? ' (' + esc(PAGAMENTO.titular) + ')' : ''));
+  alvo.innerHTML = '<div class="ok"><div class="grande">✅</div><h3>Reserva recebida</h3>'
+    + '<p class="suave" style="margin-top:6px;">Para garantir o lugar, falta pagar o sinal de ' + euros(SINAL)
+    + (promoAtiva ? ' até ' + esc(PRAZO_TEXTO) : '') + '.</p></div>'
+    + (dados.length ? '<div class="destaque">' + dados.join('<br>') + '</div>'
+        : '<div class="destaque">Vou enviar-te por WhatsApp os dados para o pagamento do sinal.</div>')
+    + (r ? '<div class="resumo">' + plano.map(p => '<div class="linha"><span>' + esc(p.rotulo) + '</span><b>' + euros(p.valor) + '</b></div>').join('') + '</div>' : '')
+    + '<p class="suave" style="margin-top:12px;">Assim que o sinal estiver pago, recebes o acesso à app e o manual em PDF.</p>';
+}
+
+function mostrarForm(){
+  alvo.innerHTML = '<h3>Reservar o meu lugar</h3>'
+    + '<p class="suave">Preenche e eu falo contigo por WhatsApp para combinar o sinal.</p>'
+    + '<form id="form" autocomplete="on" novalidate>'
+    + '<label for="nome">Nome completo</label><input id="nome" type="text" autocomplete="name" placeholder="Como vai sair no certificado" maxlength="120">'
+    + '<label for="tel">Telemóvel (WhatsApp)</label><input id="tel" type="tel" autocomplete="tel" inputmode="tel" placeholder="912 345 678" maxlength="30">'
+    + '<label for="mail">E-mail <span class="suave" style="font-weight:400;">(opcional)</span></label><input id="mail" type="email" autocomplete="email" maxlength="120">'
+    + '<label for="nivel">Formação</label><select id="nivel">' + NIVEIS.map(n => '<option value="' + n.id + '">' + esc(n.nome) + '</option>').join('') + '</select>'
+    + '<label>Como queres fazer</label>'
+    + '<label class="opcao"><input type="radio" name="mod" value="online" checked><span>Online<small>Segunda, 20h30 às 22h00 (ou quarta, se houver turma)</small></span></label>'
+    + '<label class="opcao"><input type="radio" name="mod" value="presencial"><span>Presencial<small>Sábado à tarde, máximo ' + TURMAS.presencial.vagas + ' lugares</small></span></label>'
+    + '<div id="blocoDia"><label for="dia">Dia preferido (online)</label><select id="dia"><option value="seg">Segunda-feira</option><option value="qua">Quarta-feira</option><option value="qualquer">Tanto faz</option></select></div>'
+    + '<label>Pagamento</label>'
+    + '<label class="opcao"><input type="radio" name="pag" value="total" checked><span>Pagamento total<small>Sinal na reserva e o restante até à 1.ª aula</small></span></label>'
+    + '<label class="opcao"><input type="radio" name="pag" value="faseado"><span>Faseado em 3 vezes<small>Sinal, 2.ª prestação na 1.ª aula, 3.ª na 3.ª aula</small></span></label>'
+    + '<div class="resumo" id="resumo"></div>'
+    + '<div id="blocoMorada"><label for="morada">Morada para enviar o manual em papel <span class="suave" style="font-weight:400;">(podes dar depois)</span></label><textarea id="morada" maxlength="300" placeholder="Rua, número, código postal e localidade (Portugal)"></textarea></div>'
+    + '<div class="armadilha" aria-hidden="true"><input id="site" type="text" tabindex="-1" autocomplete="off"></div>'
+    + '<label class="consent"><input id="cond" type="checkbox"><span>Li e aceito as condições: ' + esc(CONDICOES) + '</span></label>'
+    + '<label class="consent"><input id="ok" type="checkbox"><span>Autorizo a Hikari Fafe Escola de Reiki a guardar o meu nome e contacto para a minha formação.</span></label>'
+    + '<div id="erro" class="erro"></div>'
+    + '<button id="enviar" class="enviar" type="submit">Reservar o meu lugar</button></form>';
+
+  const form = $('form'), erro = $('erro'), botao = $('enviar');
+  const modo = () => form.querySelector('input[name=pag]:checked').value;
+  const modalidade = () => form.querySelector('input[name=mod]:checked').value;
+
+  function atualizar(){
+    const n = nivelPorId($('nivel').value);
+    const promo = temPromo(n, new Date());
+    const preco = precoDe(n, new Date());
+    const plano = planoPagamento(preco, modo());
+    $('resumo').innerHTML = '<div class="linha"><span>' + esc(n.nome) + '</span><b>' + (promo ? '<span class="antes">' + euros(n.preco) + '</span> ' : '') + euros(preco) + '</b></div>'
+      + plano.map(p => '<div class="linha"><span class="suave">' + esc(p.rotulo) + '</span><span>' + euros(p.valor) + '</span></div>').join('')
+      + (promo ? '<div class="linha"><span class="suave">Manual em papel' + (n.manuais > 1 ? ' (' + n.manuais + ')' : '') + '</span><span>oferta (portes por tua conta)</span></div>' : '');
+    $('blocoMorada').classList.toggle('escondido', !promo);
+    $('blocoDia').classList.toggle('escondido', modalidade() !== 'online');
+  }
+  form.addEventListener('change', atualizar);
+  atualizar();
+
+  form.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    erro.textContent = '';
+    const nome = $('nome').value.trim().replace(/\s+/g, ' ');
+    const tel = $('tel').value.trim();
+    const mail = $('mail').value.trim();
+    const digitos = tel.replace(/\D/g, '');
+    if ($('site').value){ marcar(); mostrarObrigado(null); return; }
+    if (nome.length < 2){ erro.textContent = 'Escreve o teu nome completo.'; return; }
+    if (digitos.length < 9 || digitos.length > 15){ erro.textContent = 'Confirma o telemóvel: parece incompleto.'; return; }
+    if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)){ erro.textContent = 'O e-mail não parece certo. Podes deixá-lo em branco.'; return; }
+    if (!$('cond').checked){ erro.textContent = 'Para reservar, aceita as condições.'; return; }
+    if (!$('ok').checked){ erro.textContent = 'Preciso da tua autorização para guardar os dados.'; return; }
+    const n = nivelPorId($('nivel').value);
+    const promo = temPromo(n, new Date());
+    const r = {
+      nome, telefone: tel, email: mail,
+      nivel: n.id, modalidade: modalidade(),
+      diaPref: modalidade() === 'online' ? $('dia').value : 'sab',
+      pagamento: modo(), preco: precoDe(n, new Date()), lancamento: promo,
+      morada: promo ? $('morada').value.trim().slice(0, 300) : '',
+      condicoes: true, estado: 'nova', criadoEm: serverTimestamp()
+    };
+    botao.disabled = true; botao.textContent = 'A enviar…';
+    try {
+      await addDoc(collection(db, 'tenants', TENANT_ESCOLA, 'reikiReservas'), r);
+      marcar(); mostrarObrigado(r);
+    } catch(e){
+      console.warn('Reserva: falhou', e);
+      botao.disabled = false; botao.textContent = 'Reservar o meu lugar';
+      erro.textContent = 'Não consegui enviar. Confirma a ligação e tenta outra vez.';
+    }
+  });
+}
+
+if (jaReservou()) alvo.innerHTML = '<div class="ok"><div class="grande">✅</div><h3>Já recebi a tua reserva</h3><p class="suave" style="margin-top:6px;">Vou falar contigo por WhatsApp. Se precisares de outra reserva, escreve-me.</p></div>';
+else mostrarForm();
+</script>
+</body>
+</html>

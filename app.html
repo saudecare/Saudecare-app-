@@ -351,7 +351,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-14-02';
+const APP_VERSION = '2026-10-16-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12061,6 +12061,7 @@ function reikiRenderEcra(main){
       <button class="${__reikiTab==='resumo'?'primary':'ghost'}" onclick="reikiMudarTab('resumo')">Resumo</button>
       <button class="${__reikiTab==='alunos'?'primary':'ghost'}" onclick="reikiMudarTab('alunos')">Alunos</button>
       <button class="${__reikiTab==='turmas'?'primary':'ghost'}" onclick="reikiMudarTab('turmas')">Turmas</button>
+      <button class="${__reikiTab==='inscricoes'?'primary':'ghost'}" onclick="reikiMudarTab('inscricoes')">Inscrições</button>
       <button class="${REIKI_GRUPO_CONTEUDO.includes(__reikiTab)?'primary':'ghost'}" onclick="reikiMudarTab(REIKI_GRUPO_CONTEUDO.includes(__reikiTab)?__reikiTab:'licoes')">Conteúdo</button>
       <button class="${__reikiTab==='mensagens'?'primary':'ghost'}" onclick="reikiMudarTab('mensagens')">Mensagens</button>
     </div>
@@ -12076,12 +12077,230 @@ function reikiRenderEcra(main){
   else if (__reikiTab === 'biblioteca') reikiRenderBiblioteca();
   else if (__reikiTab === 'licoes') reikiRenderLicoes();
   else if (__reikiTab === 'turmas') reikiRenderTurmas();
+  else if (__reikiTab === 'inscricoes') reikiRenderInscricoes();
   else if (__reikiTab === 'testes') reikiRenderTestes();
   else if (__reikiTab === 'mensagens') reikiRenderMensagens();
   else reikiRenderNiveis();
 }
 
 window.reikiMudarTab = function(tab){ __reikiTab = tab; reikiRenderEcra(); };
+
+/* ─── Inscrições: workshop gratuito e reservas da formação ───────────────
+   Exclusivo da conta hikari-terapias. As páginas públicas são
+   reiki-workshop.html e reiki-formacao.html; os valores e datas ficam em
+   reiki-oferta.js. Aqui o Mestre vê quem se inscreveu e acompanha os
+   pagamentos (sinal e prestações). */
+let __reikiReservas = [], __reikiWorkshopInsc = [], __reikiOferta = null;
+
+function reikiDigitosWa(tel){
+  const d = telefoneParaDigitos(tel || '');
+  return d && d.length === 9 ? '351' + d : d;
+}
+function reikiPrimeiroNome(n){ return String(n || '').trim().split(/\s+/)[0] || ''; }
+function reikiUrlPublica(pagina){ return window.location.href.replace(/[^/]*$/, '') + pagina; }
+function reikiDataCurta(ts){
+  const ms = ts?.toMillis?.() || (ts ? Date.parse(ts) : 0);
+  return ms ? new Date(ms).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }) : '';
+}
+
+window.reikiCopiarTexto = function(txt){
+  navigator.clipboard?.writeText(txt)
+    .then(() => toast('Copiado.'))
+    .catch(() => toast('Não consegui copiar. Seleciona e copia à mão.', true));
+};
+
+async function reikiRenderInscricoes(){
+  const alvo = document.getElementById('reikiConteudo');
+  if (!alvo) return;
+  if (tenantId !== 'hikari-terapias'){ alvo.innerHTML = ''; return; }
+  alvo.innerHTML = '<p class="muted">A carregar inscrições…</p>';
+  try { __reikiOferta = await import('./reiki-oferta.js'); }
+  catch(e){
+    alvo.innerHTML = '<div class="card"><strong>Não consegui abrir os dados da oferta.</strong><p class="muted" style="margin-top:6px;">' + escapeHtml(e.message || String(e)) + '</p></div>';
+    return;
+  }
+  const falhas = [];
+  const ler = async nome => {
+    try {
+      const snap = await getDocs(collection(db, 'tenants', tenantId, nome));
+      const l = []; snap.forEach(d => l.push({ id: d.id, ...d.data() })); return l;
+    } catch(e){ console.warn('Reiki: não consegui ler ' + nome, e); falhas.push(nome); return []; }
+  };
+  const [rs, ws] = await Promise.all([ler('reikiReservas'), ler('reikiWorkshop')]);
+  const ms = x => x.criadoEm?.toMillis?.() || 0;
+  __reikiReservas = rs.sort((a, b) => ms(b) - ms(a));
+  __reikiWorkshopInsc = ws.sort((a, b) => ms(b) - ms(a));
+  reikiDesenharInscricoes(falhas);
+}
+
+function reikiHtmlReserva(r){
+  const O = __reikiOferta;
+  const niv = O.nivelPorId(r.nivel);
+  const plano = O.planoPagamento(Number(r.preco) || 0, r.pagamento);
+  const pag = r.pag || {};
+  const pago = plano.reduce((t, x) => t + (pag[x.k] ? x.valor : 0), 0);
+  const falta = Math.max(0, Math.round(((Number(r.preco) || 0) - pago) * 100) / 100);
+  const dia = { seg: 'segunda', qua: 'quarta', qualquer: 'tanto faz', sab: 'sábado' }[r.diaPref] || '';
+  const limite = Date.parse(O.PRAZO_LANCAMENTO);
+  let selo = '';
+  if (r.lancamento){
+    const sinalEm = pag.sinal ? Date.parse(pag.sinal.em) : 0;
+    selo = pag.sinal
+      ? (sinalEm <= limite ? '<span class="muted">🎁 Promoção e manual em papel</span>' : '<span style="color:#9a5b3d;">⚠ Sinal depois do prazo: a promoção já não vale</span>')
+      : '<span class="muted">🎁 Promoção, se pagar o sinal até ao prazo</span>';
+  }
+  const primeiro = reikiPrimeiroNome(r.nome);
+  const dadosPag = [];
+  if (O.PAGAMENTO.mbway) dadosPag.push('MB Way: ' + O.PAGAMENTO.mbway);
+  if (O.PAGAMENTO.iban) dadosPag.push('IBAN: ' + O.PAGAMENTO.iban);
+  const msg = 'Olá ' + primeiro + '! Recebi a tua reserva da formação (' + (niv ? niv.nome : r.nivel) + '). Para garantir o lugar, o sinal é de ' + O.euros(O.SINAL)
+    + (r.lancamento ? ' até ' + O.PRAZO_TEXTO : '') + '. ' + (dadosPag.length ? dadosPag.join(' · ') : 'Diz-me se preferes MB Way ou transferência.');
+  const dig = reikiDigitosWa(r.telefone);
+  const wa = dig ? 'https://wa.me/' + encodeURIComponent(dig) + '?text=' + encodeURIComponent(msg) : '';
+  return `
+    <div class="appt-item" style="display:block;">
+      <strong>${escapeHtml(r.nome || '')}</strong> <span class="muted">· ${reikiDataCurta(r.criadoEm)}</span>
+      <div class="muted" style="margin-top:2px;">${escapeHtml(niv ? niv.nome : r.nivel)} · ${r.modalidade === 'presencial' ? 'Presencial' : 'Online'}${dia ? ' (' + dia + ')' : ''} · ${r.pagamento === 'faseado' ? 'Faseado' : 'Pagamento total'} · ${O.euros(r.preco)}</div>
+      <div class="muted">${escapeHtml(r.telefone || '')}${r.email ? ' · ' + escapeHtml(r.email) : ''}</div>
+      ${selo ? '<div style="margin-top:2px;">' + selo + '</div>' : ''}
+      ${r.morada ? '<div class="muted" style="margin-top:4px;">📦 ' + escapeHtml(r.morada) + '</div>' : ''}
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">
+        ${plano.map(x => `<div class="row" style="gap:8px;justify-content:flex-start;align-items:center;">
+          <button class="${pag[x.k] ? 'primary' : 'ghost'}" style="text-align:left;" onclick="reikiTogglePag('${r.id}','${x.k}')">${pag[x.k] ? '✅' : '⬜'} ${escapeHtml(x.rotulo)} · ${O.euros(x.valor)}</button>
+          ${pag[x.k] ? '<span class="muted">' + reikiDataCurta(pag[x.k].em) + '</span>' : ''}
+        </div>`).join('')}
+      </div>
+      <p class="muted" style="margin-top:6px;">${falta > 0 ? 'Em falta: <strong>' + O.euros(falta) + '</strong>' : '✅ Tudo pago'}</p>
+      <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:flex-start;">
+        ${wa ? `<a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="${wa}">💬 WhatsApp</a>` : ''}
+        ${r.alunoId ? '<span class="muted">Aluno criado ✓</span>' : `<button class="ghost" onclick="reikiReservaCriarAluno('${r.id}')">➕ Criar aluno</button>`}
+        <button class="ghost" onclick="reikiReservaEstado('${r.id}','${r.estado === 'arquivada' ? 'nova' : 'arquivada'}')">${r.estado === 'arquivada' ? '↩️ Reabrir' : '🗂 Arquivar'}</button>
+      </div>
+    </div>`;
+}
+
+function reikiDesenharInscricoes(falhas){
+  const alvo = document.getElementById('reikiConteudo');
+  const O = __reikiOferta;
+  if (!alvo || !O) return;
+  const ativas = __reikiReservas.filter(r => r.estado !== 'arquivada');
+  const arquivadas = __reikiReservas.filter(r => r.estado === 'arquivada');
+  let recebido = 0, emFalta = 0, sinais = 0;
+  __reikiReservas.forEach(r => {
+    const plano = O.planoPagamento(Number(r.preco) || 0, r.pagamento);
+    const pag = r.pag || {};
+    plano.forEach(x => { if (pag[x.k]) recebido += x.valor; });
+    if (pag.sinal) sinais++;
+    if (r.estado !== 'arquivada') plano.forEach(x => { if (!pag[x.k]) emFalta += x.valor; });
+  });
+  const linkWorkshop = reikiUrlPublica('reiki-workshop.html');
+  const linkFormacao = reikiUrlPublica('reiki-formacao.html');
+  const waLink = (url, txt) => 'https://wa.me/?text=' + encodeURIComponent(txt + '\n' + url);
+  const cartaoLink = (titulo, url, txt) => `
+    <div class="card" style="margin-bottom:10px;">
+      <strong>${titulo}</strong>
+      <input type="text" readonly value="${escapeHtml(url)}" onclick="this.select()" style="margin-top:8px;">
+      <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:flex-start;">
+        <button class="primary" data-t="${escapeHtml(url)}" onclick="reikiCopiarTexto(this.dataset.t)">📋 Copiar link</button>
+        <a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="${waLink(url, txt)}">💬 Enviar no WhatsApp</a>
+        <a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="${escapeHtml(url)}">👁 Ver página</a>
+      </div>
+    </div>`;
+  const msgGrupo = O.GRUPO_WHATSAPP ? '\nEntra no grupo "' + O.GRUPO_NOME + '": ' + O.GRUPO_WHATSAPP : '';
+  const linhasWs = __reikiWorkshopInsc.map(w => {
+    const dig = reikiDigitosWa(w.telefone);
+    const msg = 'Olá ' + reikiPrimeiroNome(w.nome) + '! Obrigado por te inscreveres no workshop gratuito de Reiki (23, 24 e 25 de outubro, às 21h00). O link da sala online envio-te aqui antes da primeira noite.' + msgGrupo;
+    return `<div class="appt-item" style="display:block;">
+      <strong>${escapeHtml(w.nome || '')}</strong> <span class="muted">· ${reikiDataCurta(w.criadoEm)}</span>
+      <div class="muted">${escapeHtml(w.telefone || '')}${w.email ? ' · ' + escapeHtml(w.email) : ''}</div>
+      ${dig ? `<a class="ghost" style="text-decoration:none;display:inline-block;margin-top:6px;" target="_blank" rel="noopener" href="https://wa.me/${encodeURIComponent(dig)}?text=${encodeURIComponent(msg)}">💬 WhatsApp</a>` : ''}
+    </div>`;
+  }).join('');
+  const listaContactos = __reikiWorkshopInsc.map(w => (w.nome || '') + ' · ' + (w.telefone || '')).join('\n');
+  alvo.innerHTML = `
+    ${falhas && falhas.length ? '<div class="card" style="border:1px solid #e0b4b4;background:#fdf3f3;"><strong>Não consegui ler: ' + escapeHtml(falhas.join(', ')) + '.</strong><p class="muted" style="margin-top:6px;">Se acabaste de publicar as regras, espera um minuto e carrega em Tentar outra vez.</p><button class="primary" style="margin-top:8px;" onclick="reikiRenderInscricoes()">Tentar outra vez</button></div>' : ''}
+    <div class="card" style="margin-bottom:10px;">
+      <strong>📣 Divulgação e reservas</strong>
+      <div class="row" style="gap:16px;margin-top:10px;flex-wrap:wrap;justify-content:flex-start;">
+        <div><div style="font-size:1.5rem;font-weight:700;">${__reikiWorkshopInsc.length}</div><div class="muted">no workshop</div></div>
+        <div><div style="font-size:1.5rem;font-weight:700;">${ativas.length}</div><div class="muted">reservas</div></div>
+        <div><div style="font-size:1.5rem;font-weight:700;">${sinais}</div><div class="muted">sinais pagos</div></div>
+        <div><div style="font-size:1.5rem;font-weight:700;">${O.euros(recebido)}</div><div class="muted">recebido</div></div>
+        <div><div style="font-size:1.5rem;font-weight:700;">${O.euros(emFalta)}</div><div class="muted">por receber</div></div>
+      </div>
+    </div>
+    ${cartaoLink('Workshop gratuito (3 noites)', linkWorkshop, 'Workshop gratuito de Reiki, 23, 24 e 25 de outubro às 21h00, online. Reserva o teu lugar:')}
+    ${cartaoLink('Formação e reservas', linkFormacao, 'Formação de Reiki da Hikari Fafe Escola de Reiki. Valores, turmas e reserva:')}
+    <h3 style="margin:18px 0 8px;">Reservas da formação</h3>
+    ${ativas.length ? ativas.map(reikiHtmlReserva).join('') : '<p class="muted">Ainda não há reservas.</p>'}
+    ${arquivadas.length ? '<details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--primary);font-weight:600;">Arquivadas (' + arquivadas.length + ')</summary>' + arquivadas.map(reikiHtmlReserva).join('') + '</details>' : ''}
+    <h3 style="margin:18px 0 8px;">Workshop gratuito (${__reikiWorkshopInsc.length})</h3>
+    ${__reikiWorkshopInsc.length ? `<button class="ghost" data-t="${escapeHtml(listaContactos)}" onclick="reikiCopiarTexto(this.dataset.t)" style="margin-bottom:8px;">📋 Copiar nomes e telemóveis</button>${linhasWs}` : '<p class="muted">Ainda não há inscrições.</p>'}
+    <p class="muted" style="margin-top:14px;font-size:.85rem;">Os valores, as datas e o prazo da promoção estão no ficheiro reiki-oferta.js.</p>`;
+}
+window.reikiRenderInscricoes = reikiRenderInscricoes;
+
+window.reikiTogglePag = async function(id, k){
+  const r = __reikiReservas.find(x => x.id === id);
+  if (!r) return;
+  const pag = { ...(r.pag || {}) };
+  if (pag[k]){
+    const sim = await reikiConfirmar('Desmarcar pagamento?', 'Vais marcar este pagamento como não recebido.', 'Desmarcar');
+    if (!sim) return;
+    delete pag[k];
+  } else {
+    pag[k] = { em: new Date().toISOString() };
+  }
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiReservas', id), { pag });
+    r.pag = pag;
+    toast(pag[k] ? 'Pagamento registado.' : 'Pagamento desmarcado.');
+    reikiDesenharInscricoes([]);
+  } catch(e){ toast('Não consegui gravar: ' + (e.message || e), true); }
+};
+
+window.reikiReservaEstado = async function(id, estado){
+  const r = __reikiReservas.find(x => x.id === id);
+  if (!r) return;
+  try {
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiReservas', id), { estado });
+    r.estado = estado;
+    reikiDesenharInscricoes([]);
+  } catch(e){ toast('Não consegui gravar: ' + (e.message || e), true); }
+};
+
+/* Cria o aluno a partir da reserva (ou liga-a a um aluno que já exista com o
+   mesmo telemóvel ou e-mail) e gera o código de acesso à Sala de Estudo. */
+window.reikiReservaCriarAluno = async function(id){
+  const r = __reikiReservas.find(x => x.id === id);
+  if (!r) return;
+  try {
+    const dig = r.telefone ? telefoneParaDigitos(r.telefone) : '';
+    const mail = String(r.email || '').trim().toLowerCase();
+    let a = __reikiAlunos.find(x =>
+      (dig && x.telefone && telefoneParaDigitos(x.telefone) === dig) ||
+      (mail && x.email && String(x.email).trim().toLowerCase() === mail)) || null;
+    const jaExistia = !!a;
+    if (!a){
+      const niv = __reikiOferta?.nivelPorId(r.nivel);
+      const dados = {
+        nome: String(r.nome || '').trim(), telefone: String(r.telefone || '').trim(), email: String(r.email || '').trim(),
+        turmaId: '', notas: 'Reserva: ' + (niv ? niv.nome : r.nivel) + ' · ' + (r.modalidade === 'presencial' ? 'presencial' : 'online'),
+        nivelAtual: null, historico: [], origem: 'reserva-formacao',
+        criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
+      };
+      const ref = await addDoc(collection(db, 'tenants', tenantId, 'reikiStudents'), dados);
+      a = { ...dados, id: ref.id, criadoEm: null, atualizadoEm: null };
+      __reikiAlunos.push(a);
+      __reikiAlunos.sort((x, y) => String(x.nome||'').localeCompare(String(y.nome||''), 'pt'));
+    }
+    await reikiGarantirCodigo(a);
+    await updateDoc(doc(db, 'tenants', tenantId, 'reikiReservas', id), { alunoId: a.id });
+    r.alunoId = a.id;
+    toast(jaExistia ? 'Já era aluno: reserva ligada.' : 'Aluno criado. Escolhe a turma em Alunos.');
+    reikiDesenharInscricoes([]);
+  } catch(e){ toast('Não consegui criar o aluno: ' + (e.message || e), true); }
+};
 
 /* ─── Confirmação própria ────────────────────────────────────────────
    O confirm() do browser é bloqueado em várias janelas embutidas (a que

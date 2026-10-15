@@ -248,6 +248,45 @@ service cloud.firestore {
         allow read, update, delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
+      // Workshop gratuito e reservas da formação: páginas públicas
+      // reiki-workshop.html e reiki-formacao.html. Exclusivo da conta
+      // hikari-terapias. Qualquer pessoa cria um registo; só a equipa lê,
+      // atualiza (pagamentos) ou apaga.
+      match /reikiWorkshop/{wId} {
+        allow create: if tenantId == 'hikari-terapias' && tenantIsActive(tenantId) &&
+          request.resource.data.keys().hasOnly(['nome','telefone','email','consentimento','criadoEm']) &&
+          request.resource.data.nome is string &&
+          request.resource.data.nome.size() >= 2 && request.resource.data.nome.size() <= 120 &&
+          request.resource.data.telefone is string &&
+          request.resource.data.telefone.size() >= 6 && request.resource.data.telefone.size() <= 30 &&
+          request.resource.data.email is string && request.resource.data.email.size() <= 120 &&
+          request.resource.data.consentimento == true &&
+          request.resource.data.criadoEm == request.time;
+        allow read, update, delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+      }
+
+      match /reikiReservas/{rId} {
+        allow create: if tenantId == 'hikari-terapias' && tenantIsActive(tenantId) &&
+          request.resource.data.keys().hasOnly(['nome','telefone','email','nivel','modalidade','diaPref','pagamento','preco','lancamento','morada','condicoes','estado','criadoEm']) &&
+          request.resource.data.nome is string &&
+          request.resource.data.nome.size() >= 2 && request.resource.data.nome.size() <= 120 &&
+          request.resource.data.telefone is string &&
+          request.resource.data.telefone.size() >= 6 && request.resource.data.telefone.size() <= 30 &&
+          request.resource.data.email is string && request.resource.data.email.size() <= 120 &&
+          request.resource.data.nivel in ['1','2','3A','3B','1+2'] &&
+          request.resource.data.modalidade in ['online','presencial'] &&
+          request.resource.data.diaPref in ['seg','qua','qualquer','sab'] &&
+          request.resource.data.pagamento in ['total','faseado'] &&
+          request.resource.data.preco is number &&
+          request.resource.data.preco >= 0 && request.resource.data.preco <= 1000 &&
+          request.resource.data.lancamento is bool &&
+          request.resource.data.morada is string && request.resource.data.morada.size() <= 300 &&
+          request.resource.data.condicoes == true &&
+          request.resource.data.estado == 'nova' &&
+          request.resource.data.criadoEm == request.time;
+        allow read, update, delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+      }
+
       match /reikiQuizzes/{testeId} {
         allow read: if true;
         allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);

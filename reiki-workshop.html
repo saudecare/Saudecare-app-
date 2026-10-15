@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workshop gratuito de Reiki · 3 noites — Hikari Fafe Escola de Reiki</title>
+<meta name="description" content="3 noites gratuitas de Reiki, online, a 23, 24 e 25 de outubro às 21h00. Sente o Reiki, descobre o teu chakra dominante e conhece o caminho da formação.">
+<link rel="stylesheet" href="reiki-publico.css">
+</head>
+<body>
+<div class="envolve">
+  <header class="topo">
+    <h1>HIKARI FAFE</h1>
+    <p>Escola de Reiki</p>
+  </header>
+
+  <div class="heroi">
+    <span class="selo">Gratuito · Online</span>
+    <h2>3 noites para conheceres o Reiki e a tua energia</h2>
+    <p>23, 24 e 25 de outubro, às 21h00. Não precisas de experiência nenhuma.</p>
+  </div>
+
+  <div class="cartao" id="noites"></div>
+
+  <div class="cartao" id="reserva"><span class="suave">A abrir…</span></div>
+
+  <div class="cartao">
+    <h3>Quem dá o workshop</h3>
+    <p class="suave" style="margin-top:6px;">Hikari Fafe, Mestre de Reiki. Começou a praticar aos 33 anos, num workshop em Guimarães, e hoje ensina Reiki na sua escola, com a esposa. Trabalha também com crianças, jovens e adolescentes.</p>
+  </div>
+
+  <p class="nota" id="aviso"></p>
+  <p class="nota"><a href="reiki-formacao.html">Ver a formação de Reiki Nível 1</a></p>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { TENANT_ESCOLA, WORKSHOP, GRUPO_WHATSAPP, GRUPO_NOME, AVISO_COMPLEMENTAR, icsWorkshop } from "./reiki-oferta.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const db = getFirestore(initializeApp(firebaseConfig));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+document.getElementById('aviso').textContent = AVISO_COMPLEMENTAR;
+
+document.getElementById('noites').innerHTML = '<h3>As 3 noites</h3><p class="suave">Cada noite começa às ' + esc(WORKSHOP.hora) + ' e termina às ' + esc(WORKSHOP.fim) + '.</p>'
+  + WORKSHOP.noites.map(n => {
+    const [d, m] = n.curto.split(' ')[1].split('/');
+    return '<div class="noite"><div class="data">' + esc(n.curto.split(' ')[0]) + '<b>' + esc(d) + '</b>' + (m === '10' ? 'out' : esc(m)) + '</div>'
+      + '<div><h4>' + esc(n.titulo) + '</h4><p>' + esc(n.texto) + '</p></div></div>';
+  }).join('');
+
+const alvo = document.getElementById('reserva');
+const chave = 'reikiWorkshop-2026';
+const jaInscrito = () => { try { return localStorage.getItem(chave) === '1'; } catch(_){ return false; } };
+const marcar = () => { try { localStorage.setItem(chave, '1'); } catch(_){} };
+
+function descarregarCalendario(){
+  const blob = new Blob([icsWorkshop()], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'workshop-reiki.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function mostrarObrigado(){
+  alvo.innerHTML = '<div class="ok"><div class="grande">✅</div><h3>Lugar guardado</h3>'
+    + '<p class="suave" style="margin-top:6px;">Obrigado! O link da sala online chega pelo WhatsApp, antes da primeira noite.</p></div>'
+    + (GRUPO_WHATSAPP ? '<a class="botao" target="_blank" rel="noopener" href="' + esc(GRUPO_WHATSAPP) + '">💬 Entrar no grupo ' + esc(GRUPO_NOME) + '</a>' : '')
+    + '<button class="enviar claro" id="cal" type="button">📅 Guardar as 3 noites no calendário</button>';
+  document.getElementById('cal').addEventListener('click', descarregarCalendario);
+}
+
+function mostrarForm(){
+  alvo.innerHTML = '<h3>Reserva o teu lugar (gratuito)</h3>'
+    + '<p class="suave">Escreve o teu nome e o teu telemóvel. É só isto.</p>'
+    + '<form id="form" autocomplete="on" novalidate>'
+    + '<label for="nome">Nome</label><input id="nome" type="text" autocomplete="name" maxlength="120">'
+    + '<label for="tel">Telemóvel (WhatsApp)</label><input id="tel" type="tel" autocomplete="tel" inputmode="tel" placeholder="912 345 678" maxlength="30">'
+    + '<label for="mail">E-mail <span class="suave" style="font-weight:400;">(opcional)</span></label><input id="mail" type="email" autocomplete="email" maxlength="120">'
+    + '<div class="armadilha" aria-hidden="true"><input id="site" type="text" tabindex="-1" autocomplete="off"></div>'
+    + '<label class="consent"><input id="ok" type="checkbox"><span>Autorizo a Hikari Fafe Escola de Reiki a guardar o meu nome e contacto e a falar comigo sobre o workshop e a formação.</span></label>'
+    + '<div id="erro" class="erro"></div>'
+    + '<button id="enviar" class="enviar" type="submit">Quero o meu lugar</button></form>';
+  const form = document.getElementById('form');
+  const erro = document.getElementById('erro');
+  const botao = document.getElementById('enviar');
+  form.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    erro.textContent = '';
+    const nome = document.getElementById('nome').value.trim().replace(/\s+/g, ' ');
+    const tel = document.getElementById('tel').value.trim();
+    const mail = document.getElementById('mail').value.trim();
+    const digitos = tel.replace(/\D/g, '');
+    if (document.getElementById('site').value){ marcar(); mostrarObrigado(); return; }
+    if (nome.length < 2){ erro.textContent = 'Escreve o teu nome.'; return; }
+    if (digitos.length < 9 || digitos.length > 15){ erro.textContent = 'Confirma o telemóvel: parece incompleto.'; return; }
+    if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)){ erro.textContent = 'O e-mail não parece certo. Podes deixá-lo em branco.'; return; }
+    if (!document.getElementById('ok').checked){ erro.textContent = 'Preciso da tua autorização para guardar os dados.'; return; }
+    botao.disabled = true; botao.textContent = 'A enviar…';
+    try {
+      await addDoc(collection(db, 'tenants', TENANT_ESCOLA, 'reikiWorkshop'), {
+        nome, telefone: tel, email: mail, consentimento: true, criadoEm: serverTimestamp()
+      });
+      marcar(); mostrarObrigado();
+    } catch(e){
+      console.warn('Workshop: falhou', e);
+      botao.disabled = false; botao.textContent = 'Quero o meu lugar';
+      erro.textContent = 'Não consegui enviar. Confirma a ligação e tenta outra vez.';
+    }
+  });
+}
+
+if (jaInscrito()) mostrarObrigado(); else mostrarForm();
+</script>
+</body>
+</html>
