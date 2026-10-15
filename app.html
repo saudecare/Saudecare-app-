@@ -351,7 +351,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-16-05';
+const APP_VERSION = '2026-10-16-06';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12430,7 +12430,33 @@ function reikiHtmlLinks(){
   return cartaoLink('Workshop gratuito (3 noites)', linkWorkshop, 'Workshop gratuito de Reiki, 23, 24 e 25 de outubro às 21h00, online. Reserva o teu lugar:')
     + cartaoLink('Formação e reservas', linkFormacao, 'Formação de Reiki da Hikari Fafe Escola de Reiki. Valores, turmas e reserva:')
     + (O.GRUPO_WHATSAPP ? cartaoLink('Grupo de WhatsApp: ' + escapeHtml(O.GRUPO_NOME), O.GRUPO_WHATSAPP, 'Entra no grupo ' + O.GRUPO_NOME + ':') : '')
+    + reikiTextosProntos(linkWorkshop, linkFormacao)
     + '<p class="muted" style="margin-top:6px;font-size:.85rem;">Os valores, as datas e o prazo da promoção estão no ficheiro reiki-oferta.js.</p>';
+}
+
+/* Textos prontos para divulgar: copiar e colar nas redes e no WhatsApp. */
+function reikiTextosProntos(lw, lf){
+  const O = __reikiOferta;
+  const grupo = O.GRUPO_WHATSAPP ? '\n\nGrupo de WhatsApp: ' + O.GRUPO_WHATSAPP : '';
+  const T = [
+    ['📸 Instagram / Facebook (convite)',
+      '✨ 3 noites GRATUITAS para conheceres o Reiki e a tua energia ✨\n\n📅 23, 24 e 25 de outubro, às 21h00\n💻 Online, no conforto de casa\n🌿 Sem experiência nenhuma\n\nNa 1.ª noite sentes o Reiki. Na 2.ª descobres o teu chakra dominante, o teu lado luz e o teu lado sombra. Na 3.ª conheces o caminho da formação.\n\nReserva o teu lugar (gratuito):\n' + lw + '\n\nHikari Fafe · Escola de Reiki Tradicional\n#reiki #reikiportugal #chakras #autoconhecimento #energia #fafe #workshopgratuito'],
+    ['💬 WhatsApp (mensagem para amigos e contactos)',
+      'Olá! 🌿 Vou dar um workshop gratuito de Reiki, online, nos dias 23, 24 e 25 de outubro às 21h00. São 3 noites para sentires o Reiki e descobrires o teu chakra dominante. Não precisas de experiência. Se quiseres vir, reserva aqui: ' + lw + ' Podes partilhar com quem achares que vai gostar 💛' + grupo],
+    ['⏰ Lembrete (enviar no dia 23, de manhã)',
+      'Bom dia! ✨ Hoje às 21h00 começa o nosso workshop gratuito de Reiki. Arranja um sítio calmo, uns auscultadores se puderes, água por perto e roupa confortável. O link da sala chega aqui no grupo antes das 21h00. Até logo! 🙏' + grupo],
+    ['🌸 Depois do workshop (formação com preço de lançamento)',
+      'Obrigado por teres estado comigo nestas 3 noites 🙏 Quem reservar a formação de Reiki Nível 1 até 27 de outubro paga o preço de lançamento e recebe o manual em papel (só pagas os portes). Valores, turmas e reserva: ' + lf]
+  ];
+  return '<h3 style="margin:18px 0 8px;">Textos prontos para divulgar</h3>' + T.map(([t, x]) => `
+    <div class="card" style="margin-bottom:10px;">
+      <strong>${t}</strong>
+      <div class="muted" style="white-space:pre-wrap;margin-top:8px;font-size:.88rem;">${escapeHtml(x)}</div>
+      <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:flex-start;">
+        <button class="primary" data-t="${escapeHtml(x)}" onclick="reikiCopiarTexto(this.dataset.t)">📋 Copiar texto</button>
+        <a class="ghost" style="text-decoration:none;" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(x)}">💬 WhatsApp</a>
+      </div>
+    </div>`).join('');
 }
 
 function reikiHtmlWorkshop(){
