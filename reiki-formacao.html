@@ -4,30 +4,29 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Formação de Reiki · Nível 1 — Hikari Fafe Escola de Reiki</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Formação de Reiki · online e presencial">
+<meta property="og:description" content="Aulas ao vivo, app de estudo, manuais e certificado. Preço de lançamento para quem reservar até 27 de outubro.">
+<meta property="og:image" content="https://vindora.pt/reiki-og-formacao.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2d1b4e">
 <meta name="description" content="Formação de Reiki Nível 1, online ou presencial, com app de estudo, manuais, vídeos narrados, prática de 21 dias e acompanhamento do Mestre.">
 <link rel="stylesheet" href="reiki-publico.css">
 </head>
 <body>
 <div class="envolve">
-  <header class="topo">
-    <h1>HIKARI FAFE</h1>
-    <p>Escola de Reiki</p>
-  </header>
+  <div id="heroi"></div>
 
-  <div class="heroi">
-    <span class="selo">Online · Presencial</span>
-    <h2>Formação de Reiki</h2>
-    <p>Aulas ao vivo uma vez por semana, à noite, com app de estudo e acompanhamento do Mestre.</p>
-  </div>
-
-  <div class="cartao">
+  <div class="cartao revela">
     <h3>Valores</h3>
     <p class="suave">O preço é o mesmo online e presencial.</p>
     <table class="precos" id="precos"></table>
     <div class="destaque" id="promo"></div>
   </div>
 
-  <div class="cartao">
+  <div class="cartao revela">
     <h3>O que recebes</h3>
     <ul class="lista">
       <li>Aulas ao vivo, uma vez por semana, à noite</li>
@@ -38,12 +37,12 @@
     </ul>
   </div>
 
-  <div class="cartao">
+  <div class="cartao revela">
     <h3>Turmas</h3>
     <ul class="lista" id="turmas"></ul>
   </div>
 
-  <div class="cartao">
+  <div class="cartao revela">
     <h3>Pagamento</h3>
     <ul class="lista">
       <li><b>Pagamento total:</b> sinal de 50€ na reserva e o restante até à 1.ª aula.</li>
@@ -53,7 +52,7 @@
     <div class="condicoes" id="condicoes"></div>
   </div>
 
-  <div class="cartao" id="reserva"><span class="suave">A abrir…</span></div>
+  <div class="cartao revela" id="reserva"><span class="suave">A abrir…</span></div>
 
   <p class="nota" id="aviso"></p>
   <p class="nota"><a href="reiki-workshop.html">Workshop gratuito de 3 noites</a></p>
@@ -63,6 +62,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { heroiHTML, revelar, ctaFixo, confete } from "./reiki-visual.js";
 import { TENANT_ESCOLA, NIVEIS, TURMAS, SINAL, PRAZO_TEXTO, CONDICOES, AVISO_COMPLEMENTAR, PAGAMENTO,
          nivelPorId, temPromo, precoDe, planoPagamento, euros, codigoReserva } from "./reiki-oferta.js";
 
@@ -80,6 +80,7 @@ const $ = id => document.getElementById(id);
 const agora = new Date();
 const promoAtiva = NIVEIS.some(n => temPromo(n, agora));
 
+$('heroi').innerHTML = heroiHTML({ selo: '🌸 Online · Presencial', titulo: 'Formação de Reiki', texto: 'Aulas ao vivo uma vez por semana, à noite, com app de estudo e acompanhamento do Mestre.', cta: { href: '#reserva', texto: 'Reservar o meu lugar' } });
 $('aviso').textContent = AVISO_COMPLEMENTAR;
 $('condicoes').innerHTML = '<b>Condições:</b> ' + esc(CONDICOES);
 
@@ -189,7 +190,7 @@ function mostrarForm(){
       await setDoc(ref, r);
       const codigo = codigoReserva(ref.id);
       try { localStorage.setItem(chave + '-cod', codigo); } catch(_){}
-      marcar(); mostrarObrigado(r, codigo);
+      marcar(); mostrarObrigado(r, codigo); confete();
     } catch(e){
       console.warn('Reserva: falhou', e);
       botao.disabled = false; botao.textContent = 'Reservar o meu lugar';
@@ -201,6 +202,7 @@ function mostrarForm(){
 let cod = ''; try { cod = localStorage.getItem(chave + '-cod') || ''; } catch(_){}
 if (jaReservou()) alvo.innerHTML = '<div class="ok"><div class="grande">✅</div><h3>Já recebi a tua reserva</h3><p class="suave" style="margin-top:6px;">Vou falar contigo por WhatsApp.' + (cod ? ' A tua referência de pagamento é <b>Reiki ' + esc(cod) + '</b>.' : '') + ' Se precisares de outra reserva, escreve-me.</p></div>';
 else mostrarForm();
+revelar(); ctaFixo('🌸 Reservar o meu lugar', 'reserva');
 </script>
 </body>
 </html>

@@ -4,25 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Workshop gratuito de Reiki · 3 noites — Hikari Fafe Escola de Reiki</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Workshop gratuito de Reiki · 3 noites online">
+<meta property="og:description" content="23, 24 e 25 de outubro às 21h00. Sente o Reiki, descobre o teu chakra dominante. Reserva o teu lugar, é gratuito.">
+<meta property="og:image" content="https://vindora.pt/reiki-og-workshop.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2d1b4e">
 <meta name="description" content="3 noites gratuitas de Reiki, online, a 23, 24 e 25 de outubro às 21h00. Sente o Reiki, descobre o teu chakra dominante e conhece o caminho da formação.">
 <link rel="stylesheet" href="reiki-publico.css">
 </head>
 <body>
 <div class="envolve">
-  <header class="topo">
-    <h1>HIKARI FAFE</h1>
-    <p>Escola de Reiki</p>
-  </header>
+  <div id="heroi"></div>
 
-  <div class="heroi">
-    <span class="selo">Gratuito · Online</span>
-    <h2>3 noites para conheceres o Reiki e a tua energia</h2>
-    <p>23, 24 e 25 de outubro, às 21h00. Não precisas de experiência nenhuma.</p>
-  </div>
+  <div class="cartao revela" id="chakrasCartao"><h3>Os 7 chakras: luz e sombra</h3><p class="suave">Todos temos um chakra que “fala mais alto”. Toca num círculo e espreita.</p><div id="chakrasBox"></div></div>
 
-  <div class="cartao" id="noites"></div>
+  <div class="cartao revela" id="noites"></div>
 
-  <div class="cartao" id="reserva"><span class="suave">A abrir…</span></div>
+  <div class="cartao revela" id="reserva"><span class="suave">A abrir…</span></div>
 
   <div class="cartao">
     <h3>Quem dá o workshop</h3>
@@ -37,6 +38,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { heroiHTML, contagem, chakrasHTML, ligarChakras, revelar, ctaFixo, confete } from "./reiki-visual.js";
 import { TENANT_ESCOLA, WORKSHOP, GRUPO_WHATSAPP, GRUPO_NOME, AVISO_COMPLEMENTAR, icsWorkshop } from "./reiki-oferta.js";
 
 const firebaseConfig = {
@@ -50,14 +52,18 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+document.getElementById('heroi').innerHTML = heroiHTML({ selo: '✨ Gratuito · Online', titulo: '3 noites para conheceres o Reiki e a tua energia', texto: '23, 24 e 25 de outubro, às 21h00. Não precisas de experiência nenhuma.', contagem: true, cta: { href: '#reserva', texto: 'Quero o meu lugar' } });
+contagem(WORKSHOP.noites[0].inicioUTC, 'A primeira noite começa em', 'O workshop já começou. Ainda podes entrar!');
+document.getElementById('chakrasBox').innerHTML = chakrasHTML(); ligarChakras();
 document.getElementById('aviso').textContent = AVISO_COMPLEMENTAR;
 
 document.getElementById('noites').innerHTML = '<h3>As 3 noites</h3><p class="suave">Cada noite começa às ' + esc(WORKSHOP.hora) + ' e termina às ' + esc(WORKSHOP.fim) + '.</p>'
-  + WORKSHOP.noites.map(n => {
+  + WORKSHOP.noites.map((n, i) => {
     const [d, m] = n.curto.split(' ')[1].split('/');
-    return '<div class="noite"><div class="data">' + esc(n.curto.split(' ')[0]) + '<b>' + esc(d) + '</b>' + (m === '10' ? 'out' : esc(m)) + '</div>'
-      + '<div><h4>' + esc(n.titulo) + '</h4><p>' + esc(n.texto) + '</p></div></div>';
-  }).join('');
+    return '<details class="noite2"' + (i === 0 ? ' open' : '') + '><summary><div class="data">' + esc(n.curto.split(' ')[0]) + '<b>' + esc(d) + '</b>' + (m === '10' ? 'out' : esc(m)) + '</div>'
+      + '<div><h4>Noite ' + n.n + ' · ' + esc(n.titulo) + '</h4></div><span class="mais">+</span></summary><p>' + esc(n.texto) + '</p></details>';
+  }).join('')
+  + '<div class="passos"><div><span class="ic">🌿</span>Sem experiência</div><div><span class="ic">💻</span>Online, do sofá</div><div><span class="ic">🎁</span>Gratuito</div></div>';
 
 const alvo = document.getElementById('reserva');
 const chave = 'reikiWorkshop-2026';
@@ -111,7 +117,7 @@ function mostrarForm(){
       await addDoc(collection(db, 'tenants', TENANT_ESCOLA, 'reikiWorkshop'), {
         nome, telefone: tel, email: mail, consentimento: true, criadoEm: serverTimestamp()
       });
-      marcar(); mostrarObrigado();
+      marcar(); mostrarObrigado(); confete();
     } catch(e){
       console.warn('Workshop: falhou', e);
       botao.disabled = false; botao.textContent = 'Quero o meu lugar';
@@ -121,6 +127,7 @@ function mostrarForm(){
 }
 
 if (jaInscrito()) mostrarObrigado(); else mostrarForm();
+revelar(); ctaFixo('✨ Reservar o meu lugar gratuito', 'reserva');
 </script>
 </body>
 </html>

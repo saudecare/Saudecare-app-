@@ -86,3 +86,58 @@ button.enviar:disabled{background:var(--linha);color:var(--suave);cursor:default
 .armadilha{position:absolute;left:-9999px;top:-9999px;height:0;overflow:hidden;}
 .escondido{display:none;}
 a{color:var(--destaque);}
+
+/* ===== Visual lúdico (workshop e formação) ===== */
+:root{--noite:#1f1236;--noite2:#3a2063;--ouro:#f0d878;}
+.heroi2{
+  position:relative;overflow:hidden;text-align:center;margin:0 -16px;padding:34px 20px 30px;color:#fff;
+  background:radial-gradient(circle at 50% 18%,#5a3a8f 0%,#2d1b4e 55%,#1a0f2e 100%);
+  border-radius:0 0 28px 28px;
+}
+.heroi2 .mandala{position:absolute;left:50%;top:-70px;width:520px;height:520px;margin-left:-260px;opacity:.28;animation:gira 90s linear infinite;pointer-events:none;}
+.heroi2 .logo{position:relative;width:132px;height:132px;margin:0 auto;border-radius:50%;box-shadow:0 0 0 3px rgba(240,216,120,.5),0 0 40px 8px rgba(240,216,120,.45);animation:respira 5s ease-in-out infinite;}
+.heroi2 .logo img{width:100%;height:100%;border-radius:50%;display:block;}
+.heroi2 .selo{position:relative;margin:18px 0 8px;color:var(--ouro);border-color:var(--ouro);background:rgba(255,255,255,.08);}
+.heroi2 h2{position:relative;font-family:Georgia,"Times New Roman",serif;font-size:1.65rem;line-height:1.22;margin:6px 0 8px;color:#fff;}
+.heroi2 p{position:relative;margin:0;color:#efe6d2;font-size:1rem;}
+.heroi2 .faisca{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--ouro);opacity:0;animation:pisca 4s ease-in-out infinite;}
+.contagem{position:relative;display:flex;gap:8px;justify-content:center;margin-top:20px;}
+.contagem div{min-width:58px;padding:8px 6px;border-radius:12px;background:rgba(255,255,255,.1);border:1px solid rgba(240,216,120,.4);}
+.contagem b{display:block;font-size:1.4rem;color:var(--ouro);font-variant-numeric:tabular-nums;}
+.contagem span{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:#efe6d2;}
+.contagem-tit{position:relative;margin-top:18px;font-size:.82rem;color:#efe6d2;}
+.cta-heroi{position:relative;display:inline-block;margin-top:18px;padding:13px 26px;border-radius:999px;background:var(--ouro);color:#2d1b4e;font-weight:700;text-decoration:none;box-shadow:0 6px 20px rgba(240,216,120,.35);animation:pulsa 2.4s ease-in-out infinite;}
+.chakras{display:flex;flex-direction:column;align-items:center;gap:10px;margin:14px 0 4px;}
+.chakras button{width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;color:#fff;font-size:1.1rem;box-shadow:0 0 14px var(--c);background:var(--c);transition:transform .2s;}
+.chakras button:hover,.chakras button.on{transform:scale(1.25);}
+.chakra-linha{display:flex;justify-content:center;gap:6px;margin:14px 0 4px;}
+.chakra-linha button{width:38px;height:38px;border-radius:50%;border:2px solid #fff;cursor:pointer;background:var(--c);box-shadow:0 0 12px var(--c);transition:transform .2s;}
+.chakra-linha button.on{transform:scale(1.25);}
+.chakra-info{margin-top:12px;padding:14px;border-radius:12px;background:#f4efe1;border-left:5px solid var(--c,#b8893b);font-size:.92rem;min-height:92px;}
+.chakra-info .luz{color:#5d7a4a;} .chakra-info .sombra{color:#6b4e8a;}
+.chakra-info small{display:block;margin-top:8px;color:var(--suave);}
+details.noite2{border:1px solid var(--linha);border-radius:14px;margin-top:10px;background:#fff;overflow:hidden;}
+details.noite2 summary{display:flex;gap:12px;align-items:center;padding:12px;cursor:pointer;list-style:none;}
+details.noite2 summary::-webkit-details-marker{display:none;}
+details.noite2 .data{flex:0 0 64px;text-align:center;border-radius:12px;padding:6px 4px;color:#fff;font-size:.78rem;line-height:1.25;background:linear-gradient(160deg,#6b4e8a,#3a2063);}
+details.noite2 .data b{display:block;font-size:1.3rem;color:var(--ouro);}
+details.noite2 h4{margin:0;font-size:.98rem;}
+details.noite2 .mais{margin-left:auto;color:var(--destaque);font-size:1.3rem;transition:transform .2s;}
+details.noite2[open] .mais{transform:rotate(45deg);}
+details.noite2 p{margin:0;padding:0 14px 14px;font-size:.9rem;color:var(--suave);}
+.passos{display:flex;gap:8px;margin-top:12px;}
+.passos div{flex:1;text-align:center;padding:12px 6px;border-radius:12px;background:#f4efe1;font-size:.8rem;}
+.passos .ic{font-size:1.6rem;display:block;}
+.revela{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease;}
+.revela.visivel{opacity:1;transform:none;}
+.cta-fixo{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(0deg,rgba(26,15,46,.97),rgba(26,15,46,.9));transform:translateY(110%);transition:transform .35s;}
+.cta-fixo.mostra{transform:none;}
+.cta-fixo a{display:block;max-width:528px;margin:0 auto;padding:13px;border-radius:999px;text-align:center;background:var(--ouro);color:#2d1b4e;font-weight:700;text-decoration:none;}
+.confete{position:fixed;top:-12px;width:9px;height:14px;z-index:50;pointer-events:none;animation:cai 2.6s linear forwards;}
+body.com-cta{padding-bottom:84px;}
+@keyframes gira{to{transform:rotate(360deg);}}
+@keyframes respira{50%{transform:scale(1.045);}}
+@keyframes pisca{0%,100%{opacity:0;transform:scale(.4);}50%{opacity:.95;transform:scale(1.3);}}
+@keyframes pulsa{50%{transform:scale(1.05);box-shadow:0 8px 28px rgba(240,216,120,.55);}}
+@keyframes cai{to{transform:translateY(105vh) rotate(720deg);opacity:.9;}}
+@media (prefers-reduced-motion:reduce){.heroi2 .mandala,.heroi2 .logo,.cta-heroi,.heroi2 .faisca{animation:none;}.revela{opacity:1;transform:none;transition:none;}.confete{display:none;}}
