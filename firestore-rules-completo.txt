@@ -284,6 +284,8 @@ service cloud.firestore {
           request.resource.data.condicoes == true &&
           request.resource.data.estado == 'nova' &&
           request.resource.data.criadoEm == request.time;
+        // O Mestre também cria reservas à mão (inscrições por WhatsApp, presenciais).
+        allow create: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
         allow read, update, delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 

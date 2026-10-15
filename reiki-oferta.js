@@ -64,22 +64,47 @@ export function precoDe(n, agora){ return temPromo(n, agora) ? n.lanc : n.preco;
 const arred = v => Math.round(v * 100) / 100;
 
 /* Pagamento total: sinal + restante até à 1.ª aula.
-   Faseado: sinal + duas prestações iguais (na 1.ª e na 3.ª aula). */
+   Faseado: sinal + duas prestações iguais (na 1.ª e na 3.ª aula).
+   Se o preço for menor que o sinal, o sinal passa a ser o preço todo. */
 export function planoPagamento(preco, modo){
-  const resto = arred(preco - SINAL);
+  const total = arred(Number(preco) || 0);
+  const sinal = Math.min(SINAL, total);
+  const resto = arred(total - sinal);
+  let partes;
   if (modo === 'faseado'){
     const a = arred(resto / 2);
-    return [
-      { k: 'sinal', rotulo: 'Sinal (na reserva)', valor: SINAL },
+    partes = [
+      { k: 'sinal', rotulo: 'Sinal (na reserva)', valor: sinal },
       { k: 'p2', rotulo: '2.ª prestação (na 1.ª aula)', valor: a },
       { k: 'p3', rotulo: '3.ª prestação (na 3.ª aula)', valor: arred(resto - a) }
     ];
+  } else {
+    partes = [
+      { k: 'sinal', rotulo: 'Sinal (na reserva)', valor: sinal },
+      { k: 'resto', rotulo: 'Restante (até à 1.ª aula)', valor: resto }
+    ];
   }
-  return [
-    { k: 'sinal', rotulo: 'Sinal (na reserva)', valor: SINAL },
-    { k: 'resto', rotulo: 'Restante (até à 1.ª aula)', valor: resto }
-  ];
+  return partes.filter(x => x.k === 'sinal' || x.valor > 0);
 }
+
+/* Datas de início das aulas (AAAA-MM-DD). Servem para calcular quando vence
+   cada prestação e quem está em atraso. Muda aqui se a data mudar.
+   Presencial vazio = ainda sem data (as prestações ficam "sem data"). */
+export const INICIO = { online: { seg: '2026-11-02', qua: '2026-11-04' }, presencial: '' };
+
+const somaDias = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+
+/* Quando vence cada parte do pagamento de uma reserva. */
+export function vencimentos(r){
+  const ini = r.modalidade === 'presencial' ? (INICIO.presencial || '') : (INICIO.online[r.diaPref === 'qua' ? 'qua' : 'seg'] || '');
+  return {
+    sinal: r.lancamento ? PRAZO_LANCAMENTO.slice(0, 10) : null,
+    resto: ini || null,
+    p2: ini || null,
+    p3: ini ? somaDias(ini, 14) : null
+  };
+}
+export { somaDias };
 
 export function euros(v){
   const n = Number(v) || 0;
