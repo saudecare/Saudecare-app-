@@ -63,6 +63,29 @@
   .spirit-icon{font-size:22px;}
   .spirit-label{color:#f0d878;font-size:11.5px;font-weight:700;text-align:center;line-height:1.2;}
   .spirit-tag{color:#c9b8e8;font-size:10px;}
+  .escola-hero{background:linear-gradient(150deg,#2d1b4e,#1a0f2e);color:#f6ecc9;border-radius:18px;padding:26px 20px;text-align:center;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(26,15,46,.28);}
+  .escola-hero::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 85% 0%,rgba(240,216,120,.22),transparent 55%);pointer-events:none;}
+  .escola-selo{display:inline-block;border:1px solid rgba(240,216,120,.6);color:#f0d878;border-radius:999px;padding:4px 14px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;position:relative;}
+  .escola-hero h2{font-family:var(--font-display);font-weight:600;font-size:26px;line-height:1.2;margin:12px 0 8px;color:#fff;position:relative;}
+  .escola-hero p{font-size:14.5px;opacity:.9;max-width:380px;margin:0 auto;position:relative;}
+  a.escola-workshop{display:block;text-decoration:none;margin-top:14px;border-radius:16px;padding:18px;background:linear-gradient(135deg,#f6e7b4,#f0d878);color:#2d1b4e;box-shadow:0 6px 18px rgba(179,137,63,.35);text-align:center;}
+  .escola-workshop .datas{font-weight:800;letter-spacing:.12em;font-size:13px;}
+  .escola-workshop b{display:block;font-family:var(--font-display);font-size:22px;margin:4px 0 2px;}
+  .escola-workshop .sub{font-size:13.5px;opacity:.85;}
+  .escola-btn{display:inline-block;margin-top:12px;background:#2d1b4e;color:#f0d878;font-weight:700;font-size:15px;padding:12px 26px;border-radius:999px;text-decoration:none;}
+  .escola-formacao{border:1px solid rgba(179,137,63,.35);}
+  .escola-formacao h3{font-family:var(--font-display);font-size:20px;color:var(--primary-dark);margin-bottom:2px;}
+  .escola-lista{margin-top:10px;}
+  .escola-lista .linha{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid rgba(0,0,0,.07);font-size:14px;}
+  .escola-lista .linha:first-child{border-top:0;}
+  .escola-lista .nota{display:block;color:var(--muted);font-size:12px;}
+  .escola-lista .antes{text-decoration:line-through;color:var(--muted);font-weight:400;margin-right:6px;}
+  .escola-lista .promo{color:var(--primary);}
+  .escola-lista .valor{font-weight:700;white-space:nowrap;}
+  .escola-aviso{margin-top:12px;background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:13px;color:#5a431a;}
+  .escola-pontos{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .escola-pontos span{background:#f2f6f4;color:var(--primary-dark);font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px;}
+  #escolaReikiSection{scroll-margin-top:60px;}
   .hidden{display:none !important;}
 </style>
 </head>
@@ -75,6 +98,7 @@
 <nav id="quickNav" class="quick-nav"></nav>
 
 <div class="wrap">
+  <section id="escolaReikiSection"></section>
   <section id="ofertasSection"></section>
   <section id="espiritualidadeSection"></section>
   <section id="partilhaSection"></section>
@@ -256,13 +280,53 @@ async function load(){
 
   renderServices(categoriesSnap, servicesSnap, tenantSlug);
   renderTeam(teamSnap);
-  renderTrainings(trainingsSnap, tenantSlug);
+  // A Escola de Reiki (conta hikari-terapias) tem a sua própria secção, em
+  // destaque, e substitui a lista antiga de formações.
+  if (tenantId === 'hikari-terapias') await renderEscolaReiki();
+  else renderTrainings(trainingsSnap, tenantSlug);
   renderTestimonials(testimonialsSnap);
   renderQuickNav();
 }
 
+async function renderEscolaReiki(){
+  const alvo = document.getElementById('escolaReikiSection');
+  if (!alvo) return;
+  let O;
+  try { O = await import('./reiki-oferta.js'); } catch(e){ console.warn('Escola de Reiki: não consegui abrir a oferta', e); return; }
+  const agora = new Date();
+  const linhas = O.NIVEIS.map(n => {
+    const promo = O.temPromo(n, agora);
+    return '<div class="linha"><span>' + escapeHtml(n.nome) + (n.nota ? '<span class="nota">' + escapeHtml(n.nota) + '</span>' : '')
+      + '</span><span class="valor">' + (promo ? '<span class="antes">' + O.euros(n.preco) + '</span><span class="promo">' + O.euros(n.lanc) + '</span>' : O.euros(n.preco)) + '</span></div>';
+  }).join('');
+  const aviso = O.NIVEIS.some(n => O.temPromo(n, agora))
+    ? '<div class="escola-aviso"><b>Preço de lançamento</b> até ' + escapeHtml(O.PRAZO_TEXTO) + ', com o <b>manual em papel oferecido</b> (só pagas os portes de envio, para Portugal).</div>' : '';
+  const noites = O.WORKSHOP.noites;
+  alvo.innerHTML = `
+    <div class="escola-hero">
+      <span class="escola-selo">Hikari Fafe · Escola de Reiki</span>
+      <h2>Aprende Reiki, ao teu ritmo</h2>
+      <p>Formação online e presencial, com aulas ao vivo, app de estudo e acompanhamento do Mestre.</p>
+    </div>
+    <a class="escola-workshop" href="reiki-workshop.html">
+      <div class="datas">${noites.map(n => n.curto.split(' ')[1].split('/')[0]).join(' · ')} OUTUBRO · ${escapeHtml(O.WORKSHOP.hora.toUpperCase())}</div>
+      <b>Workshop gratuito de Reiki</b>
+      <div class="sub">3 noites online para sentires o Reiki e descobrires o teu chakra dominante</div>
+      <span class="escola-btn">Reservar o meu lugar</span>
+    </a>
+    <div class="card escola-formacao" style="margin-top:14px;">
+      <h3>Formação de Reiki</h3>
+      <p class="muted">Online ou presencial, ao mesmo preço.</p>
+      <div class="escola-pontos"><span>Aulas ao vivo</span><span>App de estudo</span><span>Vídeos narrados</span><span>Certificado</span><span>Presencial: máx. ${O.TURMAS.presencial.vagas} lugares</span></div>
+      <div class="escola-lista">${linhas}</div>
+      ${aviso}
+      <div style="text-align:center;"><a class="escola-btn" style="margin-top:14px;" href="reiki-formacao.html">Ver turmas e reservar</a></div>
+    </div>`;
+}
+
 function renderQuickNav(){
   const secoes = [
+    { id:'escolaReikiSection', label:'Escola de Reiki', icon:'🌿' },
     { id:'ofertasSection', label:t('navLoja'), icon:'🛍️' },
     { id:'espiritualidadeSection', label:t('navEsp'), icon:'✨' },
     { id:'servicesSection', label:t('servicos'), icon:'🩺' },
