@@ -196,9 +196,17 @@ export function renderEstudio(main, ctx){
     const nomeF = (modo === 'v' ? x.id : 'meditacao_' + String(x.id)) + '_take' + nTakes + '.' + ext;
     if (nTakes === 1) $('ev-takes').innerHTML = '';
     const d = document.createElement('div'); d.className = 'evtake';
-    d.innerHTML = '<span></span><audio controls></audio><a class="evmain" download>Guardar</a>';
+    d.innerHTML = '<span></span><audio controls></audio><a class="evmain" download>Guardar</a><button type="button" data-a="partilhar" hidden>Partilhar</button>';
     d.querySelector('span').textContent = x.titulo + ' · take ' + nTakes; d.querySelector('audio').src = url;
-    const a = d.querySelector('a'); a.href = url; a.download = nomeF; $('ev-takes').prepend(d);
+    const a = d.querySelector('a'); a.href = url; a.download = nomeF; const ficheiro = new File([blob], nomeF, { type: tipo.split(';')[0] });
+    const pt = d.querySelector('[data-a=partilhar]');
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [ficheiro] })){
+        pt.hidden = false;
+        pt.onclick = async () => { try { await navigator.share({ files: [ficheiro], title: x.titulo }); } catch(e){ if (!e || e.name !== 'AbortError') ctx.toast('Não consegui abrir a partilha. Usa o botão Guardar.', true); } };
+      }
+    } catch(e){}
+    $('ev-takes').prepend(d);
   }
   function parar(fim){
     correr = false; cancelAnimationFrame(raf); clearInterval(tmr); $('ev-count').hidden = true; $('ev-lvl').style.width = '0';
