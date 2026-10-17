@@ -36,6 +36,7 @@ export function renderEstudio(main, ctx){
   main.innerHTML = `
   <style>
    .ev{--evbg:#0d0b1f;--evp:#171433;--evl:#2c2757;--evf:#f6eedd;--evm:#a9a3c7;--evg:#e8be64;background:var(--evbg);color:var(--evf);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:14px}
+   .ev [hidden]{display:none!important}
    .ev h2,.ev h3{margin:0;font-family:Georgia,serif;font-weight:600}
    .ev p{margin:0}.ev .evm{color:var(--evm);font-size:.9rem}
    .ev button{font:inherit;cursor:pointer;border-radius:999px;border:1px solid var(--evl);background:var(--evp);color:var(--evf);padding:10px 16px;min-height:44px}
@@ -65,7 +66,7 @@ export function renderEstudio(main, ctx){
   <div class="ev" id="ev-root">
    <div><h2 style="font-size:1.7rem;">🎙️ Estúdio de Voz</h2>
     <p class="evm">Lê o texto que vai passando e grava a tua voz. Escolhe um vídeo da semana ou uma meditação guiada. Exclusivo da Hikari Fafe.</p></div>
-   <div class="evrow"><button id="ev-tv" aria-pressed="true">Vídeos da semana</button><button id="ev-tm" aria-pressed="false">Meditações guiadas</button></div>
+   <div class="evrow"><button id="ev-tv" aria-pressed="true">Vídeos da semana</button><button id="ev-tm" aria-pressed="false">Meditações guiadas</button><button id="ev-tp" aria-pressed="false">Plano de publicações</button></div>
    <div class="evchips" id="ev-chips"></div>
    <div class="evstage" id="ev-stage">
     <div class="evphone" id="ev-phone" hidden><video id="ev-vid" playsinline muted></video></div>
@@ -93,7 +94,27 @@ export function renderEstudio(main, ctx){
     <p class="evm" style="margin:6px 0;">Sem número, a pausa é de 5 segundos. Uma linha em branco acrescenta mais 8 segundos de silêncio.</p>
     <div class="evrow"><button class="evmain" id="ev-save">Guardar</button><button id="ev-cancel">Cancelar</button></div>
    </div>
-   <div><h3 style="font-size:1.2rem;margin-bottom:8px;">As tuas gravações</h3>
+   <div id="ev-plan" hidden>
+    <div class="evread">
+     <div><h3 style="font-size:1.5rem;">Pedir um plano de publicações</h3>
+      <p class="evm">Escreve o tema e quantos dias queres. O pedido fica guardado aqui. O Claude vê-o quando lho enviares pelo chat e prepara os textos, vídeos e imagens de cada dia.</p></div>
+     <label class="evm" for="ev-ptema">Tema</label>
+     <input type="text" id="ev-ptema" placeholder="Ex.: workshop de Reiki, chakras, meditação para dormir">
+     <div class="evrow">
+      <div style="flex:1 1 120px"><label class="evm" for="ev-pdias">Quantos dias</label><input type="text" id="ev-pdias" inputmode="numeric" value="7"></div>
+      <div style="flex:2 1 200px"><label class="evm" for="ev-pvoz">Voz</label>
+       <select id="ev-pvoz" style="width:100%;box-sizing:border-box;background:var(--evbg);color:var(--evf);border:1px solid var(--evl);border-radius:10px;padding:10px;font:inherit;min-height:44px">
+        <option value="Decidir depois">Decidir depois</option><option value="Tugão (masculina, Portugal)">Tugão (masculina, Portugal)</option><option value="Dora (feminina)">Dora (feminina)</option><option value="Alex (masculina)">Alex (masculina)</option><option value="Santa (masculina, grave)">Santa (masculina, grave)</option><option value="A minha voz (gravada por mim)">A minha voz (gravada por mim)</option>
+       </select></div>
+     </div>
+     <label class="evm" for="ev-pnotas">Notas (opcional)</label>
+     <textarea id="ev-pnotas" rows="3" placeholder="Ex.: tom calmo, terminar sempre com o link do grupo, sem falar de preços"></textarea>
+     <div class="evrow"><button class="evmain" id="ev-ppedir">Guardar pedido</button></div>
+    </div>
+    <h3 style="font-size:1.2rem;margin:14px 0 8px;">Os teus pedidos</h3>
+    <div style="display:grid;gap:8px;" id="ev-plist"></div>
+   </div>
+   <div id="ev-takesbox"><h3 style="font-size:1.2rem;margin-bottom:8px;">As tuas gravações</h3>
     <div style="display:grid;gap:8px;" id="ev-takes"><span class="evm">Ainda não gravaste nada nesta sessão. Cada gravação fica no telemóvel quando carregares em Guardar; envia-a depois para montar o vídeo ou a meditação.</span></div></div>
   </div>`;
 
@@ -182,8 +203,51 @@ export function renderEstudio(main, ctx){
   $('ev-stop').onclick = () => parar(false);
   $('ev-vf').onchange = () => { const f = $('ev-vf').files[0]; if (!f) return; const u = URL.createObjectURL(f); urls.push(u); vid.src = u; temVid = true; desenhar(); };
   $('ev-mus').onclick = () => { const on = $('ev-mus').getAttribute('aria-pressed') !== 'true'; $('ev-mus').setAttribute('aria-pressed', on); $('ev-mus').textContent = 'Música do vídeo: ' + (on ? 'ligada' : 'desligada'); vid.muted = !on; };
-  function trocar(m){ if (correr) parar(false); modo = m; cur = 0; temVid = false; vid.removeAttribute('src'); $('ev-editor').hidden = true; $('ev-tv').setAttribute('aria-pressed', m === 'v'); $('ev-tm').setAttribute('aria-pressed', m === 'm'); desenhar(); }
-  $('ev-tv').onclick = () => trocar('v'); $('ev-tm').onclick = () => trocar('m');
+  function trocar(m){
+    if (correr) parar(false); modo = m; cur = 0; temVid = false; vid.removeAttribute('src'); $('ev-editor').hidden = true;
+    $('ev-tv').setAttribute('aria-pressed', m === 'v'); $('ev-tm').setAttribute('aria-pressed', m === 'm'); $('ev-tp').setAttribute('aria-pressed', m === 'p');
+    const plano = m === 'p';
+    $('ev-chips').hidden = plano; $('ev-stage').hidden = plano; $('ev-takesbox').hidden = plano; $('ev-plan').hidden = !plano;
+    if (plano) desenharPlano(); else desenhar();
+  }
+  $('ev-tv').onclick = () => trocar('v'); $('ev-tm').onclick = () => trocar('m'); $('ev-tp').onclick = () => trocar('p');
+
+  /* Plano de publicações: pedidos guardados no tenant (estudioPedidos) */
+  const ESTADOS = [['pendente', 'Pendente'], ['preparacao', 'Em preparação'], ['pronto', 'Pronto']];
+  function desenharPlano(){
+    const L = (ctx.getPedidos() || []).slice().sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm)));
+    const box = $('ev-plist');
+    if (!L.length){ box.innerHTML = '<span class="evm">Ainda não fizeste nenhum pedido.</span>'; return; }
+    box.innerHTML = '';
+    L.forEach(p => {
+      const d = document.createElement('div'); d.className = 'evtake'; d.style.display = 'grid'; d.style.gap = '8px';
+      const data = new Date(p.criadoEm).toLocaleDateString('pt-PT');
+      d.innerHTML = '<div><strong></strong><div class="evm"></div></div><div class="evrow"><select aria-label="Estado do pedido" style="background:var(--evbg);color:var(--evf);border:1px solid var(--evl);border-radius:10px;padding:8px;font:inherit;min-height:44px"></select><input type="text" placeholder="Link dos ficheiros (quando estiver pronto)" style="flex:1 1 200px;width:auto"><button data-a="copiar">Copiar pedido</button><button data-a="apagar">🗑️</button></div>';
+      d.querySelector('strong').textContent = p.tema + ' · ' + p.dias + ' dias';
+      d.querySelector('.evm').textContent = 'Pedido a ' + data + ' · Voz: ' + p.voz + (p.notas ? ' · ' + p.notas : '');
+      const sel = d.querySelector('select'); ESTADOS.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if (p.estado === v) o.selected = true; sel.appendChild(o); });
+      const lk = d.querySelector('input'); lk.value = p.link || '';
+      const guardar = async () => { const nova = (ctx.getPedidos() || []).map(x => x.id === p.id ? Object.assign({}, x, { estado: sel.value, link: /^https:\/\//i.test(lk.value.trim()) ? lk.value.trim() : '' }) : x); try { await ctx.savePedidos(nova); ctx.toast('Guardado.'); } catch(e){ ctx.toast('Não consegui guardar: ' + (e.message || e), true); } };
+      sel.onchange = guardar; lk.onchange = guardar;
+      d.querySelector('[data-a=copiar]').onclick = async () => {
+        const txt = 'Pedido de plano de publicações (Estúdio de Voz)\nTema: ' + p.tema + '\nDias: ' + p.dias + '\nVoz: ' + p.voz + (p.notas ? '\nNotas: ' + p.notas : '');
+        try { await navigator.clipboard.writeText(txt); ctx.toast('Copiado. Cola no chat com o Claude.'); } catch(e){ ctx.toast('Não consegui copiar. Seleciona o texto à mão.', true); }
+      };
+      d.querySelector('[data-a=apagar]').onclick = async () => {
+        if (!await ctx.confirmar('Apagar pedido', 'Apagar o pedido "' + p.tema + '"?')) return;
+        try { await ctx.savePedidos((ctx.getPedidos() || []).filter(x => x.id !== p.id)); desenharPlano(); } catch(e){ ctx.toast('Não consegui apagar: ' + (e.message || e), true); }
+      };
+      box.appendChild(d);
+    });
+  }
+  $('ev-ppedir').onclick = async () => {
+    const tema = $('ev-ptema').value.trim(); const dias = parseInt($('ev-pdias').value, 10);
+    if (!tema){ ctx.toast('Escreve o tema.', true); return; }
+    if (!(dias >= 1 && dias <= 60)){ ctx.toast('Indica entre 1 e 60 dias.', true); return; }
+    const pedido = { id: 'p' + Date.now().toString(36), tema, dias, voz: $('ev-pvoz').value, notas: $('ev-pnotas').value.trim(), criadoEm: new Date().toISOString(), estado: 'pendente', link: '' };
+    try { await ctx.savePedidos((ctx.getPedidos() || []).concat([pedido])); ctx.toast('Pedido guardado. Carrega em «Copiar pedido» e cola-o no chat.'); $('ev-ptema').value = ''; $('ev-pnotas').value = ''; desenharPlano(); }
+    catch(e){ ctx.toast('Não consegui guardar: ' + (e.message || e), true); }
+  };
 
   function abrirEditor(x){ editId = x ? x.id : null; $('ev-et').value = x ? x.titulo : ''; $('ev-ex').value = x ? (x.texto || paraTexto(x.linhas)) : ''; $('ev-editor').hidden = false; $('ev-et').focus(); }
   $('ev-new').onclick = () => abrirEditor(null);
