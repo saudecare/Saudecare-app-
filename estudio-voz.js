@@ -50,7 +50,9 @@ export function renderEstudio(main, ctx){
    .ev .evread{position:relative;background:var(--evp);border:1px solid var(--evl);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
    .ev .evscript{height:min(50vh,400px);overflow-y:auto;scroll-behavior:smooth;display:flex;flex-direction:column;gap:14px;padding:30px 4px;-webkit-mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent)}
    .ev .evln{font:500 1.4rem/1.35 Georgia,serif;color:#6d6a93;transition:color .4s,transform .4s;transform-origin:left}
-   .ev .evln.now{color:var(--evf);transform:scale(1.06)}.ev .evln.done{color:#55527a}
+   .ev .evw{display:inline}
+   .ev .evln.now{color:var(--evf);transform:scale(1.06)}
+   .ev .evln.now .evw{background-image:linear-gradient(90deg,var(--evg) var(--p,0%),var(--evf) calc(var(--p,0%) + 1%));-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}.ev .evln.done{color:#55527a}
    .ev .evbar{height:6px;border-radius:3px;background:var(--evl);overflow:hidden}.ev .evbar i{display:block;height:100%;width:0;background:var(--evg)}
    .ev .evlvl i{background:#7fd1a8;transition:width .08s}
    .ev .evcount{position:absolute;inset:0;display:grid;place-items:center;font:600 6rem Georgia,serif;color:var(--evg);background:rgba(13,11,31,.85);border-radius:16px}
@@ -141,13 +143,24 @@ export function renderEstudio(main, ctx){
     const sc = $('ev-script'); sc.innerHTML = '';
     if (modo === 'v'){ itens = x.cenas.filter(c => c.voz).map(c => ({ t: c.start + c.va, text: c.voz })); total = x.total; $('ev-s').textContent = x.sub; }
     else { let t = 1.5; itens = []; x.linhas.forEach(([text, p]) => { const d = palavras(text) / 2.0 + 0.6; itens.push({ t, text, pausa: p, dur: d }); t += d + p; }); total = t; $('ev-s').textContent = x.sub + ' · cerca de ' + Math.max(1, Math.round(total / 60)) + ' min'; }
-    itens.forEach(it => { const d = document.createElement('div'); d.className = 'evln'; d.textContent = it.text; it.el = d; sc.appendChild(d); });
+    itens.forEach((it, i) => {
+      const gap = (itens[i + 1] ? itens[i + 1].t : total) - it.t;
+      if (it.dur == null) it.dur = Math.min(Math.max(gap - 0.3, 1), Math.max(1.5, palavras(it.text) / 2.1));
+      const d = document.createElement('div'); d.className = 'evln';
+      const ws = it.text.split(/\s+/).filter(Boolean); const tot = ws.reduce((a, w) => a + w.length + 1, 0); let ac = 0; it.ws = [];
+      ws.forEach((w, j) => { const sp = document.createElement('span'); sp.className = 'evw'; sp.textContent = w; sp._a = ac / tot; ac += w.length + 1; sp._b = ac / tot; it.ws.push(sp); d.appendChild(sp); if (j < ws.length - 1) d.appendChild(document.createTextNode(' ')); });
+      it.el = d; sc.appendChild(d);
+    });
     sc.scrollTop = 0; $('ev-clock').textContent = '0:00 / ' + fmt(total);
   }
   const agora = () => (modo === 'v' && temVid) ? vid.currentTime : (performance.now() - t0) / 1000;
   function pintar(t){
     let k = -1; itens.forEach((it, i) => { if (it.t <= t + 0.2) k = i; });
     itens.forEach((it, i) => { it.el.className = 'evln' + (i === k ? ' now' : i < k ? ' done' : ''); });
+    if (k >= 0){
+      const it = itens[k], f = Math.min(1, Math.max(0, (t - it.t) / it.dur));
+      it.ws.forEach(sp => { sp.style.setProperty('--p', (Math.min(1, Math.max(0, (f - sp._a) / (sp._b - sp._a))) * 100).toFixed(1) + '%'); });
+    }
     if (k >= 0){ const el = itens[k].el, sc = $('ev-script'); sc.scrollTop = el.offsetTop - sc.clientHeight / 2 + el.clientHeight / 2; }
     if (modo === 'm'){ const it = itens[k]; let f = 0; if (it){ const fim = it.t + it.dur; f = t > fim ? Math.min(1, (t - fim) / it.pausa) : 0; } $('ev-pzi').style.width = (f * 100) + '%'; }
   }
