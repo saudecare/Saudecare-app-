@@ -351,7 +351,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-16-06';
+const APP_VERSION = '2026-10-17-01';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1755,7 +1755,8 @@ const NAV_GROUPS = {
     { view: 'cartomancia', icon: '🃏', label: 'Cartomancia', modulo: 'cartomancia' },
     { view: 'triagemBaixaVibracao', icon: '🎴', label: 'Triagem — Pêndulo Hebraico', modulo: 'triagemPendulo' },
     { view: 'reikiAlunos', icon: '🎓', label: 'Escola de Reiki', tenantOnly: 'hikari-terapias' },
-    { view: 'mesinhas', icon: '🌿', label: 'Ervas e Mesinhas Antigas', tenantOnly: 'hikari-terapias' }
+    { view: 'mesinhas', icon: '🌿', label: 'Ervas e Mesinhas Antigas', tenantOnly: 'hikari-terapias' },
+    { view: 'estudioVoz', icon: '🎙️', label: 'Estúdio de Voz', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1865,6 +1866,7 @@ function renderView(view, opts){
   else if (view === 'triagemBaixaVibracao') renderTriagemBaixaVibracao(main, opts);
   else if (view === 'reikiAlunos') renderReikiAlunos(main);
   else if (view === 'mesinhas') renderMesinhas(main);
+  else if (view === 'estudioVoz') renderEstudioVoz(main);
   else if (view === 'pesquisaEmocional') window.renderPesquisaEmocional?.(main);
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
@@ -18421,6 +18423,25 @@ window.mesApagar = async function(id){
     renderView('mesinhas');
   } catch(err){ toast('Não consegui apagar: ' + (err.message || err), true); }
 };
+
+/* Estúdio de Voz — exclusivo da conta hikari-terapias (texto a passar + gravação de voz + meditações guiadas). */
+async function renderEstudioVoz(main){
+  if (tenantId !== 'hikari-terapias'){
+    main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>';
+    return;
+  }
+  try {
+    const mod = await import('./estudio-voz.js?v=' + APP_VERSION);
+    mod.renderEstudio(main, {
+      tenantId,
+      getCustom: () => Array.isArray(currentTenantDoc?.estudioMeditacoes) ? currentTenantDoc.estudioMeditacoes : [],
+      save: async lista => { await updateDoc(doc(db, 'tenants', tenantId), { estudioMeditacoes: lista }); currentTenantDoc.estudioMeditacoes = lista; },
+      escapeHtml, toast, confirmar: reikiConfirmar
+    });
+  } catch(e){
+    main.innerHTML = '<div class="card"><h2>🎙️ Estúdio de Voz</h2><p class="muted">Não consegui abrir o estúdio: ' + escapeHtml(e.message || String(e)) + '</p><button class="primary" onclick="renderView(\'estudioVoz\')">Tentar outra vez</button></div>';
+  }
+}
 
 async function renderFarmacia(main){
   if (!currentTenantDoc?.knowledgeBaseDisclaimerAcceptedAt || currentTenantDoc?.knowledgeBaseDisclaimerVersion !== KB_DISCLAIMER_VERSION){
