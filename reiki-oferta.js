@@ -7,7 +7,7 @@ export const TENANT_ESCOLA = 'hikari-terapias';
 
 /* Link do grupo de WhatsApp do workshop (https://chat.whatsapp.com/…).
    Enquanto estiver vazio, o botão do grupo não aparece. */
-export const GRUPO_WHATSAPP = 'https://chat.whatsapp.com/EoLc2tBj63nGnnYTj8rAYs';
+export const GRUPO_WHATSAPP = 'https://chat.whatsapp.com/CaxqaKsYYbY1ggEcZQ0SNR';
 export const GRUPO_NOME = 'Workshop Reiki Hikari Fafe';
 
 /* Dados para o sinal. Enquanto estiverem vazios, a página diz que os dados
