@@ -78,14 +78,14 @@ export function renderEstudio(main, ctx){
      <div class="evbar" id="ev-pz" hidden><i id="ev-pzi"></i></div>
      <div class="evbar evlvl" aria-hidden="true"><i id="ev-lvl"></i></div>
      <div class="evrow">
-      <button class="evmain" id="ev-go">Gravar e ler</button><button id="ev-stop" disabled>Parar</button>
+      <button class="evmain" id="ev-go">Gravar e ler</button><button id="ev-ler">Só ler (sem gravar)</button><button id="ev-stop" disabled>Parar</button>
       <span class="evm" id="ev-clock" style="margin-left:auto;font-variant-numeric:tabular-nums;">0:00</span>
      </div>
      <div class="evm" id="ev-vrow">Vídeo (opcional, para veres as imagens): <input type="file" id="ev-vf" accept="video/*"> <button id="ev-mus" aria-pressed="false">Música do vídeo: desligada</button><br>Com a música ligada, usa auscultadores.</div>
      <div class="evrow" id="ev-medtools" hidden>
       <button id="ev-new">+ Nova meditação</button><button id="ev-edit" hidden>✏️ Editar</button><button id="ev-del" hidden>🗑️ Apagar</button>
      </div>
-     <div class="everr" id="ev-err" role="alert"></div>
+     <div class="everr" id="ev-err" role="alert" style="min-height:1.4em"></div>
      <div class="evcount" id="ev-count" hidden>3</div>
     </div>
    </div>
@@ -178,15 +178,18 @@ export function renderEstudio(main, ctx){
     actx = new (window.AudioContext || window.webkitAudioContext)(); ana = actx.createAnalyser(); ana.fftSize = 512; actx.createMediaStreamSource(stream).connect(ana);
   }
   function comecar(){
-    const tipos = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'];
-    const mt = tipos.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
-    pedacos = []; rec = new MediaRecorder(stream, mt ? { mimeType: mt } : {});
-    const nome = lista()[cur];
-    rec.ondataavailable = e => { if (e.data.size) pedacos.push(e.data); };
-    const tipo = mt;
-    rec.onstop = () => { guardarTake(rec.mimeType || tipo || 'audio/webm', nome); soltarMic(); };
-    rec.start(1000);
-    correr = true; $('ev-go').innerHTML = '<span class="evrec"></span>A gravar'; $('ev-go').disabled = true; $('ev-stop').disabled = false;
+    rec = null;
+    if (stream){
+      const tipos = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'];
+      const mt = tipos.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+      pedacos = []; rec = new MediaRecorder(stream, mt ? { mimeType: mt } : {});
+      const nome = lista()[cur];
+      rec.ondataavailable = e => { if (e.data.size) pedacos.push(e.data); };
+      const tipo = mt;
+      rec.onstop = () => { guardarTake(rec.mimeType || tipo || 'audio/webm', nome); soltarMic(); };
+      rec.start(1000);
+    }
+    correr = true; $('ev-go').innerHTML = stream ? '<span class="evrec"></span>A gravar' : 'A ler…'; $('ev-go').disabled = true; $('ev-ler').disabled = true; $('ev-stop').disabled = false;
     if (modo === 'v' && temVid){ vid.currentTime = 0; vid.muted = $('ev-mus').getAttribute('aria-pressed') !== 'true'; vid.play().catch(() => {}); }
     t0 = performance.now(); raf = requestAnimationFrame(tick);
   }
@@ -212,15 +215,34 @@ export function renderEstudio(main, ctx){
     correr = false; cancelAnimationFrame(raf); clearInterval(tmr); $('ev-count').hidden = true; $('ev-lvl').style.width = '0';
     if (rec && rec.state !== 'inactive') rec.stop(); else soltarMic();
     if (temVid) vid.pause();
-    $('ev-go').disabled = false; $('ev-go').textContent = fim ? 'Gravar outra vez' : 'Gravar e ler'; $('ev-stop').disabled = true;
+    $('ev-go').disabled = false; $('ev-ler').disabled = false; $('ev-go').textContent = fim ? 'Gravar outra vez' : 'Gravar e ler'; $('ev-stop').disabled = true;
     if (!fim){ itens.forEach(it => it.el.className = 'evln'); $('ev-script').scrollTop = 0; }
   }
-  $('ev-go').onclick = async () => {
-    $('ev-err').textContent = '';
-    try { await abrirMic(); } catch(e){ $('ev-err').textContent = 'Não consegui aceder ao microfone. Permite o microfone para este site nas definições do browser e tenta outra vez.'; return; }
-    let n = 3; $('ev-count').hidden = false; $('ev-count').textContent = n; $('ev-go').disabled = true;
+  function avisar(msg){ $('ev-err').textContent = msg; if (msg) ctx.toast(msg, true); }
+  function contagem(){
+    let n = 3; $('ev-count').hidden = false; $('ev-count').textContent = n; $('ev-go').disabled = true; $('ev-ler').disabled = true;
     tmr = setInterval(() => { n--; if (n <= 0){ clearInterval(tmr); $('ev-count').hidden = true; comecar(); } else $('ev-count').textContent = n; }, 1000);
+  }
+  $('ev-go').onclick = async () => {
+    avisar('');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
+      avisar('Este ecrã não permite gravar. Abre a Vindora no Chrome (vindora.pt) ou carrega em «Só ler» e grava com o gravador do telemóvel.'); return;
+    }
+    $('ev-go').disabled = true; $('ev-err').style.color = '#a9a3c7'; $('ev-err').textContent = 'A pedir o microfone… aceita a permissão quando o telemóvel perguntar.';
+    try {
+      await Promise.race([abrirMic(), new Promise((_, rej) => setTimeout(() => rej(new Error('tempo')), 12000))]);
+    } catch(e){
+      $('ev-go').disabled = false; $('ev-err').style.color = '';
+      soltarMic();
+      avisar(e && e.message === 'tempo'
+        ? 'O telemóvel não respondeu ao pedido do microfone. Abre a Vindora no Chrome, ou carrega em «Só ler» e grava com o gravador do telemóvel.'
+        : 'Não consegui aceder ao microfone. Permite o microfone para este site nas definições do browser, ou carrega em «Só ler».');
+      return;
+    }
+    $('ev-err').style.color = ''; $('ev-err').textContent = '';
+    contagem();
   };
+  $('ev-ler').onclick = () => { avisar(''); soltarMic(); contagem(); };
   $('ev-stop').onclick = () => parar(false);
   $('ev-vf').onchange = () => { const f = $('ev-vf').files[0]; if (!f) return; const u = URL.createObjectURL(f); urls.push(u); vid.src = u; temVid = true; desenhar(); };
   $('ev-mus').onclick = () => { const on = $('ev-mus').getAttribute('aria-pressed') !== 'true'; $('ev-mus').setAttribute('aria-pressed', on); $('ev-mus').textContent = 'Música do vídeo: ' + (on ? 'ligada' : 'desligada'); vid.muted = !on; };
