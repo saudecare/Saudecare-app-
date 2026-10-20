@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-20-31';
+const APP_VERSION = '2026-10-20-32';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1494,6 +1494,16 @@ onAuthStateChanged(auth, async (user) => {
   if (new URLSearchParams(window.location.search).get('pedido') === 'metodo' && tenantRole === 'owner' && tenantId !== 'hikari-terapias' && !window.temPesquisaEmocional?.()){
     window.history.replaceState({}, '', window.location.pathname);
     setTimeout(() => renderView('pedidoMetodo'), 400);
+  }
+  if (tenantId === 'hikari-terapias' && tenantRole === 'owner' && window.peChamar){
+    const verPedidos = async () => {
+      try {
+        const n = ((await window.peChamar('peTermoAdmin', { acao: 'listar' })).pedidos || []).filter(p => p.estado === 'pendente').length;
+        if (n > 0 && !window.__pePedAviso) { window.__pePedAviso = true; toast('📜 Tens ' + n + ' pedido(s) do método por aprovar. Abre Ferramentas → Pesquisa Emocional → Pedidos e termos.'); }
+        setNavBadge('pesquisaEmocional', n);
+      } catch (_) {}
+    };
+    setTimeout(verPedidos, 2500); setInterval(verPedidos, 300000);
   }
   const calendarParam = new URLSearchParams(window.location.search).get('calendarConnected');
   if (calendarParam === '1'){
