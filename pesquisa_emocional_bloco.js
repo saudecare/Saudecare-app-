@@ -450,7 +450,7 @@ async function renderPesquisaEmocional(main) {
             </div>
           </div>
           <div id="pe-fecho-final" style="display:none;"></div>
-          <div id="pe-mapa-rodape" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
+          <div id="pe-mapa-rodape" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:20px;border-top:1px solid #e2e8f0;position:sticky;bottom:0;z-index:20;background:white;box-shadow:0 -6px 12px rgba(15,23,42,.08);padding:12px 4px calc(12px + env(safe-area-inset-bottom));">
             <button onclick="window.peMostrarZonas()" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Zonas</button>
             <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Mapeamento</button>
             <button id="pe-btn-seguinte" onclick="window.peSeguinte()" style="background:#1e3a8a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Seguinte ➔</button>
@@ -1041,6 +1041,12 @@ function peCarregarQuadrante() {
   peState.catId='vital'; peRenderizarTabs(); peCarregarCategoria('vital');
 }
 
+function peRolarTopo() {
+  const t=document.getElementById('pe-mapa-titulo');
+  try { if (t&&t.scrollIntoView) t.scrollIntoView({block:'start'}); } catch(e){}
+  try { window.scrollTo(0,0); } catch(e){}
+}
+
 function peGuardarNotasLaterais() {
   const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
   if (qData && peState.catId==='lateral') qData.lateralNotes=document.getElementById('pe-lateral-notas')?.value||'';
@@ -1063,7 +1069,7 @@ function peSeguinte() {
   peGuardarNotasLaterais();
   const cats=qData.categories;
   const i=cats.findIndex(c=>c.id===peState.catId);
-  if (i<cats.length-1) { peCarregarCategoria(cats[i+1].id); window.scrollTo(0,0); return; }
+  if (i<cats.length-1) { peCarregarCategoria(cats[i+1].id); peRolarTopo(); return; }
   peMostrarZonas();
 }
 
@@ -1088,13 +1094,13 @@ function peMostrarZonas() {
     <button onclick="window.peIrPasso('2')" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Cancelar</button>
     <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Mapeamento${nVis?` (${nVis})`:''}</button>
   </div>`;
-  window.scrollTo(0,0);
+  peRolarTopo();
 }
 
 function peIniciarZona(i) {
   peState.qIdx=i;
   const fin=document.getElementById('pe-fecho-final'); if (fin) fin.style.display='none';
-  peCarregarQuadrante(); window.scrollTo(0,0);
+  peCarregarQuadrante(); peRolarTopo();
 }
 
 function peProximoQuadrante() { peSeguinte(); }
@@ -1131,12 +1137,12 @@ function peAbrirFecho() {
           <input type="text" id="pe-fz-tempo-${i}" value="${(d.epochTime||'').replace(/"/g,'&quot;')}" placeholder="Ex: Há 1 geração..." style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;"></div>
       </div></div>`;
   }).join('')+
-  `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
+  `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:20px;border-top:1px solid #e2e8f0;position:sticky;bottom:0;z-index:20;background:white;box-shadow:0 -6px 12px rgba(15,23,42,.08);padding:12px 4px calc(12px + env(safe-area-inset-bottom));">
     <button onclick="window.peVoltarAoMapa()" style="background:white;border:1px solid #e2e8f0;padding:12px 18px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Voltar ao Mapeamento</button>
     <button onclick="window.peConcluirFecho()" style="background:#1e3a8a;color:white;padding:12px 24px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Gravar e Avançar ➔</button>
   </div>`;
   peState.quadrants.forEach((q,i)=>peAtualizarEpocaZona(i));
-  window.scrollTo(0,0);
+  peRolarTopo();
 }
 
 function peAtualizarEpocaZona(i) {
