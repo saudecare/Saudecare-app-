@@ -132,6 +132,8 @@ exports.peAtivar = onCall(async (request) => {
   if (l.estado !== 'pendente') throw new HttpsError('permission-denied', 'Este link já foi usado ou está suspenso.');
   if (l.linkAte && l.linkAte.toMillis() < Date.now()) throw new HttpsError('permission-denied', 'Este link caducou. Pede um novo.');
   if (l.emailPrevisto && l.emailPrevisto !== String(email).toLowerCase()) throw new HttpsError('permission-denied', 'Este link é para outro email.');
+  // Nunca mexer numa conta que já pertence a uma clínica Vindora (perderia o acesso).
+  if (request.auth.token.tenantId) throw new HttpsError('failed-precondition', 'Este email já pertence a uma conta Vindora. Para o teste, usa outro email.');
   const expira = Timestamp.fromMillis(Date.now() + l.dias * DIA);
   await db.doc(`tenants/${idTenant(id)}`).set({
     name: l.nome, nome: l.nome, status: 'trial', plan: 'pe-teste', trialEndsAt: expira,

@@ -112,7 +112,7 @@ function ecraEntrada(msg) {
   if (esq) esq.onclick = async (ev) => { ev.preventDefault(); const e = document.getElementById('em').value.trim(); if (!e) { document.getElementById('erro').textContent = 'Escreve o teu email primeiro.'; return; } try { await sendPasswordResetEmail(auth, e); document.getElementById('erro').style.color = '#16a34a'; document.getElementById('erro').textContent = 'Enviámos um email para repores a palavra-passe.'; } catch (_) { document.getElementById('erro').textContent = 'Não consegui enviar o email.'; } };
 }
 const traduz = (e) => ({
-  'auth/email-already-in-use': 'Este email já tem conta. Toca em "Já tenho conta".', 'auth/invalid-email': 'Email inválido.',
+  'auth/email-already-in-use': 'Este email já existe (por exemplo, já usas a Vindora com ele). Para o teste, usa outro email, ou toca em "Já tenho conta" se o criaste aqui.', 'auth/invalid-email': 'Email inválido.',
   'auth/weak-password': 'A palavra-passe é fraca. Usa 8 ou mais caracteres.', 'auth/invalid-credential': 'Email ou palavra-passe errados.',
   'auth/wrong-password': 'Email ou palavra-passe errados.', 'auth/user-not-found': 'Email ou palavra-passe errados.', 'auth/too-many-requests': 'Demasiadas tentativas. Espera uns minutos.',
   'auth/user-disabled': 'O teu acesso foi removido.'
@@ -143,7 +143,11 @@ async function abrir() {
   const u = auth.currentUser; if (!u) { ecraEntrada(); return; }
   const tk = await u.getIdTokenResult(true);
   TENANT = tk.claims.tenantId || null;
-  if (!tk.claims.peLic || !TENANT) { await signOut(auth); ecraEntrada('Esta conta não tem acesso a este método.'); return; }
+  if (!tk.claims.peLic && !TENANT && temLink) {
+    try { await window.peChamar('peAtivar', { l: LID, t: LTOK }); history.replaceState(null, '', location.pathname); return abrir(); }
+    catch (e) { await signOut(auth); ecraEntrada(e.message); return; }
+  }
+  if (!tk.claims.peLic || !TENANT) { await signOut(auth); ecraEntrada(TENANT ? 'Este email já pertence a uma conta Vindora. Para o teste, cria a conta com outro email.' : 'Esta conta não tem acesso a este método.'); return; }
   let est;
   try { est = await window.peChamar('peEntrar', {}); }
   catch (e) { await signOut(auth); ecraEntrada(e.message || 'Sem acesso.'); return; }
