@@ -485,6 +485,17 @@ async function renderPesquisaEmocional(main) {
               ${['Desproteção','Desvalorização','Impotência','Sobrevivência','Perda'].map(e=>`
                 <div onclick="window.peEscolherEscudoFinal('${e}',this)" style="flex:1;min-width:100px;padding:10px;border:2px solid #e2e8f0;background:white;border-radius:8px;cursor:pointer;text-align:center;font-size:0.82rem;font-weight:600;color:#64748b;transition:.2s;">${e}</div>`).join('')}
             </div>
+            <div style="font-weight:700;color:#1e3a8a;margin:18px 0 10px;">Quando se deu (Origem e Tempo):</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div><label style="font-size:0.82rem;font-weight:700;color:#334155;display:block;margin-bottom:6px;">Origem do Gatilho:</label>
+                <select id="pe-final-epoca" onchange="window.peAtualizarEpocaFinal()" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;">
+                  <option value="Transgeracional">Antes da gravidez (Transgeracional / Herança)</option>
+                  <option value="Gestacional">Durante a gravidez (Gestação)</option>
+                  <option value="Pós-parto / Biográfico">Depois do parto (Biográfico)</option>
+                </select></div>
+              <div><label id="pe-final-lbl" style="font-size:0.82rem;font-weight:700;color:#334155;display:block;margin-bottom:6px;">Gerações:</label>
+                <input type="text" id="pe-final-tempo" placeholder="Ex: Há 1 geração..." style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+            </div>
           </div>
           <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:20px;">
             <label style="color:#b45309;font-size:1rem;font-weight:700;display:block;margin-bottom:8px;">Plano Terapêutico (Receita Visual):</label>
@@ -1607,6 +1618,18 @@ function peCalcEscudo() {
   el.textContent=`Escudo Predominante: [${peState.shieldCalc}] com ${max}/10`;
 }
 
+function peAtualizarEpocaFinal() {
+  const v=document.getElementById('pe-final-epoca')?.value;
+  const l=document.getElementById('pe-final-lbl'); if (!l) return;
+  l.textContent=v==='Transgeracional'?'Gerações:':v==='Gestacional'?'Mês da gravidez:':'Idade / Época:';
+  const t=document.getElementById('pe-final-tempo');
+  if (t) t.placeholder=v==='Transgeracional'?'Ex: Há 1 geração...':v==='Gestacional'?'Ex: 3.º mês de gestação':'Ex: Aos 7 anos';
+}
+
+function peLerEpocaFinal() {
+  return { epoca: document.getElementById('pe-final-epoca')?.value||'', tempo: (document.getElementById('pe-final-tempo')?.value||'').trim() };
+}
+
 function peEscolherEscudoFinal(shield,el) {
   peState.finalShield=shield;
   document.querySelectorAll('#pe-escudos-final div').forEach(b=>{ b.style.borderColor='#e2e8f0'; b.style.background='white'; b.style.color='#64748b'; });
@@ -1618,6 +1641,12 @@ function peEscolherEscudoFinal(shield,el) {
 function pePreencherReceita() {
   const fchoGeral=document.getElementById('pe-fecho-geral');
   if (fchoGeral) fchoGeral.style.display='block';
+  if (peState.path===2) {
+    const z=peState.quadrants.map(q=>peState.mappingData[q.val]).find(d=>d&&d.visitada&&(d.epochTime||d.epoch));
+    const se=document.getElementById('pe-final-epoca'), st=document.getElementById('pe-final-tempo');
+    if (z&&se&&!st.value) { se.value=z.epoch||'Transgeracional'; st.value=z.epochTime||''; }
+  }
+  peAtualizarEpocaFinal();
   if (peState.path===2) {
     peRenderEscudosMapa();
     const dominante = (peState.finalShield && !peState.finalShield.startsWith('Misto'))
@@ -1701,6 +1730,13 @@ function pePreencherReceita() {
 
 // ─── RELATÓRIO FINAL ──────────────────────────────────────────────
 
+function peLinhaEpoca() {
+  const e=peLerEpocaFinal();
+  if (!e.epoca) return '';
+  const nome={'Transgeracional':'Antes da gravidez (Transgeracional)','Gestacional':'Durante a gravidez (Gestação)','Pós-parto / Biográfico':'Depois do parto (Biográfico)'}[e.epoca]||e.epoca;
+  return `Origem do Gatilho: ${nome}${e.tempo?' — '+e.tempo:''}\n`;
+}
+
 async function peEmitirRelatorio() {
   const data=new Date().toLocaleDateString('pt-PT');
   const escudo=peState.finalShield!=='Não Especificado'?peState.finalShield:peState.shieldCalc;
@@ -1709,12 +1745,14 @@ async function peEmitirRelatorio() {
     relatorio+=`MÉTODO: AVALIAÇÃO DE PADRÕES CONSCIENTES\n${'-'.repeat(40)}\n`;
     [['desp','Desproteção'],['desv','Desvalorização'],['impo','Impotência'],['sobr','Sobrevivência'],['perd','Perda']].forEach(([k,n])=>{ const val=document.getElementById(`pe-sel-${k}`)?.value||'0'; relatorio+=`• ${n}: ${val}/10\n`; });
     relatorio+=`\nEscudo Predominante — [${peState.shieldCalc}]\nFecho Diagnóstico: ${escudo}\n`;
+    relatorio+=peLinhaEpoca();
     const notas=document.getElementById('pe-notas-path1')?.value?.trim();
     if (notas) relatorio+=`\nNotas Clínicas:\n${notas}\n`;
   } else if (peState.path===3) {
     relatorio+=`MÉTODO: ESTRESSORES ATIVOS E GATILHOS\n${'-'.repeat(40)}\n`;
     [['1','Convívio perturbador'],['2','Ação gatilho'],['3','Sintoma'],['4','Passado'],['5','Raiz']].forEach(([n,q])=>{ const val=document.getElementById(`pe-p3-${n}`)?.value?.trim()||''; if(val)relatorio+=`• ${q}: ${val}\n`; });
     relatorio+=`\nFecho Diagnóstico: ${escudo}\n`;
+    relatorio+=peLinhaEpoca();
   } else {
     relatorio+=`MÉTODO: MAPEAMENTO SUBCONSCIENTE VISUAL\n${'-'.repeat(40)}\n`;
     peState.quadrants.forEach(q=>{
@@ -1729,6 +1767,7 @@ async function peEmitirRelatorio() {
       if (!hasPoints) relatorio+=`  — Nenhum ponto de retenção assinalado.\n`;
       relatorio+=`\nFECHO DESTE EIXO:\n  • Defesa: ${qData.shield}\n  • Gatilho Temporal: ${qData.epoch} (${qData.epochTime||'Sem data'})\n`;
     });
+    relatorio+=`\nFECHO FINAL:\n  • Escudo Dominante: ${escudo}\n  • ${peLinhaEpoca().trim()}\n`;
   }
   relatorio+=`\n${'='.repeat(60)}`;
   const receita=document.getElementById('pe-receita')?.value||'';
@@ -2176,6 +2215,7 @@ window.peToggleQuadrante       = peToggleQuadrante;
 window.peIniciarVia            = peIniciarVia;
 window.peProximoQuadrante      = peProximoQuadrante;
 window.peSeguinte = peSeguinte;
+window.peAtualizarEpocaFinal = peAtualizarEpocaFinal;
 window.peCancelarMapeamento = peCancelarMapeamento;
 window.peMostrarZonas = peMostrarZonas;
 window.peIniciarZona = peIniciarZona;
