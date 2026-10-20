@@ -1,0 +1,80 @@
+# Publica as regras do Storage (tudo fechado) sempre que o ficheiro
+# storage.rules muda na branch main (ou à mão, no separador Actions).
+name: Publicar regras do Storage
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'storage.rules'
+  workflow_dispatch:
+
+concurrency:
+  group: publicar-regras-storage
+  cancel-in-progress: false
+
+jobs:
+  regras:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar que a chave existe
+        env:
+          CHAVE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$CHAVE" ]; then
+            echo "::error::Falta o segredo FIREBASE_SERVICE_ACCOUNT (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+      - name: Preparar ficheiros do Firebase
+        env:
+          CHAVE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          cat > firebase.json <<'JSON'
+          { "storage": { "rules": "storage.rules" } }
+          JSON
+          printf '%s' "$CHAVE" > "$RUNNER_TEMP/sa.json"
+
+      - name: Diagnóstico e arranjo da chave (não mostra segredos)
+        id: chave
+        run: |
+          python3 - <<'PY'
+          import json, os
+          f = os.environ['RUNNER_TEMP'] + '/sa.json'
+          raw = open(f, encoding='utf-8', errors='replace').read().strip()
+          info = "tamanho=%d primeiro=%r ultimo=%r" % (len(raw), raw[:1], raw[-1:])
+          d = None
+          for tentativa, txt in (("normal", raw), ("tolerante", raw)):
+              try:
+                  d = json.loads(txt, strict=(tentativa == "normal"))
+                  print("::notice::Chave lida (%s). %s type=%s project_id=%s client_email=%s tem_private_key=%s" % (tentativa, info, d.get('type'), d.get('project_id'), d.get('client_email'), bool(d.get('private_key'))))
+                  break
+              except Exception as e:
+                  print("::warning::Falhou leitura %s: %s | %s" % (tentativa, e, info))
+          if d:
+              json.dump(d, open(f, 'w'))
+              open(os.environ['GITHUB_OUTPUT'], 'a').write('valida=sim\n')
+          else:
+              print("::warning::A chave guardada no GitHub não é um JSON válido, por isso as regras NÃO foram publicadas por aqui. %s" % info)
+              open(os.environ['GITHUB_OUTPUT'], 'a').write('valida=nao\n')
+          PY
+
+      - name: Publicar regras do Storage
+        if: steps.chave.outputs.valida == 'sim'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          set +e
+          npx --yes firebase-tools@latest deploy --only storage --project saudecare-app --non-interactive > deploy.log 2>&1
+          code=$?
+          cat deploy.log
+          if [ $code -ne 0 ]; then
+            echo "::error::$(grep -iE 'error|permission|denied|403|404|not found' deploy.log | head -6 | tr '\n' ' ' | cut -c1-900)"
+            exit $code
+          fi
+
+      - name: Apagar a chave do servidor temporário
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

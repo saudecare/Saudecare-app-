@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-20-42';
+const APP_VERSION = '2026-10-20-43';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -587,21 +587,82 @@ function obterSomCtx(){
 ['pointerdown','touchstart','keydown'].forEach(ev =>
   window.addEventListener(ev, () => obterSomCtx(), { once: true, passive: true }));
 
+// Um "TOK" seco e bem audível (duas pancadas). O contexto de áudio é mantido
+// vivo com um sinal inaudível, para o som poder tocar com a app em segundo plano.
+let __somViva = false;
+function manterSomVivo(){
+  if (__somViva) return;
+  const ctx = obterSomCtx(); if (!ctx) return;
+  try {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    g.gain.value = 0.00001; o.frequency.value = 30;
+    o.connect(g); g.connect(ctx.destination); o.start();
+    __somViva = true;
+  } catch(e){}
+}
+['click','touchend','keydown'].forEach(ev => window.addEventListener(ev, manterSomVivo, { passive: true }));
+document.addEventListener('visibilitychange', () => { if (!document.hidden){ obterSomCtx(); document.title = __tituloBase || document.title; } });
+let __tituloBase = null;
+
+function tocarTok(ctx, quando){
+  const t0 = ctx.currentTime + quando;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(900, t0);
+  o.frequency.exponentialRampToValueAtTime(180, t0 + 0.14);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(1.0, t0 + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
+  o.connect(g); g.connect(ctx.destination);
+  o.start(t0); o.stop(t0 + 0.25);
+  // estalido curto no início, para soar a "tok" e não a bip
+  const n = ctx.createBufferSource(), ng = ctx.createGain();
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.03), ctx.sampleRate);
+  const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  n.buffer = buf; ng.gain.value = 0.5; n.connect(ng); ng.connect(ctx.destination); n.start(t0);
+}
+
 function playNotifSound(){
   if (localStorage.getItem('vindoraNotifSound') === 'off') return;
-  try { if (navigator.vibrate) navigator.vibrate([120, 60, 120]); } catch(e){}
+  try { if (navigator.vibrate) navigator.vibrate([200, 80, 200, 80, 200]); } catch(e){}
   try{
     const ctx = obterSomCtx();
     if (!ctx) return;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-    osc.start(); osc.stop(ctx.currentTime + 0.35);
+    tocarTok(ctx, 0); tocarTok(ctx, 0.28);
   }catch(e){ /* som é só um extra, nunca deve travar nada */ }
+  avisoDoSistema();
 }
+
+// Aviso do sistema (com som e vibração do telemóvel) quando a app está em segundo plano.
+async function avisoDoSistema(){
+  try{
+    if (!document.hidden) return;
+    if (__tituloBase === null) __tituloBase = document.title;
+    document.title = '🔔 Novo aviso — ' + __tituloBase;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const opcoes = { body: 'Tem algo novo na Vindora. Toque para abrir.', tag: 'vindora-aviso', renotify: true, vibrate: [200, 80, 200, 80, 200], icon: 'sala-icon-192.png' };
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration('./');
+    if (reg && reg.showNotification) await reg.showNotification('Vindora', opcoes);
+    else new Notification('Vindora', opcoes);
+  }catch(e){}
+}
+// Pede licença para avisos do sistema (uma vez, ao primeiro toque depois de entrar) e regista o serviço que os mostra.
+window.ativarAvisosSistema = async function(){
+  try{
+    if ('serviceWorker' in navigator) await navigator.serviceWorker.register('./vindora-sw.js', { scope: './' });
+    if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission();
+  }catch(e){}
+};
+(function(){
+  const uma = () => {
+    window.removeEventListener('click', uma, true);
+    if (!document.getElementById('app') || document.getElementById('app').classList.contains('hidden')) { window.addEventListener('click', uma, true); return; }
+    if (localStorage.getItem('vindoraAvisosPedidos')) { window.ativarAvisosSistema(); return; }
+    try { localStorage.setItem('vindoraAvisosPedidos', '1'); } catch(e){}
+    window.ativarAvisosSistema();
+  };
+  window.addEventListener('click', uma, true);
+})();
 
 let __lockHiddenAt = null;
 function showLockScreen(){
@@ -1503,7 +1564,7 @@ onAuthStateChanged(auth, async (user) => {
         setNavBadge('pesquisaEmocional', n);
       } catch (_) {}
     };
-    setTimeout(verPedidos, 2500); setInterval(verPedidos, 300000);
+    setTimeout(verPedidos, 2500); setInterval(verPedidos, 60000);
   }
   const calendarParam = new URLSearchParams(window.location.search).get('calendarConnected');
   if (calendarParam === '1'){
@@ -10217,11 +10278,11 @@ window.submitSupportRequest = async function(){
   });
   // Aviso extra por email para a Vindora — falha silenciosa se não
   // resultar, porque o pedido já ficou gravado e visível no painel.
-  fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/sendSupportEmail', {
+  currentUser.getIdToken().then(tok => fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/sendSupportEmail', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
     body: JSON.stringify({ type, message, businessName, ownerEmail, tenantId })
-  }).catch(()=>{});
+  })).catch(()=>{});
   toast('Enviado. A administração vai receber isto o mais rápido possível.');
   renderView('home');
 };

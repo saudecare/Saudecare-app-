@@ -313,8 +313,14 @@ service cloud.firestore {
       match /reikiThreads/{codigo} {
         allow get: if true;
         allow list: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
-        allow create, update: if !('foto' in request.resource.data) ||
-                        (request.resource.data.foto is string && request.resource.data.foto.size() < 60000);
+        // A equipa escreve à vontade; o aluno (sem login) só mexe na sua própria conversa:
+        // o campo codigo tem de ser o mesmo do documento, e o nome e a foto têm limites.
+        allow create, update: if (isEquipaClinica(tenantId) && tenantIsActive(tenantId)) ||
+                        (request.resource.data.codigo == codigo &&
+                         (!('alunoNome' in request.resource.data) ||
+                           (request.resource.data.alunoNome is string && request.resource.data.alunoNome.size() < 120)) &&
+                         (!('foto' in request.resource.data) ||
+                           (request.resource.data.foto is string && request.resource.data.foto.size() < 60000)));
         // Só a equipa apaga a conversa (antes qualquer pessoa com o código podia apagá-la).
         allow delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
 

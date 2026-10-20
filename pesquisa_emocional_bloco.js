@@ -127,13 +127,13 @@ const PE_INFERIOR_SVG = `<g stroke-linejoin="round" stroke-linecap="round">
 <text x="100" y="25" text-anchor="middle" font-size="7" font-weight="700" fill="white">CINTA</text>`;
 
 const PE_MEDOS = [
-  {name:"Bloco 1 — Medo da Pobreza",q:["Passei por muitas situações difíceis relacionadas ao dinheiro","A minha relação com o meu pai foi bastante conturbada","Presenciei escassez de alimento em casa","Preocupo-me e acredito que o meu futuro não será promissor"]},
-  {name:"Bloco 2 — Medo da Doença",q:["Não me sinto confortável quando sei que tenho que ir ao médico","Sempre que sinto algo diferente no meu corpo vou pesquisar","Sofro só de pensar em ter uma doença","Já perdi pessoas que eu amava por doença"]},
-  {name:"Bloco 3 — Medo da Crítica",q:["Preocupo-me com o que pensam sobre mim","Não gosto de como sou fisicamente","Sinto dificuldades em expressar a minha opinião","Sou extremamente insegura"]},
-  {name:"Bloco 4 — Medo da Morte",q:["Não lido bem com cerimónias fúnebres","Fico preocupada em perder pessoas que amo","Estou sempre a pensar no dia de amanhã","Situações de perigo assustam-me"]},
-  {name:"Bloco 5 — Medo de Relacionamento",q:["Sou insegura e ciumenta","Tenho necessidade de agradar a quem amo","Sofro de um vazio interior constante","Tenho dificuldade em acreditar nos outros"]},
-  {name:"Bloco 6 — Medo de Envelhecer",q:["Sinto-me cansada constantemente","Não vejo graça na vida","Faço tudo para estar bem na minha velhice","Sinto-me incompreendida"]},
-  {name:"Bloco 7 — Medo de Perder a Liberdade",q:["Tenho tendência a ficar entediada com rotinas","Não consigo estar muito tempo com a mesma pessoa","Não gosto de me sentir pressionada","Não aceito bem ordens"]}
+  {name:"Bloco 1 — Medo da Pobreza",q:["Já vivi períodos de grande aperto financeiro","A relação com o meu pai foi difícil","Em casa, houve alturas em que faltou comida","Receio que o meu futuro seja complicado"]},
+  {name:"Bloco 2 — Medo da Doença",q:["Sinto desconforto só de pensar em ir ao médico","Quando noto algo diferente no corpo, vou logo pesquisar","Ter uma doença é algo que me angustia","Perdi pessoas queridas por causa de doença"]},
+  {name:"Bloco 3 — Medo da Crítica",q:["Importa-me muito o que os outros pensam de mim","Não me sinto bem com o meu aspeto","Custa-me dizer o que penso","Sinto-me muito inseguro/a"]},
+  {name:"Bloco 4 — Medo da Morte",q:["Funerais e despedidas são difíceis para mim","Receio perder as pessoas que amo","A minha cabeça está muitas vezes no futuro","Situações de perigo deixam-me assustado/a"]},
+  {name:"Bloco 5 — Medo de Relacionamento",q:["Sou ciumento/a e inseguro/a nas relações","Esforço-me por agradar a quem amo","Sinto muitas vezes um vazio dentro de mim","É difícil confiar nas outras pessoas"]},
+  {name:"Bloco 6 — Medo de Envelhecer",q:["Sinto cansaço quase todos os dias","A vida parece-me ter perdido a cor","Preocupo-me muito em estar bem quando for mais velho/a","Sinto que ninguém me compreende"]},
+  {name:"Bloco 7 — Medo de Perder a Liberdade",q:["A rotina aborrece-me depressa","Custa-me ficar muito tempo com a mesma pessoa","Sinto-me mal quando me pressionam","Reajo mal quando me dão ordens"]}
 ];
 
 const PE_FICHAS = {
@@ -144,11 +144,11 @@ const PE_FICHAS = {
 };
 
 const PE_ESCUDOS_AFINIDADES = {
-  "Desproteção": { libera:"injustiça; insegurança; acusação; dúvida", afi:"«Eu comando que todas as experiências de desproteção sejam transformadas em força interior e segurança. Eu comando que a minha sensação de proteção e bem-estar sejam restauradas e reforçadas.»" },
-  "Desvalorização": { libera:"inferioridade; baixa estima; incompreensão; insegurança; rejeição", afi:"«Eu comando que todas as experiências de desvalorização sejam transformadas em força e confiança. Eu comando que a minha autoestima seja restaurada e reforçada.»" },
-  "Impotência": { libera:"incapacidade; medo; insegurança; paralisia; pressão", afi:"«Eu comando que todas as experiências de impotência e incapacidade sejam liberadas gentilmente agora. Eu comando que o meu ser seja preenchido com poder, confiança e autossuficiência.»" },
-  "Sobrevivência": { libera:"escassez; sufoco; indignação; pressão", afi:"«Eu comando que todas as experiências de insegurança e medo pela minha sobrevivência sejam transformadas em força e resiliência. Eu comando que a minha sensação de segurança e sustento sejam restauradas e reforçadas.»" },
-  "Perda": { libera:"falta; separação; abandono; insegurança; rejeição; medo; incertezas", afi:"«Eu comando que toda a dor, tristeza e sensação de perda sejam liberadas gentilmente agora. Eu comando que todo o meu ser seja preenchido com paz, amor e aceitação.»" }
+  "Desproteção": { libera:"injustiça; insegurança; acusação; dúvida", afi:"«Decido transformar as vezes em que me senti sem proteção em força interior e segurança. Permito que a minha sensação de amparo e bem-estar volte e se fortaleça.»" },
+  "Desvalorização": { libera:"inferioridade; baixa estima; incompreensão; insegurança; rejeição", afi:"«Decido transformar as vezes em que me senti menos valioso/a em força e confiança. Permito que a minha autoestima volte e se fortaleça.»" },
+  "Impotência": { libera:"incapacidade; medo; insegurança; paralisia; pressão", afi:"«Deixo ir, com suavidade, as vezes em que me senti incapaz. Permito que em mim cresçam força, confiança e autonomia.»" },
+  "Sobrevivência": { libera:"escassez; sufoco; indignação; pressão", afi:"«Decido transformar o medo e a insegurança de não conseguir sobreviver em força e resiliência. Permito que a minha sensação de segurança e de sustento volte e se fortaleça.»" },
+  "Perda": { libera:"falta; separação; abandono; insegurança; rejeição; medo; incertezas", afi:"«Deixo ir, com suavidade, a dor, a tristeza e a sensação de perda. Permito que em mim entrem paz, amor e aceitação.»" }
 };
 
 const PE_CORPO_SVG = `<g fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"><circle cx="100" cy="35" r="22"/><rect x="94" y="56" width="12" height="14" rx="2"/><path d="M 68 70 L 132 70 C 140 95 134 160 125 185 L 75 185 C 66 160 60 95 68 70 Z"/><path d="M 68 70 L 46 135 L 38 190 L 30 190 L 40 130 L 64 70 Z"/><path d="M 132 70 L 154 135 L 162 190 L 170 190 L 160 130 L 136 70 Z"/><path d="M 76 185 L 74 285 L 72 375 L 84 375 L 92 285 L 97 185 Z"/><path d="M 124 185 L 126 285 L 128 375 L 116 375 L 108 285 L 103 185 Z"/><path d="M 162 190 L 170 190 C 175 198 176 212 173 224 C 171 232 164 234 161 227 C 158 216 159 202 162 190 Z"/><path d="M 38 190 L 30 190 C 25 198 24 212 27 224 C 29 232 36 234 39 227 C 42 216 41 202 38 190 Z"/><path d="M 116 375 L 128 375 C 140 375 148 381 148 389 L 118 389 C 116 386 116 381 116 375 Z"/><path d="M 84 375 L 72 375 C 60 375 52 381 52 389 L 82 389 C 84 386 84 381 84 375 Z"/><path d="M 161 200 C 155 204 154 212 158 218 M 39 200 C 45 204 46 212 42 218" fill="none"/></g>`;
@@ -1773,9 +1773,9 @@ function pePreencherReceita() {
   if (af) {
     txt+=`✨ Comando de Libertação e Cura (${escudo}):\n`;
     txt+=`Depois da estimulação, dá um autoabraço, respira fundo e repete em voz alta:\n\n`;
-    txt+=`«Eu libero todo sentimento de ${escudo.toUpperCase()}; ${af.libera}, que estejam bloqueados no meu corpo. Eu libero todos os sentimentos negativos que não me ajudam a evoluir, fica em mim apenas o necessário para o meu aprendizado, o resto eu libero e solto em gratidão!»\n`;
-    txt+=`(Bater no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»\n\n`;
-    txt+=`Comando de Reforço:\n${af.afi}\n«Que assim seja.»\n`;
+    txt+=`«Liberto agora o sentimento de ${escudo.toUpperCase()}: ${af.libera}, que ficou retido no meu corpo. Deixo ir também tudo o que não me ajuda a crescer; fica só o que preciso de aprender, e o resto entrego com gratidão.»\n`;
+    txt+=`(Bater no peito esquerdo com a mão 3 vezes): «Está feito. Fica selado.»\n\n`;
+    txt+=`Afirmação de reforço:\n${af.afi}\n«Que assim seja.»\n`;
   }
   const el=document.getElementById('pe-receita');
   if (el) el.value=txt;
@@ -2319,15 +2319,15 @@ function peConstruirPlano() {
   const af = peAfinidade(escudo);
   const selamento = (titulo) => {
     if (!af) return;
-    const cmd = `«Eu libero todo sentimento de ${escudo.toUpperCase()}; ${af.libera}, que estejam bloqueados no meu corpo. Eu libero todos os sentimentos negativos que não me ajudam a evoluir, fica em mim apenas o necessário para o meu aprendizado, o resto eu libero e solto em gratidão!»`;
+    const cmd = `«Liberto agora o sentimento de ${escudo.toUpperCase()}: ${af.libera}, que ficou retido no meu corpo. Deixo ir também tudo o que não me ajuda a crescer; fica só o que preciso de aprender, e o resto entrego com gratidão.»`;
     h += `<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px;margin:6px 0 14px;break-inside:avoid;page-break-inside:avoid;">
       <div style="font-weight:700;color:#7c3aed;margin-bottom:6px;">🛡️ ${titulo}</div>
       <p style="font-size:0.9rem;line-height:1.55;color:#334155;">Só depois de massajares todos os pontos desta parte, dos dois lados: dá um autoabraço, respira fundo e repete em voz alta:</p>
       <p style="font-size:0.9rem;line-height:1.55;color:#1e3a8a;font-style:italic;">${peEsc(cmd)}</p>
-      <p style="font-size:0.9rem;color:#334155;">(Bate no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»</p>
-      <div style="font-weight:700;color:#334155;margin-top:8px;font-size:0.88rem;">Afirmações positivas — comando de reforço:</div>
+      <p style="font-size:0.9rem;color:#334155;">(Bate no peito esquerdo com a mão 3 vezes): «Está feito. Fica selado.»</p>
+      <div style="font-weight:700;color:#334155;margin-top:8px;font-size:0.88rem;">Afirmações positivas — afirmação de reforço:</div>
       <p style="font-size:0.9rem;line-height:1.55;color:#334155;">${peEsc(af.afi)} «Que assim seja.»</p></div>`;
-    t += `\n>> ${titulo.toUpperCase()}\nSó depois de massajares todos os pontos desta parte, dos dois lados: dá um autoabraço, respira fundo e repete em voz alta:\n${cmd}\n(Bate no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»\nAfirmações positivas — comando de reforço:\n${af.afi}\n«Que assim seja.»\n`;
+    t += `\n>> ${titulo.toUpperCase()}\nSó depois de massajares todos os pontos desta parte, dos dois lados: dá um autoabraço, respira fundo e repete em voz alta:\n${cmd}\n(Bate no peito esquerdo com a mão 3 vezes): «Está feito. Fica selado.»\nAfirmações positivas — afirmação de reforço:\n${af.afi}\n«Que assim seja.»\n`;
   };
   ['Frente', 'Costas'].forEach(fase => {
     if (!['Direito', 'Esquerdo'].some(l => pts.some(p => p.zona === `${fase} - Lado ${l}`))) return;

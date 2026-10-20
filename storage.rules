@@ -1,0 +1,10 @@
+rules_version = '2';
+// A app não usa o Storage a partir do telemóvel/navegador: tudo passa por funções no servidor.
+// Por isso ninguém de fora lê nem escreve (termos, certificados, material e cópias de segurança ficam privados).
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
