@@ -1931,6 +1931,11 @@ function peConstruirRelatorioPaciente() {
   return { html:h, texto:t };
 }
 
+const PE_PAC_CORPO = `<ellipse cx="447" cy="652" rx="63" ry="68" fill="#e2e8f0" stroke="#475569" stroke-width="5"/><path d="M 484,722 C 483.7 733.3 476.0 776.7 482.0 790.0 C 488.0 803.3 502.8 797.8 520.0 802.0 C 537.2 806.2 566.7 809.0 585.0 815.0 C 603.3 821.0 618.8 828.0 630.0 838.0 C 641.2 848.0 646.7 860.5 652.0 875.0 C 657.3 889.5 658.2 904.2 662.0 925.0 C 665.8 945.8 668.7 970.8 675.0 1000.0 C 681.3 1029.2 692.2 1066.7 700.0 1100.0 C 707.8 1133.3 716.8 1175.0 722.0 1200.0 C 727.2 1225.0 727.3 1234.7 731.0 1250.0 C 734.7 1265.3 741.2 1277.0 744.0 1292.0 C 746.8 1307.0 748.8 1324.5 748.0 1340.0 C 747.2 1355.5 740.5 1377.5 739.0 1385.0 C 736.2 1385.8 728.5 1389.8 722.0 1390.0 C 715.5 1390.2 706.3 1395.2 700.0 1386.0 C 693.7 1376.8 687.8 1350.7 684.0 1335.0 C 680.2 1319.3 679.0 1305.2 677.0 1292.0 C 675.0 1278.8 672.8 1262.0 672.0 1256.0 C 669.5 1240.0 661.2 1192.7 657.0 1160.0 C 652.8 1127.3 649.3 1085.3 647.0 1060.0 C 644.7 1034.7 643.7 1016.7 643.0 1008.0 C 639.2 1006.3 627.8 999.3 620.0 998.0 C 612.2 996.7 600.0 999.7 596.0 1000.0 C 593.5 1010.0 584.5 1035.0 581.0 1060.0 C 577.5 1085.0 575.7 1121.7 575.0 1150.0 C 574.3 1178.3 574.7 1205.0 577.0 1230.0 C 579.3 1255.0 587.7 1280.8 589.0 1300.0 C 590.3 1319.2 586.7 1318.3 585.0 1345.0 C 583.3 1371.7 581.8 1417.5 579.0 1460.0 C 576.2 1502.5 569.8 1576.7 568.0 1600.0 L 456 1608 L 452 1312 Q 447 1296 442 1312 L 438 1608 L 326 1600 C 324.2 1576.7 317.8 1502.5 315.0 1460.0 C 312.2 1417.5 310.7 1371.7 309.0 1345.0 C 307.3 1318.3 303.7 1319.2 305.0 1300.0 C 306.3 1280.8 314.7 1255.0 317.0 1230.0 C 319.3 1205.0 319.7 1178.3 319.0 1150.0 C 318.3 1121.7 316.5 1085.0 313.0 1060.0 C 309.5 1035.0 300.5 1010.0 298.0 1000.0 C 294.0 999.7 281.8 996.7 274.0 998.0 C 266.2 999.3 254.8 1006.3 251.0 1008.0 C 250.3 1016.7 249.3 1034.7 247.0 1060.0 C 244.7 1085.3 241.2 1127.3 237.0 1160.0 C 232.8 1192.7 224.5 1240.0 222.0 1256.0 C 221.2 1262.0 219.0 1278.8 217.0 1292.0 C 215.0 1305.2 213.8 1319.3 210.0 1335.0 C 206.2 1350.7 200.3 1376.8 194.0 1386.0 C 187.7 1395.2 178.5 1390.2 172.0 1390.0 C 165.5 1389.8 157.8 1385.8 155.0 1385.0 C 153.5 1377.5 146.8 1355.5 146.0 1340.0 C 145.2 1324.5 147.2 1307.0 150.0 1292.0 C 152.8 1277.0 159.3 1265.3 163.0 1250.0 C 166.7 1234.7 166.8 1225.0 172.0 1200.0 C 177.2 1175.0 186.2 1133.3 194.0 1100.0 C 201.8 1066.7 212.7 1029.2 219.0 1000.0 C 225.3 970.8 228.2 945.8 232.0 925.0 C 235.8 904.2 236.7 889.5 242.0 875.0 C 247.3 860.5 252.8 848.0 264.0 838.0 C 275.2 828.0 290.7 821.0 309.0 815.0 C 327.3 809.0 356.8 806.2 374.0 802.0 C 391.2 797.8 406.0 803.3 412.0 790.0 C 418.0 776.7 410.3 733.3 410.0 722.0 Z" fill="#e2e8f0" stroke="#475569" stroke-width="5" stroke-linejoin="round"/><path d="M 396 702 L 447 744 L 498 702" fill="none" stroke="#94a3b8" stroke-width="3"/>`;
+// Posições exatas (mapa de referência do método): central C1–C12 na linha do meio; inferior LA1–LA6 da virilha ao joelho; superior S1–S9 logo abaixo da barbela até ao fim do pescoço
+const PE_PAC_Y_CENTRAL = [845,882,913,942,972,1009,1040,1082,1122,1162,1203,1247];
+const PE_PAC_Y_INFERIOR = [1322,1372,1419,1467,1516,1564];
+
 function peFiguraCorpo(zona, pts) {
   const lado = peLadoDe(zona);
   const vistos = new Set(); const L = [];
@@ -1942,15 +1947,14 @@ function peFiguraCorpo(zona, pts) {
   L.forEach((p, i) => { p.n = i + 1; });
   const dot = (x, y, n, r, fs) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#dc2626" stroke="#fff" stroke-width="${(r*0.22).toFixed(2)}"/><text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${fs}" font-weight="700" fill="#fff" font-family="sans-serif">${n}</text>`;
   let corpo = '', pesc = ''; let temSup = false;
-  let ic = 0;
   L.forEach(p => {
-    if (p.cat === 'central') corpo += dot((100 + (ic++ % 2 ? 3.4 : -3.4)).toFixed(1), (66 + (p.y - 42) * (122 / 328)).toFixed(1), p.n, 4.6, 6);
-    else if (p.cat === 'inferior') corpo += dot((100 + (p.x - 100) * 0.35).toFixed(1), (196 + (p.y - 150) * (89 / 182)).toFixed(1), p.n, 4.6, 6);
-    else { temSup = true; pesc += dot(p.x, p.y, p.n, 10, 12); }
+    if (p.cat === 'central') { const n = parseInt(String(p.id).replace(/\D/g, ''), 10) || 1; corpo += dot(447, PE_PAC_Y_CENTRAL[n - 1] || 845, p.n, 13, 16); }
+    else if (p.cat === 'inferior') { const m = String(p.id).match(/^f(\d)([de])$/); const n = m ? parseInt(m[1], 10) : 1; corpo += dot(m && m[2] === 'e' ? 374 : 520, PE_PAC_Y_INFERIOR[n - 1] || 1322, p.n, 13, 16); }
+    else { temSup = true; pesc += dot(p.x, p.y, p.n, 10, 12); const k = parseInt(String(p.id).replace(/\D/g, ''), 10) || 1; corpo += `<circle cx="447" cy="${(745 + (k - 1) * 9.6).toFixed(1)}" r="4.6" fill="#dc2626" stroke="#fff" stroke-width="1.2"/>`; }
   });
-  if (temSup) corpo += `<circle cx="100" cy="62" r="6.5" fill="none" stroke="#dc2626" stroke-width="1.4" stroke-dasharray="2 1.5"/>`;
-  const svgCorpo = `<svg viewBox="26 8 148 392" style="width:100%;max-width:190px;" role="img" aria-label="Mapa do corpo — ${lado}">${PE_CORPO_SVG}${corpo}</svg>`;
-  const svgPesc = temSup ? `<svg viewBox="0 0 200 400" style="width:100%;max-width:170px;" role="img" aria-label="Pescoço ampliado">${PE_PESCOCO_SVG}${pesc}</svg>` : '';
+  if (temSup) corpo += `<ellipse cx="447" cy="783" rx="17" ry="48" fill="none" stroke="#dc2626" stroke-width="2.4" stroke-dasharray="6 4"/>`;
+  const svgCorpo = `<svg viewBox="150 575 610 1045" style="width:100%;max-width:380px;" role="img" aria-label="Mapa do corpo — ${lado}">${PE_PAC_CORPO}${corpo}</svg>`;
+  const svgPesc = temSup ? `<svg viewBox="0 0 200 400" style="width:100%;max-width:190px;" role="img" aria-label="Pescoço ampliado">${PE_PESCOCO_SVG}${pesc}</svg>` : '';
   return { L, svgCorpo, svgPesc };
 }
 
@@ -1999,10 +2003,12 @@ function peConstruirPlano() {
     'Empurra suavemente para baixo com os dedos, como quem liberta o sentimento.',
     'Passa ao ponto seguinte, pela ordem dos números. Nunca deve doer: faz tudo com suavidade.'
   ];
+  const dica = 'O mapa mostra a localização de cada ponto. Se tiveres dúvida sobre se estás a massajar o local correto, faz a massagem ao mesmo tempo que dizes em voz alta o nome da glândula ou do órgão desse ponto: a energia ajusta-se e chega ao local correto.';
   let h = `<h3 style="color:#1e3a8a;margin:22px 0 8px;font-size:1.05rem;">Plano Terapêutico — em casa</h3>
     <div style="font-weight:700;color:#b45309;margin:10px 0 6px;">1 · Como fazer a massagem</div>
-    <ol style="font-size:0.9rem;line-height:1.55;color:#334155;margin:0 0 8px 18px;padding:0;">${passos.map(x => `<li style="margin-bottom:4px;">${x}</li>`).join('')}</ol>`;
-  let t = '\nPLANO TERAPÊUTICO — EM CASA\n\n1 · COMO FAZER A MASSAGEM\n' + passos.map((x, i) => `${i + 1}. ${x}`).join('\n') + '\n\n';
+    <ol style="font-size:0.9rem;line-height:1.55;color:#334155;margin:0 0 8px 18px;padding:0;">${passos.map(x => `<li style="margin-bottom:4px;">${x}</li>`).join('')}</ol>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;font-size:0.86rem;color:#166534;margin-bottom:8px;">💡 ${dica}</div>`;
+  let t = '\nPLANO TERAPÊUTICO — EM CASA\n\n1 · COMO FAZER A MASSAGEM\n' + passos.map((x, i) => `${i + 1}. ${x}`).join('\n') + '\nDica: ' + dica + '\n\n';
   const regra = 'Trata um lado de cada vez, começando pelo lado direito. Enquanto massajas os pontos de um lado, mantém uma mão na têmpora (fonte) desse mesmo lado. Quando terminares todos os pontos desse lado (frente e costas), troca a mão para a têmpora do outro lado e repete com os pontos desse lado. Se o mesmo ponto saiu nos dois lados, massaja-o em cada lado, cada um do seu lado.';
   h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">2 · Tratamento lado a lado — o teu mapa</div>
     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:0.86rem;color:#1e3a8a;margin-bottom:10px;">✋ ${regra}</div>`;
