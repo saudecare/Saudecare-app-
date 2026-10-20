@@ -1880,10 +1880,12 @@ function peConstruirRelatorioPaciente() {
   const ep = peLerEpocaFinal();
   const consulta = ((peState.historico && peState.historico.mapeamentos && peState.historico.mapeamentos.length) || 0) + 1;
   const nome = peState.patientName || '';
-  let h = `<div style="background:linear-gradient(135deg,#1e3a8a,#0f172a);color:white;border-radius:12px;padding:18px;margin-bottom:14px;">
+  let h = `<div style="background:linear-gradient(135deg,#1e3a8a,#0f172a);color:white;border-radius:12px;padding:16px;margin-bottom:14px;display:flex;gap:14px;align-items:center;">
+    <img src="logo-hikari-fafe.png" alt="Hikari Fafe" style="width:68px;height:68px;border-radius:50%;flex-shrink:0;">
+    <div><div style="font-size:0.78rem;letter-spacing:2px;color:#fcd34d;font-weight:700;">HIKARI FAFE</div>
     <div style="font-size:1.2rem;font-weight:800;">O Teu Mapa Emocional</div>
-    <div style="font-size:0.88rem;opacity:.9;margin-top:4px;">${peEsc(nome)} · Consulta n.º ${consulta} · ${data}</div></div>`;
-  let t = `O TEU MAPA EMOCIONAL\n${nome} · Consulta n.º ${consulta} · ${data}\n\n`;
+    <div style="font-size:0.85rem;opacity:.9;margin-top:2px;">${peEsc(nome)} · Consulta n.º ${consulta} · ${data}</div></div></div>`;
+  let t = `HIKARI FAFE — Corpo · Mente · Alma · Espírito\nO TEU MAPA EMOCIONAL\n${nome} · Consulta n.º ${consulta} · ${data}\n\n`;
   const intro = 'O corpo guarda a memória das emoções que não conseguimos viver ou expressar no momento. Cada ponto assinalado neste mapeamento mostra uma zona onde essa memória ficou retida. Lê com calma: não tens de te identificar com tudo — repara naquilo que te desperta uma emoção, uma imagem ou uma recordação. É aí que está o que precisa de ser olhado.';
   h += `<p style="font-size:0.92rem;line-height:1.6;color:#334155;">${intro}</p>`; t += intro + '\n\n';
   h += `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">O que o teu corpo revelou</h3>`; t += 'O QUE O TEU CORPO REVELOU\n\n';
@@ -1928,6 +1930,7 @@ function peConstruirRelatorioPaciente() {
   t += 'PARA REFLETIRES ESTA SEMANA\n' + refl.map(x => ` - ${x}`).join('\n') + '\n\n';
   const aviso = 'Este relatório é uma ferramenta de autoconhecimento no âmbito de uma terapia complementar e não substitui o acompanhamento médico ou psicológico.';
   h += `<p style="font-size:0.74rem;color:#64748b;border-top:1px solid #e2e8f0;padding-top:8px;">${aviso}</p>`; t += aviso + '\n';
+  h += `<div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px;font-size:0.78rem;color:#64748b;"><img src="logo-hikari-fafe.png" alt="" style="width:26px;height:26px;border-radius:50%;"> Hikari Fafe · Corpo · Mente · Alma · Espírito</div>`;
   return { html:h, texto:t };
 }
 
