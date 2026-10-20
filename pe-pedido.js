@@ -24,7 +24,7 @@ window.renderPedidoMetodo = async function (main) {
   let est = { estado: 'nenhum' }, termo = null;
   try { est = await window.peChamar('peTermoEstado', {}); } catch (e) { main.innerHTML = `<div class="card"><h2>Indisponível</h2><p class="muted">${esc(e.message)}</p></div>`; return; }
   const topo = `<div style="max-width:640px;margin:18px auto;padding:0 6px;"><div style="text-align:center;margin-bottom:18px;"><div style="font-size:2.4rem;">🎓</div><h2 style="margin:6px 0;">Métodos com formação certificada</h2>
-    <p class="muted">Para terapeutas com formação em biomicrohertz. O método é configurado para uso exclusivo de quem o pede e comprova a sua formação.</p></div>`;
+    <p class="muted">Para terapeutas com formação certificada na técnica a que esta ferramenta se destina. O atendimento passo a passo é configurado para uso exclusivo de quem o pede e comprova a sua formação.</p></div>`;
   if (est.estado === 'pendente') { main.innerHTML = topo + caixa('#fef9c3', '#fde047', '⏳', 'Pedido em análise', 'Recebemos o seu pedido e a declaração assinada. Será avisado quando for decidido.') + '</div>'; return; }
   if (est.estado === 'aprovado') { main.innerHTML = topo + caixa('#dcfce7', '#86efac', '✅', 'Pedido aprovado', 'O método foi ativado na sua conta. Atualize a página e abra "Pesquisa Emocional Clínica" nas Ferramentas.') + '</div>'; return; }
   if (est.estado === 'revogado') { main.innerHTML = topo + caixa('#fee2e2', '#fca5a5', '🚫', 'Acesso revogado', esc(est.motivo || 'O acesso foi terminado. Contacte o administrador da plataforma.')) + '</div>'; return; }
@@ -34,12 +34,12 @@ window.renderPedidoMetodo = async function (main) {
     <div class="card"><h3 style="margin-top:0;">1 · Os seus dados e a sua formação</h3>
       <label style="${L}">Nome completo</label><input id="ppNome" style="${I}" autocomplete="name">
       <label style="${L}">Cédula ou n.º profissional (se tiver)</label><input id="ppCed" style="${I}">
-      <label style="${L}">Nome da formação em biomicrohertz</label><input id="ppForm" style="${I}">
+      <label style="${L}">Nome da formação</label><input id="ppForm" style="${I}">
       <label style="${L}">Formador ou instituição</label><input id="ppFormador" style="${I}">
       <label style="${L}">Data da formação</label><input id="ppData" type="date" style="${I}">
       <label style="${L}">N.º do certificado (se tiver)</label><input id="ppNcert" style="${I}">
       <label style="${L}">Comprovativo da formação (foto ou PDF do certificado)</label><input id="ppCert" type="file" accept="image/*,application/pdf" style="${I}" onchange="ppCertificado(this)"><div id="ppCertInfo" class="muted"></div>
-      <label style="${L}">Material da sua formação (foto ou PDF do manual/apontamentos)</label><input id="ppMat" type="file" accept="image/*,application/pdf" style="${I}" onchange="ppCertificado(this,'mat')"><div id="ppMatInfo" class="muted"></div></div>
+      <label style="${L}">Material da sua formação (foto ou PDF)</label><input id="ppMat" type="file" accept="image/*,application/pdf" style="${I}" onchange="ppCertificado(this,'mat')"><div id="ppMatInfo" class="muted"></div></div>
     <div class="card"><h3 style="margin-top:0;">2 · ${esc(termo.titulo)}</h3>
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;font-size:0.85rem;line-height:1.6;max-height:260px;overflow-y:auto;margin-bottom:14px;">${termo.clausulas.map((c, i) => `<p style="margin:0 0 8px;"><b>${i + 1}.</b> ${esc(c)}</p>`).join('')}</div>
       ${termo.aceites.map(([k, t]) => `<label style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:0.88rem;cursor:pointer;"><input type="checkbox" class="ppAc" data-k="${k}" style="width:20px;height:20px;margin:2px 0 0;flex-shrink:0;"> <span>${esc(t)}</span></label>`).join('')}</div>

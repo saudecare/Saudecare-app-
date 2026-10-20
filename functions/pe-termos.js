@@ -14,12 +14,12 @@ const DONO = 'hikari-terapias';
 
 // ─── Texto do termo (versão única; qualquer alteração cria uma nova versão) ───
 const TERMO = {
-  versao: '2026-10-21-v2',
+  versao: '2026-10-21-v3',
   titulo: 'Declaração de formação e termo de uso exclusivo',
   clausulas: [
-    'O método de atendimento «Pesquisa Emocional Clínica» foi criado e é utilizado pela Hikari Fafe (Ricardo Correia). A Vindora é a plataforma onde esse método é configurado.',
-    'O subscritor declara, sob a sua responsabilidade, que possui formação em biomicrohertz e que o conteúdo, os passos, as fichas e os questionários que pede fazem parte dessa sua formação e matéria, tendo legitimidade para os utilizar na sua prática.',
-    'A Vindora não fornece, não vende nem distribui materiais de formação. O subscritor entrega à Vindora uma cópia do material da sua formação, que serve de prova de que o possui e de base para configurar a ferramenta, a pedido dele e para uso exclusivo dele, segundo o padrão dessa formação.',
+    'A Vindora é uma plataforma de software. O atendimento passo a passo e os relatórios automáticos desta ferramenta foram desenvolvidos pela Hikari Fafe / Vindora. Os conteúdos de formação (por exemplo meditações, modelações e outros materiais) não fazem parte da aplicação: cada terapeuta utiliza os da sua própria formação.',
+    'O subscritor declara, sob a sua responsabilidade, que possui formação certificada na técnica a que a ferramenta se destina e que os conteúdos, fichas e questionários que utiliza na ferramenta fazem parte dessa sua formação, tendo legitimidade para os utilizar na sua prática.',
+    'A Vindora não fornece, não vende nem distribui materiais de formação. O subscritor entrega à Vindora uma cópia do material da sua formação, que serve de prova de que o possui e de base para configurar a ferramenta, a pedido dele e para uso exclusivo dele, segundo a formação que declara possuir.',
     'O uso é pessoal e intransmissível, associado apenas à conta e ao consultório identificados neste pedido. É proibido copiar, reproduzir, partilhar, revender, ensinar ou tentar aceder ao código ou aos textos do método fora da ferramenta.',
     'O subscritor é o único responsável pelo uso que faz do método, pelos documentos que emite e pela sua prática clínica ou terapêutica perante os seus pacientes. Os documentos emitidos não substituem aconselhamento médico ou psicológico.',
     'O subscritor compromete-se a fornecer comprovativo da formação sempre que o dono do método o solicite. A informação prestada neste pedido tem de ser verdadeira.',
@@ -28,7 +28,7 @@ const TERMO = {
     'O documento assinado fica guardado com data e hora, endereço de rede e um código de verificação que permite provar que não foi alterado.'
   ],
   aceites: [
-    ['formacao', 'Declaro que possuo formação em biomicrohertz e que os dados e o comprovativo que apresento são verdadeiros.'],
+    ['formacao', 'Declaro que possuo a formação que indico e que os dados e o comprovativo que apresento são verdadeiros.'],
     ['conteudo', 'Declaro que o conteúdo que peço faz parte da minha formação e matéria, que entrego uma cópia do material dessa formação como base do pedido, e que o peço para uso exclusivo meu.'],
     ['partilha', 'Comprometo-me a não copiar, partilhar, revender nem ensinar o método ou os seus textos a terceiros.'],
     ['responsabilidade', 'Assumo a responsabilidade pela utilização do método e pelos documentos que emitir.'],
