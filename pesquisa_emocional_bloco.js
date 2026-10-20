@@ -43,33 +43,33 @@ const PE_CAT = [
     {id:'N8',name:'Tiroide',x:116,y:227,organ:'Tiroide',desc:'Impotência em agir.',r:'As tuas ações parecem lentas?'},
     {id:'N9',name:'Esófago',x:84,y:245,organ:'Esófago',desc:'Engolir calado.',r:'Quantas vezes tens calado a tua própria voz?'}
   ]},
-  { id:'central', name:'Sistema Central', cor:'#1e3a8a', v:2, points:[
-    {id:'C1',name:'I – Vasos Linfáticos, Artérias e Veias',x:100,y:92,organ:'Linfáticos',desc:'Sobrecarga familiar.',r:'O sistema familiar pesa sobre ti?'},
-    {id:'C2',name:'II – Intestino Grosso',x:100,y:113,organ:'Int. Grosso',desc:'Apego, culpas.',r:'O que precisas urgentemente de perdoar?'},
-    {id:'C3',name:'III – Coração',x:100,y:134,organ:'Coração',desc:'Autoabandono.',r:'Tens-te abandonado para ser aceite?'},
-    {id:'C4',name:'IV – Brônquios',x:100,y:155,organ:'Brônquios',desc:'Invasão territorial.',r:'O teu espaço pessoal é invadido?'},
-    {id:'C5',name:'V – Alvéolos Pulmonares',x:100,y:176,organ:'Pulmão',desc:'Receio de perda.',r:'Qual é o teu maior medo?'},
-    {id:'C6',name:'VI – Intestino Delgado',x:100,y:196,organ:'Int. Delgado',desc:'Crença na escassez.',r:'Acreditas que não há amor suficiente para ti?'},
-    {id:'C7',name:'VII – Baço',x:100,y:217,organ:'Baço',desc:'Cansaço relacional.',r:'Qual é a relação que te drena a energia?'},
-    {id:'C8',name:'VIII – Fígado',x:100,y:238,organ:'Fígado',desc:'Raiva e injustiça.',r:'O que te foi tirado injustamente?'},
-    {id:'C9',name:'IX – Estômago',x:100,y:259,organ:'Estômago',desc:'Ansiedade mental.',r:'Digeres excessivamente preocupações?'},
-    {id:'C10',name:'X – Duodeno',x:100,y:280,organ:'Duodeno',desc:'Frustração por perdas.',r:'Sentes-te bloqueado após uma frustração?'},
-    {id:'C11',name:'XI – Vesícula Biliar',x:100,y:301,organ:'Vesícula',desc:'Decisões adiadas.',r:'Que escolha continuas a adiar?'},
-    {id:'C12',name:'XII – Pâncreas',x:100,y:322,organ:'Pâncreas',desc:'Perda de doçura.',r:'Quando é que a vida perdeu a doçura?'}
+  { id:'central', name:'Sistema Central', cor:'#1e3a8a', v:3, points:[
+    {id:'C1',name:'I – Vasos Linfáticos, Artérias e Veias',x:100,y:49,organ:'Linfáticos',desc:'Sobrecarga familiar.',r:'O sistema familiar pesa sobre ti?'},
+    {id:'C2',name:'II – Intestino Grosso',x:100,y:69,organ:'Int. Grosso',desc:'Apego, culpas.',r:'O que precisas urgentemente de perdoar?'},
+    {id:'C3',name:'III – Coração',x:100,y:92,organ:'Coração',desc:'Autoabandono.',r:'Tens-te abandonado para ser aceite?'},
+    {id:'C4',name:'IV – Brônquios',x:100,y:112,organ:'Brônquios',desc:'Invasão territorial.',r:'O teu espaço pessoal é invadido?'},
+    {id:'C5',name:'V – Alvéolos Pulmonares',x:100,y:132,organ:'Pulmão',desc:'Receio de perda.',r:'Qual é o teu maior medo?'},
+    {id:'C6',name:'VI – Intestino Delgado',x:100,y:158,organ:'Int. Delgado',desc:'Crença na escassez.',r:'Acreditas que não há amor suficiente para ti?'},
+    {id:'C7',name:'VII – Baço',x:100,y:180,organ:'Baço',desc:'Cansaço relacional.',r:'Qual é a relação que te drena a energia?'},
+    {id:'C8',name:'VIII – Fígado',x:100,y:208,organ:'Fígado',desc:'Raiva e injustiça.',r:'O que te foi tirado injustamente?'},
+    {id:'C9',name:'IX – Estômago',x:100,y:236,organ:'Estômago',desc:'Ansiedade mental.',r:'Digeres excessivamente preocupações?'},
+    {id:'C10',name:'X – Duodeno',x:100,y:262,organ:'Duodeno',desc:'Frustração por perdas.',r:'Sentes-te bloqueado após uma frustração?'},
+    {id:'C11',name:'XI – Vesícula Biliar',x:100,y:291,organ:'Vesícula',desc:'Decisões adiadas.',r:'Que escolha continuas a adiar?'},
+    {id:'C12',name:'XII – Pâncreas',x:100,y:320,organ:'Pâncreas',desc:'Perda de doçura.',r:'Quando é que a vida perdeu a doçura?'}
   ]},
-  { id:'inferior', name:'Sistema Inferior', cor:'#1e3a8a', v:2, points:[
-    {id:'f1d',name:'LA1 – Glândulas Mamárias',x:138,y:130,organ:'Perna direita',desc:'Conflitos no cuidar.',r:'Tens sentido exaustão na tua forma de cuidar?'},
-    {id:'f1e',name:'LA1 – Glândulas Mamárias',x:62,y:130,organ:'Perna esquerda',desc:'Conflitos afetivos.',r:'Sentes falta de carinho da infância?'},
-    {id:'f2d',name:'LA2 – Útero / Próstata',x:138,y:170,organ:'Perna direita',desc:'Invasão íntima.',r:'O teu espaço sagrado foi invadido?'},
-    {id:'f2e',name:'LA2 – Útero / Próstata',x:62,y:170,organ:'Perna esquerda',desc:'Perda estabilidade.',r:'Alguma separação fez desmoronar o teu lar?'},
-    {id:'f3d',name:'LA3 – Suprarrenais',x:138,y:210,organ:'Perna direita',desc:'Esgotamento alerta.',r:'O teu corpo já não tem reservas para lutar?'},
-    {id:'f3e',name:'LA3 – Suprarrenais',x:62,y:210,organ:'Perna esquerda',desc:'Exaustão forças.',r:'O que te fez desistir de lutar?'},
-    {id:'f4d',name:'LA4 – Testículos / Ovários',x:138,y:250,organ:'Perna direita',desc:'Lutos projetos.',r:'Que projeto profundo tiveste de ver morrer?'},
-    {id:'f4e',name:'LA4 – Testículos / Ovários',x:62,y:250,organ:'Perna esquerda',desc:'Perda de linhagem.',r:'Que perda a tua família ainda não curou?'},
-    {id:'f5d',name:'LA5 – Rim',x:138,y:290,organ:'Perna direita',desc:'Insegurança perdas.',r:'Tens medo de falhar financeiramente?'},
-    {id:'f5e',name:'LA5 – Rim',x:62,y:290,organ:'Perna esquerda',desc:'Quebra confiança.',r:'Foste atraiçoado por alguém?'},
-    {id:'f6d',name:'LA6 – Bexiga',x:138,y:330,organ:'Perna direita',desc:'Perda de rumo.',r:'Já não sabes que lugar ocupas na sociedade?'},
-    {id:'f6e',name:'LA6 – Bexiga',x:62,y:330,organ:'Perna esquerda',desc:'Espaço territorial.',r:'Sentes que não podes ser quem és?'}
+  { id:'inferior', name:'Sistema Inferior', cor:'#1e3a8a', v:3, points:[
+    {id:'f1d',name:'LA1 – Glândulas Mamárias',x:138,y:153,organ:'Perna direita',desc:'Conflitos no cuidar.',r:'Tens sentido exaustão na tua forma de cuidar?'},
+    {id:'f1e',name:'LA1 – Glândulas Mamárias',x:62,y:153,organ:'Perna esquerda',desc:'Conflitos afetivos.',r:'Sentes falta de carinho da infância?'},
+    {id:'f2d',name:'LA2 – Útero / Próstata',x:138,y:185,organ:'Perna direita',desc:'Invasão íntima.',r:'O teu espaço sagrado foi invadido?'},
+    {id:'f2e',name:'LA2 – Útero / Próstata',x:62,y:185,organ:'Perna esquerda',desc:'Perda estabilidade.',r:'Alguma separação fez desmoronar o teu lar?'},
+    {id:'f3d',name:'LA3 – Suprarrenais',x:138,y:216,organ:'Perna direita',desc:'Esgotamento alerta.',r:'O teu corpo já não tem reservas para lutar?'},
+    {id:'f3e',name:'LA3 – Suprarrenais',x:62,y:216,organ:'Perna esquerda',desc:'Exaustão forças.',r:'O que te fez desistir de lutar?'},
+    {id:'f4d',name:'LA4 – Testículos / Ovários',x:138,y:243,organ:'Perna direita',desc:'Lutos projetos.',r:'Que projeto profundo tiveste de ver morrer?'},
+    {id:'f4e',name:'LA4 – Testículos / Ovários',x:62,y:243,organ:'Perna esquerda',desc:'Perda de linhagem.',r:'Que perda a tua família ainda não curou?'},
+    {id:'f5d',name:'LA5 – Rim',x:138,y:276,organ:'Perna direita',desc:'Insegurança perdas.',r:'Tens medo de falhar financeiramente?'},
+    {id:'f5e',name:'LA5 – Rim',x:62,y:276,organ:'Perna esquerda',desc:'Quebra confiança.',r:'Foste atraiçoado por alguém?'},
+    {id:'f6d',name:'LA6 – Bexiga',x:138,y:304,organ:'Perna direita',desc:'Perda de rumo.',r:'Já não sabes que lugar ocupas na sociedade?'},
+    {id:'f6e',name:'LA6 – Bexiga',x:62,y:304,organ:'Perna esquerda',desc:'Espaço territorial.',r:'Sentes que não podes ser quem és?'}
   ]}
 ];
 
@@ -107,15 +107,13 @@ const PE_LATERAL_CONTORNO = `<path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 13
 
 // Imagem grande do tronco, da cinta para cima, para o Sistema Central (igual na frente e nas costas).
 const PE_CENTRAL_SVG = `<g stroke-linejoin="round" stroke-linecap="round">
-<path d="M 84 60 C 70 66 40 70 20 86 C 10 94 8 110 10 140 L 22 340 L 178 340 L 190 140 C 192 110 190 94 180 86 C 160 70 130 66 116 60 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
-<rect x="84" y="22" width="32" height="44" rx="6" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
-<path d="M 34 150 L 30 336 M 166 150 L 170 336" fill="none" stroke="#94a3b8" stroke-width="1.2"/>
-<path d="M 100 70 L 100 332" fill="none" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 3"/>
-<path d="M 100 76 C 80 82 56 84 40 90 M 100 76 C 120 82 144 84 160 90" fill="none" stroke="#94a3b8" stroke-width="1.1" opacity=".8"/>
-<rect x="22" y="330" width="156" height="14" rx="3" fill="#64748b" stroke="#475569" stroke-width="1"/>
+<path d="M 82 18 L 82 38 C 72 46 46 58 24 70 C 14 76 10 86 10 100 L 20 372 L 180 372 L 190 100 C 190 86 186 76 176 70 C 154 58 128 46 118 38 L 118 18 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
+<path d="M 34 170 L 32 368 M 166 170 L 168 368" fill="none" stroke="#94a3b8" stroke-width="1.2"/>
+<path d="M 100 40 L 100 368" fill="none" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 3"/>
+<rect x="20" y="364" width="160" height="14" rx="3" fill="#64748b" stroke="#475569" stroke-width="1"/>
 </g>
-<text x="100" y="360" text-anchor="middle" font-size="9" font-weight="700" fill="#475569">CINTA</text>
-<text x="100" y="14" text-anchor="middle" font-size="10" font-weight="800" fill="#1e3a8a">Da cinta para cima</text>`;
+<text x="100" y="375" text-anchor="middle" font-size="7" font-weight="700" fill="white">CINTA</text>
+<text x="100" y="11" text-anchor="middle" font-size="10" font-weight="800" fill="#1e3a8a">Da cinta para cima</text>`;
 
 // Imagem grande da cinta para baixo (ancas, coxas e joelhos) para o Sistema Inferior (igual na frente e nas costas).
 const PE_INFERIOR_SVG = `<g stroke-linejoin="round" stroke-linecap="round">
