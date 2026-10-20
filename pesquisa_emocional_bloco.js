@@ -135,7 +135,64 @@ function temPesquisaEmocional() {
 
 // ─── CONFIG LOCAL (por tenant) ────────────────────────────────────
 
-function peLerConfig() {
+// Posições dos pontos do mapa guardadas na conta ({id:[x,y]}), iguais em todos os dispositivos.
+window.__pePosicoes = null;
+
+function peAplicarPosicoes(cfg) {
+  const m = window.__pePosicoes;
+  if (!m) return cfg;
+  cfg.categories.forEach(cat => cat.points.forEach(pt => {
+    const v = m[pt.id];
+    if (Array.isArray(v) && v.length === 2 && isFinite(v[0]) && isFinite(v[1])) { pt.x = +v[0]; pt.y = +v[1]; }
+  }));
+  return cfg;
+}
+
+function peLerConfig() { return peAplicarPosicoes(peLerConfigBase()); }
+
+// Posições já ajustadas neste dispositivo (diferentes das de origem).
+function peMapaLocal() {
+  const out = {};
+  try {
+    const saved = localStorage.getItem(`pe_cfg_${tenantId()}`);
+    if (!saved) return out;
+    const cfg = JSON.parse(saved);
+    const orig = {}; PE_CAT.forEach(cat => cat.points.forEach(pt => { orig[pt.id] = pt; }));
+    (cfg.categories || []).forEach(cat => (cat.points || []).forEach(pt => {
+      const o = orig[pt.id];
+      if (o && (pt.x !== o.x || pt.y !== o.y)) out[pt.id] = [pt.x, pt.y];
+    }));
+  } catch(_) {}
+  return out;
+}
+
+let __peGravTimer = null;
+function peGuardarPosicoesRemoto() {
+  clearTimeout(__peGravTimer);
+  __peGravTimer = setTimeout(async () => {
+    try { await db().doc(`tenants/${tenantId()}`).update({ peMapaPosicoes: window.__pePosicoes || {} }); }
+    catch(e) { console.warn('Posições do mapa guardadas só neste dispositivo:', e); }
+  }, 700);
+}
+
+// Lê as posições guardadas na conta; se ainda não existirem, usa as que já foram ajustadas neste dispositivo.
+async function peCarregarPosicoes() {
+  let remoto = null, leu = false;
+  try {
+    const snap = await db().doc(`tenants/${tenantId()}`).get();
+    leu = true;
+    const d = (snap && snap.data && snap.data()) || {};
+    if (d.peMapaPosicoes && typeof d.peMapaPosicoes === 'object' && Object.keys(d.peMapaPosicoes).length) remoto = d.peMapaPosicoes;
+  } catch(_) {}
+  if (remoto) { window.__pePosicoes = remoto; return; }
+  const local = peMapaLocal();
+  if (Object.keys(local).length) {
+    window.__pePosicoes = local;
+    if (leu) peGuardarPosicoesRemoto();
+  }
+}
+
+function peLerConfigBase() {
   const key = `pe_cfg_${tenantId()}`;
   try {
     const saved = localStorage.getItem(key);
@@ -154,6 +211,7 @@ async function renderPesquisaEmocional(main) {
   if (!main) main = document.querySelector('main, #main, .main-content') || document.body;
   if (!temPesquisaEmocional()) { renderSolicitarPE(main); return; }
   peReset();
+  await peCarregarPosicoes();
   main.innerHTML = `
     <div style="max-width:900px;margin:0 auto;padding:0 4px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:linear-gradient(135deg,#1e3a8a,#0f172a);color:white;padding:18px;border-radius:12px;margin-bottom:16px;">
@@ -1117,6 +1175,8 @@ function peRenderizarSVG(cat,selectedSet) {
 
 // Guarda a nova posição do ponto (para todas as zonas desta consulta e para as próximas).
 function peGravarPosicao(id,x,y) {
+  window.__pePosicoes=window.__pePosicoes||{}; window.__pePosicoes[id]=[x,y];
+  peGuardarPosicoesRemoto();
   const cfg=peLerConfig();
   cfg.categories.forEach(cat=>cat.points.forEach(pt=>{ if(pt.id===id){ pt.x=x; pt.y=y; } }));
   peGuardarConfig(cfg);
@@ -1171,6 +1231,7 @@ function peMoverAnel(p) {
 }
 
 function peReporPosicoes() {
+  window.__pePosicoes={}; peGuardarPosicoesRemoto();
   const cfg=peLerConfig();
   const orig={}; PE_CAT.forEach(cat=>cat.points.forEach(pt=>{ orig[pt.id]={x:pt.x,y:pt.y}; }));
   const rep=(cats)=>cats.forEach(cat=>cat.points.forEach(pt=>{ if(orig[pt.id]){ pt.x=orig[pt.id].x; pt.y=orig[pt.id].y; } }));
