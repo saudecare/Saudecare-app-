@@ -244,6 +244,7 @@ async function peCarregarPosicoes() {
     const snap = await db().doc(`tenants/${tenantId()}`).get();
     leu = true;
     const d = (snap && snap.data && snap.data()) || {};
+    if (d.peAudios21 && typeof d.peAudios21 === 'object') window.__peAud21 = d.peAudios21;
     if (d.peMapaPosicoes && typeof d.peMapaPosicoes === 'object' && Object.keys(d.peMapaPosicoes).length) remoto = d.peMapaPosicoes;
   } catch(_) {}
   if (remoto) { window.__pePosicoes = remoto; return; }
@@ -502,6 +503,21 @@ async function renderPesquisaEmocional(main) {
               <div style="font-weight:700;color:#1e3a8a;margin-bottom:8px;">Decisão do paciente:</div>
               <label style="display:flex;gap:8px;align-items:center;font-size:0.9rem;margin-bottom:6px;"><input type="radio" name="pe-estado" value="tratamento" style="width:18px;height:18px;"> Aceitou — iniciar o tratamento</label>
               <label style="display:flex;gap:8px;align-items:center;font-size:0.9rem;"><input type="radio" name="pe-estado" value="standby" checked style="width:18px;height:18px;"> Fica em stand-by (inicia quando decidir)</label>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px;">
+              <label style="display:flex;gap:8px;align-items:center;font-weight:700;color:#1e3a8a;margin-bottom:8px;"><input type="checkbox" id="pe-a21-incluir" onchange="window.peRenderPrevia()" style="width:18px;height:18px;"> 🎧 Incluir programa de 21 meditações (3 semanas × 7)</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                <select id="pe-a21-versao" onchange="window.peRenderPrevia()" style="padding:9px;border:1px solid #e2e8f0;border-radius:8px;"><option value="fem">Versão feminina</option><option value="masc">Versão masculina</option></select>
+                <select id="pe-a21-modo" onchange="window.peRenderPrevia()" style="padding:9px;border:1px solid #e2e8f0;border-radius:8px;"><option value="dia">Uma por dia</option><option value="semana">7 de uma vez (semana)</option></select>
+                <select id="pe-a21-semana" onchange="window.peRenderPrevia()" style="padding:9px;border:1px solid #e2e8f0;border-radius:8px;"><option value="todas">Semanas 1 a 3</option><option value="1">Semana 1</option><option value="2">Semana 2</option><option value="3">Semana 3</option></select>
+              </div>
+              <button onclick="window.peAbrirLinks21()" style="margin-top:8px;background:none;border:none;color:#1e3a8a;font-weight:700;text-decoration:underline;cursor:pointer;font-size:0.82rem;">⚙️ Links dos 21 áudios (feminino e masculino)</button>
+              <div id="pe-a21-links" style="display:none;margin-top:8px;">
+                <div style="font-size:0.78rem;color:#64748b;margin-bottom:6px;">Um link por linha, pela ordem das meditações 1 a 21.</div>
+                <textarea id="pe-a21-t-fem" rows="6" placeholder="Versão feminina — 21 links" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;"></textarea>
+                <textarea id="pe-a21-t-masc" rows="6" placeholder="Versão masculina — 21 links" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></textarea>
+                <button onclick="window.peGuardarLinks21()" style="margin-top:6px;background:#1e3a8a;color:white;border:none;padding:9px 16px;border-radius:8px;font-weight:700;cursor:pointer;">Guardar links</button>
+              </div>
             </div>
             <div style="font-weight:700;color:#1e3a8a;margin-bottom:8px;">Relatório e plano para o paciente (pré-visualização):</div>
             <div id="pe-previa-paciente" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;"></div>
@@ -1875,7 +1891,7 @@ function peConstruirRelatorioPaciente() {
     h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">${PE_CAT_NOME[cid]}</div>`; t += `— ${PE_CAT_NOME[cid].toUpperCase()} —\n`;
     lista.forEach(p => {
       const ex = peExemplosDe(p.id);
-      h += `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #1e3a8a;border-radius:10px;padding:12px;margin-bottom:10px;">
+      h += `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #1e3a8a;border-radius:10px;padding:12px;margin-bottom:10px;break-inside:avoid;page-break-inside:avoid;">
         <div style="font-weight:700;color:#0f172a;">${peEsc(p.nome)}</div>
         <div style="font-size:0.76rem;color:#64748b;margin-bottom:6px;">${peEsc(p.zonas.map(peZonaCurta).join(' · '))}</div>
         <div style="font-size:0.88rem;color:#334155;margin-bottom:6px;">🔎 <b>Tema:</b> ${peEsc(p.desc)}</div>
@@ -1913,10 +1929,11 @@ function peConstruirRelatorioPaciente() {
   return { html:h, texto:t };
 }
 
-function peFiguraCorpo(lado, pts) {
+function peFiguraCorpo(zona, pts) {
+  const lado = peLadoDe(zona);
   const vistos = new Set(); const L = [];
   const ordem = { superior:0, central:1, inferior:2 };
-  pts.filter(p => peLadoDe(p.zona) === lado && ordem[p.cat] !== undefined)
+  pts.filter(p => p.zona === zona && ordem[p.cat] !== undefined)
      .sort((a, b) => ordem[a.cat] - ordem[b.cat])
      .forEach(p => { if (!vistos.has(p.id)) { vistos.add(p.id); L.push({ ...p }); } });
   if (!L.length) return null;
@@ -1930,8 +1947,8 @@ function peFiguraCorpo(lado, pts) {
     else { temSup = true; pesc += dot(p.x, p.y, p.n, 10, 12); }
   });
   if (temSup) corpo += `<circle cx="100" cy="62" r="6.5" fill="none" stroke="#dc2626" stroke-width="1.4" stroke-dasharray="2 1.5"/>`;
-  const svgCorpo = `<svg viewBox="26 8 148 392" style="width:100%;max-width:340px;" role="img" aria-label="Mapa do corpo — ${lado}">${PE_CORPO_SVG}${corpo}</svg>`;
-  const svgPesc = temSup ? `<svg viewBox="0 0 200 400" style="width:100%;max-width:260px;" role="img" aria-label="Pescoço ampliado">${PE_PESCOCO_SVG}${pesc}</svg>` : '';
+  const svgCorpo = `<svg viewBox="26 8 148 392" style="width:100%;max-width:190px;" role="img" aria-label="Mapa do corpo — ${lado}">${PE_CORPO_SVG}${corpo}</svg>`;
+  const svgPesc = temSup ? `<svg viewBox="0 0 200 400" style="width:100%;max-width:170px;" role="img" aria-label="Pescoço ampliado">${PE_PESCOCO_SVG}${pesc}</svg>` : '';
   return { L, svgCorpo, svgPesc };
 }
 
@@ -1939,6 +1956,33 @@ function peLocalDoPonto(p, lado) {
   if (p.cat === 'superior') return lado === 'costas' ? 'nas costas, no osso mais saliente da parte de trás do pescoço (nuca)' : 'no pescoço, entre a zona debaixo da barbela e o fim do pescoço (ver imagem ampliada)';
   if (p.cat === 'central') return lado === 'costas' ? 'nas costas, no pescoço, mais ou menos a meio, no osso mais saliente' : 'na linha do meio do tronco, da base do pescoço até à cinta';
   return `na perna ${/e$/.test(p.id) ? 'esquerda' : 'direita'}, entre a virilha e o joelho (mesma localização da frente)`;
+}
+
+function peLerAudios21Cfg() {
+  const ck = document.getElementById('pe-a21-incluir');
+  if (ck && peState.step === '4') return { incluir: ck.checked, versao: document.getElementById('pe-a21-versao')?.value || 'fem', modo: document.getElementById('pe-a21-modo')?.value || 'dia', semana: document.getElementById('pe-a21-semana')?.value || 'todas' };
+  return peState.audios21 || { incluir:false };
+}
+
+function peAud21Local() {
+  try { return JSON.parse(localStorage.getItem('pe_aud21_' + tenantId()) || '{}') || {}; } catch(_) { return {}; }
+}
+function peAbrirLinks21() {
+  const box = document.getElementById('pe-a21-links'); if (!box) return;
+  const v = window.__peAud21 || peAud21Local();
+  document.getElementById('pe-a21-t-fem').value = (v.fem || []).join('\n');
+  document.getElementById('pe-a21-t-masc').value = (v.masc || []).join('\n');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+async function peGuardarLinks21() {
+  const l = id => (document.getElementById(id)?.value || '').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 21);
+  const v = { fem: l('pe-a21-t-fem'), masc: l('pe-a21-t-masc') };
+  window.__peAud21 = v;
+  try { localStorage.setItem('pe_aud21_' + tenantId(), JSON.stringify(v)); } catch(_) {}
+  try { await db().doc(`tenants/${tenantId()}`).update({ peAudios21: v }); mostrarAviso('✅ Links dos 21 áudios guardados.'); }
+  catch(e) { mostrarAviso('Guardado neste aparelho (não foi possível guardar na conta).'); }
+  const box = document.getElementById('pe-a21-links'); if (box) box.style.display = 'none';
+  peRenderPrevia();
 }
 
 function peConstruirPlano() {
@@ -1953,46 +1997,74 @@ function peConstruirPlano() {
     'Empurra suavemente para baixo com os dedos, como quem liberta o sentimento.',
     'Passa ao ponto seguinte, pela ordem dos números. Nunca deve doer: faz tudo com suavidade.'
   ];
-  let h = `<h3 style="color:#1e3a8a;margin:22px 0 8px;font-size:1.05rem;">Plano Terapêutico</h3>
+  let h = `<h3 style="color:#1e3a8a;margin:22px 0 8px;font-size:1.05rem;">Plano Terapêutico — em casa</h3>
     <div style="font-weight:700;color:#b45309;margin:10px 0 6px;">1 · Como fazer a massagem</div>
     <ol style="font-size:0.9rem;line-height:1.55;color:#334155;margin:0 0 8px 18px;padding:0;">${passos.map(x => `<li style="margin-bottom:4px;">${x}</li>`).join('')}</ol>`;
-  let t = '\nPLANO TERAPÊUTICO\n\n1 · COMO FAZER A MASSAGEM\n' + passos.map((x, i) => `${i + 1}. ${x}`).join('\n') + '\n\n';
-  h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">2 · Onde massajar — o teu mapa</div>`;
-  t += '2 · ONDE MASSAJAR — O TEU MAPA\n';
+  let t = '\nPLANO TERAPÊUTICO — EM CASA\n\n1 · COMO FAZER A MASSAGEM\n' + passos.map((x, i) => `${i + 1}. ${x}`).join('\n') + '\n\n';
+  const regra = 'Trata um lado de cada vez, começando pelo lado direito. Enquanto massajas os pontos de um lado, mantém uma mão na têmpora (fonte) desse mesmo lado. Quando terminares todos os pontos desse lado (frente e costas), troca a mão para a têmpora do outro lado e repete com os pontos desse lado. Se o mesmo ponto saiu nos dois lados, massaja-o em cada lado, cada um do seu lado.';
+  h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">2 · Tratamento lado a lado — o teu mapa</div>
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:0.86rem;color:#1e3a8a;margin-bottom:10px;">✋ ${regra}</div>`;
+  t += `2 · TRATAMENTO LADO A LADO — O TEU MAPA\n${regra}\n`;
   let algum = false;
-  ['frente', 'costas'].forEach(lado => {
-    const f = peFiguraCorpo(lado, pts);
-    if (!f) return;
+  ['Direito', 'Esquerdo'].forEach(lado => {
+    const zonasLado = ['Frente', 'Costas'].map(f => `${f} - Lado ${lado}`).filter(z => pts.some(p => p.zona === z));
+    if (!zonasLado.length) return;
     algum = true;
-    h += `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px;">
-      <div style="font-weight:700;color:#0f172a;margin-bottom:8px;text-transform:uppercase;font-size:0.82rem;">${lado === 'frente' ? 'Frente do corpo' : 'Costas'}</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-start;">${f.svgCorpo}${f.svgPesc}</div>
-      ${lado === 'costas' && f.L.some(p => p.cat !== 'inferior') ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-top:10px;font-size:0.84rem;color:#92400e;"><b>Atenção — procedimento diferente nas costas:</b> os pontos do Sistema Superior e do Sistema Central, nas costas, não se massajam no local onde aparecem desenhados. Os do <b>Sistema Superior</b> massajam-se no <b>osso mais saliente da parte de trás do pescoço (nuca)</b>. Os do <b>Sistema Central</b> massajam-se também atrás, no <b>pescoço, mais ou menos a meio, no osso mais saliente</b>. Em cada sistema, um a um, pela ordem dos números. Os do <b>Sistema Inferior</b> mantêm a mesma localização da frente, nas pernas.</div>` : ''}
-      <ol style="list-style:none;margin:10px 0 0;padding:0;font-size:0.86rem;color:#334155;">${f.L.map(p => `<li style="margin-bottom:6px;"><b style="display:inline-block;background:#dc2626;color:white;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;font-size:0.72rem;margin-right:6px;">${p.n}</b><b>${peEsc(p.nome)}</b> <span style="color:#64748b;">(${PE_CAT_NOME[p.cat]})</span><br><span style="color:#64748b;margin-left:26px;display:inline-block;">${peLocalDoPonto(p, lado)}</span></li>`).join('')}</ol></div>`;
-    t += `\n${lado === 'frente' ? 'FRENTE DO CORPO' : 'COSTAS'}:\n` + (lado === 'costas' && f.L.some(p => p.cat !== 'inferior') ? '  ATENÇÃO — procedimento diferente nas costas: os pontos do Sistema Superior e do Sistema Central não se massajam onde aparecem desenhados. Os do Sistema Superior massajam-se no osso mais saliente da parte de trás do pescoço (nuca); os do Sistema Central, também atrás, no pescoço, mais ou menos a meio, no osso mais saliente. Em cada sistema, um a um, pela ordem dos números. Os do Sistema Inferior mantêm a mesma localização da frente, nas pernas.\n' : '') + f.L.map(p => `  ${p.n}. ${p.nome} (${PE_CAT_NOME[p.cat]}) — ${peLocalDoPonto(p, lado)}`).join('\n') + '\n';
+    const lbl = lado === 'Direito' ? 'direita' : 'esquerda';
+    h += `<div style="background:#1e3a8a;color:white;border-radius:8px;padding:10px 12px;margin:14px 0 8px;font-weight:700;break-after:avoid;page-break-after:avoid;">LADO ${lado.toUpperCase()} — mão na têmpora ${lbl}</div>`;
+    t += `\n===== LADO ${lado.toUpperCase()} — mão na têmpora ${lbl} =====\n`;
+    zonasLado.forEach(z => {
+      const lf = peLadoDe(z);
+      const f = peFiguraCorpo(z, pts);
+      const outros = peUnicos(pts.filter(p => p.zona === z)).filter(p => p.cat === 'vital' || p.cat === 'impact');
+      h += `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px;break-inside:avoid;page-break-inside:avoid;">
+        <div style="font-weight:700;color:#0f172a;margin-bottom:8px;text-transform:uppercase;font-size:0.82rem;">${lf === 'frente' ? 'Frente do corpo' : 'Costas'} · lado ${lado.toLowerCase()}</div>`;
+      t += `\n${lf === 'frente' ? 'FRENTE DO CORPO' : 'COSTAS'} · lado ${lado.toLowerCase()}:\n`;
+      if (f) {
+        h += `<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-start;">${f.svgCorpo}${f.svgPesc}</div>
+          ${lf === 'costas' && f.L.some(p => p.cat !== 'inferior') ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-top:10px;font-size:0.84rem;color:#92400e;"><b>Atenção — procedimento diferente nas costas:</b> os pontos do Sistema Superior e do Sistema Central, nas costas, não se massajam no local onde aparecem desenhados. Os do <b>Sistema Superior</b> massajam-se no <b>osso mais saliente da parte de trás do pescoço (nuca)</b>. Os do <b>Sistema Central</b> massajam-se também atrás, no <b>pescoço, mais ou menos a meio, no osso mais saliente</b>. Em cada sistema, um a um, pela ordem dos números. Os do <b>Sistema Inferior</b> mantêm a mesma localização da frente, nas pernas.</div>` : ''}
+          <ol style="list-style:none;margin:10px 0 0;padding:0;font-size:0.86rem;color:#334155;">${f.L.map(p => `<li style="margin-bottom:6px;"><b style="display:inline-block;background:#dc2626;color:white;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;font-size:0.72rem;margin-right:6px;">${p.n}</b><b>${peEsc(p.nome)}</b> <span style="color:#64748b;">(${PE_CAT_NOME[p.cat]})</span><br><span style="color:#64748b;margin-left:26px;display:inline-block;">${peLocalDoPonto(p, lf)}</span></li>`).join('')}</ol>`;
+        if (lf === 'costas' && f.L.some(p => p.cat !== 'inferior')) t += '  ATENÇÃO — procedimento diferente nas costas: os pontos do Sistema Superior e do Sistema Central não se massajam onde aparecem desenhados. Os do Sistema Superior massajam-se no osso mais saliente da parte de trás do pescoço (nuca); os do Sistema Central, também atrás, no pescoço, mais ou menos a meio, no osso mais saliente. Em cada sistema, um a um, pela ordem dos números. Os do Sistema Inferior mantêm a mesma localização da frente, nas pernas.\n';
+        t += f.L.map(p => `  ${p.n}. ${p.nome} (${PE_CAT_NOME[p.cat]}) — ${peLocalDoPonto(p, lf)}`).join('\n') + '\n';
+      }
+      if (outros.length) {
+        h += `<div style="font-size:0.86rem;color:#334155;margin-top:8px;"><b>Centros vitais e zonas de entrada:</b> ${outros.map(p => peEsc(p.nome)).join(', ')}. Massaja diretamente o local indicado no mapa da consulta.</div>`;
+        t += '  Centros vitais e zonas de entrada: ' + outros.map(p => p.nome).join(', ') + '. Massaja diretamente o local indicado no mapa da consulta.\n';
+      }
+      h += '</div>';
+    });
   });
-  const outros = peUnicos(pts).filter(p => p.cat === 'vital' || p.cat === 'impact');
-  if (outros.length) {
-    algum = true;
-    h += `<div style="font-size:0.86rem;color:#334155;margin-bottom:8px;"><b>Centros vitais e zonas de entrada assinalados:</b> ${outros.map(p => peEsc(p.nome)).join(', ')}. Massaja diretamente o local indicado no mapa da consulta.</div>`;
-    t += '\nCentros vitais e zonas de entrada assinalados: ' + outros.map(p => p.nome).join(', ') + '. Massaja diretamente o local indicado no mapa da consulta.\n';
-  }
   if (!algum) { h += `<p style="font-size:0.86rem;color:#64748b;">(Nenhum ponto selecionado no mapeamento.)</p>`; t += '(Nenhum ponto selecionado no mapeamento.)\n'; }
+  const af = PE_ESCUDOS_AFINIDADES[escudo];
+  if (af) {
+    const cmd = `«Eu libero todo sentimento de ${escudo.toUpperCase()}; ${af.libera}, que estejam bloqueados no meu corpo. Eu libero todos os sentimentos negativos que não me ajudam a evoluir, fica em mim apenas o necessário para o meu aprendizado, o resto eu libero e solto em gratidão!»`;
+    h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">3 · Autoabraço e afirmações do escudo ${peEsc(escudo)}</div>
+      <p style="font-size:0.9rem;line-height:1.55;color:#334155;">Só depois de massajares todos os pontos, dos dois lados: dá um autoabraço, respira fundo e repete em voz alta:</p>
+      <p style="font-size:0.9rem;line-height:1.55;color:#1e3a8a;font-style:italic;">${peEsc(cmd)}</p>
+      <p style="font-size:0.9rem;color:#334155;">(Bate no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»</p>
+      <div style="font-weight:700;color:#334155;margin-top:8px;font-size:0.88rem;">Afirmações positivas — comando de reforço:</div>
+      <p style="font-size:0.9rem;line-height:1.55;color:#334155;">${peEsc(af.afi)} «Que assim seja.»</p>`;
+    t += `\n3 · AUTOABRAÇO E AFIRMAÇÕES DO ESCUDO ${escudo.toUpperCase()}\nSó depois de massajares todos os pontos, dos dois lados: dá um autoabraço, respira fundo e repete em voz alta:\n${cmd}\n(Bate no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»\n\nAfirmações positivas — comando de reforço:\n${af.afi}\n«Que assim seja.»\n`;
+  }
   if (escudo !== 'Não Especificado') {
-    h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">3 · Música e modulação neuroplástica</div>
+    h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">4 · Música e modulação neuroplástica</div>
       <p style="font-size:0.9rem;line-height:1.55;color:#334155;">🎧 Coloca a música relativa ao teu escudo detetado (<b>${peEsc(escudo)}</b>) e ouve a modulação neuroplástica do escudo <b>${peEsc(escudo)}</b> diariamente, ao deitar, durante 7 dias contínuos.</p>`;
-    t += `\n3 · MÚSICA E MODULAÇÃO NEUROPLÁSTICA\nColoca a música relativa ao teu escudo detetado (${escudo}) e ouve a modulação neuroplástica do escudo ${escudo} diariamente, ao deitar, durante 7 dias contínuos.\n`;
-    const af = PE_ESCUDOS_AFINIDADES[escudo];
-    if (af) {
-      const cmd = `«Eu libero todo sentimento de ${escudo.toUpperCase()}; ${af.libera}, que estejam bloqueados no meu corpo. Eu libero todos os sentimentos negativos que não me ajudam a evoluir, fica em mim apenas o necessário para o meu aprendizado, o resto eu libero e solto em gratidão!»`;
-      h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">4 · Comando de libertação e cura</div>
-        <p style="font-size:0.9rem;line-height:1.55;color:#334155;">Depois da estimulação, dá um autoabraço, respira fundo e repete em voz alta:</p>
-        <p style="font-size:0.9rem;line-height:1.55;color:#1e3a8a;font-style:italic;">${peEsc(cmd)}</p>
-        <p style="font-size:0.9rem;color:#334155;">(Bate no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»</p>
-        <div style="font-weight:700;color:#334155;margin-top:8px;font-size:0.88rem;">Comando de reforço:</div>
-        <p style="font-size:0.9rem;line-height:1.55;color:#334155;">${peEsc(af.afi)} «Que assim seja.»</p>`;
-      t += `\n4 · COMANDO DE LIBERTAÇÃO E CURA\nDepois da estimulação, dá um autoabraço, respira fundo e repete em voz alta:\n${cmd}\n(Bate no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»\n\nComando de reforço:\n${af.afi}\n«Que assim seja.»\n`;
-    }
+    t += `\n4 · MÚSICA E MODULAÇÃO NEUROPLÁSTICA\nColoca a música relativa ao teu escudo detetado (${escudo}) e ouve a modulação neuroplástica do escudo ${escudo} diariamente, ao deitar, durante 7 dias contínuos.\n`;
+  }
+  const a = peLerAudios21Cfg();
+  if (a && a.incluir) {
+    const vf = a.versao === 'masc' ? 'masculina' : 'feminina';
+    const lista = ((window.__peAud21 || peAud21Local())[a.versao === 'masc' ? 'masc' : 'fem']) || [];
+    const semanas = a.semana === 'todas' ? [1, 2, 3] : [parseInt(a.semana, 10) || 1];
+    const modo = a.modo === 'semana' ? 'As 7 meditações da semana são enviadas de uma vez; ouve uma por dia, pela ordem.' : 'É enviada uma meditação por dia.';
+    h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">5 · Meditações guiadas — programa de 21 dias (versão ${vf})</div>
+      <p style="font-size:0.9rem;line-height:1.55;color:#334155;">São 21 meditações, 7 por semana, todas diferentes, ao longo de 3 semanas. ${modo}</p>`;
+    t += `\n5 · MEDITAÇÕES GUIADAS — PROGRAMA DE 21 DIAS (versão ${vf})\nSão 21 meditações, 7 por semana, todas diferentes, ao longo de 3 semanas. ${modo}\n`;
+    semanas.forEach(sw => {
+      const itens = []; for (let d = 1; d <= 7; d++) { const n = (sw - 1) * 7 + d; itens.push({ n, url: lista[n - 1] || '' }); }
+      h += `<div style="font-size:0.86rem;color:#334155;margin:6px 0 2px;"><b>Semana ${sw}</b></div><ul style="margin:0 0 6px 18px;padding:0;font-size:0.86rem;color:#334155;">${itens.map(i => `<li>Meditação ${i.n}${i.url ? ` — <a href="${peEsc(i.url)}">${peEsc(i.url)}</a>` : ''}</li>`).join('')}</ul>`;
+      t += `Semana ${sw}:\n` + itens.map(i => `  Meditação ${i.n}${i.url ? ' — ' + i.url : ''}`).join('\n') + '\n';
+    });
   }
   return { html:h, texto:t };
 }
@@ -2210,7 +2282,7 @@ async function peEmitirPaciente(relatorioTec, escudo, data) {
     escudo, path:2, data, mapId, estado, consulta, epoca:ep.epoca || '', tempo:ep.tempo || '',
     notas:(document.getElementById('pe-receita')?.value || '').trim(),
     pontos:pontos.map(p => ({ k:p.k, id:p.id, nome:p.nome, cat:p.cat, zona:p.zona })),
-    mapa:{ zonas }, htmlPaciente:doc.html
+    mapa:{ zonas }, htmlPaciente:doc.html, audios21:peLerAudios21Cfg()
   }));
   let ok = true;
   if (peState.patientId) ok = await guardarNaFicha(peState.patientId, { tipo:'pesquisa_emocional', titulo:`Pesquisa Emocional — ${data}`, texto:relatorioTec + '\n\nRELATÓRIO PARA O PACIENTE:\n' + doc.texto, dados });
@@ -2239,6 +2311,7 @@ function peCarregarMapaGuardado(d) {
   peState.finalShield = d.escudo || 'Não Especificado';
   peState.epocaFinal = { epoca:d.epoca || '', tempo:d.tempo || '' };
   peState.mapId = d.mapId;
+  peState.audios21 = d.audios21 || { incluir:false };
 }
 
 function peIniciarTratamento(docId) {
@@ -2263,7 +2336,7 @@ function peRenderTratamento(mapId) {
     ${anteriores.length ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px;margin-bottom:12px;font-size:0.82rem;color:#166534;"><b>Sessões anteriores:</b><ul style="margin:4px 0 0 18px;padding:0;">${anteriores.map(a => `<li>${peFmtData(a.t)}${a.dados.notas ? ' — ' + peEsc(a.dados.notas) : ''}</li>`).join('')}</ul></div>` : ''}
     <div id="pe-doc-paciente" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">${plano.html}</div>
     <div style="font-weight:700;color:#1e3a8a;margin:16px 0 6px;">Pontos trabalhados hoje</div>
-    ${un.map((p, i) => `<label style="display:flex;gap:8px;align-items:center;padding:6px 0;font-size:0.88rem;color:#334155;"><input type="checkbox" class="pe-tr-ck" value="${peEsc(p.id)}" checked style="width:18px;height:18px;"> ${peEsc(p.nome)} <span style="color:#64748b;font-size:0.76rem;">(${PE_CAT_NOME[p.cat]})</span></label>`).join('')}
+    ${peColetarPontos().map(p => `<label style="display:flex;gap:8px;align-items:center;padding:6px 0;font-size:0.88rem;color:#334155;"><input type="checkbox" class="pe-tr-ck" value="${peEsc(p.k)}" checked style="width:18px;height:18px;"> ${peEsc(p.nome)} <span style="color:#64748b;font-size:0.76rem;">(${peEsc(peZonaCurta(p.zona))})</span></label>`).join('')}
     <label style="font-weight:700;color:#334155;display:block;margin:14px 0 6px;">Notas da sessão:</label>
     <textarea id="pe-tr-notas" rows="4" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;" placeholder="Como correu, o que o paciente sentiu..."></textarea>
     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0;">
@@ -2774,6 +2847,8 @@ window.peToggleQuadrante       = peToggleQuadrante;
 window.peIniciarVia            = peIniciarVia;
 window.peProximoQuadrante      = peProximoQuadrante;
 window.peSeguinte = peSeguinte;
+window.peAbrirLinks21 = peAbrirLinks21;
+window.peGuardarLinks21 = peGuardarLinks21;
 window.peRenderPrevia = peRenderPrevia;
 window.peNovaConsultaDoHub = peNovaConsultaDoHub;
 window.peIniciarTratamento = peIniciarTratamento;
