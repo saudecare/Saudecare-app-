@@ -1939,27 +1939,35 @@ const PE_PAC_CORPO = `<ellipse cx="447" cy="652" rx="63" ry="68" fill="#e2e8f0" 
 const PE_PAC_Y_CENTRAL = [845,882,913,942,972,1009,1040,1082,1122,1162,1203,1247];
 const PE_PAC_Y_INFERIOR = [1322,1372,1419,1467,1516,1564];
 
-function peFiguraCorpo(zona, pts) {
-  const lado = peLadoDe(zona);
-  const vistos = new Set(); const L = [];
-  const ordem = { superior:0, central:1, inferior:2 };
-  pts.filter(p => p.zona === zona && ordem[p.cat] !== undefined)
-     .sort((a, b) => ordem[a.cat] - ordem[b.cat])
-     .forEach(p => { if (!vistos.has(p.id)) { vistos.add(p.id); L.push({ ...p }); } });
-  if (!L.length) return null;
-  L.forEach((p, i) => { p.n = i + 1; });
-  const dot = (x, y, n, r, fs) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#dc2626" stroke="#fff" stroke-width="${(r*0.22).toFixed(2)}"/><text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${fs}" font-weight="700" fill="#fff" font-family="sans-serif">${n}</text>`;
-  let corpo = '', pesc = ''; let temSup = false;
-  L.forEach(p => {
-    if (p.cat === 'central') { const n = parseInt(String(p.id).replace(/\D/g, ''), 10) || 1; corpo += dot(447, PE_PAC_Y_CENTRAL[n - 1] || 845, p.n, 13, 16); }
-    else if (p.cat === 'inferior') { const m = String(p.id).match(/^f(\d)([de])$/); const n = m ? parseInt(m[1], 10) : 1; corpo += dot(m && m[2] === 'e' ? 374 : 520, PE_PAC_Y_INFERIOR[n - 1] || 1322, p.n, 13, 16); }
-    else { temSup = true; pesc += dot(p.x, p.y, p.n, 10, 12); const k = parseInt(String(p.id).replace(/\D/g, ''), 10) || 1; corpo += `<circle cx="447" cy="${(745 + (k - 1) * 9.6).toFixed(1)}" r="4.6" fill="#dc2626" stroke="#fff" stroke-width="1.2"/>`; }
-  });
-  if (temSup) corpo += `<ellipse cx="447" cy="783" rx="17" ry="48" fill="none" stroke="#dc2626" stroke-width="2.4" stroke-dasharray="6 4"/>`;
-  const svgCorpo = `<svg viewBox="150 575 610 1045" style="width:100%;max-width:380px;" role="img" aria-label="Mapa do corpo — ${lado}">${PE_PAC_CORPO}${corpo}</svg>`;
-  const svgPesc = temSup ? `<svg viewBox="0 0 200 400" style="width:100%;max-width:190px;" role="img" aria-label="Pescoço ampliado">${PE_PESCOCO_SVG}${pesc}</svg>` : '';
-  return { L, svgCorpo, svgPesc };
+function peMapasZona(zona, pts) {
+  const sel = pts.filter(p => p.zona === zona);
+  const cats = peLerConfig().categories;
+  const dot = (x, y, n, on, r) => `<circle cx="${x}" cy="${y}" r="${on ? r : r * 0.78}" fill="${on ? '#dc2626' : '#94a3b8'}" stroke="#fff" stroke-width="${(r * 0.2).toFixed(1)}"/><text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${(r * 1.15).toFixed(1)}" font-weight="700" fill="#fff" font-family="sans-serif">${n}</text>`;
+  const num = id => parseInt(String(id).replace(/\D/g, '').replace(/^(\d)[\d]*$/, '$1'), 10);
+  const out = [];
+  const det = cat => { const v = new Set(); return sel.filter(p => p.cat === cat).filter(p => !v.has(p.id) && v.add(p.id)).sort((a, b) => peNumPonto(a) - peNumPonto(b)); };
+  const dSup = det('superior'), dCen = det('central'), dInf = det('inferior');
+  if (dSup.length) {
+    const ids = new Set(dSup.map(p => p.id));
+    const pontos = cats.find(c => c.id === 'superior').points;
+    const dots = pontos.map(p => dot(p.x, p.y, peNumPonto(p), ids.has(p.id), 11)).join('');
+    out.push({ sistema:'Sistema Superior', L:dSup, svg:`<svg viewBox="0 0 200 400" style="width:100%;max-width:180px;" role="img" aria-label="Sistema Superior">${PE_PESCOCO_SVG}${dots}</svg>` });
+  }
+  if (dCen.length) {
+    const ids = new Set(dCen.map(p => p.id));
+    const dots = PE_PAC_Y_CENTRAL.map((y, i) => dot(447, y, i + 1, ids.has('C' + (i + 1)), 15)).join('');
+    out.push({ sistema:'Sistema Central', L:dCen, svg:`<svg viewBox="160 700 580 700" style="width:100%;max-width:230px;" role="img" aria-label="Sistema Central">${PE_PAC_CORPO}${dots}</svg>` });
+  }
+  if (dInf.length) {
+    const ids = new Set(dInf.map(p => p.id));
+    let dots = '';
+    for (let n = 1; n <= 6; n++) { dots += dot(520, PE_PAC_Y_INFERIOR[n - 1], n, ids.has(`f${n}d`), 15); dots += dot(374, PE_PAC_Y_INFERIOR[n - 1], n, ids.has(`f${n}e`), 15); }
+    dots += `<text x="520" y="1628" text-anchor="middle" font-size="17" fill="#475569" font-family="sans-serif">perna direita</text><text x="374" y="1628" text-anchor="middle" font-size="17" fill="#475569" font-family="sans-serif">perna esquerda</text>`;
+    out.push({ sistema:'Sistema Inferior', L:dInf, svg:`<svg viewBox="300 1270 300 375" style="width:100%;max-width:210px;" role="img" aria-label="Sistema Inferior">${PE_PAC_CORPO}${dots}</svg>` });
+  }
+  return out;
 }
+function peNumPonto(p) { const m = String(p.id).match(/^[A-Za-z]+(\d+)/); return m ? parseInt(m[1], 10) : 0; }
 
 function peLocalDoPonto(p, lado) {
   if (p.cat === 'superior') return lado === 'costas' ? 'nas costas, no osso mais saliente da parte de trás do pescoço (nuca)' : 'no pescoço, entre a zona debaixo da barbela e o fim do pescoço (ver imagem ampliada)';
@@ -2026,18 +2034,22 @@ function peConstruirPlano() {
     t += `\n===== LADO ${lado.toUpperCase()} — mão na têmpora ${lbl} =====\n`;
     zonasLado.forEach(z => {
       const lf = peLadoDe(z);
-      const f = peFiguraCorpo(z, pts);
+      const mapas = peMapasZona(z, pts);
       const outros = peUnicos(pts.filter(p => p.zona === z)).filter(p => p.cat === 'vital' || p.cat === 'impact');
-      h += `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px;break-inside:avoid;page-break-inside:avoid;">
-        <div style="font-weight:700;color:#0f172a;margin-bottom:8px;text-transform:uppercase;font-size:0.82rem;">${lf === 'frente' ? 'Frente do corpo' : 'Costas'} · lado ${lado.toLowerCase()}</div>`;
-      t += `\n${lf === 'frente' ? 'FRENTE DO CORPO' : 'COSTAS'} · lado ${lado.toLowerCase()}:\n`;
-      if (f) {
-        h += `<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-start;">${f.svgCorpo}${f.svgPesc}</div>
-          ${lf === 'costas' && f.L.some(p => p.cat !== 'inferior') ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-top:10px;font-size:0.84rem;color:#92400e;"><b>Atenção — procedimento diferente nas costas:</b> os pontos do Sistema Superior e do Sistema Central, nas costas, não se massajam no local onde aparecem desenhados. Os do <b>Sistema Superior</b> massajam-se no <b>osso mais saliente da parte de trás do pescoço (nuca)</b>. Os do <b>Sistema Central</b> massajam-se também atrás, no <b>pescoço, mais ou menos a meio, no osso mais saliente</b>. Em cada sistema, um a um, pela ordem dos números. Os do <b>Sistema Inferior</b> mantêm a mesma localização da frente, nas pernas.</div>` : ''}
-          <ol style="list-style:none;margin:10px 0 0;padding:0;font-size:0.86rem;color:#334155;">${f.L.map(p => `<li style="margin-bottom:6px;"><b style="display:inline-block;background:#dc2626;color:white;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;font-size:0.72rem;margin-right:6px;">${p.n}</b><b>${peEsc(p.nome)}</b> <span style="color:#64748b;">(${PE_CAT_NOME[p.cat]})</span><br><span style="color:#64748b;margin-left:26px;display:inline-block;">${peLocalDoPonto(p, lf)}</span></li>`).join('')}</ol>`;
-        if (lf === 'costas' && f.L.some(p => p.cat !== 'inferior')) t += '  ATENÇÃO — procedimento diferente nas costas: os pontos do Sistema Superior e do Sistema Central não se massajam onde aparecem desenhados. Os do Sistema Superior massajam-se no osso mais saliente da parte de trás do pescoço (nuca); os do Sistema Central, também atrás, no pescoço, mais ou menos a meio, no osso mais saliente. Em cada sistema, um a um, pela ordem dos números. Os do Sistema Inferior mantêm a mesma localização da frente, nas pernas.\n';
-        t += f.L.map(p => `  ${p.n}. ${p.nome} (${PE_CAT_NOME[p.cat]}) — ${peLocalDoPonto(p, lf)}`).join('\n') + '\n';
-      }
+      h += `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#0f172a;margin-bottom:4px;text-transform:uppercase;font-size:0.82rem;">${lf === 'frente' ? 'Frente do corpo' : 'Costas'} · lado ${lado.toLowerCase()}</div>
+        <div style="font-size:0.78rem;color:#64748b;margin-bottom:8px;">Em cada mapa aparecem todos os pontos do sistema; os <b style="color:#dc2626;">vermelhos</b> são os que foram detetados e que deves tratar.</div>`;
+      t += `\n${lf === 'frente' ? 'FRENTE DO CORPO' : 'COSTAS'} · lado ${lado.toLowerCase()} (nos mapas, os pontos a vermelho são os detetados):\n`;
+      h += '<div>';
+      mapas.forEach(m => {
+        h += `<div style="display:inline-block;vertical-align:top;width:100%;max-width:320px;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:0 6px 8px 0;break-inside:avoid;page-break-inside:avoid;">
+          <div style="font-weight:700;color:#1e3a8a;margin-bottom:6px;">${m.sistema}</div>
+          <div style="display:flex;justify-content:center;">${m.svg}</div>
+          ${lf === 'costas' && m.sistema !== 'Sistema Inferior' ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px;margin-top:8px;font-size:0.82rem;color:#92400e;"><b>Nas costas:</b> ${m.sistema === 'Sistema Superior' ? 'massaja no <b>osso mais saliente da parte de trás do pescoço (nuca)</b>' : 'massaja no <b>pescoço, mais ou menos a meio, no osso mais saliente</b>'}, um ponto de cada vez, pela ordem dos números.</div>` : ''}
+          <ol style="list-style:none;margin:8px 0 0;padding:0;font-size:0.86rem;color:#334155;">${m.L.map(p => `<li style="margin-bottom:6px;"><b style="display:inline-block;background:#dc2626;color:white;border-radius:50%;min-width:20px;height:20px;line-height:20px;text-align:center;font-size:0.72rem;margin-right:6px;">${peNumPonto(p)}</b><b>${peEsc(p.nome)}</b>${p.cat === 'inferior' ? ` <span style="color:#64748b;">(perna ${/e$/.test(p.id) ? 'esquerda' : 'direita'})</span>` : ''}<br><span style="color:#64748b;margin-left:26px;display:inline-block;">${peLocalDoPonto(p, lf)}</span></li>`).join('')}</ol></div>`;
+        t += `  ${m.sistema.toUpperCase()}:\n` + (lf === 'costas' && m.sistema !== 'Sistema Inferior' ? `  (Nas costas: ${m.sistema === 'Sistema Superior' ? 'massaja no osso mais saliente da parte de trás do pescoço (nuca)' : 'massaja no pescoço, mais ou menos a meio, no osso mais saliente'}, um ponto de cada vez, pela ordem dos números.)\n` : '') + m.L.map(p => `   ${peNumPonto(p)}. ${p.nome}${p.cat === 'inferior' ? ' (perna ' + (/e$/.test(p.id) ? 'esquerda' : 'direita') + ')' : ''} — ${peLocalDoPonto(p, lf)}`).join('\n') + '\n';
+      });
+      h += '</div>';
       if (outros.length) {
         h += `<div style="font-size:0.86rem;color:#334155;margin-top:8px;"><b>Centros vitais e zonas de entrada:</b> ${outros.map(p => peEsc(p.nome)).join(', ')}. Massaja diretamente o local indicado no mapa da consulta.</div>`;
         t += '  Centros vitais e zonas de entrada: ' + outros.map(p => p.nome).join(', ') + '. Massaja diretamente o local indicado no mapa da consulta.\n';
@@ -2116,7 +2128,7 @@ function peLerEpocaFinal() {
 function peInjetarPrint() {
   if (document.getElementById('pe-print-css')) return;
   const st = document.createElement('style'); st.id = 'pe-print-css';
-  st.textContent = '@media print{body *{visibility:hidden}#pe-doc-paciente,#pe-doc-paciente *{visibility:visible}#pe-doc-paciente{position:absolute;left:0;top:0;width:100%}}';
+  st.textContent = '@media print{body *{visibility:hidden}#pe-doc-paciente,#pe-doc-paciente *{visibility:visible}#pe-doc-paciente{position:absolute;left:0;top:0;width:100%}#pe-doc-paciente svg[aria-label^="Sistema"]{max-width:165px!important}}';
   document.head.appendChild(st);
 }
 
