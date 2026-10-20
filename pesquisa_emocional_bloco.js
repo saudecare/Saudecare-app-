@@ -109,7 +109,7 @@ function peReset() {
     patientId: null, patientName: '', step: '0', path: 2,
     quadrants: [], qIdx: 0, mappingData: {}, catId: 'vital',
     shieldCalc: 'Indefinido', finalShield: 'Não Especificado',
-    hasBack: false, editMode: false, formEditMode: false,
+    hasBack: false, editMode: false, editPonto: null, formEditMode: false,
     formId: 'pre-consulta', activePoint: null,
     formsDB: null, appData: null,
   };
@@ -278,6 +278,19 @@ async function renderPesquisaEmocional(main) {
             <div style="max-width:320px;margin:0 auto;width:100%;">
               <div id="pe-svg-wrapper" style="background:white;border:1px solid #e2e8f0;border-radius:10px;width:100%;aspect-ratio:1/1.8;overflow:hidden;touch-action:none;position:relative;">
                 <svg id="pe-svg" viewBox="0 0 200 400" style="width:100%;height:100%;"></svg>
+              </div>
+              <div id="pe-edit-painel" style="display:none;margin-top:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;">
+                <div style="font-size:0.82rem;color:#1e3a8a;font-weight:700;margin-bottom:6px;">✏️ Arraste os pontos para o local exato</div>
+                <div id="pe-edit-ponto" style="font-size:0.82rem;color:#334155;margin-bottom:8px;">Toque num ponto para o escolher.</div>
+                <div style="display:grid;grid-template-columns:repeat(3,52px);gap:6px;justify-content:center;margin-bottom:10px;">
+                  <span></span><button onclick="window.peNudge(0,-1)" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▲</button><span></span>
+                  <button onclick="window.peNudge(-1,0)" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">◀</button>
+                  <span></span>
+                  <button onclick="window.peNudge(1,0)" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▶</button>
+                  <span></span><button onclick="window.peNudge(0,1)" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▼</button><span></span>
+                </div>
+                <div style="font-size:0.74rem;color:#64748b;text-align:center;margin-bottom:8px;">As setas ajustam o ponto escolhido, um pouco de cada vez. As posições ficam guardadas neste dispositivo.</div>
+                <button onclick="window.peReporPosicoes()" style="width:100%;background:white;border:1px solid #cbd5e1;color:#334155;padding:9px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;">↩ Repor todas as posições originais</button>
               </div>
             </div>
             <div>
@@ -977,17 +990,95 @@ function peRenderizarSVG(cat,selectedSet) {
   if (!svg) return;
   svg.innerHTML=PE_CORPO_SVG;
   if (cat.id==='lateral') svg.innerHTML+=`<path d="M 100 15 C 130 15 145 50 145 90 C 175 130 180 210 170 240 C 145 250 135 300 130 380" fill="none" stroke="#b45309" stroke-width="2" stroke-dasharray="4"/>`;
+  const edit=peState.editMode;
   cat.points.forEach(p=>{
     const isSel=selectedSet.has(p.id);
+    const escolhido=edit&&peState.editPonto===p.id;
     const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
     c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r',isSel?'10':'8');
-    c.setAttribute('fill',isSel?'#dc2626':cat.cor); c.setAttribute('stroke',isSel?'#fef08a':'white'); c.setAttribute('stroke-width',isSel?'3':'1.5');
+    c.setAttribute('fill',isSel?'#dc2626':cat.cor); c.setAttribute('stroke',escolhido?'#1e3a8a':(isSel?'#fef08a':'white')); c.setAttribute('stroke-width',escolhido?'3':(isSel?'3':'1.5'));
     const title=document.createElementNS('http://www.w3.org/2000/svg','title'); title.textContent=p.name; c.appendChild(title);
     const hit=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    hit.setAttribute('cx',p.x); hit.setAttribute('cy',p.y); hit.setAttribute('r','16'); hit.setAttribute('fill','transparent');
-    hit.addEventListener('pointerdown',(e)=>{ e.preventDefault(); e.stopPropagation(); peTogglePonto(p.id,!selectedSet.has(p.id)); });
+    hit.setAttribute('cx',p.x); hit.setAttribute('cy',p.y); hit.setAttribute('r',edit?'18':'16'); hit.setAttribute('fill','transparent');
+    if (edit) {
+      hit.style.cursor='grab'; hit.style.touchAction='none';
+      hit.addEventListener('pointerdown',(e)=>{
+        e.preventDefault(); e.stopPropagation();
+        peState.editPonto=p.id; peAtualizarPainelEdicao(p);
+        try { hit.setPointerCapture(e.pointerId); } catch(_) {}
+        const ctm=svg.getScreenCTM();
+        if (!ctm) return;
+        const inv=ctm.inverse();
+        const aoPonto=(ev)=>{ const pt=svg.createSVGPoint(); pt.x=ev.clientX; pt.y=ev.clientY; return pt.matrixTransform(inv); };
+        const ini=aoPonto(e); const dx0=p.x-ini.x, dy0=p.y-ini.y;
+        // linhas-guia para ver o local exato por baixo do dedo
+        const gv=document.createElementNS('http://www.w3.org/2000/svg','line'); const gh=document.createElementNS('http://www.w3.org/2000/svg','line');
+        [gv,gh].forEach(g=>{ g.setAttribute('stroke','#1e3a8a'); g.setAttribute('stroke-width','0.6'); g.setAttribute('stroke-dasharray','2 2'); g.setAttribute('pointer-events','none'); svg.insertBefore(g,svg.firstChild.nextSibling); });
+        const desenhar=()=>{
+          c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); hit.setAttribute('cx',p.x); hit.setAttribute('cy',p.y);
+          gv.setAttribute('x1',p.x); gv.setAttribute('x2',p.x); gv.setAttribute('y1',0); gv.setAttribute('y2',400);
+          gh.setAttribute('y1',p.y); gh.setAttribute('y2',p.y); gh.setAttribute('x1',0); gh.setAttribute('x2',200);
+        };
+        c.setAttribute('stroke','#1e3a8a'); c.setAttribute('stroke-width','3');
+        desenhar();
+        const mover=(ev)=>{
+          const q=aoPonto(ev);
+          p.x=Math.round(Math.max(0,Math.min(200,q.x+dx0))*10)/10;
+          p.y=Math.round(Math.max(0,Math.min(400,q.y+dy0))*10)/10;
+          desenhar(); peAtualizarPainelEdicao(p);
+        };
+        const fim=()=>{
+          hit.removeEventListener('pointermove',mover); hit.removeEventListener('pointerup',fim); hit.removeEventListener('pointercancel',fim);
+          gv.remove(); gh.remove();
+          peGravarPosicao(p.id,p.x,p.y);
+        };
+        hit.addEventListener('pointermove',mover); hit.addEventListener('pointerup',fim); hit.addEventListener('pointercancel',fim);
+      });
+    } else {
+      hit.addEventListener('pointerdown',(e)=>{ e.preventDefault(); e.stopPropagation(); peTogglePonto(p.id,!selectedSet.has(p.id)); });
+    }
     svg.appendChild(c); svg.appendChild(hit);
   });
+}
+
+// Guarda a nova posição do ponto (para todas as zonas desta consulta e para as próximas).
+function peGravarPosicao(id,x,y) {
+  const cfg=peLerConfig();
+  cfg.categories.forEach(cat=>cat.points.forEach(pt=>{ if(pt.id===id){ pt.x=x; pt.y=y; } }));
+  peGuardarConfig(cfg);
+  Object.values(peState.mappingData||{}).forEach(q=>q.categories.forEach(cat=>cat.points.forEach(pt=>{ if(pt.id===id){ pt.x=x; pt.y=y; } })));
+  if (peState.appData) peState.appData.categories.forEach(cat=>cat.points.forEach(pt=>{ if(pt.id===id){ pt.x=x; pt.y=y; } }));
+}
+
+function peAtualizarPainelEdicao(p) {
+  const el=document.getElementById('pe-edit-ponto');
+  if (!el) return;
+  el.innerHTML=p?`Ponto escolhido: <b>${peEsc(p.name)}</b> <span style="color:#64748b;">(${p.x} , ${p.y})</span>`:'Toque num ponto para o escolher.';
+}
+
+function peNudge(dx,dy) {
+  const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
+  if (!qData||!peState.editPonto) return mostrarAviso('⚠️ Toque primeiro num ponto do mapa.');
+  const cat=qData.categories.find(c=>c.id===peState.catId);
+  const p=cat&&cat.points.find(pt=>pt.id===peState.editPonto);
+  if (!p) return mostrarAviso('⚠️ Esse ponto não está nesta categoria.');
+  p.x=Math.round(Math.max(0,Math.min(200,p.x+dx*0.5))*10)/10;
+  p.y=Math.round(Math.max(0,Math.min(400,p.y+dy*0.5))*10)/10;
+  peGravarPosicao(p.id,p.x,p.y);
+  peAtualizarPainelEdicao(p);
+  peRenderizarSVG(cat,qData.selectedPoints);
+}
+
+function peReporPosicoes() {
+  const cfg=peLerConfig();
+  const orig={}; PE_CAT.forEach(cat=>cat.points.forEach(pt=>{ orig[pt.id]={x:pt.x,y:pt.y}; }));
+  const rep=(cats)=>cats.forEach(cat=>cat.points.forEach(pt=>{ if(orig[pt.id]){ pt.x=orig[pt.id].x; pt.y=orig[pt.id].y; } }));
+  rep(cfg.categories); peGuardarConfig(cfg);
+  Object.values(peState.mappingData||{}).forEach(q=>rep(q.categories));
+  if (peState.appData) rep(peState.appData.categories);
+  peState.editPonto=null; peAtualizarPainelEdicao(null);
+  peCarregarCategoria(peState.catId);
+  mostrarAviso('✅ Posições originais repostas.');
 }
 
 function peTogglePonto(id,isSelected) {
@@ -1002,6 +1093,10 @@ function peToggleEditMapa() {
   peState.editMode=!peState.editMode;
   const btn=document.getElementById('pe-btn-edit-mapa');
   if (btn) { btn.textContent=peState.editMode?'✅ Edição Concluída':'✏️ Modo Edição'; btn.style.background=peState.editMode?'#dc2626':'#e2e8f0'; btn.style.color=peState.editMode?'white':'#334155'; }
+  const painel=document.getElementById('pe-edit-painel');
+  if (painel) painel.style.display=peState.editMode?'block':'none';
+  peState.editPonto=null; peAtualizarPainelEdicao(null);
+  peCarregarCategoria(peState.catId);
 }
 
 function peEscolherEscudoMapa(shield,el) {
@@ -1597,6 +1692,8 @@ window.peToggleQuadrante       = peToggleQuadrante;
 window.peIniciarVia            = peIniciarVia;
 window.peProximoQuadrante      = peProximoQuadrante;
 window.peToggleEditMapa        = peToggleEditMapa;
+window.peNudge                 = peNudge;
+window.peReporPosicoes         = peReporPosicoes;
 window.peEscolherEscudoMapa    = peEscolherEscudoMapa;
 window.peAtualizarEpocaLabel   = peAtualizarEpocaLabel;
 window.peCalcEscudo            = peCalcEscudo;
