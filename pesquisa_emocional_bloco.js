@@ -1873,6 +1873,52 @@ function peTextoOrigem(ep) {
   return `Esta memória parece ter-se formado depois do nascimento${t}.`;
 }
 
+const PE_SISTEMA_TXT = {
+  vital:'Os Centros Vitais mostram onde a tua energia está mais afetada no dia a dia: o que te pesa, o que calas e o que te tira força.',
+  impact:'As Zonas de Entrada mostram por onde o acontecimento "entrou" no teu corpo: o impacto que te marcou e que ficou guardado.',
+  superior:'O Sistema Superior (cabeça e pescoço) fala do modo como pensas e te vês a ti próprio/a, do que calaste e do que engoliste sem poder dizer.',
+  central:'O Sistema Central (tronco e órgãos) fala do que sentes e carregas, sobretudo na família e nas relações mais próximas.',
+  inferior:'O Sistema Inferior (da virilha ao joelho) fala das tuas raízes: a linhagem, o território, as perdas e a segurança.'
+};
+
+function peObservacaoGeral(un, escudo, ep) {
+  if (!un.length) return { h:'', t:'' };
+  const porCat = {}; un.forEach(p => { (porCat[p.cat] = porCat[p.cat] || []).push(p); });
+  const nSist = PE_CATS_ORDEM.filter(c => porCat[c]);
+  let h = `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">Observação geral do teu mapeamento</h3>`;
+  let t = 'OBSERVAÇÃO GERAL DO TEU MAPEAMENTO\n';
+  const resumo = `No conjunto, o mapeamento assinalou ${un.length} ${un.length === 1 ? 'ponto' : 'pontos'}, em ${nSist.length} ${nSist.length === 1 ? 'sistema' : 'sistemas'}. Não os leias um a um: olha para o que têm em comum, porque é isso que conta a tua história.`;
+  h += `<p style="font-size:0.9rem;line-height:1.6;color:#334155;">${resumo}</p>`; t += resumo + '\n\n';
+  nSist.forEach(c => {
+    const nomes = porCat[c].map(p => p.nome).join('; ');
+    h += `<div style="border-left:4px solid #b45309;background:#fffbeb;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:0.88rem;color:#334155;"><b>${PE_CAT_NOME[c]} (${porCat[c].length}):</b> ${PE_SISTEMA_TXT[c]}<div style="font-size:0.8rem;color:#64748b;margin-top:4px;">${peEsc(nomes)}</div></div>`;
+    t += `• ${PE_CAT_NOME[c]} (${porCat[c].length}): ${PE_SISTEMA_TXT[c]}\n  ${nomes}\n`;
+  });
+  const temas = Array.from(new Set(un.map(p => String(p.desc).replace(/\.$/, '')).filter(Boolean)));
+  if (temas.length) {
+    h += `<div style="font-weight:700;color:#1e3a8a;margin:12px 0 6px;font-size:0.9rem;">Os temas que se repetem</div><div style="display:flex;flex-wrap:wrap;gap:6px;">${temas.map(x => `<span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:20px;padding:3px 10px;font-size:0.8rem;">${peEsc(x)}</span>`).join('')}</div>`;
+    t += '\nOs temas que se repetem: ' + temas.join(' · ') + '\n';
+  }
+  const exs = []; un.forEach(p => { const e = peExemplosDe(p.id)[0]; if (e && !exs.includes(e)) exs.push(e); });
+  if (exs.length) {
+    const lim = exs.slice(0, 10);
+    h += `<div style="font-weight:700;color:#1e3a8a;margin:12px 0 6px;font-size:0.9rem;">Situações em que isto pode ter começado</div><ul style="font-size:0.88rem;line-height:1.5;color:#334155;margin:0 0 4px 18px;padding:0;">${lim.map(e => `<li>${peEsc(e)}</li>`).join('')}</ul>`;
+    t += '\nSituações em que isto pode ter começado:\n' + lim.map(e => ` - ${e}`).join('\n') + '\n';
+  }
+  const qs = []; un.forEach(p => { if (p.r && !qs.includes(p.r)) qs.push(p.r); });
+  if (qs.length) {
+    const lim = qs.slice(0, 10);
+    h += `<div style="font-weight:700;color:#1e3a8a;margin:12px 0 6px;font-size:0.9rem;">Perguntas para te questionares</div><ul style="font-size:0.88rem;line-height:1.5;color:#1e3a8a;margin:0 0 4px 18px;padding:0;">${lim.map(q => `<li>${peEsc(q)}</li>`).join('')}</ul>`;
+    t += '\nPerguntas para te questionares:\n' + lim.map(q => ` - ${q}`).join('\n') + '\n';
+  }
+  if (escudo !== 'Não Especificado') {
+    const fecho = `Tudo isto aponta para um padrão de defesa de ${escudo}${ep && ep.epoca ? ', ' + peTextoOrigem(ep).replace(/^Esta memória parece /, 'e a memória parece ').replace(/\.$/, '') : ''}. Reconhecer isto já é o primeiro passo: o que se torna consciente deixa de comandar em silêncio.`;
+    h += `<p style="font-size:0.9rem;line-height:1.6;color:#334155;margin-top:12px;">${peEsc(fecho)}</p>`; t += '\n' + fecho + '\n';
+  }
+  t += '\n';
+  return { h, t };
+}
+
 function peConstruirRelatorioPaciente() {
   const un = peUnicos(peColetarPontos());
   const data = new Date().toLocaleDateString('pt-PT');
@@ -1925,6 +1971,7 @@ function peConstruirRelatorioPaciente() {
     if (origem) { h += `<p style="font-size:0.9rem;color:#334155;">⏳ ${origem}</p>`; t += origem + '\n'; }
     t += '\n';
   }
+  const obs = peObservacaoGeral(un, escudo, ep); h += obs.h; t += obs.t;
   const refl = ['Que acontecimento ou pessoa te veio à cabeça enquanto lias?','Com quem poderias falar sobre isto?','Escreve num caderno, esta semana, o que te vier à memória — sem julgar.'];
   h += `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">Para refletires esta semana</h3><ul style="font-size:0.9rem;color:#334155;margin:0 0 8px 18px;padding:0;">${refl.map(x => `<li>${x}</li>`).join('')}</ul>`;
   t += 'PARA REFLETIRES ESTA SEMANA\n' + refl.map(x => ` - ${x}`).join('\n') + '\n\n';
