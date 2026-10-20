@@ -505,6 +505,8 @@ async function renderPesquisaEmocional(main) {
               <label style="display:flex;gap:8px;align-items:center;font-size:0.9rem;"><input type="radio" name="pe-estado" value="standby" checked style="width:18px;height:18px;"> Fica em stand-by (inicia quando decidir)</label>
             </div>
             <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px;">
+              <label style="display:flex;gap:8px;align-items:center;font-weight:700;color:#1e3a8a;"><input type="checkbox" id="pe-incluir-plano" checked onchange="window.peRenderPrevia()" style="width:18px;height:18px;"> 🏠 Enviar plano de tratamento em casa (massagens, afirmações, música)</label>
+              <div style="font-size:0.78rem;color:#64748b;margin:4px 0 12px 26px;">Desmarca numa consulta única ou esporádica, se não vais enviar trabalhos de casa: o paciente recebe só o relatório.</div>
               <label style="display:flex;gap:8px;align-items:center;font-weight:700;color:#1e3a8a;margin-bottom:8px;"><input type="checkbox" id="pe-a21-incluir" onchange="window.peRenderPrevia()" style="width:18px;height:18px;"> 🎧 Incluir programa de 21 meditações (3 semanas × 7)</label>
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
                 <select id="pe-a21-versao" onchange="window.peRenderPrevia()" style="padding:9px;border:1px solid #e2e8f0;border-radius:8px;"><option value="fem">Versão feminina</option><option value="masc">Versão masculina</option></select>
@@ -2069,9 +2071,16 @@ function peConstruirPlano() {
   return { html:h, texto:t };
 }
 
+function peIncluirPlano() {
+  const ck = document.getElementById('pe-incluir-plano');
+  if (ck && peState.step === '4') return ck.checked;
+  return true;
+}
+
 function peConstruirDocumentoPaciente() {
   const r = peConstruirRelatorioPaciente();
-  const p = peConstruirPlano();
+  const incl = peIncluirPlano();
+  const p = incl ? peConstruirPlano() : { html:'', texto:'' };
   const notas = (document.getElementById('pe-receita')?.value || '').trim();
   let html = `<div id="pe-doc-paciente">${r.html}${p.html}`;
   let texto = r.texto + p.texto;
@@ -2282,7 +2291,7 @@ async function peEmitirPaciente(relatorioTec, escudo, data) {
     escudo, path:2, data, mapId, estado, consulta, epoca:ep.epoca || '', tempo:ep.tempo || '',
     notas:(document.getElementById('pe-receita')?.value || '').trim(),
     pontos:pontos.map(p => ({ k:p.k, id:p.id, nome:p.nome, cat:p.cat, zona:p.zona })),
-    mapa:{ zonas }, htmlPaciente:doc.html, audios21:peLerAudios21Cfg()
+    mapa:{ zonas }, htmlPaciente:doc.html, audios21:peLerAudios21Cfg(), semPlano:!peIncluirPlano()
   }));
   let ok = true;
   if (peState.patientId) ok = await guardarNaFicha(peState.patientId, { tipo:'pesquisa_emocional', titulo:`Pesquisa Emocional — ${data}`, texto:relatorioTec + '\n\nRELATÓRIO PARA O PACIENTE:\n' + doc.texto, dados });
