@@ -411,7 +411,7 @@ async function renderPesquisaEmocional(main) {
             <div id="pe-mapa-titulo" style="font-size:1.05rem;font-weight:700;color:#dc2626;"></div>
             <button onclick="window.peToggleEditMapa()" id="pe-btn-edit-mapa" style="background:#e2e8f0;border:1px solid #cbd5e1;color:#334155;padding:8px 14px;border-radius:20px;font-size:0.8rem;font-weight:700;cursor:pointer;">✏️ Modo Edição</button>
           </div>
-          <div style="display:flex;flex-direction:column;gap:20px;">
+          <div id="pe-mapa-corpo" style="display:flex;flex-direction:column;gap:20px;">
             <div style="max-width:560px;margin:0 auto;width:100%;">
               <div id="pe-svg-wrapper" style="background:white;border:1px solid #e2e8f0;border-radius:10px;width:100%;aspect-ratio:360/400;overflow:hidden;touch-action:none;position:relative;">
                 <svg id="pe-svg" viewBox="-80 0 360 400" style="width:100%;height:100%;"></svg>
@@ -447,33 +447,13 @@ async function renderPesquisaEmocional(main) {
                 <label style="color:#b45309;font-weight:700;font-size:0.9rem;display:block;margin-bottom:6px;">Anotações da Varredura Lateral:</label>
                 <textarea id="pe-lateral-notas" rows="3" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;" placeholder="Descreva resistências ao longo do percurso lateral..."></textarea>
               </div>
-              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-top:16px;">
-                <div style="font-weight:700;color:#1e3a8a;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Fecho Deste Eixo</div>
-                <label style="font-size:0.85rem;font-weight:700;color:#334155;display:block;margin-bottom:8px;">Padrão de Defesa Ativo:</label>
-                <div id="pe-escudos-mapa" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-                  ${['Desproteção','Desvalorização','Impotência','Sobrevivência','Perda'].map(e=>`
-                    <div onclick="window.peEscolherEscudoMapa('${e}',this)" style="flex:1;min-width:100px;padding:10px;border:2px solid #e2e8f0;background:white;border-radius:8px;cursor:pointer;text-align:center;font-size:0.82rem;font-weight:600;color:#64748b;transition:.2s;">${e}</div>`).join('')}
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
-                  <div>
-                    <label style="font-size:0.82rem;font-weight:700;color:#334155;display:block;margin-bottom:6px;">Origem do Gatilho:</label>
-                    <select id="pe-epoca" onchange="window.peAtualizarEpocaLabel()" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;">
-                      <option value="Transgeracional">Transgeracional (Herança)</option>
-                      <option value="Gestacional">Durante a Gestação</option>
-                      <option value="Pós-parto / Biográfico">Depois do Parto (Biográfico)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label id="pe-epoca-label" style="font-size:0.82rem;font-weight:700;color:#334155;display:block;margin-bottom:6px;">Gerações:</label>
-                    <input type="text" id="pe-epoca-tempo" placeholder="Ex: Há 1 geração..." style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;">
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
-          <div style="display:flex;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
-            <button onclick="window.peIrPasso('2')" style="background:white;border:1px solid #e2e8f0;padding:12px 20px;border-radius:8px;font-weight:600;cursor:pointer;">Cancelar</button>
-            <button onclick="window.peProximoQuadrante()" style="background:#1e3a8a;color:white;padding:12px 24px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Gravar e Avançar ➔</button>
+          <div id="pe-fecho-final" style="display:none;"></div>
+          <div id="pe-mapa-rodape" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
+            <button onclick="window.peIrPasso('2')" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Cancelar</button>
+            <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Mapeamento</button>
+            <button id="pe-btn-seguinte" onclick="window.peSeguinte()" style="background:#1e3a8a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Seguinte ➔</button>
           </div>
         </div>
       </div>
@@ -1053,22 +1033,106 @@ function peCarregarQuadrante() {
   const qName=peState.quadrants[peState.qIdx]?.val;
   const titulo=document.getElementById('pe-mapa-titulo');
   if (titulo) titulo.textContent=`Pesquisa Visual » ${qName} (${peState.qIdx+1}/${peState.quadrants.length})`;
-  document.querySelectorAll('#pe-escudos-mapa div').forEach(b=>{b.style.borderColor='#e2e8f0';b.style.background='white';b.style.color='#64748b';});
+  const corpo=document.getElementById('pe-mapa-corpo'); if(corpo) corpo.style.display='flex';
+  const fin=document.getElementById('pe-fecho-final'); if(fin) fin.style.display='none';
+  const rod=document.getElementById('pe-mapa-rodape'); if(rod) rod.style.display='flex';
   peState.catId='vital'; peRenderizarTabs(); peCarregarCategoria('vital');
 }
 
-function peProximoQuadrante() {
-  const qName=peState.quadrants[peState.qIdx]?.val;
-  const qData=peState.mappingData[qName];
+function peGuardarNotasLaterais() {
+  const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
+  if (qData && peState.catId==='lateral') qData.lateralNotes=document.getElementById('pe-lateral-notas')?.value||'';
+}
+
+function peAtualizarBotaoSeguinte() {
+  const btn=document.getElementById('pe-btn-seguinte'); if (!btn) return;
+  const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
+  const cats=qData?.categories||[];
+  const i=cats.findIndex(c=>c.id===peState.catId);
+  const ultimaCat=i>=cats.length-1;
+  const ultimaZona=peState.qIdx>=peState.quadrants.length-1;
+  btn.textContent=!ultimaCat?'Seguinte ➔':(ultimaZona?'Fechar Mapeamento ➔':'Próxima Zona ➔');
+}
+
+// Ordem por zona: Vitais → Entrada → Lateralidade → Superior → Central → Inferior
+function peSeguinte() {
+  const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
   if (!qData) return;
-  qData.lateralNotes=document.getElementById('pe-lateral-notas')?.value||'';
-  const shieldBtn=document.querySelector('#pe-escudos-mapa div[data-ativo="1"]');
-  qData.shield=shieldBtn?shieldBtn.textContent.trim():'Não Especificado';
-  qData.epoch=document.getElementById('pe-epoca')?.value||'Transgeracional';
-  qData.epochTime=document.getElementById('pe-epoca-tempo')?.value||'';
-  peState.qIdx++;
-  if (peState.qIdx>=peState.quadrants.length) { peConsolidarEscudosMapa(); peIrPasso('4'); }
-  else { peCarregarQuadrante(); }
+  peGuardarNotasLaterais();
+  const cats=qData.categories;
+  const i=cats.findIndex(c=>c.id===peState.catId);
+  if (i<cats.length-1) { peCarregarCategoria(cats[i+1].id); window.scrollTo(0,0); return; }
+  if (peState.qIdx<peState.quadrants.length-1) { peState.qIdx++; peCarregarQuadrante(); window.scrollTo(0,0); return; }
+  peAbrirFecho();
+}
+function peProximoQuadrante() { peSeguinte(); }
+
+// ─── FECHO (só quando se decide terminar o mapeamento) ────────────
+
+const PE_ESCUDOS=['Desproteção','Desvalorização','Impotência','Sobrevivência','Perda'];
+
+function peAbrirFecho() {
+  peGuardarNotasLaterais();
+  const box=document.getElementById('pe-fecho-final'); if (!box) return;
+  const corpo=document.getElementById('pe-mapa-corpo'); if (corpo) corpo.style.display='none';
+  const rod=document.getElementById('pe-mapa-rodape'); if (rod) rod.style.display='none';
+  const titulo=document.getElementById('pe-mapa-titulo'); if (titulo) titulo.textContent='Fecho do Mapeamento';
+  box.style.display='block';
+  box.innerHTML=`<div style="font-size:0.85rem;color:#64748b;margin-bottom:12px;">Indique o padrão de defesa e a origem/tempo de cada zona mapeada.</div>`+
+  peState.quadrants.map((q,i)=>{
+    const d=peState.mappingData[q.val]; if(!d) return '';
+    const n=d.selectedPoints?d.selectedPoints.size:0;
+    return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:14px;">
+      <div style="font-weight:700;color:#1e3a8a;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">${q.val} <span style="font-weight:500;color:#64748b;font-size:0.8rem;">· ${n} ponto${n===1?'':'s'}</span></div>
+      <label style="font-size:0.85rem;font-weight:700;color:#334155;display:block;margin-bottom:8px;">Padrão de Defesa Ativo:</label>
+      <div id="pe-fz-esc-${i}" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        ${PE_ESCUDOS.map(e=>{const on=d.shield===e;return `<div onclick="window.peEscolherEscudoZona(${i},'${e}',this)" data-ativo="${on?'1':''}" style="flex:1;min-width:100px;padding:10px;border:2px solid ${on?'#1e3a8a':'#e2e8f0'};background:${on?'#eff6ff':'white'};color:${on?'#1e3a8a':'#64748b'};border-radius:8px;cursor:pointer;text-align:center;font-size:0.82rem;font-weight:600;">${e}</div>`}).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><label style="font-size:0.82rem;font-weight:700;color:#334155;display:block;margin-bottom:6px;">Origem do Gatilho:</label>
+          <select id="pe-fz-epoca-${i}" onchange="window.peAtualizarEpocaZona(${i})" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;">
+            ${[['Transgeracional','Transgeracional (Herança)'],['Gestacional','Durante a Gestação'],['Pós-parto / Biográfico','Depois do Parto (Biográfico)']].map(([v,t])=>`<option value="${v}"${d.epoch===v?' selected':''}>${t}</option>`).join('')}
+          </select></div>
+        <div><label id="pe-fz-lbl-${i}" style="font-size:0.82rem;font-weight:700;color:#334155;display:block;margin-bottom:6px;"></label>
+          <input type="text" id="pe-fz-tempo-${i}" value="${(d.epochTime||'').replace(/"/g,'&quot;')}" placeholder="Ex: Há 1 geração..." style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+      </div></div>`;
+  }).join('')+
+  `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
+    <button onclick="window.peVoltarAoMapa()" style="background:white;border:1px solid #e2e8f0;padding:12px 18px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Voltar ao Mapeamento</button>
+    <button onclick="window.peConcluirFecho()" style="background:#1e3a8a;color:white;padding:12px 24px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Gravar e Avançar ➔</button>
+  </div>`;
+  peState.quadrants.forEach((q,i)=>peAtualizarEpocaZona(i));
+  window.scrollTo(0,0);
+}
+
+function peAtualizarEpocaZona(i) {
+  const v=document.getElementById(`pe-fz-epoca-${i}`)?.value;
+  const l=document.getElementById(`pe-fz-lbl-${i}`); if (!l) return;
+  l.textContent=v==='Transgeracional'?'Gerações:':v==='Gestacional'?'Mês Intrauterino:':'Idade / Época:';
+}
+
+function peEscolherEscudoZona(i,shield,el) {
+  document.querySelectorAll(`#pe-fz-esc-${i} div`).forEach(b=>{b.dataset.ativo='';b.style.borderColor='#e2e8f0';b.style.background='white';b.style.color='#64748b';});
+  el.dataset.ativo='1'; el.style.borderColor='#1e3a8a'; el.style.background='#eff6ff'; el.style.color='#1e3a8a';
+  const d=peState.mappingData[peState.quadrants[i]?.val]; if (d) d.shield=shield;
+}
+
+function peLerFecho() {
+  peState.quadrants.forEach((q,i)=>{
+    const d=peState.mappingData[q.val]; if(!d) return;
+    const b=document.querySelector(`#pe-fz-esc-${i} div[data-ativo="1"]`);
+    d.shield=b?b.textContent.trim():'Não Especificado';
+    d.epoch=document.getElementById(`pe-fz-epoca-${i}`)?.value||'Transgeracional';
+    d.epochTime=document.getElementById(`pe-fz-tempo-${i}`)?.value||'';
+  });
+}
+
+function peVoltarAoMapa() { peLerFecho(); peCarregarQuadrante(); }
+
+function peConcluirFecho() {
+  peLerFecho();
+  const fin=document.getElementById('pe-fecho-final'); if (fin) fin.style.display='none';
+  peConsolidarEscudosMapa(); peIrPasso('4');
 }
 
 // ─── MAPA SVG ─────────────────────────────────────────────────────
@@ -1107,6 +1171,7 @@ function peCarregarCategoria(catId) {
     peRenderizarPontos(cat,qData.selectedPoints);
   }
   peRenderizarSVG(cat,qData.selectedPoints);
+  peAtualizarBotaoSeguinte();
 }
 
 function peRenderizarPontos(cat,selectedSet) {
@@ -2062,6 +2127,12 @@ window.peEscolherVia           = peEscolherVia;
 window.peToggleQuadrante       = peToggleQuadrante;
 window.peIniciarVia            = peIniciarVia;
 window.peProximoQuadrante      = peProximoQuadrante;
+window.peSeguinte = peSeguinte;
+window.peAbrirFecho = peAbrirFecho;
+window.peAtualizarEpocaZona = peAtualizarEpocaZona;
+window.peEscolherEscudoZona = peEscolherEscudoZona;
+window.peVoltarAoMapa = peVoltarAoMapa;
+window.peConcluirFecho = peConcluirFecho;
 window.peToggleEditMapa        = peToggleEditMapa;
 window.peNudge                 = peNudge;
 window.peNudgeIniciar          = peNudgeIniciar;
