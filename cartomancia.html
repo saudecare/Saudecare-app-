@@ -266,7 +266,7 @@ async function tirarCartas(){
 function renderResultado(leadId, leitura){
   main.innerHTML = `
     <div class="card">
-      <p class="teaser-tag">${FOCOS[leitura.foco]?.icon||''} Leitura de ${leitura.nome.split(' ')[0]}</p>
+      <p class="teaser-tag">${FOCOS[leitura.foco]?.icon||''} Leitura de ${escapeHtml(leitura.nome.split(" ")[0])}</p>
       <div class="cards-drawn">
         ${leitura.cartas.map(c => `
           <div class="card-face">
