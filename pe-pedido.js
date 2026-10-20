@@ -29,7 +29,7 @@ window.renderPedidoMetodo = async function (main) {
   if (est.estado === 'aprovado') { main.innerHTML = topo + caixa('#dcfce7', '#86efac', '✅', 'Pedido aprovado', 'O método foi ativado na sua conta. Atualize a página e abra "Pesquisa Emocional Clínica" nas Ferramentas.') + '</div>'; return; }
   if (est.estado === 'revogado') { main.innerHTML = topo + caixa('#fee2e2', '#fca5a5', '🚫', 'Acesso revogado', esc(est.motivo || 'O acesso foi terminado. Contacte o administrador da plataforma.')) + '</div>'; return; }
   try { termo = await window.peChamar('peTermoTexto', {}); } catch (e) { main.innerHTML = `<div class="card"><p class="muted">${esc(e.message)}</p></div>`; return; }
-  ESTADO = { termo, assinou: false, cert: null };
+  ESTADO = { termo, assinou: false, cert: null, mat: null };
   main.innerHTML = topo + `${est.estado === 'recusado' ? `<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:12px;margin-bottom:14px;font-size:0.9rem;">O pedido anterior foi recusado${est.motivo ? ': ' + esc(est.motivo) : '.'} Pode fazer um novo pedido.</div>` : ''}
     <div class="card"><h3 style="margin-top:0;">1 · Os seus dados e a sua formação</h3>
       <label style="${L}">Nome completo</label><input id="ppNome" style="${I}" autocomplete="name">
@@ -38,7 +38,8 @@ window.renderPedidoMetodo = async function (main) {
       <label style="${L}">Formador ou instituição</label><input id="ppFormador" style="${I}">
       <label style="${L}">Data da formação</label><input id="ppData" type="date" style="${I}">
       <label style="${L}">N.º do certificado (se tiver)</label><input id="ppNcert" style="${I}">
-      <label style="${L}">Comprovativo da formação (foto ou PDF do certificado)</label><input id="ppCert" type="file" accept="image/*,application/pdf" style="${I}" onchange="ppCertificado(this)"><div id="ppCertInfo" class="muted"></div></div>
+      <label style="${L}">Comprovativo da formação (foto ou PDF do certificado)</label><input id="ppCert" type="file" accept="image/*,application/pdf" style="${I}" onchange="ppCertificado(this)"><div id="ppCertInfo" class="muted"></div>
+      <label style="${L}">Material da sua formação (foto ou PDF do manual/apontamentos)</label><input id="ppMat" type="file" accept="image/*,application/pdf" style="${I}" onchange="ppCertificado(this,'mat')"><div id="ppMatInfo" class="muted"></div></div>
     <div class="card"><h3 style="margin-top:0;">2 · ${esc(termo.titulo)}</h3>
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;font-size:0.85rem;line-height:1.6;max-height:260px;overflow-y:auto;margin-bottom:14px;">${termo.clausulas.map((c, i) => `<p style="margin:0 0 8px;"><b>${i + 1}.</b> ${esc(c)}</p>`).join('')}</div>
       ${termo.aceites.map(([k, t]) => `<label style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:0.88rem;cursor:pointer;"><input type="checkbox" class="ppAc" data-k="${k}" style="width:20px;height:20px;margin:2px 0 0;flex-shrink:0;"> <span>${esc(t)}</span></label>`).join('')}</div>
@@ -52,18 +53,19 @@ window.renderPedidoMetodo = async function (main) {
   ppIniciarSig();
 };
 
-window.ppCertificado = async function (inp) {
-  const f = inp.files && inp.files[0]; const info = document.getElementById('ppCertInfo'); ESTADO.cert = null;
+window.ppCertificado = async function (inp, tipo) {
+  const alvo = tipo === 'mat' ? 'mat' : 'cert';
+  const f = inp.files && inp.files[0]; const info = document.getElementById(alvo === 'mat' ? 'ppMatInfo' : 'ppCertInfo'); ESTADO[alvo] = null;
   if (!f) { info.textContent = ''; return; }
   try {
     if (f.type === 'application/pdf') {
       if (f.size > 3300000) { info.textContent = 'O PDF é demasiado grande (máx. 3 MB).'; inp.value = ''; return; }
-      ESTADO.cert = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(f); });
+      ESTADO[alvo] = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(f); });
     } else {
       const url = URL.createObjectURL(f);
       const im = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
       const k = Math.min(1, 1600 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
-      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url); ESTADO.cert = c.toDataURL('image/jpeg', 0.85);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url); ESTADO[alvo] = c.toDataURL('image/jpeg', 0.85);
     }
     info.textContent = '✅ ' + f.name;
   } catch (_) { info.textContent = 'Não consegui ler esse ficheiro.'; inp.value = ''; }
@@ -84,13 +86,14 @@ window.ppEnviar = async function () {
   const aceites = {}; document.querySelectorAll('.ppAc').forEach(c => { aceites[c.dataset.k] = c.checked; });
   if (!v('ppNome') || !v('ppForm') || !v('ppFormador') || !v('ppData')) return erro('Preencha o nome e os dados da formação.');
   if (!ESTADO.cert) return erro('Junte o comprovativo da formação (foto ou PDF).');
+  if (!ESTADO.mat) return erro('Junte o material da sua formação (foto ou PDF).');
   if (!Object.values(aceites).length || !Object.values(aceites).every(Boolean)) return erro('Tem de aceitar todas as declarações.');
   if (!ESTADO.assinou) return erro('Falta a assinatura na caixa.');
   if (!v('ppNomeAss')) return erro('Escreva o seu nome completo por baixo da assinatura.');
   btn.disabled = true; btn.textContent = '⏳ A enviar…'; msg.innerHTML = '';
   try {
     const r = await window.peChamar('peTermoSubmeter', { versao: ESTADO.termo.versao, hash: ESTADO.termo.hash, aceites, nomeCompleto: v('ppNome'), cedula: v('ppCed'), nomeAssinado: v('ppNomeAss'),
-      formacao: { nome: v('ppForm'), formador: v('ppFormador'), data: v('ppData'), nCert: v('ppNcert') }, certificado: ESTADO.cert, assinatura: document.getElementById('ppSig').toDataURL('image/png') });
+      formacao: { nome: v('ppForm'), formador: v('ppFormador'), data: v('ppData'), nCert: v('ppNcert') }, certificado: ESTADO.cert, material: ESTADO.mat, assinatura: document.getElementById('ppSig').toDataURL('image/png') });
     window.__ppPdf = r.pdf;
     document.getElementById('ppEnviar').closest('.card').innerHTML = `<div style="text-align:center;"><div style="font-size:1.8rem;">✅</div><h3>Pedido enviado</h3><p class="muted">O seu pedido e a declaração assinada ficaram registados. Será avisado quando for decidido.</p>
       <button class="primary" style="margin-top:10px;" onclick="baixar_pp()">📄 Descarregar a minha cópia do termo (PDF)</button></div>`;
@@ -121,7 +124,7 @@ window.peTermosAdmin = async function () {
     ${lista.length ? lista.map(p => `<div class="card" style="margin-bottom:10px;border-left:4px solid ${cores[p.estado] || '#94a3b8'};">
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>${esc(p.nome)}</b><span style="font-size:0.78rem;font-weight:700;color:${cores[p.estado] || '#64748b'};">${esc(p.estado.toUpperCase())}</span></div>
       <div class="muted" style="margin:4px 0 8px;">${esc(p.businessName || p.tenantId)} · ${esc(p.email)}<br>Formação: ${esc(p.formacao)} · ${esc(p.formador)} · ${esc(p.data)}${p.nCert ? ' · cert. ' + esc(p.nCert) : ''}${p.cedula ? ' · cédula ' + esc(p.cedula) : ''}<br>Pedido em ${new Date(p.enviadoEm).toLocaleString('pt-PT')} · Drive: ${esc(p.drive || '—')}${p.motivo ? '<br>Motivo: ' + esc(p.motivo) : ''}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">${b('termo', p.id, '📄 Termo assinado')}${b('certificado', p.id, '🎓 Comprovativo')}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">${b('termo', p.id, '📄 Termo assinado')}${b('certificado', p.id, '🎓 Comprovativo')}${b('material', p.id, '📚 Material')}
       ${p.estado === 'pendente' ? b('aprovar', p.id, '✅ Aprovar', 'color:#16a34a;border-color:#86efac;') + b('recusar', p.id, '✖ Recusar') : ''}
       ${p.estado === 'aprovado' ? b('revogar', p.id, '🚫 Revogar acesso', 'color:#b91c1c;border-color:#fca5a5;') : ''}${b('reenviarDrive', p.id, '☁️ Enviar para o Drive')}</div></div>`).join('') : '<div class="muted" style="text-align:center;padding:20px;">Ainda não há pedidos.</div>'}</div>`;
 };
@@ -136,7 +139,7 @@ window.peGuardarPasta = async function () {
 let armada = null;
 window.peTermoAcao = async function (acao, id) {
   try {
-    if (acao === 'termo' || acao === 'certificado') { const r = await window.peChamar('peTermoAdmin', { acao: 'ficheiro', id, qual: acao }); baixar(r.base64, r.mime, `${acao}-${id}`); return; }
+    if (acao === 'termo' || acao === 'certificado' || acao === 'material') { const r = await window.peChamar('peTermoAdmin', { acao: 'ficheiro', id, qual: acao }); baixar(r.base64, r.mime, `${acao}-${id}`); return; }
     const chave = acao + id;
     if (['aprovar', 'revogar', 'recusar'].includes(acao) && armada !== chave) { armada = chave; aviso({ aprovar: '⚠️ Toque outra vez para APROVAR (ativa o método nesta conta).', revogar: '⚠️ Toque outra vez para REVOGAR o acesso.', recusar: '⚠️ Toque outra vez para RECUSAR.' }[acao]); setTimeout(() => { if (armada === chave) armada = null; }, 5000); return; }
     armada = null;

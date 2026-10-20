@@ -14,12 +14,12 @@ const DONO = 'hikari-terapias';
 
 // ─── Texto do termo (versão única; qualquer alteração cria uma nova versão) ───
 const TERMO = {
-  versao: '2026-10-21-v1',
+  versao: '2026-10-21-v2',
   titulo: 'Declaração de formação e termo de uso exclusivo',
   clausulas: [
     'O método de atendimento «Pesquisa Emocional Clínica» foi criado e é utilizado pela Hikari Fafe (Ricardo Correia). A Vindora é a plataforma onde esse método é configurado.',
     'O subscritor declara, sob a sua responsabilidade, que possui formação em biomicrohertz e que o conteúdo, os passos, as fichas e os questionários que pede fazem parte dessa sua formação e matéria, tendo legitimidade para os utilizar na sua prática.',
-    'A Vindora não fornece, não vende nem distribui materiais de formação. Limita-se a configurar a ferramenta, a pedido do subscritor e para uso exclusivo dele, com base na formação que o subscritor declara possuir.',
+    'A Vindora não fornece, não vende nem distribui materiais de formação. O subscritor entrega à Vindora uma cópia do material da sua formação, que serve de prova de que o possui e de base para configurar a ferramenta, a pedido dele e para uso exclusivo dele, segundo o padrão dessa formação.',
     'O uso é pessoal e intransmissível, associado apenas à conta e ao consultório identificados neste pedido. É proibido copiar, reproduzir, partilhar, revender, ensinar ou tentar aceder ao código ou aos textos do método fora da ferramenta.',
     'O subscritor é o único responsável pelo uso que faz do método, pelos documentos que emite e pela sua prática clínica ou terapêutica perante os seus pacientes. Os documentos emitidos não substituem aconselhamento médico ou psicológico.',
     'O subscritor compromete-se a fornecer comprovativo da formação sempre que o dono do método o solicite. A informação prestada neste pedido tem de ser verdadeira.',
@@ -29,7 +29,7 @@ const TERMO = {
   ],
   aceites: [
     ['formacao', 'Declaro que possuo formação em biomicrohertz e que os dados e o comprovativo que apresento são verdadeiros.'],
-    ['conteudo', 'Declaro que o conteúdo que peço faz parte da minha formação e matéria, e que o peço para uso exclusivo meu.'],
+    ['conteudo', 'Declaro que o conteúdo que peço faz parte da minha formação e matéria, que entrego uma cópia do material dessa formação como base do pedido, e que o peço para uso exclusivo meu.'],
     ['partilha', 'Comprometo-me a não copiar, partilhar, revender nem ensinar o método ou os seus textos a terceiros.'],
     ['responsabilidade', 'Assumo a responsabilidade pela utilização do método e pelos documentos que emitir.'],
     ['dados', 'Autorizo o tratamento e a guarda destes dados e do comprovativo para esta finalidade.']
@@ -181,6 +181,8 @@ exports.peTermoSubmeter = onCall({ timeoutSeconds: 120, memory: '512MiB' }, asyn
   if (!nomeCompleto || !form.nome || !form.formador || !form.data) throw new HttpsError('invalid-argument', 'Preenche o nome e os dados da formação.');
   if (nomeAss.toLowerCase().replace(/\s+/g, ' ') !== nomeCompleto.toLowerCase().replace(/\s+/g, ' ')) throw new HttpsError('invalid-argument', 'O nome da assinatura tem de ser igual ao nome completo.');
   const ass = dataUrl(d.assinatura, ['image/png'], 400000);
+  const mat = d.material ? dataUrl(d.material, ['image/jpeg', 'image/png', 'application/pdf'], 4500000) : null;
+  if (!mat) throw new HttpsError('invalid-argument', 'Junta o material da formação (foto ou PDF).');
   const cert = d.certificado ? dataUrl(d.certificado, ['image/jpeg', 'image/png', 'application/pdf'], 4500000) : null;
   if (!cert) throw new HttpsError('invalid-argument', 'Junta o comprovativo da formação (foto ou PDF).');
 
@@ -193,7 +195,7 @@ exports.peTermoSubmeter = onCall({ timeoutSeconds: 120, memory: '512MiB' }, asyn
   const R = {
     id, tenantId: t.tenantId, uid: request.auth.uid, email: (request.auth.token && request.auth.token.email) || '', businessName: tdoc.businessName || '',
     dados: { nomeCompleto, cedula: str(d.cedula, 60), formacao: form }, termo: { versao: TERMO.versao, hash: hashTexto() },
-    assinatura: { nome: nomeAss, hash: sha(ass.buf) }, certificado: { mime: cert.mime, hash: sha(cert.buf) },
+    assinatura: { nome: nomeAss, hash: sha(ass.buf) }, certificado: { mime: cert.mime, hash: sha(cert.buf) }, material: { mime: mat.mime, hash: sha(mat.buf) },
     enviadoEm: new Date().toISOString(), ip, ua: str(request.rawRequest && request.rawRequest.headers['user-agent'], 200)
   };
   const hashFinal = sha(JSON.stringify(R));
@@ -202,14 +204,16 @@ exports.peTermoSubmeter = onCall({ timeoutSeconds: 120, memory: '512MiB' }, asyn
   const bucket = getStorage().bucket();
   const base = `pe_termos/${id}`;
   const certNome = `comprovativo.${extDe(cert.mime)}`;
+  const matNome = `material.${extDe(mat.mime)}`;
   await Promise.all([
+    bucket.file(`${base}/${matNome}`).save(mat.buf, { contentType: mat.mime }),
     bucket.file(`${base}/termo.pdf`).save(pdf, { contentType: 'application/pdf' }),
     bucket.file(`${base}/${certNome}`).save(cert.buf, { contentType: cert.mime }),
     bucket.file(`${base}/registo.json`).save(registo, { contentType: 'application/json' })
   ]);
-  const drive = await guardarNoDrive(id, R, [['termo.pdf', 'application/pdf', pdf], [certNome, cert.mime, cert.buf], ['registo.json', 'application/json', registo]]);
-  const email = await enviarEmail(R, [['termo-assinado.pdf', 'application/pdf', pdf], [certNome, cert.mime, cert.buf]]);
-  await db.doc(`pe_termos/${id}`).set({ ...R, email, hashFinal, estado: 'pendente', ficheiros: { termo: `${base}/termo.pdf`, certificado: `${base}/${certNome}`, registo: `${base}/registo.json` }, drive, criadoEm: FieldValue.serverTimestamp() });
+  const drive = await guardarNoDrive(id, R, [['termo.pdf', 'application/pdf', pdf], [certNome, cert.mime, cert.buf], [matNome, mat.mime, mat.buf], ['registo.json', 'application/json', registo]]);
+  const email = await enviarEmail(R, [['termo-assinado.pdf', 'application/pdf', pdf], [certNome, cert.mime, cert.buf], [matNome, mat.mime, mat.buf]]);
+  await db.doc(`pe_termos/${id}`).set({ ...R, email, hashFinal, estado: 'pendente', ficheiros: { termo: `${base}/termo.pdf`, certificado: `${base}/${certNome}`, material: `${base}/${matNome}`, registo: `${base}/registo.json` }, drive, criadoEm: FieldValue.serverTimestamp() });
   return { ok: true, id, hash: hashFinal, pdf: pdf.toString('base64') };
 });
 
@@ -236,7 +240,7 @@ exports.peTermoAdmin = onCall({ timeoutSeconds: 120, memory: '512MiB' }, async (
   if (!s.exists) throw new HttpsError('not-found', 'Pedido não encontrado.');
   const v = s.data(); const bucket = getStorage().bucket();
   if (acao === 'ficheiro') {
-    const caminho = request.data.qual === 'certificado' ? v.ficheiros.certificado : v.ficheiros.termo;
+    const caminho = request.data.qual === 'certificado' ? v.ficheiros.certificado : (request.data.qual === 'material' && v.ficheiros.material) ? v.ficheiros.material : v.ficheiros.termo;
     const [buf] = await bucket.file(caminho).download();
     const mime = caminho.endsWith('.pdf') ? 'application/pdf' : caminho.endsWith('.png') ? 'image/png' : 'image/jpeg';
     return { mime, base64: buf.toString('base64') };
@@ -254,8 +258,9 @@ exports.peTermoAdmin = onCall({ timeoutSeconds: 120, memory: '512MiB' }, async (
   if (acao === 'reenviarDrive') {
     const [pdf] = await bucket.file(v.ficheiros.termo).download(); const [cert] = await bucket.file(v.ficheiros.certificado).download(); const [reg] = await bucket.file(v.ficheiros.registo).download();
     const certNome = v.ficheiros.certificado.split('/').pop(); const mime = certNome.endsWith('.pdf') ? 'application/pdf' : certNome.endsWith('.png') ? 'image/png' : 'image/jpeg';
-    const drive = await guardarNoDrive(id, v, [['termo.pdf', 'application/pdf', pdf], [certNome, mime, cert], ['registo.json', 'application/json', reg]]);
-    const em = await enviarEmail(v, [['termo-assinado.pdf', 'application/pdf', pdf], [certNome, mime, cert]]);
+    const extra = []; if (v.ficheiros.material) { const mn = v.ficheiros.material.split('/').pop(); const [mb] = await bucket.file(v.ficheiros.material).download(); extra.push([mn, mn.endsWith('.pdf') ? 'application/pdf' : mn.endsWith('.png') ? 'image/png' : 'image/jpeg', mb]); }
+    const drive = await guardarNoDrive(id, v, [['termo.pdf', 'application/pdf', pdf], [certNome, mime, cert], ...extra, ['registo.json', 'application/json', reg]]);
+    const em = await enviarEmail(v, [['termo-assinado.pdf', 'application/pdf', pdf], [certNome, mime, cert], ...extra]);
     await ref.update({ drive, email: em }); return { ok: true, drive: drive.estado, email: em.estado, erro: drive.erro || em.erro || '' };
   }
   throw new HttpsError('invalid-argument', 'Ação desconhecida.');
