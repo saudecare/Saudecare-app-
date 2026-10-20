@@ -985,6 +985,24 @@ function wireElementosExtra(){
   });
 }
 
+
+
+// ── Limite da leitura grátis: uma por semana neste aparelho (alunos: livre) ──
+const LIM_DIAS = 7;
+(function(){ try{ if (new URLSearchParams(location.search).get('aluno') === '1') localStorage.setItem('vd_aluno', '1'); }catch(_){} })();
+function ehAluno(){ try{ return localStorage.getItem('vd_aluno') === '1'; }catch(_){ return false; } }
+function proximaLeituraGratis(){ try{ const t = parseInt(localStorage.getItem('vd_gratis_semana') || '0', 10); if (!t) return 0; const n = t + LIM_DIAS * 864e5; return n > Date.now() ? n : 0; }catch(_){ return 0; } }
+function registarLeituraGratis(){ try{ localStorage.setItem('vd_gratis_semana', String(Date.now())); }catch(_){} }
+function mostrarLimiteGratis(proxima){
+  const d = new Date(proxima).toLocaleDateString('pt-PT', { day:'2-digit', month:'2-digit' });
+  main.innerHTML = `<div class="card" style="text-align:center;">
+    <h3 style="margin-bottom:8px;">✨ A tua leitura grátis desta semana já foi feita</h3>
+    <p class="muted" style="margin-bottom:14px;">Podes fazer outra leitura grátis a partir de <b>${d}</b>.</p>
+    <p class="muted" style="margin-bottom:14px;">Queres ir mais fundo agora? Marca uma consulta completa de <b>Tarot</b> ou de <b>Pêndulo Hebraico</b> com a Hikari Fafe.</p>
+    <a class="btn" style="display:block;text-decoration:none;" href="marcar.html">📅 Marcar consulta completa</a>
+    <a class="btn btn-ghost" style="display:block;text-decoration:none;margin-top:8px;" href="index.html">← Voltar ao início</a></div>`;
+}
+
 async function onCalcular(){
   const nome = document.getElementById('inpNome').value.trim();
   const data = document.getElementById('inpData').value;
@@ -1050,6 +1068,8 @@ async function onCalcular(){
   if (!nome || !data || !contacto){ alert('Preencha o nome, a data e um contacto (WhatsApp ou email).'); return; }
   if (!consentimento){ alert('Precisa de aceitar o tratamento de dados para continuar.'); return; }
 
+  { const prox = ehAluno() ? 0 : proximaLeituraGratis(); if (prox){ mostrarLimiteGratis(prox); return; } }
+  registarLeituraGratis();
   const btn = document.getElementById('btnCalcular');
   btn.disabled = true; btn.textContent = 'A calcular…';
 
