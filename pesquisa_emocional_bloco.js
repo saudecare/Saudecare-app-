@@ -207,7 +207,7 @@ function peAplicarPosicoes(cfg) {
   return cfg;
 }
 
-function peLerConfig() { return peAplicarPosicoes(peLerConfigBase()); }
+function peLerConfig() { return peAplicarConhecimento(peAplicarPosicoes(peLerConfigBase())); }
 
 // Posições já ajustadas neste dispositivo (diferentes das de origem).
 function peMapaLocal() {
@@ -245,6 +245,7 @@ async function peCarregarPosicoes() {
     leu = true;
     const d = (snap && snap.data && snap.data()) || {};
     if (d.peAudios21 && typeof d.peAudios21 === 'object') window.__peAud21 = d.peAudios21;
+    if (d.peConhecimento && typeof d.peConhecimento === 'object') { window.__peConh = d.peConhecimento; try { localStorage.setItem('pe_conh_' + tenantId(), JSON.stringify(d.peConhecimento)); } catch(_) {} }
     if (d.peMapaPosicoes && typeof d.peMapaPosicoes === 'object' && Object.keys(d.peMapaPosicoes).length) remoto = d.peMapaPosicoes;
   } catch(_) {}
   if (remoto) { window.__pePosicoes = remoto; return; }
@@ -305,6 +306,7 @@ async function renderPesquisaEmocional(main) {
       <div id="pe-step-0" class="pe-step" style="display:block;">
         <div class="card" style="padding:20px;">
           <button id="pe-btn-nova-consulta" onclick="window.peAbrirNovaConsulta()" style="width:100%;background:#1e3a8a;color:white;padding:16px;border:none;border-radius:10px;font-size:1.05rem;font-weight:700;cursor:pointer;">➕ Nova Consulta</button>
+          <button onclick="window.peAbrirEditorConhecimento()" style="width:100%;margin-top:10px;background:white;border:1px solid #1e3a8a;color:#1e3a8a;padding:12px;border-radius:10px;font-size:0.92rem;font-weight:700;cursor:pointer;">📚 Editar conhecimento do método</button>
           <div id="pe-escolher-paciente" style="display:none;margin-top:18px;">
             <div style="font-size:1.05rem;font-weight:700;color:#1e3a8a;margin-bottom:12px;border-bottom:2px solid #fef3c7;padding-bottom:10px;">Escolher paciente</div>
             <div style="position:relative;margin-bottom:12px;">
@@ -1765,7 +1767,7 @@ function pePreencherReceita() {
   const medoRes=document.getElementById('pe-medo-resultado');
   if (medoRes&&medoRes.dataset.val) txt+=`🧠 3. Limpeza de Medos: Para ajudar a libertar o ${medoRes.dataset.val}, recomendo a frequência de limpeza de medos profundos.\n\n`;
   if (peState.path===3) txt+=`🎵 3. Gatilho Emocional: Quando sentires a pressão do estressor, faz uma pausa de 3 minutos, respira fundo e ouve a música de ancoragem recomendada.\n\n`;
-  const af=PE_ESCUDOS_AFINIDADES[escudo];
+  const af=peAfinidade(escudo);
   if (af) {
     txt+=`✨ Comando de Libertação e Cura (${escudo}):\n`;
     txt+=`Depois da estimulação, dá um autoabraço, respira fundo e repete em voz alta:\n\n`;
@@ -1828,7 +1830,6 @@ const PE_EXEMPLOS = {
   f5:['Medo de falhar financeiramente ou de perder o sustento','Uma traição que quebrou a confiança'],
   f6:['Sentir que não tem lugar na família, no trabalho ou na sociedade','Ter de ser quem não é para pertencer']
 };
-function peExemplosDe(id) { return PE_EXEMPLOS[String(id).replace(/^(f\d)[de]$/,'$1')] || []; }
 
 const PE_ESCUDO_TXT = {
   'Desproteção':{ desc:'Um padrão ligado a injustiça, insegurança e acusação. O subconsciente guarda a sensação de não ter tido proteção ou apoio quando mais foi preciso.', ex:['Sentir que ninguém o/a defendeu','Ter sido acusado/a ou castigado/a injustamente','Viver com insegurança em casa, na escola ou no trabalho'] },
@@ -1837,6 +1838,164 @@ const PE_ESCUDO_TXT = {
   'Sobrevivência':{ desc:'Um padrão ligado a pressão de sobrevivência: escassez, sufoco e indignação, seja física, emocional ou económica.', ex:['Épocas de aperto financeiro ou de falta de recursos','Ter de aguentar tudo sozinho/a para "safar" a família','Sentir-se sufocado/a por uma situação sem saída'] },
   'Perda':{ desc:'Um padrão ligado a separação, abandono e falta. Aponta para perdas reais ou sentidas que ainda não foram processadas.', ex:['Um luto, divórcio ou afastamento que ainda dói','Ter sido deixado/a ou abandonado/a','Perder um projeto, um lar ou uma pessoa muito importante'] }
 };
+const PE_TXT_DEF = {
+  intro: 'O corpo guarda a memória das emoções que não conseguimos viver ou expressar no momento. Cada ponto assinalado neste mapeamento mostra uma zona onde essa memória ficou retida. Lê com calma: não tens de te identificar com tudo — repara naquilo que te desperta uma emoção, uma imagem ou uma recordação. É aí que está o que precisa de ser olhado.',
+  aviso: 'Este relatório é uma ferramenta de autoconhecimento no âmbito de uma terapia complementar e não substitui o acompanhamento médico ou psicológico.',
+  dica: 'O mapa mostra a localização de cada ponto. Se tiveres dúvida sobre se estás a massajar o local correto, faz a massagem ao mesmo tempo que dizes em voz alta o nome da glândula ou do órgão desse ponto: a energia ajusta-se e chega ao local correto.',
+  regra: 'Trata um lado de cada vez, começando pelo lado direito. Enquanto massajas os pontos de um lado, mantém uma mão na têmpora (fonte) desse mesmo lado. Quando terminares todos os pontos desse lado (frente e costas), troca a mão para a têmpora do outro lado e repete com os pontos desse lado. Se o mesmo ponto saiu nos dois lados, massaja-o em cada lado, cada um do seu lado.',
+  refl: ['Que acontecimento ou pessoa te veio à cabeça enquanto lias?','Com quem poderias falar sobre isto?','Escreve num caderno, esta semana, o que te vier à memória — sem julgar.'],
+  passos: [
+    'Lava as mãos, senta-te ou deita-te com conforto e respira fundo 3 vezes.',
+    'Encontra no mapa o ponto pelo seu número e coloca nele 3 dedos juntos, em pinça.',
+    'Massaja o ponto com os 3 dedos durante 3 respirações profundas (inspira pelo nariz, expira pela boca).',
+    'Bate levemente duas vezes sobre o ponto.',
+    'Roda os dedos duas vezes sobre o ponto, em círculo.',
+    'Empurra suavemente para baixo com os dedos, como quem liberta o sentimento.',
+    'Passa ao ponto seguinte, pela ordem dos números. Nunca deve doer: faz tudo com suavidade.'
+  ]
+};
+
+// ─── CONHECIMENTO EDITÁVEL (por cima do padrão; dá para repor) ───
+function peConhLocal() { try { return JSON.parse(localStorage.getItem('pe_conh_' + tenantId()) || '{}') || {}; } catch(_) { return {}; } }
+function peConh() { return window.__peConh || (window.__peConh = peConhLocal()); }
+async function peConhGuardar(novo) {
+  try { localStorage.setItem('pe_conh_prev_' + tenantId(), JSON.stringify(peConh())); } catch(_) {}
+  window.__peConh = novo;
+  try { localStorage.setItem('pe_conh_' + tenantId(), JSON.stringify(novo)); } catch(_) {}
+  try { await db().doc(`tenants/${tenantId()}`).update({ peConhecimento: JSON.parse(JSON.stringify(novo)) }); mostrarAviso('✅ Guardado.'); }
+  catch(e) { mostrarAviso('Guardado neste aparelho (não foi possível guardar na conta).'); }
+}
+function peAplicarConhecimento(cfg) {
+  const K = peConh().pontos || {};
+  cfg.categories.forEach(cat => cat.points.forEach(pt => {
+    const o = K[pt.id]; if (!o) return;
+    ['name', 'organ', 'desc', 'r'].forEach(k => { if (typeof o[k] === 'string' && o[k].trim()) pt[k] = o[k]; });
+  }));
+  return cfg;
+}
+function peExemplosDe(id) {
+  const o = (peConh().pontos || {})[id];
+  if (o && Array.isArray(o.ex) && o.ex.length) return o.ex;
+  return PE_EXEMPLOS[String(id).replace(/^(f\d)[de]$/,'$1')] || [];
+}
+function peExtraDe(id) { const o = (peConh().pontos || {})[id]; return (o && o.extra) ? String(o.extra) : ''; }
+function peSistemaTxt(c) { const o = (peConh().sistemas || {})[c]; return (typeof o === 'string' && o.trim()) ? o : PE_SISTEMA_TXT[c]; }
+function peEscudoTxt(e) {
+  const d = PE_ESCUDO_TXT[e]; const o = (peConh().escudos || {})[e] || {};
+  if (!d && !o.desc) return null;
+  return { desc: (o.desc && o.desc.trim()) ? o.desc : (d && d.desc) || '', ex: (Array.isArray(o.ex) && o.ex.length) ? o.ex : ((d && d.ex) || []) };
+}
+function peAfinidade(e) {
+  const d = PE_ESCUDOS_AFINIDADES[e]; const o = (peConh().escudos || {})[e] || {};
+  if (!d && !o.libera && !o.afi) return null;
+  return { libera: (o.libera && o.libera.trim()) ? o.libera : (d && d.libera) || '', afi: (o.afi && o.afi.trim()) ? o.afi : (d && d.afi) || '' };
+}
+function peTxt(k) { const o = (peConh().textos || {})[k]; if (Array.isArray(PE_TXT_DEF[k])) return (Array.isArray(o) && o.length) ? o : PE_TXT_DEF[k]; return (typeof o === 'string' && o.trim()) ? o : PE_TXT_DEF[k]; }
+// ─── EDITOR DO CONHECIMENTO ───
+const PE_ED = { aba:'pontos', cat:'vital' };
+function peAbrirEditorConhecimento() {
+  let ov = document.getElementById('pe-conh-ov');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'pe-conh-ov'; ov.style.cssText = 'position:fixed;inset:0;background:#f1f5f9;z-index:9999;overflow-y:auto;padding:12px;'; document.body.appendChild(ov); }
+  peRenderEditor();
+}
+function peFecharEditor() { const ov = document.getElementById('pe-conh-ov'); if (ov) ov.remove(); }
+function peEdAba(a) { PE_ED.aba = a; peRenderEditor(); }
+function peEdCat(c) { PE_ED.cat = c; peRenderEditor(); }
+const peEdI = 'width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;box-sizing:border-box;margin-bottom:8px;font-family:inherit;';
+const peEdB = (bg, c, b) => `padding:10px 14px;border-radius:8px;border:1px solid ${b || bg};background:${bg};color:${c};font-weight:700;font-size:0.85rem;cursor:pointer;`;
+function peEdCampo(id, rotulo, val, linhas) { return `<label style="font-size:0.78rem;font-weight:700;color:#475569;">${rotulo}</label><textarea id="${id}" rows="${linhas || 2}" style="${peEdI}">${peEsc(val || '')}</textarea>`; }
+function peEdV(id) { return (document.getElementById(id)?.value || '').trim(); }
+function peEdLinhas(id) { return peEdV(id).split('\n').map(x => x.trim()).filter(Boolean); }
+function peRenderEditor() {
+  const ov = document.getElementById('pe-conh-ov'); if (!ov) return;
+  const K = peConh(); const abas = [['pontos','Pontos'],['sistemas','Sistemas'],['escudos','Escudos'],['textos','Textos do relatório/plano']];
+  let h = `<div style="max-width:760px;margin:0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><b style="font-size:1.1rem;color:#1e3a8a;">📚 Editar conhecimento do método</b><button onclick="window.peFecharEditor()" style="${peEdB('#e2e8f0','#334155','#cbd5e1')}">✖ Fechar</button></div>
+  <div style="font-size:0.82rem;color:#475569;margin-bottom:10px;">Muda nomes, órgãos, temas, perguntas, exemplos e acrescenta conhecimento. O padrão fica sempre guardado: use "↩ Repor padrão". Para mover pontos use o modo ✏️ no mapa.</div>
+  <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;">${abas.map(([k,n]) => `<button onclick="window.peEdAba('${k}')" style="${peEdB(PE_ED.aba===k?'#1e3a8a':'white', PE_ED.aba===k?'white':'#1e3a8a','#1e3a8a')}white-space:nowrap;">${n}</button>`).join('')}</div><div style="background:white;border-radius:12px;padding:14px;">`;
+  if (PE_ED.aba === 'pontos') {
+    h += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">${PE_CAT.map(c => `<button onclick="window.peEdCat('${c.id}')" style="${peEdB(PE_ED.cat===c.id?'#fef3c7':'#f8fafc','#92400e','#fde68a')}">${peEsc(PE_CAT_NOME[c.id] || c.id)}</button>`).join('')}</div>`;
+    const cat = PE_CAT.find(c => c.id === PE_ED.cat) || PE_CAT[0];
+    h += cat.points.map(pt => { const o = (K.pontos || {})[pt.id]; return `<div onclick="window.peEdPonto('${pt.id}')" style="padding:9px 10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;cursor:pointer;font-size:0.88rem;${o?'background:#eff6ff;':''}"><b>${peEsc((o && o.name) || pt.name)}</b>${o ? ' <span style="color:#1e3a8a;font-size:0.75rem;">· editado</span>' : ''}<div style="color:#64748b;font-size:0.8rem;">${peEsc((o && o.organ) || pt.organ || '')}</div></div>`; }).join('');
+    h += `<div id="pe-ed-form"></div>`;
+  } else if (PE_ED.aba === 'sistemas') {
+    h += PE_CAT.map(c => peEdCampo('pe-sis-' + c.id, PE_CAT_NOME[c.id] || c.id, peSistemaTxt(c.id), 3) + `<button onclick="window.peEdRepor('sistemas','${c.id}')" style="${peEdB('white','#334155','#cbd5e1')}margin-bottom:12px;">↩ Repor padrão</button>`).join('') + `<button onclick="window.peEdGuardarSistemas()" style="${peEdB('#16a34a','white')}width:100%;">💾 Guardar sistemas</button>`;
+  } else if (PE_ED.aba === 'escudos') {
+    h += Object.keys(PE_ESCUDOS_AFINIDADES).map((e, i) => { const t = peEscudoTxt(e) || { desc:'', ex:[] }, a = peAfinidade(e) || {}; return `<details style="margin-bottom:8px;border:1px solid #e2e8f0;border-radius:8px;padding:8px;"><summary style="font-weight:700;color:#1e3a8a;cursor:pointer;">🛡️ ${peEsc(e)}${(K.escudos||{})[e]?' · editado':''}</summary><div style="margin-top:8px;">${peEdCampo('pe-es-d'+i,'Descrição',t.desc,3)}${peEdCampo('pe-es-x'+i,'Exemplos (um por linha)',(t.ex||[]).join('\n'),4)}${peEdCampo('pe-es-l'+i,'O que liberta',a.libera,2)}${peEdCampo('pe-es-a'+i,'Afirmações / comando',a.afi,4)}<button onclick="window.peEdGuardarEscudo(${i})" style="${peEdB('#16a34a','white')}">💾 Guardar</button> <button onclick="window.peEdRepor('escudos','${peEsc(e)}')" style="${peEdB('white','#334155','#cbd5e1')}">↩ Repor padrão</button></div></details>`; }).join('');
+  } else {
+    h += ['intro','refl','aviso','dica','regra','passos'].map(k => { const v = peTxt(k); const nome = { intro:'Introdução do relatório', refl:'Perguntas de reflexão (uma por linha)', aviso:'Aviso final', dica:'Dica de localização', regra:'Regra lado a lado', passos:'Passos da massagem (um por linha)' }[k]; return peEdCampo('pe-tx-' + k, nome, Array.isArray(v) ? v.join('\n') : v, Array.isArray(v) ? 6 : 3) + `<button onclick="window.peEdRepor('textos','${k}')" style="${peEdB('white','#334155','#cbd5e1')}margin-bottom:12px;">↩ Repor padrão</button>`; }).join('') + `<button onclick="window.peEdGuardarTextos()" style="${peEdB('#16a34a','white')}width:100%;">💾 Guardar textos</button>`;
+  }
+  h += `</div><div style="margin-top:14px;display:grid;gap:8px;"><button onclick="window.peEdDesfazer()" style="${peEdB('#fffbeb','#92400e','#fde68a')}">↩ Desfazer a última gravação</button><button id="pe-ed-tudo" onclick="window.peEdReporTudo()" style="${peEdB('white','#b91c1c','#fca5a5')}">♻️ Repor TUDO ao padrão</button></div></div>`;
+  ov.innerHTML = h;
+  if (PE_ED.pontoAberto && PE_ED.aba === 'pontos') peEdPonto(PE_ED.pontoAberto);
+}
+function peEdPonto(id) {
+  PE_ED.pontoAberto = id;
+  const def = PE_CAT.flatMap(c => c.points).find(p => p.id === id); if (!def) return;
+  const o = (peConh().pontos || {})[id] || {};
+  const f = document.getElementById('pe-ed-form'); if (!f) return;
+  f.innerHTML = `<div style="margin-top:12px;border-top:2px solid #fef3c7;padding-top:12px;"><b style="color:#1e3a8a;">✏️ ${peEsc(def.name)}</b><div style="height:8px"></div>
+  ${peEdCampo('pe-p-name','Nome',o.name || def.name,1)}${peEdCampo('pe-p-organ','Glândula / órgão',o.organ || def.organ,1)}${peEdCampo('pe-p-desc','Tema',o.desc || def.desc,2)}${peEdCampo('pe-p-r','Pergunta para questionar',o.r || def.r,2)}
+  ${peEdCampo('pe-p-ex','Exemplos de situações (um por linha)',peExemplosDe(id).join('\n'),5)}${peEdCampo('pe-p-extra','Conhecimento adicional (aparece no relatório do paciente)',o.extra || '',5)}
+  <button onclick="window.peEdGuardarPonto('${id}')" style="${peEdB('#16a34a','white')}">💾 Guardar ponto</button> <button onclick="window.peEdRepor('pontos','${id}')" style="${peEdB('white','#334155','#cbd5e1')}">↩ Repor padrão deste ponto</button></div>`;
+  f.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+function peEdClone() { return JSON.parse(JSON.stringify(peConh())); }
+async function peEdGuardarPonto(id) {
+  const def = PE_CAT.flatMap(c => c.points).find(p => p.id === id); const K = peEdClone(); K.pontos = K.pontos || {};
+  const o = {};
+  [['name','pe-p-name'],['organ','pe-p-organ'],['desc','pe-p-desc'],['r','pe-p-r']].forEach(([k, i]) => { const v = peEdV(i); if (v && v !== (def[k] || '')) o[k] = v; });
+  const ex = peEdLinhas('pe-p-ex'); if (ex.length && JSON.stringify(ex) !== JSON.stringify(PE_EXEMPLOS[id] || [])) o.ex = ex;
+  const extra = peEdV('pe-p-extra'); if (extra) o.extra = extra;
+  if (Object.keys(o).length) K.pontos[id] = o; else delete K.pontos[id];
+  await peConhGuardar(K); peAposEdicao();
+}
+async function peEdGuardarSistemas() {
+  const K = peEdClone(); K.sistemas = {};
+  PE_CAT.forEach(c => { const v = peEdV('pe-sis-' + c.id); if (v && v !== PE_SISTEMA_TXT[c.id]) K.sistemas[c.id] = v; });
+  await peConhGuardar(K); peAposEdicao();
+}
+async function peEdGuardarEscudo(i) {
+  const e = Object.keys(PE_ESCUDOS_AFINIDADES)[i]; const K = peEdClone(); K.escudos = K.escudos || {};
+  const d = PE_ESCUDO_TXT[e] || { desc:'', ex:[] }, a = PE_ESCUDOS_AFINIDADES[e]; const o = {};
+  const desc = peEdV('pe-es-d' + i); if (desc && desc !== d.desc) o.desc = desc;
+  const ex = peEdLinhas('pe-es-x' + i); if (ex.length && JSON.stringify(ex) !== JSON.stringify(d.ex || [])) o.ex = ex;
+  const l = peEdV('pe-es-l' + i); if (l && l !== a.libera) o.libera = l;
+  const af = peEdV('pe-es-a' + i); if (af && af !== a.afi) o.afi = af;
+  if (Object.keys(o).length) K.escudos[e] = o; else delete K.escudos[e];
+  await peConhGuardar(K); peAposEdicao();
+}
+async function peEdGuardarTextos() {
+  const K = peEdClone(); K.textos = {};
+  ['intro','refl','aviso','dica','regra','passos'].forEach(k => {
+    if (Array.isArray(PE_TXT_DEF[k])) { const l = peEdLinhas('pe-tx-' + k); if (l.length && JSON.stringify(l) !== JSON.stringify(PE_TXT_DEF[k])) K.textos[k] = l; }
+    else { const v = peEdV('pe-tx-' + k); if (v && v !== PE_TXT_DEF[k]) K.textos[k] = v; }
+  });
+  await peConhGuardar(K); peAposEdicao();
+}
+async function peEdRepor(grupo, chave) {
+  const K = peEdClone(); if (K[grupo]) delete K[grupo][chave];
+  await peConhGuardar(K); peAposEdicao(); mostrarAviso('↩ Padrão reposto.');
+}
+let peEdTudoArmado = false;
+async function peEdReporTudo() {
+  const b = document.getElementById('pe-ed-tudo');
+  if (!peEdTudoArmado) { peEdTudoArmado = true; if (b) b.textContent = '⚠️ Toque outra vez para confirmar: repor TUDO'; setTimeout(() => { peEdTudoArmado = false; const bb = document.getElementById('pe-ed-tudo'); if (bb) bb.textContent = '♻️ Repor TUDO ao padrão'; }, 5000); return; }
+  peEdTudoArmado = false; PE_ED.pontoAberto = null;
+  await peConhGuardar({}); peAposEdicao(); mostrarAviso('♻️ Todo o conhecimento voltou ao padrão.');
+}
+async function peEdDesfazer() {
+  let prev = null; try { prev = JSON.parse(localStorage.getItem('pe_conh_prev_' + tenantId()) || 'null'); } catch(_) {}
+  if (!prev) { mostrarAviso('Nada para desfazer.'); return; }
+  await peConhGuardar(prev); peAposEdicao();
+}
+function peAposEdicao() {
+  try { if (peState.appData) { const c = peAplicarConhecimento(peLerConfigBase()); } } catch(_) {}
+  peRenderEditor();
+}
+window.peAbrirEditorConhecimento = peAbrirEditorConhecimento; window.peFecharEditor = peFecharEditor; window.peEdAba = peEdAba; window.peEdCat = peEdCat;
+window.peEdPonto = peEdPonto; window.peEdGuardarPonto = peEdGuardarPonto; window.peEdGuardarSistemas = peEdGuardarSistemas; window.peEdGuardarEscudo = peEdGuardarEscudo;
+window.peEdGuardarTextos = peEdGuardarTextos; window.peEdRepor = peEdRepor; window.peEdReporTudo = peEdReporTudo; window.peEdDesfazer = peEdDesfazer;
+
 const PE_CATS_ORDEM = ['vital','impact','superior','central','inferior'];
 const PE_CAT_NOME = { vital:'Centros Vitais', impact:'Zonas de Entrada', superior:'Sistema Superior', central:'Sistema Central', inferior:'Sistema Inferior' };
 
@@ -1891,8 +2050,8 @@ function peObservacaoGeral(un, escudo, ep) {
   h += `<p style="font-size:0.9rem;line-height:1.6;color:#334155;">${resumo}</p>`; t += resumo + '\n\n';
   nSist.forEach(c => {
     const nomes = porCat[c].map(p => p.nome).join('; ');
-    h += `<div style="border-left:4px solid #b45309;background:#fffbeb;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:0.88rem;color:#334155;"><b>${PE_CAT_NOME[c]} (${porCat[c].length}):</b> ${PE_SISTEMA_TXT[c]}<div style="font-size:0.8rem;color:#64748b;margin-top:4px;">${peEsc(nomes)}</div></div>`;
-    t += `• ${PE_CAT_NOME[c]} (${porCat[c].length}): ${PE_SISTEMA_TXT[c]}\n  ${nomes}\n`;
+    h += `<div style="border-left:4px solid #b45309;background:#fffbeb;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:0.88rem;color:#334155;"><b>${PE_CAT_NOME[c]} (${porCat[c].length}):</b> ${peSistemaTxt(c)}<div style="font-size:0.8rem;color:#64748b;margin-top:4px;">${peEsc(nomes)}</div></div>`;
+    t += `• ${PE_CAT_NOME[c]} (${porCat[c].length}): ${peSistemaTxt(c)}\n  ${nomes}\n`;
   });
   const temas = Array.from(new Set(un.map(p => String(p.desc).replace(/\.$/, '')).filter(Boolean)));
   if (temas.length) {
@@ -1932,7 +2091,7 @@ function peConstruirRelatorioPaciente() {
     <div style="font-size:1.2rem;font-weight:800;">O Teu Mapa Emocional</div>
     <div style="font-size:0.85rem;opacity:.9;margin-top:2px;">${peEsc(nome)} · Consulta n.º ${consulta} · ${data}</div></div></div>`;
   let t = `HIKARI FAFE — Corpo · Mente · Alma · Espírito\nO TEU MAPA EMOCIONAL\n${nome} · Consulta n.º ${consulta} · ${data}\n\n`;
-  const intro = 'O corpo guarda a memória das emoções que não conseguimos viver ou expressar no momento. Cada ponto assinalado neste mapeamento mostra uma zona onde essa memória ficou retida. Lê com calma: não tens de te identificar com tudo — repara naquilo que te desperta uma emoção, uma imagem ou uma recordação. É aí que está o que precisa de ser olhado.';
+  const intro = peTxt('intro');
   h += `<p style="font-size:0.92rem;line-height:1.6;color:#334155;">${intro}</p>`; t += intro + '\n\n';
   h += `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">O que o teu corpo revelou</h3>`; t += 'O QUE O TEU CORPO REVELOU\n\n';
   PE_CATS_ORDEM.forEach(cid => {
@@ -1946,10 +2105,12 @@ function peConstruirRelatorioPaciente() {
         <div style="font-size:0.76rem;color:#64748b;margin-bottom:6px;">${peEsc(p.zonas.map(peZonaCurta).join(' · '))}</div>
         <div style="font-size:0.88rem;color:#334155;margin-bottom:6px;">🔎 <b>Tema:</b> ${peEsc(p.desc)}</div>
         ${ex.length ? `<div style="font-size:0.88rem;color:#334155;margin-bottom:6px;">📌 <b>Situações que podem ter acontecido:</b><ul style="margin:4px 0 0 18px;padding:0;">${ex.map(e => `<li>${peEsc(e)}</li>`).join('')}</ul></div>` : ''}
-        ${p.r ? `<div style="font-size:0.88rem;color:#1e3a8a;">❓ <b>Pergunta para te questionares:</b> ${peEsc(p.r)}</div>` : ''}</div>`;
+        ${p.r ? `<div style="font-size:0.88rem;color:#1e3a8a;">❓ <b>Pergunta para te questionares:</b> ${peEsc(p.r)}</div>` : ''}
+        ${peExtraDe(p.id) ? `<div style="font-size:0.86rem;color:#334155;margin-top:6px;">📚 <b>Para saberes mais:</b> ${peEsc(peExtraDe(p.id))}</div>` : ''}</div>`;
       t += `• ${p.nome}\n  Tema: ${p.desc}\n`;
       if (ex.length) t += `  Situações que podem ter acontecido:\n` + ex.map(e => `   - ${e}`).join('\n') + '\n';
       if (p.r) t += `  Pergunta para te questionares: ${p.r}\n`;
+      if (peExtraDe(p.id)) t += `  Para saberes mais: ${peExtraDe(p.id)}\n`;
       t += '\n';
     });
   });
@@ -1960,7 +2121,7 @@ function peConstruirRelatorioPaciente() {
     t += `LATERALIDADE\n${marcas ? `Foram assinalados ${marcas} ${marcas === 1 ? 'local' : 'locais'} no contorno do corpo.\n` : ''}${notas.join(' · ')}\n\n`;
   }
   if (escudo !== 'Não Especificado') {
-    const e = PE_ESCUDO_TXT[escudo];
+    const e = peEscudoTxt(escudo);
     const origem = peTextoOrigem(ep);
     h += `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">O teu padrão de defesa: ${peEsc(escudo)}</h3>`;
     t += `O TEU PADRÃO DE DEFESA: ${escudo.toUpperCase()}\n`;
@@ -1972,10 +2133,10 @@ function peConstruirRelatorioPaciente() {
     t += '\n';
   }
   const obs = peObservacaoGeral(un, escudo, ep); h += obs.h; t += obs.t;
-  const refl = ['Que acontecimento ou pessoa te veio à cabeça enquanto lias?','Com quem poderias falar sobre isto?','Escreve num caderno, esta semana, o que te vier à memória — sem julgar.'];
+  const refl = peTxt('refl');
   h += `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">Para refletires esta semana</h3><ul style="font-size:0.9rem;color:#334155;margin:0 0 8px 18px;padding:0;">${refl.map(x => `<li>${x}</li>`).join('')}</ul>`;
   t += 'PARA REFLETIRES ESTA SEMANA\n' + refl.map(x => ` - ${x}`).join('\n') + '\n\n';
-  const aviso = 'Este relatório é uma ferramenta de autoconhecimento no âmbito de uma terapia complementar e não substitui o acompanhamento médico ou psicológico.';
+  const aviso = peTxt('aviso');
   h += `<p style="font-size:0.74rem;color:#64748b;border-top:1px solid #e2e8f0;padding-top:8px;">${aviso}</p>`; t += aviso + '\n';
   h += `<div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px;font-size:0.78rem;color:#64748b;"><img src="logo-hikari-fafe.png" alt="" style="width:26px;height:26px;border-radius:50%;"> Hikari Fafe · Corpo · Mente · Alma · Espírito</div>`;
   return { html:h, texto:t };
@@ -2052,22 +2213,14 @@ async function peGuardarLinks21() {
 function peConstruirPlano() {
   const pts = peColetarPontos();
   const escudo = peEscudoFinal();
-  const passos = [
-    'Lava as mãos, senta-te ou deita-te com conforto e respira fundo 3 vezes.',
-    'Encontra no mapa o ponto pelo seu número e coloca nele 3 dedos juntos, em pinça.',
-    'Massaja o ponto com os 3 dedos durante 3 respirações profundas (inspira pelo nariz, expira pela boca).',
-    'Bate levemente duas vezes sobre o ponto.',
-    'Roda os dedos duas vezes sobre o ponto, em círculo.',
-    'Empurra suavemente para baixo com os dedos, como quem liberta o sentimento.',
-    'Passa ao ponto seguinte, pela ordem dos números. Nunca deve doer: faz tudo com suavidade.'
-  ];
-  const dica = 'O mapa mostra a localização de cada ponto. Se tiveres dúvida sobre se estás a massajar o local correto, faz a massagem ao mesmo tempo que dizes em voz alta o nome da glândula ou do órgão desse ponto: a energia ajusta-se e chega ao local correto.';
+  const passos = peTxt('passos');
+  const dica = peTxt('dica');
   let h = `<h3 style="color:#1e3a8a;margin:22px 0 8px;font-size:1.05rem;">Plano Terapêutico — em casa</h3>
     <div style="font-weight:700;color:#b45309;margin:10px 0 6px;">1 · Como fazer a massagem</div>
     <ol style="font-size:0.9rem;line-height:1.55;color:#334155;margin:0 0 8px 18px;padding:0;">${passos.map(x => `<li style="margin-bottom:4px;">${x}</li>`).join('')}</ol>
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;font-size:0.86rem;color:#166534;margin-bottom:8px;">💡 ${dica}</div>`;
   let t = '\nPLANO TERAPÊUTICO — EM CASA\n\n1 · COMO FAZER A MASSAGEM\n' + passos.map((x, i) => `${i + 1}. ${x}`).join('\n') + '\nDica: ' + dica + '\n\n';
-  const regra = 'Trata um lado de cada vez, começando pelo lado direito. Enquanto massajas os pontos de um lado, mantém uma mão na têmpora (fonte) desse mesmo lado. Quando terminares todos os pontos desse lado (frente e costas), troca a mão para a têmpora do outro lado e repete com os pontos desse lado. Se o mesmo ponto saiu nos dois lados, massaja-o em cada lado, cada um do seu lado.';
+  const regra = peTxt('regra');
   h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">2 · Tratamento lado a lado — o teu mapa</div>
     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:0.86rem;color:#1e3a8a;margin-bottom:10px;">✋ ${regra}</div>`;
   t += `2 · TRATAMENTO LADO A LADO — O TEU MAPA\n${regra}\n`;
@@ -2105,7 +2258,7 @@ function peConstruirPlano() {
     });
   });
   if (!algum) { h += `<p style="font-size:0.86rem;color:#64748b;">(Nenhum ponto selecionado no mapeamento.)</p>`; t += '(Nenhum ponto selecionado no mapeamento.)\n'; }
-  const af = PE_ESCUDOS_AFINIDADES[escudo];
+  const af = peAfinidade(escudo);
   if (af) {
     const cmd = `«Eu libero todo sentimento de ${escudo.toUpperCase()}; ${af.libera}, que estejam bloqueados no meu corpo. Eu libero todos os sentimentos negativos que não me ajudam a evoluir, fica em mim apenas o necessário para o meu aprendizado, o resto eu libero e solto em gratidão!»`;
     h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">3 · Autoabraço e afirmações do escudo ${peEsc(escudo)}</div>
