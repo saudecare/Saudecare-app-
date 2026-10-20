@@ -171,12 +171,58 @@ function cgHtmlConstrutor() {
   const botoes = Object.entries(CG_TIPOS).map(([k, t]) => `<button class="ghost" style="text-align:left;" onclick="cgAdd('${k}')"><strong>${t.icone} ${t.nome}</strong><br><span class="muted">${t.desc}</span></button>`).join('');
   return `<p class="muted" style="margin:8px 0;">Monte a consulta passo a passo. A ordem que definir aqui é a ordem em que aparece durante o atendimento.</p>
     ${CG.steps.length ? CG.steps.map(editorPasso).join('') : `<div class="card" style="background:#f6f8f7;"><p class="muted">Ainda não há passos.</p><button class="ghost" style="width:100%;" onclick="cgModelo()">✨ Começar com um modelo simples (editável)</button></div>`}
+    <details style="margin-top:10px;" ${CG.steps.length ? '' : 'open'}><summary style="cursor:pointer;font-weight:700;color:var(--primary);">🤖 Montar com o assistente</summary>
+    <div class="card" style="margin-top:8px;background:#f6f4fb;">
+      <p class="muted" style="margin:0 0 8px;">Conte como é a sua consulta e o assistente propõe os passos. É só um rascunho: reveja, mude e acrescente o que quiser antes de guardar. ${CG.steps.length ? '<strong>Atenção:</strong> substitui os passos que já tem aqui.' : ''}</p>
+      <label>A sua área</label><input id="cgAsArea" placeholder="ex: massagem, psicologia, nutrição, reiki">
+      <label>Como é a consulta?</label><textarea id="cgAsDesc" rows="4" placeholder="ex: Primeira consulta de massagem terapêutica: pergunto o motivo, zonas de dor, contraindicações, faço a massagem e dou 2 exercícios para casa."></textarea>
+      <button class="primary" id="cgAsBtn" style="margin-top:8px;" onclick="cgAssistente()">✨ Montar rascunho</button>
+    </div></details>
     <details style="margin-top:10px;" ${CG.steps.length ? '' : 'open'}><summary style="cursor:pointer;font-weight:700;color:var(--primary);">➕ Adicionar um passo</summary>
     <div style="display:grid;gap:8px;margin-top:8px;">${botoes}</div></details>`;
 }
 function cgRefresh() { const el = document.getElementById('cgBuilder'); if (el) el.innerHTML = cgHtmlConstrutor(); }
 const achar = (id) => CG.steps.find(s => s.id === id);
 window.cgAdd = (t) => { const s = passoNovo(t); CG.steps.push(s); CG.aberto = s.id; cgRefresh(); };
+
+// ─── Assistente: monta um rascunho de passos a partir da descrição ───
+const ASSISTENTE_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/montarConsulta';
+window.cgAssistente = async function () {
+  const area = (document.getElementById('cgAsArea') || {}).value || '';
+  const descricao = (document.getElementById('cgAsDesc') || {}).value || '';
+  if (descricao.trim().length < 15) { aviso('Descreva um pouco melhor a consulta.', true); return; }
+  if (CG.steps.length && !(window.confirmar ? await window.confirmar('Isto substitui os passos que já tem nesta consulta. Continuar?') : confirm('Substituir os passos atuais?'))) return;
+  const btn = document.getElementById('cgAsBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'A montar… (pode demorar até meio minuto)'; }
+  try {
+    const u = window.firebase && window.firebase.auth().currentUser;
+    if (!u) throw new Error('Sem sessão iniciada.');
+    const temas = ((window.__kbCache || []).map((e) => e.title).filter(Boolean)).slice(0, 40);
+    const r = await fetch(ASSISTENTE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (await u.getIdToken()) },
+      body: JSON.stringify({ area, descricao, temas })
+    });
+    const j = await r.json();
+    if (!j.ok) { aviso(j.error || 'Não foi possível montar agora.', true); return; }
+    CG.steps = j.passos.map((p) => {
+      const base = passoNovo(p.type);
+      const m = { ...base, ...p, id: uid() };
+      if (p.type === 'escolha') m.options = (p.options || []).map((o) => ({ id: uid(), label: o.label, tema: o.tema || '', pergunta: o.pergunta || '', exemplos: o.exemplos || [], extra: '' }));
+      return m;
+    });
+    CG.aberto = null;
+    const nome = document.getElementById('protoName');
+    if (nome && !nome.value.trim()) nome.value = j.nome || '';
+    cgRefresh();
+    aviso('Rascunho pronto — reveja cada passo e depois guarde.');
+  } catch (e) {
+    console.error(e);
+    aviso('Não foi possível falar com o assistente. Tente de novo.', true);
+  } finally {
+    const b = document.getElementById('cgAsBtn'); if (b) { b.disabled = false; b.textContent = '✨ Montar rascunho'; }
+  }
+};
 window.cgModelo = () => { CG.steps = MODELO_SIMPLES(); CG.aberto = null; cgRefresh(); };
 window.cgAbrir = (id) => { CG.aberto = CG.aberto === id ? null : id; cgRefresh(); };
 window.cgApagar = (id) => { CG.steps = CG.steps.filter(s => s.id !== id); CG.aberto = null; cgRefresh(); };

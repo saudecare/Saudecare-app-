@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-20-41';
+const APP_VERSION = '2026-10-20-42';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -6727,7 +6727,9 @@ const AREAS_MODELOS = [
   ['massagem', '💆 Massagem & terapias manuais'],
   ['psicologia', '🧠 Psicologia & coaching'],
   ['fisio', '🦴 Fisioterapia & osteopatia'],
-  ['reiki', '🌿 Reiki & terapias energéticas']
+  ['reiki', '🌿 Reiki & terapias energéticas'],
+  ['nutricao', '🥗 Nutrição & bem-estar alimentar'],
+  ['estetica', '✨ Estética & cuidados do corpo']
 ];
 (function(){
   const mk = (title, description, qs) => ({ title, description, areas: [], questions: qs });
@@ -6770,6 +6772,23 @@ const AREAS_MODELOS = [
     { type: 'multiple_choice', label: 'Como prefere a sessão?', options: ['Com toque suave', 'Sem toque (à distância do corpo)', 'Tanto faz'] },
     { type: 'text', label: 'Tem alguma condição de saúde ou acompanhamento médico que devamos saber?' }
   ]); t.areas = ['reiki']; f.push(t);
+  t = mk('Nutrição — primeira consulta', 'Hábitos e objetivos antes da primeira consulta.', [
+    { type: 'text', label: 'Nome completo' },
+    { type: 'text', label: 'Qual é o seu objetivo com esta consulta?' },
+    { type: 'text', label: 'Como é um dia normal de refeições (horas e o que costuma comer)?' },
+    { type: 'text', label: 'Alergias, intolerâncias ou alimentos que não come' },
+    { type: 'text', label: 'Condições de saúde e medicação (qual)' },
+    { type: 'scale', label: 'Nível de energia ao longo do dia (0 = muito baixo, 10 = ótimo)' },
+    { type: 'multiple_choice', label: 'Pratica atividade física?', options: ['Não', 'Ocasionalmente', 'Regularmente'] }
+  ]); t.areas = ['nutricao']; f.push(t);
+  t = mk('Estética — avaliação e cuidados', 'Antes do primeiro tratamento.', [
+    { type: 'text', label: 'Nome completo' },
+    { type: 'text', label: 'Que tratamento procura e o que espera?' },
+    { type: 'text', label: 'Alergias a produtos, cosméticos ou materiais' },
+    { type: 'multiple_choice', label: 'Está grávida ou a amamentar?', options: ['Não', 'Sim'] },
+    { type: 'text', label: 'Problemas de pele, cicatrização ou medicação (qual)' },
+    { type: 'text', label: 'Tratamentos feitos recentemente' }
+  ]); t.areas = ['estetica']; f.push(t);
   f.forEach(x => TEMPLATE_FORMS.push(x));
 
   const mp = (name, area, pts) => ({ name, type: 'simple', areas: [area], points: pts.map(([n, k]) => ({ name: n, knowledgeText: k })), finalClassifications: [] });
@@ -6801,6 +6820,20 @@ const AREAS_MODELOS = [
       ['Áreas trabalhadas e perceções', 'Posições usadas e o que foi sentido ou observado.'],
       ['Estado depois da sessão', 'Como a pessoa se sente no fim.'],
       ['Recomendações', 'Repouso, hidratação, periodicidade sugerida.']
+    ]),
+    mp('Nutrição — estrutura da consulta', 'nutricao', [
+      ['Objetivo e motivação', 'O que a pessoa quer alcançar e porquê agora.'],
+      ['Hábitos alimentares e rotina', 'Refeições, horários, água, álcool, apoio em casa.'],
+      ['Restrições e intolerâncias', 'Alergias, intolerâncias, preferências e condições de saúde a considerar.'],
+      ['Orientações combinadas', 'Mudanças pequenas e realistas acordadas com a pessoa.'],
+      ['Reavaliação', 'O que acompanhar e quando voltar.']
+    ]),
+    mp('Estética — registo do tratamento', 'estetica', [
+      ['Queixa ou objetivo', 'O que o cliente procura.'],
+      ['Contraindicações e alergias confirmadas', 'Gravidez, alergias, problemas de pele, medicação.'],
+      ['Produtos e técnica utilizados', 'Para repetir ou ajustar na próxima vez.'],
+      ['Reação da pele durante e após', 'Vermelhidão, sensibilidade, conforto.'],
+      ['Cuidados em casa e próxima marcação', 'Recomendações e periodicidade.']
     ])
   ].forEach(x => TEMPLATE_PROTOCOLS.push(x));
 })();
