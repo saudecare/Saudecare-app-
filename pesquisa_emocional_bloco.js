@@ -301,6 +301,7 @@ async function renderPesquisaEmocional(main) {
           <div style="font-size:0.85rem;color:#bfdbfe;">Ferramenta de Mapeamento Clínico Avançado</div>
         </div>
         ${tenantId()==='hikari-terapias' ? `<button onclick="window.renderAdminPedidosPE(document.querySelector('main,#main,.main-content')||document.body)" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 14px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;">⚙️ Pedidos Pendentes</button>` : ''}
+        ${tenantId()==='hikari-terapias' ? `<button onclick="import('./pe-pedido.js').then(()=>window.peTermosAdmin())" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 12px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;">📜 Pedidos e termos</button>` : ''}
         ${tenantId()==='hikari-terapias' ? `<button onclick="window.peLicencas()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 12px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;">🔑 Licenças de teste</button>` : ''}
       </div>
 
@@ -2639,7 +2640,7 @@ async function peBaixarPdf(qual) {
     wrap = document.createElement('div'); wrap.style.cssText = 'position:fixed;left:-10000px;top:0;';
     host = document.createElement('div'); host.id = 'pe-pdf-tmp';
     host.style.cssText = 'box-sizing:border-box;width:720px;background:#fff;padding:18px;color:#0f172a;font-family:system-ui,sans-serif;';
-    host.innerHTML = '<style>#pe-pdf-tmp svg[aria-label^="Sistema"]{max-width:165px!important}#pe-pdf-tmp img{max-width:100%}</style>' + html;
+    host.innerHTML = '<style>#pe-pdf-tmp svg[aria-label^="Sistema"]{max-width:165px!important}#pe-pdf-tmp img{max-width:100%}</style>' + html + (globalThis.__peWM ? '<div style="margin-top:14px;font-size:9px;color:#94a3b8;text-align:center;">Método licenciado · ref. ' + String(globalThis.__peWM).replace(/[^\w:.-]/g,'') + '</div>' : '');
     wrap.appendChild(host); document.body.appendChild(wrap);
     await peSvgParaImagem(host);
     const nome = peNomeFicheiro(qual);

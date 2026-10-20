@@ -149,7 +149,17 @@ async function licencaValida(request) {
   const t = (request.auth && request.auth.token) || {};
   if (!request.auth) throw new HttpsError('unauthenticated', 'Inicia sessão.');
   if (t.tenantId === DONO && t.role === 'owner') return { id: 'dono', dono: true };
-  if (!t.peLic) throw new HttpsError('permission-denied', 'Sem licença.');
+  if (!t.peLic) {
+    // Subscritor com pedido aprovado (termo assinado) e módulo ativo.
+    if (t.tenantId) {
+      const td = (await db.doc(`tenants/${t.tenantId}`).get()).data() || {};
+      if (td.modulos && td.modulos.pesquisaEmocional === true && td.peTermoId) {
+        const ts = (await db.doc(`pe_termos/${td.peTermoId}`).get()).data();
+        if (ts && ts.estado === 'aprovado' && ts.tenantId === t.tenantId) return { id: 't-' + td.peTermoId, termo: true };
+      }
+    }
+    throw new HttpsError('permission-denied', 'Sem licença.');
+  }
   const s = await db.doc(`pe_licencas/${t.peLic}`).get();
   if (!s.exists) throw new HttpsError('permission-denied', 'Licença inexistente.');
   const l = s.data();
@@ -161,7 +171,7 @@ async function licencaValida(request) {
 // Estado da licença (para mostrar "faltam X dias").
 exports.peEntrar = onCall(async (request) => {
   const v = await licencaValida(request);
-  if (v.dono) return { ok: true, dono: true };
+  if (v.dono || v.termo) return { ok: true, dono: !!v.dono };
   await v.ref.update({ ultimoAcesso: FieldValue.serverTimestamp(), acessos: FieldValue.increment(1) });
   return { ok: true, nome: v.l.nome, expiraEm: v.l.expiraEm.toMillis() };
 });

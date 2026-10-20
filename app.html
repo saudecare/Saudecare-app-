@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-20-29';
+const APP_VERSION = '2026-10-20-30';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1756,7 +1756,8 @@ const NAV_GROUPS = {
     { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
     { view: 'trainings', icon: '🎓', label: 'Formações' },
     { view: 'versoes', icon: '🕘', label: 'Versões anteriores' },
-    { view: 'pesquisaEmocional', icon: '🔬', label: 'Pesquisa Emocional Clínica', peAccess: true }
+    { view: 'pesquisaEmocional', icon: '🔬', label: 'Pesquisa Emocional Clínica', peAccess: true },
+    { view: 'pedidoMetodo', icon: '🎓', label: 'Métodos com formação certificada', peRequest: true, ownerOnly: true }
   ]},
   mistica: { title: '🔮 Módulos Exclusivos', items: [
     { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', modulo: 'mapaAlma' },
@@ -1807,6 +1808,7 @@ function renderGroupMenu(main, groupKey){
     if (it.tenantOnly && tenantId !== it.tenantOnly) return false;
     if (it.modulo && !temModulo(it.modulo)) return false;
     if (it.peAccess && !window.temPesquisaEmocional?.()) return false;
+    if (it.peRequest && (window.temPesquisaEmocional?.() || tenantId === 'hikari-terapias')) return false;
     if (ehGestor() && !vistasDoGestor().includes(it.view)) return false;
     return true;
   });
@@ -1875,6 +1877,7 @@ function renderView(view, opts){
   else if (view === 'reikiAlunos') renderReikiAlunos(main);
   else if (view === 'mesinhas') renderMesinhas(main);
   else if (view === 'estudioVoz') renderEstudioVoz(main);
+  else if (view === 'pedidoMetodo') { import('./pe-pedido.js').then(() => window.renderPedidoMetodo(main)).catch(e => { main.innerHTML = '<div class="card"><p class="muted">' + ((e && e.message) || 'Indisponível') + '</p></div>'; }); }
   else if (view === 'pesquisaEmocional') { (window.carregarPE ? window.carregarPE() : Promise.resolve()).then(() => window.renderPesquisaEmocional?.(main)).catch(e => { main.innerHTML = '<div class="card"><h2>🔒 Método indisponível</h2><p class="muted">' + ((e && e.message) || 'Sem acesso.') + '</p></div>'; }); }
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
