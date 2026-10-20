@@ -3,6 +3,7 @@
 const { getFirestore, Timestamp, FieldValue } = require('firebase-admin/firestore');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const nodemailer = require('nodemailer');
 const db = getFirestore();
 
@@ -67,4 +68,30 @@ exports.lembretesEnviar = onSchedule({ schedule: 'every 30 minutes', timeZone: '
       }
     } catch (e) { console.error('lembretes tenant', t.id, e.message); }
   }
+});
+
+// Confirmação e cancelamento por e-mail ao utente (mesmo e-mail e mesma opção dos lembretes).
+async function avisar(tid, d, tipo) {
+  const t = (await db.doc(`tenants/${tid}`).get()).data() || {};
+  if (!(t.remindersSettings && t.remindersSettings.autoEmailReminders)) return;
+  const seg = (await db.doc(`tenant_secrets/${tid}`).get()).data();
+  if (!seg || !seg.email || !seg.pass || !d.patientId || !d.startsAt || d.noFixedTime) return;
+  const p = (await db.doc(`tenants/${tid}/patients/${d.patientId}`).get()).data() || {};
+  const rq = p.requester; const para = ok((rq && rq.enviarParaResponsavel && rq.email) || p.email);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(para)) return;
+  const fuso = (t.availability && t.availability.timezone) || 'Europe/Lisbon';
+  const def = { confirmacao: 'Olá {{nome}}! A sua marcação de {{servico}} está confirmada para {{data}} às {{hora}}. Até já!', cancelamento: 'Olá {{nome}}, foi necessário cancelar a marcação de {{servico}} do dia {{data}} às {{hora}}. Vamos remarcar assim que possível.' };
+  const dt = d.startsAt.toDate();
+  const texto = preencher((t.messageTemplates && t.messageTemplates[tipo]) || def[tipo], { nome: (d.patientName || p.fullName || '').split(' ')[0], servico: d.serviceName || '',
+    data: dt.toLocaleDateString('pt-PT', { timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric' }), hora: dt.toLocaleTimeString('pt-PT', { timeZone: fuso, hour: '2-digit', minute: '2-digit' }) });
+  await mail(seg.email, seg.pass).sendMail({ from: `${t.businessName || 'Consultório'} <${seg.email}>`, to: para, subject: tipo === 'confirmacao' ? 'Marcação confirmada' : 'Marcação cancelada', text: texto });
+}
+exports.avisoMarcacaoCriada = onDocumentCreated('tenants/{tid}/appointments/{aid}', async (event) => {
+  const d = event.data && event.data.data(); if (!d || d.status === 'cancelled') return;
+  try { await avisar(event.params.tid, d, 'confirmacao'); } catch (e) { console.error('confirmacao', e.message); }
+});
+exports.avisoMarcacaoCancelada = onDocumentUpdated('tenants/{tid}/appointments/{aid}', async (event) => {
+  const a = event.data.before.data(), b = event.data.after.data();
+  if (!a || !b || a.status === 'cancelled' || b.status !== 'cancelled') return;
+  try { await avisar(event.params.tid, b, 'cancelamento'); } catch (e) { console.error('cancelamento', e.message); }
 });

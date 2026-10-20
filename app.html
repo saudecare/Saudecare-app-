@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-20-38';
+const APP_VERSION = '2026-10-20-39';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -9322,9 +9322,9 @@ async function renderProfileSection(main, section){
       <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
       <label style="display:flex;align-items:center;gap:8px;font-weight:400;">
         <input type="checkbox" id="pfAutoEmailReminders" style="width:auto;" ${currentTenantDoc?.remindersSettings?.autoEmailReminders ? 'checked' : ''}>
-        Enviar automaticamente o lembrete por email, 24h antes de cada consulta
+        Enviar automaticamente por e-mail aos utentes (confirmação, lembrete 24h antes e cancelamento)
       </label>
-      <p class="muted" style="margin-top:6px;">Os lembretes saem do <b>seu</b> e-mail Gmail, 24h antes de cada consulta, só para pacientes com e-mail na ficha.</p>
+      <p class="muted" style="margin-top:6px;">O e-mail do <b>seu</b> Gmail avisa o utente: confirmação ao marcar, lembrete 24h antes e aviso se cancelar. Só para quem tem e-mail na ficha.</p>
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-top:8px;">
         <b>✉️ O seu e-mail de envio</b>
         <div class="muted" id="pfLembEstado" style="margin:4px 0 8px;">${currentTenantDoc?.remindersSettings?.emailLigado ? '✅ Ligado: ' + escapeHtml(currentTenantDoc.remindersSettings.emailRemetente || '') : 'Ainda não ligado.'}</div>
