@@ -2315,54 +2315,63 @@ function peConstruirPlano() {
     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:0.86rem;color:#1e3a8a;margin-bottom:10px;">✋ ${regra}</div>`;
   t += `2 · TRATAMENTO LADO A LADO — O TEU MAPA\n${regra}\n`;
   let algum = false;
-  ['Direito', 'Esquerdo'].forEach(lado => {
-    const zonasLado = ['Frente', 'Costas'].map(f => `${f} - Lado ${lado}`).filter(z => pts.some(p => p.zona === z));
-    if (!zonasLado.length) return;
-    algum = true;
-    const lbl = lado === 'Direito' ? 'direita' : 'esquerda';
-    h += `<div style="background:#1e3a8a;color:white;border-radius:8px;padding:10px 12px;margin:14px 0 8px;font-weight:700;break-after:avoid;page-break-after:avoid;">LADO ${lado.toUpperCase()} — mão na têmpora ${lbl}</div>`;
-    t += `\n===== LADO ${lado.toUpperCase()} — mão na têmpora ${lbl} =====\n`;
-    zonasLado.forEach(z => {
-      const lf = peLadoDe(z);
-      const mapas = peMapasZona(z, pts);
-      const outros = peUnicos(pts.filter(p => p.zona === z)).filter(p => p.cat === 'vital' || p.cat === 'impact');
-      h += `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px;">
-        <div style="font-weight:700;color:#0f172a;margin-bottom:4px;text-transform:uppercase;font-size:0.82rem;">${lf === 'frente' ? 'Frente do corpo' : 'Costas'} · lado ${lado.toLowerCase()}</div>
-        <div style="font-size:0.78rem;color:#64748b;margin-bottom:8px;">Em cada mapa aparecem todos os pontos do sistema; os <b style="color:#dc2626;">vermelhos</b> são os que foram detetados e que deves tratar.</div>`;
-      t += `\n${lf === 'frente' ? 'FRENTE DO CORPO' : 'COSTAS'} · lado ${lado.toLowerCase()} (nos mapas, os pontos a vermelho são os detetados):\n`;
-      h += '<div>';
-      mapas.forEach(m => {
-        h += `<div style="display:inline-block;vertical-align:top;width:100%;max-width:320px;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:0 6px 8px 0;break-inside:avoid;page-break-inside:avoid;">
-          <div style="font-weight:700;color:#1e3a8a;margin-bottom:6px;">${m.sistema}</div>
-          <div style="display:flex;justify-content:center;">${m.svg}</div>
-          ${lf === 'costas' && m.sistema !== 'Sistema Inferior' ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px;margin-top:8px;font-size:0.82rem;color:#92400e;"><b>Nas costas:</b> ${m.sistema === 'Sistema Superior' ? 'massaja no <b>osso mais saliente da parte de trás do pescoço (nuca)</b>' : 'massaja no <b>pescoço, mais ou menos a meio, no osso mais saliente</b>'}, um ponto de cada vez, pela ordem dos números.</div>` : ''}
-          <ol style="list-style:none;margin:8px 0 0;padding:0;font-size:0.86rem;color:#334155;">${m.L.map(p => `<li style="margin-bottom:6px;"><b style="display:inline-block;background:#dc2626;color:white;border-radius:50%;min-width:20px;height:20px;line-height:20px;text-align:center;font-size:0.72rem;margin-right:6px;">${peNumPonto(p)}</b><b>${peEsc(p.nome)}</b>${p.cat === 'inferior' ? ` <span style="color:#64748b;">(perna ${/e$/.test(p.id) ? 'esquerda' : 'direita'})</span>` : ''}<br><span style="color:#64748b;margin-left:26px;display:inline-block;">${peLocalDoPonto(p, lf)}</span></li>`).join('')}</ol></div>`;
-        t += `  ${m.sistema.toUpperCase()}:\n` + (lf === 'costas' && m.sistema !== 'Sistema Inferior' ? `  (Nas costas: ${m.sistema === 'Sistema Superior' ? 'massaja no osso mais saliente da parte de trás do pescoço (nuca)' : 'massaja no pescoço, mais ou menos a meio, no osso mais saliente'}, um ponto de cada vez, pela ordem dos números.)\n` : '') + m.L.map(p => `   ${peNumPonto(p)}. ${p.nome}${p.cat === 'inferior' ? ' (perna ' + (/e$/.test(p.id) ? 'esquerda' : 'direita') + ')' : ''} — ${peLocalDoPonto(p, lf)}`).join('\n') + '\n';
-      });
-      h += '</div>';
-      if (outros.length) {
-        h += `<div style="font-size:0.86rem;color:#334155;margin-top:8px;"><b>Centros vitais e zonas de entrada:</b> ${outros.map(p => peEsc(p.nome)).join(', ')}. Massaja diretamente o local indicado no mapa da consulta.</div>`;
-        t += '  Centros vitais e zonas de entrada: ' + outros.map(p => p.nome).join(', ') + '. Massaja diretamente o local indicado no mapa da consulta.\n';
-      }
-      h += '</div>';
-    });
-  });
-  if (!algum) { h += `<p style="font-size:0.86rem;color:#64748b;">(Nenhum ponto selecionado no mapeamento.)</p>`; t += '(Nenhum ponto selecionado no mapeamento.)\n'; }
   const af = peAfinidade(escudo);
-  if (af) {
+  const selamento = (titulo) => {
+    if (!af) return;
     const cmd = `«Eu libero todo sentimento de ${escudo.toUpperCase()}; ${af.libera}, que estejam bloqueados no meu corpo. Eu libero todos os sentimentos negativos que não me ajudam a evoluir, fica em mim apenas o necessário para o meu aprendizado, o resto eu libero e solto em gratidão!»`;
-    h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">3 · Autoabraço e afirmações do escudo ${peEsc(escudo)}</div>
-      <p style="font-size:0.9rem;line-height:1.55;color:#334155;">Só depois de massajares todos os pontos, dos dois lados: dá um autoabraço, respira fundo e repete em voz alta:</p>
+    h += `<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px;margin:6px 0 14px;break-inside:avoid;page-break-inside:avoid;">
+      <div style="font-weight:700;color:#7c3aed;margin-bottom:6px;">🛡️ ${titulo}</div>
+      <p style="font-size:0.9rem;line-height:1.55;color:#334155;">Só depois de massajares todos os pontos desta parte, dos dois lados: dá um autoabraço, respira fundo e repete em voz alta:</p>
       <p style="font-size:0.9rem;line-height:1.55;color:#1e3a8a;font-style:italic;">${peEsc(cmd)}</p>
       <p style="font-size:0.9rem;color:#334155;">(Bate no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»</p>
       <div style="font-weight:700;color:#334155;margin-top:8px;font-size:0.88rem;">Afirmações positivas — comando de reforço:</div>
-      <p style="font-size:0.9rem;line-height:1.55;color:#334155;">${peEsc(af.afi)} «Que assim seja.»</p>`;
-    t += `\n3 · AUTOABRAÇO E AFIRMAÇÕES DO ESCUDO ${escudo.toUpperCase()}\nSó depois de massajares todos os pontos, dos dois lados: dá um autoabraço, respira fundo e repete em voz alta:\n${cmd}\n(Bate no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»\n\nAfirmações positivas — comando de reforço:\n${af.afi}\n«Que assim seja.»\n`;
-  }
+      <p style="font-size:0.9rem;line-height:1.55;color:#334155;">${peEsc(af.afi)} «Que assim seja.»</p></div>`;
+    t += `\n>> ${titulo.toUpperCase()}\nSó depois de massajares todos os pontos desta parte, dos dois lados: dá um autoabraço, respira fundo e repete em voz alta:\n${cmd}\n(Bate no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»\nAfirmações positivas — comando de reforço:\n${af.afi}\n«Que assim seja.»\n`;
+  };
+  ['Frente', 'Costas'].forEach(fase => {
+    if (!['Direito', 'Esquerdo'].some(l => pts.some(p => p.zona === `${fase} - Lado ${l}`))) return;
+    algum = true;
+    const nomeFase = fase === 'Frente' ? 'FRENTE DO CORPO' : 'COSTAS';
+    h += `<div style="font-weight:800;color:#0f172a;font-size:1.02rem;margin:18px 0 4px;border-bottom:2px solid #fde68a;padding-bottom:4px;break-after:avoid;page-break-after:avoid;">${nomeFase}</div>`;
+    t += `\n########## ${nomeFase} ##########\n`;
+    ['Direito', 'Esquerdo'].forEach(lado => {
+      const zonasLado = [`${fase} - Lado ${lado}`].filter(z => pts.some(p => p.zona === z));
+      if (!zonasLado.length) return;
+      const lbl = lado === 'Direito' ? 'direita' : 'esquerda';
+      h += `<div style="background:#1e3a8a;color:white;border-radius:8px;padding:10px 12px;margin:14px 0 8px;font-weight:700;break-after:avoid;page-break-after:avoid;">LADO ${lado.toUpperCase()} — mão na têmpora ${lbl}</div>`;
+      t += `\n===== LADO ${lado.toUpperCase()} — mão na têmpora ${lbl} =====\n`;
+  zonasLado.forEach(z => {
+    const lf = peLadoDe(z);
+    const mapas = peMapasZona(z, pts);
+    const outros = peUnicos(pts.filter(p => p.zona === z)).filter(p => p.cat === 'vital' || p.cat === 'impact');
+    h += `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="font-weight:700;color:#0f172a;margin-bottom:4px;text-transform:uppercase;font-size:0.82rem;">${lf === 'frente' ? 'Frente do corpo' : 'Costas'} · lado ${lado.toLowerCase()}</div>
+      <div style="font-size:0.78rem;color:#64748b;margin-bottom:8px;">Em cada mapa aparecem todos os pontos do sistema; os <b style="color:#dc2626;">vermelhos</b> são os que foram detetados e que deves tratar.</div>`;
+    t += `\n${lf === 'frente' ? 'FRENTE DO CORPO' : 'COSTAS'} · lado ${lado.toLowerCase()} (nos mapas, os pontos a vermelho são os detetados):\n`;
+    h += '<div>';
+    mapas.forEach(m => {
+      h += `<div style="display:inline-block;vertical-align:top;width:100%;max-width:320px;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:0 6px 8px 0;break-inside:avoid;page-break-inside:avoid;">
+        <div style="font-weight:700;color:#1e3a8a;margin-bottom:6px;">${m.sistema}</div>
+        <div style="display:flex;justify-content:center;">${m.svg}</div>
+        ${lf === 'costas' && m.sistema !== 'Sistema Inferior' ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px;margin-top:8px;font-size:0.82rem;color:#92400e;"><b>Nas costas:</b> ${m.sistema === 'Sistema Superior' ? 'massaja no <b>osso mais saliente da parte de trás do pescoço (nuca)</b>' : 'massaja no <b>pescoço, mais ou menos a meio, no osso mais saliente</b>'}, um ponto de cada vez, pela ordem dos números.</div>` : ''}
+        <ol style="list-style:none;margin:8px 0 0;padding:0;font-size:0.86rem;color:#334155;">${m.L.map(p => `<li style="margin-bottom:6px;"><b style="display:inline-block;background:#dc2626;color:white;border-radius:50%;min-width:20px;height:20px;line-height:20px;text-align:center;font-size:0.72rem;margin-right:6px;">${peNumPonto(p)}</b><b>${peEsc(p.nome)}</b>${p.cat === 'inferior' ? ` <span style="color:#64748b;">(perna ${/e$/.test(p.id) ? 'esquerda' : 'direita'})</span>` : ''}<br><span style="color:#64748b;margin-left:26px;display:inline-block;">${peLocalDoPonto(p, lf)}</span></li>`).join('')}</ol></div>`;
+      t += `  ${m.sistema.toUpperCase()}:\n` + (lf === 'costas' && m.sistema !== 'Sistema Inferior' ? `  (Nas costas: ${m.sistema === 'Sistema Superior' ? 'massaja no osso mais saliente da parte de trás do pescoço (nuca)' : 'massaja no pescoço, mais ou menos a meio, no osso mais saliente'}, um ponto de cada vez, pela ordem dos números.)\n` : '') + m.L.map(p => `   ${peNumPonto(p)}. ${p.nome}${p.cat === 'inferior' ? ' (perna ' + (/e$/.test(p.id) ? 'esquerda' : 'direita') + ')' : ''} — ${peLocalDoPonto(p, lf)}`).join('\n') + '\n';
+    });
+    h += '</div>';
+    if (outros.length) {
+      h += `<div style="font-size:0.86rem;color:#334155;margin-top:8px;"><b>Centros vitais e zonas de entrada:</b> ${outros.map(p => peEsc(p.nome)).join(', ')}. Massaja diretamente o local indicado no mapa da consulta.</div>`;
+      t += '  Centros vitais e zonas de entrada: ' + outros.map(p => p.nome).join(', ') + '. Massaja diretamente o local indicado no mapa da consulta.\n';
+    }
+    h += '</div>';
+  });
+    });
+    selamento(fase === 'Frente' ? 'Fecho da frente do corpo — autoabraço, afirmações e selamento' : 'Fecho das costas — autoabraço, afirmações e selamento');
+  });
+  if (!algum) { h += `<p style="font-size:0.86rem;color:#64748b;">(Nenhum ponto selecionado no mapeamento.)</p>`; t += '(Nenhum ponto selecionado no mapeamento.)\n'; }
   if (escudo !== 'Não Especificado') {
-    h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">4 · Música e modulação neuroplástica</div>
+    h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">3 · Música e modulação neuroplástica</div>
       <p style="font-size:0.9rem;line-height:1.55;color:#334155;">🎧 Coloca a música relativa ao teu escudo detetado (<b>${peEsc(escudo)}</b>) e ouve a modulação neuroplástica do escudo <b>${peEsc(escudo)}</b> diariamente, ao deitar, durante 7 dias contínuos.</p>`;
-    t += `\n4 · MÚSICA E MODULAÇÃO NEUROPLÁSTICA\nColoca a música relativa ao teu escudo detetado (${escudo}) e ouve a modulação neuroplástica do escudo ${escudo} diariamente, ao deitar, durante 7 dias contínuos.\n`;
+    t += `\n3 · MÚSICA E MODULAÇÃO NEUROPLÁSTICA\nColoca a música relativa ao teu escudo detetado (${escudo}) e ouve a modulação neuroplástica do escudo ${escudo} diariamente, ao deitar, durante 7 dias contínuos.\n`;
   }
   const a = peLerAudios21Cfg();
   if (a && a.incluir) {
@@ -2370,9 +2379,9 @@ function peConstruirPlano() {
     const lista = ((window.__peAud21 || peAud21Local())[a.versao === 'masc' ? 'masc' : 'fem']) || [];
     const semanas = a.semana === 'todas' ? [1, 2, 3] : [parseInt(a.semana, 10) || 1];
     const modo = a.modo === 'semana' ? 'As 7 meditações da semana são enviadas de uma vez; ouve uma por dia, pela ordem.' : 'É enviada uma meditação por dia.';
-    h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">5 · Meditações guiadas — programa de 21 dias (versão ${vf})</div>
+    h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">4 · Meditações guiadas — programa de 21 dias (versão ${vf})</div>
       <p style="font-size:0.9rem;line-height:1.55;color:#334155;">São 21 meditações, 7 por semana, todas diferentes, ao longo de 3 semanas. ${modo}</p>`;
-    t += `\n5 · MEDITAÇÕES GUIADAS — PROGRAMA DE 21 DIAS (versão ${vf})\nSão 21 meditações, 7 por semana, todas diferentes, ao longo de 3 semanas. ${modo}\n`;
+    t += `\n4 · MEDITAÇÕES GUIADAS — PROGRAMA DE 21 DIAS (versão ${vf})\nSão 21 meditações, 7 por semana, todas diferentes, ao longo de 3 semanas. ${modo}\n`;
     semanas.forEach(sw => {
       const itens = []; for (let d = 1; d <= 7; d++) { const n = (sw - 1) * 7 + d; itens.push({ n, url: lista[n - 1] || '' }); }
       h += `<div style="font-size:0.86rem;color:#334155;margin:6px 0 2px;"><b>Semana ${sw}</b></div><ul style="margin:0 0 6px 18px;padding:0;font-size:0.86rem;color:#334155;">${itens.map(i => `<li>Meditação ${i.n}${i.url ? ` — <a href="${peEsc(i.url)}">${peEsc(i.url)}</a>` : ''}</li>`).join('')}</ul>`;
@@ -2388,16 +2397,30 @@ function peIncluirPlano() {
   return true;
 }
 
+function peCabecalhoDoc(titulo) {
+  const data = new Date().toLocaleDateString('pt-PT');
+  const nome = peState.patientName || '';
+  const consulta = ((peState.historico && peState.historico.mapeamentos && peState.historico.mapeamentos.length) || 0) + 1;
+  return `<div style="background:linear-gradient(135deg,#1e3a8a,#0f172a);color:white;border-radius:12px;padding:16px;margin-bottom:14px;display:flex;gap:14px;align-items:center;">
+    ${peMarcaLogo(68)}
+    <div><div style="font-size:0.78rem;letter-spacing:2px;color:#fcd34d;font-weight:700;">${peEsc(peMarca().nome.toUpperCase())}</div>
+    <div style="font-size:1.2rem;font-weight:800;">${peEsc(titulo)}</div>
+    <div style="font-size:0.85rem;opacity:.9;margin-top:2px;">${peEsc(nome)} · Consulta n.º ${consulta} · ${data}</div></div></div>`;
+}
 function peConstruirDocumentoPaciente() {
   const r = peConstruirRelatorioPaciente();
   const incl = peIncluirPlano();
   const p = incl ? peConstruirPlano() : { html:'', texto:'' };
   const notas = (document.getElementById('pe-receita')?.value || '').trim();
-  let html = `<div id="pe-doc-paciente">${r.html}${p.html}`;
-  let texto = r.texto + p.texto;
-  if (notas) { html += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">Notas do terapeuta</div><p style="font-size:0.9rem;line-height:1.55;white-space:pre-wrap;color:#334155;">${peEsc(notas)}</p>`; texto += `\nNOTAS DO TERAPEUTA\n${notas}\n`; }
-  html += '</div>';
-  return { html, texto };
+  const htmlNotas = notas ? `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">Notas do terapeuta</div><p style="font-size:0.9rem;line-height:1.55;white-space:pre-wrap;color:#334155;">${peEsc(notas)}</p>` : '';
+  const txtNotas = notas ? `\nNOTAS DO TERAPEUTA\n${notas}\n` : '';
+  const marca = [peMarca().nome.toUpperCase(), peMarca().lema].filter(Boolean).join(' — ');
+  const htmlRel = `<div id="pe-doc-rel">${r.html}${incl ? '' : htmlNotas}</div>`;
+  const htmlPlano = incl ? `<div id="pe-doc-plano">${peCabecalhoDoc('O Teu Plano de Tratamento em Casa')}${p.html}${htmlNotas}<div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:14px;font-size:0.78rem;color:#64748b;">${peMarcaLogo(26)} ${peEsc([peMarca().nome, peMarca().lema].filter(Boolean).join(' · '))}</div></div>` : '';
+  const textoRel = r.texto + (incl ? '' : txtNotas);
+  const textoPlano = incl ? `${marca}\nO TEU PLANO DE TRATAMENTO EM CASA\n${peState.patientName || ''}\n` + p.texto + txtNotas : '';
+  return { html: `<div id="pe-doc-paciente">${r.html}${p.html}${htmlNotas}</div>`, texto: r.texto + p.texto + txtNotas,
+    htmlRel, htmlPlano, textoRel, textoPlano };
 }
 
 function peRenderPrevia() {
@@ -2537,31 +2560,107 @@ function peNovaConsultaDoHub() {
 function peVerRegisto(docId) {
   const m = (peState.historico.mapeamentos || []).find(x => x.docId === docId); if (!m) return;
   const d = m.dados || {};
-  peState.docAtual = { html: d.htmlPaciente || `<pre style="white-space:pre-wrap;font-family:inherit;">${peEsc(m.texto)}</pre>`, texto: m.texto, dados: d, docId };
+  peState.docAtual = { html: d.htmlPaciente || ((d.htmlRelatorio || '') + (d.htmlPlano || '')) || `<pre style="white-space:pre-wrap;font-family:inherit;">${peEsc(m.texto)}</pre>`, texto: m.texto, dados: d, docId };
   peMostrarDocumento(true);
 }
 
+function peDocPartes() {
+  const D = peState.docAtual || { html:'', texto:'', dados:{} };
+  const d = D.dados || {};
+  if (d.htmlRelatorio || d.htmlPlano) return { htmlRel:d.htmlRelatorio || D.html, htmlPlano:d.htmlPlano || '', textoRel:d.textoRelatorio || D.texto, textoPlano:d.textoPlano || '' };
+  const k = (D.html || '').indexOf('Plano Terapêutico — em casa');
+  if (k > 0) { const c = D.html.lastIndexOf('<h3', k); return { htmlRel:D.html.slice(0, c) + '</div>', htmlPlano:'<div id="pe-doc-plano">' + D.html.slice(c), textoRel:D.texto, textoPlano:'' }; }
+  return { htmlRel:D.html, htmlPlano:'', textoRel:D.texto, textoPlano:'' };
+}
+function peBlocoDoc(qual, titulo, html) {
+  const b = (cor, txt, fn) => `<button onclick="${fn}" style="background:${cor};color:white;padding:12px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">${txt}</button>`;
+  return `<div style="margin-bottom:22px;"><div style="font-weight:700;color:#1e3a8a;font-size:1rem;margin-bottom:8px;">${titulo}</div>
+    <details style="margin-bottom:10px;"><summary style="cursor:pointer;color:#475569;font-size:0.85rem;font-weight:600;">👁 Ver como fica</summary><div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-top:8px;">${html}</div></details>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">${b('#16a34a', '📄 PDF para enviar', `window.peBaixarPdf('${qual}')`)}${b('#25D366', '📱 WhatsApp', `window.peEnviarWhatsApp('${qual}')`)}${b('#1e3a8a', '✉️ E-mail', `window.peEnviarEmail('${qual}')`)}
+    <button onclick="window.copiarTexto(window.peState_docTexto('${qual}'))" style="background:#e2e8f0;padding:12px 16px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">📋 Copiar texto</button></div></div>`;
+}
 function peMostrarDocumento(deHistorico) {
   const el = document.getElementById('pe-step-relatorio'); if (!el) return;
   peInjetarPrint();
   const D = peState.docAtual || { html:'', texto:'', dados:{} };
   const podeTratar = D.dados && D.dados.mapa;
+  const P = peDocPartes();
   el.innerHTML = `<div class="card" style="padding:20px;">
-    <div style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:14px;border-bottom:2px solid #dcfce7;padding-bottom:10px;">${deHistorico ? '📄 Relatório do paciente' : '✅ Relatório guardado na ficha'}</div>
-    <div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">${D.html}</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:18px;">
-      <button onclick="window.peEnviarWhatsApp()" style="background:#25D366;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">📱 Enviar por WhatsApp</button>
-      <button onclick="window.peEnviarEmail()" style="background:#1e3a8a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✉️ Enviar por e-mail</button>
-      <button onclick="window.print()" style="background:#e2e8f0;padding:12px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">🖨️ PDF / Imprimir</button>
-      <button onclick="window.copiarTexto(window.peState_docTexto())" style="background:#e2e8f0;padding:12px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">📋 Copiar texto</button></div>
-    <div style="font-size:0.78rem;color:#64748b;text-align:center;margin-top:8px;">Dica: o PDF mostra o relatório completo com as imagens. Guarda-o e envia-o ao paciente em anexo.</div>
+    <div style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:14px;border-bottom:2px solid #dcfce7;padding-bottom:10px;">${deHistorico ? '📄 Documentos do paciente' : '✅ Guardado na ficha — documentos prontos a enviar'}</div>
+    ${peBlocoDoc('rel', '1 · Relatório do paciente', P.htmlRel)}
+    ${P.htmlPlano ? peBlocoDoc('plano', '2 · Plano de tratamento em casa', P.htmlPlano) : '<div style="font-size:0.85rem;color:#64748b;margin-bottom:14px;">Esta consulta não inclui plano de tratamento em casa.</div>'}
+    <div style="font-size:0.78rem;color:#64748b;text-align:center;">O PDF fica pronto a enviar: no telemóvel abre a partilha (WhatsApp, e-mail…); no computador é descarregado.</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0;">
       <button onclick="window.peVoltarAoPaciente()" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">👤 Voltar ao paciente</button>
       ${podeTratar ? `<button onclick="window.peIniciarTratamentoAtual()" style="background:#16a34a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">▶ Iniciar tratamento</button>` : ''}</div></div>`;
   peIrPasso('relatorio');
 }
 
-function peDocTexto() { return (peState.docAtual && peState.docAtual.texto) || ''; }
+// ─── PDF (relatório e plano em separado) ───
+function peCarregarHtml2Pdf() {
+  if (window.html2pdf) return Promise.resolve();
+  if (peCarregarHtml2Pdf._p) return peCarregarHtml2Pdf._p;
+  peCarregarHtml2Pdf._p = new Promise((ok, falha) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    sc.onload = ok; sc.onerror = () => { peCarregarHtml2Pdf._p = null; falha(new Error('Não consegui carregar o gerador de PDF.')); };
+    document.head.appendChild(sc);
+  });
+  return peCarregarHtml2Pdf._p;
+}
+function peNomeFicheiro(qual) {
+  const n = String(peState.patientName || 'paciente').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return `${qual === 'plano' ? 'Plano-de-Tratamento' : 'Relatorio'}-${n}-${new Date().toISOString().slice(0, 10)}.pdf`;
+}
+// O gerador de PDF não desenha bem SVG: converte cada mapa numa imagem antes.
+async function peSvgParaImagem(host) {
+  const svgs = Array.from(host.querySelectorAll('svg'));
+  for (const sv of svgs) {
+    try {
+      const r = sv.getBoundingClientRect(); const w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+      const cl = sv.cloneNode(true); cl.setAttribute('width', w); cl.setAttribute('height', h);
+      if (!cl.getAttribute('xmlns')) cl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(cl));
+      const im = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+      const c = document.createElement('canvas'); c.width = w * 2; c.height = h * 2;
+      const cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(im, 0, 0, c.width, c.height);
+      const img = document.createElement('img'); img.src = c.toDataURL('image/png'); img.style.cssText = `width:${w}px;height:${h}px;display:block;`;
+      sv.replaceWith(img);
+    } catch (_) {}
+  }
+}
+async function peBaixarPdf(qual) {
+  const P = peDocPartes(); const html = qual === 'plano' ? P.htmlPlano : P.htmlRel;
+  if (!html) { mostrarAviso('Não há conteúdo para este PDF.'); return; }
+  mostrarAviso('A preparar o PDF…');
+  let host, wrap;
+  try {
+    await peCarregarHtml2Pdf();
+    wrap = document.createElement('div'); wrap.style.cssText = 'position:fixed;left:-10000px;top:0;';
+    host = document.createElement('div'); host.id = 'pe-pdf-tmp';
+    host.style.cssText = 'box-sizing:border-box;width:720px;background:#fff;padding:18px;color:#0f172a;font-family:system-ui,sans-serif;';
+    host.innerHTML = '<style>#pe-pdf-tmp svg[aria-label^="Sistema"]{max-width:165px!important}#pe-pdf-tmp img{max-width:100%}</style>' + html;
+    wrap.appendChild(host); document.body.appendChild(wrap);
+    await peSvgParaImagem(host);
+    const nome = peNomeFicheiro(qual);
+    const blob = await window.html2pdf().set({
+      margin: [10, 8, 12, 8], filename: nome, image: { type:'jpeg', quality:0.88 },
+      html2canvas: { scale:1.6, useCORS:true, backgroundColor:'#ffffff', windowWidth:720 },
+      jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+      pagebreak: { mode:['css', 'legacy'], avoid:['li', 'img'] }
+    }).from(host).outputPdf('blob');
+    const f = new File([blob], nome, { type:'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files:[f] })) {
+      try { await navigator.share({ files:[f], title:nome }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    mostrarAviso('✅ PDF pronto: ' + nome);
+  } catch (e) { console.error(e); mostrarAviso('Não consegui criar o PDF. ' + (e.message || '')); }
+  finally { if (wrap) wrap.remove(); }
+}
+
+function peDocTexto(qual) { const P = peDocPartes(); return (qual === 'plano' ? P.textoPlano : qual === 'rel' ? P.textoRel : (peState.docAtual && peState.docAtual.texto)) || ''; }
 
 function peTelefoneWA() {
   const d = String((peState.pacienteDados && peState.pacienteDados.phone) || '').replace(/\D/g, '');
@@ -2570,16 +2669,16 @@ function peTelefoneWA() {
 }
 function peAbrirLink(url) { if (typeof window.openExternalLink === 'function') window.openExternalLink(url); else window.open(url, '_blank'); }
 
-function peEnviarWhatsApp() {
+function peEnviarWhatsApp(qual) {
   const nome = (peState.patientName || '').split(' ')[0];
-  let txt = `Olá ${nome}! Segue o teu relatório da consulta de mapeamento.\n\n` + peDocTexto();
-  if (txt.length > 3500) txt = txt.slice(0, 3400) + '\n\n[…] O relatório completo, com as imagens, segue em PDF.';
+  let txt = `Olá ${nome}! ${qual === 'plano' ? 'Segue o teu plano de tratamento em casa.' : 'Segue o teu relatório da consulta de mapeamento.'}\n\n` + peDocTexto(qual);
+  if (txt.length > 3500) txt = txt.slice(0, 3400) + `\n\n[…] ${qual === 'plano' ? 'O plano completo, com os mapas' : 'O relatório completo, com as imagens'}, segue em PDF.`;
   peAbrirLink(`https://wa.me/${peTelefoneWA()}?text=${encodeURIComponent(txt)}`);
 }
-function peEnviarEmail() {
+function peEnviarEmail(qual) {
   const mail = (peState.pacienteDados && peState.pacienteDados.email) || '';
-  const corpo = peDocTexto().slice(0, 1500) + '\n\n[…] O relatório completo, com as imagens, segue em anexo (PDF).';
-  peAbrirLink(`mailto:${mail}?subject=${encodeURIComponent('O teu relatório de mapeamento')}&body=${encodeURIComponent(corpo)}`);
+  const corpo = peDocTexto(qual).slice(0, 1500) + '\n\n[…] O documento completo, com as imagens, segue em anexo (PDF).';
+  peAbrirLink(`mailto:${mail}?subject=${encodeURIComponent(qual === 'plano' ? 'O teu plano de tratamento em casa' : 'O teu relatório de mapeamento')}&body=${encodeURIComponent(corpo)}`);
 }
 
 async function peVoltarAoPaciente() {
@@ -2602,7 +2701,7 @@ async function peEmitirPaciente(relatorioTec, escudo, data) {
     escudo, path:2, data, mapId, estado, consulta, epoca:ep.epoca || '', tempo:ep.tempo || '',
     notas:(document.getElementById('pe-receita')?.value || '').trim(),
     pontos:pontos.map(p => ({ k:p.k, id:p.id, nome:p.nome, cat:p.cat, zona:p.zona })),
-    mapa:{ zonas }, htmlPaciente:doc.html, audios21:peLerAudios21Cfg(), semPlano:!peIncluirPlano()
+    mapa:{ zonas }, htmlRelatorio:doc.htmlRel, htmlPlano:doc.htmlPlano, textoRelatorio:doc.textoRel, textoPlano:doc.textoPlano, audios21:peLerAudios21Cfg(), semPlano:!peIncluirPlano()
   }));
   let ok = true;
   if (peState.patientId) ok = await guardarNaFicha(peState.patientId, { tipo:'pesquisa_emocional', titulo:`Pesquisa Emocional — ${data}`, texto:relatorioTec + '\n\nRELATÓRIO PARA O PACIENTE:\n' + doc.texto, dados });
@@ -3177,7 +3276,7 @@ window.peGravarTratamento = peGravarTratamento;
 window.peVerRegisto = peVerRegisto;
 window.peVoltarAoPaciente = peVoltarAoPaciente;
 window.peEnviarWhatsApp = peEnviarWhatsApp;
-window.peEnviarEmail = peEnviarEmail;
+window.peEnviarEmail = peEnviarEmail; window.peBaixarPdf = peBaixarPdf;
 window.peState_docTexto = peDocTexto;
 window.peAtualizarEpocaFinal = peAtualizarEpocaFinal;
 window.peCancelarMapeamento = peCancelarMapeamento;
