@@ -2664,7 +2664,8 @@ async function peBaixarPdf(qual) {
 function peDocTexto(qual) { const P = peDocPartes(); return (qual === 'plano' ? P.textoPlano : qual === 'rel' ? P.textoRel : (peState.docAtual && peState.docAtual.texto)) || ''; }
 
 function peTelefoneWA() {
-  const d = String((peState.pacienteDados && peState.pacienteDados.phone) || '').replace(/\D/g, '');
+  const pd = peState.pacienteDados || {}, rq = pd.requester, viaR = !!(rq && rq.enviarParaResponsavel && (rq.nome || rq.phone || rq.email));
+  const d = String((viaR && rq.phone) || pd.phone || '').replace(/\D/g, '');
   if (!d) return '';
   return d.length === 9 ? '351' + d : d;
 }
@@ -2677,9 +2678,10 @@ function peEnviarWhatsApp(qual) {
   peAbrirLink(`https://wa.me/${peTelefoneWA()}?text=${encodeURIComponent(txt)}`);
 }
 function peEnviarEmail(qual) {
-  const mail = (peState.pacienteDados && peState.pacienteDados.email) || '';
+  const pd = peState.pacienteDados || {}, rq = pd.requester;
+  const mail = (rq && rq.enviarParaResponsavel && rq.email) || pd.email || '';
   const corpo = peDocTexto(qual).slice(0, 1500) + '\n\n[…] O documento completo, com as imagens, segue em anexo (PDF).';
-  peAbrirLink(`mailto:${mail}?subject=${encodeURIComponent(qual === 'plano' ? 'O teu plano de tratamento em casa' : 'O teu relatório de mapeamento')}&body=${encodeURIComponent(corpo)}`);
+  peAbrirLink(`mailto:${mail}?subject=${encodeURIComponent(qual === 'plano' ? 'O teu plano de tratamento em casa' : 'O teu relatório de pesquisa')}&body=${encodeURIComponent(corpo)}`);
 }
 
 async function peVoltarAoPaciente() {
