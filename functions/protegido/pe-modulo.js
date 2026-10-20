@@ -7,7 +7,7 @@
 // ─── DADOS BASE ───────────────────────────────────────────────────
 
 const PE_CAT = [
-  { id:'vital', name:'Centros Vitais (7)', cor:'#16a34a', points:[
+  { id:'vital', name:'Pontos Vitais (7)', cor:'#16a34a', points:[
     {id:'v1',name:'Topo da Cabeça (Coroa)',x:100,y:10,organ:'Pineal',desc:'Vazio existencial, crise de fé.',r:'Tens sentido que a tua vida perdeu o rumo?'},
     {id:'v2',name:'Pescoço',x:100,y:55,organ:'Tiroide',desc:'Silenciamento forçado.',r:'Quantas vezes tens engolido a tua verdade?'},
     {id:'v3',name:'Coração (Centro do peito)',x:100,y:115,organ:'Timo/Coração',desc:'Mágoas e isolamento.',r:'Sentes que fechaste o teu peito para te protegeres?'},
@@ -16,7 +16,7 @@ const PE_CAT = [
     {id:'v6',name:'Esplénico',x:100,y:185,organ:'Baço/Reprodutor',desc:'Bloqueio de criatividade/prazer.',r:'Permites-te sentir prazer nas pequenas coisas?'},
     {id:'v7',name:'Raiz',x:100,y:215,organ:'Base Pélvica',desc:'Insegurança material e territorial.',r:'Sentes que não tens estabilidade para avançar?'}
   ]},
-  { id:'impact', name:'Zonas de Entrada (13)', cor:'#b45309', points:[
+  { id:'impact', name:'Pontos de Entrada (13)', cor:'#b45309', points:[
     {id:'i1',name:'Topo da Cabeça',x:100,y:10,organ:'Vértice',desc:'Choque existencial.',r:'Houve algum acontecimento súbito que te fez questionar tudo?'},
     {id:'i2',name:'Ombro Direito',x:132,y:70,organ:'Articulação Dir',desc:'Carga exterior.',r:'Estás a carregar responsabilidades de outros nas tuas costas?'},
     {id:'i3',name:'Ombro Esquerdo',x:68,y:70,organ:'Articulação Esq',desc:'Carga afetiva.',r:'Tens tentado salvar toda a tua família?'},
@@ -31,8 +31,8 @@ const PE_CAT = [
     {id:'i12',name:'Pé Direito',x:122,y:375,organ:'Pé Dir',desc:'Dúvida material.',r:'Sentes-te perdido sem saber que direção profissional tomar?'},
     {id:'i13',name:'Pé Esquerdo',x:78,y:375,organ:'Pé Esq',desc:'Desenraizamento.',r:'Tens a sensação de que não pertences ao teu núcleo?'}
   ]},
-  { id:'lateral', name:'Lateralidade', cor:'#b45309', points:[] },
-  { id:'superior', name:'Sistema Superior', cor:'#1e3a8a', v:2, points:[
+  { id:'lateral', name:'Leitura dos Lados', cor:'#b45309', points:[] },
+  { id:'superior', name:'Eixo Superior', cor:'#1e3a8a', v:2, points:[
     {id:'N1',name:'Epífise',x:100,y:100,organ:'Pineal',desc:'Distúrbio circadiano.',r:'Como tem sido o teu sono?'},
     {id:'N2',name:'Hipotálamo',x:100,y:118,organ:'SNC',desc:'Alarme e fobias.',r:'Sentes o teu corpo sempre em alerta?'},
     {id:'N3',name:'Hipófise',x:100,y:136,organ:'Pituitária',desc:'Autoimagem fragilizada.',r:'Tens duvidado do teu próprio valor?'},
@@ -43,37 +43,37 @@ const PE_CAT = [
     {id:'N8',name:'Tiroide',x:100,y:227,organ:'Tiroide',desc:'Impotência em agir.',r:'As tuas ações parecem lentas?'},
     {id:'N9',name:'Esófago',x:100,y:245,organ:'Esófago',desc:'Engolir calado.',r:'Quantas vezes tens calado a tua própria voz?'}
   ]},
-  { id:'central', name:'Sistema Central', cor:'#1e3a8a', v:3, points:[
-    {id:'C1',name:'I – Vasos Linfáticos, Artérias e Veias',x:100,y:49,organ:'Linfáticos',desc:'Sobrecarga familiar.',r:'O sistema familiar pesa sobre ti?'},
-    {id:'C2',name:'II – Intestino Grosso',x:100,y:69,organ:'Int. Grosso',desc:'Apego, culpas.',r:'O que precisas urgentemente de perdoar?'},
-    {id:'C3',name:'III – Coração',x:100,y:92,organ:'Coração',desc:'Autoabandono.',r:'Tens-te abandonado para ser aceite?'},
-    {id:'C4',name:'IV – Brônquios',x:100,y:112,organ:'Brônquios',desc:'Invasão territorial.',r:'O teu espaço pessoal é invadido?'},
-    {id:'C5',name:'V – Alvéolos Pulmonares',x:100,y:132,organ:'Pulmão',desc:'Receio de perda.',r:'Qual é o teu maior medo?'},
-    {id:'C6',name:'VI – Intestino Delgado',x:100,y:158,organ:'Int. Delgado',desc:'Crença na escassez.',r:'Acreditas que não há amor suficiente para ti?'},
-    {id:'C7',name:'VII – Baço',x:100,y:180,organ:'Baço',desc:'Cansaço relacional.',r:'Qual é a relação que te drena a energia?'},
-    {id:'C8',name:'VIII – Fígado',x:100,y:208,organ:'Fígado',desc:'Raiva e injustiça.',r:'O que te foi tirado injustamente?'},
-    {id:'C9',name:'IX – Estômago',x:100,y:236,organ:'Estômago',desc:'Ansiedade mental.',r:'Digeres excessivamente preocupações?'},
-    {id:'C10',name:'X – Duodeno',x:100,y:262,organ:'Duodeno',desc:'Frustração por perdas.',r:'Sentes-te bloqueado após uma frustração?'},
-    {id:'C11',name:'XI – Vesícula Biliar',x:100,y:291,organ:'Vesícula',desc:'Decisões adiadas.',r:'Que escolha continuas a adiar?'},
-    {id:'C12',name:'XII – Pâncreas',x:100,y:320,organ:'Pâncreas',desc:'Perda de doçura.',r:'Quando é que a vida perdeu a doçura?'}
+  { id:'central', name:'Eixo Central', cor:'#1e3a8a', v:3, points:[
+    {id:'C1',name:'Vasos Linfáticos, Artérias e Veias',x:100,y:49,organ:'Linfáticos',desc:'Sobrecarga familiar.',r:'O sistema familiar pesa sobre ti?'},
+    {id:'C2',name:'Intestino Grosso',x:100,y:69,organ:'Int. Grosso',desc:'Apego, culpas.',r:'O que precisas urgentemente de perdoar?'},
+    {id:'C3',name:'Coração',x:100,y:92,organ:'Coração',desc:'Autoabandono.',r:'Tens-te abandonado para ser aceite?'},
+    {id:'C4',name:'Brônquios',x:100,y:112,organ:'Brônquios',desc:'Invasão territorial.',r:'O teu espaço pessoal é invadido?'},
+    {id:'C5',name:'Alvéolos Pulmonares',x:100,y:132,organ:'Pulmão',desc:'Receio de perda.',r:'Qual é o teu maior medo?'},
+    {id:'C6',name:'Intestino Delgado',x:100,y:158,organ:'Int. Delgado',desc:'Crença na escassez.',r:'Acreditas que não há amor suficiente para ti?'},
+    {id:'C7',name:'Baço',x:100,y:180,organ:'Baço',desc:'Cansaço relacional.',r:'Qual é a relação que te drena a energia?'},
+    {id:'C8',name:'Fígado',x:100,y:208,organ:'Fígado',desc:'Raiva e injustiça.',r:'O que te foi tirado injustamente?'},
+    {id:'C9',name:'Estômago',x:100,y:236,organ:'Estômago',desc:'Ansiedade mental.',r:'Digeres excessivamente preocupações?'},
+    {id:'C10',name:'Duodeno',x:100,y:262,organ:'Duodeno',desc:'Frustração por perdas.',r:'Sentes-te bloqueado após uma frustração?'},
+    {id:'C11',name:'Vesícula Biliar',x:100,y:291,organ:'Vesícula',desc:'Decisões adiadas.',r:'Que escolha continuas a adiar?'},
+    {id:'C12',name:'Pâncreas',x:100,y:320,organ:'Pâncreas',desc:'Perda de doçura.',r:'Quando é que a vida perdeu a doçura?'}
   ]},
-  { id:'inferior', name:'Sistema Inferior', cor:'#1e3a8a', v:3, points:[
-    {id:'f1d',name:'LA1 – Glândulas Mamárias',x:138,y:153,organ:'Perna direita',desc:'Conflitos no cuidar.',r:'Tens sentido exaustão na tua forma de cuidar?'},
-    {id:'f1e',name:'LA1 – Glândulas Mamárias',x:62,y:153,organ:'Perna esquerda',desc:'Conflitos afetivos.',r:'Sentes falta de carinho da infância?'},
-    {id:'f2d',name:'LA2 – Útero / Próstata',x:138,y:185,organ:'Perna direita',desc:'Invasão íntima.',r:'O teu espaço sagrado foi invadido?'},
-    {id:'f2e',name:'LA2 – Útero / Próstata',x:62,y:185,organ:'Perna esquerda',desc:'Perda estabilidade.',r:'Alguma separação fez desmoronar o teu lar?'},
-    {id:'f3d',name:'LA3 – Suprarrenais',x:138,y:216,organ:'Perna direita',desc:'Esgotamento alerta.',r:'O teu corpo já não tem reservas para lutar?'},
-    {id:'f3e',name:'LA3 – Suprarrenais',x:62,y:216,organ:'Perna esquerda',desc:'Exaustão forças.',r:'O que te fez desistir de lutar?'},
-    {id:'f4d',name:'LA4 – Testículos / Ovários',x:138,y:243,organ:'Perna direita',desc:'Lutos projetos.',r:'Que projeto profundo tiveste de ver morrer?'},
-    {id:'f4e',name:'LA4 – Testículos / Ovários',x:62,y:243,organ:'Perna esquerda',desc:'Perda de linhagem.',r:'Que perda a tua família ainda não curou?'},
-    {id:'f5d',name:'LA5 – Rim',x:138,y:276,organ:'Perna direita',desc:'Insegurança perdas.',r:'Tens medo de falhar financeiramente?'},
-    {id:'f5e',name:'LA5 – Rim',x:62,y:276,organ:'Perna esquerda',desc:'Quebra confiança.',r:'Foste atraiçoado por alguém?'},
-    {id:'f6d',name:'LA6 – Bexiga',x:138,y:304,organ:'Perna direita',desc:'Perda de rumo.',r:'Já não sabes que lugar ocupas na sociedade?'},
-    {id:'f6e',name:'LA6 – Bexiga',x:62,y:304,organ:'Perna esquerda',desc:'Espaço territorial.',r:'Sentes que não podes ser quem és?'}
+  { id:'inferior', name:'Eixo Inferior', cor:'#1e3a8a', v:3, points:[
+    {id:'f1d',name:'Glândulas Mamárias (direita)',x:138,y:153,organ:'Perna direita',desc:'Conflitos no cuidar.',r:'Tens sentido exaustão na tua forma de cuidar?'},
+    {id:'f1e',name:'Glândulas Mamárias (esquerda)',x:62,y:153,organ:'Perna esquerda',desc:'Conflitos afetivos.',r:'Sentes falta de carinho da infância?'},
+    {id:'f2d',name:'Útero / Próstata (direita)',x:138,y:185,organ:'Perna direita',desc:'Invasão íntima.',r:'O teu espaço sagrado foi invadido?'},
+    {id:'f2e',name:'Útero / Próstata (esquerda)',x:62,y:185,organ:'Perna esquerda',desc:'Perda estabilidade.',r:'Alguma separação fez desmoronar o teu lar?'},
+    {id:'f3d',name:'Suprarrenais (direita)',x:138,y:216,organ:'Perna direita',desc:'Esgotamento alerta.',r:'O teu corpo já não tem reservas para lutar?'},
+    {id:'f3e',name:'Suprarrenais (esquerda)',x:62,y:216,organ:'Perna esquerda',desc:'Exaustão forças.',r:'O que te fez desistir de lutar?'},
+    {id:'f4d',name:'Testículos / Ovários (direita)',x:138,y:243,organ:'Perna direita',desc:'Lutos projetos.',r:'Que projeto profundo tiveste de ver morrer?'},
+    {id:'f4e',name:'Testículos / Ovários (esquerda)',x:62,y:243,organ:'Perna esquerda',desc:'Perda de linhagem.',r:'Que perda a tua família ainda não curou?'},
+    {id:'f5d',name:'Rim (direita)',x:138,y:276,organ:'Perna direita',desc:'Insegurança perdas.',r:'Tens medo de falhar financeiramente?'},
+    {id:'f5e',name:'Rim (esquerda)',x:62,y:276,organ:'Perna esquerda',desc:'Quebra confiança.',r:'Foste atraiçoado por alguém?'},
+    {id:'f6d',name:'Bexiga (direita)',x:138,y:304,organ:'Perna direita',desc:'Perda de rumo.',r:'Já não sabes que lugar ocupas na sociedade?'},
+    {id:'f6e',name:'Bexiga (esquerda)',x:62,y:304,organ:'Perna esquerda',desc:'Espaço territorial.',r:'Sentes que não podes ser quem és?'}
   ]}
 ];
 
-// Imagem grande do queixo, pescoço e ombros (vista de frente) para o Sistema Superior.
+// Imagem grande do queixo, pescoço e ombros (vista de frente) para o Eixo Superior.
 const PE_PESCOCO_SVG = `<defs>
 <linearGradient id="pesc" x1="0" x2="1"><stop offset="0" stop-color="#e9c9b0"/><stop offset=".5" stop-color="#f4dcc8"/><stop offset="1" stop-color="#e9c9b0"/></linearGradient>
 <linearGradient id="sombra" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b98f72" stop-opacity=".55"/><stop offset="1" stop-color="#b98f72" stop-opacity="0"/></linearGradient>
@@ -102,10 +102,10 @@ const PE_PESCOCO_SVG = `<defs>
 <path d="M 152 230 L 134 241" fill="none" stroke="#1e3a8a" stroke-width="2"/>
 </g>`;
 
-// Contorno da Lateralidade: percorre o corpo por fora, como se não tivesse braços.
+// Contorno da Leitura dos Lados: percorre o corpo por fora, como se não tivesse braços.
 const PE_LATERAL_CONTORNO = `<path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 131 376 C 144 376 154 382 154 390 C 154 394 150 395 146 395 L 114 395 C 111 392 111 386 111 380 L 104 285 L 100 196 L 96 285 L 89 380 C 89 386 89 392 86 395 L 54 395 C 50 395 46 394 46 390 C 46 382 56 376 69 376 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="9" stroke-linejoin="round" opacity=".22"/><path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 131 376 C 144 376 154 382 154 390 C 154 394 150 395 146 395 L 114 395 C 111 392 111 386 111 380 L 104 285 L 100 196 L 96 285 L 89 380 C 89 386 89 392 86 395 L 54 395 C 50 395 46 394 46 390 C 46 382 56 376 69 376 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
 
-// Imagem grande do tronco, da cinta para cima, para o Sistema Central (igual na frente e nas costas).
+// Imagem grande do tronco, da cinta para cima, para o Eixo Central (igual na frente e nas costas).
 const PE_CENTRAL_SVG = `<g stroke-linejoin="round" stroke-linecap="round">
 <path d="M 82 18 L 82 38 C 72 46 46 58 24 70 C 14 76 10 86 10 100 L 20 372 L 180 372 L 190 100 C 190 86 186 76 176 70 C 154 58 128 46 118 38 L 118 18 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
 <path d="M 34 170 L 32 368 M 166 170 L 168 368" fill="none" stroke="#94a3b8" stroke-width="1.2"/>
@@ -115,7 +115,7 @@ const PE_CENTRAL_SVG = `<g stroke-linejoin="round" stroke-linecap="round">
 <text x="100" y="375" text-anchor="middle" font-size="7" font-weight="700" fill="white">CINTA</text>
 <text x="100" y="11" text-anchor="middle" font-size="10" font-weight="800" fill="#1e3a8a">Da cinta para cima</text>`;
 
-// Imagem grande da cinta para baixo (ancas, coxas e joelhos) para o Sistema Inferior (igual na frente e nas costas).
+// Imagem grande da cinta para baixo (ancas, coxas e joelhos) para o Eixo Inferior (igual na frente e nas costas).
 const PE_INFERIOR_SVG = `<g stroke-linejoin="round" stroke-linecap="round">
 <path d="M 28 26 C 18 60 16 110 26 170 C 30 220 34 280 38 330 C 40 360 42 385 44 400 L 86 400 C 86 385 86 360 84 330 C 84 280 92 210 99 150 L 100 26 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
 <path d="M 172 26 C 182 60 184 110 174 170 C 170 220 166 280 162 330 C 160 360 158 385 156 400 L 114 400 C 114 385 114 360 116 330 C 116 280 108 210 101 150 L 100 26 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
@@ -256,7 +256,7 @@ async function peCarregarPosicoes() {
   }
 }
 
-// Se a configuração guardada tiver pontos diferentes dos atuais (ex.: Sistema Superior redesenhado), usa os atuais.
+// Se a configuração guardada tiver pontos diferentes dos atuais (ex.: Eixo Superior redesenhado), usa os atuais.
 function peSanearConfig(cfg) {
   if (!cfg || !Array.isArray(cfg.categories)) return { categories: JSON.parse(JSON.stringify(PE_CAT)), forms: (cfg && cfg.forms) || JSON.parse(JSON.stringify(PE_FICHAS)) };
   const out = [];
@@ -298,7 +298,7 @@ async function renderPesquisaEmocional(main) {
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:linear-gradient(135deg,#1e3a8a,#0f172a);color:white;padding:18px;border-radius:12px;margin-bottom:16px;">
         <div>
           <div style="font-size:1.3rem;font-weight:700;">🔬 Pesquisa Emocional Clínica</div>
-          <div style="font-size:0.85rem;color:#bfdbfe;">Ferramenta de Mapeamento Clínico Avançado</div>
+          <div style="font-size:0.85rem;color:#bfdbfe;">Ferramenta de Levantamento Clínico Avançado</div>
         </div>
         ${tenantId()==='hikari-terapias' ? `<button onclick="window.renderAdminPedidosPE(document.querySelector('main,#main,.main-content')||document.body)" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 14px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;">⚙️ Pedidos Pendentes</button>` : ''}
         ${tenantId()==='hikari-terapias' ? `<button onclick="import('./pe-pedido.js').then(()=>window.peTermosAdmin())" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 12px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;">📜 Pedidos e termos</button>` : ''}
@@ -362,7 +362,7 @@ async function renderPesquisaEmocional(main) {
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px;">
             ${[1,2,3].map(n=>`<div onclick="window.peEscolherVia(${n},this)" id="pe-via-${n}" style="border:2px solid ${n===2?'#1e3a8a':'#e2e8f0'};background:${n===2?'#eff6ff':'white'};border-radius:10px;padding:16px;cursor:pointer;transition:.2s;">
               <div style="font-weight:700;color:#0f172a;margin-bottom:6px;">${n}. ${{1:'Padrões Conscientes',2:'Pesquisa Subconsciente',3:'Estressores Ativos'}[n]}</div>
-              <div style="font-size:0.8rem;color:#64748b;">${{1:'Pontuação direta dos Escudos (0 a 10).',2:'Mapeamento visual anatómico.',3:'Avaliação de gatilhos e ciclos.'}[n]}</div>
+              <div style="font-size:0.8rem;color:#64748b;">${{1:'Pontuação direta dos Padrões (0 a 10).',2:'Levantamento visual anatómico.',3:'Avaliação de gatilhos e ciclos.'}[n]}</div>
             </div>`).join('')}
           </div>
           <div id="pe-quadrantes-area">
@@ -384,7 +384,7 @@ async function renderPesquisaEmocional(main) {
           </div>
           <div style="display:flex;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
             <button onclick="window.peIrPasso('1')" style="background:white;border:1px solid #e2e8f0;padding:12px 20px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Voltar</button>
-            <button onclick="window.peIniciarVia()" style="background:#1e3a8a;color:white;padding:12px 24px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Iniciar Mapeamento ➔</button>
+            <button onclick="window.peIniciarVia()" style="background:#1e3a8a;color:white;padding:12px 24px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Iniciar Levantamento ➔</button>
           </div>
         </div>
       </div>
@@ -457,7 +457,7 @@ async function renderPesquisaEmocional(main) {
           <div id="pe-fecho-final" style="display:none;"></div>
           <div id="pe-mapa-rodape" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:20px;border-top:1px solid #e2e8f0;position:sticky;bottom:0;z-index:20;background:white;box-shadow:0 -6px 12px rgba(15,23,42,.08);padding:12px 4px calc(12px + env(safe-area-inset-bottom));">
             <button onclick="window.peMostrarZonas()" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Zonas</button>
-            <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Mapeamento</button>
+            <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Levantamento</button>
             <button id="pe-btn-seguinte" onclick="window.peSeguinte()" style="background:#1e3a8a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Seguinte ➔</button>
           </div>
         </div>
@@ -485,7 +485,7 @@ async function renderPesquisaEmocional(main) {
           <div style="font-size:1.1rem;font-weight:700;color:#1e3a8a;margin-bottom:20px;border-bottom:2px solid #fef3c7;padding-bottom:10px;">Passo 4 — Fecho e Plano Terapêutico</div>
           <div id="pe-escudos-resumo-mapa" style="display:none;margin-bottom:20px;"></div>
           <div id="pe-fecho-geral" style="display:none;margin-bottom:20px;background:white;border:1px solid #e2e8f0;border-radius:10px;padding:18px;">
-            <div style="font-weight:700;color:#1e3a8a;margin-bottom:12px;">Confirmar Escudo Dominante Final:</div>
+            <div style="font-weight:700;color:#1e3a8a;margin-bottom:12px;">Confirmar Padrão Dominante Final:</div>
             <div id="pe-escudos-final" style="display:flex;gap:8px;flex-wrap:wrap;">
               ${['Desproteção','Desvalorização','Impotência','Sobrevivência','Perda'].map(e=>`
                 <div onclick="window.peEscolherEscudoFinal('${e}',this)" style="flex:1;min-width:100px;padding:10px;border:2px solid #e2e8f0;background:white;border-radius:8px;cursor:pointer;text-align:center;font-size:0.82rem;font-weight:600;color:#64748b;transition:.2s;">${e}</div>`).join('')}
@@ -530,7 +530,7 @@ async function renderPesquisaEmocional(main) {
           </div>
           <div id="pe-box-receita" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:20px;">
             <label id="pe-lbl-receita" style="color:#b45309;font-size:1rem;font-weight:700;display:block;margin-bottom:8px;">Plano Terapêutico (Receita Visual):</label>
-            <p id="pe-p-receita" style="font-size:0.82rem;color:#64748b;margin-bottom:12px;">Gerado automaticamente cruzando o Escudo, as Massagens e os Pontos. Edite antes de emitir.</p>
+            <p id="pe-p-receita" style="font-size:0.82rem;color:#64748b;margin-bottom:12px;">Gerado automaticamente cruzando o Padrão, as Massagens e os Pontos. Edite antes de emitir.</p>
             <textarea id="pe-receita" rows="16" style="width:100%;padding:12px;border:1px solid #fde68a;border-radius:8px;font-size:0.9rem;line-height:1.6;"></textarea>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;flex-wrap:wrap;">
@@ -1110,7 +1110,7 @@ function peAtualizarBotaoSeguinte() {
   btn.textContent=!ultimaCat?'Seguinte ➔':'Concluir Zona ➔';
 }
 
-// Ordem por zona: Vitais → Entrada → Lateralidade → Superior → Central → Inferior
+// Ordem por zona: Vitais → Entrada → Leitura dos Lados → Superior → Central → Inferior
 function peSeguinte() {
   const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
   if (!qData) return;
@@ -1135,12 +1135,12 @@ function peMostrarZonas() {
     const d=peState.mappingData[q.val]||{}; const n=d.selectedPoints?d.selectedPoints.size:0;
     const lado=q.val.replace(/^Frente - /,'frente · ').replace(/^Costas - /,'costas · ');
     return `<button onclick="window.peIniciarZona(${i})" style="display:block;width:100%;text-align:left;margin-bottom:10px;padding:16px;border:2px solid ${d.visitada?'#16a34a':'#1e3a8a'};background:${d.visitada?'#f0fdf4':'#eff6ff'};border-radius:10px;cursor:pointer;">
-      <div style="font-weight:700;color:#0f172a;font-size:0.95rem;">${d.visitada?'✅ Continuar':'▶ Iniciar'} mapeamento ${q.val.includes('Direito')?'lado direito':'lado esquerdo'} ${q.val.startsWith('Costas')?'costas':'frente'}</div>
+      <div style="font-weight:700;color:#0f172a;font-size:0.95rem;">${d.visitada?'✅ Continuar':'▶ Iniciar'} levantamento ${q.val.includes('Direito')?'lado direito':'lado esquerdo'} ${q.val.startsWith('Costas')?'costas':'frente'}</div>
       <div style="font-size:0.78rem;color:#64748b;margin-top:4px;">${q.val}${d.visitada?` · ${n} ponto${n===1?'':'s'} marcado${n===1?'':'s'}`:''}</div></button>`;
   }).join('')+
   `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
     <button onclick="window.peCancelarMapeamento()" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Cancelar</button>
-    <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Mapeamento${nVis?` (${nVis})`:''}</button>
+    <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Levantamento${nVis?` (${nVis})`:''}</button>
   </div>`;
   peRolarTopo();
 }
@@ -1153,13 +1153,13 @@ function peIniciarZona(i) {
 
 function peProximoQuadrante() { peSeguinte(); }
 
-// ─── FECHO (só quando se decide terminar o mapeamento) ────────────
+// ─── FECHO (só quando se decide terminar o levantamento) ────────────
 
 const PE_ESCUDOS=['Desproteção','Desvalorização','Impotência','Sobrevivência','Perda'];
 
 function peCancelarMapeamento() {
   const feito=peState.quadrants.some(q=>peState.mappingData[q.val]?.visitada);
-  if (feito && !confirm('Cancelar o mapeamento? O que já marcou será perdido.')) return;
+  if (feito && !confirm('Cancelar o levantamento? O que já marcou será perdido.')) return;
   peIrPasso('2');
 }
 
@@ -1170,7 +1170,7 @@ function peAbrirFecho() {
   const corpo=document.getElementById('pe-mapa-corpo'); if (corpo) corpo.style.display='none';
   const rod=document.getElementById('pe-mapa-rodape'); if (rod) rod.style.display='none';
   const be=document.getElementById('pe-btn-edit-mapa'); if (be) be.style.display='none';
-  const titulo=document.getElementById('pe-mapa-titulo'); if (titulo) titulo.textContent='Fecho do Mapeamento';
+  const titulo=document.getElementById('pe-mapa-titulo'); if (titulo) titulo.textContent='Fecho do Levantamento';
   box.style.display='block';
   box.innerHTML=`<div style="font-size:0.85rem;color:#64748b;margin-bottom:12px;">Indique o padrão de defesa e a origem/tempo de cada zona mapeada.</div>`+
   peState.quadrants.map((q,i)=>{
@@ -1193,7 +1193,7 @@ function peAbrirFecho() {
       </div></div>`;
   }).join('')+
   `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:20px;border-top:1px solid #e2e8f0;position:sticky;bottom:0;z-index:20;background:white;box-shadow:0 -6px 12px rgba(15,23,42,.08);padding:12px 4px calc(12px + env(safe-area-inset-bottom));">
-    <button onclick="window.peVoltarAoMapa()" style="background:white;border:1px solid #e2e8f0;padding:12px 18px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Voltar ao Mapeamento</button>
+    <button onclick="window.peVoltarAoMapa()" style="background:white;border:1px solid #e2e8f0;padding:12px 18px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Voltar ao Levantamento</button>
     <button onclick="window.peConcluirFecho()" style="background:#1e3a8a;color:white;padding:12px 24px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Gravar e Avançar ➔</button>
   </div>`;
   peState.quadrants.forEach((q,i)=>peAtualizarEpocaZona(i));
@@ -1660,7 +1660,7 @@ function peCalcEscudo() {
   if (max===0) { peState.shieldCalc='Indefinido'; el.textContent='Aguarda pontuação...'; return; }
   const tops=vals.filter(x=>x.v===max);
   peState.shieldCalc=tops.length===1?tops[0].n:'Misto ('+tops.map(t=>t.n).join('+')+')';
-  el.textContent=`Escudo Predominante: [${peState.shieldCalc}] com ${max}/10`;
+  el.textContent=`Padrão Predominante: [${peState.shieldCalc}] com ${max}/10`;
 }
 
 function peAtualizarEpocaFinal() {
@@ -1710,7 +1710,7 @@ function pePreencherReceita() {
   const bP=document.getElementById('pe-bloco-paciente'); if (bP) bP.style.display=novoP?'block':'none';
   const lbR=document.getElementById('pe-lbl-receita'), pR=document.getElementById('pe-p-receita'), tR=document.getElementById('pe-receita');
   if (lbR) lbR.textContent=novoP?'Notas do terapeuta (opcional):':'Plano Terapêutico (Receita Visual):';
-  if (pR) pR.textContent=novoP?'Aparecem no fim do relatório do paciente.':'Gerado automaticamente cruzando o Escudo, as Massagens e os Pontos. Edite antes de emitir.';
+  if (pR) pR.textContent=novoP?'Aparecem no fim do relatório do paciente.':'Gerado automaticamente cruzando o Padrão, as Massagens e os Pontos. Edite antes de emitir.';
   if (tR) tR.rows=novoP?4:16;
   if (novoP) {
     if (tR && tR.value.startsWith('PLANO DE REEQUIL')) tR.value='';
@@ -1753,17 +1753,17 @@ function pePreencherReceita() {
       txt+=PASSO_PADRAO+'\n';
     }
     if (costasSC.length>0) {
-      txt+=`🫀 PONTOS DAS COSTAS — Sistema Superior (S) e Sistema Central (C):\n`+costasSC.join('\n')+'\n';
+      txt+=`🫀 PONTOS DAS COSTAS — Eixo Superior (S) e Eixo Central (C):\n`+costasSC.join('\n')+'\n';
       txt+=`Localização: A massagem de todos estes pontos nas costas é feita no osso mais saliente que temos na parte de trás do pescoço.\n`;
       txt+=PASSO_PADRAO+'\n';
     }
     if (costasInf.length>0) {
-      txt+=`🦵 PONTOS DAS COSTAS — Sistema Inferior (M):\n`+costasInf.join('\n')+'\n';
+      txt+=`🦵 PONTOS DAS COSTAS — Eixo Inferior (M):\n`+costasInf.join('\n')+'\n';
       txt+=`Localização: A massagem é feita na parte de trás das pernas (coxas posteriores e gémeos na localização exata assinalada no mapa).\n`;
       txt+=PASSO_PADRAO+'\n';
     }
     if (pontosFrente.length===0&&costasSC.length===0&&costasInf.length===0) {
-      txt+=`(Nenhum ponto selecionado no mapeamento — revê os quadrantes antes de emitir o plano.)\n\n`;
+      txt+=`(Nenhum ponto selecionado no levantamento — revê os quadrantes antes de emitir o plano.)\n\n`;
     }
   }
   const medoRes=document.getElementById('pe-medo-resultado');
@@ -1841,7 +1841,7 @@ const PE_ESCUDO_TXT = {
   'Perda':{ desc:'Um padrão ligado a separação, abandono e falta. Aponta para perdas reais ou sentidas que ainda não foram processadas.', ex:['Um luto, divórcio ou afastamento que ainda dói','Ter sido deixado/a ou abandonado/a','Perder um projeto, um lar ou uma pessoa muito importante'] }
 };
 const PE_TXT_DEF = {
-  intro: 'O corpo guarda a memória das emoções que não conseguimos viver ou expressar no momento. Cada ponto assinalado neste mapeamento mostra uma zona onde essa memória ficou retida. Lê com calma: não tens de te identificar com tudo — repara naquilo que te desperta uma emoção, uma imagem ou uma recordação. É aí que está o que precisa de ser olhado.',
+  intro: 'O corpo guarda a memória das emoções que não conseguimos viver ou expressar no momento. Cada ponto assinalado neste levantamento mostra uma zona onde essa memória ficou retida. Lê com calma: não tens de te identificar com tudo — repara naquilo que te desperta uma emoção, uma imagem ou uma recordação. É aí que está o que precisa de ser olhado.',
   aviso: 'Este relatório é uma ferramenta de autoconhecimento no âmbito de uma terapia complementar e não substitui o acompanhamento médico ou psicológico.',
   dica: 'O mapa mostra a localização de cada ponto. Se tiveres dúvida sobre se estás a massajar o local correto, faz a massagem ao mesmo tempo que dizes em voz alta o nome da glândula ou do órgão desse ponto: a energia ajusta-se e chega ao local correto.',
   regra: 'Trata um lado de cada vez, começando pelo lado direito. Enquanto massajas os pontos de um lado, mantém uma mão na têmpora (fonte) desse mesmo lado. Quando terminares todos os pontos desse lado (frente e costas), troca a mão para a têmpora do outro lado e repete com os pontos desse lado. Se o mesmo ponto saiu nos dois lados, massaja-o em cada lado, cada um do seu lado.',
@@ -2088,7 +2088,7 @@ function peLicCopiar(l) { if (window.copiarTexto) window.copiarTexto(l, 'Link co
 window.peLicencas = peLicencas; window.peLicFechar = peLicFechar; window.peLicCriar = peLicCriar; window.peLicAcao = peLicAcao; window.peLicCopiar = peLicCopiar;
 
 const PE_CATS_ORDEM = ['vital','impact','superior','central','inferior'];
-const PE_CAT_NOME = { vital:'Centros Vitais', impact:'Zonas de Entrada', superior:'Sistema Superior', central:'Sistema Central', inferior:'Sistema Inferior' };
+const PE_CAT_NOME = { vital:'Pontos Vitais', impact:'Pontos de Entrada', superior:'Eixo Superior', central:'Eixo Central', inferior:'Eixo Inferior' };
 
 function peLadoDe(z) { return String(z).startsWith('Costas') ? 'costas' : 'frente'; }
 function peZonaCurta(z) { return String(z).replace('Frente - ','Frente · ').replace('Costas - ','Costas · '); }
@@ -2124,20 +2124,20 @@ function peTextoOrigem(ep) {
 }
 
 const PE_SISTEMA_TXT = {
-  vital:'Os Centros Vitais mostram onde a tua energia está mais afetada no dia a dia: o que te pesa, o que calas e o que te tira força.',
-  impact:'As Zonas de Entrada mostram por onde o acontecimento "entrou" no teu corpo: o impacto que te marcou e que ficou guardado.',
-  superior:'O Sistema Superior (cabeça e pescoço) fala do modo como pensas e te vês a ti próprio/a, do que calaste e do que engoliste sem poder dizer.',
-  central:'O Sistema Central (tronco e órgãos) fala do que sentes e carregas, sobretudo na família e nas relações mais próximas.',
-  inferior:'O Sistema Inferior (da virilha ao joelho) fala das tuas raízes: a linhagem, o território, as perdas e a segurança.'
+  vital:'Os Pontos Vitais mostram onde a tua energia está mais afetada no dia a dia: o que te pesa, o que calas e o que te tira força.',
+  impact:'As Pontos de Entrada mostram por onde o acontecimento "entrou" no teu corpo: o impacto que te marcou e que ficou guardado.',
+  superior:'O Eixo Superior (cabeça e pescoço) fala do modo como pensas e te vês a ti próprio/a, do que calaste e do que engoliste sem poder dizer.',
+  central:'O Eixo Central (tronco e órgãos) fala do que sentes e carregas, sobretudo na família e nas relações mais próximas.',
+  inferior:'O Eixo Inferior (da virilha ao joelho) fala das tuas raízes: a linhagem, o território, as perdas e a segurança.'
 };
 
 function peObservacaoGeral(un, escudo, ep) {
   if (!un.length) return { h:'', t:'' };
   const porCat = {}; un.forEach(p => { (porCat[p.cat] = porCat[p.cat] || []).push(p); });
   const nSist = PE_CATS_ORDEM.filter(c => porCat[c]);
-  let h = `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">Observação geral do teu mapeamento</h3>`;
-  let t = 'OBSERVAÇÃO GERAL DO TEU MAPEAMENTO\n';
-  const resumo = `No conjunto, o mapeamento assinalou ${un.length} ${un.length === 1 ? 'ponto' : 'pontos'}, em ${nSist.length} ${nSist.length === 1 ? 'sistema' : 'sistemas'}. Não os leias um a um: olha para o que têm em comum, porque é isso que conta a tua história.`;
+  let h = `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">Observação geral do teu levantamento</h3>`;
+  let t = 'OBSERVAÇÃO GERAL DO TEU LEVANTAMENTO\n';
+  const resumo = `No conjunto, o levantamento assinalou ${un.length} ${un.length === 1 ? 'ponto' : 'pontos'}, em ${nSist.length} ${nSist.length === 1 ? 'sistema' : 'sistemas'}. Não os leias um a um: olha para o que têm em comum, porque é isso que conta a tua história.`;
   h += `<p style="font-size:0.9rem;line-height:1.6;color:#334155;">${resumo}</p>`; t += resumo + '\n\n';
   nSist.forEach(c => {
     const nomes = porCat[c].map(p => p.nome).join('; ');
@@ -2208,7 +2208,7 @@ function peConstruirRelatorioPaciente() {
   let marcas = 0; const notas = [];
   (peState.quadrants || []).forEach(q => { const d = peState.mappingData[q.val]; if (!d || d.visitada === false) return; marcas += (d.lateralMarks || []).length; if (d.lateralNotes) notas.push(d.lateralNotes); });
   if (marcas || notas.length) {
-    h += `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px;margin-bottom:10px;"><div style="font-weight:700;color:#b45309;">Lateralidade</div><div style="font-size:0.88rem;color:#334155;">${marcas ? `Foram assinalados ${marcas} ${marcas === 1 ? 'local' : 'locais'} no contorno do corpo, que mostram onde sentes tensão ou peso.` : ''} ${notas.map(peEsc).join(' · ')}</div></div>`;
+    h += `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px;margin-bottom:10px;"><div style="font-weight:700;color:#b45309;">Leitura dos Lados</div><div style="font-size:0.88rem;color:#334155;">${marcas ? `Foram assinalados ${marcas} ${marcas === 1 ? 'local' : 'locais'} no contorno do corpo, que mostram onde sentes tensão ou peso.` : ''} ${notas.map(peEsc).join(' · ')}</div></div>`;
     t += `LATERALIDADE\n${marcas ? `Foram assinalados ${marcas} ${marcas === 1 ? 'local' : 'locais'} no contorno do corpo.\n` : ''}${notas.join(' · ')}\n\n`;
   }
   if (escudo !== 'Não Especificado') {
@@ -2250,19 +2250,19 @@ function peMapasZona(zona, pts) {
     const ids = new Set(dSup.map(p => p.id));
     const pontos = cats.find(c => c.id === 'superior').points;
     const dots = pontos.map(p => dot(p.x, p.y, peNumPonto(p), ids.has(p.id), 11)).join('');
-    out.push({ sistema:'Sistema Superior', L:dSup, svg:`<svg viewBox="0 0 200 400" style="width:100%;max-width:180px;" role="img" aria-label="Sistema Superior">${PE_PESCOCO_SVG}${dots}</svg>` });
+    out.push({ sistema:'Eixo Superior', L:dSup, svg:`<svg viewBox="0 0 200 400" style="width:100%;max-width:180px;" role="img" aria-label="Eixo Superior">${PE_PESCOCO_SVG}${dots}</svg>` });
   }
   if (dCen.length) {
     const ids = new Set(dCen.map(p => p.id));
     const dots = PE_PAC_Y_CENTRAL.map((y, i) => dot(447, y, i + 1, ids.has('C' + (i + 1)), 15)).join('');
-    out.push({ sistema:'Sistema Central', L:dCen, svg:`<svg viewBox="160 700 580 700" style="width:100%;max-width:230px;" role="img" aria-label="Sistema Central">${PE_PAC_CORPO}${dots}</svg>` });
+    out.push({ sistema:'Eixo Central', L:dCen, svg:`<svg viewBox="160 700 580 700" style="width:100%;max-width:230px;" role="img" aria-label="Eixo Central">${PE_PAC_CORPO}${dots}</svg>` });
   }
   if (dInf.length) {
     const ids = new Set(dInf.map(p => p.id));
     let dots = '';
     for (let n = 1; n <= 6; n++) { dots += dot(520, PE_PAC_Y_INFERIOR[n - 1], n, ids.has(`f${n}d`), 15); dots += dot(374, PE_PAC_Y_INFERIOR[n - 1], n, ids.has(`f${n}e`), 15); }
     dots += `<text x="520" y="1628" text-anchor="middle" font-size="17" fill="#475569" font-family="sans-serif">perna direita</text><text x="374" y="1628" text-anchor="middle" font-size="17" fill="#475569" font-family="sans-serif">perna esquerda</text>`;
-    out.push({ sistema:'Sistema Inferior', L:dInf, svg:`<svg viewBox="300 1270 300 375" style="width:100%;max-width:210px;" role="img" aria-label="Sistema Inferior">${PE_PAC_CORPO}${dots}</svg>` });
+    out.push({ sistema:'Eixo Inferior', L:dInf, svg:`<svg viewBox="300 1270 300 375" style="width:100%;max-width:210px;" role="img" aria-label="Eixo Inferior">${PE_PAC_CORPO}${dots}</svg>` });
   }
   return out;
 }
@@ -2354,9 +2354,9 @@ function peConstruirPlano() {
       h += `<div style="display:inline-block;vertical-align:top;width:100%;max-width:320px;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:0 6px 8px 0;break-inside:avoid;page-break-inside:avoid;">
         <div style="font-weight:700;color:#1e3a8a;margin-bottom:6px;">${m.sistema}</div>
         <div style="display:flex;justify-content:center;">${m.svg}</div>
-        ${lf === 'costas' && m.sistema !== 'Sistema Inferior' ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px;margin-top:8px;font-size:0.82rem;color:#92400e;"><b>Nas costas:</b> ${m.sistema === 'Sistema Superior' ? 'massaja no <b>osso mais saliente da parte de trás do pescoço (nuca)</b>' : 'massaja no <b>pescoço, mais ou menos a meio, no osso mais saliente</b>'}, um ponto de cada vez, pela ordem dos números.</div>` : ''}
+        ${lf === 'costas' && m.sistema !== 'Eixo Inferior' ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px;margin-top:8px;font-size:0.82rem;color:#92400e;"><b>Nas costas:</b> ${m.sistema === 'Eixo Superior' ? 'massaja no <b>osso mais saliente da parte de trás do pescoço (nuca)</b>' : 'massaja no <b>pescoço, mais ou menos a meio, no osso mais saliente</b>'}, um ponto de cada vez, pela ordem dos números.</div>` : ''}
         <ol style="list-style:none;margin:8px 0 0;padding:0;font-size:0.86rem;color:#334155;">${m.L.map(p => `<li style="margin-bottom:6px;"><b style="display:inline-block;background:#dc2626;color:white;border-radius:50%;min-width:20px;height:20px;line-height:20px;text-align:center;font-size:0.72rem;margin-right:6px;">${peNumPonto(p)}</b><b>${peEsc(p.nome)}</b>${p.cat === 'inferior' ? ` <span style="color:#64748b;">(perna ${/e$/.test(p.id) ? 'esquerda' : 'direita'})</span>` : ''}<br><span style="color:#64748b;margin-left:26px;display:inline-block;">${peLocalDoPonto(p, lf)}</span></li>`).join('')}</ol></div>`;
-      t += `  ${m.sistema.toUpperCase()}:\n` + (lf === 'costas' && m.sistema !== 'Sistema Inferior' ? `  (Nas costas: ${m.sistema === 'Sistema Superior' ? 'massaja no osso mais saliente da parte de trás do pescoço (nuca)' : 'massaja no pescoço, mais ou menos a meio, no osso mais saliente'}, um ponto de cada vez, pela ordem dos números.)\n` : '') + m.L.map(p => `   ${peNumPonto(p)}. ${p.nome}${p.cat === 'inferior' ? ' (perna ' + (/e$/.test(p.id) ? 'esquerda' : 'direita') + ')' : ''} — ${peLocalDoPonto(p, lf)}`).join('\n') + '\n';
+      t += `  ${m.sistema.toUpperCase()}:\n` + (lf === 'costas' && m.sistema !== 'Eixo Inferior' ? `  (Nas costas: ${m.sistema === 'Eixo Superior' ? 'massaja no osso mais saliente da parte de trás do pescoço (nuca)' : 'massaja no pescoço, mais ou menos a meio, no osso mais saliente'}, um ponto de cada vez, pela ordem dos números.)\n` : '') + m.L.map(p => `   ${peNumPonto(p)}. ${p.nome}${p.cat === 'inferior' ? ' (perna ' + (/e$/.test(p.id) ? 'esquerda' : 'direita') + ')' : ''} — ${peLocalDoPonto(p, lf)}`).join('\n') + '\n';
     });
     h += '</div>';
     if (outros.length) {
@@ -2368,11 +2368,11 @@ function peConstruirPlano() {
     });
     selamento(fase === 'Frente' ? 'Fecho da frente do corpo — autoabraço, afirmações e selamento' : 'Fecho das costas — autoabraço, afirmações e selamento');
   });
-  if (!algum) { h += `<p style="font-size:0.86rem;color:#64748b;">(Nenhum ponto selecionado no mapeamento.)</p>`; t += '(Nenhum ponto selecionado no mapeamento.)\n'; }
+  if (!algum) { h += `<p style="font-size:0.86rem;color:#64748b;">(Nenhum ponto selecionado no levantamento.)</p>`; t += '(Nenhum ponto selecionado no levantamento.)\n'; }
   if (escudo !== 'Não Especificado') {
     h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">3 · Música e modulação neuroplástica</div>
-      <p style="font-size:0.9rem;line-height:1.55;color:#334155;">🎧 Coloca a música relativa ao teu escudo detetado (<b>${peEsc(escudo)}</b>) e ouve a modulação neuroplástica do escudo <b>${peEsc(escudo)}</b> diariamente, ao deitar, durante 7 dias contínuos.</p>`;
-    t += `\n3 · MÚSICA E MODULAÇÃO NEUROPLÁSTICA\nColoca a música relativa ao teu escudo detetado (${escudo}) e ouve a modulação neuroplástica do escudo ${escudo} diariamente, ao deitar, durante 7 dias contínuos.\n`;
+      <p style="font-size:0.9rem;line-height:1.55;color:#334155;">🎧 Coloca a música relativa ao teu padrão detetado (<b>${peEsc(escudo)}</b>) e ouve a modulação neuroplástica do padrão <b>${peEsc(escudo)}</b> diariamente, ao deitar, durante 7 dias contínuos.</p>`;
+    t += `\n3 · MÚSICA E MODULAÇÃO NEUROPLÁSTICA\nColoca a música relativa ao teu padrão detetado (${escudo}) e ouve a modulação neuroplástica do padrão ${escudo} diariamente, ao deitar, durante 7 dias contínuos.\n`;
   }
   const a = peLerAudios21Cfg();
   if (a && a.incluir) {
@@ -2509,7 +2509,7 @@ function peGraficoEvolucao(lista) {
   const novos = [...kU].filter(k => !kP.has(k)).map(k => nomeDe(ult.dados.pontos, k));
   const iguais = [...kU].filter(k => kP.has(k)).length;
   const lst = (arr, cor) => arr.length ? `<ul style="margin:4px 0 0 18px;padding:0;font-size:0.82rem;color:${cor};">${arr.map(x => `<li>${peEsc(x)}</li>`).join('')}</ul>` : '<div style="font-size:0.82rem;color:#64748b;">Nenhum</div>';
-  const escMudou = (pen.dados.escudo || '—') === (ult.dados.escudo || '—') ? `O escudo manteve-se: <b>${peEsc(ult.dados.escudo || '—')}</b>.` : `O escudo mudou de <b>${peEsc(pen.dados.escudo || '—')}</b> para <b>${peEsc(ult.dados.escudo || '—')}</b>.`;
+  const escMudou = (pen.dados.escudo || '—') === (ult.dados.escudo || '—') ? `O padrão manteve-se: <b>${peEsc(ult.dados.escudo || '—')}</b>.` : `O padrão mudou de <b>${peEsc(pen.dados.escudo || '—')}</b> para <b>${peEsc(ult.dados.escudo || '—')}</b>.`;
   return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-top:16px;">
     <div style="font-weight:700;color:#1e3a8a;margin-bottom:4px;">📈 Evolução entre consultas</div>
     <div style="font-size:0.8rem;color:#64748b;margin-bottom:8px;">Número de pontos assinalados em cada sistema. Menos pontos indica menos retenção.</div>
@@ -2530,7 +2530,7 @@ function peRenderHub() {
   const cartoes = H.mapeamentos.slice().reverse().map(m => {
     const d = m.dados || {}; const est = peEstadoDe(m);
     const idade = peDiasDesde(m.t);
-    const aviso = (est.id === 'standby' && idade > 60) ? `<div style="font-size:0.78rem;color:#b45309;margin-top:6px;">⚠️ Já passaram ${idade} dias. Pode ser melhor fazer um novo mapeamento antes de tratar.</div>` : '';
+    const aviso = (est.id === 'standby' && idade > 60) ? `<div style="font-size:0.78rem;color:#b45309;margin-top:6px;">⚠️ Já passaram ${idade} dias. Pode ser melhor fazer um novo levantamento antes de tratar.</div>` : '';
     const nPts = Array.isArray(d.pontos) ? new Set(d.pontos.map(p => p.k)).size : null;
     return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -2543,8 +2543,8 @@ function peRenderHub() {
   }).join('');
   el.innerHTML = `<div class="card" style="padding:20px;">
     <div style="font-size:1.1rem;font-weight:700;color:#1e3a8a;margin-bottom:6px;border-bottom:2px solid #fef3c7;padding-bottom:10px;">${peEsc(peState.patientName || '')}</div>
-    <div style="font-size:0.84rem;color:#64748b;margin-bottom:14px;">${sug || 'Ainda não há consultas de mapeamento guardadas.'}</div>
-    <button onclick="window.peNovaConsultaDoHub()" style="width:100%;background:#1e3a8a;color:white;padding:14px;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:14px;">➕ Nova consulta de mapeamento (n.º ${n})</button>
+    <div style="font-size:0.84rem;color:#64748b;margin-bottom:14px;">${sug || 'Ainda não há consultas de levantamento guardadas.'}</div>
+    <button onclick="window.peNovaConsultaDoHub()" style="width:100%;background:#1e3a8a;color:white;padding:14px;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:14px;">➕ Nova consulta de levantamento (n.º ${n})</button>
     ${cartoes || ''}
     ${peGraficoEvolucao(H.mapeamentos)}
     <div style="margin-top:16px;"><button onclick="window.peIrPasso('0')" style="background:white;border:1px solid #e2e8f0;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Escolher outro paciente</button></div></div>`;
@@ -2672,7 +2672,7 @@ function peAbrirLink(url) { if (typeof window.openExternalLink === 'function') w
 
 function peEnviarWhatsApp(qual) {
   const nome = (peState.patientName || '').split(' ')[0];
-  let txt = `Olá ${nome}! ${qual === 'plano' ? 'Segue o teu plano de tratamento em casa.' : 'Segue o teu relatório da consulta de mapeamento.'}\n\n` + peDocTexto(qual);
+  let txt = `Olá ${nome}! ${qual === 'plano' ? 'Segue o teu plano de tratamento em casa.' : 'Segue o teu relatório da consulta de levantamento.'}\n\n` + peDocTexto(qual);
   if (txt.length > 3500) txt = txt.slice(0, 3400) + `\n\n[…] ${qual === 'plano' ? 'O plano completo, com os mapas' : 'O relatório completo, com as imagens'}, segue em PDF.`;
   peAbrirLink(`https://wa.me/${peTelefoneWA()}?text=${encodeURIComponent(txt)}`);
 }
@@ -2736,7 +2736,7 @@ function peCarregarMapaGuardado(d) {
 
 function peIniciarTratamento(docId) {
   const m = (peState.historico.mapeamentos || []).find(x => x.docId === docId);
-  if (!m || !m.dados || !m.dados.mapa) { mostrarAviso('⚠️ Este registo é antigo e não tem os pontos guardados. Faça uma nova consulta de mapeamento.'); return; }
+  if (!m || !m.dados || !m.dados.mapa) { mostrarAviso('⚠️ Este registo é antigo e não tem os pontos guardados. Faça uma nova consulta de levantamento.'); return; }
   peCarregarMapaGuardado(m.dados);
   peRenderTratamento(m.dados.mapId);
   peIrPasso('trat');
@@ -2752,7 +2752,7 @@ function peRenderTratamento(mapId) {
   const plano = peConstruirPlano();
   el.innerHTML = `<div class="card" style="padding:20px;">
     <div style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:6px;border-bottom:2px solid #dcfce7;padding-bottom:10px;">▶ Consulta de Tratamento · sessão ${anteriores.length + 1}</div>
-    <div style="font-size:0.84rem;color:#64748b;margin-bottom:12px;">${peEsc(peState.patientName || '')} · mapeamento de ${base ? peFmtData(base.t) : 'hoje'}${peEscudoFinal() !== 'Não Especificado' ? ' · Escudo: ' + peEsc(peEscudoFinal()) : ''}</div>
+    <div style="font-size:0.84rem;color:#64748b;margin-bottom:12px;">${peEsc(peState.patientName || '')} · levantamento de ${base ? peFmtData(base.t) : 'hoje'}${peEscudoFinal() !== 'Não Especificado' ? ' · Padrão: ' + peEsc(peEscudoFinal()) : ''}</div>
     ${anteriores.length ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px;margin-bottom:12px;font-size:0.82rem;color:#166534;"><b>Sessões anteriores:</b><ul style="margin:4px 0 0 18px;padding:0;">${anteriores.map(a => `<li>${peFmtData(a.t)}${a.dados.notas ? ' — ' + peEsc(a.dados.notas) : ''}</li>`).join('')}</ul></div>` : ''}
     <div id="pe-doc-paciente" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">${plano.html}</div>
     <div style="font-weight:700;color:#1e3a8a;margin:16px 0 6px;">Pontos trabalhados hoje</div>
@@ -2805,7 +2805,7 @@ async function peEmitirRelatorio() {
     relatorio+=`\nFecho Diagnóstico: ${escudo}\n`;
     relatorio+=peLinhaEpoca();
   } else {
-    relatorio+=`MÉTODO: MAPEAMENTO SUBCONSCIENTE VISUAL\n${'-'.repeat(40)}\n`;
+    relatorio+=`MÉTODO: LEVANTAMENTO SUBCONSCIENTE VISUAL\n${'-'.repeat(40)}\n`;
     peState.quadrants.forEach(q=>{
       const qData=peState.mappingData[q.val];
       if (!qData) return;
@@ -2814,11 +2814,11 @@ async function peEmitirRelatorio() {
       let hasPoints=false;
       qData.categories.forEach(cat=>{ cat.points.forEach(p=>{ if(qData.selectedPoints.has(p.id)){hasPoints=true;relatorio+=`  — ${p.name} (${p.organ}): ${p.desc}\n`;if(p.r)relatorio+=`    > Reflexão: ${p.r}\n`;} }); });
       if (qData.lateralNotes){hasPoints=true;relatorio+=`  — Varredura Lateral: ${qData.lateralNotes.replace(/\n/g,' ')}\n`;}
-      if (qData.lateralMarks&&qData.lateralMarks.length){hasPoints=true;relatorio+=`  — Lateralidade: ${qData.lateralMarks.length} local(is) marcado(s) no mapa.\n`;}
+      if (qData.lateralMarks&&qData.lateralMarks.length){hasPoints=true;relatorio+=`  — Leitura dos Lados: ${qData.lateralMarks.length} local(is) marcado(s) no mapa.\n`;}
       if (!hasPoints) relatorio+=`  — Nenhum ponto de retenção assinalado.\n`;
       relatorio+=`\nFECHO DESTE EIXO:\n  • Defesa: ${qData.shield}\n  • Gatilho Temporal: ${qData.epoch} (${qData.epochTime||'Sem data'})\n`;
     });
-    relatorio+=`\nFECHO FINAL:\n  • Escudo Dominante: ${escudo}\n  • ${peLinhaEpoca().trim()}\n`;
+    relatorio+=`\nFECHO FINAL:\n  • Padrão Dominante: ${escudo}\n  • ${peLinhaEpoca().trim()}\n`;
   }
   relatorio+=`\n${'='.repeat(60)}`;
   const receita=document.getElementById('pe-receita')?.value||'';
@@ -2998,7 +2998,7 @@ async function peRejeitarPedido(targetTenantId, btn) {
   };
 }
 
-// ─── CONSOLIDAÇÃO DE ESCUDOS (Via 2 — Mapeamento Visual) ─────────
+// ─── CONSOLIDAÇÃO DE PADRÕES (Via 2 — Levantamento Visual) ─────────
 
 function peConsolidarEscudosMapa() {
   const shields = Object.values(peState.mappingData)
@@ -3022,7 +3022,7 @@ function peRenderEscudosMapa() {
   if (detected.length === 0) { el.style.display='none'; return; }
 
   const descMap = {
-    'Desproteção':    'O mapeamento revela tensões ligadas a injustiça, insegurança e acusação. O subconsciente regista áreas onde o paciente sente ausência de proteção ou apoio.',
+    'Desproteção':    'O levantamento revela tensões ligadas a injustiça, insegurança e acusação. O subconsciente regista áreas onde o paciente sente ausência de proteção ou apoio.',
     'Desvalorização': 'Os pontos mapeados apontam para memórias de inferioridade, rejeição ou incompreensão. O corpo retém um padrão de baixa estima e comparação negativa.',
     'Impotência':     'O mapa subconsciente indica retenção de eventos em que o paciente sentiu que nada do que fazia tinha efeito — paralisia ou incapacidade aprendida.',
     'Sobrevivência':  'As tensões mapeadas refletem pressão de sobrevivência — escassez, sufoco e indignação — física, emocional ou económica.',
@@ -3037,7 +3037,7 @@ function peRenderEscudosMapa() {
 
   let html = `<div style="background:${corBg};border:1px solid ${corBdr};border-radius:12px;padding:18px;">
     <div style="font-weight:700;color:${corTit};font-size:1rem;margin-bottom:14px;">
-      ${isMisto?'⚠️ Escudos Mistos Detectados no Mapeamento':'🎯 Escudo Subconsciente Detectado'}
+      ${isMisto?'⚠️ Padrões Mistos Detectados no Levantamento':'🎯 Padrão Subconsciente Detectado'}
     </div>`;
 
   detected.forEach(([shield,count],i) => {
@@ -3054,7 +3054,7 @@ function peRenderEscudosMapa() {
   });
 
   if (isMisto) {
-    html+=`<div style="font-size:0.82rem;color:#92400e;margin-top:4px;padding:10px;background:#fff3cd;border-radius:8px;">Em escudos mistos o plano terapêutico é construído a partir do escudo dominante. Confirme ou ajuste a seleção abaixo.</div>`;
+    html+=`<div style="font-size:0.82rem;color:#92400e;margin-top:4px;padding:10px;background:#fff3cd;border-radius:8px;">Em padrões mistos o plano terapêutico é construído a partir do padrão dominante. Confirme ou ajuste a seleção abaixo.</div>`;
   }
   html+=`</div>`;
   el.innerHTML=html; el.style.display='block';
