@@ -494,12 +494,21 @@ async function renderPesquisaEmocional(main) {
                   <option value="Pós-parto / Biográfico">Depois do parto (Biográfico)</option>
                 </select></div>
               <div><label id="pe-final-lbl" style="font-size:0.82rem;font-weight:700;color:#334155;display:block;margin-bottom:6px;">Gerações:</label>
-                <input type="text" id="pe-final-tempo" placeholder="Ex: Há 1 geração..." style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+                <input type="text" id="pe-final-tempo" oninput="window.peRenderPrevia()" placeholder="Ex: Há 1 geração..." style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;"></div>
             </div>
           </div>
-          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:20px;">
-            <label style="color:#b45309;font-size:1rem;font-weight:700;display:block;margin-bottom:8px;">Plano Terapêutico (Receita Visual):</label>
-            <p style="font-size:0.82rem;color:#64748b;margin-bottom:12px;">Gerado automaticamente cruzando o Escudo, as Massagens e os Pontos. Edite antes de emitir.</p>
+          <div id="pe-bloco-paciente" style="display:none;margin-bottom:20px;">
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px;">
+              <div style="font-weight:700;color:#1e3a8a;margin-bottom:8px;">Decisão do paciente:</div>
+              <label style="display:flex;gap:8px;align-items:center;font-size:0.9rem;margin-bottom:6px;"><input type="radio" name="pe-estado" value="tratamento" style="width:18px;height:18px;"> Aceitou — iniciar o tratamento</label>
+              <label style="display:flex;gap:8px;align-items:center;font-size:0.9rem;"><input type="radio" name="pe-estado" value="standby" checked style="width:18px;height:18px;"> Fica em stand-by (inicia quando decidir)</label>
+            </div>
+            <div style="font-weight:700;color:#1e3a8a;margin-bottom:8px;">Relatório e plano para o paciente (pré-visualização):</div>
+            <div id="pe-previa-paciente" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;"></div>
+          </div>
+          <div id="pe-box-receita" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:20px;">
+            <label id="pe-lbl-receita" style="color:#b45309;font-size:1rem;font-weight:700;display:block;margin-bottom:8px;">Plano Terapêutico (Receita Visual):</label>
+            <p id="pe-p-receita" style="font-size:0.82rem;color:#64748b;margin-bottom:12px;">Gerado automaticamente cruzando o Escudo, as Massagens e os Pontos. Edite antes de emitir.</p>
             <textarea id="pe-receita" rows="16" style="width:100%;padding:12px;border:1px solid #fde68a;border-radius:8px;font-size:0.9rem;line-height:1.6;"></textarea>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;flex-wrap:wrap;">
@@ -509,6 +518,8 @@ async function renderPesquisaEmocional(main) {
         </div>
       </div>
 
+      <div id="pe-step-hub" class="pe-step" style="display:none;"></div>
+      <div id="pe-step-trat" class="pe-step" style="display:none;"></div>
       <div id="pe-step-relatorio" class="pe-step" style="display:none;"></div>
     </div>
   `;
@@ -609,7 +620,11 @@ async function peIniciarConsulta(patientId, patientName) {
   if (badge) badge.textContent = patientName;
   peState.formId = 'pre-consulta';
   await peLerFichasAnteriores(patientId);
+  await peLerHistorico(patientId);
+  peState.finalShield = 'Não Especificado'; peState.mapId = null; peState.epocaFinal = null;
   peRenderizarFicha('pre-consulta');
+  const h = peState.historico;
+  if (h.mapeamentos.length || h.tratamentos.length) { peRenderHub(); peIrPasso('hub'); return; }
   peIrPasso('1');
   setTimeout(() => peVerificarQExistente('pre-consulta'), 200);
 }
@@ -704,7 +719,7 @@ function peAutoPreencher(formId) {
 // ─── NAVEGAÇÃO ────────────────────────────────────────────────────
 
 function peIrPasso(s) {
-  ['0','1','2','3a','3b','3c','4','relatorio'].forEach(id => {
+  ['0','1','2','3a','3b','3c','4','hub','trat','relatorio'].forEach(id => {
     const el = document.getElementById(`pe-step-${id}`);
     if (el) el.style.display = 'none';
   });
@@ -1033,7 +1048,7 @@ function peIniciarVia() {
   else {
     const sel=Array.from(document.querySelectorAll('#pe-quadrantes-area [data-sel="1"]')).map(el=>({ val:el.querySelector('div:first-child').textContent.trim(), desc:el.querySelector('div:last-child').textContent.trim() }));
     if (sel.length===0) return mostrarAviso('⚠️ Selecione pelo menos uma Zona a mapear.');
-    peState.quadrants=sel; peState.qIdx=0; peState.mappingData={};
+    peState.quadrants=sel; peState.qIdx=0; peState.mappingData={}; if(!peState.mapId) peState.mapId='m'+Date.now();
     peState.hasBack=sel.some(q=>q.val.includes('Costas'));
     sel.forEach(q=>{ if(!peState.mappingData[q.val]) { const cfg=peLerConfig(); peState.mappingData[q.val]={visitada:false,desc:q.desc,selectedPoints:new Set(),lateralNotes:'',lateralMarks:[],shield:'Não Especificado',epoch:'Transgeracional',epochTime:'',categories:JSON.parse(JSON.stringify(cfg.categories))}; } });
     peIrPasso('3b'); peMostrarZonas();
@@ -1080,7 +1095,7 @@ function peSeguinte() {
   peGuardarNotasLaterais();
   const cats=qData.categories;
   const i=cats.findIndex(c=>c.id===peState.catId);
-  if (i<cats.length-1) { peCarregarCategoria(cats[i+1].id); peRolarTopo(); return; }
+  if (i<cats.length-1) { peCarregarCategoria(cats[i+1].id); return; }
   peMostrarZonas();
 }
 
@@ -1111,7 +1126,7 @@ function peMostrarZonas() {
 function peIniciarZona(i) {
   peState.qIdx=i;
   const fin=document.getElementById('pe-fecho-final'); if (fin) fin.style.display='none';
-  peCarregarQuadrante(); peRolarTopo();
+  peCarregarQuadrante();
 }
 
 function peProximoQuadrante() { peSeguinte(); }
@@ -1210,6 +1225,13 @@ function peRenderizarTabs() {
   });
 }
 
+function peCentrarMapa() {
+  setTimeout(()=>{
+    const w=document.getElementById('pe-svg-wrapper');
+    try { if (w&&w.scrollIntoView) w.scrollIntoView({block:'center',behavior:'auto'}); } catch(e){}
+  },60);
+}
+
 function peCarregarCategoria(catId) {
   peState.catId=catId; peRenderizarTabs();
   peMostrarInfoPonto(null);
@@ -1230,6 +1252,7 @@ function peCarregarCategoria(catId) {
   }
   peRenderizarSVG(cat,qData.selectedPoints);
   peAtualizarBotaoSeguinte();
+  peCentrarMapa();
 }
 
 function peRenderizarPontos(cat,selectedSet) {
@@ -1624,16 +1647,14 @@ function peAtualizarEpocaFinal() {
   l.textContent=v==='Transgeracional'?'Gerações:':v==='Gestacional'?'Mês da gravidez:':'Idade / Época:';
   const t=document.getElementById('pe-final-tempo');
   if (t) t.placeholder=v==='Transgeracional'?'Ex: Há 1 geração...':v==='Gestacional'?'Ex: 3.º mês de gestação':'Ex: Aos 7 anos';
-}
-
-function peLerEpocaFinal() {
-  return { epoca: document.getElementById('pe-final-epoca')?.value||'', tempo: (document.getElementById('pe-final-tempo')?.value||'').trim() };
+  peRenderPrevia();
 }
 
 function peEscolherEscudoFinal(shield,el) {
   peState.finalShield=shield;
   document.querySelectorAll('#pe-escudos-final div').forEach(b=>{ b.style.borderColor='#e2e8f0'; b.style.background='white'; b.style.color='#64748b'; });
   el.style.borderColor='#1e3a8a'; el.style.background='#eff6ff'; el.style.color='#1e3a8a';
+  peRenderPrevia();
 }
 
 // ─── RECEITA ──────────────────────────────────────────────────────
@@ -1663,6 +1684,16 @@ function pePreencherReceita() {
     }
   }
   const escudo=peState.finalShield!=='Não Especificado'?peState.finalShield:peState.shieldCalc;
+  const novoP=peState.path===2;
+  const bP=document.getElementById('pe-bloco-paciente'); if (bP) bP.style.display=novoP?'block':'none';
+  const lbR=document.getElementById('pe-lbl-receita'), pR=document.getElementById('pe-p-receita'), tR=document.getElementById('pe-receita');
+  if (lbR) lbR.textContent=novoP?'Notas do terapeuta (opcional):':'Plano Terapêutico (Receita Visual):';
+  if (pR) pR.textContent=novoP?'Aparecem no fim do relatório do paciente.':'Gerado automaticamente cruzando o Escudo, as Massagens e os Pontos. Edite antes de emitir.';
+  if (tR) tR.rows=novoP?4:16;
+  if (novoP) {
+    if (tR && tR.value.startsWith('PLANO DE REEQUIL')) tR.value='';
+    peAtualizarEpocaFinal(); peRenderPrevia(); return;
+  }
   let txt="PLANO DE REEQUILÍBRIO (TRABALHOS DE CASA):\nBeber um copo de água, ligar a frequência e iniciar a sequência:\n\n";
   if (escudo&&escudo!=='Indefinido'&&escudo!=='Não Especificado') {
     txt+=`🎧 1. Modulação Neuroplástica (${escudo}): Ouve o áudio específico para desprogramar o Padrão de ${escudo} diariamente, ao deitar, durante 7 dias contínuos.\n\n`;
@@ -1728,6 +1759,533 @@ function pePreencherReceita() {
   if (el) el.value=txt;
 }
 
+// ─── RELATÓRIO PARA O PACIENTE · PLANO VISUAL · HISTÓRICO · EVOLUÇÃO ───
+
+const PE_EXEMPLOS = {
+  v1:['Uma perda de sentido na vida depois de um divórcio, despedimento ou luto','Deixar de acreditar em algo (fé, projeto, pessoa) em que se confiava muito'],
+  v2:['Ter engolido em seco uma injustiça no trabalho ou em família sem poder responder','Ter sido calado/a ou proibido/a de dar opinião desde criança'],
+  v3:['Uma traição, separação ou desilusão amorosa que ainda dói','Sentir-se rejeitado/a ou abandonado/a por alguém muito próximo'],
+  v4:['Uma notícia ou decisão de alguém que ainda "não desce"','Ter de aceitar uma situação (doença, mudança, perda) contra a vontade'],
+  v5:['Ter sentido que perdeu o controlo de uma relação, do dinheiro ou da própria vida','Ter sido mandado/a ou dominado/a por alguém autoritário'],
+  v6:['Anos sem se permitir prazer ou criatividade por obrigação ou culpa','Uma relação íntima que apagou a alegria de viver'],
+  v7:['Mudanças de casa, falta de dinheiro ou medo de perder o lar ou o emprego','Ter crescido sem estabilidade material ou emocional'],
+  i1:['Uma notícia súbita (morte, acidente, diagnóstico) que caiu "do céu"','Um susto grande que fez questionar tudo'],
+  i2:['Ter assumido responsabilidades que eram de outros (irmãos mais novos, pais doentes)','Ter sustentado a família sozinho/a'],
+  i3:['Querer salvar ou proteger toda a família emocionalmente','Carregar as dores dos pais ou do/a companheiro/a'],
+  i4:['Ter de se proteger de críticas ou ameaças vindas de fora','Defender-se num ambiente de trabalho ou escolar hostil'],
+  i5:['Guardar uma mágoa íntima que nunca contou a ninguém','Esconder uma ferida para não voltar a sofrer'],
+  i6:['Uma vontade de agir ou realizar que foi travada (projeto, emprego, mudança)','Sentir-se impedido/a de fazer aquilo que sabe fazer'],
+  i7:['Não conseguir largar alguém do passado (ex-companheiro/a, pessoa falecida)','Dificuldade em soltar objetos, casas ou memórias'],
+  i8:['Um bloqueio na carreira ou nas finanças','Sentir que não consegue dar o passo seguinte na vida profissional'],
+  i9:['Uma decisão familiar ou afetiva sempre adiada','Um impasse numa relação (ficar ou partir)'],
+  i10:['Ter de ceder a exigências de fora contra a própria vontade','Resistir a obedecer a chefes ou a regras impostas'],
+  i11:['Uma humilhação por parte de alguém próximo, à frente de outras pessoas','Ter de se "dobrar" por amor ou por dependência'],
+  i12:['Dúvida sobre o caminho profissional ou de vida a seguir','Mudanças (emprego, país) feitas sem segurança'],
+  i13:['Não sentir que pertence à família, ao grupo ou ao local onde vive','Ter sido deslocado/a (mudanças, adoção, emigração)'],
+  N1:['Fases de insónia ou sono leve depois de um acontecimento marcante','Trocar o dia pela noite por ansiedade ou trabalho por turnos'],
+  N2:['Viver períodos longos em alerta (conflitos em casa, ameaça, medo constante)','Fobias que surgiram depois de um susto ou de um trauma'],
+  N3:['Comentários repetidos que fizeram duvidar do próprio valor ("tu não és capaz")','Comparações constantes com irmãos ou colegas'],
+  N4:['Ter de engolir uma situação injusta sem poder falar','Uma discussão ou insulto que ficou "entalado" na garganta'],
+  N5:['Longos períodos de pressa, prazos e cansaço','Sentir que o tempo nunca chega para tudo'],
+  N6:['Falta de reconhecimento por parte de pais, chefes ou companheiro/a','Um esforço grande que ninguém valorizou'],
+  N7:['Choro contido em momentos de luto ou dor ("homem não chora", "tens de ser forte")','Ter de ser forte para os outros e nunca poder desabafar'],
+  N8:['Sentir-se impotente para mudar uma situação (doença de alguém, problemas no trabalho)','Adiar ações por medo de errar ou de desiludir'],
+  N9:['Aguentar calado/a ordens, abusos ou injustiças','Engolir opiniões para evitar conflitos em família'],
+  C1:['Pesos de família: dívidas, doenças, segredos ou expectativas herdadas','Ser a pessoa que resolve os problemas de todos'],
+  C2:['Culpas antigas ou rancor que ainda não foram perdoados','Apego a pessoas, coisas ou situações do passado'],
+  C3:['Anular-se para ser aceite ou amado/a','Ficar numa relação por medo de ficar só'],
+  C4:['Alguém que invade o espaço pessoal (casa, quarto, privacidade)','Conflitos de território com familiares ou vizinhos'],
+  C5:['Medo de perder alguém querido (morte, separação)','Um susto de quase-perda (acidente, internamento)'],
+  C6:['Ter crescido com falta de afeto, atenção ou dinheiro','Pensar que "nunca é suficiente" ou que "não há para mim"'],
+  C7:['Uma relação que cansa e consome (familiar, amorosa ou de trabalho)','Cuidar muito dos outros e receber pouco em troca'],
+  C8:['Uma injustiça que ainda causa raiva (partilhas, traições, despedimento)','Ter sido enganado/a ou prejudicado/a por alguém de confiança'],
+  C9:['Preocupações constantes com o futuro, os filhos, o dinheiro ou a saúde','Remoer conversas e decisões durante horas'],
+  C10:['Uma frustração forte (projeto falhado, perda de um negócio)','Ficar paralisado/a depois de ouvir um "não"'],
+  C11:['Uma decisão importante sempre adiada (separação, mudança, mudar de emprego)','Raiva engolida por não conseguir decidir'],
+  C12:['Uma perda (luto, divórcio) depois da qual a vida perdeu a alegria','Fases em que "tudo sabe a pouco"'],
+  f1:['Exaustão de cuidar de filhos, pais ou companheiro/a sem receber cuidado','Falta de colo e de carinho na infância'],
+  f2:['Uma situação em que a tua intimidade ou privacidade não foi respeitada','Uma separação ou perda que desfez a estabilidade do lar'],
+  f3:['Longos períodos de luta e stress sem descanso','Chegar à exaustão depois de anos a aguentar tudo'],
+  f4:['Projetos de vida que "morreram" (filhos que não vieram, perdas de gravidez, sonhos)','Lutos na família que nunca foram curados'],
+  f5:['Medo de falhar financeiramente ou de perder o sustento','Uma traição que quebrou a confiança'],
+  f6:['Sentir que não tem lugar na família, no trabalho ou na sociedade','Ter de ser quem não é para pertencer']
+};
+function peExemplosDe(id) { return PE_EXEMPLOS[String(id).replace(/^(f\d)[de]$/,'$1')] || []; }
+
+const PE_ESCUDO_TXT = {
+  'Desproteção':{ desc:'Um padrão ligado a injustiça, insegurança e acusação. O subconsciente guarda a sensação de não ter tido proteção ou apoio quando mais foi preciso.', ex:['Sentir que ninguém o/a defendeu','Ter sido acusado/a ou castigado/a injustamente','Viver com insegurança em casa, na escola ou no trabalho'] },
+  'Desvalorização':{ desc:'Um padrão ligado a inferioridade, rejeição e incompreensão. O corpo retém memórias de baixa estima e de comparação negativa.', ex:['Ser comparado/a com irmãos ou colegas','Ouvir que não era capaz ou que não era suficiente','Sentir-se posto/a de lado ou ignorado/a'] },
+  'Impotência':{ desc:'Um padrão ligado a momentos em que nada do que se fazia tinha efeito. Fica a sensação de paralisia ou de incapacidade aprendida.', ex:['Ver alguém sofrer sem poder ajudar','Querer mudar uma situação e não conseguir','Sentir que "não vale a pena tentar"'] },
+  'Sobrevivência':{ desc:'Um padrão ligado a pressão de sobrevivência: escassez, sufoco e indignação, seja física, emocional ou económica.', ex:['Épocas de aperto financeiro ou de falta de recursos','Ter de aguentar tudo sozinho/a para "safar" a família','Sentir-se sufocado/a por uma situação sem saída'] },
+  'Perda':{ desc:'Um padrão ligado a separação, abandono e falta. Aponta para perdas reais ou sentidas que ainda não foram processadas.', ex:['Um luto, divórcio ou afastamento que ainda dói','Ter sido deixado/a ou abandonado/a','Perder um projeto, um lar ou uma pessoa muito importante'] }
+};
+const PE_CATS_ORDEM = ['vital','impact','superior','central','inferior'];
+const PE_CAT_NOME = { vital:'Centros Vitais', impact:'Zonas de Entrada', superior:'Sistema Superior', central:'Sistema Central', inferior:'Sistema Inferior' };
+
+function peLadoDe(z) { return String(z).startsWith('Costas') ? 'costas' : 'frente'; }
+function peZonaCurta(z) { return String(z).replace('Frente - ','Frente · ').replace('Costas - ','Costas · '); }
+function peEscudoFinal() {
+  const f = peState.finalShield;
+  if (f && f !== 'Não Especificado') return f;
+  return (peState.shieldCalc && peState.shieldCalc !== 'Indefinido') ? peState.shieldCalc : 'Não Especificado';
+}
+
+function peColetarPontos() {
+  const out = [];
+  (peState.quadrants || []).forEach(q => {
+    const d = peState.mappingData[q.val];
+    if (!d || d.visitada === false || !d.selectedPoints) return;
+    d.categories.forEach(cat => cat.points.forEach(p => {
+      if (d.selectedPoints.has(p.id)) out.push({ k:q.val+'|'+p.id, id:p.id, nome:p.name, organ:p.organ||'', desc:p.desc||'', r:p.r||'', cat:cat.id, zona:q.val, x:p.x, y:p.y });
+    }));
+  });
+  return out;
+}
+function peUnicos(pts) {
+  const m = new Map();
+  pts.forEach(p => { if (!m.has(p.id)) m.set(p.id, { ...p, zonas:[p.zona] }); else m.get(p.id).zonas.push(p.zona); });
+  return Array.from(m.values());
+}
+
+function peTextoOrigem(ep) {
+  if (!ep || !ep.epoca) return '';
+  const t = ep.tempo ? ` (${ep.tempo})` : '';
+  if (ep.epoca === 'Transgeracional') return `Esta memória parece vir de antes da tua gravidez, herdada da família${t}.`;
+  if (ep.epoca === 'Gestacional') return `Esta memória parece ter-se formado durante a gravidez${t}.`;
+  return `Esta memória parece ter-se formado depois do nascimento${t}.`;
+}
+
+function peConstruirRelatorioPaciente() {
+  const un = peUnicos(peColetarPontos());
+  const data = new Date().toLocaleDateString('pt-PT');
+  const escudo = peEscudoFinal();
+  const ep = peLerEpocaFinal();
+  const consulta = ((peState.historico && peState.historico.mapeamentos && peState.historico.mapeamentos.length) || 0) + 1;
+  const nome = peState.patientName || '';
+  let h = `<div style="background:linear-gradient(135deg,#1e3a8a,#0f172a);color:white;border-radius:12px;padding:18px;margin-bottom:14px;">
+    <div style="font-size:1.2rem;font-weight:800;">O Teu Mapa Emocional</div>
+    <div style="font-size:0.88rem;opacity:.9;margin-top:4px;">${peEsc(nome)} · Consulta n.º ${consulta} · ${data}</div></div>`;
+  let t = `O TEU MAPA EMOCIONAL\n${nome} · Consulta n.º ${consulta} · ${data}\n\n`;
+  const intro = 'O corpo guarda a memória das emoções que não conseguimos viver ou expressar no momento. Cada ponto assinalado neste mapeamento mostra uma zona onde essa memória ficou retida. Lê com calma: não tens de te identificar com tudo — repara naquilo que te desperta uma emoção, uma imagem ou uma recordação. É aí que está o que precisa de ser olhado.';
+  h += `<p style="font-size:0.92rem;line-height:1.6;color:#334155;">${intro}</p>`; t += intro + '\n\n';
+  h += `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">O que o teu corpo revelou</h3>`; t += 'O QUE O TEU CORPO REVELOU\n\n';
+  PE_CATS_ORDEM.forEach(cid => {
+    const lista = un.filter(p => p.cat === cid);
+    if (!lista.length) return;
+    h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">${PE_CAT_NOME[cid]}</div>`; t += `— ${PE_CAT_NOME[cid].toUpperCase()} —\n`;
+    lista.forEach(p => {
+      const ex = peExemplosDe(p.id);
+      h += `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #1e3a8a;border-radius:10px;padding:12px;margin-bottom:10px;">
+        <div style="font-weight:700;color:#0f172a;">${peEsc(p.nome)}</div>
+        <div style="font-size:0.76rem;color:#64748b;margin-bottom:6px;">${peEsc(p.zonas.map(peZonaCurta).join(' · '))}</div>
+        <div style="font-size:0.88rem;color:#334155;margin-bottom:6px;">🔎 <b>Tema:</b> ${peEsc(p.desc)}</div>
+        ${ex.length ? `<div style="font-size:0.88rem;color:#334155;margin-bottom:6px;">📌 <b>Situações que podem ter acontecido:</b><ul style="margin:4px 0 0 18px;padding:0;">${ex.map(e => `<li>${peEsc(e)}</li>`).join('')}</ul></div>` : ''}
+        ${p.r ? `<div style="font-size:0.88rem;color:#1e3a8a;">❓ <b>Pergunta para te questionares:</b> ${peEsc(p.r)}</div>` : ''}</div>`;
+      t += `• ${p.nome}\n  Tema: ${p.desc}\n`;
+      if (ex.length) t += `  Situações que podem ter acontecido:\n` + ex.map(e => `   - ${e}`).join('\n') + '\n';
+      if (p.r) t += `  Pergunta para te questionares: ${p.r}\n`;
+      t += '\n';
+    });
+  });
+  let marcas = 0; const notas = [];
+  (peState.quadrants || []).forEach(q => { const d = peState.mappingData[q.val]; if (!d || d.visitada === false) return; marcas += (d.lateralMarks || []).length; if (d.lateralNotes) notas.push(d.lateralNotes); });
+  if (marcas || notas.length) {
+    h += `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px;margin-bottom:10px;"><div style="font-weight:700;color:#b45309;">Lateralidade</div><div style="font-size:0.88rem;color:#334155;">${marcas ? `Foram assinalados ${marcas} ${marcas === 1 ? 'local' : 'locais'} no contorno do corpo, que mostram onde sentes tensão ou peso.` : ''} ${notas.map(peEsc).join(' · ')}</div></div>`;
+    t += `LATERALIDADE\n${marcas ? `Foram assinalados ${marcas} ${marcas === 1 ? 'local' : 'locais'} no contorno do corpo.\n` : ''}${notas.join(' · ')}\n\n`;
+  }
+  if (escudo !== 'Não Especificado') {
+    const e = PE_ESCUDO_TXT[escudo];
+    const origem = peTextoOrigem(ep);
+    h += `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">O teu padrão de defesa: ${peEsc(escudo)}</h3>`;
+    t += `O TEU PADRÃO DE DEFESA: ${escudo.toUpperCase()}\n`;
+    if (e) {
+      h += `<p style="font-size:0.9rem;line-height:1.6;color:#334155;">${e.desc}</p><ul style="font-size:0.88rem;color:#334155;margin:0 0 8px 18px;padding:0;">${e.ex.map(x => `<li>${x}</li>`).join('')}</ul>`;
+      t += e.desc + '\n' + e.ex.map(x => ` - ${x}`).join('\n') + '\n';
+    }
+    if (origem) { h += `<p style="font-size:0.9rem;color:#334155;">⏳ ${origem}</p>`; t += origem + '\n'; }
+    t += '\n';
+  }
+  const refl = ['Que acontecimento ou pessoa te veio à cabeça enquanto lias?','Com quem poderias falar sobre isto?','Escreve num caderno, esta semana, o que te vier à memória — sem julgar.'];
+  h += `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">Para refletires esta semana</h3><ul style="font-size:0.9rem;color:#334155;margin:0 0 8px 18px;padding:0;">${refl.map(x => `<li>${x}</li>`).join('')}</ul>`;
+  t += 'PARA REFLETIRES ESTA SEMANA\n' + refl.map(x => ` - ${x}`).join('\n') + '\n\n';
+  const aviso = 'Este relatório é uma ferramenta de autoconhecimento no âmbito de uma terapia complementar e não substitui o acompanhamento médico ou psicológico.';
+  h += `<p style="font-size:0.74rem;color:#64748b;border-top:1px solid #e2e8f0;padding-top:8px;">${aviso}</p>`; t += aviso + '\n';
+  return { html:h, texto:t };
+}
+
+function peFiguraCorpo(lado, pts) {
+  const vistos = new Set(); const L = [];
+  const ordem = { superior:0, central:1, inferior:2 };
+  pts.filter(p => peLadoDe(p.zona) === lado && ordem[p.cat] !== undefined)
+     .sort((a, b) => ordem[a.cat] - ordem[b.cat])
+     .forEach(p => { if (!vistos.has(p.id)) { vistos.add(p.id); L.push({ ...p }); } });
+  if (!L.length) return null;
+  L.forEach((p, i) => { p.n = i + 1; });
+  const dot = (x, y, n, r, fs) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#dc2626" stroke="#fff" stroke-width="${(r*0.22).toFixed(2)}"/><text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${fs}" font-weight="700" fill="#fff" font-family="sans-serif">${n}</text>`;
+  let corpo = '', pesc = ''; let temSup = false;
+  let ic = 0;
+  L.forEach(p => {
+    if (p.cat === 'central') corpo += dot((100 + (ic++ % 2 ? 3.4 : -3.4)).toFixed(1), (66 + (p.y - 42) * (122 / 328)).toFixed(1), p.n, 4.6, 6);
+    else if (p.cat === 'inferior') corpo += dot((100 + (p.x - 100) * 0.35).toFixed(1), (196 + (p.y - 150) * (89 / 182)).toFixed(1), p.n, 4.6, 6);
+    else { temSup = true; pesc += dot(p.x, p.y, p.n, 10, 12); }
+  });
+  if (temSup) corpo += `<circle cx="100" cy="62" r="6.5" fill="none" stroke="#dc2626" stroke-width="1.4" stroke-dasharray="2 1.5"/>`;
+  const svgCorpo = `<svg viewBox="26 8 148 392" style="width:100%;max-width:340px;" role="img" aria-label="Mapa do corpo — ${lado}">${PE_CORPO_SVG}${corpo}</svg>`;
+  const svgPesc = temSup ? `<svg viewBox="0 0 200 400" style="width:100%;max-width:260px;" role="img" aria-label="Pescoço ampliado">${PE_PESCOCO_SVG}${pesc}</svg>` : '';
+  return { L, svgCorpo, svgPesc };
+}
+
+function peLocalDoPonto(p, lado) {
+  if (p.cat === 'superior') return lado === 'costas' ? 'nas costas, no osso mais saliente da parte de trás do pescoço' : 'no pescoço, entre a zona debaixo da barbela e o fim do pescoço (ver imagem ampliada)';
+  if (p.cat === 'central') return lado === 'costas' ? 'nas costas, no osso mais saliente da parte de trás do pescoço' : 'na linha do meio do tronco, da base do pescoço até à cinta';
+  return lado === 'costas' ? 'na parte de trás da perna, entre a zona acima do joelho e a raiz da coxa' : `na perna ${/e$/.test(p.id) ? 'esquerda' : 'direita'}, entre a virilha e o joelho`;
+}
+
+function peConstruirPlano() {
+  const pts = peColetarPontos();
+  const escudo = peEscudoFinal();
+  const passos = [
+    'Lava as mãos, senta-te ou deita-te com conforto e respira fundo 3 vezes.',
+    'Encontra no mapa o ponto pelo seu número e coloca nele 3 dedos juntos, em pinça.',
+    'Massaja o ponto com os 3 dedos durante 3 respirações profundas (inspira pelo nariz, expira pela boca).',
+    'Bate levemente duas vezes sobre o ponto.',
+    'Roda os dedos duas vezes sobre o ponto, em círculo.',
+    'Empurra suavemente para baixo com os dedos, como quem liberta o sentimento.',
+    'Passa ao ponto seguinte, pela ordem dos números. Nunca deve doer: faz tudo com suavidade.'
+  ];
+  let h = `<h3 style="color:#1e3a8a;margin:22px 0 8px;font-size:1.05rem;">Plano Terapêutico</h3>
+    <div style="font-weight:700;color:#b45309;margin:10px 0 6px;">1 · Como fazer a massagem</div>
+    <ol style="font-size:0.9rem;line-height:1.55;color:#334155;margin:0 0 8px 18px;padding:0;">${passos.map(x => `<li style="margin-bottom:4px;">${x}</li>`).join('')}</ol>`;
+  let t = '\nPLANO TERAPÊUTICO\n\n1 · COMO FAZER A MASSAGEM\n' + passos.map((x, i) => `${i + 1}. ${x}`).join('\n') + '\n\n';
+  h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">2 · Onde massajar — o teu mapa</div>`;
+  t += '2 · ONDE MASSAJAR — O TEU MAPA\n';
+  let algum = false;
+  ['frente', 'costas'].forEach(lado => {
+    const f = peFiguraCorpo(lado, pts);
+    if (!f) return;
+    algum = true;
+    h += `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="font-weight:700;color:#0f172a;margin-bottom:8px;text-transform:uppercase;font-size:0.82rem;">${lado === 'frente' ? 'Frente do corpo' : 'Costas'}</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-start;">${f.svgCorpo}${f.svgPesc}</div>
+      ${lado === 'costas' && f.L.some(p => p.cat !== 'inferior') ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-top:10px;font-size:0.84rem;color:#92400e;"><b>Atenção — procedimento diferente nas costas:</b> os pontos do Sistema Superior e do Sistema Central, nas costas, não se massajam no local onde aparecem desenhados. Massajam-se todos no <b>osso mais saliente da parte de trás do pescoço</b>, um a um, pela ordem dos números. Os pontos do Sistema Inferior massajam-se na parte de trás das pernas.</div>` : ''}
+      <ol style="list-style:none;margin:10px 0 0;padding:0;font-size:0.86rem;color:#334155;">${f.L.map(p => `<li style="margin-bottom:6px;"><b style="display:inline-block;background:#dc2626;color:white;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;font-size:0.72rem;margin-right:6px;">${p.n}</b><b>${peEsc(p.nome)}</b> <span style="color:#64748b;">(${PE_CAT_NOME[p.cat]})</span><br><span style="color:#64748b;margin-left:26px;display:inline-block;">${peLocalDoPonto(p, lado)}</span></li>`).join('')}</ol></div>`;
+    t += `\n${lado === 'frente' ? 'FRENTE DO CORPO' : 'COSTAS'}:\n` + (lado === 'costas' && f.L.some(p => p.cat !== 'inferior') ? '  ATENÇÃO — procedimento diferente nas costas: os pontos do Sistema Superior e do Sistema Central não se massajam onde aparecem desenhados; massajam-se todos no osso mais saliente da parte de trás do pescoço, um a um, pela ordem dos números. Os pontos do Sistema Inferior massajam-se na parte de trás das pernas.\n' : '') + f.L.map(p => `  ${p.n}. ${p.nome} (${PE_CAT_NOME[p.cat]}) — ${peLocalDoPonto(p, lado)}`).join('\n') + '\n';
+  });
+  const outros = peUnicos(pts).filter(p => p.cat === 'vital' || p.cat === 'impact');
+  if (outros.length) {
+    algum = true;
+    h += `<div style="font-size:0.86rem;color:#334155;margin-bottom:8px;"><b>Centros vitais e zonas de entrada assinalados:</b> ${outros.map(p => peEsc(p.nome)).join(', ')}. Massaja diretamente o local indicado no mapa da consulta.</div>`;
+    t += '\nCentros vitais e zonas de entrada assinalados: ' + outros.map(p => p.nome).join(', ') + '. Massaja diretamente o local indicado no mapa da consulta.\n';
+  }
+  if (!algum) { h += `<p style="font-size:0.86rem;color:#64748b;">(Nenhum ponto selecionado no mapeamento.)</p>`; t += '(Nenhum ponto selecionado no mapeamento.)\n'; }
+  if (escudo !== 'Não Especificado') {
+    h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">3 · Música e modulação neuroplástica</div>
+      <p style="font-size:0.9rem;line-height:1.55;color:#334155;">🎧 Coloca a música relativa ao teu escudo detetado (<b>${peEsc(escudo)}</b>) e ouve a modulação neuroplástica do escudo <b>${peEsc(escudo)}</b> diariamente, ao deitar, durante 7 dias contínuos.</p>`;
+    t += `\n3 · MÚSICA E MODULAÇÃO NEUROPLÁSTICA\nColoca a música relativa ao teu escudo detetado (${escudo}) e ouve a modulação neuroplástica do escudo ${escudo} diariamente, ao deitar, durante 7 dias contínuos.\n`;
+    const af = PE_ESCUDOS_AFINIDADES[escudo];
+    if (af) {
+      const cmd = `«Eu libero todo sentimento de ${escudo.toUpperCase()}; ${af.libera}, que estejam bloqueados no meu corpo. Eu libero todos os sentimentos negativos que não me ajudam a evoluir, fica em mim apenas o necessário para o meu aprendizado, o resto eu libero e solto em gratidão!»`;
+      h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">4 · Comando de libertação e cura</div>
+        <p style="font-size:0.9rem;line-height:1.55;color:#334155;">Depois da estimulação, dá um autoabraço, respira fundo e repete em voz alta:</p>
+        <p style="font-size:0.9rem;line-height:1.55;color:#1e3a8a;font-style:italic;">${peEsc(cmd)}</p>
+        <p style="font-size:0.9rem;color:#334155;">(Bate no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»</p>
+        <div style="font-weight:700;color:#334155;margin-top:8px;font-size:0.88rem;">Comando de reforço:</div>
+        <p style="font-size:0.9rem;line-height:1.55;color:#334155;">${peEsc(af.afi)} «Que assim seja.»</p>`;
+      t += `\n4 · COMANDO DE LIBERTAÇÃO E CURA\nDepois da estimulação, dá um autoabraço, respira fundo e repete em voz alta:\n${cmd}\n(Bate no peito esquerdo com a mão 3 vezes): «Está feito, está feito, está feito. Está selado.»\n\nComando de reforço:\n${af.afi}\n«Que assim seja.»\n`;
+    }
+  }
+  return { html:h, texto:t };
+}
+
+function peConstruirDocumentoPaciente() {
+  const r = peConstruirRelatorioPaciente();
+  const p = peConstruirPlano();
+  const notas = (document.getElementById('pe-receita')?.value || '').trim();
+  let html = `<div id="pe-doc-paciente">${r.html}${p.html}`;
+  let texto = r.texto + p.texto;
+  if (notas) { html += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">Notas do terapeuta</div><p style="font-size:0.9rem;line-height:1.55;white-space:pre-wrap;color:#334155;">${peEsc(notas)}</p>`; texto += `\nNOTAS DO TERAPEUTA\n${notas}\n`; }
+  html += '</div>';
+  return { html, texto };
+}
+
+function peRenderPrevia() {
+  if (peState.path !== 2) return;
+  const el = document.getElementById('pe-previa-paciente');
+  if (!el) return;
+  try { el.innerHTML = peConstruirDocumentoPaciente().html; } catch(e) { console.error(e); }
+}
+
+// ─── DOCUMENTO FINAL, ENVIO, HISTÓRICO, TRATAMENTO E EVOLUÇÃO ───
+
+function peLerEpocaFinal() {
+  const sel = document.getElementById('pe-final-epoca');
+  if (sel && peState.step === '4') return { epoca: sel.value || '', tempo: (document.getElementById('pe-final-tempo')?.value || '').trim() };
+  return peState.epocaFinal || { epoca:'', tempo:'' };
+}
+
+function peInjetarPrint() {
+  if (document.getElementById('pe-print-css')) return;
+  const st = document.createElement('style'); st.id = 'pe-print-css';
+  st.textContent = '@media print{body *{visibility:hidden}#pe-doc-paciente,#pe-doc-paciente *{visibility:visible}#pe-doc-paciente{position:absolute;left:0;top:0;width:100%}}';
+  document.head.appendChild(st);
+}
+
+async function peLerHistorico(patientId) {
+  peState.historico = { mapeamentos:[], tratamentos:[] };
+  const ts = g => g && typeof g.toMillis === 'function' ? g.toMillis() : (g && g.seconds ? g.seconds * 1000 : 0);
+  try {
+    const col = db().collection(`tenants/${tenantId()}/patients/${patientId}/reports`);
+    const [a, b] = await Promise.all([ col.where('tipo','==','pesquisa_emocional').get(), col.where('tipo','==','pesquisa_emocional_tratamento').get() ]);
+    a.forEach(d => { const r = d.data() || {}; peState.historico.mapeamentos.push({ docId:d.id, t:ts(r.generatedAt), titulo:r.protocolName || '', texto:r.reportText || '', dados:r.dados || {} }); });
+    b.forEach(d => { const r = d.data() || {}; peState.historico.tratamentos.push({ docId:d.id, t:ts(r.generatedAt), texto:r.reportText || '', dados:r.dados || {} }); });
+    peState.historico.mapeamentos.sort((x, y) => x.t - y.t);
+    peState.historico.tratamentos.sort((x, y) => x.t - y.t);
+  } catch(e) { console.error('Não foi possível ler o histórico:', e); }
+}
+
+function peFmtData(t) { return t ? new Date(t).toLocaleDateString('pt-PT') : 'agora'; }
+function peDiasDesde(t) { return t ? Math.floor((Date.now() - t) / 86400000) : 0; }
+
+function peEstadoDe(m) {
+  const trat = (peState.historico.tratamentos || []).filter(x => x.dados && x.dados.mapId && x.dados.mapId === (m.dados || {}).mapId);
+  if (trat.length || (m.dados || {}).estado === 'tratamento') return { id:'tratamento', n:trat.length };
+  return { id:'standby', n:0 };
+}
+
+function peCorSerie(i, n) {
+  if (n <= 1) return '#1e3a8a';
+  const a = [203, 213, 225], b = [30, 58, 138];
+  const f = i / (n - 1);
+  return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * f)).join(',')})`;
+}
+
+function peContarPorCat(m) {
+  const c = { vital:0, impact:0, superior:0, central:0, inferior:0 };
+  const vistos = new Set();
+  ((m.dados || {}).pontos || []).forEach(p => { if (vistos.has(p.k)) return; vistos.add(p.k); if (c[p.cat] !== undefined) c[p.cat]++; });
+  return c;
+}
+
+function peGraficoEvolucao(lista) {
+  const L = lista.filter(m => m.dados && Array.isArray(m.dados.pontos)).slice(-6);
+  if (L.length < 2) return '';
+  const cats = PE_CATS_ORDEM; const W = 340, H = 200, pb = 28, pt = 18;
+  const dados = L.map(peContarPorCat);
+  const max = Math.max(1, ...dados.flatMap(d => cats.map(c => d[c])));
+  const gw = W / cats.length, bw = (gw - 10) / L.length;
+  let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:420px;" role="img" aria-label="Evolução do número de pontos por sistema">`;
+  s += `<line x1="0" y1="${H - pb}" x2="${W}" y2="${H - pb}" stroke="#cbd5e1"/>`;
+  cats.forEach((c, ci) => {
+    L.forEach((m, mi) => {
+      const v = dados[mi][c]; const h = (H - pb - pt) * v / max;
+      const x = ci * gw + 5 + mi * bw, y = H - pb - h;
+      s += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 2).toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${peCorSerie(mi, L.length)}"/>`;
+      s += `<text x="${(x + (bw - 2) / 2).toFixed(1)}" y="${(y - 3).toFixed(1)}" text-anchor="middle" font-size="9" fill="#334155" font-family="sans-serif">${v}</text>`;
+    });
+    s += `<text x="${(ci * gw + gw / 2).toFixed(1)}" y="${H - 10}" text-anchor="middle" font-size="9.5" fill="#475569" font-family="sans-serif">${({ vital:'Vitais', impact:'Entrada', superior:'Superior', central:'Central', inferior:'Inferior' })[c]}</text>`;
+  });
+  s += '</svg>';
+  const leg = L.map((m, i) => `<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 10px 2px 0;font-size:0.78rem;color:#334155;"><span style="width:12px;height:12px;border-radius:3px;background:${peCorSerie(i, L.length)};display:inline-block;"></span>Consulta ${m.dados.consulta || '?'} · ${peFmtData(m.t)}</span>`).join('');
+  const ult = L[L.length - 1], pen = L[L.length - 2];
+  const kU = new Set(ult.dados.pontos.map(p => p.k)), kP = new Set(pen.dados.pontos.map(p => p.k));
+  const nomeDe = (arr, k) => (arr.find(p => p.k === k) || {}).nome + ' (' + peZonaCurta((arr.find(p => p.k === k) || {}).zona || '') + ')';
+  const livres = [...kP].filter(k => !kU.has(k)).map(k => nomeDe(pen.dados.pontos, k));
+  const novos = [...kU].filter(k => !kP.has(k)).map(k => nomeDe(ult.dados.pontos, k));
+  const iguais = [...kU].filter(k => kP.has(k)).length;
+  const lst = (arr, cor) => arr.length ? `<ul style="margin:4px 0 0 18px;padding:0;font-size:0.82rem;color:${cor};">${arr.map(x => `<li>${peEsc(x)}</li>`).join('')}</ul>` : '<div style="font-size:0.82rem;color:#64748b;">Nenhum</div>';
+  const escMudou = (pen.dados.escudo || '—') === (ult.dados.escudo || '—') ? `O escudo manteve-se: <b>${peEsc(ult.dados.escudo || '—')}</b>.` : `O escudo mudou de <b>${peEsc(pen.dados.escudo || '—')}</b> para <b>${peEsc(ult.dados.escudo || '—')}</b>.`;
+  return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-top:16px;">
+    <div style="font-weight:700;color:#1e3a8a;margin-bottom:4px;">📈 Evolução entre consultas</div>
+    <div style="font-size:0.8rem;color:#64748b;margin-bottom:8px;">Número de pontos assinalados em cada sistema. Menos pontos indica menos retenção.</div>
+    ${s}<div style="margin-top:6px;">${leg}</div>
+    <div style="margin-top:12px;font-size:0.86rem;color:#334155;"><b>O que mudou desde a última consulta:</b> ${escMudou}</div>
+    <div style="margin-top:8px;font-size:0.84rem;"><b style="color:#16a34a;">✔ Já não foram assinalados (${livres.length}):</b>${lst(livres, '#166534')}</div>
+    <div style="margin-top:8px;font-size:0.84rem;"><b style="color:#dc2626;">● Novos (${novos.length}):</b>${lst(novos, '#991b1b')}</div>
+    <div style="margin-top:8px;font-size:0.84rem;color:#334155;"><b>= Mantêm-se:</b> ${iguais}</div></div>`;
+}
+
+function peRenderHub() {
+  const el = document.getElementById('pe-step-hub'); if (!el) return;
+  const H = peState.historico || { mapeamentos:[], tratamentos:[] };
+  const n = H.mapeamentos.length + 1;
+  const ult = H.mapeamentos[H.mapeamentos.length - 1];
+  let sug = '';
+  if (ult && ult.t) { const d = new Date(ult.t + 7 * 86400000).toLocaleDateString('pt-PT'); sug = `Última consulta há ${peDiasDesde(ult.t)} dia(s). Próxima sugerida a partir de ${d} (ideal: 4 consultas, uma a cada 7 dias ou mais espaçadas, conforme a evolução).`; }
+  const cartoes = H.mapeamentos.slice().reverse().map(m => {
+    const d = m.dados || {}; const est = peEstadoDe(m);
+    const idade = peDiasDesde(m.t);
+    const aviso = (est.id === 'standby' && idade > 60) ? `<div style="font-size:0.78rem;color:#b45309;margin-top:6px;">⚠️ Já passaram ${idade} dias. Pode ser melhor fazer um novo mapeamento antes de tratar.</div>` : '';
+    const nPts = Array.isArray(d.pontos) ? new Set(d.pontos.map(p => p.k)).size : null;
+    return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
+        <div style="font-weight:700;color:#0f172a;">Consulta ${d.consulta || '—'} · ${peFmtData(m.t)}</div>
+        <span style="font-size:0.74rem;font-weight:700;padding:3px 10px;border-radius:20px;background:${est.id === 'tratamento' ? '#dcfce7' : '#fef3c7'};color:${est.id === 'tratamento' ? '#166534' : '#92400e'};">${est.id === 'tratamento' ? `✅ Em tratamento (${est.n} sessão${est.n === 1 ? '' : 'ões'})` : '⏳ Stand-by'}</span></div>
+      <div style="font-size:0.82rem;color:#64748b;margin-top:4px;">${d.escudo ? 'Escudo: ' + peEsc(d.escudo) : ''}${nPts !== null ? ' · ' + nPts + ' ponto' + (nPts === 1 ? '' : 's') : ''}</div>${aviso}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+        ${d.mapa ? `<button onclick="window.peIniciarTratamento('${m.docId}')" style="background:#16a34a;color:white;border:none;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer;">▶ Iniciar tratamento</button>` : ''}
+        <button onclick="window.peVerRegisto('${m.docId}')" style="background:#e2e8f0;border:none;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer;">📄 Ver / reenviar relatório</button></div></div>`;
+  }).join('');
+  el.innerHTML = `<div class="card" style="padding:20px;">
+    <div style="font-size:1.1rem;font-weight:700;color:#1e3a8a;margin-bottom:6px;border-bottom:2px solid #fef3c7;padding-bottom:10px;">${peEsc(peState.patientName || '')}</div>
+    <div style="font-size:0.84rem;color:#64748b;margin-bottom:14px;">${sug || 'Ainda não há consultas de mapeamento guardadas.'}</div>
+    <button onclick="window.peNovaConsultaDoHub()" style="width:100%;background:#1e3a8a;color:white;padding:14px;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:14px;">➕ Nova consulta de mapeamento (n.º ${n})</button>
+    ${cartoes || ''}
+    ${peGraficoEvolucao(H.mapeamentos)}
+    <div style="margin-top:16px;"><button onclick="window.peIrPasso('0')" style="background:white;border:1px solid #e2e8f0;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Escolher outro paciente</button></div></div>`;
+}
+
+function peNovaConsultaDoHub() {
+  peState.finalShield = 'Não Especificado'; peState.shieldsDetected = []; peState.mapId = null; peState.epocaFinal = null;
+  const t = document.getElementById('pe-final-tempo'); if (t) t.value = '';
+  document.querySelectorAll('#pe-escudos-final div').forEach(b => { b.style.borderColor = '#e2e8f0'; b.style.background = 'white'; b.style.color = '#64748b'; });
+  peIrPasso('1');
+  setTimeout(() => peVerificarQExistente('pre-consulta'), 200);
+}
+
+function peVerRegisto(docId) {
+  const m = (peState.historico.mapeamentos || []).find(x => x.docId === docId); if (!m) return;
+  const d = m.dados || {};
+  peState.docAtual = { html: d.htmlPaciente || `<pre style="white-space:pre-wrap;font-family:inherit;">${peEsc(m.texto)}</pre>`, texto: m.texto, dados: d, docId };
+  peMostrarDocumento(true);
+}
+
+function peMostrarDocumento(deHistorico) {
+  const el = document.getElementById('pe-step-relatorio'); if (!el) return;
+  peInjetarPrint();
+  const D = peState.docAtual || { html:'', texto:'', dados:{} };
+  const podeTratar = D.dados && D.dados.mapa;
+  el.innerHTML = `<div class="card" style="padding:20px;">
+    <div style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:14px;border-bottom:2px solid #dcfce7;padding-bottom:10px;">${deHistorico ? '📄 Relatório do paciente' : '✅ Relatório guardado na ficha'}</div>
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">${D.html}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:18px;">
+      <button onclick="window.peEnviarWhatsApp()" style="background:#25D366;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">📱 Enviar por WhatsApp</button>
+      <button onclick="window.peEnviarEmail()" style="background:#1e3a8a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✉️ Enviar por e-mail</button>
+      <button onclick="window.print()" style="background:#e2e8f0;padding:12px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">🖨️ PDF / Imprimir</button>
+      <button onclick="window.copiarTexto(window.peState_docTexto())" style="background:#e2e8f0;padding:12px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">📋 Copiar texto</button></div>
+    <div style="font-size:0.78rem;color:#64748b;text-align:center;margin-top:8px;">Dica: o PDF mostra o relatório completo com as imagens. Guarda-o e envia-o ao paciente em anexo.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0;">
+      <button onclick="window.peVoltarAoPaciente()" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">👤 Voltar ao paciente</button>
+      ${podeTratar ? `<button onclick="window.peIniciarTratamentoAtual()" style="background:#16a34a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">▶ Iniciar tratamento</button>` : ''}</div></div>`;
+  peIrPasso('relatorio');
+}
+
+function peDocTexto() { return (peState.docAtual && peState.docAtual.texto) || ''; }
+
+function peTelefoneWA() {
+  const d = String((peState.pacienteDados && peState.pacienteDados.phone) || '').replace(/\D/g, '');
+  if (!d) return '';
+  return d.length === 9 ? '351' + d : d;
+}
+function peAbrirLink(url) { if (typeof window.openExternalLink === 'function') window.openExternalLink(url); else window.open(url, '_blank'); }
+
+function peEnviarWhatsApp() {
+  const nome = (peState.patientName || '').split(' ')[0];
+  let txt = `Olá ${nome}! Segue o teu relatório da consulta de mapeamento.\n\n` + peDocTexto();
+  if (txt.length > 3500) txt = txt.slice(0, 3400) + '\n\n[…] O relatório completo, com as imagens, segue em PDF.';
+  peAbrirLink(`https://wa.me/${peTelefoneWA()}?text=${encodeURIComponent(txt)}`);
+}
+function peEnviarEmail() {
+  const mail = (peState.pacienteDados && peState.pacienteDados.email) || '';
+  const corpo = peDocTexto().slice(0, 1500) + '\n\n[…] O relatório completo, com as imagens, segue em anexo (PDF).';
+  peAbrirLink(`mailto:${mail}?subject=${encodeURIComponent('O teu relatório de mapeamento')}&body=${encodeURIComponent(corpo)}`);
+}
+
+async function peVoltarAoPaciente() {
+  if (peState.patientId) { await peLerHistorico(peState.patientId); peRenderHub(); peIrPasso('hub'); }
+  else peIrPasso('0');
+}
+
+async function peEmitirPaciente(relatorioTec, escudo, data) {
+  const ep = peLerEpocaFinal();
+  const estado = document.querySelector('input[name="pe-estado"]:checked')?.value || 'standby';
+  const doc = peConstruirDocumentoPaciente();
+  const pontos = peColetarPontos();
+  const mapId = peState.mapId || (peState.mapId = 'm' + Date.now());
+  const consulta = ((peState.historico && peState.historico.mapeamentos && peState.historico.mapeamentos.length) || 0) + 1;
+  const zonas = (peState.quadrants || []).filter(q => peState.mappingData[q.val] && peState.mappingData[q.val].visitada !== false).map(q => {
+    const d = peState.mappingData[q.val];
+    return { val:q.val, desc:q.desc || '', pontos:Array.from(d.selectedPoints), lateralMarks:d.lateralMarks || [], lateralNotes:d.lateralNotes || '', shield:d.shield || '', epoch:d.epoch || '', epochTime:d.epochTime || '' };
+  });
+  const dados = JSON.parse(JSON.stringify({
+    escudo, path:2, data, mapId, estado, consulta, epoca:ep.epoca || '', tempo:ep.tempo || '',
+    notas:(document.getElementById('pe-receita')?.value || '').trim(),
+    pontos:pontos.map(p => ({ k:p.k, id:p.id, nome:p.nome, cat:p.cat, zona:p.zona })),
+    mapa:{ zonas }, htmlPaciente:doc.html
+  }));
+  let ok = true;
+  if (peState.patientId) ok = await guardarNaFicha(peState.patientId, { tipo:'pesquisa_emocional', titulo:`Pesquisa Emocional — ${data}`, texto:relatorioTec + '\n\nRELATÓRIO PARA O PACIENTE:\n' + doc.texto, dados });
+  if (!ok && peState.patientId) mostrarAviso('⚠️ Não consegui gravar na ficha do paciente. Copie o relatório antes de sair.');
+  if (!peState.historico) peState.historico = { mapeamentos:[], tratamentos:[] };
+  peState.historico.mapeamentos.push({ docId:'novo-' + mapId, t:Date.now(), texto:doc.texto, dados });
+  peState.docAtual = { html:doc.html, texto:doc.texto, dados };
+  peMostrarDocumento(false);
+}
+
+function peIniciarTratamentoAtual() {
+  const D = peState.docAtual; if (!D || !D.dados || !D.dados.mapa) return;
+  peCarregarMapaGuardado(D.dados);
+  peRenderTratamento(D.dados.mapId);
+  peIrPasso('trat');
+}
+
+function peCarregarMapaGuardado(d) {
+  const cfg = peLerConfig();
+  peState.path = 2;
+  peState.quadrants = d.mapa.zonas.map(z => ({ val:z.val, desc:z.desc || '' }));
+  peState.mappingData = {};
+  d.mapa.zonas.forEach(z => {
+    peState.mappingData[z.val] = { visitada:true, desc:z.desc || '', selectedPoints:new Set(z.pontos || []), lateralNotes:z.lateralNotes || '', lateralMarks:z.lateralMarks || [], shield:z.shield || 'Não Especificado', epoch:z.epoch || '', epochTime:z.epochTime || '', categories:JSON.parse(JSON.stringify(cfg.categories)) };
+  });
+  peState.finalShield = d.escudo || 'Não Especificado';
+  peState.epocaFinal = { epoca:d.epoca || '', tempo:d.tempo || '' };
+  peState.mapId = d.mapId;
+}
+
+function peIniciarTratamento(docId) {
+  const m = (peState.historico.mapeamentos || []).find(x => x.docId === docId);
+  if (!m || !m.dados || !m.dados.mapa) { mostrarAviso('⚠️ Este registo é antigo e não tem os pontos guardados. Faça uma nova consulta de mapeamento.'); return; }
+  peCarregarMapaGuardado(m.dados);
+  peRenderTratamento(m.dados.mapId);
+  peIrPasso('trat');
+}
+
+function peRenderTratamento(mapId) {
+  const el = document.getElementById('pe-step-trat'); if (!el) return;
+  peInjetarPrint();
+  const H = peState.historico || { mapeamentos:[], tratamentos:[] };
+  const base = H.mapeamentos.find(x => (x.dados || {}).mapId === mapId);
+  const anteriores = H.tratamentos.filter(x => (x.dados || {}).mapId === mapId);
+  const un = peUnicos(peColetarPontos());
+  const plano = peConstruirPlano();
+  el.innerHTML = `<div class="card" style="padding:20px;">
+    <div style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:6px;border-bottom:2px solid #dcfce7;padding-bottom:10px;">▶ Consulta de Tratamento · sessão ${anteriores.length + 1}</div>
+    <div style="font-size:0.84rem;color:#64748b;margin-bottom:12px;">${peEsc(peState.patientName || '')} · mapeamento de ${base ? peFmtData(base.t) : 'hoje'}${peEscudoFinal() !== 'Não Especificado' ? ' · Escudo: ' + peEsc(peEscudoFinal()) : ''}</div>
+    ${anteriores.length ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px;margin-bottom:12px;font-size:0.82rem;color:#166534;"><b>Sessões anteriores:</b><ul style="margin:4px 0 0 18px;padding:0;">${anteriores.map(a => `<li>${peFmtData(a.t)}${a.dados.notas ? ' — ' + peEsc(a.dados.notas) : ''}</li>`).join('')}</ul></div>` : ''}
+    <div id="pe-doc-paciente" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">${plano.html}</div>
+    <div style="font-weight:700;color:#1e3a8a;margin:16px 0 6px;">Pontos trabalhados hoje</div>
+    ${un.map((p, i) => `<label style="display:flex;gap:8px;align-items:center;padding:6px 0;font-size:0.88rem;color:#334155;"><input type="checkbox" class="pe-tr-ck" value="${peEsc(p.id)}" checked style="width:18px;height:18px;"> ${peEsc(p.nome)} <span style="color:#64748b;font-size:0.76rem;">(${PE_CAT_NOME[p.cat]})</span></label>`).join('')}
+    <label style="font-weight:700;color:#334155;display:block;margin:14px 0 6px;">Notas da sessão:</label>
+    <textarea id="pe-tr-notas" rows="4" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;" placeholder="Como correu, o que o paciente sentiu..."></textarea>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0;">
+      <button onclick="window.peVoltarAoPaciente()" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Voltar</button>
+      <button onclick="window.print()" style="background:#e2e8f0;border:none;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">🖨️ Plano em PDF</button>
+      <button onclick="window.peGravarTratamento('${peEsc(mapId || '')}')" style="background:#16a34a;color:white;border:none;padding:12px 20px;border-radius:8px;font-weight:700;cursor:pointer;">Gravar sessão</button></div></div>`;
+}
+
+async function peGravarTratamento(mapId) {
+  const feitos = Array.from(document.querySelectorAll('.pe-tr-ck:checked')).map(c => c.value);
+  const notas = (document.getElementById('pe-tr-notas')?.value || '').trim();
+  const data = new Date().toLocaleDateString('pt-PT');
+  const sessao = (peState.historico.tratamentos || []).filter(x => (x.dados || {}).mapId === mapId).length + 1;
+  const texto = `SESSÃO DE TRATAMENTO ${sessao} — ${data}\nPaciente: ${peState.patientName}\nEscudo: ${peEscudoFinal()}\nPontos trabalhados: ${feitos.length}\n${notas ? 'Notas: ' + notas : ''}`;
+  let ok = true;
+  if (peState.patientId) ok = await guardarNaFicha(peState.patientId, { tipo:'pesquisa_emocional_tratamento', titulo:`Tratamento — ${data}`, texto, dados:{ mapId, data, sessao, feitos, notas } });
+  if (!ok) { mostrarAviso('⚠️ Não consegui gravar a sessão.'); return; }
+  mostrarAviso('✅ Sessão de tratamento guardada.');
+  peState.historico.tratamentos.push({ docId:'novo', t:Date.now(), texto, dados:{ mapId, data, sessao, feitos, notas } });
+  peRenderHub(); peIrPasso('hub');
+}
+
 // ─── RELATÓRIO FINAL ──────────────────────────────────────────────
 
 function peLinhaEpoca() {
@@ -1771,6 +2329,7 @@ async function peEmitirRelatorio() {
   }
   relatorio+=`\n${'='.repeat(60)}`;
   const receita=document.getElementById('pe-receita')?.value||'';
+  if (peState.path===2) { return peEmitirPaciente(relatorio, escudo, data); }
   if (peState.patientId) {
     await guardarNaFicha(peState.patientId,{ tipo:'pesquisa_emocional', titulo:`Pesquisa Emocional — ${data}`, texto:relatorio+(receita?`\n\nPLANO TERAPÊUTICO:\n${receita}`:''), dados:{escudo,path:peState.path,data} });
   }
@@ -2215,6 +2774,16 @@ window.peToggleQuadrante       = peToggleQuadrante;
 window.peIniciarVia            = peIniciarVia;
 window.peProximoQuadrante      = peProximoQuadrante;
 window.peSeguinte = peSeguinte;
+window.peRenderPrevia = peRenderPrevia;
+window.peNovaConsultaDoHub = peNovaConsultaDoHub;
+window.peIniciarTratamento = peIniciarTratamento;
+window.peIniciarTratamentoAtual = peIniciarTratamentoAtual;
+window.peGravarTratamento = peGravarTratamento;
+window.peVerRegisto = peVerRegisto;
+window.peVoltarAoPaciente = peVoltarAoPaciente;
+window.peEnviarWhatsApp = peEnviarWhatsApp;
+window.peEnviarEmail = peEnviarEmail;
+window.peState_docTexto = peDocTexto;
 window.peAtualizarEpocaFinal = peAtualizarEpocaFinal;
 window.peCancelarMapeamento = peCancelarMapeamento;
 window.peMostrarZonas = peMostrarZonas;
