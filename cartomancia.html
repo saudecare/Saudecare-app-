@@ -243,7 +243,6 @@ function mostrarLimiteGratis(proxima){
 }
 
 async function tirarCartas(){
-  { const v = await verificarLeituraGratis(estado.contacto); if (!v.ok){ mostrarLimiteGratis(v.proxima); return; } }
   main.innerHTML = '<div class="loading">A sintonizar com as cartas…</div>';
   const leadId = crypto.randomUUID();
   try{
@@ -252,10 +251,11 @@ async function tirarCartas(){
       body: JSON.stringify({
         action: 'criarLeitura', tenantId: TENANT_ID, leadId,
         nome: estado.nome, dataNascimento: estado.dataNascimento, contacto: estado.contacto, foco: estado.foco,
-        pergunta: estado.pergunta, numCartas: parseInt(estado.tiragem, 10)
+        pergunta: estado.pergunta, numCartas: parseInt(estado.tiragem, 10), codigoAluno: codigoAlunoGuardado()
       })
     });
     const data = await res.json();
+    if (data.limite){ mostrarLimiteGratis(data.proxima); return; }
     if (!data.ok) throw new Error(data.error || 'Erro ao tirar as cartas.');
     renderResultado(leadId, data.leitura);
   }catch(e){

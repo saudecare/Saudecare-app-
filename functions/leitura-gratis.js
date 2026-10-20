@@ -10,7 +10,7 @@ const hash = (t) => crypto.createHash('sha256').update('vindora-gratis|' + t).di
 const normContacto = (c) => { const s = String(c || '').trim().toLowerCase(); return s.includes('@') ? s : s.replace(/\D/g, '').replace(/^(00)?351/, ''); };
 
 async function codigoAluno() {
-  const ref = db.doc('settings/leituraGratis');
+  const ref = db.doc('tenant_secrets/leituraGratis');
   const d = (await ref.get()).data() || {};
   if (d.codigoAluno) return d.codigoAluno;
   const c = crypto.randomBytes(6).toString('hex');
@@ -34,7 +34,7 @@ exports.leituraGratis = onCall({ timeoutSeconds: 30 }, async (request) => {
     if (tC && agora - tC < SEMANA) return { permitido: false, proxima: tC + SEMANA };
     let n = 0, ini = agora;
     if (si && si.exists && agora - (si.data().inicio || 0) < SEMANA) { n = si.data().n || 0; ini = si.data().inicio; }
-    if (n >= 3) return { permitido: false, proxima: ini + SEMANA };
+    if (n >= 10) return { permitido: false, proxima: ini + SEMANA };
     tx.set(rc, { ultima: agora, em: FieldValue.serverTimestamp() });
     if (ri) tx.set(ri, { n: n + 1, inicio: ini });
     return { permitido: true };
@@ -46,7 +46,7 @@ exports.leituraGratisConfig = onCall(async (request) => {
   if (t.tenantId !== DONO || t.role !== 'owner') throw new HttpsError('permission-denied', 'Só o dono.');
   if (request.data && request.data.acao === 'novo') {
     const c = crypto.randomBytes(6).toString('hex');
-    await db.doc('settings/leituraGratis').set({ codigoAluno: c }, { merge: true });
+    await db.doc('tenant_secrets/leituraGratis').set({ codigoAluno: c }, { merge: true });
     return { codigo: c };
   }
   return { codigo: await codigoAluno() };

@@ -109,7 +109,7 @@ async function criarPdf(R, assinaturaPng, hashFinal) {
 // ─── E-mail (cópia das provas para a Vindora) ───
 const EMAIL_DESTINO = 'vindoraportugal@gmail.com';
 async function enviarEmail(R, ficheiros) {
-  const cfg = (await db.doc('settings/peTermosEmail').get()).data() || {};
+  const cfg = (await db.doc('tenant_secrets/peTermosEmail').get()).data() || {};
   if (!cfg.pass) return { estado: 'sem-senha' };
   try {
     const nodemailer = require('nodemailer');
@@ -143,7 +143,7 @@ async function enviarDrive(folderId, nome, mime, buf, token) {
   return r.json();
 }
 async function guardarNoDrive(id, R, ficheiros) {
-  const cfg = (await db.doc('settings/peTermosDrive').get()).data() || {};
+  const cfg = (await db.doc('tenant_secrets/peTermosDrive').get()).data() || {};
   if (!cfg.folderId) return { estado: 'sem-pasta' };
   try {
     const { token } = await tokenDrive();
@@ -221,14 +221,14 @@ exports.peTermoAdmin = onCall({ timeoutSeconds: 120, memory: '512MiB' }, async (
   await exigirAdmin(request);
   const { acao, id } = request.data || {};
   if (acao === 'config') {
-    const cfg = (await db.doc('settings/peTermosDrive').get()).data() || {};
+    const cfg = (await db.doc('tenant_secrets/peTermosDrive').get()).data() || {};
     let email = ''; try { email = (await tokenDrive()).email; } catch (_) {}
     if (request.data.folderId !== undefined) {
       const fid = str(request.data.folderId, 200).replace(/^.*\/folders\//, '').replace(/[?&].*$/, '');
-      await db.doc('settings/peTermosDrive').set({ folderId: fid }, { merge: true }); return { folderId: fid, conta: email };
+      await db.doc('tenant_secrets/peTermosDrive').set({ folderId: fid }, { merge: true }); return { folderId: fid, conta: email };
     }
-    if (request.data.emailPass !== undefined) { await db.doc('settings/peTermosEmail').set({ pass: str(request.data.emailPass, 60).replace(/\s/g, '') }, { merge: true }); }
-    const ec = (await db.doc('settings/peTermosEmail').get()).data() || {};
+    if (request.data.emailPass !== undefined) { await db.doc('tenant_secrets/peTermosEmail').set({ pass: str(request.data.emailPass, 60).replace(/\s/g, '') }, { merge: true }); }
+    const ec = (await db.doc('tenant_secrets/peTermosEmail').get()).data() || {};
     return { folderId: cfg.folderId || '', conta: email, emailDestino: EMAIL_DESTINO, emailOk: !!ec.pass };
   }
   if (acao === 'listar') {

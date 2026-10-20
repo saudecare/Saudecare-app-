@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-20-40';
+const APP_VERSION = '2026-10-20-41';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10576,7 +10576,7 @@ async function renderCartomancia(main){
   if (__cartoTab === 'leituras'){
     try{
       const res = await fetch(CARTO_FUNCTION_URL, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + await currentUser.getIdToken() },
         body: JSON.stringify({ action: 'listarLeituras', tenantId })
       });
       const data = await res.json();
@@ -17423,7 +17423,7 @@ window.sortearCartasApp = async function(){
   const dataNascimento = document.getElementById('ctData').value;
   const pergunta = document.getElementById('ctPergunta').value.trim();
   const res = await fetch(CARTO_FUNCTION_URL, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + await currentUser.getIdToken() },
     body: JSON.stringify({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, sortear:true, numCartas:n })
   });
   const data = await res.json();
@@ -17442,7 +17442,7 @@ window.gerarRelatorioCartomancia = async function(){
   const cartaTempo = tempoNaipe ? { naipeKey: tempoNaipe, valor: document.getElementById('ctTempoValor').value } : null;
 
   const res = await fetch(CARTO_FUNCTION_URL, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + await currentUser.getIdToken() },
     body: JSON.stringify({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, cartasEscolhidas, cartaTempo })
   });
   const data = await res.json();
@@ -18778,7 +18778,7 @@ window.pesquisarConhecimentoIA = async function(){
   msg.classList.remove('hidden'); msg.textContent = 'A pesquisar, aguarde…';
   try{
     const res = await fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/knowledgeResearch', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + await currentUser.getIdToken() },
       body: JSON.stringify({ tema, titulo })
     });
     const data = await res.json();

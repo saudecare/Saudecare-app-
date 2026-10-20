@@ -54,7 +54,7 @@ exports.lembretesEnviar = onSchedule({ schedule: 'every 30 minutes', timeZone: '
       const tr = mail(seg.email, seg.pass);
       for (const a of as.docs) {
         const d = a.data();
-        if (d.lembreteEmailEm || d.status === 'cancelled' || d.noFixedTime || !d.patientId) continue;
+        if (d.lembreteEmailEm || d.reminderSent || d.status === 'cancelled' || d.noFixedTime || !d.patientId) continue;
         const p = (await db.doc(`tenants/${t.id}/patients/${d.patientId}`).get()).data() || {};
         const rq = p.requester; const para = ok((rq && rq.enviarParaResponsavel && rq.email) || p.email);
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(para)) continue;
@@ -63,7 +63,7 @@ exports.lembretesEnviar = onSchedule({ schedule: 'every 30 minutes', timeZone: '
           data: dt.toLocaleDateString('pt-PT', { timeZone: fuso, day: '2-digit', month: '2-digit' }), hora: dt.toLocaleTimeString('pt-PT', { timeZone: fuso, hour: '2-digit', minute: '2-digit' }) });
         try {
           await tr.sendMail({ from: `${td.businessName || 'Consultório'} <${seg.email}>`, to: para, subject: 'Lembrete da sua consulta', text: texto });
-          await a.ref.update({ lembreteEmailEm: new Date().toISOString() });
+          await a.ref.update({ lembreteEmailEm: new Date().toISOString(), reminderSent: true });
         } catch (e) { console.error('lembrete', t.id, a.id, e.message); }
       }
     } catch (e) { console.error('lembretes tenant', t.id, e.message); }

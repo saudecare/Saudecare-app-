@@ -51,7 +51,9 @@ service cloud.firestore {
     }
 
     match /settings/{settingId} {
-      allow read: if isSignedIn() || settingId == 'platformConfig';
+      // Só os documentos que a app realmente lê. Qualquer outro (segredos incluídos) fica fechado.
+      allow read: if settingId == 'platformConfig' ||
+        (isSignedIn() && settingId in ['plans', 'platformAnnouncement']);
       allow write: if isPlatformAdmin();
     }
 
@@ -161,8 +163,15 @@ service cloud.firestore {
       }
 
       match /marketingContacts/{contactId} {
-        allow create, update: if request.resource.data.nome is string &&
-          request.resource.data.contacto is string;
+        allow create: if request.resource.data.nome is string &&
+          request.resource.data.contacto is string &&
+          request.resource.data.nome.size() <= 120 && request.resource.data.contacto.size() <= 120;
+        // Quem volta a pedir só pode atualizar nome/tipo/data; o contacto fica como estava.
+        allow update: if (request.resource.data.nome is string &&
+          request.resource.data.contacto == resource.data.contacto &&
+          request.resource.data.nome.size() <= 120 &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'tipo', 'createdAt']))
+          || isTenantOwner(tenantId);
         allow read: if isEquipaClinica(tenantId) || isPlatformAdmin();
         allow delete: if isTenantOwner(tenantId) || isPlatformAdmin();
       }
@@ -304,8 +313,10 @@ service cloud.firestore {
       match /reikiThreads/{codigo} {
         allow get: if true;
         allow list: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
-        allow write: if !('foto' in request.resource.data) ||
+        allow create, update: if !('foto' in request.resource.data) ||
                         (request.resource.data.foto is string && request.resource.data.foto.size() < 60000);
+        // Só a equipa apaga a conversa (antes qualquer pessoa com o código podia apagá-la).
+        allow delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
 
         match /mensagens/{msgId} {
           allow read: if true;
@@ -456,8 +467,12 @@ service cloud.firestore {
                       request.resource.data.status == "pending_review";
 
       // Paciente lê (sem autenticação) enquanto a ficha está por preencher
-      allow read: if resource.data.status == 'pending_review'
+      // Ler UM documento (get) por link continua aberto ao paciente; listar só a equipa do próprio tenant.
+      allow get: if resource.data.status == 'pending_review'
                   || (isSignedIn() &&
+                      resource.data.tenantId == request.auth.token.tenantId &&
+                      request.auth.token.get('role', '') != 'staff_bookings');
+      allow list: if (isSignedIn() &&
                       resource.data.tenantId == request.auth.token.tenantId &&
                       request.auth.token.get('role', '') != 'staff_bookings');
 
@@ -506,8 +521,9 @@ service cloud.firestore {
     }
 
     match /pe_questionarios/{qId} {
-      allow read: if resource.data.status == 'pendente'
+      allow get: if resource.data.status == 'pendente'
                   || (isSignedIn() && resource.data.tenantId == request.auth.token.tenantId);
+      allow list: if isSignedIn() && resource.data.tenantId == request.auth.token.tenantId;
       allow create: if isSignedIn()
                     && request.resource.data.tenantId == request.auth.token.tenantId;
       allow update: if false;
