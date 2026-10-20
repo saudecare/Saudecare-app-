@@ -103,7 +103,7 @@ const PE_PESCOCO_SVG = `<defs>
 </g>`;
 
 // Contorno da Lateralidade: percorre o corpo por fora, como se não tivesse braços.
-const PE_LATERAL_CONTORNO = `<path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 131 376 C 144 376 154 382 154 390 C 154 394 150 395 146 395 L 114 395 C 111 392 111 386 111 380 L 104 285 L 100 196 L 96 285 L 89 380 C 89 386 89 392 86 395 L 54 395 C 50 395 46 394 46 390 C 46 382 56 376 69 376 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="9" stroke-linejoin="round" opacity=".22"/><path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 131 376 C 144 376 154 382 154 390 C 154 394 150 395 146 395 L 114 395 C 111 392 111 386 111 380 L 104 285 L 100 196 L 96 285 L 89 380 C 89 386 89 392 86 395 L 54 395 C 50 395 46 394 46 390 C 46 382 56 376 69 376 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M 158 187 L 174 187 C 180 198 181 214 177 228 C 173 238 160 238 157 226 C 154 212 155 198 158 187 Z" fill="none" stroke="#dc2626" stroke-width="9" stroke-linejoin="round" opacity=".22"/><path d="M 158 187 L 174 187 C 180 198 181 214 177 228 C 173 238 160 238 157 226 C 154 212 155 198 158 187 Z" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M 42 187 L 26 187 C 20 198 19 214 23 228 C 27 238 40 238 43 226 C 46 212 45 198 42 187 Z" fill="none" stroke="#dc2626" stroke-width="9" stroke-linejoin="round" opacity=".22"/><path d="M 42 187 L 26 187 C 20 198 19 214 23 228 C 27 238 40 238 43 226 C 46 212 45 198 42 187 Z" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+const PE_LATERAL_CONTORNO = `<path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 131 376 C 144 376 154 382 154 390 C 154 394 150 395 146 395 L 114 395 C 111 392 111 386 111 380 L 104 285 L 100 196 L 96 285 L 89 380 C 89 386 89 392 86 395 L 54 395 C 50 395 46 394 46 390 C 46 382 56 376 69 376 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="9" stroke-linejoin="round" opacity=".22"/><path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 131 376 C 144 376 154 382 154 390 C 154 394 150 395 146 395 L 114 395 C 111 392 111 386 111 380 L 104 285 L 100 196 L 96 285 L 89 380 C 89 386 89 392 86 395 L 54 395 C 50 395 46 394 46 390 C 46 382 56 376 69 376 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
 
 // Imagem grande do tronco, da cinta para cima, para o Sistema Central (igual na frente e nas costas).
 const PE_CENTRAL_SVG = `<g stroke-linejoin="round" stroke-linecap="round">
@@ -451,7 +451,7 @@ async function renderPesquisaEmocional(main) {
           </div>
           <div id="pe-fecho-final" style="display:none;"></div>
           <div id="pe-mapa-rodape" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
-            <button onclick="window.peIrPasso('2')" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Cancelar</button>
+            <button onclick="window.peMostrarZonas()" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Zonas</button>
             <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Mapeamento</button>
             <button id="pe-btn-seguinte" onclick="window.peSeguinte()" style="background:#1e3a8a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Seguinte ➔</button>
           </div>
@@ -1025,12 +1025,14 @@ function peIniciarVia() {
     peState.quadrants=sel; peState.qIdx=0; peState.mappingData={};
     peState.hasBack=sel.some(q=>q.val.includes('Costas'));
     sel.forEach(q=>{ if(!peState.mappingData[q.val]) { const cfg=peLerConfig(); peState.mappingData[q.val]={desc:q.desc,selectedPoints:new Set(),lateralNotes:'',lateralMarks:[],shield:'Não Especificado',epoch:'Transgeracional',epochTime:'',categories:JSON.parse(JSON.stringify(cfg.categories))}; } });
-    peCarregarQuadrante(); peIrPasso('3b');
+    peIrPasso('3b'); peMostrarZonas();
   }
 }
 
 function peCarregarQuadrante() {
   const qName=peState.quadrants[peState.qIdx]?.val;
+  if (peState.mappingData[qName]) peState.mappingData[qName].visitada=true;
+  const be=document.getElementById('pe-btn-edit-mapa'); if(be) be.style.display='';
   const titulo=document.getElementById('pe-mapa-titulo');
   if (titulo) titulo.textContent=`Pesquisa Visual » ${qName} (${peState.qIdx+1}/${peState.quadrants.length})`;
   const corpo=document.getElementById('pe-mapa-corpo'); if(corpo) corpo.style.display='flex';
@@ -1051,7 +1053,7 @@ function peAtualizarBotaoSeguinte() {
   const i=cats.findIndex(c=>c.id===peState.catId);
   const ultimaCat=i>=cats.length-1;
   const ultimaZona=peState.qIdx>=peState.quadrants.length-1;
-  btn.textContent=!ultimaCat?'Seguinte ➔':(ultimaZona?'Fechar Mapeamento ➔':'Próxima Zona ➔');
+  btn.textContent=!ultimaCat?'Seguinte ➔':'Concluir Zona ➔';
 }
 
 // Ordem por zona: Vitais → Entrada → Lateralidade → Superior → Central → Inferior
@@ -1062,9 +1064,39 @@ function peSeguinte() {
   const cats=qData.categories;
   const i=cats.findIndex(c=>c.id===peState.catId);
   if (i<cats.length-1) { peCarregarCategoria(cats[i+1].id); window.scrollTo(0,0); return; }
-  if (peState.qIdx<peState.quadrants.length-1) { peState.qIdx++; peCarregarQuadrante(); window.scrollTo(0,0); return; }
-  peAbrirFecho();
+  peMostrarZonas();
 }
+
+// ─── ESCOLHA DA ZONA A MAPEAR ─────────────────────────────────────
+function peMostrarZonas() {
+  peGuardarNotasLaterais();
+  const box=document.getElementById('pe-fecho-final'); if (!box) return;
+  const corpo=document.getElementById('pe-mapa-corpo'); if (corpo) corpo.style.display='none';
+  const rod=document.getElementById('pe-mapa-rodape'); if (rod) rod.style.display='none';
+  const be=document.getElementById('pe-btn-edit-mapa'); if (be) be.style.display='none';
+  const titulo=document.getElementById('pe-mapa-titulo'); if (titulo) titulo.textContent='Pesquisa Visual » Zonas a Mapear';
+  const nVis=peState.quadrants.filter(q=>peState.mappingData[q.val]?.visitada).length;
+  box.style.display='block';
+  box.innerHTML=peState.quadrants.map((q,i)=>{
+    const d=peState.mappingData[q.val]||{}; const n=d.selectedPoints?d.selectedPoints.size:0;
+    const lado=q.val.replace(/^Frente - /,'frente · ').replace(/^Costas - /,'costas · ');
+    return `<button onclick="window.peIniciarZona(${i})" style="display:block;width:100%;text-align:left;margin-bottom:10px;padding:16px;border:2px solid ${d.visitada?'#16a34a':'#1e3a8a'};background:${d.visitada?'#f0fdf4':'#eff6ff'};border-radius:10px;cursor:pointer;">
+      <div style="font-weight:700;color:#0f172a;font-size:0.95rem;">${d.visitada?'✅ Continuar':'▶ Iniciar'} mapeamento ${q.val.includes('Direito')?'lado direito':'lado esquerdo'} ${q.val.startsWith('Costas')?'costas':'frente'}</div>
+      <div style="font-size:0.78rem;color:#64748b;margin-top:4px;">${q.val}${d.visitada?` · ${n} ponto${n===1?'':'s'} marcado${n===1?'':'s'}`:''}</div></button>`;
+  }).join('')+
+  `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
+    <button onclick="window.peIrPasso('2')" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Cancelar</button>
+    <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Mapeamento${nVis?` (${nVis})`:''}</button>
+  </div>`;
+  window.scrollTo(0,0);
+}
+
+function peIniciarZona(i) {
+  peState.qIdx=i;
+  const fin=document.getElementById('pe-fecho-final'); if (fin) fin.style.display='none';
+  peCarregarQuadrante(); window.scrollTo(0,0);
+}
+
 function peProximoQuadrante() { peSeguinte(); }
 
 // ─── FECHO (só quando se decide terminar o mapeamento) ────────────
@@ -1076,11 +1108,13 @@ function peAbrirFecho() {
   const box=document.getElementById('pe-fecho-final'); if (!box) return;
   const corpo=document.getElementById('pe-mapa-corpo'); if (corpo) corpo.style.display='none';
   const rod=document.getElementById('pe-mapa-rodape'); if (rod) rod.style.display='none';
+  const be=document.getElementById('pe-btn-edit-mapa'); if (be) be.style.display='none';
   const titulo=document.getElementById('pe-mapa-titulo'); if (titulo) titulo.textContent='Fecho do Mapeamento';
   box.style.display='block';
   box.innerHTML=`<div style="font-size:0.85rem;color:#64748b;margin-bottom:12px;">Indique o padrão de defesa e a origem/tempo de cada zona mapeada.</div>`+
   peState.quadrants.map((q,i)=>{
     const d=peState.mappingData[q.val]; if(!d) return '';
+    if (!d.visitada && peState.quadrants.some(z=>peState.mappingData[z.val]?.visitada)) return '';
     const n=d.selectedPoints?d.selectedPoints.size:0;
     return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:14px;">
       <div style="font-weight:700;color:#1e3a8a;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">${q.val} <span style="font-weight:500;color:#64748b;font-size:0.8rem;">· ${n} ponto${n===1?'':'s'}</span></div>
@@ -1127,7 +1161,7 @@ function peLerFecho() {
   });
 }
 
-function peVoltarAoMapa() { peLerFecho(); peCarregarQuadrante(); }
+function peVoltarAoMapa() { peLerFecho(); peMostrarZonas(); }
 
 function peConcluirFecho() {
   peLerFecho();
@@ -2128,6 +2162,8 @@ window.peToggleQuadrante       = peToggleQuadrante;
 window.peIniciarVia            = peIniciarVia;
 window.peProximoQuadrante      = peProximoQuadrante;
 window.peSeguinte = peSeguinte;
+window.peMostrarZonas = peMostrarZonas;
+window.peIniciarZona = peIniciarZona;
 window.peAbrirFecho = peAbrirFecho;
 window.peAtualizarEpocaZona = peAtualizarEpocaZona;
 window.peEscolherEscudoZona = peEscolherEscudoZona;
