@@ -166,8 +166,15 @@ async function renderPesquisaEmocional(main) {
 
       <div id="pe-step-0" class="pe-step" style="display:block;">
         <div class="card" style="padding:20px;">
-          <div style="font-size:1.1rem;font-weight:700;color:#1e3a8a;margin-bottom:16px;border-bottom:2px solid #fef3c7;padding-bottom:10px;">Selecionar Paciente</div>
-          <div id="pe-lista-pacientes" style="display:grid;gap:10px;"></div>
+          <button id="pe-btn-nova-consulta" onclick="window.peAbrirNovaConsulta()" style="width:100%;background:#1e3a8a;color:white;padding:16px;border:none;border-radius:10px;font-size:1.05rem;font-weight:700;cursor:pointer;">➕ Nova Consulta</button>
+          <div id="pe-escolher-paciente" style="display:none;margin-top:18px;">
+            <div style="font-size:1.05rem;font-weight:700;color:#1e3a8a;margin-bottom:12px;border-bottom:2px solid #fef3c7;padding-bottom:10px;">Escolher paciente</div>
+            <div style="position:relative;margin-bottom:12px;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1.1rem;pointer-events:none;">🔍</span>
+              <input type="search" id="pe-busca-paciente" oninput="window.peFiltrarPacientes()" placeholder="Procurar por nome, telefone ou email..." autocomplete="off" style="width:100%;padding:13px 12px 13px 40px;border:2px solid #bfdbfe;border-radius:10px;font-size:1rem;background:white;">
+            </div>
+            <div id="pe-lista-pacientes" style="display:grid;gap:10px;"></div>
+          </div>
         </div>
       </div>
 
@@ -177,6 +184,7 @@ async function renderPesquisaEmocional(main) {
             <div>
               <span style="font-size:1.1rem;font-weight:700;color:#1e3a8a;">Passo 1 — Fichas e Questionários</span>
               <span id="pe-badge-paciente" style="display:inline-block;background:#fef3c7;color:#b45309;padding:4px 12px;border-radius:20px;font-size:0.85rem;font-weight:700;margin-left:10px;"></span>
+              <button onclick="window.peIrPasso('0')" style="background:none;border:none;color:#1e3a8a;font-size:0.8rem;font-weight:700;cursor:pointer;text-decoration:underline;margin-left:6px;">⬅ Trocar paciente</button>
             </div>
             <button id="pe-btn-edit-form" onclick="window.peToggleFormEdit()" style="background:#e2e8f0;border:1px solid #cbd5e1;color:#334155;padding:8px 14px;border-radius:20px;font-size:0.8rem;font-weight:700;cursor:pointer;">✏️ Editar Perguntas</button>
           </div>
@@ -360,48 +368,187 @@ async function renderPesquisaEmocional(main) {
 
 // ─── PACIENTES ────────────────────────────────────────────────────
 
+function peEsc(t) {
+  return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function peNorm(t) {
+  return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+}
+
+function peAbrirNovaConsulta() {
+  const painel = document.getElementById('pe-escolher-paciente');
+  if (!painel) return;
+  painel.style.display = 'block';
+  const btn = document.getElementById('pe-btn-nova-consulta');
+  if (btn) btn.style.display = 'none';
+  const inp = document.getElementById('pe-busca-paciente');
+  if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 80); }
+  peFiltrarPacientes();
+}
+
 async function peLerPacientes() {
   const container = document.getElementById('pe-lista-pacientes');
   if (!container) return;
   container.innerHTML = '<div style="text-align:center;padding:20px;color:#64748b;">A carregar...</div>';
   try {
-    const snap = await db().collection(`tenants/${tenantId()}/patients`).where('active','!=',false).orderBy('active').orderBy('fullName').limit(100).get();
-    if (snap.empty) {
-      container.innerHTML = '<div style="text-align:center;padding:20px;color:#64748b;">Nenhum paciente ativo. Crie pacientes primeiro.</div>';
-      return;
-    }
-    container.innerHTML = '';
-    snap.forEach(doc => {
-      const p = doc.data();
-      const div = document.createElement('div');
-      div.style.cssText = 'background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;';
-      div.innerHTML = `
-        <div>
-          <div style="font-weight:700;color:#0f172a;font-size:1rem;">${p.fullName||p.nome||'—'}</div>
-          <div style="font-size:0.82rem;color:#64748b;">${p.phone||p.email||''}</div>
-        </div>
-        <button onclick="window.peIniciarConsulta('${doc.id}','${(p.fullName||p.nome||'').replace(/'/g,"\\'")}')" style="background:#1e3a8a;color:white;padding:10px 18px;border:none;border-radius:8px;font-weight:700;font-size:0.85rem;cursor:pointer;">Nova Consulta</button>
-      `;
-      container.appendChild(div);
-    });
+    const snap = await db().collection(`tenants/${tenantId()}/patients`).where('active','!=',false).orderBy('active').orderBy('fullName').limit(1000).get();
+    peState.pacientes = [];
+    snap.forEach(doc => { peState.pacientes.push({ id: doc.id, ...doc.data() }); });
+    peFiltrarPacientes();
   } catch(e) {
     console.error(e);
     container.innerHTML = '<div style="color:#dc2626;padding:16px;">Erro ao carregar pacientes.</div>';
   }
 }
 
-function peIniciarConsulta(patientId, patientName) {
+function peFiltrarPacientes() {
+  const container = document.getElementById('pe-lista-pacientes');
+  if (!container) return;
+  const lista = peState.pacientes;
+  if (!lista) return;
+  if (!lista.length) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:#64748b;">Nenhum paciente ativo. Crie pacientes primeiro.</div>';
+    return;
+  }
+  const q = peNorm(document.getElementById('pe-busca-paciente')?.value);
+  const qDig = q.replace(/\D/g,'');
+  const filtrados = !q ? lista : lista.filter(p => {
+    const nome = peNorm(p.fullName || p.nome);
+    const email = peNorm(p.email);
+    const tel = String(p.phone || '').replace(/\D/g,'');
+    return nome.includes(q) || email.includes(q) || (qDig.length >= 3 && tel.includes(qDig));
+  });
+  if (!filtrados.length) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:#64748b;">Nenhum paciente encontrado.</div>';
+    return;
+  }
+  container.innerHTML = '';
+  filtrados.slice(0, 60).forEach(p => {
+    const div = document.createElement('div');
+    div.style.cssText = 'background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;cursor:pointer;';
+    div.innerHTML = `
+      <div style="font-weight:700;color:#0f172a;font-size:1rem;">${peEsc(p.fullName||p.nome||'—')}</div>
+      <div style="font-size:0.82rem;color:#64748b;">${peEsc(p.phone||p.email||'')}</div>`;
+    div.onclick = () => window.peEscolherPaciente(p.id);
+    container.appendChild(div);
+  });
+  if (filtrados.length > 60) {
+    const mais = document.createElement('div');
+    mais.style.cssText = 'text-align:center;padding:8px;color:#64748b;font-size:0.82rem;';
+    mais.textContent = `A mostrar 60 de ${filtrados.length}. Escreva mais letras para afinar a procura.`;
+    container.appendChild(mais);
+  }
+}
+
+function peEscolherPaciente(id) {
+  const p = (peState.pacientes || []).find(x => x.id === id);
+  if (!p) return;
+  return peIniciarConsulta(id, p.fullName || p.nome || '');
+}
+
+async function peIniciarConsulta(patientId, patientName) {
   peState.patientId = patientId;
   peState.patientName = patientName;
+  peState.pacienteDados = (peState.pacientes || []).find(x => x.id === patientId) || null;
+  peState.fichasAnteriores = [];
   const cfg = peLerConfig();
   peState.formsDB = JSON.parse(JSON.stringify(cfg.forms));
   peState.appData = { categories: JSON.parse(JSON.stringify(cfg.categories)) };
   const badge = document.getElementById('pe-badge-paciente');
   if (badge) badge.textContent = patientName;
   peState.formId = 'pre-consulta';
+  await peLerFichasAnteriores(patientId);
   peRenderizarFicha('pre-consulta');
   peIrPasso('1');
   setTimeout(() => peVerificarQExistente('pre-consulta'), 200);
+}
+
+// ─── PREENCHIMENTO AUTOMÁTICO A PARTIR DA FICHA ───────────────────
+
+// Lê, da ficha do paciente, as fichas de Pesquisa Emocional já guardadas (mais recente primeiro).
+async function peLerFichasAnteriores(patientId) {
+  peState.fichasAnteriores = [];
+  try {
+    const snap = await db().collection(`tenants/${tenantId()}/patients/${patientId}/reports`).where('tipo','==','pesquisa_emocional_ficha').get();
+    const lista = [];
+    snap.forEach(d => {
+      const r = d.data() || {};
+      if (r.tipo !== 'pesquisa_emocional_ficha') return;
+      const g = r.generatedAt;
+      const t = g && typeof g.toMillis === 'function' ? g.toMillis() : (g && g.seconds ? g.seconds * 1000 : 0);
+      lista.push({ t, formId: r.dados && r.dados.formId, respostas: r.dados && r.dados.respostas, texto: r.reportText || '' });
+    });
+    lista.sort((a, b) => b.t - a.t);
+    peState.fichasAnteriores = lista;
+  } catch(e) {
+    console.error('Não foi possível ler as fichas anteriores:', e);
+  }
+}
+
+function peRespostasDaFicha(f) {
+  if (f.respostas && typeof f.respostas === 'object') return f.respostas;
+  const out = {};
+  const re = /• ([\s\S]*?):\n  R: ([\s\S]*?)(?=\n\n• |\n*$)/g;
+  let m;
+  while ((m = re.exec(f.texto)) !== null) out[m[1].trim()] = m[2].trim();
+  return out;
+}
+
+function peIdadeDe(birthDate) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(birthDate || '');
+  if (!m) return null;
+  const nasc = new Date(+m[1], +m[2] - 1, +m[3]);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nasc.getFullYear();
+  if (hoje.getMonth() < nasc.getMonth() || (hoje.getMonth() === nasc.getMonth() && hoje.getDate() < nasc.getDate())) idade--;
+  return { idade, data: `${m[3]}/${m[2]}/${m[1]}` };
+}
+
+// Valor vindo diretamente do cadastro do paciente, conforme a pergunta.
+function peValorDoCadastro(pergunta) {
+  const p = peState.pacienteDados;
+  if (!p) return '';
+  const q = peNorm(pergunta);
+  const nome = p.fullName || p.nome || peState.patientName || '';
+  const nasc = peIdadeDe(p.birthDate);
+  if (q === 'nome completo') return nome;
+  if (q === 'idade e data de nascimento') return nasc ? `${nasc.idade} anos · ${nasc.data}` : '';
+  if (q === 'nome e idade?') return nome ? (nasc ? `${nome}, ${nasc.idade} anos` : nome) : '';
+  if (q === 'nome do cuidador e parentesco') {
+    const r = p.requester;
+    if (r && r.nome) return r.relacao ? `${r.nome} (${r.relacao})` : r.nome;
+  }
+  return '';
+}
+
+// Preenche os campos ainda vazios do questionário aberto. Nunca apaga o que já foi escrito.
+function peAutoPreencher(formId) {
+  const lista = (peState.formsDB || peLerConfig().forms)[formId] || [];
+  const usaAnteriores = formId !== 'pos-consulta';
+  const anteriores = usaAnteriores
+    ? (peState.fichasAnteriores || []).filter(f => f.formId === formId).map(peRespostasDaFicha)
+    : [];
+  let n = 0;
+  lista.forEach((item, idx) => {
+    const el = document.getElementById(`pe-r-${idx}`);
+    if (!el || el.value.trim()) return;
+    let val = peValorDoCadastro(item.q);
+    if (!val) {
+      for (const resp of anteriores) {
+        if (resp[item.q] && String(resp[item.q]).trim()) { val = String(resp[item.q]).trim(); break; }
+      }
+    }
+    if (!val) return;
+    el.value = val;
+    el.style.background = '#f0fdf4';
+    el.style.borderColor = '#86efac';
+    n++;
+  });
+  const titulo = document.getElementById('pe-form-titulo');
+  if (n && titulo) {
+    titulo.insertAdjacentHTML('afterend', `<div style="background:#f0fdf4;border:1px solid #86efac;color:#166534;border-radius:8px;padding:10px 12px;font-size:0.82rem;font-weight:600;margin-bottom:12px;">✔ ${n} campo${n>1?'s':''} preenchido${n>1?'s':''} automaticamente com os dados já guardados na ficha. Confirme e corrija se for preciso.</div>`);
+  }
 }
 
 // ─── NAVEGAÇÃO ────────────────────────────────────────────────────
@@ -527,6 +674,7 @@ function peRenderizarFicha(id) {
     <button onclick="window.peAdicionarQ('${id}')" style="width:100%;padding:12px;border:2px dashed #e2e8f0;background:white;border-radius:8px;color:#64748b;font-size:0.85rem;font-weight:600;cursor:pointer;margin-top:4px;">+ Adicionar Pergunta</button>`;
   }
   container.innerHTML = html;
+  if (!editMode) peAutoPreencher(id);
 }
 
 function peMoverQ(idx, dir, formId) {
@@ -652,7 +800,7 @@ function peGuardarFicha() {
   const medosWrap=document.getElementById('pe-medos-wrapper');
   const isMedos=medosWrap&&medosWrap.style.display!=='none';
   const data=new Date().toLocaleDateString('pt-PT');
-  let texto=''; let hasData=false;
+  let texto=''; let hasData=false; const respostasMap={};
   if (isMedos) {
     const res=document.getElementById('pe-medo-resultado');
     if (res&&res.dataset.val) { hasData=true; texto=`Medo Predominante: ${res.dataset.val}`; }
@@ -660,10 +808,10 @@ function peGuardarFicha() {
     const fichas=peState.formsDB||peLerConfig().forms;
     const tit=document.getElementById('pe-form-titulo')?.textContent||'Ficha';
     texto=`FICHA: ${tit}\nData: ${data}\n\n`;
-    (fichas[peState.formId]||[]).forEach((item,idx)=>{ const val=document.getElementById(`pe-r-${idx}`)?.value?.trim()||''; if(val){hasData=true; texto+=`• ${item.q}:\n  R: ${val}\n\n`;} });
+    (fichas[peState.formId]||[]).forEach((item,idx)=>{ const val=document.getElementById(`pe-r-${idx}`)?.value?.trim()||''; if(val){hasData=true; texto+=`• ${item.q}:\n  R: ${val}\n\n`; respostasMap[item.q]=val;} });
   }
   if (!hasData) return mostrarAviso('⚠️ A ficha está vazia.');
-  guardarNaFicha(peState.patientId,{ tipo:'pesquisa_emocional_ficha', titulo:isMedos?'Avaliação de Medos Subconscientes':(document.getElementById('pe-form-titulo')?.textContent||'Ficha'), texto, dados:{formId:peState.formId} });
+  guardarNaFicha(peState.patientId,{ tipo:'pesquisa_emocional_ficha', titulo:isMedos?'Avaliação de Medos Subconscientes':(document.getElementById('pe-form-titulo')?.textContent||'Ficha'), texto, dados:{formId:peState.formId, respostas:respostasMap} });
   mostrarAviso('✅ Ficha guardada no histórico!');
 }
 
@@ -1433,6 +1581,9 @@ window.renderPesquisaEmocional = renderPesquisaEmocional;
 window.peVerificarAcesso       = peVerificarAcesso;
 window.temPesquisaEmocional    = temPesquisaEmocional;
 window.peIniciarConsulta       = peIniciarConsulta;
+window.peAbrirNovaConsulta     = peAbrirNovaConsulta;
+window.peFiltrarPacientes      = peFiltrarPacientes;
+window.peEscolherPaciente      = peEscolherPaciente;
 window.peIrPasso               = peIrPasso;
 window.peVoltarFecho           = peVoltarFecho;
 window.peMudarFicha            = peMudarFicha;
