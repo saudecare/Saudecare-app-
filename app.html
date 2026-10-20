@@ -328,6 +328,7 @@
 <div id="toast"></div>
 
 <script type="module" src="pe-carregador.js"></script>
+<script type="module" src="cg-imagens.js"></script>
 <script type="module" src="consulta-guiada.js"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
@@ -352,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-20-28';
+const APP_VERSION = '2026-10-20-29';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -535,6 +536,7 @@ async function confirmar(texto){
 window.confirmar = confirmar;
 // Ajudantes partilhados com o construtor de consultas guiadas (consulta-guiada.js)
 window.escapeHtml = (...a) => escapeHtml(...a);
+window.cgMarca = () => ({ nome: currentTenantDoc?.businessName || '', logo: currentTenantDoc?.branding?.logoUrl || '', cor: currentTenantDoc?.branding?.primaryColor || '#1e3a8a' });
 window.imageUploadFieldHTML = (...a) => imageUploadFieldHTML(...a);
 window.renderGeneratedReportScreen = (...a) => renderGeneratedReportScreen(...a);
 
