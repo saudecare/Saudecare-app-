@@ -213,12 +213,25 @@ function renderMesa(){
 
 
 
-// ── Limite da leitura grátis: uma por semana neste aparelho (alunos: livre) ──
+// ── Limite da leitura grátis: uma por semana por contacto (verificado no servidor); alunos com código ──
 const LIM_DIAS = 7;
-(function(){ try{ if (new URLSearchParams(location.search).get('aluno') === '1') localStorage.setItem('vd_aluno', '1'); }catch(_){} })();
-function ehAluno(){ try{ return localStorage.getItem('vd_aluno') === '1'; }catch(_){ return false; } }
+const LG_URL = 'https://europe-west1-saudecare-app.cloudfunctions.net/leituraGratis';
+(function(){ try{ const a = new URLSearchParams(location.search).get('aluno'); if (a) localStorage.setItem('vd_aluno_cod', a); }catch(_){} })();
+function codigoAlunoGuardado(){ try{ return localStorage.getItem('vd_aluno_cod') || ''; }catch(_){ return ''; } }
 function proximaLeituraGratis(){ try{ const t = parseInt(localStorage.getItem('vd_gratis_semana') || '0', 10); if (!t) return 0; const n = t + LIM_DIAS * 864e5; return n > Date.now() ? n : 0; }catch(_){ return 0; } }
 function registarLeituraGratis(){ try{ localStorage.setItem('vd_gratis_semana', String(Date.now())); }catch(_){} }
+async function verificarLeituraGratis(contacto){
+  const codigo = codigoAlunoGuardado();
+  if (!codigo){ const p = proximaLeituraGratis(); if (p) return { ok:false, proxima:p }; }
+  try{
+    const r = await fetch(LG_URL, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ data:{ contacto, codigo } }) });
+    const j = (await r.json()).result;
+    if (j && j.permitido === false) return { ok:false, proxima:j.proxima };
+    if (j && j.aluno) return { ok:true };
+  }catch(_){ /* sem rede para a verificação: não bloqueia */ }
+  if (!codigo) registarLeituraGratis();
+  return { ok:true };
+}
 function mostrarLimiteGratis(proxima){
   const d = new Date(proxima).toLocaleDateString('pt-PT', { day:'2-digit', month:'2-digit' });
   main.innerHTML = `<div class="card" style="text-align:center;">
@@ -230,7 +243,7 @@ function mostrarLimiteGratis(proxima){
 }
 
 async function tirarCartas(){
-  { const prox = ehAluno() ? 0 : proximaLeituraGratis(); if (prox){ mostrarLimiteGratis(prox); return; } }
+  { const v = await verificarLeituraGratis(estado.contacto); if (!v.ok){ mostrarLimiteGratis(v.proxima); return; } }
   main.innerHTML = '<div class="loading">A sintonizar com as cartas…</div>';
   const leadId = crypto.randomUUID();
   try{
@@ -244,7 +257,6 @@ async function tirarCartas(){
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Erro ao tirar as cartas.');
-    registarLeituraGratis();
     renderResultado(leadId, data.leitura);
   }catch(e){
     main.innerHTML = `<div class="card"><div class="errorbox">${escapeHtml(e.message)}</div></div>`;

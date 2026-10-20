@@ -110,6 +110,7 @@ window.peTermosAdmin = async function () {
   let lista = [], cfg = { folderId: '', conta: '' };
   try { lista = (await window.peChamar('peTermoAdmin', { acao: 'listar' })).pedidos; cfg = await window.peChamar('peTermoAdmin', { acao: 'config' }); }
   catch (e) { ov.innerHTML = `<div style="max-width:760px;margin:0 auto;padding:16px;"><button class="ghost" onclick="peTermosFechar()">✖ Fechar</button><p style="color:#b91c1c;">${esc(e.message)}</p></div>`; return; }
+  setTimeout(() => window.peMostrarCodigoAluno(false), 50);
   const b = (acao, id, txt, extra) => `<button class="ghost" style="padding:7px 10px;font-size:0.8rem;${extra || ''}" onclick="peTermoAcao('${acao}','${id}')">${txt}</button>`;
   ov.innerHTML = `<div style="max-width:760px;margin:0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><b style="font-size:1.1rem;color:#1e3a8a;">📜 Pedidos do método e termos assinados</b><button class="ghost" onclick="peTermosFechar()">✖ Fechar</button></div>
     <div class="card" style="margin-bottom:12px;"><b>📁 Pasta do Drive para as provas</b>
@@ -117,6 +118,10 @@ window.peTermosAdmin = async function () {
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:0.8rem;word-break:break-all;margin-bottom:8px;">${esc(cfg.conta || '(a conta aparece depois de publicar as funções)')}</div>
       <input id="peDriveId" value="${esc(cfg.folderId)}" placeholder="Endereço ou ID da pasta do Drive" style="${I}">
       <button class="primary" onclick="peGuardarPasta()">Guardar pasta</button></div>
+    <div class="card" style="margin-bottom:12px;"><b>🎓 Link dos alunos (leituras grátis sem limite)</b>
+      <p class="muted" style="margin:6px 0;">Quem abrir um destes links fica sem limite semanal nesse aparelho. Dá só aos teus alunos.</p>
+      <div id="peAlunoLinks" class="muted" style="font-size:0.8rem;word-break:break-all;">A carregar…</div>
+      <button class="ghost" style="margin-top:8px;" onclick="peNovoCodigoAluno()">Gerar código novo</button></div>
     <div class="card" style="margin-bottom:12px;"><b>✉️ Cópia por e-mail</b>
       <p class="muted" style="margin:6px 0;">Cada pedido é enviado com o termo e o certificado para <b>${esc(cfg.emailDestino || '')}</b>. ${cfg.emailOk ? '✅ Já está ligado.' : 'Para ligar, cole a palavra-passe de aplicação dessa conta Gmail (16 letras).'}</p>
       <input id="peEmailPass" type="password" placeholder="Palavra-passe de aplicação do Gmail" style="${I}">
@@ -128,6 +133,11 @@ window.peTermosAdmin = async function () {
       ${p.estado === 'pendente' ? b('aprovar', p.id, '✅ Aprovar', 'color:#16a34a;border-color:#86efac;') + b('recusar', p.id, '✖ Recusar') : ''}
       ${p.estado === 'aprovado' ? b('revogar', p.id, '🚫 Revogar acesso', 'color:#b91c1c;border-color:#fca5a5;') : ''}${b('reenviarDrive', p.id, '☁️ Enviar para o Drive')}</div></div>`).join('') : '<div class="muted" style="text-align:center;padding:20px;">Ainda não há pedidos.</div>'}</div>`;
 };
+window.peMostrarCodigoAluno = async function (novo) {
+  try { const r = await window.peChamar('leituraGratisConfig', novo ? { acao: 'novo' } : {}); const el = document.getElementById('peAlunoLinks'); if (el) el.innerHTML =
+    ['mapa-da-alma', 'cartomancia'].map(p => `https://vindora.pt/${p}.html?aluno=${r.codigo}`).join('<br><br>'); } catch (e) { aviso(e.message, true); }
+};
+window.peNovoCodigoAluno = () => window.peMostrarCodigoAluno(true);
 window.peTermosFechar = () => document.getElementById('pe-termos-ov')?.remove();
 window.peGuardarEmail = async function () {
   try { await window.peChamar('peTermoAdmin', { acao: 'config', emailPass: document.getElementById('peEmailPass').value }); aviso('✅ Guardado.'); window.peTermosAdmin(); } catch (e) { aviso(e.message, true); }
