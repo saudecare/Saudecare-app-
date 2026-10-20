@@ -328,6 +328,7 @@
 <div id="toast"></div>
 
 <script type="module" src="pe-carregador.js"></script>
+<script type="module" src="consulta-guiada.js"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
@@ -351,7 +352,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-20-27';
+const APP_VERSION = '2026-10-20-28';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -532,6 +533,10 @@ async function confirmar(texto){
   return reikiConfirmar('Confirmar', texto, 'Continuar');
 }
 window.confirmar = confirmar;
+// Ajudantes partilhados com o construtor de consultas guiadas (consulta-guiada.js)
+window.escapeHtml = (...a) => escapeHtml(...a);
+window.imageUploadFieldHTML = (...a) => imageUploadFieldHTML(...a);
+window.renderGeneratedReportScreen = (...a) => renderGeneratedReportScreen(...a);
 
 // Modal informativo (sem opção Cancelar — só "Fechar").
 // Usado sempre que alert() seria tentador mas está bloqueado em janelas embutidas.
@@ -7106,12 +7111,13 @@ async function renderProtocols(main){
   snap.forEach(d=>{
     const p = d.data();
     const isMapping = p.type === 'mapping';
-    const countInfo = isMapping
+    const isGuided = p.type === 'guided';
+    const countInfo = isGuided ? `${(p.steps||[]).length} passos` : isMapping
       ? `${(p.groups||[]).length} grupos de pontos`
       : `${(p.points||[]).length} pontos definidos${(p.images||[]).length ? ` · ${p.images.length} imagem(ns)` : ''}`;
     rows += `<div class="appt-item row">
       <div><strong>${escapeHtml(p.name)}</strong>
-        <div class="muted">${isMapping ? '🗺️ Mapeamento por zonas' : '📋 Lista livre'} · ${countInfo}</div>
+        <div class="muted">${isGuided ? '🧩 Consulta guiada por passos' : isMapping ? '🗺️ Mapeamento por zonas' : '📋 Lista livre'} · ${countInfo}</div>
       </div>
       <div>
         <button class="ghost" onclick="previewProtocol('${d.id}')">👁️ Pré-visualizar</button>
@@ -7154,6 +7160,7 @@ window.openNewProtocol = function(){
   protocolFreeImagesDraft = [];
   window.__editingProtocolId = null;
   window.__expandedMapPoints = new Set();
+  window.cgNovoRascunho?.();
   renderProtocolForm(null, { type: 'simple' });
 };
 
@@ -7168,6 +7175,7 @@ window.editProtocol = async function(id){
   protocolClassificationsDraft = (p.finalClassifications || []).map(c => ({...c}));
   protocolBodyImages = { front: p.bodyFrontImageUrl || '', back: p.bodyBackImageUrl || '' };
   protocolFreeImagesDraft = (p.images || []).map(img => ({...img}));
+  if (p.type === 'guided') window.cgCarregarRascunho?.(p);
   renderProtocolForm(id, p);
   scrollToEl('protocolFormContainer');
 };
@@ -7182,7 +7190,9 @@ function renderProtocolForm(editId, data){
   const name = data.name || '';
 
   let bodyHtml = '';
-  if (type === 'simple'){
+  if (type === 'guided'){
+    bodyHtml = window.cgRenderConstrutor ? window.cgRenderConstrutor() : '<p class="muted">A carregar…</p>';
+  } else if (type === 'simple'){
     bodyHtml = renderSimplePointsBuilder() + renderClassificationsBuilder();
   } else {
     bodyHtml = renderMappingGroupsBuilder() + renderClassificationsBuilder();
@@ -7195,6 +7205,7 @@ function renderProtocolForm(editId, data){
       <input id="protoName" value="${escapeHtml(name)}" placeholder="ex: Avaliação de Ansiedade e Depressão">
       <label>Tipo de protocolo</label>
       <select id="protoType" onchange="changeProtocolType(this.value)">
+        <option value="guided" ${type==='guided'?'selected':''}>🧩 Consulta guiada por passos (novo — o mais flexível)</option>
         <option value="simple" ${type==='simple'?'selected':''}>Lista de pontos (livre — com ou sem imagens)</option>
         <option value="mapping" ${type==='mapping'?'selected':''}>Mapeamento por zonas do corpo (frente/costas × esquerda/direita)</option>
       </select>
@@ -7850,8 +7861,12 @@ window.saveProtocol = async function(editId){
   const type = document.getElementById('protoType').value;
 
   let data = { name, type, updatedAt: serverTimestamp() };
-  data.finalClassifications = protocolClassificationsDraft.filter(c => c.label && c.label.trim());
-  if (type === 'simple'){
+  data.finalClassifications = type === 'guided' ? [] : protocolClassificationsDraft.filter(c => c.label && c.label.trim());
+  if (type === 'guided'){
+    const erro = window.cgValidar ? window.cgValidar() : 'Construtor indisponível.';
+    if (erro){ toast(erro, true); return; }
+    data.steps = window.cgLerRascunho();
+  } else if (type === 'simple'){
     const validPoints = protocolPointsDraft.filter(p => p.name && p.name.trim());
     if (!validPoints.length){ toast('Adicione pelo menos um item (ponto ou pergunta) com nome.', true); return; }
     data.points = validPoints;
@@ -7932,6 +7947,7 @@ window.previewProtocol = async function(id){
   const patientId = '__preview__';
   const patientName = 'Paciente de Exemplo';
 
+  if (proto.type === 'guided'){ window.cgExecutar(patientId, patientName, area, proto, window.__currentGuidedProtoId); return; }
   const nextStep = () => {
     if (proto.type === 'mapping') renderMappingZoneSelection(patientId, patientName, area);
     else renderGuidedPoints(patientId, patientName, area, proto);
@@ -7984,6 +8000,7 @@ window.onGuidedProtocolChange = function(patientId, patientName){
   window.__mappingAfterAnswers = [];
   area.innerHTML = '';
 
+  if (proto.type === 'guided'){ window.cgExecutar(patientId, patientName, area, proto, window.__currentGuidedProtoId); return; }
   const nextStep = () => {
     if (proto.type === 'mapping') renderMappingZoneSelection(patientId, patientName, area);
     else renderGuidedPoints(patientId, patientName, area, proto);
