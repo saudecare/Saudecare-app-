@@ -275,9 +275,9 @@ async function renderPesquisaEmocional(main) {
             <button onclick="window.peToggleEditMapa()" id="pe-btn-edit-mapa" style="background:#e2e8f0;border:1px solid #cbd5e1;color:#334155;padding:8px 14px;border-radius:20px;font-size:0.8rem;font-weight:700;cursor:pointer;">✏️ Modo Edição</button>
           </div>
           <div style="display:flex;flex-direction:column;gap:20px;">
-            <div style="max-width:320px;margin:0 auto;width:100%;">
-              <div id="pe-svg-wrapper" style="background:white;border:1px solid #e2e8f0;border-radius:10px;width:100%;aspect-ratio:1/1.8;overflow:hidden;touch-action:none;position:relative;">
-                <svg id="pe-svg" viewBox="0 0 200 400" style="width:100%;height:100%;"></svg>
+            <div style="max-width:560px;margin:0 auto;width:100%;">
+              <div id="pe-svg-wrapper" style="background:white;border:1px solid #e2e8f0;border-radius:10px;width:100%;aspect-ratio:360/400;overflow:hidden;touch-action:none;position:relative;">
+                <svg id="pe-svg" viewBox="-80 0 360 400" style="width:100%;height:100%;"></svg>
               </div>
               <div id="pe-edit-painel" style="display:none;margin-top:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;">
                 <div style="font-size:0.82rem;color:#1e3a8a;font-weight:700;margin-bottom:6px;">✏️ Arraste os pontos para o local exato</div>
@@ -985,12 +985,81 @@ function peRenderizarPontos(cat,selectedSet) {
   });
 }
 
+// Parte um nome comprido em linhas curtas (máx. 3) para caber ao lado do corpo.
+function peQuebrar(texto,max) {
+  const palavras=String(texto||'').split(/\s+/).filter(Boolean);
+  const linhas=[]; let atual='';
+  palavras.forEach(w=>{
+    if (atual && (atual+' '+w).length>max) { linhas.push(atual); atual=w; }
+    else atual=atual?atual+' '+w:w;
+  });
+  if (atual) linhas.push(atual);
+  if (linhas.length>3) { linhas.length=3; linhas[2]=linhas[2].replace(/.{0,2}$/,'…'); }
+  return linhas;
+}
+
+// Escreve o nome (e o órgão) de cada ponto nas margens do mapa, com uma linha até ao ponto.
+function peDesenharRotulos(cat,selectedSet,g,edit) {
+  const NS='http://www.w3.org/2000/svg';
+  g.innerHTML='';
+  const lado=new Map();
+  const centrais=[];
+  cat.points.forEach(p=>{
+    if (p.x<96) lado.set(p.id,'L'); else if (p.x>104) lado.set(p.id,'R'); else centrais.push(p);
+  });
+  centrais.sort((a,b)=>a.y-b.y).forEach((p,k)=>lado.set(p.id,k%2?'R':'L'));
+  ['L','R'].forEach(side=>{
+    const arr=cat.points.filter(p=>lado.get(p.id)===side).map(p=>{
+      const lines=peQuebrar(p.name,16);
+      const mostraOrgao=!!p.organ && peNorm(p.organ)!==peNorm(p.name);
+      return { p, lines, mostraOrgao, h:lines.length*10+(mostraOrgao?9:0)-(mostraOrgao?0:1), top:0 };
+    }).sort((a,b)=>a.p.y-b.p.y);
+    let prev=2;
+    arr.forEach(l=>{ l.top=Math.max(l.p.y-l.h/2,prev); prev=l.top+l.h+4; });
+    let limite=398;
+    for (let k=arr.length-1;k>=0;k--) { const l=arr[k]; if (l.top+l.h>limite) l.top=limite-l.h; limite=l.top-4; }
+    const ex=side==='L'?0:200;
+    arr.forEach(l=>{
+      const p=l.p; const sel=selectedSet.has(p.id);
+      const ln=document.createElementNS(NS,'line');
+      ln.setAttribute('x1',p.x); ln.setAttribute('y1',p.y); ln.setAttribute('x2',ex); ln.setAttribute('y2',l.top+5);
+      ln.setAttribute('stroke',sel?'#dc2626':'#94a3b8'); ln.setAttribute('stroke-width',sel?'0.9':'0.5'); ln.setAttribute('pointer-events','none');
+      g.appendChild(ln);
+      const t=document.createElementNS(NS,'text');
+      t.setAttribute('x',side==='L'?-3:203); t.setAttribute('text-anchor',side==='L'?'end':'start');
+      t.setAttribute('pointer-events','none');
+      l.lines.forEach((txt,i)=>{
+        const ts=document.createElementNS(NS,'tspan');
+        ts.setAttribute('x',side==='L'?-3:203); ts.setAttribute('y',l.top+8+i*10);
+        ts.setAttribute('font-size','8.5'); ts.setAttribute('font-weight','700'); ts.setAttribute('fill',sel?'#dc2626':'#0f172a');
+        ts.textContent=txt; t.appendChild(ts);
+      });
+      if (l.mostraOrgao) {
+        const org=document.createElementNS(NS,'tspan');
+        org.setAttribute('x',side==='L'?-3:203); org.setAttribute('y',l.top+8+l.lines.length*10-1);
+        org.setAttribute('font-size','7'); org.setAttribute('font-weight','600'); org.setAttribute('fill',sel?'#dc2626':cat.cor);
+        org.textContent=p.organ; t.appendChild(org);
+      }
+      g.appendChild(t);
+      if (!edit) {
+        const r=document.createElementNS(NS,'rect');
+        r.setAttribute('x',side==='L'?-82:200); r.setAttribute('y',l.top-2); r.setAttribute('width',82); r.setAttribute('height',l.h+4);
+        r.setAttribute('fill','transparent'); r.style.cursor='pointer';
+        r.addEventListener('pointerdown',(e)=>{ e.preventDefault(); e.stopPropagation(); peTogglePonto(p.id,!selectedSet.has(p.id)); });
+        g.appendChild(r);
+      }
+    });
+  });
+}
+
 function peRenderizarSVG(cat,selectedSet) {
   const svg=document.getElementById('pe-svg');
   if (!svg) return;
   svg.innerHTML=PE_CORPO_SVG;
   if (cat.id==='lateral') svg.innerHTML+=`<path d="M 100 15 C 130 15 145 50 145 90 C 175 130 180 210 170 240 C 145 250 135 300 130 380" fill="none" stroke="#b45309" stroke-width="2" stroke-dasharray="4"/>`;
   const edit=peState.editMode;
+  const gRot=document.createElementNS('http://www.w3.org/2000/svg','g'); gRot.setAttribute('id','pe-rotulos'); svg.appendChild(gRot);
+  peDesenharRotulos(cat,selectedSet,gRot,edit);
   cat.points.forEach(p=>{
     const isSel=selectedSet.has(p.id);
     const escolhido=edit&&peState.editPonto===p.id;
@@ -1015,6 +1084,7 @@ function peRenderizarSVG(cat,selectedSet) {
         const gv=document.createElementNS('http://www.w3.org/2000/svg','line'); const gh=document.createElementNS('http://www.w3.org/2000/svg','line');
         [gv,gh].forEach(g=>{ g.setAttribute('stroke','#1e3a8a'); g.setAttribute('stroke-width','0.6'); g.setAttribute('stroke-dasharray','2 2'); g.setAttribute('pointer-events','none'); svg.insertBefore(g,svg.firstChild.nextSibling); });
         const desenhar=()=>{
+          peDesenharRotulos(cat,selectedSet,gRot,true);
           c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); hit.setAttribute('cx',p.x); hit.setAttribute('cy',p.y);
           gv.setAttribute('x1',p.x); gv.setAttribute('x2',p.x); gv.setAttribute('y1',0); gv.setAttribute('y2',400);
           gh.setAttribute('y1',p.y); gh.setAttribute('y2',p.y); gh.setAttribute('x1',0); gh.setAttribute('x2',200);
