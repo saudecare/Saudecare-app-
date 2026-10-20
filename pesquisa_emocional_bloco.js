@@ -298,7 +298,7 @@ async function renderPesquisaEmocional(main) {
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:linear-gradient(135deg,#1e3a8a,#0f172a);color:white;padding:18px;border-radius:12px;margin-bottom:16px;">
         <div>
           <div style="font-size:1.3rem;font-weight:700;">🔬 Pesquisa Emocional Clínica</div>
-          <div style="font-size:0.85rem;color:#bfdbfe;">Ferramenta de Levantamento Clínico Avançado</div>
+          <div style="font-size:0.85rem;color:#bfdbfe;">Ferramenta de Pesquisa Clínica Avançada</div>
         </div>
         ${tenantId()==='hikari-terapias' ? `<button onclick="window.renderAdminPedidosPE(document.querySelector('main,#main,.main-content')||document.body)" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 14px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;">⚙️ Pedidos Pendentes</button>` : ''}
         ${tenantId()==='hikari-terapias' ? `<button onclick="import('./pe-pedido.js').then(()=>window.peTermosAdmin())" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 12px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;">📜 Pedidos e termos</button>` : ''}
@@ -362,7 +362,7 @@ async function renderPesquisaEmocional(main) {
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px;">
             ${[1,2,3].map(n=>`<div onclick="window.peEscolherVia(${n},this)" id="pe-via-${n}" style="border:2px solid ${n===2?'#1e3a8a':'#e2e8f0'};background:${n===2?'#eff6ff':'white'};border-radius:10px;padding:16px;cursor:pointer;transition:.2s;">
               <div style="font-weight:700;color:#0f172a;margin-bottom:6px;">${n}. ${{1:'Padrões Conscientes',2:'Pesquisa Subconsciente',3:'Estressores Ativos'}[n]}</div>
-              <div style="font-size:0.8rem;color:#64748b;">${{1:'Pontuação direta dos Padrões (0 a 10).',2:'Levantamento visual anatómico.',3:'Avaliação de gatilhos e ciclos.'}[n]}</div>
+              <div style="font-size:0.8rem;color:#64748b;">${{1:'Pontuação direta dos Padrões (0 a 10).',2:'Pesquisa visual anatómica.',3:'Avaliação de gatilhos e ciclos.'}[n]}</div>
             </div>`).join('')}
           </div>
           <div id="pe-quadrantes-area">
@@ -384,7 +384,7 @@ async function renderPesquisaEmocional(main) {
           </div>
           <div style="display:flex;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
             <button onclick="window.peIrPasso('1')" style="background:white;border:1px solid #e2e8f0;padding:12px 20px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Voltar</button>
-            <button onclick="window.peIniciarVia()" style="background:#1e3a8a;color:white;padding:12px 24px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Iniciar Levantamento ➔</button>
+            <button onclick="window.peIniciarVia()" style="background:#1e3a8a;color:white;padding:12px 24px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Iniciar Pesquisa ➔</button>
           </div>
         </div>
       </div>
@@ -457,7 +457,7 @@ async function renderPesquisaEmocional(main) {
           <div id="pe-fecho-final" style="display:none;"></div>
           <div id="pe-mapa-rodape" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:20px;border-top:1px solid #e2e8f0;position:sticky;bottom:0;z-index:20;background:white;box-shadow:0 -6px 12px rgba(15,23,42,.08);padding:12px 4px calc(12px + env(safe-area-inset-bottom));">
             <button onclick="window.peMostrarZonas()" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Zonas</button>
-            <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Levantamento</button>
+            <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Pesquisa</button>
             <button id="pe-btn-seguinte" onclick="window.peSeguinte()" style="background:#1e3a8a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Seguinte ➔</button>
           </div>
         </div>
@@ -1135,12 +1135,12 @@ function peMostrarZonas() {
     const d=peState.mappingData[q.val]||{}; const n=d.selectedPoints?d.selectedPoints.size:0;
     const lado=q.val.replace(/^Frente - /,'frente · ').replace(/^Costas - /,'costas · ');
     return `<button onclick="window.peIniciarZona(${i})" style="display:block;width:100%;text-align:left;margin-bottom:10px;padding:16px;border:2px solid ${d.visitada?'#16a34a':'#1e3a8a'};background:${d.visitada?'#f0fdf4':'#eff6ff'};border-radius:10px;cursor:pointer;">
-      <div style="font-weight:700;color:#0f172a;font-size:0.95rem;">${d.visitada?'✅ Continuar':'▶ Iniciar'} levantamento ${q.val.includes('Direito')?'lado direito':'lado esquerdo'} ${q.val.startsWith('Costas')?'costas':'frente'}</div>
+      <div style="font-weight:700;color:#0f172a;font-size:0.95rem;">${d.visitada?'✅ Continuar':'▶ Iniciar'} pesquisa ${q.val.includes('Direito')?'lado direito':'lado esquerdo'} ${q.val.startsWith('Costas')?'costas':'frente'}</div>
       <div style="font-size:0.78rem;color:#64748b;margin-top:4px;">${q.val}${d.visitada?` · ${n} ponto${n===1?'':'s'} marcado${n===1?'':'s'}`:''}</div></button>`;
   }).join('')+
   `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
     <button onclick="window.peCancelarMapeamento()" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Cancelar</button>
-    <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Levantamento${nVis?` (${nVis})`:''}</button>
+    <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Pesquisa${nVis?` (${nVis})`:''}</button>
   </div>`;
   peRolarTopo();
 }
@@ -1153,13 +1153,13 @@ function peIniciarZona(i) {
 
 function peProximoQuadrante() { peSeguinte(); }
 
-// ─── FECHO (só quando se decide terminar o levantamento) ────────────
+// ─── FECHO (só quando se decide terminar a pesquisa) ────────────
 
 const PE_ESCUDOS=['Desproteção','Desvalorização','Impotência','Sobrevivência','Perda'];
 
 function peCancelarMapeamento() {
   const feito=peState.quadrants.some(q=>peState.mappingData[q.val]?.visitada);
-  if (feito && !confirm('Cancelar o levantamento? O que já marcou será perdido.')) return;
+  if (feito && !confirm('Cancelar a pesquisa? O que já marcou será perdido.')) return;
   peIrPasso('2');
 }
 
@@ -1170,7 +1170,7 @@ function peAbrirFecho() {
   const corpo=document.getElementById('pe-mapa-corpo'); if (corpo) corpo.style.display='none';
   const rod=document.getElementById('pe-mapa-rodape'); if (rod) rod.style.display='none';
   const be=document.getElementById('pe-btn-edit-mapa'); if (be) be.style.display='none';
-  const titulo=document.getElementById('pe-mapa-titulo'); if (titulo) titulo.textContent='Fecho do Levantamento';
+  const titulo=document.getElementById('pe-mapa-titulo'); if (titulo) titulo.textContent='Fecho da Pesquisa';
   box.style.display='block';
   box.innerHTML=`<div style="font-size:0.85rem;color:#64748b;margin-bottom:12px;">Indique o padrão de defesa e a origem/tempo de cada zona mapeada.</div>`+
   peState.quadrants.map((q,i)=>{
@@ -1193,7 +1193,7 @@ function peAbrirFecho() {
       </div></div>`;
   }).join('')+
   `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:20px;border-top:1px solid #e2e8f0;position:sticky;bottom:0;z-index:20;background:white;box-shadow:0 -6px 12px rgba(15,23,42,.08);padding:12px 4px calc(12px + env(safe-area-inset-bottom));">
-    <button onclick="window.peVoltarAoMapa()" style="background:white;border:1px solid #e2e8f0;padding:12px 18px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Voltar ao Levantamento</button>
+    <button onclick="window.peVoltarAoMapa()" style="background:white;border:1px solid #e2e8f0;padding:12px 18px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Voltar à Pesquisa</button>
     <button onclick="window.peConcluirFecho()" style="background:#1e3a8a;color:white;padding:12px 24px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Gravar e Avançar ➔</button>
   </div>`;
   peState.quadrants.forEach((q,i)=>peAtualizarEpocaZona(i));
@@ -1763,7 +1763,7 @@ function pePreencherReceita() {
       txt+=PASSO_PADRAO+'\n';
     }
     if (pontosFrente.length===0&&costasSC.length===0&&costasInf.length===0) {
-      txt+=`(Nenhum ponto selecionado no levantamento — revê os quadrantes antes de emitir o plano.)\n\n`;
+      txt+=`(Nenhum ponto selecionado na pesquisa — revê os quadrantes antes de emitir o plano.)\n\n`;
     }
   }
   const medoRes=document.getElementById('pe-medo-resultado');
@@ -1841,7 +1841,7 @@ const PE_ESCUDO_TXT = {
   'Perda':{ desc:'Um padrão ligado a separação, abandono e falta. Aponta para perdas reais ou sentidas que ainda não foram processadas.', ex:['Um luto, divórcio ou afastamento que ainda dói','Ter sido deixado/a ou abandonado/a','Perder um projeto, um lar ou uma pessoa muito importante'] }
 };
 const PE_TXT_DEF = {
-  intro: 'O corpo guarda a memória das emoções que não conseguimos viver ou expressar no momento. Cada ponto assinalado neste levantamento mostra uma zona onde essa memória ficou retida. Lê com calma: não tens de te identificar com tudo — repara naquilo que te desperta uma emoção, uma imagem ou uma recordação. É aí que está o que precisa de ser olhado.',
+  intro: 'O corpo guarda a memória das emoções que não conseguimos viver ou expressar no momento. Cada ponto assinalado nesta pesquisa mostra uma zona onde essa memória ficou retida. Lê com calma: não tens de te identificar com tudo — repara naquilo que te desperta uma emoção, uma imagem ou uma recordação. É aí que está o que precisa de ser olhado.',
   aviso: 'Este relatório é uma ferramenta de autoconhecimento no âmbito de uma terapia complementar e não substitui o acompanhamento médico ou psicológico.',
   dica: 'O mapa mostra a localização de cada ponto. Se tiveres dúvida sobre se estás a massajar o local correto, faz a massagem ao mesmo tempo que dizes em voz alta o nome da glândula ou do órgão desse ponto: a energia ajusta-se e chega ao local correto.',
   regra: 'Trata um lado de cada vez, começando pelo lado direito. Enquanto massajas os pontos de um lado, mantém uma mão na têmpora (fonte) desse mesmo lado. Quando terminares todos os pontos desse lado (frente e costas), troca a mão para a têmpora do outro lado e repete com os pontos desse lado. Se o mesmo ponto saiu nos dois lados, massaja-o em cada lado, cada um do seu lado.',
@@ -2135,9 +2135,9 @@ function peObservacaoGeral(un, escudo, ep) {
   if (!un.length) return { h:'', t:'' };
   const porCat = {}; un.forEach(p => { (porCat[p.cat] = porCat[p.cat] || []).push(p); });
   const nSist = PE_CATS_ORDEM.filter(c => porCat[c]);
-  let h = `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">Observação geral do teu levantamento</h3>`;
-  let t = 'OBSERVAÇÃO GERAL DO TEU LEVANTAMENTO\n';
-  const resumo = `No conjunto, o levantamento assinalou ${un.length} ${un.length === 1 ? 'ponto' : 'pontos'}, em ${nSist.length} ${nSist.length === 1 ? 'sistema' : 'sistemas'}. Não os leias um a um: olha para o que têm em comum, porque é isso que conta a tua história.`;
+  let h = `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">Observação geral da tua pesquisa</h3>`;
+  let t = 'OBSERVAÇÃO GERAL DO TUA PESQUISA\n';
+  const resumo = `No conjunto, a pesquisa assinalou ${un.length} ${un.length === 1 ? 'ponto' : 'pontos'}, em ${nSist.length} ${nSist.length === 1 ? 'sistema' : 'sistemas'}. Não os leias um a um: olha para o que têm em comum, porque é isso que conta a tua história.`;
   h += `<p style="font-size:0.9rem;line-height:1.6;color:#334155;">${resumo}</p>`; t += resumo + '\n\n';
   nSist.forEach(c => {
     const nomes = porCat[c].map(p => p.nome).join('; ');
@@ -2368,7 +2368,7 @@ function peConstruirPlano() {
     });
     selamento(fase === 'Frente' ? 'Fecho da frente do corpo — autoabraço, afirmações e selamento' : 'Fecho das costas — autoabraço, afirmações e selamento');
   });
-  if (!algum) { h += `<p style="font-size:0.86rem;color:#64748b;">(Nenhum ponto selecionado no levantamento.)</p>`; t += '(Nenhum ponto selecionado no levantamento.)\n'; }
+  if (!algum) { h += `<p style="font-size:0.86rem;color:#64748b;">(Nenhum ponto selecionado na pesquisa.)</p>`; t += '(Nenhum ponto selecionado na pesquisa.)\n'; }
   if (escudo !== 'Não Especificado') {
     h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">3 · Música e modulação neuroplástica</div>
       <p style="font-size:0.9rem;line-height:1.55;color:#334155;">🎧 Coloca a música relativa ao teu padrão detetado (<b>${peEsc(escudo)}</b>) e ouve a modulação neuroplástica do padrão <b>${peEsc(escudo)}</b> diariamente, ao deitar, durante 7 dias contínuos.</p>`;
@@ -2530,7 +2530,7 @@ function peRenderHub() {
   const cartoes = H.mapeamentos.slice().reverse().map(m => {
     const d = m.dados || {}; const est = peEstadoDe(m);
     const idade = peDiasDesde(m.t);
-    const aviso = (est.id === 'standby' && idade > 60) ? `<div style="font-size:0.78rem;color:#b45309;margin-top:6px;">⚠️ Já passaram ${idade} dias. Pode ser melhor fazer um novo levantamento antes de tratar.</div>` : '';
+    const aviso = (est.id === 'standby' && idade > 60) ? `<div style="font-size:0.78rem;color:#b45309;margin-top:6px;">⚠️ Já passaram ${idade} dias. Pode ser melhor fazer uma nova pesquisa antes de tratar.</div>` : '';
     const nPts = Array.isArray(d.pontos) ? new Set(d.pontos.map(p => p.k)).size : null;
     return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -2543,8 +2543,8 @@ function peRenderHub() {
   }).join('');
   el.innerHTML = `<div class="card" style="padding:20px;">
     <div style="font-size:1.1rem;font-weight:700;color:#1e3a8a;margin-bottom:6px;border-bottom:2px solid #fef3c7;padding-bottom:10px;">${peEsc(peState.patientName || '')}</div>
-    <div style="font-size:0.84rem;color:#64748b;margin-bottom:14px;">${sug || 'Ainda não há consultas de levantamento guardadas.'}</div>
-    <button onclick="window.peNovaConsultaDoHub()" style="width:100%;background:#1e3a8a;color:white;padding:14px;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:14px;">➕ Nova consulta de levantamento (n.º ${n})</button>
+    <div style="font-size:0.84rem;color:#64748b;margin-bottom:14px;">${sug || 'Ainda não há consultas de pesquisa guardadas.'}</div>
+    <button onclick="window.peNovaConsultaDoHub()" style="width:100%;background:#1e3a8a;color:white;padding:14px;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:14px;">➕ Nova consulta de pesquisa (n.º ${n})</button>
     ${cartoes || ''}
     ${peGraficoEvolucao(H.mapeamentos)}
     <div style="margin-top:16px;"><button onclick="window.peIrPasso('0')" style="background:white;border:1px solid #e2e8f0;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;">⬅ Escolher outro paciente</button></div></div>`;
@@ -2672,7 +2672,7 @@ function peAbrirLink(url) { if (typeof window.openExternalLink === 'function') w
 
 function peEnviarWhatsApp(qual) {
   const nome = (peState.patientName || '').split(' ')[0];
-  let txt = `Olá ${nome}! ${qual === 'plano' ? 'Segue o teu plano de tratamento em casa.' : 'Segue o teu relatório da consulta de levantamento.'}\n\n` + peDocTexto(qual);
+  let txt = `Olá ${nome}! ${qual === 'plano' ? 'Segue o teu plano de tratamento em casa.' : 'Segue o teu relatório da consulta de pesquisa.'}\n\n` + peDocTexto(qual);
   if (txt.length > 3500) txt = txt.slice(0, 3400) + `\n\n[…] ${qual === 'plano' ? 'O plano completo, com os mapas' : 'O relatório completo, com as imagens'}, segue em PDF.`;
   peAbrirLink(`https://wa.me/${peTelefoneWA()}?text=${encodeURIComponent(txt)}`);
 }
@@ -2736,7 +2736,7 @@ function peCarregarMapaGuardado(d) {
 
 function peIniciarTratamento(docId) {
   const m = (peState.historico.mapeamentos || []).find(x => x.docId === docId);
-  if (!m || !m.dados || !m.dados.mapa) { mostrarAviso('⚠️ Este registo é antigo e não tem os pontos guardados. Faça uma nova consulta de levantamento.'); return; }
+  if (!m || !m.dados || !m.dados.mapa) { mostrarAviso('⚠️ Este registo é antigo e não tem os pontos guardados. Faça uma nova consulta de pesquisa.'); return; }
   peCarregarMapaGuardado(m.dados);
   peRenderTratamento(m.dados.mapId);
   peIrPasso('trat');
@@ -2752,7 +2752,7 @@ function peRenderTratamento(mapId) {
   const plano = peConstruirPlano();
   el.innerHTML = `<div class="card" style="padding:20px;">
     <div style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:6px;border-bottom:2px solid #dcfce7;padding-bottom:10px;">▶ Consulta de Tratamento · sessão ${anteriores.length + 1}</div>
-    <div style="font-size:0.84rem;color:#64748b;margin-bottom:12px;">${peEsc(peState.patientName || '')} · levantamento de ${base ? peFmtData(base.t) : 'hoje'}${peEscudoFinal() !== 'Não Especificado' ? ' · Padrão: ' + peEsc(peEscudoFinal()) : ''}</div>
+    <div style="font-size:0.84rem;color:#64748b;margin-bottom:12px;">${peEsc(peState.patientName || '')} · pesquisa de ${base ? peFmtData(base.t) : 'hoje'}${peEscudoFinal() !== 'Não Especificado' ? ' · Padrão: ' + peEsc(peEscudoFinal()) : ''}</div>
     ${anteriores.length ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px;margin-bottom:12px;font-size:0.82rem;color:#166534;"><b>Sessões anteriores:</b><ul style="margin:4px 0 0 18px;padding:0;">${anteriores.map(a => `<li>${peFmtData(a.t)}${a.dados.notas ? ' — ' + peEsc(a.dados.notas) : ''}</li>`).join('')}</ul></div>` : ''}
     <div id="pe-doc-paciente" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">${plano.html}</div>
     <div style="font-weight:700;color:#1e3a8a;margin:16px 0 6px;">Pontos trabalhados hoje</div>
@@ -2805,7 +2805,7 @@ async function peEmitirRelatorio() {
     relatorio+=`\nFecho Diagnóstico: ${escudo}\n`;
     relatorio+=peLinhaEpoca();
   } else {
-    relatorio+=`MÉTODO: LEVANTAMENTO SUBCONSCIENTE VISUAL\n${'-'.repeat(40)}\n`;
+    relatorio+=`MÉTODO: PESQUISA SUBCONSCIENTE VISUAL\n${'-'.repeat(40)}\n`;
     peState.quadrants.forEach(q=>{
       const qData=peState.mappingData[q.val];
       if (!qData) return;
@@ -2998,7 +2998,7 @@ async function peRejeitarPedido(targetTenantId, btn) {
   };
 }
 
-// ─── CONSOLIDAÇÃO DE PADRÕES (Via 2 — Levantamento Visual) ─────────
+// ─── CONSOLIDAÇÃO DE PADRÕES (Via 2 — Pesquisa Visual) ─────────
 
 function peConsolidarEscudosMapa() {
   const shields = Object.values(peState.mappingData)
@@ -3022,7 +3022,7 @@ function peRenderEscudosMapa() {
   if (detected.length === 0) { el.style.display='none'; return; }
 
   const descMap = {
-    'Desproteção':    'O levantamento revela tensões ligadas a injustiça, insegurança e acusação. O subconsciente regista áreas onde o paciente sente ausência de proteção ou apoio.',
+    'Desproteção':    'A pesquisa revela tensões ligadas a injustiça, insegurança e acusação. O subconsciente regista áreas onde o paciente sente ausência de proteção ou apoio.',
     'Desvalorização': 'Os pontos mapeados apontam para memórias de inferioridade, rejeição ou incompreensão. O corpo retém um padrão de baixa estima e comparação negativa.',
     'Impotência':     'O mapa subconsciente indica retenção de eventos em que o paciente sentiu que nada do que fazia tinha efeito — paralisia ou incapacidade aprendida.',
     'Sobrevivência':  'As tensões mapeadas refletem pressão de sobrevivência — escassez, sufoco e indignação — física, emocional ou económica.',
@@ -3037,7 +3037,7 @@ function peRenderEscudosMapa() {
 
   let html = `<div style="background:${corBg};border:1px solid ${corBdr};border-radius:12px;padding:18px;">
     <div style="font-weight:700;color:${corTit};font-size:1rem;margin-bottom:14px;">
-      ${isMisto?'⚠️ Padrões Mistos Detectados no Levantamento':'🎯 Padrão Subconsciente Detectado'}
+      ${isMisto?'⚠️ Padrões Mistos Detectados na Pesquisa':'🎯 Padrão Subconsciente Detectado'}
     </div>`;
 
   detected.forEach(([shield,count],i) => {
