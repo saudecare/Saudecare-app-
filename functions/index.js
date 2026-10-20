@@ -277,3 +277,4 @@ exports.deleteTenantAccount = onCall({ timeoutSeconds: 540, memory: '512MiB' }, 
 // ── Licenças de teste da Pesquisa Emocional (links, acessos, código protegido)
 Object.assign(exports, require('./pe-licencas'));
 Object.assign(exports, require('./pe-termos'));
+Object.assign(exports, require('./lembretes'));

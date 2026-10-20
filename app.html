@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-20-37';
+const APP_VERSION = '2026-10-20-38';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -9324,7 +9324,16 @@ async function renderProfileSection(main, section){
         <input type="checkbox" id="pfAutoEmailReminders" style="width:auto;" ${currentTenantDoc?.remindersSettings?.autoEmailReminders ? 'checked' : ''}>
         Enviar automaticamente o lembrete por email, 24h antes de cada consulta
       </label>
-      <p class="muted" style="margin-top:6px;">Só funciona para pacientes com email registado na ficha. Precisa de configuração adicional (chave do serviço de email) — se ainda não fez essa parte, fale comigo.</p>
+      <p class="muted" style="margin-top:6px;">Os lembretes saem do <b>seu</b> e-mail Gmail, 24h antes de cada consulta, só para pacientes com e-mail na ficha.</p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-top:8px;">
+        <b>✉️ O seu e-mail de envio</b>
+        <div class="muted" id="pfLembEstado" style="margin:4px 0 8px;">${currentTenantDoc?.remindersSettings?.emailLigado ? '✅ Ligado: ' + escapeHtml(currentTenantDoc.remindersSettings.emailRemetente || '') : 'Ainda não ligado.'}</div>
+        <label>Seu e-mail (Gmail)</label><input id="pfLembEmail" type="email" value="${escapeHtml(currentTenantDoc?.remindersSettings?.emailRemetente || (tenantId === 'hikari-terapias' ? 'hikarifafe@gmail.com' : ''))}">
+        <label>Palavra-passe de aplicação do Gmail (16 letras)</label><input id="pfLembPass" type="password" autocomplete="off" placeholder="xxxx xxxx xxxx xxxx">
+        <p class="muted" style="margin:4px 0 8px;">Não é a palavra-passe normal. Crie-a aqui: <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a> (precisa de ter a verificação em dois passos ativa).</p>
+        <button class="primary" onclick="ligarLembretesEmail()">Ligar e enviar e-mail de teste</button>
+        ${currentTenantDoc?.remindersSettings?.emailLigado ? '<button class="ghost" style="margin-left:6px;" onclick="desligarLembretesEmail()">Desligar</button>' : ''}
+      </div>
       <button class="ghost" style="margin-top:8px;" onclick="saveAutoReminderSettings()">Guardar preferência de envio automático</button>
     `;
   } else if (section === 'equipa'){
@@ -9655,8 +9664,18 @@ window.saveMessageTemplates = async function(){
   toast('Modelos de mensagens guardados.');
 };
 
+window.ligarLembretesEmail = async function(){
+  const email = document.getElementById('pfLembEmail').value.trim(), pass = document.getElementById('pfLembPass').value;
+  try { await window.peChamar('lembretesLigar', { email, pass }); toast('✅ Ligado. Enviámos um e-mail de teste para ' + email + '.');
+    const snap = await getDoc(doc(db, 'tenants', tenantId)); currentTenantDoc = snap.data(); document.getElementById('pfLembPass').value=''; document.getElementById('pfLembEstado').textContent = '✅ Ligado: ' + email;
+  } catch(e){ toast(e.message || 'Não foi possível ligar.', true); }
+};
+window.desligarLembretesEmail = async function(){
+  try { await window.peChamar('lembretesDesligar', {}); toast('Lembretes por e-mail desligados.'); const snap = await getDoc(doc(db, 'tenants', tenantId)); currentTenantDoc = snap.data(); openProfileSection('mensagens'); } catch(e){ toast(e.message || 'Erro.', true); }
+};
 window.saveAutoReminderSettings = async function(){
   const autoEmailReminders = document.getElementById('pfAutoEmailReminders').checked;
+  if (autoEmailReminders && !currentTenantDoc?.remindersSettings?.emailLigado){ toast('Ligue primeiro o seu e-mail (acima).', true); return; }
   await updateDoc(doc(db, 'tenants', tenantId), {
     remindersSettings: { ...(currentTenantDoc?.remindersSettings||{}), autoEmailReminders }
   });
