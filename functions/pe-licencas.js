@@ -141,7 +141,7 @@ exports.peAtivar = onCall(async (request) => {
     createdAt: FieldValue.serverTimestamp()
   });
   await auth.setCustomUserClaims(uid, { tenantId: idTenant(id), role: 'owner', peLic: id });
-  await ref.update({ estado: 'ativa', uid, email: String(email).toLowerCase(), ativadaEm: FieldValue.serverTimestamp(), expiraEm: expira });
+  await ref.update({ estado: 'ativa', uid, email: String(email).toLowerCase(), ativadaEm: FieldValue.serverTimestamp(), expiraEm: expira, termosAceitesEm: (request.data || {}).termos === true ? FieldValue.serverTimestamp() : null });
   return { ok: true };
 });
 
