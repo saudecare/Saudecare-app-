@@ -1024,7 +1024,7 @@ function peIniciarVia() {
     if (sel.length===0) return mostrarAviso('⚠️ Selecione pelo menos uma Zona a mapear.');
     peState.quadrants=sel; peState.qIdx=0; peState.mappingData={};
     peState.hasBack=sel.some(q=>q.val.includes('Costas'));
-    sel.forEach(q=>{ if(!peState.mappingData[q.val]) { const cfg=peLerConfig(); peState.mappingData[q.val]={desc:q.desc,selectedPoints:new Set(),lateralNotes:'',lateralMarks:[],shield:'Não Especificado',epoch:'Transgeracional',epochTime:'',categories:JSON.parse(JSON.stringify(cfg.categories))}; } });
+    sel.forEach(q=>{ if(!peState.mappingData[q.val]) { const cfg=peLerConfig(); peState.mappingData[q.val]={visitada:false,desc:q.desc,selectedPoints:new Set(),lateralNotes:'',lateralMarks:[],shield:'Não Especificado',epoch:'Transgeracional',epochTime:'',categories:JSON.parse(JSON.stringify(cfg.categories))}; } });
     peIrPasso('3b'); peMostrarZonas();
   }
 }
@@ -1034,7 +1034,7 @@ function peCarregarQuadrante() {
   if (peState.mappingData[qName]) peState.mappingData[qName].visitada=true;
   const be=document.getElementById('pe-btn-edit-mapa'); if(be) be.style.display='';
   const titulo=document.getElementById('pe-mapa-titulo');
-  if (titulo) titulo.textContent=`Pesquisa Visual » ${qName} (${peState.qIdx+1}/${peState.quadrants.length})`;
+  if (titulo) titulo.textContent=`Pesquisa Visual » ${qName}`;
   const corpo=document.getElementById('pe-mapa-corpo'); if(corpo) corpo.style.display='flex';
   const fin=document.getElementById('pe-fecho-final'); if(fin) fin.style.display='none';
   const rod=document.getElementById('pe-mapa-rodape'); if(rod) rod.style.display='flex';
@@ -1083,7 +1083,7 @@ function peMostrarZonas() {
   const titulo=document.getElementById('pe-mapa-titulo'); if (titulo) titulo.textContent='Pesquisa Visual » Zonas a Mapear';
   const nVis=peState.quadrants.filter(q=>peState.mappingData[q.val]?.visitada).length;
   box.style.display='block';
-  box.innerHTML=peState.quadrants.map((q,i)=>{
+  box.innerHTML=`<div style="font-size:0.85rem;color:#64748b;margin-bottom:12px;">${nVis} de ${peState.quadrants.length} zona${peState.quadrants.length===1?'':'s'} mapeada${nVis===1?'':'s'}. Escolha a zona a mapear:</div>`+peState.quadrants.map((q,i)=>{
     const d=peState.mappingData[q.val]||{}; const n=d.selectedPoints?d.selectedPoints.size:0;
     const lado=q.val.replace(/^Frente - /,'frente · ').replace(/^Costas - /,'costas · ');
     return `<button onclick="window.peIniciarZona(${i})" style="display:block;width:100%;text-align:left;margin-bottom:10px;padding:16px;border:2px solid ${d.visitada?'#16a34a':'#1e3a8a'};background:${d.visitada?'#f0fdf4':'#eff6ff'};border-radius:10px;cursor:pointer;">
@@ -1091,7 +1091,7 @@ function peMostrarZonas() {
       <div style="font-size:0.78rem;color:#64748b;margin-top:4px;">${q.val}${d.visitada?` · ${n} ponto${n===1?'':'s'} marcado${n===1?'':'s'}`:''}</div></button>`;
   }).join('')+
   `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
-    <button onclick="window.peIrPasso('2')" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Cancelar</button>
+    <button onclick="window.peCancelarMapeamento()" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Cancelar</button>
     <button onclick="window.peAbrirFecho()" style="background:#16a34a;color:white;padding:12px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">✅ Terminar Mapeamento${nVis?` (${nVis})`:''}</button>
   </div>`;
   peRolarTopo();
@@ -1109,8 +1109,15 @@ function peProximoQuadrante() { peSeguinte(); }
 
 const PE_ESCUDOS=['Desproteção','Desvalorização','Impotência','Sobrevivência','Perda'];
 
+function peCancelarMapeamento() {
+  const feito=peState.quadrants.some(q=>peState.mappingData[q.val]?.visitada);
+  if (feito && !confirm('Cancelar o mapeamento? O que já marcou será perdido.')) return;
+  peIrPasso('2');
+}
+
 function peAbrirFecho() {
   peGuardarNotasLaterais();
+  if (!peState.quadrants.some(q=>peState.mappingData[q.val]?.visitada)) { mostrarAviso('⚠️ Mapeie pelo menos uma zona antes de terminar.'); return; }
   const box=document.getElementById('pe-fecho-final'); if (!box) return;
   const corpo=document.getElementById('pe-mapa-corpo'); if (corpo) corpo.style.display='none';
   const rod=document.getElementById('pe-mapa-rodape'); if (rod) rod.style.display='none';
@@ -1713,6 +1720,7 @@ async function peEmitirRelatorio() {
     peState.quadrants.forEach(q=>{
       const qData=peState.mappingData[q.val];
       if (!qData) return;
+      if (qData.visitada===false) return;
       relatorio+=`\n[ ${q.val.toUpperCase()} ]\nSignificado: ${q.desc}\n\nPONTOS DETETADOS:\n`;
       let hasPoints=false;
       qData.categories.forEach(cat=>{ cat.points.forEach(p=>{ if(qData.selectedPoints.has(p.id)){hasPoints=true;relatorio+=`  — ${p.name} (${p.organ}): ${p.desc}\n`;if(p.r)relatorio+=`    > Reflexão: ${p.r}\n`;} }); });
@@ -2168,6 +2176,7 @@ window.peToggleQuadrante       = peToggleQuadrante;
 window.peIniciarVia            = peIniciarVia;
 window.peProximoQuadrante      = peProximoQuadrante;
 window.peSeguinte = peSeguinte;
+window.peCancelarMapeamento = peCancelarMapeamento;
 window.peMostrarZonas = peMostrarZonas;
 window.peIniciarZona = peIniciarZona;
 window.peAbrirFecho = peAbrirFecho;
