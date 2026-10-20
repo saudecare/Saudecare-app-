@@ -33,43 +33,43 @@ const PE_CAT = [
   ]},
   { id:'lateral', name:'Lateralidade', cor:'#b45309', points:[] },
   { id:'superior', name:'Sistema Superior', cor:'#1e3a8a', points:[
-    {id:'N1',name:'Epífise',x:100,y:100,organ:'Pineal',desc:'Distúrbio circadiano.',r:'Como tem sido o teu sono?'},
-    {id:'N2',name:'Hipotálamo',x:100,y:118,organ:'SNC',desc:'Alarme e fobias.',r:'Sentes o teu corpo sempre em alerta?'},
-    {id:'N3',name:'Hipófise',x:100,y:136,organ:'Pituitária',desc:'Autoimagem fragilizada.',r:'Tens duvidado do teu próprio valor?'},
-    {id:'N4',name:'Amígdalas',x:100,y:154,organ:'Garganta',desc:'Incapacidade de engolir.',r:'Existe alguma situação "entalada"?'},
-    {id:'N5',name:'Paratiroides',x:100,y:173,organ:'Paratiroides',desc:'Fadiga e urgência.',r:'Vives numa luta constante contra o relógio?'},
-    {id:'N6',name:'Timo',x:100,y:191,organ:'Timo',desc:'Carência de reconhecimento.',r:'Sentes que ninguém te valoriza?'},
-    {id:'N7',name:'Glândulas Salivares',x:100,y:209,organ:'G. Salivares',desc:'Choro retido.',r:'Quantas lágrimas já engoliste?'},
-    {id:'N8',name:'Tiroide',x:100,y:227,organ:'Tiroide',desc:'Impotência em agir.',r:'As tuas ações parecem lentas?'},
-    {id:'N9',name:'Esófago',x:100,y:245,organ:'Esófago',desc:'Engolir calado.',r:'Quantas vezes tens calado a tua própria voz?'}
+    {id:'N1',name:'Epífise',x:84,y:100,organ:'Pineal',desc:'Distúrbio circadiano.',r:'Como tem sido o teu sono?'},
+    {id:'N2',name:'Hipotálamo',x:116,y:118,organ:'SNC',desc:'Alarme e fobias.',r:'Sentes o teu corpo sempre em alerta?'},
+    {id:'N3',name:'Hipófise',x:84,y:136,organ:'Pituitária',desc:'Autoimagem fragilizada.',r:'Tens duvidado do teu próprio valor?'},
+    {id:'N4',name:'Amígdalas',x:116,y:154,organ:'Garganta',desc:'Incapacidade de engolir.',r:'Existe alguma situação "entalada"?'},
+    {id:'N5',name:'Paratiroides',x:84,y:173,organ:'Paratiroides',desc:'Fadiga e urgência.',r:'Vives numa luta constante contra o relógio?'},
+    {id:'N6',name:'Timo',x:116,y:191,organ:'Timo',desc:'Carência de reconhecimento.',r:'Sentes que ninguém te valoriza?'},
+    {id:'N7',name:'Glândulas Salivares e Lacrimais',x:84,y:209,organ:'G. Salivares',desc:'Choro retido.',r:'Quantas lágrimas já engoliste?'},
+    {id:'N8',name:'Tiroide',x:116,y:227,organ:'Tiroide',desc:'Impotência em agir.',r:'As tuas ações parecem lentas?'},
+    {id:'N9',name:'Esófago',x:84,y:245,organ:'Esófago',desc:'Engolir calado.',r:'Quantas vezes tens calado a tua própria voz?'}
   ]},
-  { id:'central', name:'Sistema Central', cor:'#1e3a8a', points:[
-    {id:'C1',name:'Linfáticos',x:100,y:100,organ:'Linfáticos',desc:'Sobrecarga familiar.',r:'O sistema familiar pesa sobre ti?'},
-    {id:'C2',name:'Intestino Grosso',x:100,y:195,organ:'Int. Grosso',desc:'Apego, culpas.',r:'O que precisas urgentemente de perdoar?'},
-    {id:'C3',name:'Coração',x:110,y:120,organ:'Coração',desc:'Autoabandono.',r:'Tens-te abandonado para ser aceite?'},
-    {id:'C4',name:'Brônquios',x:90,y:120,organ:'Brônquios',desc:'Invasão territorial.',r:'O teu espaço pessoal é invadido?'},
-    {id:'C5',name:'Alvéolos',x:120,y:135,organ:'Pulmão',desc:'Receio de perda.',r:'Qual é o teu maior medo?'},
-    {id:'C6',name:'Intestino Delgado',x:100,y:185,organ:'Int. Delgado',desc:'Crença na escassez.',r:'Acreditas que não há amor suficiente para ti?'},
-    {id:'C7',name:'Baço',x:130,y:155,organ:'Baço',desc:'Cansaço relacional.',r:'Qual é a relação que te drena a energia?'},
-    {id:'C8',name:'Fígado',x:70,y:155,organ:'Fígado',desc:'Raiva e injustiça.',r:'O que te foi tirado injustamente?'},
-    {id:'C9',name:'Estômago',x:105,y:165,organ:'Estômago',desc:'Ansiedade mental.',r:'Digeres excessivamente preocupações?'},
-    {id:'C10',name:'Duodeno',x:95,y:175,organ:'Duodeno',desc:'Frustração por perdas.',r:'Sentes-te bloqueado após uma frustração?'},
-    {id:'C11',name:'Vesícula Biliar',x:75,y:175,organ:'Vesícula',desc:'Decisões adiadas.',r:'Que escolha continuas a adiar?'},
-    {id:'C12',name:'Pâncreas',x:120,y:175,organ:'Pâncreas',desc:'Perda de doçura.',r:'Quando é que a vida perdeu a doçura?'}
+  { id:'central', name:'Sistema Central', cor:'#1e3a8a', v:2, points:[
+    {id:'C1',name:'I – Vasos Linfáticos, Artérias e Veias',x:100,y:92,organ:'Linfáticos',desc:'Sobrecarga familiar.',r:'O sistema familiar pesa sobre ti?'},
+    {id:'C2',name:'II – Intestino Grosso',x:100,y:113,organ:'Int. Grosso',desc:'Apego, culpas.',r:'O que precisas urgentemente de perdoar?'},
+    {id:'C3',name:'III – Coração',x:100,y:134,organ:'Coração',desc:'Autoabandono.',r:'Tens-te abandonado para ser aceite?'},
+    {id:'C4',name:'IV – Brônquios',x:100,y:155,organ:'Brônquios',desc:'Invasão territorial.',r:'O teu espaço pessoal é invadido?'},
+    {id:'C5',name:'V – Alvéolos Pulmonares',x:100,y:176,organ:'Pulmão',desc:'Receio de perda.',r:'Qual é o teu maior medo?'},
+    {id:'C6',name:'VI – Intestino Delgado',x:100,y:196,organ:'Int. Delgado',desc:'Crença na escassez.',r:'Acreditas que não há amor suficiente para ti?'},
+    {id:'C7',name:'VII – Baço',x:100,y:217,organ:'Baço',desc:'Cansaço relacional.',r:'Qual é a relação que te drena a energia?'},
+    {id:'C8',name:'VIII – Fígado',x:100,y:238,organ:'Fígado',desc:'Raiva e injustiça.',r:'O que te foi tirado injustamente?'},
+    {id:'C9',name:'IX – Estômago',x:100,y:259,organ:'Estômago',desc:'Ansiedade mental.',r:'Digeres excessivamente preocupações?'},
+    {id:'C10',name:'X – Duodeno',x:100,y:280,organ:'Duodeno',desc:'Frustração por perdas.',r:'Sentes-te bloqueado após uma frustração?'},
+    {id:'C11',name:'XI – Vesícula Biliar',x:100,y:301,organ:'Vesícula',desc:'Decisões adiadas.',r:'Que escolha continuas a adiar?'},
+    {id:'C12',name:'XII – Pâncreas',x:100,y:322,organ:'Pâncreas',desc:'Perda de doçura.',r:'Quando é que a vida perdeu a doçura?'}
   ]},
-  { id:'inferior', name:'Sistema Inferior', cor:'#1e3a8a', points:[
-    {id:'f1d',name:'Mamárias Direito',x:114,y:205,organ:'Mamas',desc:'Conflitos no cuidar.',r:'Tens sentido exaustão na tua forma de cuidar?'},
-    {id:'f1e',name:'Mamárias Esquerdo',x:86,y:205,organ:'Mamas',desc:'Conflitos afetivos.',r:'Sentes falta de carinho da infância?'},
-    {id:'f2d',name:'Útero / Próstata Direito',x:115,y:230,organ:'Útero/Próstata',desc:'Invasão íntima.',r:'O teu espaço sagrado foi invadido?'},
-    {id:'f2e',name:'Útero / Próstata Esquerdo',x:85,y:230,organ:'Útero/Próstata',desc:'Perda estabilidade.',r:'Alguma separação fez desmoronar o teu lar?'},
-    {id:'f3d',name:'Suprarrenal Direito',x:116,y:255,organ:'Suprarrenais',desc:'Esgotamento alerta.',r:'O teu corpo já não tem reservas para lutar?'},
-    {id:'f3e',name:'Suprarrenal Esquerdo',x:84,y:255,organ:'Suprarrenais',desc:'Exaustão forças.',r:'O que te fez desistir de lutar?'},
-    {id:'f4d',name:'Gonadal Direito',x:117,y:285,organ:'Ovários/Testículos',desc:'Lutos projetos.',r:'Que projeto profundo tiveste de ver morrer?'},
-    {id:'f4e',name:'Gonadal Esquerdo',x:83,y:285,organ:'Ovários/Testículos',desc:'Perda de linhagem.',r:'Que perda a tua família ainda não curou?'},
-    {id:'f5d',name:'Rim Direito',x:119,y:320,organ:'Rins',desc:'Insegurança perdas.',r:'Tens medo de falhar financeiramente?'},
-    {id:'f5e',name:'Rim Esquerdo',x:81,y:320,organ:'Rins',desc:'Quebra confiança.',r:'Foste atraiçoado por alguém?'},
-    {id:'f6d',name:'Bexiga Direito',x:121,y:360,organ:'Bexiga',desc:'Perda de rumo.',r:'Já não sabes que lugar ocupas na sociedade?'},
-    {id:'f6e',name:'Bexiga Esquerdo',x:79,y:360,organ:'Bexiga',desc:'Espaço territorial.',r:'Sentes que não podes ser quem és?'}
+  { id:'inferior', name:'Sistema Inferior', cor:'#1e3a8a', v:2, points:[
+    {id:'f1d',name:'LA1 – Glândulas Mamárias',x:138,y:130,organ:'Perna direita',desc:'Conflitos no cuidar.',r:'Tens sentido exaustão na tua forma de cuidar?'},
+    {id:'f1e',name:'LA1 – Glândulas Mamárias',x:62,y:130,organ:'Perna esquerda',desc:'Conflitos afetivos.',r:'Sentes falta de carinho da infância?'},
+    {id:'f2d',name:'LA2 – Útero / Próstata',x:138,y:170,organ:'Perna direita',desc:'Invasão íntima.',r:'O teu espaço sagrado foi invadido?'},
+    {id:'f2e',name:'LA2 – Útero / Próstata',x:62,y:170,organ:'Perna esquerda',desc:'Perda estabilidade.',r:'Alguma separação fez desmoronar o teu lar?'},
+    {id:'f3d',name:'LA3 – Suprarrenais',x:138,y:210,organ:'Perna direita',desc:'Esgotamento alerta.',r:'O teu corpo já não tem reservas para lutar?'},
+    {id:'f3e',name:'LA3 – Suprarrenais',x:62,y:210,organ:'Perna esquerda',desc:'Exaustão forças.',r:'O que te fez desistir de lutar?'},
+    {id:'f4d',name:'LA4 – Testículos / Ovários',x:138,y:250,organ:'Perna direita',desc:'Lutos projetos.',r:'Que projeto profundo tiveste de ver morrer?'},
+    {id:'f4e',name:'LA4 – Testículos / Ovários',x:62,y:250,organ:'Perna esquerda',desc:'Perda de linhagem.',r:'Que perda a tua família ainda não curou?'},
+    {id:'f5d',name:'LA5 – Rim',x:138,y:290,organ:'Perna direita',desc:'Insegurança perdas.',r:'Tens medo de falhar financeiramente?'},
+    {id:'f5e',name:'LA5 – Rim',x:62,y:290,organ:'Perna esquerda',desc:'Quebra confiança.',r:'Foste atraiçoado por alguém?'},
+    {id:'f6d',name:'LA6 – Bexiga',x:138,y:330,organ:'Perna direita',desc:'Perda de rumo.',r:'Já não sabes que lugar ocupas na sociedade?'},
+    {id:'f6e',name:'LA6 – Bexiga',x:62,y:330,organ:'Perna esquerda',desc:'Espaço territorial.',r:'Sentes que não podes ser quem és?'}
   ]}
 ];
 
@@ -103,7 +103,30 @@ const PE_PESCOCO_SVG = `<defs>
 </g>`;
 
 // Contorno da Lateralidade: percorre o corpo por fora, como se não tivesse braços.
-const PE_LATERAL_CONTORNO = `<path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 132 379 L 112 379 L 104 285 L 100 196 L 96 285 L 88 379 L 68 379 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="9" stroke-linejoin="round" opacity=".22"/><path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 132 379 L 112 379 L 104 285 L 100 196 L 96 285 L 88 379 L 68 379 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+const PE_LATERAL_CONTORNO = `<path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 131 376 C 144 376 154 382 154 390 C 154 394 150 395 146 395 L 114 395 C 111 392 111 386 111 380 L 104 285 L 100 196 L 96 285 L 89 380 C 89 386 89 392 86 395 L 54 395 C 50 395 46 394 46 390 C 46 382 56 376 69 376 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="9" stroke-linejoin="round" opacity=".22"/><path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 131 376 C 144 376 154 382 154 390 C 154 394 150 395 146 395 L 114 395 C 111 392 111 386 111 380 L 104 285 L 100 196 L 96 285 L 89 380 C 89 386 89 392 86 395 L 54 395 C 50 395 46 394 46 390 C 46 382 56 376 69 376 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M 158 187 L 174 187 C 180 198 181 214 177 228 C 173 238 160 238 157 226 C 154 212 155 198 158 187 Z" fill="none" stroke="#dc2626" stroke-width="9" stroke-linejoin="round" opacity=".22"/><path d="M 158 187 L 174 187 C 180 198 181 214 177 228 C 173 238 160 238 157 226 C 154 212 155 198 158 187 Z" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M 42 187 L 26 187 C 20 198 19 214 23 228 C 27 238 40 238 43 226 C 46 212 45 198 42 187 Z" fill="none" stroke="#dc2626" stroke-width="9" stroke-linejoin="round" opacity=".22"/><path d="M 42 187 L 26 187 C 20 198 19 214 23 228 C 27 238 40 238 43 226 C 46 212 45 198 42 187 Z" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+// Imagem grande do tronco, da cinta para cima, para o Sistema Central (igual na frente e nas costas).
+const PE_CENTRAL_SVG = `<g stroke-linejoin="round" stroke-linecap="round">
+<path d="M 84 60 C 70 66 40 70 20 86 C 10 94 8 110 10 140 L 22 340 L 178 340 L 190 140 C 192 110 190 94 180 86 C 160 70 130 66 116 60 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
+<rect x="84" y="22" width="32" height="44" rx="6" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
+<path d="M 34 150 L 30 336 M 166 150 L 170 336" fill="none" stroke="#94a3b8" stroke-width="1.2"/>
+<path d="M 100 70 L 100 332" fill="none" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 3"/>
+<path d="M 100 76 C 80 82 56 84 40 90 M 100 76 C 120 82 144 84 160 90" fill="none" stroke="#94a3b8" stroke-width="1.1" opacity=".8"/>
+<rect x="22" y="330" width="156" height="14" rx="3" fill="#64748b" stroke="#475569" stroke-width="1"/>
+</g>
+<text x="100" y="360" text-anchor="middle" font-size="9" font-weight="700" fill="#475569">CINTA</text>
+<text x="100" y="14" text-anchor="middle" font-size="10" font-weight="800" fill="#1e3a8a">Da cinta para cima</text>`;
+
+// Imagem grande da cinta para baixo (ancas, coxas e joelhos) para o Sistema Inferior (igual na frente e nas costas).
+const PE_INFERIOR_SVG = `<g stroke-linejoin="round" stroke-linecap="round">
+<path d="M 28 26 C 18 60 16 110 26 170 C 30 220 34 280 38 330 C 40 360 42 385 44 400 L 86 400 C 86 385 86 360 84 330 C 84 280 92 210 99 150 L 100 26 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
+<path d="M 172 26 C 182 60 184 110 174 170 C 170 220 166 280 162 330 C 160 360 158 385 156 400 L 114 400 C 114 385 114 360 116 330 C 116 280 108 210 101 150 L 100 26 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
+<circle cx="62" cy="332" r="15" fill="none" stroke="#94a3b8" stroke-width="1" opacity=".8"/>
+<circle cx="138" cy="332" r="15" fill="none" stroke="#94a3b8" stroke-width="1" opacity=".8"/>
+<rect x="26" y="14" width="148" height="14" rx="3" fill="#64748b" stroke="#475569" stroke-width="1"/>
+</g>
+<text x="100" y="10" text-anchor="middle" font-size="10" font-weight="800" fill="#1e3a8a">Da cinta para baixo</text>
+<text x="100" y="25" text-anchor="middle" font-size="7" font-weight="700" fill="white">CINTA</text>`;
 
 const PE_MEDOS = [
   {name:"Bloco 1 — Medo da Pobreza",q:["Passei por muitas situações difíceis relacionadas ao dinheiro","A minha relação com o meu pai foi bastante conturbada","Presenciei escassez de alimento em casa","Preocupo-me e acredito que o meu futuro não será promissor"]},
@@ -130,7 +153,7 @@ const PE_ESCUDOS_AFINIDADES = {
   "Perda": { libera:"falta; separação; abandono; insegurança; rejeição; medo; incertezas", afi:"«Eu comando que toda a dor, tristeza e sensação de perda sejam liberadas gentilmente agora. Eu comando que todo o meu ser seja preenchido com paz, amor e aceitação.»" }
 };
 
-const PE_CORPO_SVG = `<g fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"><circle cx="100" cy="35" r="22"/><rect x="94" y="56" width="12" height="14" rx="2"/><path d="M 68 70 L 132 70 C 140 95 134 160 125 185 L 75 185 C 66 160 60 95 68 70 Z"/><path d="M 68 70 L 46 135 L 38 190 L 30 190 L 40 130 L 64 70 Z"/><path d="M 132 70 L 154 135 L 162 190 L 170 190 L 160 130 L 136 70 Z"/><path d="M 76 185 L 74 285 L 72 375 L 84 375 L 92 285 L 97 185 Z"/><path d="M 124 185 L 126 285 L 128 375 L 116 375 L 108 285 L 103 185 Z"/></g>`;
+const PE_CORPO_SVG = `<g fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"><circle cx="100" cy="35" r="22"/><rect x="94" y="56" width="12" height="14" rx="2"/><path d="M 68 70 L 132 70 C 140 95 134 160 125 185 L 75 185 C 66 160 60 95 68 70 Z"/><path d="M 68 70 L 46 135 L 38 190 L 30 190 L 40 130 L 64 70 Z"/><path d="M 132 70 L 154 135 L 162 190 L 170 190 L 160 130 L 136 70 Z"/><path d="M 76 185 L 74 285 L 72 375 L 84 375 L 92 285 L 97 185 Z"/><path d="M 124 185 L 126 285 L 128 375 L 116 375 L 108 285 L 103 185 Z"/><path d="M 162 190 L 170 190 C 175 198 176 212 173 224 C 171 232 164 234 161 227 C 158 216 159 202 162 190 Z"/><path d="M 38 190 L 30 190 C 25 198 24 212 27 224 C 29 232 36 234 39 227 C 42 216 41 202 38 190 Z"/><path d="M 116 375 L 128 375 C 140 375 148 381 148 389 L 118 389 C 116 386 116 381 116 375 Z"/><path d="M 84 375 L 72 375 C 60 375 52 381 52 389 L 82 389 C 84 386 84 381 84 375 Z"/><path d="M 161 200 C 155 204 154 212 158 218 M 39 200 C 45 204 46 212 42 218" fill="none"/></g>`;
 
 // ─── ESTADO ───────────────────────────────────────────────────────
 
@@ -170,11 +193,17 @@ function temPesquisaEmocional() {
 // Posições dos pontos do mapa guardadas na conta ({id:[x,y]}), iguais em todos os dispositivos.
 window.__pePosicoes = null;
 
+// Chave sob a qual a posição de um ponto fica guardada (muda quando o desenho da categoria muda).
+function peChavePos(id) {
+  for (const c of PE_CAT) if (c.points.some(p => p.id === id)) return (c.v || 1) > 1 ? `${id}@${c.v}` : id;
+  return id;
+}
+
 function peAplicarPosicoes(cfg) {
   const m = window.__pePosicoes;
   if (!m) return cfg;
   cfg.categories.forEach(cat => cat.points.forEach(pt => {
-    const v = m[pt.id];
+    const v = m[peChavePos(pt.id)];
     if (Array.isArray(v) && v.length === 2 && isFinite(v[0]) && isFinite(v[1])) { pt.x = +v[0]; pt.y = +v[1]; }
   }));
   return cfg;
@@ -189,11 +218,14 @@ function peMapaLocal() {
     const saved = localStorage.getItem(`pe_cfg_${tenantId()}`);
     if (!saved) return out;
     const cfg = JSON.parse(saved);
-    const orig = {}; PE_CAT.forEach(cat => cat.points.forEach(pt => { orig[pt.id] = pt; }));
-    (cfg.categories || []).forEach(cat => (cat.points || []).forEach(pt => {
-      const o = orig[pt.id];
-      if (o && (pt.x !== o.x || pt.y !== o.y)) out[pt.id] = [pt.x, pt.y];
-    }));
+    (cfg.categories || []).forEach(sc => {
+      const def = PE_CAT.find(c => c.id === sc.id);
+      if (!def || (sc.v || 1) !== (def.v || 1)) return;   // desenho antigo: não aproveitar
+      (sc.points || []).forEach(pt => {
+        const o = def.points.find(d => d.id === pt.id);
+        if (o && (pt.x !== o.x || pt.y !== o.y)) out[peChavePos(pt.id)] = [pt.x, pt.y];
+      });
+    });
   } catch(_) {}
   return out;
 }
@@ -230,8 +262,12 @@ function peSanearConfig(cfg) {
   const out = [];
   PE_CAT.forEach(def => {
     const sv = cfg.categories.find(c => c.id === def.id);
-    const igual = sv && Array.isArray(sv.points) && sv.points.length === def.points.length && def.points.every(d => sv.points.some(x => x.id === d.id));
-    out.push(igual ? sv : JSON.parse(JSON.stringify(def)));
+    const igual = sv && (sv.v || 1) === (def.v || 1) && Array.isArray(sv.points) && sv.points.length === def.points.length && def.points.every(d => sv.points.some(x => x.id === d.id));
+    if (igual) {
+      const novo = JSON.parse(JSON.stringify(def));
+      novo.points.forEach(np => { const sp = sv.points.find(x => x.id === np.id); if (sp && isFinite(sp.x) && isFinite(sp.y)) { np.x = sp.x; np.y = sp.y; } });
+      out.push(novo);
+    } else out.push(JSON.parse(JSON.stringify(def)));
   });
   cfg.categories = out;
   return cfg;
@@ -382,6 +418,7 @@ async function renderPesquisaEmocional(main) {
               <div id="pe-svg-wrapper" style="background:white;border:1px solid #e2e8f0;border-radius:10px;width:100%;aspect-ratio:360/400;overflow:hidden;touch-action:none;position:relative;">
                 <svg id="pe-svg" viewBox="-80 0 360 400" style="width:100%;height:100%;"></svg>
               </div>
+              <div id="pe-info-ponto" style="display:none;margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #1e3a8a;border-radius:10px;padding:10px 12px;"></div>
               <div id="pe-edit-painel" style="display:none;margin-top:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;">
                 <div style="font-size:0.82rem;color:#1e3a8a;font-weight:700;margin-bottom:6px;">✏️ Mover pontos: arraste o ponto, ou toque num sítio do mapa para o colocar lá</div>
                 <div id="pe-edit-ponto" style="font-size:0.9rem;color:#334155;margin-bottom:10px;">Toque num ponto para o escolher.</div>
@@ -402,6 +439,13 @@ async function renderPesquisaEmocional(main) {
               <p style="font-size:0.82rem;color:#64748b;margin-bottom:10px;">Toque no mapa ou nos botões para selecionar os bloqueios:</p>
               <div id="pe-pontos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:40vh;overflow-y:auto;"></div>
               <div id="pe-lateral-area" style="display:none;margin-top:12px;">
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:12px;">
+                  <div style="font-size:0.85rem;color:#334155;margin-bottom:8px;">⚫ Toque no mapa, no local onde sente a resistência, para marcar com uma <b>bola preta</b>. Toque numa bola para a retirar.</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <span id="pe-lateral-contador" style="font-size:0.82rem;font-weight:700;color:#0f172a;">Nenhum local marcado</span>
+                    <button onclick="window.peLimparMarcas()" style="background:white;border:1px solid #cbd5e1;color:#334155;padding:7px 12px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;">🧹 Limpar marcas</button>
+                  </div>
+                </div>
                 <label style="color:#b45309;font-weight:700;font-size:0.9rem;display:block;margin-bottom:6px;">Anotações da Varredura Lateral:</label>
                 <textarea id="pe-lateral-notas" rows="3" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;" placeholder="Descreva resistências ao longo do percurso lateral..."></textarea>
               </div>
@@ -1002,7 +1046,7 @@ function peIniciarVia() {
     if (sel.length===0) return mostrarAviso('⚠️ Selecione pelo menos uma Zona a mapear.');
     peState.quadrants=sel; peState.qIdx=0; peState.mappingData={};
     peState.hasBack=sel.some(q=>q.val.includes('Costas'));
-    sel.forEach(q=>{ if(!peState.mappingData[q.val]) { const cfg=peLerConfig(); peState.mappingData[q.val]={desc:q.desc,selectedPoints:new Set(),lateralNotes:'',shield:'Não Especificado',epoch:'Transgeracional',epochTime:'',categories:JSON.parse(JSON.stringify(cfg.categories))}; } });
+    sel.forEach(q=>{ if(!peState.mappingData[q.val]) { const cfg=peLerConfig(); peState.mappingData[q.val]={desc:q.desc,selectedPoints:new Set(),lateralNotes:'',lateralMarks:[],shield:'Não Especificado',epoch:'Transgeracional',epochTime:'',categories:JSON.parse(JSON.stringify(cfg.categories))}; } });
     peCarregarQuadrante(); peIrPasso('3b');
   }
 }
@@ -1048,6 +1092,7 @@ function peRenderizarTabs() {
 
 function peCarregarCategoria(catId) {
   peState.catId=catId; peRenderizarTabs();
+  peMostrarInfoPonto(null);
   const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
   if (!qData) return;
   const cat=qData.categories.find(c=>c.id===catId);
@@ -1057,6 +1102,7 @@ function peCarregarCategoria(catId) {
     if (lateralArea) lateralArea.style.display='block';
     if (pontosGrid) pontosGrid.style.display='none';
     const ln=document.getElementById('pe-lateral-notas'); if(ln) ln.value=qData.lateralNotes||'';
+    peAtualizarContadorMarcas(qData);
   } else {
     if (lateralArea) lateralArea.style.display='none';
     if (pontosGrid) pontosGrid.style.display='grid';
@@ -1161,7 +1207,7 @@ function peDesenharRotulos(cat,selectedSet,g,edit) {
 function peRenderizarSVG(cat,selectedSet) {
   const svg=document.getElementById('pe-svg');
   if (!svg) return;
-  svg.innerHTML=cat.id==='superior'?PE_PESCOCO_SVG:PE_CORPO_SVG;
+  svg.innerHTML=({superior:PE_PESCOCO_SVG,central:PE_CENTRAL_SVG,inferior:PE_INFERIOR_SVG})[cat.id]||PE_CORPO_SVG;
   if (cat.id==='lateral') svg.innerHTML+=PE_LATERAL_CONTORNO;
   const edit=peState.editMode;
   if (edit && cat.points.length && !cat.points.some(pt=>pt.id===peState.editPonto)) peState.editPonto=cat.points[0].id;
@@ -1219,6 +1265,29 @@ function peRenderizarSVG(cat,selectedSet) {
     }
     svg.appendChild(c); svg.appendChild(hit);
   });
+  if (cat.id==='lateral') {
+    const qD=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
+    if (qD) {
+      qD.lateralMarks=qD.lateralMarks||[];
+      qD.lateralMarks.forEach(m=>{
+        const b=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        b.setAttribute('cx',m.x); b.setAttribute('cy',m.y); b.setAttribute('r','6'); b.setAttribute('fill','#0f172a'); b.setAttribute('stroke','white'); b.setAttribute('stroke-width','1.5'); b.setAttribute('pointer-events','none');
+        svg.appendChild(b);
+      });
+      svg.style.touchAction='none';
+      svg.onpointerdown=(e)=>{
+        const ctm=svg.getScreenCTM(); if (!ctm) return;
+        const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+        const q=pt.matrixTransform(ctm.inverse());
+        const x=Math.round(Math.max(0,Math.min(200,q.x))*10)/10, y=Math.round(Math.max(0,Math.min(400,q.y))*10)/10;
+        const perto=qD.lateralMarks.findIndex(m=>Math.hypot(m.x-x,m.y-y)<=8);
+        if (perto>=0) qD.lateralMarks.splice(perto,1); else qD.lateralMarks.push({x,y});
+        peRenderizarSVG(cat,qD.selectedPoints);
+        peAtualizarContadorMarcas(qD);
+      };
+    }
+    return;
+  }
   if (edit) {
     const pe=cat.points.find(pt=>pt.id===peState.editPonto); peMoverAnel(pe); peAtualizarPainelEdicao(pe||null);
     // Tocar num sítio vazio do mapa coloca lá o ponto escolhido (muito mais rápido que as setas).
@@ -1236,6 +1305,34 @@ function peRenderizarSVG(cat,selectedSet) {
       peGravarPosicao(escolhido.id,escolhido.x,escolhido.y);
     };
   } else { svg.onpointerdown=null; }
+}
+
+function peAtualizarContadorMarcas(qData) {
+  const el=document.getElementById('pe-lateral-contador');
+  if (!el||!qData) return;
+  const n=(qData.lateralMarks||[]).length;
+  el.textContent=n?`${n} ${n>1?'locais marcados':'local marcado'}`:'Nenhum local marcado';
+}
+
+function peLimparMarcas() {
+  const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
+  if (!qData) return;
+  qData.lateralMarks=[];
+  const cat=qData.categories.find(c=>c.id==='lateral');
+  if (cat) peRenderizarSVG(cat,qData.selectedPoints);
+  peAtualizarContadorMarcas(qData);
+}
+
+// Mostra o nome, o órgão e a descrição do ponto tocado, por baixo do mapa.
+function peMostrarInfoPonto(p,cor) {
+  const el=document.getElementById('pe-info-ponto');
+  if (!el) return;
+  if (!p) { el.style.display='none'; return; }
+  el.style.display='block';
+  el.innerHTML=`<div style="font-weight:800;color:#0f172a;font-size:0.95rem;">${peEsc(p.name)}</div>`
+    +(p.organ?`<div style="font-weight:700;color:${cor||'#1e3a8a'};font-size:0.8rem;margin-bottom:4px;">${peEsc(p.organ)}</div>`:'')
+    +(p.desc?`<div style="font-size:0.85rem;color:#334155;">${peEsc(p.desc)}</div>`:'')
+    +(p.r?`<div style="font-size:0.8rem;color:#64748b;margin-top:4px;font-style:italic;">${peEsc(p.r)}</div>`:'');
 }
 
 // Atualiza só o ponto (e os nomes) sem redesenhar o mapa todo: é isto que torna o movimento rápido.
@@ -1260,7 +1357,7 @@ function peAgendarRotulos(cat,selectedSet) {
 
 // Guarda a nova posição do ponto (para todas as zonas desta consulta e para as próximas).
 function peGravarPosicao(id,x,y) {
-  window.__pePosicoes=window.__pePosicoes||{}; window.__pePosicoes[id]=[x,y];
+  window.__pePosicoes=window.__pePosicoes||{}; window.__pePosicoes[peChavePos(id)]=[x,y];
   peGuardarPosicoesRemoto();
   const cfg=peLerConfig();
   cfg.categories.forEach(cat=>cat.points.forEach(pt=>{ if(pt.id===id){ pt.x=x; pt.y=y; } }));
@@ -1361,7 +1458,7 @@ function peTogglePonto(id,isSelected) {
   if (!qData) return;
   if (isSelected) qData.selectedPoints.add(id); else qData.selectedPoints.delete(id);
   const cat=qData.categories.find(c=>c.id===peState.catId);
-  if (cat) { peRenderizarPontos(cat,qData.selectedPoints); peRenderizarSVG(cat,qData.selectedPoints); }
+  if (cat) { peRenderizarPontos(cat,qData.selectedPoints); peRenderizarSVG(cat,qData.selectedPoints); peMostrarInfoPonto(cat.points.find(pt=>pt.id===id),cat.cor); }
 }
 
 function peToggleEditMapa() {
@@ -1517,6 +1614,7 @@ async function peEmitirRelatorio() {
       let hasPoints=false;
       qData.categories.forEach(cat=>{ cat.points.forEach(p=>{ if(qData.selectedPoints.has(p.id)){hasPoints=true;relatorio+=`  — ${p.name} (${p.organ}): ${p.desc}\n`;if(p.r)relatorio+=`    > Reflexão: ${p.r}\n`;} }); });
       if (qData.lateralNotes){hasPoints=true;relatorio+=`  — Varredura Lateral: ${qData.lateralNotes.replace(/\n/g,' ')}\n`;}
+      if (qData.lateralMarks&&qData.lateralMarks.length){hasPoints=true;relatorio+=`  — Lateralidade: ${qData.lateralMarks.length} local(is) marcado(s) no mapa.\n`;}
       if (!hasPoints) relatorio+=`  — Nenhum ponto de retenção assinalado.\n`;
       relatorio+=`\nFECHO DESTE EIXO:\n  • Defesa: ${qData.shield}\n  • Gatilho Temporal: ${qData.epoch} (${qData.epochTime||'Sem data'})\n`;
     });
@@ -1970,6 +2068,7 @@ window.peToggleEditMapa        = peToggleEditMapa;
 window.peNudge                 = peNudge;
 window.peNudgeIniciar          = peNudgeIniciar;
 window.peNudgeParar            = peNudgeParar;
+window.peLimparMarcas          = peLimparMarcas;
 window.peDesfazerMovimento     = peDesfazerMovimento;
 window.peReporPosicoes         = peReporPosicoes;
 window.peEscolherEscudoMapa    = peEscolherEscudoMapa;
