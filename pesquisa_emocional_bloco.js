@@ -281,15 +281,15 @@ async function renderPesquisaEmocional(main) {
               </div>
               <div id="pe-edit-painel" style="display:none;margin-top:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;">
                 <div style="font-size:0.82rem;color:#1e3a8a;font-weight:700;margin-bottom:6px;">✏️ Arraste os pontos para o local exato</div>
-                <div id="pe-edit-ponto" style="font-size:0.82rem;color:#334155;margin-bottom:8px;">Toque num ponto para o escolher.</div>
+                <div id="pe-edit-ponto" style="font-size:0.9rem;color:#334155;margin-bottom:10px;">Toque num ponto para o escolher.</div>
                 <div style="display:grid;grid-template-columns:repeat(3,52px);gap:6px;justify-content:center;margin-bottom:10px;">
-                  <span></span><button onclick="window.peNudge(0,-1)" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▲</button><span></span>
-                  <button onclick="window.peNudge(-1,0)" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">◀</button>
+                  <span></span><button onpointerdown="window.peNudgeIniciar(0,-1,event)" onpointerup="window.peNudgeParar()" onpointerleave="window.peNudgeParar()" onpointercancel="window.peNudgeParar()" oncontextmenu="return false" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▲</button><span></span>
+                  <button onpointerdown="window.peNudgeIniciar(-1,0,event)" onpointerup="window.peNudgeParar()" onpointerleave="window.peNudgeParar()" onpointercancel="window.peNudgeParar()" oncontextmenu="return false" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">◀</button>
                   <span></span>
-                  <button onclick="window.peNudge(1,0)" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▶</button>
-                  <span></span><button onclick="window.peNudge(0,1)" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▼</button><span></span>
+                  <button onpointerdown="window.peNudgeIniciar(1,0,event)" onpointerup="window.peNudgeParar()" onpointerleave="window.peNudgeParar()" onpointercancel="window.peNudgeParar()" oncontextmenu="return false" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▶</button>
+                  <span></span><button onpointerdown="window.peNudgeIniciar(0,1,event)" onpointerup="window.peNudgeParar()" onpointerleave="window.peNudgeParar()" onpointercancel="window.peNudgeParar()" oncontextmenu="return false" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▼</button><span></span>
                 </div>
-                <div style="font-size:0.74rem;color:#64748b;text-align:center;margin-bottom:8px;">As setas ajustam o ponto escolhido, um pouco de cada vez. As posições ficam guardadas neste dispositivo.</div>
+                <div style="font-size:0.74rem;color:#64748b;text-align:center;margin-bottom:8px;">As setas movem o ponto escolhido (o que tem o anel azul). Toque no ponto ou no nome para escolher outro; mantenha a seta premida para mover mais depressa. As posições ficam guardadas neste dispositivo.</div>
                 <button onclick="window.peReporPosicoes()" style="width:100%;background:white;border:1px solid #cbd5e1;color:#334155;padding:9px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;">↩ Repor todas as posições originais</button>
               </div>
             </div>
@@ -1041,13 +1041,15 @@ function peDesenharRotulos(cat,selectedSet,g,edit) {
         org.textContent=p.organ; t.appendChild(org);
       }
       g.appendChild(t);
-      if (!edit) {
-        const r=document.createElementNS(NS,'rect');
-        r.setAttribute('x',side==='L'?-82:200); r.setAttribute('y',l.top-2); r.setAttribute('width',82); r.setAttribute('height',l.h+4);
-        r.setAttribute('fill','transparent'); r.style.cursor='pointer';
-        r.addEventListener('pointerdown',(e)=>{ e.preventDefault(); e.stopPropagation(); peTogglePonto(p.id,!selectedSet.has(p.id)); });
-        g.appendChild(r);
-      }
+      const r=document.createElementNS(NS,'rect');
+      r.setAttribute('x',side==='L'?-82:200); r.setAttribute('y',l.top-2); r.setAttribute('width',82); r.setAttribute('height',l.h+4);
+      r.setAttribute('fill','transparent'); r.style.cursor='pointer';
+      r.addEventListener('pointerdown',(e)=>{
+        e.preventDefault(); e.stopPropagation();
+        if (edit) { peState.editPonto=p.id; peAtualizarPainelEdicao(p); peMoverAnel(p); }
+        else peTogglePonto(p.id,!selectedSet.has(p.id));
+      });
+      g.appendChild(r);
     });
   });
 }
@@ -1058,6 +1060,7 @@ function peRenderizarSVG(cat,selectedSet) {
   svg.innerHTML=PE_CORPO_SVG;
   if (cat.id==='lateral') svg.innerHTML+=`<path d="M 100 15 C 130 15 145 50 145 90 C 175 130 180 210 170 240 C 145 250 135 300 130 380" fill="none" stroke="#b45309" stroke-width="2" stroke-dasharray="4"/>`;
   const edit=peState.editMode;
+  if (edit && cat.points.length && !cat.points.some(pt=>pt.id===peState.editPonto)) peState.editPonto=cat.points[0].id;
   const gRot=document.createElementNS('http://www.w3.org/2000/svg','g'); gRot.setAttribute('id','pe-rotulos'); svg.appendChild(gRot);
   peDesenharRotulos(cat,selectedSet,gRot,edit);
   cat.points.forEach(p=>{
@@ -1073,7 +1076,7 @@ function peRenderizarSVG(cat,selectedSet) {
       hit.style.cursor='grab'; hit.style.touchAction='none';
       hit.addEventListener('pointerdown',(e)=>{
         e.preventDefault(); e.stopPropagation();
-        peState.editPonto=p.id; peAtualizarPainelEdicao(p);
+        peState.editPonto=p.id; peAtualizarPainelEdicao(p); peMoverAnel(p);
         try { hit.setPointerCapture(e.pointerId); } catch(_) {}
         const ctm=svg.getScreenCTM();
         if (!ctm) return;
@@ -1084,7 +1087,7 @@ function peRenderizarSVG(cat,selectedSet) {
         const gv=document.createElementNS('http://www.w3.org/2000/svg','line'); const gh=document.createElementNS('http://www.w3.org/2000/svg','line');
         [gv,gh].forEach(g=>{ g.setAttribute('stroke','#1e3a8a'); g.setAttribute('stroke-width','0.6'); g.setAttribute('stroke-dasharray','2 2'); g.setAttribute('pointer-events','none'); svg.insertBefore(g,svg.firstChild.nextSibling); });
         const desenhar=()=>{
-          peDesenharRotulos(cat,selectedSet,gRot,true);
+          peDesenharRotulos(cat,selectedSet,gRot,true); peMoverAnel(p);
           c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); hit.setAttribute('cx',p.x); hit.setAttribute('cy',p.y);
           gv.setAttribute('x1',p.x); gv.setAttribute('x2',p.x); gv.setAttribute('y1',0); gv.setAttribute('y2',400);
           gh.setAttribute('y1',p.y); gh.setAttribute('y2',p.y); gh.setAttribute('x1',0); gh.setAttribute('x2',200);
@@ -1095,7 +1098,7 @@ function peRenderizarSVG(cat,selectedSet) {
           const q=aoPonto(ev);
           p.x=Math.round(Math.max(0,Math.min(200,q.x+dx0))*10)/10;
           p.y=Math.round(Math.max(0,Math.min(400,q.y+dy0))*10)/10;
-          desenhar(); peAtualizarPainelEdicao(p);
+          desenhar(); peMoverAnel(p);
         };
         const fim=()=>{
           hit.removeEventListener('pointermove',mover); hit.removeEventListener('pointerup',fim); hit.removeEventListener('pointercancel',fim);
@@ -1109,6 +1112,7 @@ function peRenderizarSVG(cat,selectedSet) {
     }
     svg.appendChild(c); svg.appendChild(hit);
   });
+  if (edit) { const pe=cat.points.find(pt=>pt.id===peState.editPonto); peMoverAnel(pe); peAtualizarPainelEdicao(pe||null); }
 }
 
 // Guarda a nova posição do ponto (para todas as zonas desta consulta e para as próximas).
@@ -1123,20 +1127,47 @@ function peGravarPosicao(id,x,y) {
 function peAtualizarPainelEdicao(p) {
   const el=document.getElementById('pe-edit-ponto');
   if (!el) return;
-  el.innerHTML=p?`Ponto escolhido: <b>${peEsc(p.name)}</b> <span style="color:#64748b;">(${p.x} , ${p.y})</span>`:'Toque num ponto para o escolher.';
+  el.innerHTML=p?`Ponto escolhido: <b>${peEsc(p.name)}</b>`:'Toque num ponto para o escolher.';
 }
 
 function peNudge(dx,dy) {
   const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
-  if (!qData||!peState.editPonto) return mostrarAviso('⚠️ Toque primeiro num ponto do mapa.');
+  if (!qData) return;
   const cat=qData.categories.find(c=>c.id===peState.catId);
-  const p=cat&&cat.points.find(pt=>pt.id===peState.editPonto);
-  if (!p) return mostrarAviso('⚠️ Esse ponto não está nesta categoria.');
-  p.x=Math.round(Math.max(0,Math.min(200,p.x+dx*0.5))*10)/10;
-  p.y=Math.round(Math.max(0,Math.min(400,p.y+dy*0.5))*10)/10;
+  if (!cat||!cat.points.length) return mostrarAviso('⚠️ Esta categoria não tem pontos para mover.');
+  const p=cat.points.find(pt=>pt.id===peState.editPonto)||cat.points[0];
+  peState.editPonto=p.id;
+  const passo=2;
+  p.x=Math.round(Math.max(0,Math.min(200,p.x+dx*passo))*10)/10;
+  p.y=Math.round(Math.max(0,Math.min(400,p.y+dy*passo))*10)/10;
   peGravarPosicao(p.id,p.x,p.y);
-  peAtualizarPainelEdicao(p);
   peRenderizarSVG(cat,qData.selectedPoints);
+}
+
+let __peNudgeTimer=null, __peNudgeRep=null;
+function peNudgeIniciar(dx,dy,ev) {
+  if (ev && ev.preventDefault) ev.preventDefault();
+  peNudgeParar();
+  peNudge(dx,dy);
+  __peNudgeTimer=setTimeout(()=>{ __peNudgeRep=setInterval(()=>peNudge(dx,dy),90); },350);
+}
+function peNudgeParar() {
+  if (__peNudgeTimer) { clearTimeout(__peNudgeTimer); __peNudgeTimer=null; }
+  if (__peNudgeRep) { clearInterval(__peNudgeRep); __peNudgeRep=null; }
+}
+
+// Anel azul à volta do ponto escolhido no modo edição.
+function peMoverAnel(p) {
+  const svg=document.getElementById('pe-svg');
+  if (!svg||!p) return;
+  let a=document.getElementById('pe-anel');
+  if (!a) {
+    a=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    a.setAttribute('id','pe-anel'); a.setAttribute('r','13'); a.setAttribute('fill','none');
+    a.setAttribute('stroke','#1e3a8a'); a.setAttribute('stroke-width','2'); a.setAttribute('stroke-dasharray','3 2'); a.setAttribute('pointer-events','none');
+    svg.appendChild(a);
+  }
+  a.setAttribute('cx',p.x); a.setAttribute('cy',p.y);
 }
 
 function peReporPosicoes() {
@@ -1763,6 +1794,8 @@ window.peIniciarVia            = peIniciarVia;
 window.peProximoQuadrante      = peProximoQuadrante;
 window.peToggleEditMapa        = peToggleEditMapa;
 window.peNudge                 = peNudge;
+window.peNudgeIniciar          = peNudgeIniciar;
+window.peNudgeParar            = peNudgeParar;
 window.peReporPosicoes         = peReporPosicoes;
 window.peEscolherEscudoMapa    = peEscolherEscudoMapa;
 window.peAtualizarEpocaLabel   = peAtualizarEpocaLabel;
