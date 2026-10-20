@@ -106,6 +106,22 @@ async function criarPdf(R, assinaturaPng, hashFinal) {
   return Buffer.from(await pdf.save());
 }
 
+// ─── E-mail (cópia das provas para a Vindora) ───
+const EMAIL_DESTINO = 'vindoraportugal@gmail.com';
+async function enviarEmail(R, ficheiros) {
+  const cfg = (await db.doc('settings/peTermosEmail').get()).data() || {};
+  if (!cfg.pass) return { estado: 'sem-senha' };
+  try {
+    const nodemailer = require('nodemailer');
+    const t = nodemailer.createTransport({ service: 'gmail', auth: { user: EMAIL_DESTINO, pass: cfg.pass } });
+    const d = R.dados || {};
+    await t.sendMail({ from: `Vindora <${EMAIL_DESTINO}>`, to: EMAIL_DESTINO, subject: `Pedido do método — ${d.nomeCompleto || R.email}`,
+      text: `Novo pedido do método exclusivo.\n\nNome: ${d.nomeCompleto}\nEmail da conta: ${R.email}\nFormação: ${d.formacao && d.formacao.nome} (${d.formacao && d.formacao.formador}, ${d.formacao && d.formacao.data})\n\nEm anexo: termo assinado e comprovativo da formação.\nAprove ou recuse no painel "Pedidos e termos".`,
+      attachments: ficheiros.map(([filename, contentType, content]) => ({ filename, contentType, content })) });
+    return { estado: 'ok' };
+  } catch (e) { return { estado: 'erro', erro: String(e.message || e).slice(0, 200) }; }
+}
+
 // ─── Drive ───
 async function tokenDrive() {
   const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/drive'] });
@@ -192,7 +208,8 @@ exports.peTermoSubmeter = onCall({ timeoutSeconds: 120, memory: '512MiB' }, asyn
     bucket.file(`${base}/registo.json`).save(registo, { contentType: 'application/json' })
   ]);
   const drive = await guardarNoDrive(id, R, [['termo.pdf', 'application/pdf', pdf], [certNome, cert.mime, cert.buf], ['registo.json', 'application/json', registo]]);
-  await db.doc(`pe_termos/${id}`).set({ ...R, hashFinal, estado: 'pendente', ficheiros: { termo: `${base}/termo.pdf`, certificado: `${base}/${certNome}`, registo: `${base}/registo.json` }, drive, criadoEm: FieldValue.serverTimestamp() });
+  const email = await enviarEmail(R, [['termo-assinado.pdf', 'application/pdf', pdf], [certNome, cert.mime, cert.buf]]);
+  await db.doc(`pe_termos/${id}`).set({ ...R, email, hashFinal, estado: 'pendente', ficheiros: { termo: `${base}/termo.pdf`, certificado: `${base}/${certNome}`, registo: `${base}/registo.json` }, drive, criadoEm: FieldValue.serverTimestamp() });
   return { ok: true, id, hash: hashFinal, pdf: pdf.toString('base64') };
 });
 
@@ -206,7 +223,9 @@ exports.peTermoAdmin = onCall({ timeoutSeconds: 120, memory: '512MiB' }, async (
       const fid = str(request.data.folderId, 200).replace(/^.*\/folders\//, '').replace(/[?&].*$/, '');
       await db.doc('settings/peTermosDrive').set({ folderId: fid }, { merge: true }); return { folderId: fid, conta: email };
     }
-    return { folderId: cfg.folderId || '', conta: email };
+    if (request.data.emailPass !== undefined) { await db.doc('settings/peTermosEmail').set({ pass: str(request.data.emailPass, 60).replace(/\s/g, '') }, { merge: true }); }
+    const ec = (await db.doc('settings/peTermosEmail').get()).data() || {};
+    return { folderId: cfg.folderId || '', conta: email, emailDestino: EMAIL_DESTINO, emailOk: !!ec.pass };
   }
   if (acao === 'listar') {
     const s = await db.collection('pe_termos').orderBy('enviadoEm', 'desc').limit(200).get();
@@ -236,7 +255,8 @@ exports.peTermoAdmin = onCall({ timeoutSeconds: 120, memory: '512MiB' }, async (
     const [pdf] = await bucket.file(v.ficheiros.termo).download(); const [cert] = await bucket.file(v.ficheiros.certificado).download(); const [reg] = await bucket.file(v.ficheiros.registo).download();
     const certNome = v.ficheiros.certificado.split('/').pop(); const mime = certNome.endsWith('.pdf') ? 'application/pdf' : certNome.endsWith('.png') ? 'image/png' : 'image/jpeg';
     const drive = await guardarNoDrive(id, v, [['termo.pdf', 'application/pdf', pdf], [certNome, mime, cert], ['registo.json', 'application/json', reg]]);
-    await ref.update({ drive }); return { ok: true, drive: drive.estado, erro: drive.erro || '' };
+    const em = await enviarEmail(v, [['termo-assinado.pdf', 'application/pdf', pdf], [certNome, mime, cert]]);
+    await ref.update({ drive, email: em }); return { ok: true, drive: drive.estado, email: em.estado, erro: drive.erro || em.erro || '' };
   }
   throw new HttpsError('invalid-argument', 'Ação desconhecida.');
 });

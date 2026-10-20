@@ -114,6 +114,10 @@ window.peTermosAdmin = async function () {
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:0.8rem;word-break:break-all;margin-bottom:8px;">${esc(cfg.conta || '(a conta aparece depois de publicar as funções)')}</div>
       <input id="peDriveId" value="${esc(cfg.folderId)}" placeholder="Endereço ou ID da pasta do Drive" style="${I}">
       <button class="primary" onclick="peGuardarPasta()">Guardar pasta</button></div>
+    <div class="card" style="margin-bottom:12px;"><b>✉️ Cópia por e-mail</b>
+      <p class="muted" style="margin:6px 0;">Cada pedido é enviado com o termo e o certificado para <b>${esc(cfg.emailDestino || '')}</b>. ${cfg.emailOk ? '✅ Já está ligado.' : 'Para ligar, cole a palavra-passe de aplicação dessa conta Gmail (16 letras).'}</p>
+      <input id="peEmailPass" type="password" placeholder="Palavra-passe de aplicação do Gmail" style="${I}">
+      <button class="primary" onclick="peGuardarEmail()">Guardar</button></div>
     ${lista.length ? lista.map(p => `<div class="card" style="margin-bottom:10px;border-left:4px solid ${cores[p.estado] || '#94a3b8'};">
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>${esc(p.nome)}</b><span style="font-size:0.78rem;font-weight:700;color:${cores[p.estado] || '#64748b'};">${esc(p.estado.toUpperCase())}</span></div>
       <div class="muted" style="margin:4px 0 8px;">${esc(p.businessName || p.tenantId)} · ${esc(p.email)}<br>Formação: ${esc(p.formacao)} · ${esc(p.formador)} · ${esc(p.data)}${p.nCert ? ' · cert. ' + esc(p.nCert) : ''}${p.cedula ? ' · cédula ' + esc(p.cedula) : ''}<br>Pedido em ${new Date(p.enviadoEm).toLocaleString('pt-PT')} · Drive: ${esc(p.drive || '—')}${p.motivo ? '<br>Motivo: ' + esc(p.motivo) : ''}</div>
@@ -122,6 +126,9 @@ window.peTermosAdmin = async function () {
       ${p.estado === 'aprovado' ? b('revogar', p.id, '🚫 Revogar acesso', 'color:#b91c1c;border-color:#fca5a5;') : ''}${b('reenviarDrive', p.id, '☁️ Enviar para o Drive')}</div></div>`).join('') : '<div class="muted" style="text-align:center;padding:20px;">Ainda não há pedidos.</div>'}</div>`;
 };
 window.peTermosFechar = () => document.getElementById('pe-termos-ov')?.remove();
+window.peGuardarEmail = async function () {
+  try { await window.peChamar('peTermoAdmin', { acao: 'config', emailPass: document.getElementById('peEmailPass').value }); aviso('✅ Guardado.'); window.peTermosAdmin(); } catch (e) { aviso(e.message, true); }
+};
 window.peGuardarPasta = async function () {
   try { const r = await window.peChamar('peTermoAdmin', { acao: 'config', folderId: document.getElementById('peDriveId').value }); aviso('✅ Pasta guardada.'); document.getElementById('peDriveId').value = r.folderId; }
   catch (e) { aviso(e.message, true); }
@@ -134,7 +141,7 @@ window.peTermoAcao = async function (acao, id) {
     if (['aprovar', 'revogar', 'recusar'].includes(acao) && armada !== chave) { armada = chave; aviso({ aprovar: '⚠️ Toque outra vez para APROVAR (ativa o método nesta conta).', revogar: '⚠️ Toque outra vez para REVOGAR o acesso.', recusar: '⚠️ Toque outra vez para RECUSAR.' }[acao]); setTimeout(() => { if (armada === chave) armada = null; }, 5000); return; }
     armada = null;
     const r = await window.peChamar('peTermoAdmin', { acao, id });
-    aviso(acao === 'reenviarDrive' ? (r.drive === 'ok' ? '✅ Enviado para o Drive.' : 'Drive: ' + (r.erro || r.drive)) : '✅ Feito.');
+    aviso(acao === 'reenviarDrive' ? (r.drive === 'ok' || r.email === 'ok' ? '✅ Reenviado (Drive: ' + r.drive + ', e-mail: ' + r.email + ').' : 'Falhou: ' + (r.erro || r.drive)) : '✅ Feito.');
     await window.peTermosAdmin();
   } catch (e) { aviso(e.message, true); }
 };
