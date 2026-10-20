@@ -383,7 +383,7 @@ async function renderPesquisaEmocional(main) {
                 <svg id="pe-svg" viewBox="-80 0 360 400" style="width:100%;height:100%;"></svg>
               </div>
               <div id="pe-edit-painel" style="display:none;margin-top:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;">
-                <div style="font-size:0.82rem;color:#1e3a8a;font-weight:700;margin-bottom:6px;">✏️ Arraste os pontos para o local exato</div>
+                <div style="font-size:0.82rem;color:#1e3a8a;font-weight:700;margin-bottom:6px;">✏️ Mover pontos: arraste o ponto, ou toque num sítio do mapa para o colocar lá</div>
                 <div id="pe-edit-ponto" style="font-size:0.9rem;color:#334155;margin-bottom:10px;">Toque num ponto para o escolher.</div>
                 <div style="display:grid;grid-template-columns:repeat(3,52px);gap:6px;justify-content:center;margin-bottom:10px;">
                   <span></span><button onpointerdown="window.peNudgeIniciar(0,-1,event)" onpointerup="window.peNudgeParar()" onpointerleave="window.peNudgeParar()" onpointercancel="window.peNudgeParar()" oncontextmenu="return false" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▲</button><span></span>
@@ -392,7 +392,8 @@ async function renderPesquisaEmocional(main) {
                   <button onpointerdown="window.peNudgeIniciar(1,0,event)" onpointerup="window.peNudgeParar()" onpointerleave="window.peNudgeParar()" onpointercancel="window.peNudgeParar()" oncontextmenu="return false" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▶</button>
                   <span></span><button onpointerdown="window.peNudgeIniciar(0,1,event)" onpointerup="window.peNudgeParar()" onpointerleave="window.peNudgeParar()" onpointercancel="window.peNudgeParar()" oncontextmenu="return false" style="padding:12px 0;border:1px solid #93c5fd;background:white;border-radius:8px;font-size:1.1rem;cursor:pointer;">▼</button><span></span>
                 </div>
-                <div style="font-size:0.74rem;color:#64748b;text-align:center;margin-bottom:8px;">As setas movem o ponto escolhido (o que tem o anel azul). Toque no ponto ou no nome para escolher outro; mantenha a seta premida para mover mais depressa. As posições ficam guardadas neste dispositivo.</div>
+                <div style="font-size:0.74rem;color:#64748b;text-align:center;margin-bottom:8px;">As setas movem o ponto escolhido (o do anel azul): um toque move pouco; mantenha premida e vai cada vez mais depressa. Toque no ponto ou no nome para escolher outro. As posições ficam guardadas na conta.</div>
+                <button onclick="window.peDesfazerMovimento()" style="width:100%;background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:9px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;margin-bottom:8px;">↩ Desfazer o último movimento</button>
                 <button onclick="window.peReporPosicoes()" style="width:100%;background:white;border:1px solid #cbd5e1;color:#334155;padding:9px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;">↩ Repor todas as posições originais</button>
               </div>
             </div>
@@ -1170,16 +1171,19 @@ function peRenderizarSVG(cat,selectedSet) {
     const isSel=selectedSet.has(p.id);
     const escolhido=edit&&peState.editPonto===p.id;
     const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('data-pid',p.id);
     c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r',isSel?'10':'8');
     c.setAttribute('fill',isSel?'#dc2626':cat.cor); c.setAttribute('stroke',escolhido?'#1e3a8a':(isSel?'#fef08a':'white')); c.setAttribute('stroke-width',escolhido?'3':(isSel?'3':'1.5'));
     const title=document.createElementNS('http://www.w3.org/2000/svg','title'); title.textContent=p.name; c.appendChild(title);
     const hit=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    hit.setAttribute('cx',p.x); hit.setAttribute('cy',p.y); hit.setAttribute('r',edit?'18':'16'); hit.setAttribute('fill','transparent');
+    hit.setAttribute('data-hit',p.id);
+    hit.setAttribute('cx',p.x); hit.setAttribute('cy',p.y); hit.setAttribute('r',edit?'20':'16'); hit.setAttribute('fill','transparent');
     if (edit) {
       hit.style.cursor='grab'; hit.style.touchAction='none';
       hit.addEventListener('pointerdown',(e)=>{
         e.preventDefault(); e.stopPropagation();
         peState.editPonto=p.id; peAtualizarPainelEdicao(p); peMoverAnel(p);
+        peState.desfazer={id:p.id,x:p.x,y:p.y};
         try { hit.setPointerCapture(e.pointerId); } catch(_) {}
         const ctm=svg.getScreenCTM();
         if (!ctm) return;
@@ -1190,7 +1194,7 @@ function peRenderizarSVG(cat,selectedSet) {
         const gv=document.createElementNS('http://www.w3.org/2000/svg','line'); const gh=document.createElementNS('http://www.w3.org/2000/svg','line');
         [gv,gh].forEach(g=>{ g.setAttribute('stroke','#1e3a8a'); g.setAttribute('stroke-width','0.6'); g.setAttribute('stroke-dasharray','2 2'); g.setAttribute('pointer-events','none'); svg.insertBefore(g,svg.firstChild.nextSibling); });
         const desenhar=()=>{
-          peDesenharRotulos(cat,selectedSet,gRot,true); peMoverAnel(p);
+          peAgendarRotulos(cat,selectedSet); peMoverAnel(p);
           c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); hit.setAttribute('cx',p.x); hit.setAttribute('cy',p.y);
           gv.setAttribute('x1',p.x); gv.setAttribute('x2',p.x); gv.setAttribute('y1',0); gv.setAttribute('y2',400);
           gh.setAttribute('y1',p.y); gh.setAttribute('y2',p.y); gh.setAttribute('x1',0); gh.setAttribute('x2',200);
@@ -1215,7 +1219,43 @@ function peRenderizarSVG(cat,selectedSet) {
     }
     svg.appendChild(c); svg.appendChild(hit);
   });
-  if (edit) { const pe=cat.points.find(pt=>pt.id===peState.editPonto); peMoverAnel(pe); peAtualizarPainelEdicao(pe||null); }
+  if (edit) {
+    const pe=cat.points.find(pt=>pt.id===peState.editPonto); peMoverAnel(pe); peAtualizarPainelEdicao(pe||null);
+    // Tocar num sítio vazio do mapa coloca lá o ponto escolhido (muito mais rápido que as setas).
+    svg.style.touchAction='none';
+    svg.onpointerdown=(e)=>{
+      const escolhido=cat.points.find(pt=>pt.id===peState.editPonto);
+      const ctm=svg.getScreenCTM();
+      if (!escolhido||!ctm) return;
+      const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+      const q=pt.matrixTransform(ctm.inverse());
+      peState.desfazer={id:escolhido.id,x:escolhido.x,y:escolhido.y};
+      escolhido.x=Math.round(Math.max(0,Math.min(200,q.x))*10)/10;
+      escolhido.y=Math.round(Math.max(0,Math.min(400,q.y))*10)/10;
+      peAtualizarPontoSVG(cat,escolhido,selectedSet);
+      peGravarPosicao(escolhido.id,escolhido.x,escolhido.y);
+    };
+  } else { svg.onpointerdown=null; }
+}
+
+// Atualiza só o ponto (e os nomes) sem redesenhar o mapa todo: é isto que torna o movimento rápido.
+function peAtualizarPontoSVG(cat,p,selectedSet) {
+  const svg=document.getElementById('pe-svg');
+  if (!svg) return;
+  svg.querySelectorAll(`[data-pid="${p.id}"],[data-hit="${p.id}"]`).forEach(el=>{ el.setAttribute('cx',p.x); el.setAttribute('cy',p.y); });
+  peMoverAnel(p);
+  peAgendarRotulos(cat,selectedSet);
+}
+
+let __peRaf=null;
+function peAgendarRotulos(cat,selectedSet) {
+  if (__peRaf) return;
+  const f=()=>{
+    __peRaf=null;
+    const g=document.getElementById('pe-rotulos');
+    if (g) peDesenharRotulos(cat,selectedSet,g,peState.editMode);
+  };
+  __peRaf=(typeof requestAnimationFrame==='function')?requestAnimationFrame(f):setTimeout(f,16);
 }
 
 // Guarda a nova posição do ponto (para todas as zonas desta consulta e para as próximas).
@@ -1235,30 +1275,58 @@ function peAtualizarPainelEdicao(p) {
   el.innerHTML=p?`Ponto escolhido: <b>${peEsc(p.name)}</b>`:'Toque num ponto para o escolher.';
 }
 
-function peNudge(dx,dy) {
+function peNudge(dx,dy,passo) {
   const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
   if (!qData) return;
   const cat=qData.categories.find(c=>c.id===peState.catId);
   if (!cat||!cat.points.length) return mostrarAviso('⚠️ Esta categoria não tem pontos para mover.');
   const p=cat.points.find(pt=>pt.id===peState.editPonto)||cat.points[0];
   peState.editPonto=p.id;
-  const passo=2;
-  p.x=Math.round(Math.max(0,Math.min(200,p.x+dx*passo))*10)/10;
-  p.y=Math.round(Math.max(0,Math.min(400,p.y+dy*passo))*10)/10;
-  peGravarPosicao(p.id,p.x,p.y);
-  peRenderizarSVG(cat,qData.selectedPoints);
+  const k=passo||1;
+  p.x=Math.round(Math.max(0,Math.min(200,p.x+dx*k))*10)/10;
+  p.y=Math.round(Math.max(0,Math.min(400,p.y+dy*k))*10)/10;
+  peState.nudgePendente=p.id;
+  peAtualizarPontoSVG(cat,p,qData.selectedPoints);
 }
 
 let __peNudgeTimer=null, __peNudgeRep=null;
 function peNudgeIniciar(dx,dy,ev) {
   if (ev && ev.preventDefault) ev.preventDefault();
   peNudgeParar();
-  peNudge(dx,dy);
-  __peNudgeTimer=setTimeout(()=>{ __peNudgeRep=setInterval(()=>peNudge(dx,dy),90); },350);
+  const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
+  const cat=qData&&qData.categories.find(c=>c.id===peState.catId);
+  const p0=cat&&cat.points.find(pt=>pt.id===peState.editPonto);
+  if (p0) peState.desfazer={id:p0.id,x:p0.x,y:p0.y};
+  peNudge(dx,dy,1);
+  let n=0;
+  // Mantendo premido: começa devagar e vai acelerando (2 → 4 → 8 → 14 por passo).
+  __peNudgeTimer=setTimeout(()=>{
+    __peNudgeRep=setInterval(()=>{ n++; peNudge(dx,dy,n<8?2:n<20?4:n<40?8:14); },40);
+  },280);
 }
 function peNudgeParar() {
   if (__peNudgeTimer) { clearTimeout(__peNudgeTimer); __peNudgeTimer=null; }
   if (__peNudgeRep) { clearInterval(__peNudgeRep); __peNudgeRep=null; }
+  if (peState.nudgePendente) {
+    const id=peState.nudgePendente; peState.nudgePendente=null;
+    const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
+    const cat=qData&&qData.categories.find(c=>c.id===peState.catId);
+    const p=cat&&cat.points.find(pt=>pt.id===id);
+    if (p) peGravarPosicao(p.id,p.x,p.y);
+  }
+}
+
+// Volta o último ponto mexido ao sítio onde estava antes.
+function peDesfazerMovimento() {
+  const d=peState.desfazer;
+  if (!d) return mostrarAviso('⚠️ Ainda não há nenhum movimento para desfazer.');
+  const qData=peState.mappingData[peState.quadrants[peState.qIdx]?.val];
+  if (!qData) return;
+  qData.categories.forEach(cat=>cat.points.forEach(pt=>{ if(pt.id===d.id){ pt.x=d.x; pt.y=d.y; } }));
+  peGravarPosicao(d.id,d.x,d.y);
+  peState.desfazer=null;
+  const cat=qData.categories.find(c=>c.id===peState.catId);
+  if (cat) peRenderizarSVG(cat,qData.selectedPoints);
 }
 
 // Anel azul à volta do ponto escolhido no modo edição.
@@ -1902,6 +1970,7 @@ window.peToggleEditMapa        = peToggleEditMapa;
 window.peNudge                 = peNudge;
 window.peNudgeIniciar          = peNudgeIniciar;
 window.peNudgeParar            = peNudgeParar;
+window.peDesfazerMovimento     = peDesfazerMovimento;
 window.peReporPosicoes         = peReporPosicoes;
 window.peEscolherEscudoMapa    = peEscolherEscudoMapa;
 window.peAtualizarEpocaLabel   = peAtualizarEpocaLabel;
