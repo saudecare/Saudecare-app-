@@ -1,0 +1,7 @@
+# Ficheiros que NÃO são publicados no site (ficam só no repositório).
+exclude:
+  - functions
+  - .github
+  - firestore-rules-completo.txt
+  - README.md
+  - node_modules
