@@ -32,16 +32,16 @@ const PE_CAT = [
     {id:'i13',name:'Pé Esquerdo',x:78,y:375,organ:'Pé Esq',desc:'Desenraizamento.',r:'Tens a sensação de que não pertences ao teu núcleo?'}
   ]},
   { id:'lateral', name:'Lateralidade', cor:'#b45309', points:[] },
-  { id:'superior', name:'Sistema Superior', cor:'#1e3a8a', points:[
-    {id:'N1',name:'Epífise',x:84,y:100,organ:'Pineal',desc:'Distúrbio circadiano.',r:'Como tem sido o teu sono?'},
-    {id:'N2',name:'Hipotálamo',x:116,y:118,organ:'SNC',desc:'Alarme e fobias.',r:'Sentes o teu corpo sempre em alerta?'},
-    {id:'N3',name:'Hipófise',x:84,y:136,organ:'Pituitária',desc:'Autoimagem fragilizada.',r:'Tens duvidado do teu próprio valor?'},
-    {id:'N4',name:'Amígdalas',x:116,y:154,organ:'Garganta',desc:'Incapacidade de engolir.',r:'Existe alguma situação "entalada"?'},
-    {id:'N5',name:'Paratiroides',x:84,y:173,organ:'Paratiroides',desc:'Fadiga e urgência.',r:'Vives numa luta constante contra o relógio?'},
-    {id:'N6',name:'Timo',x:116,y:191,organ:'Timo',desc:'Carência de reconhecimento.',r:'Sentes que ninguém te valoriza?'},
-    {id:'N7',name:'Glândulas Salivares e Lacrimais',x:84,y:209,organ:'G. Salivares',desc:'Choro retido.',r:'Quantas lágrimas já engoliste?'},
-    {id:'N8',name:'Tiroide',x:116,y:227,organ:'Tiroide',desc:'Impotência em agir.',r:'As tuas ações parecem lentas?'},
-    {id:'N9',name:'Esófago',x:84,y:245,organ:'Esófago',desc:'Engolir calado.',r:'Quantas vezes tens calado a tua própria voz?'}
+  { id:'superior', name:'Sistema Superior', cor:'#1e3a8a', v:2, points:[
+    {id:'N1',name:'Epífise',x:100,y:100,organ:'Pineal',desc:'Distúrbio circadiano.',r:'Como tem sido o teu sono?'},
+    {id:'N2',name:'Hipotálamo',x:100,y:118,organ:'SNC',desc:'Alarme e fobias.',r:'Sentes o teu corpo sempre em alerta?'},
+    {id:'N3',name:'Hipófise',x:100,y:136,organ:'Pituitária',desc:'Autoimagem fragilizada.',r:'Tens duvidado do teu próprio valor?'},
+    {id:'N4',name:'Amígdalas',x:100,y:154,organ:'Garganta',desc:'Incapacidade de engolir.',r:'Existe alguma situação "entalada"?'},
+    {id:'N5',name:'Paratiroides',x:100,y:173,organ:'Paratiroides',desc:'Fadiga e urgência.',r:'Vives numa luta constante contra o relógio?'},
+    {id:'N6',name:'Timo',x:100,y:191,organ:'Timo',desc:'Carência de reconhecimento.',r:'Sentes que ninguém te valoriza?'},
+    {id:'N7',name:'Glândulas Salivares e Lacrimais',x:100,y:209,organ:'G. Salivares',desc:'Choro retido.',r:'Quantas lágrimas já engoliste?'},
+    {id:'N8',name:'Tiroide',x:100,y:227,organ:'Tiroide',desc:'Impotência em agir.',r:'As tuas ações parecem lentas?'},
+    {id:'N9',name:'Esófago',x:100,y:245,organ:'Esófago',desc:'Engolir calado.',r:'Quantas vezes tens calado a tua própria voz?'}
   ]},
   { id:'central', name:'Sistema Central', cor:'#1e3a8a', v:3, points:[
     {id:'C1',name:'I – Vasos Linfáticos, Artérias e Veias',x:100,y:49,organ:'Linfáticos',desc:'Sobrecarga familiar.',r:'O sistema familiar pesa sobre ti?'},
