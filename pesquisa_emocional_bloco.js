@@ -33,15 +33,15 @@ const PE_CAT = [
   ]},
   { id:'lateral', name:'Lateralidade', cor:'#b45309', points:[] },
   { id:'superior', name:'Sistema Superior', cor:'#1e3a8a', points:[
-    {id:'S1',name:'Epífise',x:100,y:30,organ:'Pineal',desc:'Distúrbio circadiano.',r:'Como tem sido o teu sono?'},
-    {id:'S2',name:'Hipotálamo',x:100,y:45,organ:'SNC',desc:'Alarme e fobias.',r:'Sentes o teu corpo sempre em alerta?'},
-    {id:'S3',name:'Hipófise',x:100,y:55,organ:'Pituitária',desc:'Autoimagem fragilizada.',r:'Tens duvidado do teu próprio valor?'},
-    {id:'S4',name:'Amígdalas',x:100,y:65,organ:'Garganta',desc:'Incapacidade de engolir.',r:'Existe alguma situação "entalada"?'},
-    {id:'S5',name:'Paratiroides',x:100,y:73,organ:'Paratiroides',desc:'Fadiga e urgência.',r:'Vives numa luta constante contra o relógio?'},
-    {id:'S6',name:'Timo',x:100,y:110,organ:'Timo',desc:'Carência de reconhecimento.',r:'Sentes que ninguém te valoriza?'},
-    {id:'S7',name:'Glândulas Salivares',x:93,y:65,organ:'G. Salivares',desc:'Choro retido.',r:'Quantas lágrimas já engoliste?'},
-    {id:'S8',name:'Tiroide',x:100,y:82,organ:'Tiroide',desc:'Impotência em agir.',r:'As tuas ações parecem lentas?'},
-    {id:'S9',name:'Esófago',x:100,y:95,organ:'Esófago',desc:'Engolir calado.',r:'Quantas vezes tens calado a tua própria voz?'}
+    {id:'N1',name:'Epífise',x:100,y:100,organ:'Pineal',desc:'Distúrbio circadiano.',r:'Como tem sido o teu sono?'},
+    {id:'N2',name:'Hipotálamo',x:100,y:118,organ:'SNC',desc:'Alarme e fobias.',r:'Sentes o teu corpo sempre em alerta?'},
+    {id:'N3',name:'Hipófise',x:100,y:136,organ:'Pituitária',desc:'Autoimagem fragilizada.',r:'Tens duvidado do teu próprio valor?'},
+    {id:'N4',name:'Amígdalas',x:100,y:154,organ:'Garganta',desc:'Incapacidade de engolir.',r:'Existe alguma situação "entalada"?'},
+    {id:'N5',name:'Paratiroides',x:100,y:173,organ:'Paratiroides',desc:'Fadiga e urgência.',r:'Vives numa luta constante contra o relógio?'},
+    {id:'N6',name:'Timo',x:100,y:191,organ:'Timo',desc:'Carência de reconhecimento.',r:'Sentes que ninguém te valoriza?'},
+    {id:'N7',name:'Glândulas Salivares',x:100,y:209,organ:'G. Salivares',desc:'Choro retido.',r:'Quantas lágrimas já engoliste?'},
+    {id:'N8',name:'Tiroide',x:100,y:227,organ:'Tiroide',desc:'Impotência em agir.',r:'As tuas ações parecem lentas?'},
+    {id:'N9',name:'Esófago',x:100,y:245,organ:'Esófago',desc:'Engolir calado.',r:'Quantas vezes tens calado a tua própria voz?'}
   ]},
   { id:'central', name:'Sistema Central', cor:'#1e3a8a', points:[
     {id:'C1',name:'Linfáticos',x:100,y:100,organ:'Linfáticos',desc:'Sobrecarga familiar.',r:'O sistema familiar pesa sobre ti?'},
@@ -72,6 +72,38 @@ const PE_CAT = [
     {id:'f6e',name:'Bexiga Esquerdo',x:79,y:360,organ:'Bexiga',desc:'Espaço territorial.',r:'Sentes que não podes ser quem és?'}
   ]}
 ];
+
+// Imagem grande do queixo, pescoço e ombros (vista de frente) para o Sistema Superior.
+const PE_PESCOCO_SVG = `<defs>
+<linearGradient id="pesc" x1="0" x2="1"><stop offset="0" stop-color="#e9c9b0"/><stop offset=".5" stop-color="#f4dcc8"/><stop offset="1" stop-color="#e9c9b0"/></linearGradient>
+<linearGradient id="sombra" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b98f72" stop-opacity=".55"/><stop offset="1" stop-color="#b98f72" stop-opacity="0"/></linearGradient>
+</defs>
+<g stroke-linejoin="round" stroke-linecap="round">
+<!-- pescoço e ombros -->
+<path d="M 54 60 C 52 110 50 170 46 214 C 30 222 10 232 0 250 L 0 400 L 200 400 L 200 250 C 190 232 170 222 154 214 C 150 170 148 110 146 60 Z" fill="url(#pesc)" stroke="#c9a68a" stroke-width="1.5"/>
+<!-- sombra por baixo do queixo -->
+<path d="M 54 70 C 70 112 130 112 146 70 L 146 60 L 54 60 Z" fill="url(#sombra)" stroke="none"/>
+<!-- esternocleidomastoideos -->
+<path d="M 66 92 C 74 140 88 200 98 244" fill="none" stroke="#c9a68a" stroke-width="1.2" opacity=".7"/>
+<path d="M 134 92 C 126 140 112 200 102 244" fill="none" stroke="#c9a68a" stroke-width="1.2" opacity=".7"/>
+<!-- maçã de Adão -->
+<path d="M 93 146 C 96 140 104 140 107 146 C 106 154 94 154 93 146 Z" fill="none" stroke="#c9a68a" stroke-width="1.1" opacity=".8"/>
+<!-- clavículas -->
+<path d="M 100 246 C 80 238 56 236 36 242" fill="none" stroke="#c9a68a" stroke-width="1.3" opacity=".8"/>
+<path d="M 100 246 C 120 238 144 236 164 242" fill="none" stroke="#c9a68a" stroke-width="1.3" opacity=".8"/>
+<!-- maxilar e queixo (parte de baixo do rosto) -->
+<path d="M 14 0 C 16 40 34 72 62 86 C 78 94 90 98 100 98 C 110 98 122 94 138 86 C 166 72 184 40 186 0 Z" fill="url(#pesc)" stroke="#c9a68a" stroke-width="1.5"/>
+<path d="M 62 86 C 78 94 90 98 100 98 C 110 98 122 94 138 86" fill="none" stroke="#a97f63" stroke-width="2" opacity=".55"/>
+<!-- camisola polo -->
+<path d="M 0 262 C 30 244 54 238 70 236 L 100 298 L 130 236 C 146 238 170 244 200 262 L 200 400 L 0 400 Z" fill="#8fb0c9" stroke="#6f8fa8" stroke-width="1.5"/>
+<path d="M 46 226 L 70 236 L 100 298 L 62 270 Z" fill="#a9c4d8" stroke="#6f8fa8" stroke-width="1.5"/>
+<path d="M 154 226 L 130 236 L 100 298 L 138 270 Z" fill="#a9c4d8" stroke="#6f8fa8" stroke-width="1.5"/>
+<path d="M 48 230 L 66 241" fill="none" stroke="#1e3a8a" stroke-width="2"/>
+<path d="M 152 230 L 134 241" fill="none" stroke="#1e3a8a" stroke-width="2"/>
+</g>`;
+
+// Contorno da Lateralidade: percorre o corpo por fora, como se não tivesse braços.
+const PE_LATERAL_CONTORNO = `<path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 132 379 L 112 379 L 104 285 L 100 196 L 96 285 L 88 379 L 68 379 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="9" stroke-linejoin="round" opacity=".22"/><path d="M 100 9 A 26 26 0 0 1 110 59 L 110 66 L 136 66 C 144 95 138 160 129 185 L 130 285 L 132 379 L 112 379 L 104 285 L 100 196 L 96 285 L 88 379 L 68 379 L 70 285 L 71 185 C 62 160 56 95 64 66 L 90 66 L 90 59 A 26 26 0 0 1 100 9 Z" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
 
 const PE_MEDOS = [
   {name:"Bloco 1 — Medo da Pobreza",q:["Passei por muitas situações difíceis relacionadas ao dinheiro","A minha relação com o meu pai foi bastante conturbada","Presenciei escassez de alimento em casa","Preocupo-me e acredito que o meu futuro não será promissor"]},
@@ -192,11 +224,24 @@ async function peCarregarPosicoes() {
   }
 }
 
+// Se a configuração guardada tiver pontos diferentes dos atuais (ex.: Sistema Superior redesenhado), usa os atuais.
+function peSanearConfig(cfg) {
+  if (!cfg || !Array.isArray(cfg.categories)) return { categories: JSON.parse(JSON.stringify(PE_CAT)), forms: (cfg && cfg.forms) || JSON.parse(JSON.stringify(PE_FICHAS)) };
+  const out = [];
+  PE_CAT.forEach(def => {
+    const sv = cfg.categories.find(c => c.id === def.id);
+    const igual = sv && Array.isArray(sv.points) && sv.points.length === def.points.length && def.points.every(d => sv.points.some(x => x.id === d.id));
+    out.push(igual ? sv : JSON.parse(JSON.stringify(def)));
+  });
+  cfg.categories = out;
+  return cfg;
+}
+
 function peLerConfigBase() {
   const key = `pe_cfg_${tenantId()}`;
   try {
     const saved = localStorage.getItem(key);
-    if (saved) return JSON.parse(saved);
+    if (saved) return peSanearConfig(JSON.parse(saved));
   } catch(_) {}
   return { categories: JSON.parse(JSON.stringify(PE_CAT)), forms: JSON.parse(JSON.stringify(PE_FICHAS)) };
 }
@@ -1115,8 +1160,8 @@ function peDesenharRotulos(cat,selectedSet,g,edit) {
 function peRenderizarSVG(cat,selectedSet) {
   const svg=document.getElementById('pe-svg');
   if (!svg) return;
-  svg.innerHTML=PE_CORPO_SVG;
-  if (cat.id==='lateral') svg.innerHTML+=`<path d="M 100 15 C 130 15 145 50 145 90 C 175 130 180 210 170 240 C 145 250 135 300 130 380" fill="none" stroke="#b45309" stroke-width="2" stroke-dasharray="4"/>`;
+  svg.innerHTML=cat.id==='superior'?PE_PESCOCO_SVG:PE_CORPO_SVG;
+  if (cat.id==='lateral') svg.innerHTML+=PE_LATERAL_CONTORNO;
   const edit=peState.editMode;
   if (edit && cat.points.length && !cat.points.some(pt=>pt.id===peState.editPonto)) peState.editPonto=cat.points[0].id;
   const gRot=document.createElementNS('http://www.w3.org/2000/svg','g'); gRot.setAttribute('id','pe-rotulos'); svg.appendChild(gRot);
