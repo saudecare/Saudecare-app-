@@ -327,7 +327,7 @@
 
 <div id="toast"></div>
 
-<script type="module" src="pesquisa_emocional_bloco.js"></script>
+<script type="module" src="pe-carregador.js"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
@@ -351,7 +351,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-20-24';
+const APP_VERSION = '2026-10-20-25';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1395,6 +1395,7 @@ onAuthStateChanged(auth, async (user) => {
   // role) mais recentes estão disponíveis — essencial logo após onboarding.
   const tokenResult = await user.getIdTokenResult(true);
   tenantId = tokenResult.claims.tenantId || null;
+  if (tokenResult.claims.peLic) { location.replace('pe-teste.html'); return; }
   tenantRole = tokenResult.claims.role || null;
   const navMisticaBtn = document.getElementById('navMisticaBtn');
   if (navMisticaBtn) navMisticaBtn.style.display = 'none';
@@ -1867,7 +1868,7 @@ function renderView(view, opts){
   else if (view === 'reikiAlunos') renderReikiAlunos(main);
   else if (view === 'mesinhas') renderMesinhas(main);
   else if (view === 'estudioVoz') renderEstudioVoz(main);
-  else if (view === 'pesquisaEmocional') window.renderPesquisaEmocional?.(main);
+  else if (view === 'pesquisaEmocional') { (window.carregarPE ? window.carregarPE() : Promise.resolve()).then(() => window.renderPesquisaEmocional?.(main)).catch(e => { main.innerHTML = '<div class="card"><h2>🔒 Método indisponível</h2><p class="muted">' + ((e && e.message) || 'Sem acesso.') + '</p></div>'; }); }
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
   highlightActiveNavGroup(view);
@@ -19090,7 +19091,7 @@ window.sendChatbotMessage = async function(){
   window.guardarNaFicha = function(...args){ return guardarNaFicha(...args); };
   const NETLIFY_BASE    = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions';
   window.NETLIFY_BASE   = NETLIFY_BASE;
-  window.temPesquisaEmocional = function(){ return tenantId === 'hikari-terapias' || window.__peAtivo === true; };
+  window.temPesquisaEmocional = function(){ return tenantId === 'hikari-terapias' || window.__peAtivo === true || (typeof temModulo === 'function' && temModulo('pesquisaEmocional')); };
 
   // ─── Questionários PE online ─────────────────────────────────────────────
   const _PE_FICHAS_L = {

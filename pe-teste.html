@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Pesquisa Emocional — Teste</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--primary:#1e3a8a;--card:#fff;--muted:#64748b;--radius:12px;}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f1f5f9;color:#0f172a;}
+  #topo{background:#0f172a;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;}
+  #topo b{color:#fcd34d;}
+  main{max-width:900px;margin:0 auto;padding:14px;}
+  .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  h2{margin-bottom:14px;font-size:20px;}
+  input,select,textarea{width:100%;padding:12px;border:1px solid #d8e0dc;border-radius:8px;margin-bottom:10px;font-size:16px;font-family:inherit;}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
+  button{font-family:inherit;}
+  button.primary{background:var(--primary);color:#fff;border:none;padding:12px 18px;border-radius:8px;cursor:pointer;font-size:15px;font-weight:700;width:100%;}
+  .muted{color:var(--muted);font-size:13px;}
+  .abas{display:flex;gap:6px;margin-bottom:14px;}
+  .abas button{flex:1;padding:10px;border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:8px;font-weight:700;cursor:pointer;}
+  .abas button.on{background:var(--primary);color:#fff;}
+  .erro{color:#b91c1c;font-size:14px;margin-bottom:10px;}
+  .pe-step{animation:peSlideIn .25s ease;}
+  @keyframes peSlideIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  .pe-point-btn{transition:transform .15s,box-shadow .15s;}
+  .pe-shield-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.78rem;font-weight:700;background:#7c3aed;color:#fff;}
+  #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:99999;display:none;max-width:90%;}
+</style>
+</head>
+<body>
+<div id="topo"><span><b>Pesquisa Emocional Clínica</b> · período de teste</span><span id="topoDir"></span></div>
+<main id="raiz"><div class="card">A carregar…</div></main>
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, addDoc, query, where, orderBy, limit, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import "./pe-carregador.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg", authDomain: "saudecare-app.firebaseapp.com", projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app", messagingSenderId: "455466438728", appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+});
+const auth = getAuth(app);
+const fdb = getFirestore(app);
+const raiz = document.getElementById('raiz');
+let TENANT = null;
+
+// ─── Ponte para o módulo (mesma API que a app principal usa) ───
+const wrapSnap = (s) => ({ exists: s.exists(), id: s.id, data: () => s.data() });
+const wrapList = (s) => { const docs = s.docs.map(d => ({ id: d.id, exists: d.exists(), data: () => d.data(), ref: { id: d.id } })); return { docs, size: s.size, empty: s.empty, forEach: (cb) => docs.forEach(cb) }; };
+function docRef(parts) { const r = doc(fdb, ...parts); return { get: async () => wrapSnap(await getDoc(r)), set: (d, o) => (o && o.merge ? setDoc(r, d, { merge: true }) : setDoc(r, d)), update: (d) => updateDoc(r, d) }; }
+function colQ(parts, cs) {
+  const c = collection(fdb, ...parts);
+  return {
+    where: (f, op, v) => colQ(parts, [...cs, where(f, op, v)]), orderBy: (f, d) => colQ(parts, [...cs, orderBy(f, d || 'asc')]), limit: (n) => colQ(parts, [...cs, limit(n)]),
+    async get() {
+      try { return wrapList(await getDocs(cs.length ? query(c, ...cs) : c)); }
+      catch (e) { const lim = cs.filter(x => x.type === 'limit'); return wrapList(await getDocs(lim.length ? query(c, ...lim) : c)); }
+    },
+    doc: (id) => docRef([...parts, id]), add: (d) => addDoc(c, d)
+  };
+}
+window.db = () => ({ doc: (p) => docRef(p.split('/')), collection: (p) => colQ(p.split('/'), []) });
+window.tenantId = () => TENANT;
+window.firebase = { auth: () => auth };
+function toast(t) { const e = document.getElementById('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(() => e.style.display = 'none', 3500); }
+window.mostrarAviso = (m) => toast(typeof m === 'string' ? m : '');
+window.openExternalLink = (u) => { window.location.href = u; };
+window.copiarTexto = async (t, a) => {
+  try { await navigator.clipboard.writeText(t); toast(a || 'Copiado.'); return true; } catch (_) {}
+  const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;opacity:0;'; document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch (_) {} ta.remove(); toast(ok ? (a || 'Copiado.') : 'Não consegui copiar.'); return ok;
+};
+window.guardarNaFicha = async (patientId, { tipo, titulo, texto, dados }) => {
+  if (!patientId) return false;
+  try { await addDoc(collection(fdb, 'tenants', TENANT, 'patients', patientId, 'reports'), { tipo: tipo || 'registo', protocolName: titulo || 'Registo', reportText: texto || '', dados: dados || null, generatedAt: serverTimestamp() }); return true; }
+  catch (e) { console.error(e); return false; }
+};
+window.temPesquisaEmocional = () => true;
+window.__peAtivo = true;
+
+// ─── Ecrã de entrada ───
+const params = new URLSearchParams(location.search);
+const ligacao = (params.get('l') || '').split('.');
+const LID = ligacao[0] || '', LTOK = ligacao.slice(1).join('.');
+const temLink = /^[0-9a-f]{10}$/.test(LID) && LTOK.length > 10;
+let modo = temLink ? 'criar' : 'entrar';
+
+function ecraEntrada(msg) {
+  document.getElementById('topoDir').textContent = '';
+  raiz.innerHTML = `<div class="card" style="max-width:420px;margin:30px auto;">
+    <h2>🔬 Pesquisa Emocional Clínica</h2>
+    <p class="muted" style="margin-bottom:14px;">${temLink ? 'Foste convidado/a a testar este método. Cria a tua conta com o teu email e escolhe uma palavra-passe. Fica ligada a este link e só tu entras.' : 'Entra com o email e a palavra-passe que escolheste.'}</p>
+    ${temLink ? `<div class="abas"><button id="aC" class="${modo === 'criar' ? 'on' : ''}">Criar conta</button><button id="aE" class="${modo === 'entrar' ? 'on' : ''}">Já tenho conta</button></div>` : ''}
+    <div class="erro" id="erro">${msg || ''}</div>
+    <label>Email</label><input id="em" type="email" autocomplete="email" inputmode="email">
+    <label>Palavra-passe ${modo === 'criar' ? '(mínimo 8 caracteres)' : ''}</label><input id="pw" type="password" autocomplete="${modo === 'criar' ? 'new-password' : 'current-password'}">
+    ${modo === 'criar' ? '<label>Repete a palavra-passe</label><input id="pw2" type="password" autocomplete="new-password">' : ''}
+    <button class="primary" id="ok">${modo === 'criar' ? 'Criar conta e entrar' : 'Entrar'}</button>
+    ${modo === 'entrar' ? '<p style="text-align:center;margin-top:12px;"><a href="#" id="esq" class="muted">Esqueci-me da palavra-passe</a></p>' : ''}
+  </div>`;
+  const a = document.getElementById('aC'); if (a) { a.onclick = () => { modo = 'criar'; ecraEntrada(); }; document.getElementById('aE').onclick = () => { modo = 'entrar'; ecraEntrada(); }; }
+  document.getElementById('ok').onclick = submeter;
+  const esq = document.getElementById('esq');
+  if (esq) esq.onclick = async (ev) => { ev.preventDefault(); const e = document.getElementById('em').value.trim(); if (!e) { document.getElementById('erro').textContent = 'Escreve o teu email primeiro.'; return; } try { await sendPasswordResetEmail(auth, e); document.getElementById('erro').style.color = '#16a34a'; document.getElementById('erro').textContent = 'Enviámos um email para repores a palavra-passe.'; } catch (_) { document.getElementById('erro').textContent = 'Não consegui enviar o email.'; } };
+}
+const traduz = (e) => ({
+  'auth/email-already-in-use': 'Este email já tem conta. Toca em "Já tenho conta".', 'auth/invalid-email': 'Email inválido.',
+  'auth/weak-password': 'A palavra-passe é fraca. Usa 8 ou mais caracteres.', 'auth/invalid-credential': 'Email ou palavra-passe errados.',
+  'auth/wrong-password': 'Email ou palavra-passe errados.', 'auth/user-not-found': 'Email ou palavra-passe errados.', 'auth/too-many-requests': 'Demasiadas tentativas. Espera uns minutos.',
+  'auth/user-disabled': 'O teu acesso foi removido.'
+}[e && e.code] || (e && e.message) || 'Algo correu mal.');
+async function submeter() {
+  const em = document.getElementById('em').value.trim().toLowerCase(), pw = document.getElementById('pw').value, er = document.getElementById('erro');
+  er.style.color = '#b91c1c'; er.textContent = '';
+  if (!em || !pw) { er.textContent = 'Preenche o email e a palavra-passe.'; return; }
+  const b = document.getElementById('ok'); b.disabled = true; b.textContent = 'Aguarda…';
+  try {
+    if (modo === 'criar') {
+      if (pw.length < 8) throw { message: 'A palavra-passe tem de ter pelo menos 8 caracteres.' };
+      if (pw !== document.getElementById('pw2').value) throw { message: 'As palavras-passe não são iguais.' };
+      await createUserWithEmailAndPassword(auth, em, pw);
+      try { await window.peChamar('peAtivar', { l: LID, t: LTOK }); }
+      catch (e) { try { await auth.currentUser.delete(); } catch (_) {} throw e; }
+      history.replaceState(null, '', location.pathname);
+    } else {
+      await signInWithEmailAndPassword(auth, em, pw);
+    }
+    await abrir();
+  } catch (e) { er.textContent = traduz(e); b.disabled = false; b.textContent = modo === 'criar' ? 'Criar conta e entrar' : 'Entrar'; if (modo === 'entrar') try { await signOut(auth); } catch (_) {} }
+}
+
+// ─── Entrada no método ───
+function diasQueFaltam(ms) { return Math.max(0, Math.ceil((ms - Date.now()) / 86400000)); }
+async function abrir() {
+  const u = auth.currentUser; if (!u) { ecraEntrada(); return; }
+  const tk = await u.getIdTokenResult(true);
+  TENANT = tk.claims.tenantId || null;
+  if (!tk.claims.peLic || !TENANT) { await signOut(auth); ecraEntrada('Esta conta não tem acesso a este método.'); return; }
+  let est;
+  try { est = await window.peChamar('peEntrar', {}); }
+  catch (e) { await signOut(auth); ecraEntrada(e.message || 'Sem acesso.'); return; }
+  document.getElementById('topoDir').innerHTML = `${est.nome ? '👤 ' + est.nome.replace(/</g, '&lt;') + ' · ' : ''}faltam <b>${diasQueFaltam(est.expiraEm)}</b> dia(s) <button id="sair" style="margin-left:8px;background:none;border:1px solid #64748b;color:#fff;border-radius:6px;padding:3px 8px;cursor:pointer;">Sair</button>`;
+  document.getElementById('sair').onclick = async () => { await signOut(auth); location.reload(); };
+  raiz.innerHTML = `<div class="card" id="barra" style="padding:12px;"><button class="primary" id="novoPac" style="background:#fff;color:#1e3a8a;border:1px solid #1e3a8a;">➕ Adicionar paciente</button><div id="formPac" style="display:none;margin-top:12px;">
+    <input id="pNome" placeholder="Nome completo"><input id="pTel" placeholder="Telemóvel (opcional)" inputmode="tel"><input id="pEm" placeholder="Email (opcional)" type="email">
+    <button class="primary" id="pOk">Guardar paciente</button></div></div><div id="modulo"></div>`;
+  document.getElementById('novoPac').onclick = () => { const f = document.getElementById('formPac'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; };
+  document.getElementById('pOk').onclick = async () => {
+    const n = document.getElementById('pNome').value.trim(); if (!n) { toast('Escreve o nome.'); return; }
+    try { await addDoc(collection(fdb, 'tenants', TENANT, 'patients'), { fullName: n, phone: document.getElementById('pTel').value.trim(), email: document.getElementById('pEm').value.trim(), active: true, createdAt: serverTimestamp() });
+      toast('✅ Paciente guardado.'); ['pNome', 'pTel', 'pEm'].forEach(i => document.getElementById(i).value = ''); document.getElementById('formPac').style.display = 'none'; }
+    catch (e) { toast('Não consegui guardar o paciente.'); }
+  };
+  try { await window.carregarPE(); await window.renderPesquisaEmocional(document.getElementById('modulo')); }
+  catch (e) { document.getElementById('modulo').innerHTML = `<div class="card"><h2>🔒 Método indisponível</h2><p class="muted">${(e && e.message) || 'Sem acesso.'}</p></div>`; }
+}
+
+let primeira = true;
+onAuthStateChanged(auth, async (u) => {
+  if (!primeira) return; primeira = false;
+  if (u) { try { await abrir(); } catch (e) { ecraEntrada(); } } else ecraEntrada();
+});
+</script>
+</body>
+</html>

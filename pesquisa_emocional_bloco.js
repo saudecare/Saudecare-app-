@@ -301,6 +301,7 @@ async function renderPesquisaEmocional(main) {
           <div style="font-size:0.85rem;color:#bfdbfe;">Ferramenta de Mapeamento Clínico Avançado</div>
         </div>
         ${tenantId()==='hikari-terapias' ? `<button onclick="window.renderAdminPedidosPE(document.querySelector('main,#main,.main-content')||document.body)" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 14px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;">⚙️ Pedidos Pendentes</button>` : ''}
+        ${tenantId()==='hikari-terapias' ? `<button onclick="window.peLicencas()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 12px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;">🔑 Licenças de teste</button>` : ''}
       </div>
 
       <div id="pe-step-0" class="pe-step" style="display:block;">
@@ -1878,6 +1879,13 @@ function peExemplosDe(id) {
   if (o && Array.isArray(o.ex) && o.ex.length) return o.ex;
   return PE_EXEMPLOS[String(id).replace(/^(f\d)[de]$/,'$1')] || [];
 }
+function peMarca() {
+  const teste = String(tenantId()).indexOf('pe-') === 0;
+  const d = teste ? { nome:'', logo:'', lema:'' } : { nome:'Hikari Fafe', logo:'logo-hikari-fafe.png', lema:'Corpo · Mente · Alma · Espírito' };
+  const o = peConh().marca || {};
+  return { nome: (typeof o.nome === 'string' && o.nome.trim()) ? o.nome.trim() : d.nome, logo: o.logo || d.logo, lema: (typeof o.lema === 'string' && o.lema.trim()) ? o.lema.trim() : d.lema };
+}
+function peMarcaLogo(px) { const m = peMarca(); return m.logo ? `<img src="${peEsc(m.logo)}" alt="" style="width:${px}px;height:${px}px;border-radius:50%;object-fit:cover;flex-shrink:0;">` : ''; }
 function peExtraDe(id) { const o = (peConh().pontos || {})[id]; return (o && o.extra) ? String(o.extra) : ''; }
 function peSistemaTxt(c) { const o = (peConh().sistemas || {})[c]; return (typeof o === 'string' && o.trim()) ? o : PE_SISTEMA_TXT[c]; }
 function peEscudoTxt(e) {
@@ -1908,7 +1916,7 @@ function peEdV(id) { return (document.getElementById(id)?.value || '').trim(); }
 function peEdLinhas(id) { return peEdV(id).split('\n').map(x => x.trim()).filter(Boolean); }
 function peRenderEditor() {
   const ov = document.getElementById('pe-conh-ov'); if (!ov) return;
-  const K = peConh(); const abas = [['pontos','Pontos'],['sistemas','Sistemas'],['escudos','Escudos'],['textos','Textos do relatório/plano']];
+  const K = peConh(); const abas = [['pontos','Pontos'],['sistemas','Sistemas'],['escudos','Escudos'],['textos','Textos do relatório/plano'],['marca','Marca e logótipo']];
   let h = `<div style="max-width:760px;margin:0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><b style="font-size:1.1rem;color:#1e3a8a;">📚 Editar conhecimento do método</b><button onclick="window.peFecharEditor()" style="${peEdB('#e2e8f0','#334155','#cbd5e1')}">✖ Fechar</button></div>
   <div style="font-size:0.82rem;color:#475569;margin-bottom:10px;">Muda nomes, órgãos, temas, perguntas, exemplos e acrescenta conhecimento. O padrão fica sempre guardado: use "↩ Repor padrão". Para mover pontos use o modo ✏️ no mapa.</div>
   <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;">${abas.map(([k,n]) => `<button onclick="window.peEdAba('${k}')" style="${peEdB(PE_ED.aba===k?'#1e3a8a':'white', PE_ED.aba===k?'white':'#1e3a8a','#1e3a8a')}white-space:nowrap;">${n}</button>`).join('')}</div><div style="background:white;border-radius:12px;padding:14px;">`;
@@ -1921,6 +1929,13 @@ function peRenderEditor() {
     h += PE_CAT.map(c => peEdCampo('pe-sis-' + c.id, PE_CAT_NOME[c.id] || c.id, peSistemaTxt(c.id), 3) + `<button onclick="window.peEdRepor('sistemas','${c.id}')" style="${peEdB('white','#334155','#cbd5e1')}margin-bottom:12px;">↩ Repor padrão</button>`).join('') + `<button onclick="window.peEdGuardarSistemas()" style="${peEdB('#16a34a','white')}width:100%;">💾 Guardar sistemas</button>`;
   } else if (PE_ED.aba === 'escudos') {
     h += Object.keys(PE_ESCUDOS_AFINIDADES).map((e, i) => { const t = peEscudoTxt(e) || { desc:'', ex:[] }, a = peAfinidade(e) || {}; return `<details style="margin-bottom:8px;border:1px solid #e2e8f0;border-radius:8px;padding:8px;"><summary style="font-weight:700;color:#1e3a8a;cursor:pointer;">🛡️ ${peEsc(e)}${(K.escudos||{})[e]?' · editado':''}</summary><div style="margin-top:8px;">${peEdCampo('pe-es-d'+i,'Descrição',t.desc,3)}${peEdCampo('pe-es-x'+i,'Exemplos (um por linha)',(t.ex||[]).join('\n'),4)}${peEdCampo('pe-es-l'+i,'O que liberta',a.libera,2)}${peEdCampo('pe-es-a'+i,'Afirmações / comando',a.afi,4)}<button onclick="window.peEdGuardarEscudo(${i})" style="${peEdB('#16a34a','white')}">💾 Guardar</button> <button onclick="window.peEdRepor('escudos','${peEsc(e)}')" style="${peEdB('white','#334155','#cbd5e1')}">↩ Repor padrão</button></div></details>`; }).join('');
+  } else if (PE_ED.aba === 'marca') {
+    const m = peMarca();
+    h += `<div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;">${peMarcaLogo(72) || '<div style="width:72px;height:72px;border-radius:50%;background:#e2e8f0;"></div>'}<div style="font-size:0.82rem;color:#475569;">Aparece no topo e no fim dos relatórios e planos que envias.</div></div>
+    <label style="font-size:0.78rem;font-weight:700;color:#475569;">Nome da marca</label><input id="pe-m-nome" value="${peEsc(m.nome)}" style="${peEdI}">
+    <label style="font-size:0.78rem;font-weight:700;color:#475569;">Lema (opcional)</label><input id="pe-m-lema" value="${peEsc(m.lema)}" style="${peEdI}">
+    <label style="font-size:0.78rem;font-weight:700;color:#475569;">Logótipo (imagem)</label><input type="file" id="pe-m-logo" accept="image/*" style="${peEdI}">
+    <button onclick="window.peEdGuardarMarca()" style="${peEdB('#16a34a','white')}">💾 Guardar marca</button> <button onclick="window.peEdRepor('marca','')" style="${peEdB('white','#334155','#cbd5e1')}">↩ Repor padrão</button>`;
   } else {
     h += ['intro','refl','aviso','dica','regra','passos'].map(k => { const v = peTxt(k); const nome = { intro:'Introdução do relatório', refl:'Perguntas de reflexão (uma por linha)', aviso:'Aviso final', dica:'Dica de localização', regra:'Regra lado a lado', passos:'Passos da massagem (um por linha)' }[k]; return peEdCampo('pe-tx-' + k, nome, Array.isArray(v) ? v.join('\n') : v, Array.isArray(v) ? 6 : 3) + `<button onclick="window.peEdRepor('textos','${k}')" style="${peEdB('white','#334155','#cbd5e1')}margin-bottom:12px;">↩ Repor padrão</button>`; }).join('') + `<button onclick="window.peEdGuardarTextos()" style="${peEdB('#16a34a','white')}width:100%;">💾 Guardar textos</button>`;
   }
@@ -1949,6 +1964,26 @@ async function peEdGuardarPonto(id) {
   if (Object.keys(o).length) K.pontos[id] = o; else delete K.pontos[id];
   await peConhGuardar(K); peAposEdicao();
 }
+function peLogoParaDataUrl(file) {
+  return new Promise((ok, falha) => {
+    const r = new FileReader();
+    r.onerror = () => falha(new Error('leitura'));
+    r.onload = () => { const im = new Image(); im.onerror = () => falha(new Error('imagem')); im.onload = () => {
+      const L = 220, esc = Math.min(1, L / Math.max(im.width, im.height)), c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(im.width * esc)); c.height = Math.max(1, Math.round(im.height * esc));
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); ok(c.toDataURL('image/png')); }; im.src = r.result; };
+    r.readAsDataURL(file);
+  });
+}
+async function peEdGuardarMarca() {
+  const K = peEdClone(); const o = {};
+  const n = peEdV('pe-m-nome'), l = peEdV('pe-m-lema'); if (n) o.nome = n; if (l) o.lema = l;
+  const f = document.getElementById('pe-m-logo')?.files?.[0];
+  if (f) { try { o.logo = await peLogoParaDataUrl(f); } catch(_) { mostrarAviso('Não consegui ler essa imagem.'); return; } }
+  else if ((K.marca || {}).logo) o.logo = K.marca.logo;
+  if (Object.keys(o).length) K.marca = o; else delete K.marca;
+  await peConhGuardar(K); peAposEdicao();
+}
 async function peEdGuardarSistemas() {
   const K = peEdClone(); K.sistemas = {};
   PE_CAT.forEach(c => { const v = peEdV('pe-sis-' + c.id); if (v && v !== PE_SISTEMA_TXT[c.id]) K.sistemas[c.id] = v; });
@@ -1973,7 +2008,7 @@ async function peEdGuardarTextos() {
   await peConhGuardar(K); peAposEdicao();
 }
 async function peEdRepor(grupo, chave) {
-  const K = peEdClone(); if (K[grupo]) delete K[grupo][chave];
+  const K = peEdClone(); if (grupo === 'marca') delete K.marca; else if (K[grupo]) delete K[grupo][chave];
   await peConhGuardar(K); peAposEdicao(); mostrarAviso('↩ Padrão reposto.');
 }
 let peEdTudoArmado = false;
@@ -1994,7 +2029,62 @@ function peAposEdicao() {
 }
 window.peAbrirEditorConhecimento = peAbrirEditorConhecimento; window.peFecharEditor = peFecharEditor; window.peEdAba = peEdAba; window.peEdCat = peEdCat;
 window.peEdPonto = peEdPonto; window.peEdGuardarPonto = peEdGuardarPonto; window.peEdGuardarSistemas = peEdGuardarSistemas; window.peEdGuardarEscudo = peEdGuardarEscudo;
-window.peEdGuardarTextos = peEdGuardarTextos; window.peEdRepor = peEdRepor; window.peEdReporTudo = peEdReporTudo; window.peEdDesfazer = peEdDesfazer;
+window.peEdGuardarTextos = peEdGuardarTextos; window.peEdGuardarMarca = peEdGuardarMarca; window.peEdRepor = peEdRepor; window.peEdReporTudo = peEdReporTudo; window.peEdDesfazer = peEdDesfazer;
+
+// ─── LICENÇAS DE TESTE (só o dono) ───
+function peDataCurta(ms) { return ms ? new Date(ms).toLocaleDateString('pt-PT', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—'; }
+async function peLicencas() {
+  let ov = document.getElementById('pe-lic-ov');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'pe-lic-ov'; ov.style.cssText = 'position:fixed;inset:0;background:#f1f5f9;z-index:9999;overflow-y:auto;padding:12px;'; document.body.appendChild(ov); }
+  ov.innerHTML = '<div style="max-width:760px;margin:0 auto;padding:20px;color:#475569;">A carregar licenças…</div>';
+  let lista = [];
+  try { lista = (await window.peChamar('peAdmin', { acao:'listar' })).licencas; }
+  catch(e) { ov.innerHTML = `<div style="max-width:760px;margin:0 auto;padding:16px;"><button onclick="window.peLicFechar()" style="${peEdB('#e2e8f0','#334155','#cbd5e1')}">✖ Fechar</button><p style="color:#b91c1c;">Não consegui ligar ao servidor: ${peEsc(e.message)}<br><br>Se é a primeira vez, falta publicar as funções no GitHub (Actions → Publicar funções do Firebase → publicar).</p></div>`; return; }
+  const cor = { ativa:'#16a34a', pendente:'#b45309', pausada:'#64748b', removida:'#b91c1c', expirada:'#b91c1c', 'link caducado':'#b91c1c' };
+  const btn = (acao, id, txt, extra, dias) => `<button onclick="window.peLicAcao('${acao}','${id}'${dias ? ',' + dias : ''})" style="${peEdB('white','#334155','#cbd5e1')}padding:7px 10px;font-size:0.78rem;${extra||''}">${txt}</button>`;
+  ov.innerHTML = `<div style="max-width:760px;margin:0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><b style="font-size:1.1rem;color:#1e3a8a;">🔑 Licenças de teste</b><button onclick="window.peLicFechar()" style="${peEdB('#e2e8f0','#334155','#cbd5e1')}">✖ Fechar</button></div>
+  <div style="background:white;border-radius:12px;padding:14px;margin-bottom:14px;"><b style="color:#1e3a8a;">➕ Novo link de teste</b>
+    <input id="pe-l-nome" placeholder="Nome de quem vai testar" style="${peEdI}margin-top:8px;">
+    <input id="pe-l-email" type="email" placeholder="Email (opcional: só esse email poderá entrar)" style="${peEdI}">
+    <label style="font-size:0.78rem;font-weight:700;color:#475569;">Duração do teste (dias, conta a partir da entrada)</label>
+    <input id="pe-l-dias" type="number" min="1" max="365" value="7" style="${peEdI}">
+    <button onclick="window.peLicCriar()" style="${peEdB('#16a34a','white')}width:100%;">Criar link</button>
+    <div id="pe-l-novo"></div></div>
+  ${lista.length ? lista.map(l => `<div style="background:white;border-radius:12px;padding:12px;margin-bottom:10px;border-left:4px solid ${cor[l.estado]||'#94a3b8'};">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>${peEsc(l.nome)}</b><span style="font-size:0.78rem;font-weight:700;color:${cor[l.estado]||'#64748b'};">${peEsc(l.estado.toUpperCase())}</span></div>
+    <div style="font-size:0.8rem;color:#64748b;margin:4px 0 8px;">${peEsc(l.email || 'ainda sem conta')} · ${l.dias} dias · termina ${peDataCurta(l.expiraEm)} · último acesso ${peDataCurta(l.ultimoAcesso)} · ${l.acessos} entradas</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      ${l.link ? `<button onclick="window.peLicCopiar('${peEsc(l.link)}')" style="${peEdB('#1e3a8a','white')}padding:7px 10px;font-size:0.78rem;">📋 Copiar link</button>` : ''}
+      ${l.estado === 'pausada' || l.estado === 'removida' ? btn('retomar', l.id, '▶ Dar acesso') : ''}
+      ${l.estado === 'ativa' ? btn('pausar', l.id, '⏸ Suspender') : ''}
+      ${btn('prolongar', l.id, '⏱ +7 dias', '', 7)}${btn('prolongar', l.id, '⏱ +30 dias', '', 30)}
+      ${l.estado !== 'removida' ? btn('remover', l.id, '🚫 Remover acesso') : ''}
+      ${btn('apagar', l.id, '🗑 Apagar tudo', 'color:#b91c1c;border-color:#fca5a5;')}
+    </div></div>`).join('') : '<div style="color:#64748b;text-align:center;padding:20px;">Ainda não criaste nenhum link.</div>'}</div>`;
+}
+function peLicFechar() { document.getElementById('pe-lic-ov')?.remove(); }
+async function peLicCriar() {
+  const nome = peEdV('pe-l-nome'); if (!nome) { mostrarAviso('Escreve o nome de quem vai testar.'); return; }
+  try {
+    const r = await window.peChamar('peAdmin', { acao:'criar', nome, email: peEdV('pe-l-email'), dias: parseInt(document.getElementById('pe-l-dias').value, 10) || 7 });
+    await peLicencas();
+    const z = document.getElementById('pe-l-novo');
+    if (z) z.innerHTML = `<div style="margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px;font-size:0.82rem;word-break:break-all;">✅ Link criado para <b>${peEsc(nome)}</b>:<br>${peEsc(r.link)}<br><button onclick="window.peLicCopiar('${peEsc(r.link)}')" style="${peEdB('#16a34a','white')}margin-top:8px;">📋 Copiar link</button></div>`;
+  } catch(e) { mostrarAviso(e.message); }
+}
+let peLicArmada = null;
+async function peLicAcao(acao, id, dias) {
+  const chave = acao + id;
+  if ((acao === 'remover' || acao === 'apagar') && peLicArmada !== chave) {
+    peLicArmada = chave; mostrarAviso(acao === 'apagar' ? '⚠️ Toque outra vez para APAGAR tudo desta pessoa.' : '⚠️ Toque outra vez para remover o acesso.');
+    setTimeout(() => { if (peLicArmada === chave) peLicArmada = null; }, 5000); return;
+  }
+  peLicArmada = null;
+  try { await window.peChamar('peAdmin', { acao, id, dias }); mostrarAviso('✅ Feito.'); await peLicencas(); }
+  catch(e) { mostrarAviso(e.message); }
+}
+function peLicCopiar(l) { if (window.copiarTexto) window.copiarTexto(l, 'Link copiado.'); else navigator.clipboard?.writeText(l); }
+window.peLicencas = peLicencas; window.peLicFechar = peLicFechar; window.peLicCriar = peLicCriar; window.peLicAcao = peLicAcao; window.peLicCopiar = peLicCopiar;
 
 const PE_CATS_ORDEM = ['vital','impact','superior','central','inferior'];
 const PE_CAT_NOME = { vital:'Centros Vitais', impact:'Zonas de Entrada', superior:'Sistema Superior', central:'Sistema Central', inferior:'Sistema Inferior' };
@@ -2086,11 +2176,11 @@ function peConstruirRelatorioPaciente() {
   const consulta = ((peState.historico && peState.historico.mapeamentos && peState.historico.mapeamentos.length) || 0) + 1;
   const nome = peState.patientName || '';
   let h = `<div style="background:linear-gradient(135deg,#1e3a8a,#0f172a);color:white;border-radius:12px;padding:16px;margin-bottom:14px;display:flex;gap:14px;align-items:center;">
-    <img src="logo-hikari-fafe.png" alt="Hikari Fafe" style="width:68px;height:68px;border-radius:50%;flex-shrink:0;">
-    <div><div style="font-size:0.78rem;letter-spacing:2px;color:#fcd34d;font-weight:700;">HIKARI FAFE</div>
+    ${peMarcaLogo(68)}
+    <div><div style="font-size:0.78rem;letter-spacing:2px;color:#fcd34d;font-weight:700;">${peEsc(peMarca().nome.toUpperCase())}</div>
     <div style="font-size:1.2rem;font-weight:800;">O Teu Mapa Emocional</div>
     <div style="font-size:0.85rem;opacity:.9;margin-top:2px;">${peEsc(nome)} · Consulta n.º ${consulta} · ${data}</div></div></div>`;
-  let t = `HIKARI FAFE — Corpo · Mente · Alma · Espírito\nO TEU MAPA EMOCIONAL\n${nome} · Consulta n.º ${consulta} · ${data}\n\n`;
+  let t = `${[peMarca().nome.toUpperCase(), peMarca().lema].filter(Boolean).join(' — ')}\nO TEU MAPA EMOCIONAL\n${nome} · Consulta n.º ${consulta} · ${data}\n\n`;
   const intro = peTxt('intro');
   h += `<p style="font-size:0.92rem;line-height:1.6;color:#334155;">${intro}</p>`; t += intro + '\n\n';
   h += `<h3 style="color:#1e3a8a;margin:18px 0 8px;font-size:1.05rem;">O que o teu corpo revelou</h3>`; t += 'O QUE O TEU CORPO REVELOU\n\n';
@@ -2138,7 +2228,7 @@ function peConstruirRelatorioPaciente() {
   t += 'PARA REFLETIRES ESTA SEMANA\n' + refl.map(x => ` - ${x}`).join('\n') + '\n\n';
   const aviso = peTxt('aviso');
   h += `<p style="font-size:0.74rem;color:#64748b;border-top:1px solid #e2e8f0;padding-top:8px;">${aviso}</p>`; t += aviso + '\n';
-  h += `<div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px;font-size:0.78rem;color:#64748b;"><img src="logo-hikari-fafe.png" alt="" style="width:26px;height:26px;border-radius:50%;"> Hikari Fafe · Corpo · Mente · Alma · Espírito</div>`;
+  h += `<div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px;font-size:0.78rem;color:#64748b;">${peMarcaLogo(26)} ${peEsc([peMarca().nome, peMarca().lema].filter(Boolean).join(' · '))}</div>`;
   return { html:h, texto:t };
 }
 
