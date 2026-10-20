@@ -1936,9 +1936,9 @@ function peFiguraCorpo(lado, pts) {
 }
 
 function peLocalDoPonto(p, lado) {
-  if (p.cat === 'superior') return lado === 'costas' ? 'nas costas, no osso mais saliente da parte de trás do pescoço' : 'no pescoço, entre a zona debaixo da barbela e o fim do pescoço (ver imagem ampliada)';
-  if (p.cat === 'central') return lado === 'costas' ? 'nas costas, no osso mais saliente da parte de trás do pescoço' : 'na linha do meio do tronco, da base do pescoço até à cinta';
-  return lado === 'costas' ? 'na parte de trás da perna, entre a zona acima do joelho e a raiz da coxa' : `na perna ${/e$/.test(p.id) ? 'esquerda' : 'direita'}, entre a virilha e o joelho`;
+  if (p.cat === 'superior') return lado === 'costas' ? 'nas costas, no osso mais saliente da parte de trás do pescoço (nuca)' : 'no pescoço, entre a zona debaixo da barbela e o fim do pescoço (ver imagem ampliada)';
+  if (p.cat === 'central') return lado === 'costas' ? 'nas costas, no pescoço, mais ou menos a meio, no osso mais saliente' : 'na linha do meio do tronco, da base do pescoço até à cinta';
+  return `na perna ${/e$/.test(p.id) ? 'esquerda' : 'direita'}, entre a virilha e o joelho (mesma localização da frente)`;
 }
 
 function peConstruirPlano() {
@@ -1967,9 +1967,9 @@ function peConstruirPlano() {
     h += `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px;">
       <div style="font-weight:700;color:#0f172a;margin-bottom:8px;text-transform:uppercase;font-size:0.82rem;">${lado === 'frente' ? 'Frente do corpo' : 'Costas'}</div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-start;">${f.svgCorpo}${f.svgPesc}</div>
-      ${lado === 'costas' && f.L.some(p => p.cat !== 'inferior') ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-top:10px;font-size:0.84rem;color:#92400e;"><b>Atenção — procedimento diferente nas costas:</b> os pontos do Sistema Superior e do Sistema Central, nas costas, não se massajam no local onde aparecem desenhados. Massajam-se todos no <b>osso mais saliente da parte de trás do pescoço</b>, um a um, pela ordem dos números. Os pontos do Sistema Inferior massajam-se na parte de trás das pernas.</div>` : ''}
+      ${lado === 'costas' && f.L.some(p => p.cat !== 'inferior') ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-top:10px;font-size:0.84rem;color:#92400e;"><b>Atenção — procedimento diferente nas costas:</b> os pontos do Sistema Superior e do Sistema Central, nas costas, não se massajam no local onde aparecem desenhados. Os do <b>Sistema Superior</b> massajam-se no <b>osso mais saliente da parte de trás do pescoço (nuca)</b>. Os do <b>Sistema Central</b> massajam-se também atrás, no <b>pescoço, mais ou menos a meio, no osso mais saliente</b>. Em cada sistema, um a um, pela ordem dos números. Os do <b>Sistema Inferior</b> mantêm a mesma localização da frente, nas pernas.</div>` : ''}
       <ol style="list-style:none;margin:10px 0 0;padding:0;font-size:0.86rem;color:#334155;">${f.L.map(p => `<li style="margin-bottom:6px;"><b style="display:inline-block;background:#dc2626;color:white;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;font-size:0.72rem;margin-right:6px;">${p.n}</b><b>${peEsc(p.nome)}</b> <span style="color:#64748b;">(${PE_CAT_NOME[p.cat]})</span><br><span style="color:#64748b;margin-left:26px;display:inline-block;">${peLocalDoPonto(p, lado)}</span></li>`).join('')}</ol></div>`;
-    t += `\n${lado === 'frente' ? 'FRENTE DO CORPO' : 'COSTAS'}:\n` + (lado === 'costas' && f.L.some(p => p.cat !== 'inferior') ? '  ATENÇÃO — procedimento diferente nas costas: os pontos do Sistema Superior e do Sistema Central não se massajam onde aparecem desenhados; massajam-se todos no osso mais saliente da parte de trás do pescoço, um a um, pela ordem dos números. Os pontos do Sistema Inferior massajam-se na parte de trás das pernas.\n' : '') + f.L.map(p => `  ${p.n}. ${p.nome} (${PE_CAT_NOME[p.cat]}) — ${peLocalDoPonto(p, lado)}`).join('\n') + '\n';
+    t += `\n${lado === 'frente' ? 'FRENTE DO CORPO' : 'COSTAS'}:\n` + (lado === 'costas' && f.L.some(p => p.cat !== 'inferior') ? '  ATENÇÃO — procedimento diferente nas costas: os pontos do Sistema Superior e do Sistema Central não se massajam onde aparecem desenhados. Os do Sistema Superior massajam-se no osso mais saliente da parte de trás do pescoço (nuca); os do Sistema Central, também atrás, no pescoço, mais ou menos a meio, no osso mais saliente. Em cada sistema, um a um, pela ordem dos números. Os do Sistema Inferior mantêm a mesma localização da frente, nas pernas.\n' : '') + f.L.map(p => `  ${p.n}. ${p.nome} (${PE_CAT_NOME[p.cat]}) — ${peLocalDoPonto(p, lado)}`).join('\n') + '\n';
   });
   const outros = peUnicos(pts).filter(p => p.cat === 'vital' || p.cat === 'impact');
   if (outros.length) {
