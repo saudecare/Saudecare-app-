@@ -174,7 +174,7 @@ peReset();
 window.__peAtivo = false;
 
 async function peVerificarAcesso() {
-  if (tenantId() === 'hikari-terapias') { window.__peAtivo = true; return; }
+  if (tenantId() === 'hikari-terapias' || String(tenantId()).indexOf('pe-') === 0) { window.__peAtivo = true; return; }
   try {
     const snap = await db().doc(`tenants/${tenantId()}`).get();
     const d = snap.data() || {};
@@ -183,7 +183,7 @@ async function peVerificarAcesso() {
 }
 
 function temPesquisaEmocional() {
-  return tenantId() === 'hikari-terapias' || window.__peAtivo === true;
+  return tenantId() === 'hikari-terapias' || String(tenantId()).indexOf('pe-') === 0 || window.__peAtivo === true;
 }
 
 // ─── CONFIG LOCAL (por tenant) ────────────────────────────────────
