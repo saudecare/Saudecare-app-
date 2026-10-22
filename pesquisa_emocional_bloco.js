@@ -142,14 +142,17 @@ const PE_ESCUDOS_Q = [
   {name:"Impotência",q:["Sinto que não tenho força para mudar a minha vida", "Já me senti preso/a numa situação sem saída", "Quando algo corre mal, fico bloqueado/a", "Por mais que tente, sinto que nada muda", "Tenho dificuldade em tomar decisões importantes", "Já passei por momentos em que me senti totalmente impotente", "Sinto que os outros mandam demais na minha vida", "Desisti de sonhos por achar que não os conseguiria realizar", "O medo paralisa-me muitas vezes", "Fico a pensar no que podia ter feito de outra forma e não consigo agir"]},
   {name:"Perda",q:["Carrego uma dor funda por pessoas ou situações que perdi", "Sinto um vazio que não parece ter fim", "Custa-me largar o passado", "Despedidas são muito difíceis para mim", "Evito criar laços para não sofrer com perdas futuras", "Perdi alguém ou algo que era essencial para mim", "Revivo muitas vezes memórias de quem ou do que já se foi", "Tenho medo de perder quem amo", "Sinto-me rejeitado/a com facilidade, mesmo sem razão aparente", "Vivi experiências marcantes de abandono"]}
 ];
+const PE_MEDOS_PADRAO = JSON.parse(JSON.stringify(PE_MEDOS));
+const PE_ESCUDOS_PADRAO = JSON.parse(JSON.stringify(PE_ESCUDOS_Q));
 const PE_ESCALA_MEDOS = ['1 😌 Discordo totalmente', '2 🙂 Discordo', '3 😐 Neutro', '4 😟 Concordo', '5 😰 Concordo totalmente'];
 const PE_ESCALA_ESCUDOS = ['1 😌 Não me identifico nada', '2 😕 Tenho momentos em que me sinto assim', '3 😢 É exatamente o que sinto agora ou com frequência'];
 const PE_EMOJI_BLOCO = { 'Medo da Pobreza':'💰', 'Medo da Doença':'🩺', 'Medo da Crítica':'🗣️', 'Medo da Morte':'🕊️', 'Medo de Relacionamento':'💔', 'Medo de Envelhecer':'⏳', 'Medo de Perder a Liberdade':'🦅', 'Desvalorização':'📉', 'Desproteção':'🛡️', 'Sobrevivência':'🔥', 'Impotência':'⛓️', 'Perda':'🥀' };
-const peEmo = (n) => (PE_EMOJI_BLOCO[n] || '') + ' ';
+const peEmo = (n) => (PE_EMOJI_BLOCO[n] ? PE_EMOJI_BLOCO[n] + ' ' : '');
+const peEmoX = (x) => (x.emoji ? x.emoji + ' ' : '');
 
 // Soma por blocos e deteção do(s) mais forte(s). vals[b][q] = número (0 = por responder).
-function peRanking(lista, vals) {
-  const r = lista.map((b, bi) => ({ nome: b.name, bloco: bi + 1, soma: (vals[bi] || []).reduce((a, v) => a + (parseInt(v, 10) || 0), 0) }));
+function peRanking(lista, vals, esc) {
+  const r = lista.map((b, bi) => ({ nome: b.name, emoji: b.emoji || PE_EMOJI_BLOCO[b.name] || '', bloco: bi + 1, soma: (vals[bi] || []).reduce((a, v) => a + (parseInt(v, 10) || 0), 0), max: (b.q.length || 0) * (esc || 5) }));
   const max = Math.max.apply(null, r.map(x => x.soma));
   r.forEach(x => { x.dominante = max > 0 && x.soma === max; x.perto = max > 0 && !x.dominante && x.soma >= Math.ceil(max * 0.9); });
   return { itens: r, max };
@@ -157,11 +160,11 @@ function peRanking(lista, vals) {
 function peRankingHtml(rk, maxBloco, rotulo) {
   if (!rk.max) return 'Aguarda preenchimento...';
   const dom = rk.itens.filter(x => x.dominante), perto = rk.itens.filter(x => x.perto);
-  let h = `<div style="text-align:left;"><div style="font-weight:800;color:#1e3a8a;margin-bottom:8px;">${dom.length > 1 ? rotulo + ' dominantes (empate)' : rotulo + ' dominante'}: ${dom.map(x => peEmo(x.nome) + peEsc(x.nome)).join(' + ')} (${rk.max} pontos) 🏆</div>`;
+  let h = `<div style="text-align:left;"><div style="font-weight:800;color:#1e3a8a;margin-bottom:8px;">${dom.length > 1 ? rotulo + ' dominantes (empate)' : rotulo + ' dominante'}: ${dom.map(x => peEmoX(x) + peEsc(x.nome)).join(' + ')} (${rk.max} pontos) 🏆</div>`;
   if (perto.length) h += `<div style="font-size:0.85rem;color:#92400e;margin-bottom:8px;">Também muito presente: ${perto.map(x => peEsc(x.nome) + ' (' + x.soma + ')').join(', ')}</div>`;
   rk.itens.slice().sort((a, b) => b.soma - a.soma).forEach(x => {
-    const pct = Math.round(x.soma / maxBloco * 100);
-    h += `<div style="margin:5px 0;font-size:0.82rem;"><div style="display:flex;justify-content:space-between;"><span>${x.dominante ? '🏆 ' : ''}${peEmo(x.nome)}${peEsc(x.nome)}</span><b>${x.soma}/${maxBloco}</b></div><div style="background:#e2e8f0;border-radius:6px;height:8px;"><div style="width:${pct}%;background:${x.dominante ? '#1e3a8a' : (x.perto ? '#d97706' : '#94a3b8')};height:8px;border-radius:6px;"></div></div></div>`;
+    const pct = Math.round(x.soma / (x.max || maxBloco || 1) * 100);
+    h += `<div style="margin:5px 0;font-size:0.82rem;"><div style="display:flex;justify-content:space-between;"><span>${x.dominante ? '🏆 ' : ''}${peEmoX(x)}${peEsc(x.nome)}</span><b>${x.soma}/${x.max || maxBloco}</b></div><div style="background:#e2e8f0;border-radius:6px;height:8px;"><div style="width:${pct}%;background:${x.dominante ? '#1e3a8a' : (x.perto ? '#d97706' : '#94a3b8')};height:8px;border-radius:6px;"></div></div></div>`;
   });
   return h + '</div>';
 }
@@ -237,7 +240,12 @@ function peAplicarPosicoes(cfg) {
   return cfg;
 }
 
-function peLerConfig() { return peAplicarConhecimento(peAplicarPosicoes(peLerConfigBase())); }
+function peLerConfig() {
+  const c = peAplicarConhecimento(peAplicarPosicoes(peLerConfigBase()));
+  const q = window.__peQ;
+  if (q && q.forms) Object.keys(q.forms).forEach(k => { if (Array.isArray(q.forms[k])) c.forms[k] = JSON.parse(JSON.stringify(q.forms[k])); });
+  return c;
+}
 
 // Posições já ajustadas neste dispositivo (diferentes das de origem).
 function peMapaLocal() {
@@ -269,12 +277,14 @@ function peGuardarPosicoesRemoto() {
 
 // Lê as posições guardadas na conta; se ainda não existirem, usa as que já foram ajustadas neste dispositivo.
 async function peCarregarPosicoes() {
+  try { const c = localStorage.getItem('pe_q_' + tenantId()); if (c && !window.__peQ) peAplicarQ(JSON.parse(c)); } catch(_) {}
   let remoto = null, leu = false;
   try {
     const snap = await db().doc(`tenants/${tenantId()}`).get();
     leu = true;
     const d = (snap && snap.data && snap.data()) || {};
     if (d.peAudios21 && typeof d.peAudios21 === 'object') window.__peAud21 = d.peAudios21;
+    if (d.peQuestionarios && typeof d.peQuestionarios === 'object') peAplicarQ(d.peQuestionarios);
     if (d.peConhecimento && typeof d.peConhecimento === 'object') { window.__peConh = d.peConhecimento; try { localStorage.setItem('pe_conh_' + tenantId(), JSON.stringify(d.peConhecimento)); } catch(_) {} }
     if (d.peMapaPosicoes && typeof d.peMapaPosicoes === 'object' && Object.keys(d.peMapaPosicoes).length) remoto = d.peMapaPosicoes;
   } catch(_) {}
@@ -314,6 +324,7 @@ function peLerConfigBase() {
 
 function peGuardarConfig(cfg) {
   try { localStorage.setItem(`pe_cfg_${tenantId()}`, JSON.stringify(cfg)); } catch(_) {}
+  if (cfg && cfg.forms) { const d = peQDados(); d.forms = JSON.parse(JSON.stringify(cfg.forms)); peQPersistir(); }
 }
 
 // ─── VISTA PRINCIPAL ──────────────────────────────────────────────
@@ -339,6 +350,7 @@ async function renderPesquisaEmocional(main) {
         <div class="card" style="padding:20px;">
           <button id="pe-btn-nova-consulta" onclick="window.peAbrirNovaConsulta()" style="width:100%;background:#1e3a8a;color:white;padding:16px;border:none;border-radius:10px;font-size:1.05rem;font-weight:700;cursor:pointer;">➕ Nova Consulta</button>
           <button onclick="window.peAbrirEnviarQuestionarios()" style="width:100%;margin-top:10px;background:#b45309;border:none;color:white;padding:14px;border-radius:10px;font-size:0.98rem;font-weight:700;cursor:pointer;">📨 Enviar questionários ao paciente</button>
+          <button onclick="window.peGQAbrir()" style="width:100%;margin-top:10px;background:white;border:1px solid #b45309;color:#b45309;padding:12px;border-radius:10px;font-size:0.92rem;font-weight:700;cursor:pointer;">📋 Ver e editar os meus questionários</button>
           <button onclick="window.peAbrirEditorConhecimento()" style="width:100%;margin-top:10px;background:white;border:1px solid #1e3a8a;color:#1e3a8a;padding:12px;border-radius:10px;font-size:0.92rem;font-weight:700;cursor:pointer;">📚 Editar conhecimento do método</button>
           <div id="pe-escolher-paciente" style="display:none;margin-top:18px;">
             <div style="font-size:1.05rem;font-weight:700;color:#1e3a8a;margin-bottom:12px;border-bottom:2px solid #fef3c7;padding-bottom:10px;">Escolher paciente</div>
@@ -363,7 +375,7 @@ async function renderPesquisaEmocional(main) {
             <button id="pe-btn-edit-form" onclick="window.peToggleFormEdit()" style="background:#e2e8f0;border:1px solid #cbd5e1;color:#334155;padding:8px 14px;border-radius:20px;font-size:0.8rem;font-weight:700;cursor:pointer;">✏️ Editar Perguntas</button>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-            ${['pre-consulta','pos-consulta','crianca','cuidador','medos','escudos'].map(id=>`<button onclick="window.peMudarFicha('${id}',this)" class="pe-tab-btn ${id==='pre-consulta'?'pe-tab-ativo':''}" style="padding:9px 14px;border:1px solid ${id==='pre-consulta'?'#b45309':'#cbd5e1'};background:${id==='pre-consulta'?'#b45309':'white'};color:${id==='pre-consulta'?'white':'#64748b'};border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;">${{'pre-consulta':'Pré-Consulta','pos-consulta':'Pós-Consulta','crianca':'Criança','cuidador':'Cuidador','medos':'Medos','escudos':'Escudos'}[id]}</button>`).join('')}
+            ${peListaFichas().map(f=>f.id).map(id=>`<button onclick="window.peMudarFicha('${id}',this)" class="pe-tab-btn ${id==='pre-consulta'?'pe-tab-ativo':''}" style="padding:9px 14px;border:1px solid ${id==='pre-consulta'?'#b45309':'#cbd5e1'};background:${id==='pre-consulta'?'#b45309':'white'};color:${id==='pre-consulta'?'white':'#64748b'};border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;">${peRotuloTab(id)}</button>`).join('')}
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
             <button id="pe-btn-copiar" onclick="window.peCopiarFicha()" style="background:#e2e8f0;border:1px solid #cbd5e1;padding:8px 14px;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;">📋 Copiar para WhatsApp</button>
@@ -824,7 +836,7 @@ function peRenderizarFicha(id) {
   if (!container) return;
   const fichas = peState.formsDB || peLerConfig().forms;
   const lista = fichas[id] || [];
-  const tit = {'pre-consulta':'Questionário Pré-Consulta','pos-consulta':'Questionário de Pós-Consulta','crianca':'Anamnese com a Criança','cuidador':'Anamnese para Cuidador'}[id] || id;
+  const tit = peTituloQ(id);
   const TIPOS = { texto:'texto', sim_nao:'sim/não', escala:'escala 1-10', multi:'múltipla escolha' };
   const editMode = container.dataset.editMode === '1';
   let html = `<h4 id="pe-form-titulo" style="color:#1e3a8a;margin-bottom:14px;">${tit}</h4>`;
@@ -1048,7 +1060,7 @@ function peTabelaBlocos(lista, prefixo, escala, calc, titulo, intro, idRes) {
   let html = `<h4 style="color:#1e3a8a;margin-bottom:12px;">${titulo}</h4><p style="font-size:0.85rem;color:#64748b;margin-bottom:16px;">${intro}</p>`;
   const cols = escala.length;
   lista.forEach((bloco, bIdx) => {
-    html += `<div style="background:#fff1f2;padding:10px 14px;border-radius:6px;font-weight:700;color:#dc2626;margin-top:16px;margin-bottom:10px;">${peEmo(bloco.name)}Bloco ${bIdx + 1} — ${peEsc(bloco.name)}</div>
+    html += `<div style="background:#fff1f2;padding:10px 14px;border-radius:6px;font-weight:700;color:#dc2626;margin-top:16px;margin-bottom:10px;">${bloco.emoji ? bloco.emoji + ' ' : peEmo(bloco.name)}Bloco ${bIdx + 1} — ${peEsc(bloco.name)}</div>
       <table style="width:100%;border-collapse:collapse;">
         <tr><th style="text-align:left;padding:8px;font-size:0.82rem;color:#1e3a8a;background:#f8fafc;border:1px solid #e2e8f0;">Afirmação</th>
         ${Array.from({ length: cols }, (_, n) => `<th style="padding:6px;font-size:0.82rem;color:#1e3a8a;background:#f8fafc;border:1px solid #e2e8f0;">${n + 1}<br>${(escala[n].split(' ')[1] || '')}</th>`).join('')}</tr>`;
@@ -1075,16 +1087,16 @@ function peLerValsRadios(lista, prefixo) {
   return lista.map((b, bi) => b.q.map((_, qi) => { const sel = document.querySelector(`input[name="${prefixo}_${bi}_${qi}"]:checked`); return sel ? parseInt(sel.value, 10) : 0; }));
 }
 function peCalcMedos() {
-  const rk = peRanking(PE_MEDOS, peLerValsRadios(PE_MEDOS, 'pem'));
+  const rk = peRanking(PE_MEDOS, peLerValsRadios(PE_MEDOS, 'pem'), 5);
   const el = document.getElementById('pe-medo-resultado'); if (!el) return;
-  el.innerHTML = peRankingHtml(rk, PE_MEDOS[0].q.length * 5, 'Medo');
+  el.innerHTML = peRankingHtml(rk, 0, 'Medo');
   el.dataset.val = rk.max ? rk.itens.filter(x => x.dominante).map(x => x.nome).join(' e ') : '';
   el.dataset.resumo = rk.max ? rk.itens.slice().sort((a, b) => b.soma - a.soma).map(x => `${x.nome}: ${x.soma}`).join(' | ') : '';
 }
 function peCalcEscudos() {
-  const rk = peRanking(PE_ESCUDOS_Q, peLerValsRadios(PE_ESCUDOS_Q, 'pes'));
+  const rk = peRanking(PE_ESCUDOS_Q, peLerValsRadios(PE_ESCUDOS_Q, 'pes'), 3);
   const el = document.getElementById('pe-escudo-resultado'); if (!el) return;
-  el.innerHTML = peRankingHtml(rk, PE_ESCUDOS_Q[0].q.length * 3, 'Escudo');
+  el.innerHTML = peRankingHtml(rk, 0, 'Escudo');
   el.dataset.val = rk.max ? rk.itens.filter(x => x.dominante).map(x => x.nome).join(' e ') : '';
   el.dataset.resumo = rk.max ? rk.itens.slice().sort((a, b) => b.soma - a.soma).map(x => `${x.nome}: ${x.soma}`).join(' | ') : '';
 }
@@ -3174,14 +3186,9 @@ function peNovoPaciente(aoCriar) {
 window.peNovoPaciente = peNovoPaciente;
 
 // ─── ENVIAR QUESTIONÁRIOS (atalho na página inicial do módulo) ───────
-const PE_ENVIOS_LISTA = [
-  { id:'pre-consulta', nome:'Pré-Consulta', desc:'Ficha de história e motivo da consulta' },
-  { id:'pos-consulta', nome:'Pós-Consulta', desc:'Como correu desde a última sessão' },
-  { id:'crianca', nome:'Criança', desc:'Anamnese para crianças e jovens' },
-  { id:'cuidador', nome:'Cuidador', desc:'Anamnese preenchida por pai, mãe ou cuidador' },
-  { id:'medos', nome:'Medos Subconscientes', desc:'70 afirmações (7 blocos) · soma automática do medo dominante' },
-  { id:'escudos', nome:'Escudos Emocionais', desc:'50 afirmações (5 blocos) · soma automática do escudo dominante' }
-];
+function peListaEnvio() {
+  return peListaFichas().map(f => ({ id: f.id, nome: f.titulo.replace(/^Questionário (dos |de |da |do )?/, ''), desc: f.tipo === 'pont' ? `${f.n} afirmações · soma automática do ${f.id === 'medos' ? 'medo' : 'escudo'} dominante` : `${f.n} pergunta${f.n === 1 ? '' : 's'}` }));
+}
 
 function peEnvFechar() { const m = document.getElementById('pe-env-modal'); if (m) m.remove(); }
 
@@ -3241,7 +3248,7 @@ function peEnvPassoFichas(patientId) {
       <span style="background:#fef3c7;color:#b45309;padding:4px 12px;border-radius:20px;font-weight:700;">${peEsc(nome)}</span>
       <button onclick="window.peEnvPassoPaciente();window.peEnvFiltrar()" style="background:none;border:none;color:#1e3a8a;text-decoration:underline;font-weight:700;cursor:pointer;">⬅ Trocar paciente</button></div>
     <div style="font-weight:700;color:#334155;margin-bottom:8px;">2. Escolha o questionário a enviar</div>
-    <div style="display:grid;gap:8px;">${PE_ENVIOS_LISTA.map(f => `<div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+    <div style="display:grid;gap:8px;">${peListaEnvio().map(f => `<div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
       <div><div style="font-weight:700;color:#1e3a8a;">${f.nome}</div><div style="font-size:0.78rem;color:#64748b;">${f.desc}</div></div>
       <button onclick="window.peEnvEnviar('${f.id}','${patientId}')" style="background:#1e3a8a;color:white;border:none;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer;white-space:nowrap;">📤 Enviar</button></div>`).join('')}</div>
     <div style="font-size:0.78rem;color:#64748b;margin-top:10px;">Pode enviar por WhatsApp, e-mail ou área do paciente. Quando ele responder, a ficha fica guardada no processo dele.</div>`;
@@ -3275,17 +3282,204 @@ async function peEnvEnviar(formId, patientId) {
 
 // Monta o questionário a enviar (texto simples, escalas e, nos de pontuação, a definição dos blocos para somar sozinho).
 function peMontarEnvio(formId, fichas) {
-  const lista = formId === 'medos' ? PE_MEDOS : (formId === 'escudos' ? PE_ESCUDOS_Q : null);
+  const lista0 = formId === 'medos' ? PE_MEDOS : (formId === 'escudos' ? PE_ESCUDOS_Q : null);
+  const lista = lista0 ? lista0.filter(b => b.q.length) : null;
   if (lista) {
     const opcoes = formId === 'medos' ? PE_ESCALA_MEDOS : PE_ESCALA_ESCUDOS;
     const perguntas = []; const blocosSoma = [];
-    lista.forEach(b => { const de = perguntas.length; b.q.forEach(q => perguntas.push({ id: 'p' + perguntas.length, label: q, tipo: 'opcao', opcoes })); blocosSoma.push({ nome: b.name, emoji: (PE_EMOJI_BLOCO[b.name] || ''), de, ate: perguntas.length - 1 }); });
-    return { titulo: PE_TITULOS_Q[formId], descricao: formId === 'medos' ? 'Indique o quanto concorda com cada afirmação. Responda depressa, com a primeira resposta que lhe surgir; não há certo nem errado. As suas respostas são confidenciais.' : 'Indique o quanto cada afirmação descreve o que sente neste momento. Não há certo nem errado. As suas respostas são confidenciais.', perguntas, blocosSoma, escalaMax: opcoes.length };
+    lista.forEach(b => { const de = perguntas.length; b.q.forEach(q => perguntas.push({ id: 'p' + perguntas.length, label: q, tipo: 'opcao', opcoes })); blocosSoma.push({ nome: b.name, emoji: (b.emoji || PE_EMOJI_BLOCO[b.name] || ''), de, ate: perguntas.length - 1 }); });
+    return { titulo: peTituloQ(formId), descricao: formId === 'medos' ? 'Indique o quanto concorda com cada afirmação. Responda depressa, com a primeira resposta que lhe surgir; não há certo nem errado. As suas respostas são confidenciais.' : 'Indique o quanto cada afirmação descreve o que sente neste momento. Não há certo nem errado. As suas respostas são confidenciais.', perguntas, blocosSoma, escalaMax: opcoes.length };
   }
   const f = fichas || peLerConfig().forms;
-  return { titulo: PE_TITULOS_Q[formId] || 'Questionário', descricao: 'Por favor responda às perguntas abaixo com honestidade. As suas respostas são confidenciais.',
+  return { titulo: peTituloQ(formId), descricao: 'Por favor responda às perguntas abaixo com honestidade. As suas respostas são confidenciais.',
     perguntas: (f[formId] || []).map((x, i) => { const q = { id: 'p' + i, label: x.q, tipo: x.tipo || 'texto' }; if (x.opcoes && x.opcoes.length) q.opcoes = x.opcoes; return q; }) };
 }
+
+
+// ─── BIBLIOTECA DE QUESTIONÁRIOS (ver, editar, mover, apagar, criar) ─────────
+const PE_BASE_IDS = ['pre-consulta', 'pos-consulta', 'crianca', 'cuidador'];
+const PE_ROTULOS_TAB = { 'pre-consulta':'Pré-Consulta', 'pos-consulta':'Pós-Consulta', 'crianca':'Criança', 'cuidador':'Cuidador', 'medos':'Medos', 'escudos':'Escudos' };
+const peClone = (o) => JSON.parse(JSON.stringify(o));
+
+function peQDados() { if (!window.__peQ) window.__peQ = { forms: {}, titulos: {}, custom: [] }; return window.__peQ; }
+function peTituloQ(id) { const q = window.__peQ; return (q && q.titulos && q.titulos[id]) || PE_TITULOS_Q[id] || 'Questionário'; }
+function peRotuloTab(id) { return PE_ROTULOS_TAB[id] || peTituloQ(id); }
+
+function peAplicarQ(o) {
+  window.__peQ = { forms: o.forms || {}, titulos: o.titulos || {}, custom: Array.isArray(o.custom) ? o.custom : [], medos: o.medos, escudos: o.escudos };
+  const troca = (alvo, novo, padrao) => { const f = (Array.isArray(novo) && novo.length) ? novo : padrao; alvo.length = 0; f.forEach(b => alvo.push({ name: String(b.name || ''), emoji: String(b.emoji || ''), q: (Array.isArray(b.q) ? b.q : []).map(String) })); };
+  troca(PE_MEDOS, o.medos, PE_MEDOS_PADRAO);
+  troca(PE_ESCUDOS_Q, o.escudos, PE_ESCUDOS_PADRAO);
+}
+
+function peQPersistir() {
+  const d = peQDados();
+  try { localStorage.setItem('pe_q_' + tenantId(), JSON.stringify(d)); } catch(_) {}
+  clearTimeout(window.__peQT);
+  window.__peQT = setTimeout(async () => {
+    try { await db().doc(`tenants/${tenantId()}`).update({ peQuestionarios: peClone(d) }); }
+    catch (e) { console.warn('Questionários guardados só neste dispositivo', e); mostrarAviso('⚠️ Guardado só neste dispositivo (sem ligação).'); }
+  }, 600);
+}
+function peQSyncPont() { const d = peQDados(); d.medos = peClone(PE_MEDOS); d.escudos = peClone(PE_ESCUDOS_Q); peQPersistir(); }
+
+function peListaFichas() {
+  const cfg = peLerConfig(); const d = window.__peQ || {};
+  const ids = PE_BASE_IDS.concat(d.custom || []);
+  const out = ids.map(id => ({ id, tipo: 'ficha', custom: !PE_BASE_IDS.includes(id), n: (cfg.forms[id] || []).length }));
+  const cont = (l) => l.reduce((a, b) => a + b.q.length, 0);
+  out.push({ id: 'medos', tipo: 'pont', n: cont(PE_MEDOS), blocos: PE_MEDOS.length }, { id: 'escudos', tipo: 'pont', n: cont(PE_ESCUDOS_Q), blocos: PE_ESCUDOS_Q.length });
+  out.forEach(f => { f.titulo = peTituloQ(f.id); });
+  return out;
+}
+
+let peGQ = { id: null, edQ: null, edB: null };
+const PE_TIPOS_Q = { texto: 'Resposta livre', sim_nao: 'Sim / Não', escala: 'Escala 1–10', multi: 'Escolha múltipla' };
+const peAttr = (t) => peEsc(t);
+const peBtnS = 'background:#e2e8f0;border:none;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:0.8rem;';
+
+function peGQAbrir() {
+  peGQFechar();
+  const m = document.createElement('div');
+  m.id = 'pe-gq-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:99980;overflow:auto;padding:12px;';
+  m.innerHTML = '<div style="background:#f8fafc;border-radius:14px;max-width:720px;margin:0 auto;padding:16px;"><div id="pe-gq-corpo"></div></div>';
+  document.body.appendChild(m);
+  peGQ = { id: null, edQ: null, edB: null };
+  peGQRender();
+}
+function peGQFechar() { const m = document.getElementById('pe-gq-modal'); if (m) m.remove(); }
+function peGQRender() {
+  const c = document.getElementById('pe-gq-corpo'); if (!c) return;
+  const f = peGQ.id ? peListaFichas().find(x => x.id === peGQ.id) : null;
+  c.innerHTML = !peGQ.id ? peGQHtmlLista() : (f && f.tipo === 'pont' ? peGQHtmlPont() : peGQHtmlFicha());
+}
+
+function peGQHtmlLista() {
+  const L = peListaFichas();
+  return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <b style="color:#1e3a8a;font-size:1.1rem;">📋 Os meus questionários</b>
+      <button onclick="window.peGQFechar()" style="${peBtnS}">✖ Fechar</button></div>
+    <div style="font-size:0.82rem;color:#64748b;margin-bottom:12px;">Abra um questionário para ver, editar, mudar a ordem, apagar ou acrescentar perguntas. As alterações guardam-se sozinhas e passam a valer no envio ao paciente e na consulta.</div>
+    <div style="display:grid;gap:8px;margin-bottom:14px;">${L.map(f => `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <div style="min-width:0;"><div style="font-weight:700;color:#1e3a8a;">${f.tipo === 'pont' ? '🧮' : '📝'} ${peEsc(f.titulo)}</div>
+        <div style="font-size:0.78rem;color:#64748b;">${f.n} ${f.tipo === 'pont' ? 'afirmações em ' + f.blocos + ' blocos · com soma automática' : 'pergunta' + (f.n === 1 ? '' : 's')}${f.custom ? ' · criado por si' : ''}</div></div>
+      <div style="display:flex;gap:6px;flex-shrink:0;"><button onclick="window.peGQEditar('${f.id}')" style="background:#1e3a8a;color:white;border:none;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;">✏️ Abrir</button>
+      ${f.custom ? `<button onclick="window.peGQApagarQuestionario('${f.id}')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:8px 10px;cursor:pointer;" title="Apagar questionário">🗑️</button>` : ''}</div></div>`).join('')}</div>
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px;">
+      <div style="font-weight:700;color:#92400e;margin-bottom:8px;">➕ Criar um questionário novo</div>
+      <input id="pe-gq-novo-titulo" placeholder="Nome do questionário (ex.: Avaliação de bem-estar)" style="width:100%;padding:11px;border:1px solid #e2e8f0;border-radius:8px;font-size:1rem;box-sizing:border-box;margin-bottom:8px;">
+      <button onclick="window.peGQCriar()" style="width:100%;background:#16a34a;color:white;border:none;border-radius:8px;padding:11px;font-weight:700;cursor:pointer;">Criar e começar a escrever as perguntas</button></div>`;
+}
+
+function peGQCriar() {
+  const t = (document.getElementById('pe-gq-novo-titulo') || {}).value;
+  const titulo = String(t || '').trim();
+  if (titulo.length < 3) return mostrarAviso('⚠️ Dê um nome ao questionário.');
+  const d = peQDados(); const id = 'q_' + Date.now().toString(36);
+  d.custom = (d.custom || []).concat(id); d.titulos[id] = titulo; d.forms[id] = [];
+  peQPersistir(); peGQ = { id, edQ: null, edB: null }; peGQRender();
+}
+function peGQEditar(id) { peGQ = { id, edQ: null, edB: null }; peGQRender(); window.scrollTo && document.getElementById('pe-gq-modal') && (document.getElementById('pe-gq-modal').scrollTop = 0); }
+function peGQVoltar() { peGQ = { id: null, edQ: null, edB: null }; peGQRender(); }
+function peGQApagarQuestionario(id) {
+  if (!confirm('Apagar este questionário e todas as suas perguntas? Os já enviados e as respostas guardadas nas fichas não se perdem.')) return;
+  const d = peQDados(); d.custom = (d.custom || []).filter(x => x !== id); delete d.forms[id]; delete d.titulos[id];
+  peQPersistir(); peGQRender();
+}
+function peGQRepor(id) {
+  if (!confirm('Repor este questionário como veio de origem? As suas alterações a ele perdem-se.')) return;
+  const d = peQDados();
+  if (id === 'medos') { PE_MEDOS.length = 0; PE_MEDOS_PADRAO.forEach(b => PE_MEDOS.push(peClone(b))); peQSyncPont(); }
+  else if (id === 'escudos') { PE_ESCUDOS_Q.length = 0; PE_ESCUDOS_PADRAO.forEach(b => PE_ESCUDOS_Q.push(peClone(b))); peQSyncPont(); }
+  else { d.forms[id] = peClone(PE_FICHAS[id] || []); delete d.titulos[id]; try { const cfg = peLerConfigBase(); cfg.forms[id] = peClone(PE_FICHAS[id] || []); localStorage.setItem(`pe_cfg_${tenantId()}`, JSON.stringify(cfg)); } catch(_) {} peQPersistir(); }
+  peGQ.edQ = null; peGQ.edB = null; peGQRender();
+}
+function peGQTitulo(v) { const t = String(v || '').trim(); if (t.length < 2) return; const d = peQDados(); d.titulos[peGQ.id] = t; peQPersistir(); }
+
+// ── fichas simples ──
+function peGQLista() { const d = peQDados(); if (!Array.isArray(d.forms[peGQ.id])) d.forms[peGQ.id] = peClone(peLerConfig().forms[peGQ.id] || []); return d.forms[peGQ.id]; }
+function peGQHtmlFicha() {
+  const id = peGQ.id; const lista = peGQLista();
+  const base = PE_BASE_IDS.includes(id);
+  return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;">
+      <button onclick="window.peGQVoltar()" style="${peBtnS}">⬅ Todos os questionários</button>
+      <button onclick="window.peGQFechar()" style="${peBtnS}">✖ Fechar</button></div>
+    <input value="${peAttr(peTituloQ(id))}" onchange="window.peGQTitulo(this.value)" style="width:100%;padding:11px;border:2px solid #bfdbfe;border-radius:10px;font-size:1.05rem;font-weight:700;color:#1e3a8a;box-sizing:border-box;margin-bottom:6px;">
+    <div style="font-size:0.78rem;color:#64748b;margin-bottom:10px;">${lista.length} pergunta${lista.length === 1 ? '' : 's'}. Toque no nome acima para o mudar.</div>
+    ${lista.map((it, i) => peGQLinhaQ(it, i, lista.length)).join('') || '<div style="padding:14px;text-align:center;color:#64748b;">Ainda sem perguntas. Acrescente a primeira abaixo.</div>'}
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px;margin-top:10px;">
+      <div style="font-weight:700;color:#92400e;margin-bottom:8px;">➕ Acrescentar pergunta</div>
+      <input id="pe-gq-nq" placeholder="Escreva a pergunta" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;box-sizing:border-box;margin-bottom:8px;font-size:1rem;">
+      <select id="pe-gq-nt" onchange="document.getElementById('pe-gq-no').style.display=this.value==='multi'?'block':'none'" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;">${Object.keys(PE_TIPOS_Q).map(k => `<option value="${k}">${PE_TIPOS_Q[k]}</option>`).join('')}</select>
+      <input id="pe-gq-no" placeholder="Opções separadas por vírgula" style="display:none;width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;box-sizing:border-box;margin-bottom:8px;">
+      <button onclick="window.peGQAddQ()" style="width:100%;background:#16a34a;color:white;border:none;border-radius:8px;padding:11px;font-weight:700;cursor:pointer;">Acrescentar</button></div>
+    ${base ? `<button onclick="window.peGQRepor('${id}')" style="width:100%;margin-top:12px;background:white;border:1px solid #cbd5e1;color:#64748b;border-radius:8px;padding:10px;cursor:pointer;">↩ Repor como veio de origem</button>` : ''}`;
+}
+function peGQLinhaQ(it, i, n) {
+  const ed = peGQ.edQ === i; const t = it.tipo || 'texto';
+  return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:8px;">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+      <div style="min-width:0;"><div style="font-weight:600;color:#0f172a;font-size:0.92rem;">${i + 1}. ${peEsc(it.q || '')}</div><span style="font-size:0.7rem;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:10px;">${PE_TIPOS_Q[t] || t}</span></div>
+      <div style="display:flex;gap:4px;flex-shrink:0;"><button ${i === 0 ? 'disabled' : ''} onclick="window.peGQMoverQ(${i},-1)" style="${peBtnS}">⬆</button><button ${i === n - 1 ? 'disabled' : ''} onclick="window.peGQMoverQ(${i},1)" style="${peBtnS}">⬇</button><button onclick="window.peGQEdQ(${i})" style="${peBtnS}">✏️</button><button onclick="window.peGQDelQ(${i})" style="${peBtnS}color:#dc2626;background:#fee2e2;">🗑️</button></div></div>
+    ${ed ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-top:8px;">
+      <input id="pe-gq-eq" value="${peAttr(it.q || '')}" style="width:100%;padding:9px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box;margin-bottom:8px;font-size:1rem;">
+      <select id="pe-gq-et" onchange="document.getElementById('pe-gq-eo').style.display=this.value==='multi'?'block':'none'" style="width:100%;padding:9px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;">${Object.keys(PE_TIPOS_Q).map(k => `<option value="${k}" ${k === t ? 'selected' : ''}>${PE_TIPOS_Q[k]}</option>`).join('')}</select>
+      <input id="pe-gq-eo" value="${peAttr((it.opcoes || []).join(', '))}" placeholder="Opções separadas por vírgula" style="display:${t === 'multi' ? 'block' : 'none'};width:100%;padding:9px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;"><button onclick="window.peGQSalvarQ(${i})" style="flex:1;background:#16a34a;color:white;border:none;border-radius:6px;padding:9px;font-weight:700;cursor:pointer;">💾 Guardar</button><button onclick="window.peGQEdQ(-1)" style="${peBtnS}">Cancelar</button></div></div>` : ''}</div>`;
+}
+function peGQEdQ(i) { peGQ.edQ = (peGQ.edQ === i ? null : i); peGQRender(); }
+function peGQMoverQ(i, d) { const l = peGQLista(); if (i + d < 0 || i + d >= l.length) return; [l[i], l[i + d]] = [l[i + d], l[i]]; peGQ.edQ = null; peQPersistir(); peGQRender(); }
+function peGQDelQ(i) { if (!confirm('Apagar esta pergunta?')) return; peGQLista().splice(i, 1); peGQ.edQ = null; peQPersistir(); peGQRender(); }
+function peGQSalvarQ(i) {
+  const q = (document.getElementById('pe-gq-eq') || {}).value.trim(); if (!q) return mostrarAviso('⚠️ A pergunta não pode estar vazia.');
+  const tipo = document.getElementById('pe-gq-et').value; const op = (document.getElementById('pe-gq-eo').value || '').split(',').map(x => x.trim()).filter(Boolean);
+  peGQLista()[i] = Object.assign({ q, tipo }, tipo === 'multi' && op.length ? { opcoes: op } : {});
+  peGQ.edQ = null; peQPersistir(); peGQRender();
+}
+function peGQAddQ() {
+  const q = (document.getElementById('pe-gq-nq') || {}).value.trim(); if (!q) return mostrarAviso('⚠️ Escreva a pergunta.');
+  const tipo = document.getElementById('pe-gq-nt').value; const op = (document.getElementById('pe-gq-no').value || '').split(',').map(x => x.trim()).filter(Boolean);
+  if (tipo === 'multi' && op.length < 2) return mostrarAviso('⚠️ Escreva pelo menos 2 opções, separadas por vírgula.');
+  peGQLista().push(Object.assign({ q, tipo }, tipo === 'multi' ? { opcoes: op } : {}));
+  peQPersistir(); peGQRender();
+}
+
+// ── questionários de pontuação (medos, escudos) ──
+function peGQListaPont() { return peGQ.id === 'medos' ? PE_MEDOS : PE_ESCUDOS_Q; }
+function peGQHtmlPont() {
+  const L = peGQListaPont(); const id = peGQ.id; const total = L.reduce((a, b) => a + b.q.length, 0);
+  return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;">
+      <button onclick="window.peGQVoltar()" style="${peBtnS}">⬅ Todos os questionários</button>
+      <button onclick="window.peGQFechar()" style="${peBtnS}">✖ Fechar</button></div>
+    <input value="${peAttr(peTituloQ(id))}" onchange="window.peGQTitulo(this.value)" style="width:100%;padding:11px;border:2px solid #bfdbfe;border-radius:10px;font-size:1.05rem;font-weight:700;color:#1e3a8a;box-sizing:border-box;margin-bottom:6px;">
+    <div style="font-size:0.78rem;color:#64748b;margin-bottom:10px;">🧮 ${total} afirmações em ${L.length} blocos. A soma de cada bloco e o dominante calculam-se sozinhos (escala ${id === 'medos' ? '1 a 5' : '1 a 3'}). Os resultados já recebidos mantêm-se como foram enviados.</div>
+    ${L.map((b, bi) => `<div style="background:white;border:2px solid #fecaca;border-radius:12px;padding:10px;margin-bottom:12px;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+        <input value="${peAttr(b.emoji || PE_EMOJI_BLOCO[b.name] || '')}" onchange="window.peGQBlocoCampo(${bi},'emoji',this.value)" style="width:46px;text-align:center;padding:8px;border:1px solid #e2e8f0;border-radius:8px;font-size:1.1rem;" title="Carinha do bloco">
+        <input value="${peAttr(b.name)}" onchange="window.peGQBlocoCampo(${bi},'name',this.value)" style="flex:1;min-width:0;padding:9px;border:1px solid #e2e8f0;border-radius:8px;font-weight:700;color:#dc2626;font-size:0.95rem;">
+        <button ${bi === 0 ? 'disabled' : ''} onclick="window.peGQMoverB(${bi},-1)" style="${peBtnS}">⬆</button><button ${bi === L.length - 1 ? 'disabled' : ''} onclick="window.peGQMoverB(${bi},1)" style="${peBtnS}">⬇</button>
+        <button onclick="window.peGQDelB(${bi})" style="${peBtnS}color:#dc2626;background:#fee2e2;" title="Apagar bloco">🗑️</button></div>
+      ${b.q.map((q, qi) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <span style="font-size:0.75rem;color:#94a3b8;width:20px;text-align:right;">${qi + 1}.</span>
+        <input value="${peAttr(q)}" onchange="window.peGQAfirm(${bi},${qi},this.value)" style="flex:1;min-width:0;padding:8px;border:1px solid #e2e8f0;border-radius:8px;font-size:0.88rem;">
+        <button ${qi === 0 ? 'disabled' : ''} onclick="window.peGQMoverA(${bi},${qi},-1)" style="${peBtnS}">⬆</button><button ${qi === b.q.length - 1 ? 'disabled' : ''} onclick="window.peGQMoverA(${bi},${qi},1)" style="${peBtnS}">⬇</button>
+        <button onclick="window.peGQDelA(${bi},${qi})" style="${peBtnS}color:#dc2626;background:#fee2e2;">🗑️</button></div>`).join('')}
+      <div style="display:flex;gap:6px;margin-top:8px;"><input id="pe-gq-na-${bi}" placeholder="Nova afirmação neste bloco" style="flex:1;min-width:0;padding:8px;border:1px dashed #94a3b8;border-radius:8px;"><button onclick="window.peGQAddA(${bi})" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;">➕</button></div></div>`).join('')}
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px;">
+      <div style="font-weight:700;color:#92400e;margin-bottom:8px;">➕ Novo bloco (${id === 'medos' ? 'novo medo' : 'novo escudo'})</div>
+      <div style="display:flex;gap:6px;"><input id="pe-gq-nb-e" placeholder="🙂" style="width:46px;text-align:center;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"><input id="pe-gq-nb" placeholder="Nome do bloco" style="flex:1;min-width:0;padding:9px;border:1px solid #e2e8f0;border-radius:8px;"><button onclick="window.peGQAddB()" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;">Criar</button></div></div>
+    <button onclick="window.peGQRepor('${id}')" style="width:100%;margin-top:12px;background:white;border:1px solid #cbd5e1;color:#64748b;border-radius:8px;padding:10px;cursor:pointer;">↩ Repor como veio de origem</button>`;
+}
+function peGQPontFim(rerender) { peQSyncPont(); if (rerender !== false) peGQRender(); }
+function peGQBlocoCampo(bi, campo, v) { const b = peGQListaPont()[bi]; const t = String(v || '').trim(); if (campo === 'name' && !t) return peGQRender(); b[campo] = t; peGQPontFim(false); }
+function peGQAfirm(bi, qi, v) { const t = String(v || '').trim(); if (!t) return peGQRender(); peGQListaPont()[bi].q[qi] = t; peGQPontFim(false); }
+function peGQMoverA(bi, qi, d) { const q = peGQListaPont()[bi].q; if (qi + d < 0 || qi + d >= q.length) return; [q[qi], q[qi + d]] = [q[qi + d], q[qi]]; peGQPontFim(); }
+function peGQDelA(bi, qi) { const b = peGQListaPont()[bi]; if (b.q.length <= 1) return mostrarAviso('⚠️ Cada bloco precisa de pelo menos uma afirmação.'); if (!confirm('Apagar esta afirmação?')) return; b.q.splice(qi, 1); peGQPontFim(); }
+function peGQAddA(bi) { const i = document.getElementById('pe-gq-na-' + bi); const t = (i && i.value || '').trim(); if (!t) return mostrarAviso('⚠️ Escreva a afirmação.'); peGQListaPont()[bi].q.push(t); peGQPontFim(); }
+function peGQMoverB(bi, d) { const L = peGQListaPont(); if (bi + d < 0 || bi + d >= L.length) return; [L[bi], L[bi + d]] = [L[bi + d], L[bi]]; peGQPontFim(); }
+function peGQDelB(bi) { const L = peGQListaPont(); if (L.length <= 2) return mostrarAviso('⚠️ Precisa de pelo menos 2 blocos para comparar.'); if (!confirm('Apagar este bloco e todas as suas afirmações?')) return; L.splice(bi, 1); peGQPontFim(); }
+function peGQAddB() { const n = (document.getElementById('pe-gq-nb') || {}).value.trim(); if (!n) return mostrarAviso('⚠️ Dê um nome ao bloco.'); const e = (document.getElementById('pe-gq-nb-e') || {}).value.trim(); peGQListaPont().push({ name: n, emoji: e, q: [] }); peGQPontFim(); }
 
 // ─── QUESTIONÁRIOS ONLINE ─────────────────────────────────────────
 
@@ -3293,6 +3487,7 @@ function peGerarQId() {
   return 'peq_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 8);
 }
 
+const PE_TITULOS_BASE_NAO_USADO = null;
 const PE_TITULOS_Q = { 'medos':'Questionário de Medos Subconscientes', 'escudos':'Questionário dos Escudos Emocionais', 'pre-consulta':'Questionário Pré-Consulta', 'pos-consulta':'Questionário Pós-Consulta', 'crianca':'Anamnese — Criança', 'cuidador':'Anamnese — Cuidador' };
 const peQKey = () => `pe_lastq_${tenantId()}_${peState.patientId}_${peState.formId}`;
 
@@ -3356,7 +3551,7 @@ async function peGerarEnvioOnline() {
 // Janela de envio comum da app: WhatsApp, e-mail, área do paciente ou link.
 function peAbrirEnvio(qId) {
   if (typeof window.abrirEnvioFicha !== 'function') return;
-  window.abrirEnvioFicha({ responseId: qId, titulo: PE_TITULOS_Q[peState.formId] || 'Questionário', patientId: peState.patientId, patientName: peState.patientName || '' });
+  window.abrirEnvioFicha({ responseId: qId, titulo: peTituloQ(peState.formId), patientId: peState.patientId, patientName: peState.patientName || '' });
 }
 
 
@@ -3365,13 +3560,12 @@ async function peMostrarResultadoQ(qId) {
   try {
     const q = await peQLer(qId);
     const el = document.getElementById('pe-link-resultado');
-    if (!q || !el || !q.doc) return;
-    const lista = peState.formId === 'medos' ? PE_MEDOS : (peState.formId === 'escudos' ? PE_ESCUDOS_Q : null);
-    if (!lista) return;
-    const vals = []; let n = 0;
-    lista.forEach((b, bi) => { vals[bi] = b.q.map(() => parseInt(q.resp[n++], 10) || 0); });
-    const rk = peRanking(lista, vals);
-    el.innerHTML = `<div style="background:white;border:1px solid #86efac;border-radius:10px;padding:12px;">${peRankingHtml(rk, lista[0].q.length * (peState.formId === 'medos' ? 5 : 3), peState.formId === 'medos' ? 'Medo' : 'Escudo')}</div>`;
+    if (!q || !el || !q.doc || !Array.isArray(q.doc.blocosSoma)) return;
+    const esc = q.doc.escalaMax || 5;
+    const lista = q.doc.blocosSoma.map(b => ({ name: b.nome, emoji: b.emoji || '', q: new Array(b.ate - b.de + 1).fill(0), de: b.de, ate: b.ate }));
+    const vals = lista.map(b => { const v = []; for (let k = b.de; k <= b.ate; k++) v.push(parseInt(q.resp[k], 10) || 0); return v; });
+    const rk = peRanking(lista, vals, esc);
+    el.innerHTML = `<div style="background:white;border:1px solid #86efac;border-radius:10px;padding:12px;">${peRankingHtml(rk, 0, esc === 3 ? 'Escudo' : 'Medo')}</div>`;
   } catch (_) {}
 }
 
@@ -3559,6 +3753,27 @@ window.peColarRespostas        = peColarRespostas;
 window.peGuardarFicha          = peGuardarFicha;
 window.peCalcMedos             = peCalcMedos;
 window.peCalcEscudos           = peCalcEscudos;
+window.peGQAbrir = peGQAbrir;
+window.peGQFechar = peGQFechar;
+window.peGQEditar = peGQEditar;
+window.peGQVoltar = peGQVoltar;
+window.peGQCriar = peGQCriar;
+window.peGQApagarQuestionario = peGQApagarQuestionario;
+window.peGQRepor = peGQRepor;
+window.peGQTitulo = peGQTitulo;
+window.peGQEdQ = peGQEdQ;
+window.peGQMoverQ = peGQMoverQ;
+window.peGQDelQ = peGQDelQ;
+window.peGQSalvarQ = peGQSalvarQ;
+window.peGQAddQ = peGQAddQ;
+window.peGQBlocoCampo = peGQBlocoCampo;
+window.peGQAfirm = peGQAfirm;
+window.peGQMoverA = peGQMoverA;
+window.peGQDelA = peGQDelA;
+window.peGQAddA = peGQAddA;
+window.peGQMoverB = peGQMoverB;
+window.peGQDelB = peGQDelB;
+window.peGQAddB = peGQAddB;
 window.peMostrarResultadoQ     = peMostrarResultadoQ;
 window.peEscolherVia           = peEscolherVia;
 window.peToggleQuadrante       = peToggleQuadrante;
