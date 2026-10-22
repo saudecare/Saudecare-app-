@@ -316,6 +316,7 @@ async function renderPesquisaEmocional(main) {
               <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1.1rem;pointer-events:none;">🔍</span>
               <input type="search" id="pe-busca-paciente" oninput="window.peFiltrarPacientes()" placeholder="Procurar por nome, telefone ou email..." autocomplete="off" style="width:100%;padding:13px 12px 13px 40px;border:2px solid #bfdbfe;border-radius:10px;font-size:1rem;background:white;">
             </div>
+            <button onclick="window.peNovoPaciente((id)=>window.peEscolherPaciente(id))" style="width:100%;background:#16a34a;color:white;border:none;border-radius:10px;padding:11px;font-weight:700;cursor:pointer;margin-bottom:12px;">➕ Paciente novo (ainda não existe)</button>
             <div id="pe-lista-pacientes" style="display:grid;gap:10px;"></div>
           </div>
         </div>
@@ -3065,6 +3066,55 @@ function peRenderEscudosMapa() {
 }
 
 
+
+// ─── NOVO PACIENTE (a partir do módulo) ───────────────────────────
+function peNovoPaciente(aoCriar) {
+  const old = document.getElementById('pe-np-modal'); if (old) old.remove();
+  const m = document.createElement('div');
+  m.id = 'pe-np-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:99995;display:flex;align-items:center;justify-content:center;padding:16px;';
+  const inp = 'width:100%;padding:12px;border:2px solid #bfdbfe;border-radius:10px;font-size:1rem;margin-bottom:10px;box-sizing:border-box;';
+  m.innerHTML = `<div style="background:white;border-radius:14px;max-width:420px;width:100%;padding:18px;">
+    <b style="color:#1e3a8a;font-size:1.05rem;">➕ Novo paciente</b>
+    <div style="height:12px"></div>
+    <input id="pe-np-nome" placeholder="Nome completo *" style="${inp}">
+    <input id="pe-np-tel" type="tel" placeholder="Telemóvel (para WhatsApp)" style="${inp}">
+    <input id="pe-np-mail" type="email" placeholder="E-mail" style="${inp}">
+    <div style="display:flex;gap:8px;">
+      <button id="pe-np-ok" style="flex:1;background:#1e3a8a;color:white;border:none;border-radius:10px;padding:12px;font-weight:700;cursor:pointer;">Criar e continuar</button>
+      <button id="pe-np-x" style="background:#e2e8f0;border:none;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;">Cancelar</button>
+    </div></div>`;
+  document.body.appendChild(m);
+  setTimeout(() => { const i = document.getElementById('pe-np-nome'); if (i) i.focus(); }, 80);
+  document.getElementById('pe-np-x').onclick = () => m.remove();
+  document.getElementById('pe-np-ok').onclick = async () => {
+    const nome = document.getElementById('pe-np-nome').value.trim();
+    const phone = document.getElementById('pe-np-tel').value.trim();
+    const email = document.getElementById('pe-np-mail').value.trim();
+    if (nome.length < 2) return mostrarAviso('⚠️ Escreva o nome do paciente.');
+    const btn = document.getElementById('pe-np-ok'); btn.disabled = true; btn.textContent = 'A criar...';
+    try {
+      const u = window.firebase && window.firebase.auth && window.firebase.auth().currentUser;
+      const ref = await db().collection(`tenants/${tenantId()}/patients`).add({
+        fullName: nome, phone, email, active: true,
+        nif: '', photoUrl: '', clinicalNotes: '', customFields: [], attachments: [],
+        portalToken: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/-/g, ''),
+        createdBy: u ? u.uid : '', createdAt: new Date()
+      });
+      const novo = { id: ref.id, fullName: nome, phone, email, active: true };
+      if (!peState.pacientes) peState.pacientes = [];
+      peState.pacientes.unshift(novo);
+      m.remove();
+      if (typeof aoCriar === 'function') aoCriar(ref.id, nome);
+    } catch (e) {
+      console.error(e);
+      btn.disabled = false; btn.textContent = 'Criar e continuar';
+      mostrarAviso('❌ Não foi possível criar o paciente.');
+    }
+  };
+}
+window.peNovoPaciente = peNovoPaciente;
+
 // ─── ENVIAR QUESTIONÁRIOS (atalho na página inicial do módulo) ───────
 const PE_ENVIOS_LISTA = [
   { id:'pre-consulta', nome:'Pré-Consulta', desc:'Ficha de história e motivo da consulta' },
@@ -3103,6 +3153,7 @@ function peEnvPassoPaciente() {
   const c = document.getElementById('pe-env-corpo'); if (!c) return;
   c.innerHTML = `<div style="font-weight:700;color:#334155;margin-bottom:8px;">1. Escolha o paciente</div>
     <input type="search" id="pe-env-busca" oninput="window.peEnvFiltrar()" placeholder="🔍 Nome, telefone ou e-mail..." autocomplete="off" style="width:100%;padding:12px;border:2px solid #bfdbfe;border-radius:10px;font-size:1rem;margin-bottom:10px;box-sizing:border-box;">
+    <button onclick="window.peNovoPaciente((id)=>window.peEnvPassoFichas(id))" style="width:100%;background:#16a34a;color:white;border:none;border-radius:10px;padding:11px;font-weight:700;cursor:pointer;margin-bottom:10px;">➕ Paciente novo (ainda não existe)</button>
     <div id="pe-env-lista" style="display:grid;gap:8px;max-height:55vh;overflow:auto;"><div style="padding:14px;color:#64748b;text-align:center;">A carregar...</div></div>`;
   setTimeout(() => { const i = document.getElementById('pe-env-busca'); if (i) i.focus(); }, 80);
 }
@@ -3497,6 +3548,7 @@ window.peEnvFechar = peEnvFechar;
 window.peEnvFiltrar = peEnvFiltrar;
 window.peEnvPassoPaciente = peEnvPassoPaciente;
 window.peEnvEnviar = peEnvEnviar;
+window.peEnvPassoFichas = peEnvPassoFichas;
 window.peSelecionarZonas       = peSelecionarZonas;
 window.peConsolidarEscudosMapa = peConsolidarEscudosMapa;
 window.peRenderEscudosMapa     = peRenderEscudosMapa;
