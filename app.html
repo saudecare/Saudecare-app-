@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-20-43';
+const APP_VERSION = '2026-10-22-44';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -6067,10 +6067,16 @@ async function renderRespostas(main){
     ));
 
     // Processa automaticamente fichas identificadas e já preenchidas
+    const recebidasAuto = [];
+    const pacientesTratados = new Set();
     for (const d of pendingSnap.docs){
       const r = d.data();
       if (r.patientId && r.completadoEm){
-        await autoAttachPendingResponsesForPatient(r.patientId).catch(()=>{});
+        recebidasAuto.push({ id: d.id, ...r });
+        if (!pacientesTratados.has(r.patientId)){
+          pacientesTratados.add(r.patientId);
+          await autoAttachPendingResponsesForPatient(r.patientId).catch(()=>{});
+        }
       }
     }
 
@@ -6111,6 +6117,18 @@ async function renderRespostas(main){
       }
     }
 
+    let htmlRecebidas = '';
+    recebidasAuto.forEach(r => {
+      const dt = r.completadoEm?.toDate ? r.completadoEm.toDate().toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      htmlRecebidas += `<div class="appt-item row" style="align-items:center;">
+        <div style="flex:1;min-width:0;">
+          <strong>${escapeHtml(r.patientName || r.respondentName || '—')}</strong>
+          <div class="muted" style="font-size:.8rem;">${escapeHtml(r.titulo || r.formTitle || 'Ficha')}${dt ? ' · ' + dt : ''}</div>
+          <div style="color:#16a34a;font-size:.8rem;">✅ Já guardada na ficha do paciente e na área do paciente</div>
+        </div>
+        <button class="primary" style="white-space:nowrap;flex-shrink:0;" onclick="viewPatient('${r.patientId}')">Abrir ficha</button>
+      </div>`;
+    });
     if (!htmlPreenchidas) htmlPreenchidas = '<p class="muted">Nenhuma resposta por associar.</p>';
     if (!htmlAguardar) htmlAguardar = '<p class="muted">Nenhuma ficha aguarda resposta.</p>';
 
@@ -6120,6 +6138,7 @@ async function renderRespostas(main){
         <button class="ghost" onclick="renderView('forms')">← Gerir fichas</button>
       </div>
       ${hintBox('Aqui aparecem todas as respostas recebidas de fichas enviadas por link. As preenchidas aguardam que as associe a um paciente. As que ainda não foram preenchidas aparecem na segunda secção.')}
+      ${htmlRecebidas ? `<h3 style="margin:0 0 8px;">📬 Chegaram agora — já guardadas na ficha</h3><div class="card" style="margin-bottom:1.5rem;">${htmlRecebidas}</div>` : ''}
       <h3 style="margin:0 0 8px;">✅ Preenchidas — associar a paciente</h3>
       <div class="card" style="margin-bottom:1.5rem;">${htmlPreenchidas}</div>
       <h3 style="margin:0 0 8px;">⏳ Aguardam resposta</h3>
@@ -6236,31 +6255,64 @@ async function _criarLinkFormOnline(formId, patientId, patientName){
     status: 'pending_review',
     criadoEm: serverTimestamp()
   };
-  if(patientId){ docData.patientId=patientId; docData.patientName=patientName||''; }
+  if(patientId){ docData.patientId=patientId; docData.patientName=patientName||''; docData.criadoPorEquipa=true; }
   toast('A criar link…');
   const ref = await addDoc(collection(db,'public_form_responses'), docData);
-  const link = `https://vindora.pt/form-publica.html?r=${ref.id}`;
+  window.abrirEnvioFicha({ responseId: ref.id, titulo: f.title||f.titulo||'Questionário', patientId, patientName });
+}
+
+// Janela de envio de uma ficha/questionário: WhatsApp, e-mail (do Gmail do terapeuta), área do paciente ou link.
+// Quando o paciente responde, a resposta fica guardada sozinha na ficha dele (se a ficha foi criada com o paciente escolhido).
+window.abrirEnvioFicha = async function({ responseId, titulo, patientId, patientName }){
+  const link = `https://vindora.pt/form-publica.html?r=${responseId}`;
+  let pac = {};
+  if (patientId){ try { const ps = await getDoc(doc(db,'tenants',tenantId,'patients',patientId)); pac = ps.exists() ? ps.data() : {}; } catch(_){} }
   const n1 = patientName ? patientName.split(' ')[0] : '';
-  const msg = `📋 *${f.title||'Questionário'}*\n\nOlá${n1?' '+n1:''}! Por favor preencha o formulário clicando no link:\n\n${link}\n\nAs suas respostas ficam guardadas automaticamente. 🙏`;
-  window.__frmLink = link;
-  window.__frmMsg  = msg;
-  let m = document.getElementById('_frmShareM');
-  if(m) m.remove();
-  m = document.createElement('div');
+  const msg = `📋 *${titulo}*\n\nOlá${n1?' '+n1:''}! Por favor preencha o formulário clicando no link:\n\n${link}\n\nAs suas respostas ficam guardadas automaticamente. 🙏`;
+  const portalLink = (patientId && pac.portalToken) ? `${window.location.origin}${window.location.pathname.replace('app.html','portal.html')}?t=${tenantId}&p=${patientId}&k=${pac.portalToken}` : '';
+  window.__frmLink = link; window.__frmMsg = msg; window.__frmResp = responseId; window.__frmPortal = portalLink; window.__frmPhone = pac.phone || '';
+  document.getElementById('_frmShareM')?.remove();
+  const m = document.createElement('div');
   m.id = '_frmShareM';
-  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto;';
   document.body.appendChild(m);
-  m.innerHTML = `<div style="background:var(--card,#1e293b);border-radius:1rem;padding:1.5rem;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.5);">
+  const bt = (cor, txt, fn) => `<button onclick="${fn}" style="background:${cor};color:#fff;border:none;padding:.75rem;border-radius:.5rem;font-size:.95rem;font-weight:600;cursor:pointer;">${txt}</button>`;
+  m.innerHTML = `<div style="background:var(--card,#1e293b);border-radius:1rem;padding:1.5rem;max-width:440px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.5);color:#f1f5f9;">
     <h3 style="margin:0 0 .5rem;">📤 Enviar Ficha Online</h3>
-    <p style="font-size:.85rem;color:#94a3b8;margin:0 0 1rem;">${escapeHtml(f.title||'Questionário')}${patientName?' · '+escapeHtml(patientName):''}</p>
-    <div style="background:#0f172a;border-radius:.5rem;padding:.65rem .75rem;font-size:.75rem;word-break:break-all;margin-bottom:1rem;color:#cbd5e1;">${link}</div>
+    <p style="font-size:.85rem;color:#94a3b8;margin:0 0 .8rem;">${escapeHtml(titulo)}${patientName?' · '+escapeHtml(patientName):''}</p>
+    <div style="background:#0f172a;border-radius:.5rem;padding:.65rem .75rem;font-size:.75rem;word-break:break-all;margin-bottom:.8rem;color:#cbd5e1;">${link}</div>
+    ${patientId ? '<p style="font-size:.8rem;color:#86efac;margin:0 0 .8rem;">✅ Quando o paciente responder, a resposta fica guardada sozinha na ficha dele e aparece na área do paciente.</p>' : '<p style="font-size:.8rem;color:#fcd34d;margin:0 0 .8rem;">Esta ficha não está ligada a um paciente: depois de respondida, associe-a em "Respostas de Fichas".</p>'}
     <div style="display:flex;flex-direction:column;gap:.6rem;">
-      <button onclick="navigator.clipboard.writeText(window.__frmMsg).then(()=>{toast('Mensagem copiada — cole no WhatsApp!');document.getElementById('_frmShareM').remove()})" style="background:#25d366;color:#fff;border:none;padding:.75rem;border-radius:.5rem;font-size:.9rem;cursor:pointer;font-weight:600;">📱 Copiar para WhatsApp</button>
-      <button onclick="navigator.clipboard.writeText(window.__frmLink).then(()=>{toast('Link copiado!');document.getElementById('_frmShareM').remove()})" style="background:#6366f1;color:#fff;border:none;padding:.75rem;border-radius:.5rem;font-size:.9rem;cursor:pointer;font-weight:600;">📋 Copiar link directo</button>
+      ${bt('#25d366','💬 Enviar por WhatsApp',"frmEnviarWA()")}
+      <input id="frmEmail" type="email" placeholder="E-mail do paciente" value="${escapeHtml(pac.email||'')}" style="padding:.65rem;border-radius:.5rem;border:1px solid #334155;background:#0f172a;color:#f1f5f9;">
+      ${bt('#2563eb','✉️ Enviar por e-mail',"frmEnviarEmail()")}
+      ${patientId ? bt('#0d9488','🧑‍⚕️ Pôr na área do paciente',"frmPortal()") : ''}
+      ${bt('#6366f1','📋 Copiar link',"navigator.clipboard.writeText(window.__frmLink).then(()=>toast('Link copiado!'))")}
       <button onclick="document.getElementById('_frmShareM').remove()" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:.65rem;border-radius:.5rem;font-size:.9rem;cursor:pointer;">Fechar</button>
     </div>
   </div>`;
-}
+};
+window.frmEnviarWA = function(){
+  const d = window.__frmPhone ? telefoneParaDigitos(window.__frmPhone) : '';
+  openExternalLink(`https://wa.me/${d}?text=${encodeURIComponent(window.__frmMsg)}`);
+};
+window.frmEnviarEmail = async function(){
+  const email = (document.getElementById('frmEmail')?.value || '').trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('Escreva o e-mail do paciente.', true); return; }
+  try{
+    await window.peChamar('fichaEnviarEmail', { responseId: window.__frmResp, email });
+    toast('✅ E-mail enviado a ' + email + ' a partir do seu Gmail.');
+  }catch(e){
+    if (String(e.message||'').includes('sem-gmail')){
+      toast('O seu Gmail ainda não está ligado (Perfil → Modelos de Mensagens). Vou abrir o seu e-mail.', true);
+      window.open(`mailto:${email}?subject=${encodeURIComponent('Questionário')}&body=${encodeURIComponent(window.__frmMsg.replace(/\*/g,''))}`, '_blank');
+    } else toast(e.message || 'Não foi possível enviar o e-mail.', true);
+  }
+};
+window.frmPortal = function(){
+  if (!window.__frmPortal){ toast('Este paciente ainda não tem área do paciente ativa. Ative-a na ficha do paciente.', true); return; }
+  navigator.clipboard.writeText(`Olá! A sua ficha já está disponível na sua área do paciente, no botão "Fichas": ${window.__frmPortal}`).then(()=>toast('A ficha já aparece na área do paciente. Copiei a mensagem com o link da área: envie-a ao paciente.'));
+};
 window.criarLinkFormOnline = async function(formId, patientId, patientName){
   try{ await _criarLinkFormOnline(formId, patientId||'', patientName||''); }
   catch(e){ toast('Erro ao criar link: '+e.message, true); console.error('[criarLinkFormOnline]',e); }
@@ -19241,65 +19293,7 @@ window.sendChatbotMessage = async function(){
   window.NETLIFY_BASE   = NETLIFY_BASE;
   window.temPesquisaEmocional = function(){ return tenantId === 'hikari-terapias' || window.__peAtivo === true || (typeof temModulo === 'function' && temModulo('pesquisaEmocional')); };
 
-  // ─── Questionários PE online ─────────────────────────────────────────────
-  const _PE_FICHAS_L = {
-    'pre-consulta':[{q:'Nome Completo'},{q:'Idade e Data de Nascimento'},{q:'Trabalha atualmente? Profissão?'},{q:'Estado Civil'},{q:'Tem irmãos?'},{q:'Qual a sua ordem de nascimento?'},{q:'Foi filho planeado?'},{q:'Acompanhamento médico ou terapêutico?'},{q:'Medicamentos para depressão ou ansiedade?'},{q:'Cite 3 dores físicas recorrentes:'},{q:'Sente-se mais ansioso ou desanimado?'},{q:'Quais os seus objetivos com esta consulta?'},{q:'Quais os 3 momentos mais difíceis que viveu?'}],
-    'pos-consulta':[{q:'Como te sentiste desde a nossa última sessão?'},{q:'Notaste alterações nos sintomas físicos?'},{q:'Conseguiste realizar os exercícios propostos?'},{q:'Houve algum pico de stress nestes dias?'},{q:'O que gostarias de focar na sessão de hoje?'}],
-    'crianca':[{q:'Nome e idade?'},{q:'Brincadeiras preferidas?'},{q:'O que gostas de fazer na escola?'},{q:'Quando te sentes triste ou com raiva, o que fazes?'},{q:'O que te deixa com medo?'},{q:'O que te deixa muito feliz?'}],
-    'cuidador':[{q:'Nome do Cuidador e Parentesco'},{q:'Motivo da Consulta'},{q:'Eventos significativos relacionados à queixa?'},{q:'Complicações na gravidez ou parto?'},{q:'Desenvolvimento motor e linguagem?'},{q:'Como é o sono e a alimentação?'}]
-  };
-  const _PE_MEDOS_L = [
-    {name:'Bloco 1 — Medo da Pobreza',q:['Passei por muitas situações difíceis relacionadas ao dinheiro','A minha relação com o meu pai foi bastante conturbada','Presenciei escassez de alimento em casa','Preocupo-me e acredito que o meu futuro não será promissor']},
-    {name:'Bloco 2 — Medo da Doença',q:['Não me sinto confortável quando sei que tenho que ir ao médico','Sempre que sinto algo diferente no meu corpo vou pesquisar','Sofro só de pensar em ter uma doença','Já perdi pessoas que eu amava por doença']},
-    {name:'Bloco 3 — Medo da Crítica',q:['Preocupo-me com o que pensam sobre mim','Não gosto de como sou fisicamente','Sinto dificuldades em expressar a minha opinião','Sou extremamente insegura']},
-    {name:'Bloco 4 — Medo da Morte',q:['Não lido bem com cerimónias fúnebres','Fico preocupada em perder pessoas que amo','Estou sempre a pensar no dia de amanhã','Situações de perigo assustam-me']},
-    {name:'Bloco 5 — Medo de Relacionamento',q:['Sou insegura e ciumenta','Tenho necessidade de agradar a quem amo','Sofro de um vazio interior constante','Tenho dificuldade em acreditar nos outros']},
-    {name:'Bloco 6 — Medo de Envelhecer',q:['Sinto-me cansada constantemente','Não vejo graça na vida','Faço tudo para estar bem na minha velhice','Sinto-me incompreendida']},
-    {name:'Bloco 7 — Medo de Perder a Liberdade',q:['Tenho tendência a ficar entediada com rotinas','Não consigo estar muito tempo com a mesma pessoa','Não gosto de me sentir pressionada','Não aceito bem ordens']}
-  ];
-  const _PE_TITS = {'pre-consulta':'Questionário Pré-Consulta','pos-consulta':'Questionário Pós-Consulta','crianca':'Ficha — Criança','cuidador':'Ficha — Cuidador','medos':'Avaliação de Medos Subconscientes'};
-
-  let _peLinkTmp='', _peMsgTmp='';
-  window._peCopiarLink  = function(){ navigator.clipboard.writeText(_peLinkTmp).then(()=>{ toast('Link copiado!'); const m=document.getElementById('_peShareM'); if(m)m.remove(); }); };
-  window._peCopiarWA    = function(){ navigator.clipboard.writeText(_peMsgTmp).then(()=>{ toast('Mensagem copiada — cole no WhatsApp!'); const m=document.getElementById('_peShareM'); if(m)m.remove(); }); };
-  window._peFecharShare = function(){ const m=document.getElementById('_peShareM'); if(m)m.remove(); };
-
-  async function _peCriarEPartilhar(){
-    const st=window.peState||{};
-    const fid=st.formId||'pre-consulta', tit=_PE_TITS[fid]||fid, n1=(st.patientName||'').split(' ')[0];
-    let pergs=[];
-    if(fid==='medos') _PE_MEDOS_L.forEach(b=>b.q.forEach(af=>pergs.push({q:af,tipo:'escala'})));
-    else pergs=(_PE_FICHAS_L[fid]||[]).map(f=>({q:f.q,tipo:'texto'}));
-    if(!pergs.length){ toast('Questionário não encontrado.',true); return; }
-    toast('A criar questionário…');
-    const docData={
-      tenantId,formId:fid,titulo:tit,descricao:'Por favor preencha com sinceridade.',perguntas:pergs,
-      netlifyBase:NETLIFY_BASE,status:'pendente',criadoEm:serverTimestamp()
-    };
-    if(st.patientId){ docData.patientId=st.patientId; docData.patientName=st.patientName||''; }
-    const ref=await addDoc(collection(db,'pe_questionarios'),docData);
-    _peLinkTmp=`https://vindora.pt/pe-questionario.html?d=${ref.id}`;
-    _peMsgTmp=`📝 *${tit}*\n\nOlá${n1?' '+n1:''}! Por favor preencha o questionário clicando no link:\n\n${_peLinkTmp}\n\nAs suas respostas ficam guardadas automaticamente. 🙏`;
-    let m=document.getElementById('_peShareM');
-    if(m)m.remove();
-    m=document.createElement('div');
-    m.id='_peShareM';
-    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
-    document.body.appendChild(m);
-    const nomeLabel=st.patientName||'';
-    m.innerHTML=`<div style="background:var(--card,#1e293b);border-radius:1rem;padding:1.5rem;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.5);">
-      <h3 style="margin:0 0 .5rem;">📤 Partilhar Questionário</h3>
-      <p style="font-size:.85rem;color:#94a3b8;margin:0 0 1rem;">${tit}${nomeLabel?' · '+nomeLabel:''}</p>
-      <div style="background:#0f172a;border-radius:.5rem;padding:.65rem .75rem;font-size:.75rem;word-break:break-all;margin-bottom:1rem;color:#cbd5e1;">${_peLinkTmp}</div>
-      <div style="display:flex;flex-direction:column;gap:.6rem;">
-        <button onclick="window._peCopiarWA()" style="background:#25d366;color:#fff;border:none;padding:.75rem;border-radius:.5rem;font-size:.9rem;cursor:pointer;font-weight:600;">📱 Copiar para WhatsApp</button>
-        <button onclick="window._peCopiarLink()" style="background:#6366f1;color:#fff;border:none;padding:.75rem;border-radius:.5rem;font-size:.9rem;cursor:pointer;font-weight:600;">📋 Copiar link directo</button>
-        <button onclick="window._peFecharShare()" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:.65rem;border-radius:.5rem;font-size:.9rem;cursor:pointer;">Fechar</button>
-      </div>
-    </div>`;
-  }
-  window.peGerarEnvioOnline=async function(){ try{ await _peCriarEPartilhar(); }catch(e){ toast('Erro ao criar questionário: '+e.message,true); console.error('[peGerarEnvioOnline]',e); } };
-  window.peCopiarFicha=async function(){ try{ await _peCriarEPartilhar(); }catch(e){ toast('Erro: '+e.message,true); } };
+  // (O envio de questionários do método está no módulo protegido: usa a janela comum abrirEnvioFicha.)
 
   // ─── Mapa Corporal & Relatório Visual PE ────────────────────────────────────
   const _CVFRENTE={

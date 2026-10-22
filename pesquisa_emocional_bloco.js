@@ -1920,6 +1920,7 @@ function peRenderEditor() {
   const K = peConh(); const abas = [['pontos','Pontos'],['sistemas','Sistemas'],['escudos','Escudos'],['textos','Textos do relatório/plano'],['marca','Marca e logótipo']];
   let h = `<div style="max-width:760px;margin:0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><b style="font-size:1.1rem;color:#1e3a8a;">📚 Editar conhecimento do método</b><button onclick="window.peFecharEditor()" style="${peEdB('#e2e8f0','#334155','#cbd5e1')}">✖ Fechar</button></div>
   <div style="font-size:0.82rem;color:#475569;margin-bottom:10px;">Muda nomes, órgãos, temas, perguntas, exemplos e acrescenta conhecimento. O padrão fica sempre guardado: use "↩ Repor padrão". Para mover pontos use o modo ✏️ no mapa.</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"><button onclick="window.pePdfConhecimento()" style="${peEdB('#16a34a','white')}">📄 Descarregar a fonte de conhecimento (PDF)</button></div>
   <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;">${abas.map(([k,n]) => `<button onclick="window.peEdAba('${k}')" style="${peEdB(PE_ED.aba===k?'#1e3a8a':'white', PE_ED.aba===k?'white':'#1e3a8a','#1e3a8a')}white-space:nowrap;">${n}</button>`).join('')}</div><div style="background:white;border-radius:12px;padding:14px;">`;
   if (PE_ED.aba === 'pontos') {
     h += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">${PE_CAT.map(c => `<button onclick="window.peEdCat('${c.id}')" style="${peEdB(PE_ED.cat===c.id?'#fef3c7':'#f8fafc','#92400e','#fde68a')}">${peEsc(PE_CAT_NOME[c.id] || c.id)}</button>`).join('')}</div>`;
@@ -3068,78 +3069,90 @@ function peGerarQId() {
   return 'peq_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 8);
 }
 
+const PE_TITULOS_Q = { 'pre-consulta':'Questionário Pré-Consulta', 'pos-consulta':'Questionário Pós-Consulta', 'crianca':'Anamnese — Criança', 'cuidador':'Anamnese — Cuidador' };
+const peQKey = () => `pe_lastq_${tenantId()}_${peState.patientId}_${peState.formId}`;
+
+// Lê um questionário enviado (formato novo: public_form_responses; antigo: pe_questionarios).
+async function peQLer(qId) {
+  if (String(qId).indexOf('peq_') === 0) {
+    const snap = await db().collection('pe_questionarios').doc(qId).get();
+    if (!snap.exists) return null;
+    const d = snap.data();
+    const resp = {};
+    Object.entries(d.respostas || {}).forEach(([k, v]) => { const i = parseInt(String(k).replace('p', '')); if (!isNaN(i)) resp[i] = String(v); });
+    return { estado: d.status === 'respondido' ? 'respondido' : 'pendente', resp };
+  }
+  const snap = await db().collection('public_form_responses').doc(qId).get();
+  if (!snap.exists) return null;
+  const d = snap.data();
+  const resp = {};
+  (Array.isArray(d.respostas) ? d.respostas : []).forEach(a => { const m = /^p(\d+)$/.exec(String((a && a.questionId) || '')); if (m) resp[parseInt(m[1])] = String(a.value == null ? '' : a.value); });
+  return { estado: d.completadoEm ? 'respondido' : 'pendente', resp };
+}
+
 async function peGerarEnvioOnline() {
   if (!peState.patientId) return mostrarAviso('⚠️ Selecione primeiro um paciente.');
   const panel = document.getElementById('pe-link-panel');
   if (!panel) return;
 
-  const lsKey = `pe_lastq_${tenantId()}_${peState.patientId}_${peState.formId}`;
   let existingQId = null;
-  try { existingQId = localStorage.getItem(lsKey); } catch(_) {}
-
+  try { existingQId = localStorage.getItem(peQKey()); } catch(_) {}
   if (existingQId) {
     panel.style.display = 'block';
     panel.innerHTML = `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;text-align:center;color:#1e3a8a;">⏳ A verificar questionário anterior...</div>`;
     try {
-      const snap = await db().collection('pe_questionarios').doc(existingQId).get();
-      if (snap.exists) {
-        const s = snap.data().status;
-        if (s === 'pendente') {
-          const link = `https://vindora.pt/pe-questionario.html?d=${existingQId}`;
-          peRenderLinkPanel(existingQId, link, 'pendente');
-          return;
-        } else if (s === 'respondido') {
-          peRenderLinkPanel(existingQId, null, 'respondido');
-          return;
-        }
-      }
+      const q = await peQLer(existingQId);
+      if (q) { peRenderLinkPanel(existingQId, `https://vindora.pt/form-publica.html?r=${existingQId}`, q.estado === 'respondido' ? 'respondido' : 'pendente'); return; }
     } catch(_) {}
-    try { localStorage.removeItem(lsKey); } catch(_) {}
+    try { localStorage.removeItem(peQKey()); } catch(_) {}
   }
 
-  const qId = peGerarQId();
   const fichas = peState.formsDB || peLerConfig().forms;
   const perguntas = fichas[peState.formId] || [];
-  const tituloMap = { 'pre-consulta':'Questionário Pré-Consulta', 'pos-consulta':'Questionário Pós-Consulta', 'crianca':'Anamnese — Criança', 'cuidador':'Anamnese — Cuidador' };
-
   panel.style.display = 'block';
   panel.innerHTML = `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;text-align:center;"><span style="color:#1e3a8a;">⏳ A criar questionário online...</span></div>`;
-
   try {
-    await db().collection('pe_questionarios').doc(qId).set({
+    const titulo = PE_TITULOS_Q[peState.formId] || 'Questionário';
+    const ref = await db().collection('public_form_responses').add({
       tenantId: tenantId(),
-      patientId: peState.patientId,
-      patientName: peState.patientName,
-      formId: peState.formId,
-      titulo: tituloMap[peState.formId] || 'Questionário',
+      formId: 'pe-' + peState.formId,
+      titulo,
       descricao: 'Por favor responda às perguntas abaixo com honestidade. As suas respostas são confidenciais.',
-      perguntas: perguntas.map(p => {
-        const q = { q: p.q, tipo: p.tipo || 'texto' };
+      perguntas: perguntas.map((p, i) => {
+        const q = { id: 'p' + i, label: p.q, tipo: p.tipo || 'texto' };
         if (p.opcoes && p.opcoes.length) q.opcoes = p.opcoes;
         return q;
       }),
-      status: 'pendente',
-      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      patientId: peState.patientId,
+      patientName: peState.patientName || '',
+      criadoPorEquipa: true,
+      status: 'pending_review',
+      criadoEm: new Date()
     });
-    try { localStorage.setItem(lsKey, qId); } catch(_) {}
-    const link = `https://vindora.pt/pe-questionario.html?d=${qId}`;
-    peRenderLinkPanel(qId, link, 'pendente');
+    try { localStorage.setItem(peQKey(), ref.id); } catch(_) {}
+    peRenderLinkPanel(ref.id, `https://vindora.pt/form-publica.html?r=${ref.id}`, 'pendente');
+    peAbrirEnvio(ref.id);
   } catch(err) {
     console.error('Erro ao criar questionário:', err);
     panel.innerHTML = `<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:14px;color:#dc2626;font-weight:600;">❌ Erro ao criar questionário. Verifique a ligação e tente novamente.</div>`;
   }
 }
 
+// Janela de envio comum da app: WhatsApp, e-mail, área do paciente ou link.
+function peAbrirEnvio(qId) {
+  if (typeof window.abrirEnvioFicha !== 'function') return;
+  window.abrirEnvioFicha({ responseId: qId, titulo: PE_TITULOS_Q[peState.formId] || 'Questionário', patientId: peState.patientId, patientName: peState.patientName || '' });
+}
+
 function peRenderLinkPanel(qId, link, status) {
   const panel = document.getElementById('pe-link-panel');
   if (!panel) return;
   panel.style.display = 'block';
-
   if (status === 'respondido') {
     panel.innerHTML = `
       <div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:16px;">
         <div style="font-weight:700;color:#166534;margin-bottom:6px;">✅ Questionário respondido!</div>
-        <div style="font-size:0.85rem;color:#166534;margin-bottom:14px;">O paciente já respondeu. Carregue as respostas no formulário.</div>
+        <div style="font-size:0.85rem;color:#166534;margin-bottom:14px;">O paciente já respondeu e a resposta ficou guardada na ficha dele. Pode carregá-la no formulário.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button onclick="window.peCarregarRespostasQ('${qId}')" style="background:#16a34a;color:white;border:none;padding:10px 20px;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;">📥 Carregar Respostas no Formulário</button>
           <button onclick="window.peNovoLinkQ()" style="background:#e2e8f0;border:none;padding:10px 14px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;">🔄 Criar Novo</button>
@@ -3149,11 +3162,10 @@ function peRenderLinkPanel(qId, link, status) {
     panel.innerHTML = `
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;">
         <div style="font-weight:700;color:#1e3a8a;margin-bottom:6px;">📤 Questionário Online Pronto</div>
-        <div style="font-size:0.83rem;color:#334155;margin-bottom:8px;">Envie este link ao paciente (válido até ser respondido):</div>
+        <div style="font-size:0.83rem;color:#334155;margin-bottom:8px;">Envie ao paciente por WhatsApp, e-mail ou pela área do paciente. A resposta fica guardada sozinha na ficha dele.</div>
         <div style="background:white;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:0.8rem;color:#1e3a8a;word-break:break-all;margin-bottom:12px;user-select:all;">${link||''}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-          <button onclick="window.peCopiarLinkQ('${(link||'').replace(/'/g,"\\'")}')\" style="background:#1e3a8a;color:white;border:none;padding:9px 16px;border-radius:8px;font-size:0.83rem;font-weight:700;cursor:pointer;">📋 Copiar Link</button>
-          <button onclick="window.peCompartilharWA('${(link||'').replace(/'/g,"\\'")}')\" style="background:#25D366;color:white;border:none;padding:9px 16px;border-radius:8px;font-size:0.83rem;font-weight:700;cursor:pointer;">💬 WhatsApp</button>
+          <button onclick="window.peAbrirEnvio('${qId}')" style="background:#1e3a8a;color:white;border:none;padding:9px 16px;border-radius:8px;font-size:0.83rem;font-weight:700;cursor:pointer;">📤 Enviar (WhatsApp, e-mail, área do paciente)</button>
           <button onclick="window.peVerificarRespostaQ('${qId}')" style="background:#e2e8f0;border:none;padding:9px 14px;border-radius:8px;font-size:0.83rem;font-weight:600;cursor:pointer;">🔄 Verificar Estado</button>
           <button onclick="window.peNovoLinkQ()" style="background:#fee2e2;border:none;padding:9px 12px;border-radius:8px;font-size:0.83rem;font-weight:600;color:#dc2626;cursor:pointer;">✕</button>
         </div>
@@ -3178,16 +3190,10 @@ async function peVerificarRespostaQ(qId) {
   const statusEl = document.getElementById('pe-link-status');
   if (statusEl) statusEl.textContent = '⏳ A verificar...';
   try {
-    const snap = await db().collection('pe_questionarios').doc(qId).get();
-    if (!snap.exists) {
-      if (statusEl) statusEl.textContent = '❌ Questionário não encontrado.';
-      return;
-    }
-    if (snap.data().status === 'respondido') {
-      peRenderLinkPanel(qId, null, 'respondido');
-    } else {
-      if (statusEl) statusEl.textContent = '⏳ Ainda não respondido. O paciente ainda não abriu o link.';
-    }
+    const q = await peQLer(qId);
+    if (!q) { if (statusEl) statusEl.textContent = '❌ Questionário não encontrado.'; return; }
+    if (q.estado === 'respondido') peRenderLinkPanel(qId, null, 'respondido');
+    else if (statusEl) statusEl.textContent = '⏳ Ainda não respondido.';
   } catch(err) {
     if (statusEl) statusEl.textContent = '❌ Erro de ligação. Tente novamente.';
   }
@@ -3195,25 +3201,18 @@ async function peVerificarRespostaQ(qId) {
 
 async function peCarregarRespostasQ(qId) {
   try {
-    const snap = await db().collection('pe_questionarios').doc(qId).get();
-    if (!snap.exists) return mostrarAviso('❌ Questionário não encontrado.');
-    const data = snap.data();
-    if (data.status !== 'respondido' || !data.respostas) {
-      return mostrarAviso('⚠️ Sem respostas disponíveis para carregar.');
-    }
+    const q = await peQLer(qId);
+    if (!q) return mostrarAviso('❌ Questionário não encontrado.');
+    if (q.estado !== 'respondido') return mostrarAviso('⚠️ Sem respostas disponíveis para carregar.');
     let count = 0;
-    Object.entries(data.respostas).forEach(([key, val]) => {
-      const idx = parseInt(key.replace('p', ''));
-      if (!isNaN(idx)) {
-        const el = document.getElementById(`pe-r-${idx}`);
-        if (el) { el.value = String(val); count++; }
-      }
+    Object.entries(q.resp).forEach(([idx, val]) => {
+      const el = document.getElementById(`pe-r-${idx}`);
+      if (el) { el.value = String(val); count++; }
     });
     mostrarAviso(`✅ ${count} resposta(s) carregadas no formulário!`);
     const panel = document.getElementById('pe-link-panel');
     if (panel) panel.style.display = 'none';
-    const lsKey = `pe_lastq_${tenantId()}_${peState.patientId}_${peState.formId}`;
-    try { localStorage.removeItem(lsKey); } catch(_) {}
+    try { localStorage.removeItem(peQKey()); } catch(_) {}
   } catch(err) {
     console.error(err);
     mostrarAviso('❌ Erro ao carregar respostas. Tente novamente.');
@@ -3221,8 +3220,7 @@ async function peCarregarRespostasQ(qId) {
 }
 
 function peNovoLinkQ() {
-  const lsKey = `pe_lastq_${tenantId()}_${peState.patientId}_${peState.formId}`;
-  try { localStorage.removeItem(lsKey); } catch(_) {}
+  try { localStorage.removeItem(peQKey()); } catch(_) {}
   const panel = document.getElementById('pe-link-panel');
   if (panel) panel.style.display = 'none';
 }
@@ -3233,19 +3231,72 @@ function peVerificarQExistente(formId) {
   let qId = null;
   try { qId = localStorage.getItem(lsKey); } catch(_) {}
   if (!qId) return;
-  db().collection('pe_questionarios').doc(qId).get().then(snap => {
-    if (!snap.exists) { try { localStorage.removeItem(lsKey); } catch(_) {} return; }
-    const data = snap.data();
-    if (data.status === 'respondido') {
-      const panel = document.getElementById('pe-link-panel');
-      if (panel) peRenderLinkPanel(qId, null, 'respondido');
-    } else if (data.status === 'pendente') {
-      const link = `https://vindora.pt/pe-questionario.html?d=${qId}`;
-      const panel = document.getElementById('pe-link-panel');
-      if (panel) peRenderLinkPanel(qId, link, 'pendente');
-    }
+  peQLer(qId).then(q => {
+    if (!q) { try { localStorage.removeItem(lsKey); } catch(_) {} return; }
+    peRenderLinkPanel(qId, `https://vindora.pt/form-publica.html?r=${qId}`, q.estado === 'respondido' ? 'respondido' : 'pendente');
   }).catch(() => {});
 }
+
+
+// ─── FONTE DE CONHECIMENTO EM PDF (a versão de cada terapeuta, com a marca dele) ───
+function peHtmlConhecimento() {
+  const m = peMarca(); const B = (t) => peEsc(t == null ? '' : String(t));
+  const titulo = (t) => `<h2 style="font-size:15px;color:#1e3a8a;border-bottom:2px solid #fde68a;padding-bottom:4px;margin:20px 0 8px;">${B(t)}</h2>`;
+  const lista = (a) => (a && a.length) ? `<ul style="margin:4px 0 8px 18px;padding:0;">${a.map(x => `<li style="margin-bottom:2px;">${B(x)}</li>`).join('')}</ul>` : '';
+  let h = `<div style="display:flex;gap:12px;align-items:center;border-bottom:3px solid #1e3a8a;padding-bottom:10px;margin-bottom:6px;">${peMarcaLogo(56)}
+    <div><div style="font-size:11px;letter-spacing:2px;color:#92400e;font-weight:700;">${B((m.nome || '').toUpperCase())}</div><div style="font-size:19px;font-weight:800;color:#1e3a8a;">Fonte de conhecimento do método</div>${m.lema ? `<div style="font-size:11px;color:#64748b;">${B(m.lema)}</div>` : ''}</div></div>
+    <div style="font-size:11px;color:#64748b;margin-bottom:10px;">Gerado em ${new Date().toLocaleDateString('pt-PT')}. Reflete o conhecimento tal como está editado nesta conta.</div>`;
+  h += titulo('Sistemas');
+  PE_CATS_ORDEM.forEach(c => { h += `<p style="margin:4px 0;"><b>${B(PE_CAT_NOME[c] || c)}.</b> ${B(peSistemaTxt(c))}</p>`; });
+  const cfg = peAplicarConhecimento(JSON.parse(JSON.stringify({ categories: PE_CAT })));
+  cfg.categories.forEach(cat => {
+    h += titulo(PE_CAT_NOME[cat.id] || cat.name);
+    cat.points.forEach(pt => {
+      const extra = peExtraDe(pt.id);
+      h += `<div style="margin-bottom:10px;page-break-inside:avoid;"><div style="font-weight:700;">${B(pt.name)}${pt.organ ? ` <span style="font-weight:400;color:#475569;">— ${B(pt.organ)}</span>` : ''}</div>
+        ${pt.desc ? `<div><i>Tema:</i> ${B(pt.desc)}</div>` : ''}${pt.r ? `<div><i>Pergunta:</i> ${B(pt.r)}</div>` : ''}${lista(peExemplosDe(pt.id))}${extra ? `<div><i>Conhecimento adicional:</i> ${B(extra)}</div>` : ''}</div>`;
+    });
+  });
+  h += titulo('Padrões (antes “Escudos”)');
+  Object.keys(PE_ESCUDOS_AFINIDADES).forEach(e => {
+    const t = peEscudoTxt(e) || { desc: '', ex: [] }, a = peAfinidade(e) || {};
+    h += `<div style="margin-bottom:10px;page-break-inside:avoid;"><div style="font-weight:700;">${B(e)}</div>${t.desc ? `<div>${B(t.desc)}</div>` : ''}${lista(t.ex)}${a.libera ? `<div><i>O que liberta:</i> ${B(a.libera)}</div>` : ''}${a.afi ? `<div><i>Afirmação:</i> ${B(a.afi)}</div>` : ''}</div>`;
+  });
+  h += titulo('Textos do relatório e do plano');
+  ['intro', 'aviso', 'dica', 'regra'].forEach(k => { const v = peTxt(k); if (v) h += `<p style="margin:4px 0;"><b>${B(k)}:</b> ${B(v)}</p>`; });
+  const refl = peTxt('refl'); if (refl && refl.length) h += `<p style="margin:6px 0 0;"><b>Perguntas de reflexão:</b></p>${lista(refl)}`;
+  const passos = peTxt('passos'); if (passos && passos.length) h += `<p style="margin:6px 0 0;"><b>Passos do plano:</b></p><ol style="margin:4px 0 8px 18px;padding:0;">${passos.map(x => `<li>${B(x)}</li>`).join('')}</ol>`;
+  h += `<p style="margin-top:18px;font-size:10px;color:#94a3b8;">Documento de trabalho do terapeuta. Cada terapeuta é responsável pelo conteúdo que usa e deve basear-se na sua própria formação. Não substitui acompanhamento médico ou psicológico.</p>`;
+  return h;
+}
+async function pePdfConhecimento() {
+  mostrarAviso('A preparar o PDF…');
+  let wrap;
+  try {
+    await peCarregarHtml2Pdf();
+    wrap = document.createElement('div'); wrap.style.cssText = 'position:fixed;left:-10000px;top:0;';
+    const host = document.createElement('div');
+    host.style.cssText = 'box-sizing:border-box;width:720px;background:#fff;padding:18px;color:#0f172a;font-family:system-ui,sans-serif;font-size:12.5px;line-height:1.45;';
+    host.innerHTML = peHtmlConhecimento();
+    wrap.appendChild(host); document.body.appendChild(wrap);
+    const nome = 'fonte-de-conhecimento-' + (peMarca().nome || 'metodo').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.pdf';
+    const blob = await window.html2pdf().set({
+      margin: [10, 8, 12, 8], filename: nome, image: { type:'jpeg', quality:0.9 },
+      html2canvas: { scale:1.5, useCORS:true, backgroundColor:'#ffffff', windowWidth:720 },
+      jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+      pagebreak: { mode:['css', 'legacy'], avoid:['li'] }
+    }).from(host).outputPdf('blob');
+    const f = new File([blob], nome, { type:'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files:[f] })) {
+      try { await navigator.share({ files:[f], title:nome }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    mostrarAviso('✅ PDF pronto: ' + nome);
+  } catch (e) { console.error(e); mostrarAviso('Não consegui criar o PDF. ' + (e.message || '')); }
+  finally { if (wrap) wrap.remove(); }
+}
+window.pePdfConhecimento = pePdfConhecimento;
 
 // ─── EXPOR TUDO NO WINDOW ──────────────────────────────────────────
 
@@ -3329,6 +3380,7 @@ window.peVerificarRespostaQ    = peVerificarRespostaQ;
 window.peCarregarRespostasQ    = peCarregarRespostasQ;
 window.peNovoLinkQ             = peNovoLinkQ;
 window.peVerificarQExistente   = peVerificarQExistente;
+window.peAbrirEnvio = peAbrirEnvio;
 window.peSelecionarZonas       = peSelecionarZonas;
 window.peConsolidarEscudosMapa = peConsolidarEscudosMapa;
 window.peRenderEscudosMapa     = peRenderEscudosMapa;

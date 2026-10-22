@@ -198,6 +198,7 @@ async function callPortal(action, extra){
   return data;
 }
 
+function TF(pt, en){ return __lang === 'pt' ? pt : en; }
 function formatDateTime(iso){
   const d = new Date(iso);
   const loc = __LOCALES[__lang];
@@ -438,6 +439,10 @@ function renderMenu(){
       <button class="tile" onclick="openPortalSection('reports')">
         <span class="tile-icon">📖</span><span>${T('tRelatorios')}${hasHealing ? T('eRotina') : ''}</span>
       </button>
+      <button class="tile" onclick="openPortalSection('fichas')">
+        ${(data.fichasPendentes||[]).length ? '<span class="tile-badge">' + data.fichasPendentes.length + '</span>' : ''}
+        <span class="tile-icon">📝</span><span>${TF('Fichas','Forms')}</span>
+      </button>
       <button class="tile" onclick="openPortalSection('myData')">
         <span class="tile-icon">📋</span><span>${T('tDados')}</span>
       </button>
@@ -479,6 +484,16 @@ function renderPortalSection(name){
   const backBtn = `<button class="btn-back" onclick="backToPortalMenu()">${T('voltar')}</button>`;
   let inner = '';
 
+  if (name === 'fichas'){
+    const pend = (data.fichasPendentes || []).map(f => `<div class="appt"><strong>${escapeHtml(f.titulo)}</strong>
+        <a class="btn btn-block" style="margin-top:8px;" href="${escapeHtml(f.link)}" target="_blank" rel="noopener">${TF('Preencher agora','Fill in now')}</a></div>`).join('')
+      || '<p class="muted">' + TF('Não tem fichas por preencher.','No forms to fill in.') + '</p>';
+    const feitas = (data.fichasPreenchidas || []).map(f => `<details class="appt"><summary><strong>${escapeHtml(f.titulo)}</strong> <span class="muted">${f.quando ? formatDateTime(f.quando) : ''}</span></summary>
+        ${(f.respostas||[]).map(r => `<div style="margin-top:8px;"><div class="muted">${escapeHtml(r.label)}</div><div style="white-space:pre-wrap;">${escapeHtml(r.value || '—')}</div></div>`).join('') || '<p class="muted">—</p>'}</details>`).join('')
+      || '<p class="muted">' + TF('Ainda não preencheu nenhuma ficha.','You have not filled in any form yet.') + '</p>';
+    inner = `<div class="card"><h2>${TF('Por preencher','To fill in')}</h2>${pend}</div>
+      <div class="card"><h2>${TF('Já preenchidas','Already filled in')}</h2>${feitas}</div>`;
+  }
   if (name === 'appointments'){
     const paymentBadge = (a) => {
       if (!a.price) return '';

@@ -468,9 +468,12 @@ service cloud.firestore {
 
     match /public_form_responses/{responseId} {
       // Terapeuta cria o documento e o paciente recebe o link
+      // criadoPorEquipa (ficha já ligada a um paciente) só pode ser marcada por quem tem sessão nessa conta.
       allow create: if request.resource.data.tenantId is string &&
                       request.resource.data.formId is string &&
-                      request.resource.data.status == "pending_review";
+                      request.resource.data.status == "pending_review" &&
+                      (!('criadoPorEquipa' in request.resource.data) ||
+                        (isSignedIn() && request.resource.data.tenantId == request.auth.token.tenantId));
 
       // Paciente lê (sem autenticação) enquanto a ficha está por preencher
       // Ler UM documento (get) por link continua aberto ao paciente; listar só a equipa do próprio tenant.

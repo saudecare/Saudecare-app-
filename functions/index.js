@@ -278,4 +278,4 @@ exports.deleteTenantAccount = onCall({ timeoutSeconds: 540, memory: '512MiB' }, 
 Object.assign(exports, require('./pe-licencas'));
 Object.assign(exports, require('./pe-termos'));
 Object.assign(exports, require('./lembretes'));
-Object.assign(exports, require('./leitura-gratis'), require('./backup'));
+Object.assign(exports, require('./leitura-gratis'), require('./backup'), require('./fichas'));
