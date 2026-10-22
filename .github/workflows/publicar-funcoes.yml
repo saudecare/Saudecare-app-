@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       acao:
-        description: 'listar (só mostra o que existe) ou publicar'
+        description: 'listar, publicar (tudo) ou modulo (só o módulo protegido)'
         default: 'listar'
         required: true
 
@@ -70,6 +70,17 @@ jobs:
             echo "::warning::DETALHE: $(grep -iE 'scheduler|PERMISSION_DENIED|actAs|403|"message"' limpo.log | grep -iE 'schedul|denied|permission|actAs' | cut -c1-500 | tail -6 | tr '\n' ' ' | cut -c1-2400)"
             exit $code
           fi
+
+      - name: Publicar só o módulo protegido
+        if: github.event.inputs.acao == 'modulo'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          set +e
+          npx --yes firebase-tools@latest deploy --only functions:peModulo --project saudecare-app --non-interactive --force > deploy.log 2>&1
+          code=$?
+          sed 's/\x1b\[[0-9;]*m//g' deploy.log | tail -15
+          if [ $code -ne 0 ]; then echo "::error::$(sed 's/\x1b\[[0-9;]*m//g' deploy.log | tail -8 | tr '\n' ' ' | cut -c1-1500)"; exit $code; fi
 
       - name: Apagar a chave
         if: always()

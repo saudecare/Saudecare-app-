@@ -884,6 +884,8 @@ async function sincronizarContacto(patientId, dados){
   } catch(e){ console.warn('Contacto não sincronizado', patientId, e); }
 }
 
+window.sincronizarContacto = sincronizarContacto;
+
 /* Uma vez por dia, quem tem acesso às fichas acerta todos os cartões de
    contacto — cobre pacientes antigos e os que chegam por outros meios. */
 async function sincronizarTodosContactos(){

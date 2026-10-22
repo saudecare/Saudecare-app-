@@ -3101,6 +3101,7 @@ function peNovoPaciente(aoCriar) {
         portalToken: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/-/g, ''),
         createdBy: u ? u.uid : '', createdAt: new Date()
       });
+      try { if (typeof window.sincronizarContacto === 'function') window.sincronizarContacto(ref.id, { fullName: nome, phone, email }); } catch (_) {}
       const novo = { id: ref.id, fullName: nome, phone, email, active: true };
       if (!peState.pacientes) peState.pacientes = [];
       peState.pacientes.unshift(novo);
