@@ -61,11 +61,13 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
           set +e
-          npx --yes firebase-tools@latest deploy --only functions --project saudecare-app --non-interactive --force > deploy.log 2>&1
+          npx --yes firebase-tools@latest deploy --only functions --project saudecare-app --non-interactive --force --debug > deploy.log 2>&1
           code=$?
           cat deploy.log
           if [ $code -ne 0 ]; then
-            echo "::error::$(sed 's/\x1b\[[0-9;]*m//g' deploy.log | grep -vE 'ensuring required API|required API .* is enabled' | tail -12 | tr '\n' ' ' | cut -c1-1800)"
+            sed 's/\x1b\[[0-9;]*m//g' deploy.log > limpo.log
+            echo "::error::$(grep -vE '^\[[0-9]{4}-|ensuring required API|required API .* is enabled' limpo.log | tail -12 | tr '\n' ' ' | cut -c1-1800)"
+            echo "::warning::DETALHE: $(grep -iE 'scheduler|PERMISSION_DENIED|actAs|403|"message"' limpo.log | grep -iE 'schedul|denied|permission|actAs' | cut -c1-500 | tail -6 | tr '\n' ' ' | cut -c1-2400)"
             exit $code
           fi
 
