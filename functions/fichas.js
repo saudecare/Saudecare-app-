@@ -53,7 +53,7 @@ async function anexar(id, d) {
   if (ja.empty) {
     await pRef.collection('formResponses').add({
       sourceResponseId: id, formId: d.formId || '', formTitle: d.titulo || d.formTitle || 'Ficha',
-      respostas, respondentName: d.respondentName || d.patientName || '', completadoEm: d.completadoEm || FieldValue.serverTimestamp(),
+      respostas, ...(d.blocosSoma ? { blocosSoma: d.blocosSoma, escalaMax: d.escalaMax || 5 } : {}), respondentName: d.respondentName || d.patientName || '', completadoEm: d.completadoEm || FieldValue.serverTimestamp(),
       submittedAt: d.completadoEm || FieldValue.serverTimestamp(), autoAnexada: true
     });
   }

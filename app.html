@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-22-45';
+const APP_VERSION = '2026-10-22-46';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4392,6 +4392,7 @@ async function autoAttachPendingResponsesForPatient(patientId){
         formTitle: r.titulo || r.formTitle || r.formId || 'Ficha',
         respostas: r.respostas || r.answers || [],
         respondentName: r.respondentName || r.patientName || '',
+        ...(r.blocosSoma ? { blocosSoma: r.blocosSoma, escalaMax: r.escalaMax || 5 } : {}),
         completadoEm: r.completadoEm || null,
         consentConfirmedAt: r.consentConfirmedAt || null,
         submittedAt: r.completadoEm || serverTimestamp()
@@ -5460,6 +5461,26 @@ window.removePackage = async function(patientId, idx){
   viewPatient(patientId);
 };
 
+
+// Questionários de pontuação (medos, escudos): soma por bloco e destaque do(s) mais forte(s).
+function resumoSomaBlocos(r, respostas){
+  const bl = r && r.blocosSoma;
+  if (!Array.isArray(bl) || !bl.length) return '';
+  const val = {};
+  (respostas || []).forEach(a => { const m = /^p(\d+)$/.exec(String(a.questionId || '')); if (m) val[+m[1]] = parseInt(String(a.value || ''), 10) || 0; });
+  const itens = bl.map((b, i) => { let soma = 0; for (let k = b.de; k <= b.ate; k++) soma += val[k] || 0; return { nome: b.nome, soma, max: (b.ate - b.de + 1) * (r.escalaMax || 5) }; });
+  const top = Math.max(...itens.map(x => x.soma));
+  if (!top) return '';
+  itens.forEach(x => { x.dom = x.soma === top; x.perto = !x.dom && x.soma >= Math.ceil(top * 0.9); });
+  const dom = itens.filter(x => x.dom);
+  const perto = itens.filter(x => x.perto);
+  return `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px;margin-bottom:12px;">
+    <div style="font-weight:800;color:#1e3a8a;margin-bottom:6px;">Resultado automático: ${dom.map(x => escapeHtml(x.nome)).join(' + ')} (${top} pontos)${dom.length > 1 ? ' — empate' : ''}</div>
+    ${perto.length ? `<div style="font-size:.85rem;color:#92400e;margin-bottom:6px;">Também muito presente: ${perto.map(x => escapeHtml(x.nome) + ' (' + x.soma + ')').join(', ')}</div>` : ''}
+    ${itens.slice().sort((a, b) => b.soma - a.soma).map(x => `<div style="margin:5px 0;font-size:.85rem;"><div style="display:flex;justify-content:space-between;"><span>${x.dom ? '★ ' : ''}${escapeHtml(x.nome)}</span><b>${x.soma}/${x.max}</b></div><div style="background:#e2e8f0;border-radius:6px;height:8px;"><div style="width:${Math.round(x.soma / x.max * 100)}%;background:${x.dom ? '#1e3a8a' : (x.perto ? '#d97706' : '#94a3b8')};height:8px;border-radius:6px;"></div></div></div>`).join('')}
+  </div>`;
+}
+
 window.viewSavedFormResponse = async function(patientId, responseId){
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'formResponses', responseId));
   if (!snap.exists()){ toast('Resposta não encontrada.', true); return; }
@@ -5471,9 +5492,11 @@ window.viewSavedFormResponse = async function(patientId, responseId){
     <div class="appt-item"><strong>${escapeHtml(a.label||a.q||'')}</strong><div class="muted">${escapeHtml(String(a.value||a.resposta||''))}</div></div>
   `).join('');
   if (!answersHtml) answersHtml = '<p class="muted">Sem respostas registadas.</p>';
+  const somaHtml = resumoSomaBlocos(r, respostas);
   document.getElementById('sendFormContainer').innerHTML = `
     <div class="card">
       <h2>${escapeHtml(titulo)}</h2>
+      ${somaHtml}
       ${answersHtml}
     </div>`;
   scrollToEl('sendFormContainer');
@@ -6653,6 +6676,7 @@ window.confirmAttachToPatient = async function(patientId){
       formTitle: r.titulo || r.formTitle || r.formId || 'Ficha',
       respostas: r.respostas || r.answers || [],
       respondentName: r.respondentName || r.patientName || '',
+      ...(r.blocosSoma ? { blocosSoma: r.blocosSoma, escalaMax: r.escalaMax || 5 } : {}),
       completadoEm: r.completadoEm || null,
       consentConfirmedAt: r.consentConfirmedAt || null,
       submittedAt: r.completadoEm || serverTimestamp()

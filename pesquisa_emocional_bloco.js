@@ -127,14 +127,42 @@ const PE_INFERIOR_SVG = `<g stroke-linejoin="round" stroke-linecap="round">
 <text x="100" y="25" text-anchor="middle" font-size="7" font-weight="700" fill="white">CINTA</text>`;
 
 const PE_MEDOS = [
-  {name:"Bloco 1 — Medo da Pobreza",q:["Já vivi períodos de grande aperto financeiro","A relação com o meu pai foi difícil","Em casa, houve alturas em que faltou comida","Receio que o meu futuro seja complicado"]},
-  {name:"Bloco 2 — Medo da Doença",q:["Sinto desconforto só de pensar em ir ao médico","Quando noto algo diferente no corpo, vou logo pesquisar","Ter uma doença é algo que me angustia","Perdi pessoas queridas por causa de doença"]},
-  {name:"Bloco 3 — Medo da Crítica",q:["Importa-me muito o que os outros pensam de mim","Não me sinto bem com o meu aspeto","Custa-me dizer o que penso","Sinto-me muito inseguro/a"]},
-  {name:"Bloco 4 — Medo da Morte",q:["Funerais e despedidas são difíceis para mim","Receio perder as pessoas que amo","A minha cabeça está muitas vezes no futuro","Situações de perigo deixam-me assustado/a"]},
-  {name:"Bloco 5 — Medo de Relacionamento",q:["Sou ciumento/a e inseguro/a nas relações","Esforço-me por agradar a quem amo","Sinto muitas vezes um vazio dentro de mim","É difícil confiar nas outras pessoas"]},
-  {name:"Bloco 6 — Medo de Envelhecer",q:["Sinto cansaço quase todos os dias","A vida parece-me ter perdido a cor","Preocupo-me muito em estar bem quando for mais velho/a","Sinto que ninguém me compreende"]},
-  {name:"Bloco 7 — Medo de Perder a Liberdade",q:["A rotina aborrece-me depressa","Custa-me ficar muito tempo com a mesma pessoa","Sinto-me mal quando me pressionam","Reajo mal quando me dão ordens"]}
+  {name:"Medo da Pobreza",q:["Já atravessei fases em que o dinheiro foi motivo de grande aflição", "A relação com a figura paterna deixou-me marcas difíceis", "Lembro-me de épocas em que faltou o essencial lá em casa", "Acredito que o meu futuro vai ser de dificuldades", "Mesmo infeliz no trabalho, receio deixá-lo e ficar sem rendimento", "Uma despesa inesperada faz-me logo disparar o coração", "Pensar no futuro deixa-me muito apreensivo/a", "Alguém da minha família perdeu tudo por má gestão do dinheiro", "Não acredito que algum dia vá ter estabilidade financeira", "Em criança vi de perto o que é viver com pouco"]},
+  {name:"Medo da Doença",q:["Marcar uma consulta médica deixa-me desconfortável", "Qualquer sinal novo no corpo leva-me logo a pesquisar", "Prefiro tratar-me sozinho/a a esperar por um diagnóstico", "Antes de um exame fico com muita ansiedade", "Só de imaginar uma doença grave sinto sofrimento", "Tenho medo de adoecer e de ter de fazer tratamentos", "Perdi pessoas que amava por causa de doença", "Quando o coração acelera, o meu pensamento vai logo para o pior", "Receio passar mal estando só, sem ninguém dar por isso", "Penso na minha saúde várias vezes ao longo do dia"]},
+  {name:"Medo da Crítica",q:["Ser observado/a por outros deixa-me inquieto/a", "Gasto muita energia a imaginar o que pensam de mim", "Dou mais aos outros do que a mim próprio/a", "Neste momento não estou bem com a minha aparência", "Custa-me explicar claramente o que penso", "Cedo e faço o que pedem, mesmo discordando por dentro", "Sinto-me muitas vezes inseguro/a", "A forma como vejo o meu corpo causa-me desconforto", "Em sítios com muita gente sinto-me deslocado/a", "Tenho dificuldade em manter o olhar numa conversa"]},
+  {name:"Medo da Morte",q:["Conduzir ou andar sozinho/a na rua dá-me insegurança", "Estar sozinho/a pesa-me", "Imagino com preocupação como será a minha vida na velhice", "Antes de começar algo, penso logo que pode correr mal", "Velórios e funerais custam-me muito", "Sinto-me vulnerável quando saio de casa", "Ficar a pensar em assaltos, agressões ou violência perturba-me", "Vivo com a cabeça no que pode acontecer amanhã", "Situações de perigo deixam-me paralisado/a ou em sobressalto", "A ideia de perder quem amo angustia-me"]},
+  {name:"Medo de Relacionamento",q:["Nas relações sinto ciúmes e insegurança", "Preciso de agradar a quem amo para me sentir querido/a", "Duvido do meu próprio valor", "Desconfio das intenções de quem se aproxima de mim", "Uma desilusão amorosa fez-me preferir ficar sozinho/a", "Gestos de carinho muito intensos deixam-me desconfiado/a", "Sinto solidão mesmo rodeado/a de pessoas", "Convivo com um vazio interior que não passa", "Custa-me confiar nos outros", "Digo que sim quando por dentro queria dizer que não"]},
+  {name:"Medo de Envelhecer",q:["Não me sinto bem com a minha imagem atual", "Acho que me estou a tornar menos interessante", "Temo esquecer-me de coisas importantes", "Sinto-me cansado/a quase sempre", "Ultimamente a vida parece-me sem brilho", "Tenho cada vez menos vontade de sair", "Sinto que ninguém me compreende", "Faço tudo ao meu alcance para chegar bem à velhice", "Imagino um futuro triste para mim", "Sinto que tenho de vigiar a minha saúde o tempo todo"]},
+  {name:"Medo de Perder a Liberdade",q:["A rotina cansa-me depressa", "Pondero muito antes de assumir um compromisso", "Dificilmente aguento muito tempo ao lado da mesma pessoa", "Mudo de planos com facilidade, conforme me apetece", "Sinto-me mal quando me pressionam", "Reajo mal a ordens com que não concordo", "Incomoda-me que invadam a minha privacidade", "Prefiro mandar a ser mandado/a", "Tenho dificuldade em partilhar o que é meu e importante para mim", "Trocava um bom emprego pela minha liberdade sem hesitar"]}
 ];
+const PE_ESCUDOS_Q = [
+  {name:"Desvalorização",q:["Sinto que nada do que faço é suficientemente bom", "Comparo-me muito com os outros e saio a perder", "Custa-me reconhecer o que tenho de bom e o que já conquistei", "Tenho vergonha de me mostrar ou de dar a minha opinião", "Evito experimentar coisas novas por medo de falhar", "Críticas que ouvi no passado ainda me fazem duvidar de mim", "Sinto que, para os outros, nunca chego", "Quando erro, culpo-me durante muito tempo", "Esforço-me ao máximo para ser aceite", "Acho que tenho de merecer o carinho e a atenção que recebo"]},
+  {name:"Desproteção",q:["Tenho receio de ser magoado/a ou abandonado/a", "Vivo em estado de alerta, à espera de que algo corra mal", "Mesmo ao pé de quem me é próximo, não me sinto seguro/a", "Custa-me confiar totalmente em alguém", "Houve momentos em que me senti sem ninguém", "Evito abrir-me para não me magoarem", "Sinto-me muitas vezes sozinho/a no mundo", "Sinto que ninguém me entende de verdade", "Já tive de me defender sozinho/a em situações difíceis", "Tenho medo de mostrar fragilidade"]},
+  {name:"Sobrevivência",q:["Vivo com medo de perder tudo o que construí", "Preocupo-me muito com dinheiro e com a segurança material", "Sinto-me em alerta permanente, como se tudo pudesse desabar", "Mesmo quando está tudo bem, não consigo descontrair", "Preciso de controlar tudo para não me desequilibrar", "Houve momentos em que senti a minha sobrevivência em risco", "Sinto que não posso contar com ninguém", "Sinto-me ameaçado/a com facilidade", "Perante a incerteza fico muito ansioso/a", "Vivo em piloto automático só para dar conta de tudo"]},
+  {name:"Impotência",q:["Sinto que não tenho força para mudar a minha vida", "Já me senti preso/a numa situação sem saída", "Quando algo corre mal, fico bloqueado/a", "Por mais que tente, sinto que nada muda", "Tenho dificuldade em tomar decisões importantes", "Já passei por momentos em que me senti totalmente impotente", "Sinto que os outros mandam demais na minha vida", "Desisti de sonhos por achar que não os conseguiria realizar", "O medo paralisa-me muitas vezes", "Fico a pensar no que podia ter feito de outra forma e não consigo agir"]},
+  {name:"Perda",q:["Carrego uma dor funda por pessoas ou situações que perdi", "Sinto um vazio que não parece ter fim", "Custa-me largar o passado", "Despedidas são muito difíceis para mim", "Evito criar laços para não sofrer com perdas futuras", "Perdi alguém ou algo que era essencial para mim", "Revivo muitas vezes memórias de quem ou do que já se foi", "Tenho medo de perder quem amo", "Sinto-me rejeitado/a com facilidade, mesmo sem razão aparente", "Vivi experiências marcantes de abandono"]}
+];
+const PE_ESCALA_MEDOS = ['1 – Discordo totalmente', '2 – Discordo', '3 – Neutro', '4 – Concordo', '5 – Concordo totalmente'];
+const PE_ESCALA_ESCUDOS = ['1 – Não me identifico nada', '2 – Tenho momentos em que me sinto assim', '3 – É exatamente o que sinto agora ou com frequência'];
+
+// Soma por blocos e deteção do(s) mais forte(s). vals[b][q] = número (0 = por responder).
+function peRanking(lista, vals) {
+  const r = lista.map((b, bi) => ({ nome: b.name, bloco: bi + 1, soma: (vals[bi] || []).reduce((a, v) => a + (parseInt(v, 10) || 0), 0) }));
+  const max = Math.max.apply(null, r.map(x => x.soma));
+  r.forEach(x => { x.dominante = max > 0 && x.soma === max; x.perto = max > 0 && !x.dominante && x.soma >= Math.ceil(max * 0.9); });
+  return { itens: r, max };
+}
+function peRankingHtml(rk, maxBloco, rotulo) {
+  if (!rk.max) return 'Aguarda preenchimento...';
+  const dom = rk.itens.filter(x => x.dominante), perto = rk.itens.filter(x => x.perto);
+  let h = `<div style="text-align:left;"><div style="font-weight:800;color:#1e3a8a;margin-bottom:8px;">${dom.length > 1 ? rotulo + ' dominantes (empate)' : rotulo + ' dominante'}: ${dom.map(x => peEsc(x.nome)).join(' + ')} (${rk.max} pontos)</div>`;
+  if (perto.length) h += `<div style="font-size:0.85rem;color:#92400e;margin-bottom:8px;">Também muito presente: ${perto.map(x => peEsc(x.nome) + ' (' + x.soma + ')').join(', ')}</div>`;
+  rk.itens.slice().sort((a, b) => b.soma - a.soma).forEach(x => {
+    const pct = Math.round(x.soma / maxBloco * 100);
+    h += `<div style="margin:5px 0;font-size:0.82rem;"><div style="display:flex;justify-content:space-between;"><span>${x.dominante ? '★ ' : ''}${peEsc(x.nome)}</span><b>${x.soma}/${maxBloco}</b></div><div style="background:#e2e8f0;border-radius:6px;height:8px;"><div style="width:${pct}%;background:${x.dominante ? '#1e3a8a' : (x.perto ? '#d97706' : '#94a3b8')};height:8px;border-radius:6px;"></div></div></div>`;
+  });
+  return h + '</div>';
+}
 
 const PE_FICHAS = {
   'pre-consulta':[{q:'Nome Completo'},{q:'Idade e Data de Nascimento'},{q:'Trabalha atualmente? Profissão?'},{q:'Estado Civil'},{q:'Tem irmãos?'},{q:'Qual a sua ordem de nascimento?'},{q:'Foi filho planeado?'},{q:'Acompanhamento médico ou terapêutico?'},{q:'Medicamentos para depressão ou ansiedade?'},{q:'Cite 3 dores físicas recorrentes:'},{q:'Sente-se mais ansioso ou desanimado?'},{q:'Quais os seus objetivos com esta consulta?'},{q:'Quais os 3 momentos mais difíceis que viveu?'}],
@@ -333,11 +361,11 @@ async function renderPesquisaEmocional(main) {
             <button id="pe-btn-edit-form" onclick="window.peToggleFormEdit()" style="background:#e2e8f0;border:1px solid #cbd5e1;color:#334155;padding:8px 14px;border-radius:20px;font-size:0.8rem;font-weight:700;cursor:pointer;">✏️ Editar Perguntas</button>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-            ${['pre-consulta','pos-consulta','crianca','cuidador','medos'].map(id=>`<button onclick="window.peMudarFicha('${id}',this)" class="pe-tab-btn ${id==='pre-consulta'?'pe-tab-ativo':''}" style="padding:9px 14px;border:1px solid ${id==='pre-consulta'?'#b45309':'#cbd5e1'};background:${id==='pre-consulta'?'#b45309':'white'};color:${id==='pre-consulta'?'white':'#64748b'};border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;">${{pre:'Pré-Consulta',pos:'Pós-Consulta',crianca:'Criança',cuidador:'Cuidador',medos:'Medos'}[id.split('-')[0]]||'Medos'}</button>`).join('')}
+            ${['pre-consulta','pos-consulta','crianca','cuidador','medos','escudos'].map(id=>`<button onclick="window.peMudarFicha('${id}',this)" class="pe-tab-btn ${id==='pre-consulta'?'pe-tab-ativo':''}" style="padding:9px 14px;border:1px solid ${id==='pre-consulta'?'#b45309':'#cbd5e1'};background:${id==='pre-consulta'?'#b45309':'white'};color:${id==='pre-consulta'?'white':'#64748b'};border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;">${{'pre-consulta':'Pré-Consulta','pos-consulta':'Pós-Consulta','crianca':'Criança','cuidador':'Cuidador','medos':'Medos','escudos':'Escudos'}[id]}</button>`).join('')}
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-            <button onclick="window.peCopiarFicha()" style="background:#e2e8f0;border:1px solid #cbd5e1;padding:8px 14px;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;">📋 Copiar para WhatsApp</button>
-            <button onclick="window.peToggleColarArea()" style="background:#25D366;color:white;border:none;padding:8px 14px;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;">📥 Colar Respostas</button>
+            <button id="pe-btn-copiar" onclick="window.peCopiarFicha()" style="background:#e2e8f0;border:1px solid #cbd5e1;padding:8px 14px;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;">📋 Copiar para WhatsApp</button>
+            <button id="pe-btn-colar" onclick="window.peToggleColarArea()" style="background:#25D366;color:white;border:none;padding:8px 14px;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;">📥 Colar Respostas</button>
             <button onclick="window.peGerarEnvioOnline()" style="background:#1e3a8a;color:white;border:none;padding:8px 14px;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;">📤 Enviar Online</button>
           </div>
           <div id="pe-colar-area" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px;margin-bottom:10px;">
@@ -351,6 +379,7 @@ async function renderPesquisaEmocional(main) {
           <div id="pe-link-panel" style="display:none;margin-bottom:10px;"></div>
           <div id="pe-form-wrapper" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;"></div>
           <div id="pe-medos-wrapper" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;"></div>
+          <div id="pe-escudos-wrapper" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;"></div>
           <button onclick="window.peGuardarFicha()" style="background:#16a34a;color:white;width:100%;padding:14px;border:none;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;margin-top:16px;">💾 Guardar Ficha no Histórico</button>
           <div style="display:flex;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid #e2e8f0;">
             <button onclick="window.peIrPasso('2')" style="background:#1e3a8a;color:white;padding:12px 24px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Avançar para Investigação ➔</button>
@@ -549,6 +578,7 @@ async function renderPesquisaEmocional(main) {
   `;
   await peLerPacientes();
   peConstruirMedos();
+  peConstruirEscudos();
 }
 
 // ─── PACIENTES ────────────────────────────────────────────────────
@@ -764,17 +794,18 @@ function peVoltarFecho() {
 function peMudarFicha(id, btn) {
   document.querySelectorAll('.pe-tab-btn').forEach(b => { b.style.background='white'; b.style.color='#64748b'; b.style.borderColor='#cbd5e1'; });
   if (btn) { btn.style.background='#b45309'; btn.style.color='white'; btn.style.borderColor='#b45309'; }
-  if (id==='medos') {
-    document.getElementById('pe-form-wrapper').style.display='none';
-    document.getElementById('pe-medos-wrapper').style.display='block';
-    document.getElementById('pe-btn-edit-form').style.display='none';
-  } else {
-    document.getElementById('pe-medos-wrapper').style.display='none';
-    document.getElementById('pe-form-wrapper').style.display='block';
-    document.getElementById('pe-btn-edit-form').style.display='inline-block';
-    peState.formId = id;
-    peRenderizarFicha(id);
-  }
+  const especial = id === 'medos' || id === 'escudos';
+  const set = (i, v) => { const e = document.getElementById(i); if (e) e.style.display = v; };
+  set('pe-medos-wrapper', id === 'medos' ? 'block' : 'none');
+  set('pe-escudos-wrapper', id === 'escudos' ? 'block' : 'none');
+  set('pe-form-wrapper', especial ? 'none' : 'block');
+  set('pe-btn-edit-form', especial ? 'none' : 'inline-block');
+  set('pe-btn-copiar', especial ? 'none' : 'inline-block');
+  set('pe-btn-colar', especial ? 'none' : 'inline-block');
+  set('pe-link-panel', 'none');
+  peState.formId = id;
+  if (!especial) peRenderizarFicha(id);
+  peVerificarQExistente(id);
 }
 
 function peToggleFormEdit() {
@@ -988,11 +1019,16 @@ function peGuardarFicha() {
   if (!peState.patientId) return mostrarAviso('⚠️ Selecione um paciente antes de guardar.');
   const medosWrap=document.getElementById('pe-medos-wrapper');
   const isMedos=medosWrap&&medosWrap.style.display!=='none';
+  const escWrap=document.getElementById('pe-escudos-wrapper');
+  const isEscudos=escWrap&&escWrap.style.display!=='none';
   const data=new Date().toLocaleDateString('pt-PT');
   let texto=''; let hasData=false; const respostasMap={};
   if (isMedos) {
     const res=document.getElementById('pe-medo-resultado');
-    if (res&&res.dataset.val) { hasData=true; texto=`Medo Predominante: ${res.dataset.val}`; }
+    if (res&&res.dataset.val) { hasData=true; texto=`AVALIAÇÃO DE MEDOS SUBCONSCIENTES\nData: ${data}\nMedo dominante: ${res.dataset.val}\nTotais por bloco: ${res.dataset.resumo}`; }
+  } else if (isEscudos) {
+    const res=document.getElementById('pe-escudo-resultado');
+    if (res&&res.dataset.val) { hasData=true; texto=`QUESTIONÁRIO DOS ESCUDOS EMOCIONAIS\nData: ${data}\nEscudo dominante: ${res.dataset.val}\nTotais por bloco: ${res.dataset.resumo}`; }
   } else {
     const fichas=peState.formsDB||peLerConfig().forms;
     const tit=document.getElementById('pe-form-titulo')?.textContent||'Ficha';
@@ -1000,38 +1036,55 @@ function peGuardarFicha() {
     (fichas[peState.formId]||[]).forEach((item,idx)=>{ const val=document.getElementById(`pe-r-${idx}`)?.value?.trim()||''; if(val){hasData=true; texto+=`• ${item.q}:\n  R: ${val}\n\n`; respostasMap[item.q]=val;} });
   }
   if (!hasData) return mostrarAviso('⚠️ A ficha está vazia.');
-  guardarNaFicha(peState.patientId,{ tipo:'pesquisa_emocional_ficha', titulo:isMedos?'Avaliação de Medos Subconscientes':(document.getElementById('pe-form-titulo')?.textContent||'Ficha'), texto, dados:{formId:peState.formId, respostas:respostasMap} });
+  guardarNaFicha(peState.patientId,{ tipo:'pesquisa_emocional_ficha', titulo:isMedos?'Avaliação de Medos Subconscientes':isEscudos?'Questionário dos Escudos Emocionais':(document.getElementById('pe-form-titulo')?.textContent||'Ficha'), texto, dados:{formId:peState.formId, respostas:respostasMap} });
   mostrarAviso('✅ Ficha guardada no histórico!');
 }
 
 // ─── MEDOS ────────────────────────────────────────────────────────
 
-function peConstruirMedos() {
-  const container=document.getElementById('pe-medos-wrapper');
-  if (!container) return;
-  let html=`<h4 style="color:#1e3a8a;margin-bottom:12px;">Avaliação de Medos Subconscientes</h4>
-    <p style="font-size:0.85rem;color:#64748b;margin-bottom:16px;">Peça ao paciente para avaliar de 1 (Discordo) a 5 (Concordo totalmente).</p>`;
-  PE_MEDOS.forEach((bloco,bIdx)=>{
-    html+=`<div style="background:#fff1f2;padding:10px 14px;border-radius:6px;font-weight:700;color:#dc2626;margin-top:16px;margin-bottom:10px;">${bloco.name}</div>
+function peTabelaBlocos(lista, prefixo, escala, calc, titulo, intro, idRes) {
+  let html = `<h4 style="color:#1e3a8a;margin-bottom:12px;">${titulo}</h4><p style="font-size:0.85rem;color:#64748b;margin-bottom:16px;">${intro}</p>`;
+  const cols = escala.length;
+  lista.forEach((bloco, bIdx) => {
+    html += `<div style="background:#fff1f2;padding:10px 14px;border-radius:6px;font-weight:700;color:#dc2626;margin-top:16px;margin-bottom:10px;">Bloco ${bIdx + 1} — ${peEsc(bloco.name)}</div>
       <table style="width:100%;border-collapse:collapse;">
         <tr><th style="text-align:left;padding:8px;font-size:0.82rem;color:#1e3a8a;background:#f8fafc;border:1px solid #e2e8f0;">Afirmação</th>
-        ${[1,2,3,4,5].map(n=>`<th style="padding:8px;font-size:0.82rem;color:#1e3a8a;background:#f8fafc;border:1px solid #e2e8f0;">${n}</th>`).join('')}</tr>`;
-    bloco.q.forEach((q,qIdx)=>{
-      html+=`<tr><td style="padding:10px 8px;font-size:0.82rem;border:1px solid #e2e8f0;">${q}</td>`;
-      for(let i=1;i<=5;i++) html+=`<td style="text-align:center;border:1px solid #e2e8f0;"><input type="radio" name="pem_${bIdx}_${qIdx}" value="${i}" onchange="window.peCalcMedos()"></td>`;
-      html+=`</tr>`;
+        ${Array.from({ length: cols }, (_, n) => `<th style="padding:8px;font-size:0.82rem;color:#1e3a8a;background:#f8fafc;border:1px solid #e2e8f0;">${n + 1}</th>`).join('')}</tr>`;
+    bloco.q.forEach((q, qIdx) => {
+      html += `<tr><td style="padding:10px 8px;font-size:0.82rem;border:1px solid #e2e8f0;">${peEsc(q)}</td>`;
+      for (let i = 1; i <= cols; i++) html += `<td style="text-align:center;border:1px solid #e2e8f0;"><input type="radio" name="${prefixo}_${bIdx}_${qIdx}" value="${i}" onchange="window.${calc}()"></td>`;
+      html += `</tr>`;
     });
-    html+=`</table>`;
+    html += `</table>`;
   });
-  html+=`<div id="pe-medo-resultado" style="background:#eff6ff;border:1px solid #bfdbfe;padding:14px;border-radius:8px;text-align:center;font-weight:700;color:#0f172a;margin-top:20px;">Aguarda preenchimento...</div>`;
-  container.innerHTML=html;
+  html += `<div id="${idRes}" style="background:#eff6ff;border:1px solid #bfdbfe;padding:14px;border-radius:8px;text-align:center;font-weight:700;color:#0f172a;margin-top:20px;">Aguarda preenchimento...</div>`;
+  return html;
 }
 
+function peConstruirMedos() {
+  const c = document.getElementById('pe-medos-wrapper'); if (!c) return;
+  c.innerHTML = peTabelaBlocos(PE_MEDOS, 'pem', PE_ESCALA_MEDOS, 'peCalcMedos', 'Avaliação de Medos Subconscientes', 'Peça ao paciente para avaliar cada afirmação de 1 (discordo totalmente) a 5 (concordo totalmente), respondendo depressa, com a primeira resposta que surgir. A soma de cada bloco é feita sozinha.', 'pe-medo-resultado');
+}
+function peConstruirEscudos() {
+  const c = document.getElementById('pe-escudos-wrapper'); if (!c) return;
+  c.innerHTML = peTabelaBlocos(PE_ESCUDOS_Q, 'pes', PE_ESCALA_ESCUDOS, 'peCalcEscudos', 'Escudos Emocionais Ativos', '1 = não me identifico nada · 2 = tenho momentos em que me sinto assim · 3 = é exatamente o que sinto agora ou com frequência. A soma de cada bloco é feita sozinha.', 'pe-escudo-resultado');
+}
+function peLerValsRadios(lista, prefixo) {
+  return lista.map((b, bi) => b.q.map((_, qi) => { const sel = document.querySelector(`input[name="${prefixo}_${bi}_${qi}"]:checked`); return sel ? parseInt(sel.value, 10) : 0; }));
+}
 function peCalcMedos() {
-  let maxScore=0; let topFear='';
-  PE_MEDOS.forEach((bloco,bIdx)=>{ let soma=0; bloco.q.forEach((_,qIdx)=>{ const sel=document.querySelector(`input[name="pem_${bIdx}_${qIdx}"]:checked`); if(sel)soma+=parseInt(sel.value); }); if(soma>maxScore){maxScore=soma;topFear=bloco.name;} });
-  const el=document.getElementById('pe-medo-resultado');
-  if (el&&maxScore>0) { el.textContent=`Medo Predominante: ${topFear} (${maxScore} pontos).`; el.dataset.val=topFear; }
+  const rk = peRanking(PE_MEDOS, peLerValsRadios(PE_MEDOS, 'pem'));
+  const el = document.getElementById('pe-medo-resultado'); if (!el) return;
+  el.innerHTML = peRankingHtml(rk, PE_MEDOS[0].q.length * 5, 'Medo');
+  el.dataset.val = rk.max ? rk.itens.filter(x => x.dominante).map(x => x.nome).join(' e ') : '';
+  el.dataset.resumo = rk.max ? rk.itens.slice().sort((a, b) => b.soma - a.soma).map(x => `${x.nome}: ${x.soma}`).join(' | ') : '';
+}
+function peCalcEscudos() {
+  const rk = peRanking(PE_ESCUDOS_Q, peLerValsRadios(PE_ESCUDOS_Q, 'pes'));
+  const el = document.getElementById('pe-escudo-resultado'); if (!el) return;
+  el.innerHTML = peRankingHtml(rk, PE_ESCUDOS_Q[0].q.length * 3, 'Escudo');
+  el.dataset.val = rk.max ? rk.itens.filter(x => x.dominante).map(x => x.nome).join(' e ') : '';
+  el.dataset.resumo = rk.max ? rk.itens.slice().sort((a, b) => b.soma - a.soma).map(x => `${x.nome}: ${x.soma}`).join(' | ') : '';
 }
 
 // ─── VIA DE INVESTIGAÇÃO ──────────────────────────────────────────
@@ -1769,7 +1822,9 @@ function pePreencherReceita() {
     }
   }
   const medoRes=document.getElementById('pe-medo-resultado');
-  if (medoRes&&medoRes.dataset.val) txt+=`🧠 3. Limpeza de Medos: Para ajudar a libertar o ${medoRes.dataset.val}, recomendo a frequência de limpeza de medos profundos.\n\n`;
+  if (medoRes&&medoRes.dataset.val) txt+=`🧠 3. Limpeza de Medos: Para ajudar a libertar ${medoRes.dataset.val}, recomendo a frequência de limpeza de medos profundos.\n\n`;
+  const escRes=document.getElementById('pe-escudo-resultado');
+  if (escRes&&escRes.dataset.val) txt+=`🛡️ Questionário dos Escudos: escudo(s) mais ativo(s) — ${escRes.dataset.val}.\n\n`;
   if (peState.path===3) txt+=`🎵 3. Gatilho Emocional: Quando sentires a pressão do estressor, faz uma pausa de 3 minutos, respira fundo e ouve a música de ancoragem recomendada.\n\n`;
   const af=peAfinidade(escudo);
   if (af) {
@@ -3122,7 +3177,8 @@ const PE_ENVIOS_LISTA = [
   { id:'pos-consulta', nome:'Pós-Consulta', desc:'Como correu desde a última sessão' },
   { id:'crianca', nome:'Criança', desc:'Anamnese para crianças e jovens' },
   { id:'cuidador', nome:'Cuidador', desc:'Anamnese preenchida por pai, mãe ou cuidador' },
-  { id:'medos', nome:'Medos Subconscientes', desc:'28 afirmações a avaliar de 1 a 5' }
+  { id:'medos', nome:'Medos Subconscientes', desc:'70 afirmações (7 blocos) · soma automática do medo dominante' },
+  { id:'escudos', nome:'Escudos Emocionais', desc:'50 afirmações (5 blocos) · soma automática do escudo dominante' }
 ];
 
 function peEnvFechar() { const m = document.getElementById('pe-env-modal'); if (m) m.remove(); }
@@ -3193,31 +3249,19 @@ function peEnvPassoFichas(patientId) {
 async function peEnvEnviar(formId, patientId) {
   const p = (peState.pacientes || []).find(x => x.id === patientId); if (!p) return;
   const nome = p.fullName || p.nome || '';
-  let titulo, perguntas;
-  if (formId === 'medos') {
-    titulo = 'Questionário de Medos Subconscientes';
-    const esc5 = ['1 – Discordo totalmente', '2', '3', '4', '5 – Concordo totalmente'];
-    perguntas = [];
-    PE_MEDOS.forEach((b, bi) => b.q.forEach((q, qi) => perguntas.push({ id: 'p' + perguntas.length, label: q, tipo: 'opcao', opcoes: esc5 })));
-  } else {
-    titulo = PE_TITULOS_Q[formId] || 'Questionário';
-    const fichas = peLerConfig().forms;
-    perguntas = (fichas[formId] || []).map((x, i) => { const q = { id: 'p' + i, label: x.q, tipo: x.tipo || 'texto' }; if (x.opcoes && x.opcoes.length) q.opcoes = x.opcoes; return q; });
-  }
+  const montado = peMontarEnvio(formId);
+  const titulo = montado.titulo, perguntas = montado.perguntas;
   if (!perguntas.length) return mostrarAviso('⚠️ Este questionário não tem perguntas.');
   try {
-    const ref = await db().collection('public_form_responses').add({
+    const ref = await db().collection('public_form_responses').add(Object.assign({
       tenantId: tenantId(),
       formId: 'pe-' + formId,
-      titulo,
-      descricao: formId === 'medos' ? 'Para cada afirmação, escolha de 1 (discordo totalmente) a 5 (concordo totalmente). As suas respostas são confidenciais.' : 'Por favor responda às perguntas abaixo com honestidade. As suas respostas são confidenciais.',
-      perguntas,
       patientId,
       patientName: nome,
       criadoPorEquipa: true,
       status: 'pending_review',
       criadoEm: new Date()
-    });
+    }, montado));
     peEnvFechar();
     if (typeof window.abrirEnvioFicha === 'function') window.abrirEnvioFicha({ responseId: ref.id, titulo, patientId, patientName: nome });
   } catch (e) {
@@ -3226,13 +3270,28 @@ async function peEnvEnviar(formId, patientId) {
   }
 }
 
+
+// Monta o questionário a enviar (texto simples, escalas e, nos de pontuação, a definição dos blocos para somar sozinho).
+function peMontarEnvio(formId, fichas) {
+  const lista = formId === 'medos' ? PE_MEDOS : (formId === 'escudos' ? PE_ESCUDOS_Q : null);
+  if (lista) {
+    const opcoes = formId === 'medos' ? PE_ESCALA_MEDOS : PE_ESCALA_ESCUDOS;
+    const perguntas = []; const blocosSoma = [];
+    lista.forEach(b => { const de = perguntas.length; b.q.forEach(q => perguntas.push({ id: 'p' + perguntas.length, label: q, tipo: 'opcao', opcoes })); blocosSoma.push({ nome: b.name, de, ate: perguntas.length - 1 }); });
+    return { titulo: PE_TITULOS_Q[formId], descricao: formId === 'medos' ? 'Indique o quanto concorda com cada afirmação. Responda depressa, com a primeira resposta que lhe surgir; não há certo nem errado. As suas respostas são confidenciais.' : 'Indique o quanto cada afirmação descreve o que sente neste momento. Não há certo nem errado. As suas respostas são confidenciais.', perguntas, blocosSoma, escalaMax: opcoes.length };
+  }
+  const f = fichas || peLerConfig().forms;
+  return { titulo: PE_TITULOS_Q[formId] || 'Questionário', descricao: 'Por favor responda às perguntas abaixo com honestidade. As suas respostas são confidenciais.',
+    perguntas: (f[formId] || []).map((x, i) => { const q = { id: 'p' + i, label: x.q, tipo: x.tipo || 'texto' }; if (x.opcoes && x.opcoes.length) q.opcoes = x.opcoes; return q; }) };
+}
+
 // ─── QUESTIONÁRIOS ONLINE ─────────────────────────────────────────
 
 function peGerarQId() {
   return 'peq_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 8);
 }
 
-const PE_TITULOS_Q = { 'pre-consulta':'Questionário Pré-Consulta', 'pos-consulta':'Questionário Pós-Consulta', 'crianca':'Anamnese — Criança', 'cuidador':'Anamnese — Cuidador' };
+const PE_TITULOS_Q = { 'medos':'Questionário de Medos Subconscientes', 'escudos':'Questionário dos Escudos Emocionais', 'pre-consulta':'Questionário Pré-Consulta', 'pos-consulta':'Questionário Pós-Consulta', 'crianca':'Anamnese — Criança', 'cuidador':'Anamnese — Cuidador' };
 const peQKey = () => `pe_lastq_${tenantId()}_${peState.patientId}_${peState.formId}`;
 
 // Lê um questionário enviado (formato novo: public_form_responses; antigo: pe_questionarios).
@@ -3270,28 +3329,19 @@ async function peGerarEnvioOnline() {
     try { localStorage.removeItem(peQKey()); } catch(_) {}
   }
 
-  const fichas = peState.formsDB || peLerConfig().forms;
-  const perguntas = fichas[peState.formId] || [];
+  const montado = peMontarEnvio(peState.formId, peState.formsDB);
   panel.style.display = 'block';
   panel.innerHTML = `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;text-align:center;"><span style="color:#1e3a8a;">⏳ A criar questionário online...</span></div>`;
   try {
-    const titulo = PE_TITULOS_Q[peState.formId] || 'Questionário';
-    const ref = await db().collection('public_form_responses').add({
+    const ref = await db().collection('public_form_responses').add(Object.assign({
       tenantId: tenantId(),
       formId: 'pe-' + peState.formId,
-      titulo,
-      descricao: 'Por favor responda às perguntas abaixo com honestidade. As suas respostas são confidenciais.',
-      perguntas: perguntas.map((p, i) => {
-        const q = { id: 'p' + i, label: p.q, tipo: p.tipo || 'texto' };
-        if (p.opcoes && p.opcoes.length) q.opcoes = p.opcoes;
-        return q;
-      }),
       patientId: peState.patientId,
       patientName: peState.patientName || '',
       criadoPorEquipa: true,
       status: 'pending_review',
       criadoEm: new Date()
-    });
+    }, montado));
     try { localStorage.setItem(peQKey(), ref.id); } catch(_) {}
     peRenderLinkPanel(ref.id, `https://vindora.pt/form-publica.html?r=${ref.id}`, 'pendente');
     peAbrirEnvio(ref.id);
@@ -3368,7 +3418,17 @@ async function peCarregarRespostasQ(qId) {
     if (!q) return mostrarAviso('❌ Questionário não encontrado.');
     if (q.estado !== 'respondido') return mostrarAviso('⚠️ Sem respostas disponíveis para carregar.');
     let count = 0;
-    Object.entries(q.resp).forEach(([idx, val]) => {
+    const esp = peState.formId === 'medos' ? [PE_MEDOS, 'pem', peCalcMedos] : (peState.formId === 'escudos' ? [PE_ESCUDOS_Q, 'pes', peCalcEscudos] : null);
+    if (esp) {
+      Object.entries(q.resp).forEach(([idx, val]) => {
+        let n = parseInt(idx, 10);
+        for (let bi = 0; bi < esp[0].length; bi++) {
+          if (n < esp[0][bi].q.length) { const r = document.querySelector(`input[name="${esp[1]}_${bi}_${n}"][value="${parseInt(val, 10)}"]`); if (r) { r.checked = true; count++; } break; }
+          n -= esp[0][bi].q.length;
+        }
+      });
+      esp[2]();
+    } else Object.entries(q.resp).forEach(([idx, val]) => {
       const el = document.getElementById(`pe-r-${idx}`);
       if (el) { el.value = String(val); count++; }
     });
@@ -3478,6 +3538,7 @@ window.peCopiarFicha           = peCopiarFicha;
 window.peColarRespostas        = peColarRespostas;
 window.peGuardarFicha          = peGuardarFicha;
 window.peCalcMedos             = peCalcMedos;
+window.peCalcEscudos           = peCalcEscudos;
 window.peEscolherVia           = peEscolherVia;
 window.peToggleQuadrante       = peToggleQuadrante;
 window.peIniciarVia            = peIniciarVia;
