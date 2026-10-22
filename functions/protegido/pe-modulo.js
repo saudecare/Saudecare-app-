@@ -142,8 +142,10 @@ const PE_ESCUDOS_Q = [
   {name:"Impotência",q:["Sinto que não tenho força para mudar a minha vida", "Já me senti preso/a numa situação sem saída", "Quando algo corre mal, fico bloqueado/a", "Por mais que tente, sinto que nada muda", "Tenho dificuldade em tomar decisões importantes", "Já passei por momentos em que me senti totalmente impotente", "Sinto que os outros mandam demais na minha vida", "Desisti de sonhos por achar que não os conseguiria realizar", "O medo paralisa-me muitas vezes", "Fico a pensar no que podia ter feito de outra forma e não consigo agir"]},
   {name:"Perda",q:["Carrego uma dor funda por pessoas ou situações que perdi", "Sinto um vazio que não parece ter fim", "Custa-me largar o passado", "Despedidas são muito difíceis para mim", "Evito criar laços para não sofrer com perdas futuras", "Perdi alguém ou algo que era essencial para mim", "Revivo muitas vezes memórias de quem ou do que já se foi", "Tenho medo de perder quem amo", "Sinto-me rejeitado/a com facilidade, mesmo sem razão aparente", "Vivi experiências marcantes de abandono"]}
 ];
-const PE_ESCALA_MEDOS = ['1 – Discordo totalmente', '2 – Discordo', '3 – Neutro', '4 – Concordo', '5 – Concordo totalmente'];
-const PE_ESCALA_ESCUDOS = ['1 – Não me identifico nada', '2 – Tenho momentos em que me sinto assim', '3 – É exatamente o que sinto agora ou com frequência'];
+const PE_ESCALA_MEDOS = ['1 😌 Discordo totalmente', '2 🙂 Discordo', '3 😐 Neutro', '4 😟 Concordo', '5 😰 Concordo totalmente'];
+const PE_ESCALA_ESCUDOS = ['1 😌 Não me identifico nada', '2 😕 Tenho momentos em que me sinto assim', '3 😢 É exatamente o que sinto agora ou com frequência'];
+const PE_EMOJI_BLOCO = { 'Medo da Pobreza':'💰', 'Medo da Doença':'🩺', 'Medo da Crítica':'🗣️', 'Medo da Morte':'🕊️', 'Medo de Relacionamento':'💔', 'Medo de Envelhecer':'⏳', 'Medo de Perder a Liberdade':'🦅', 'Desvalorização':'📉', 'Desproteção':'🛡️', 'Sobrevivência':'🔥', 'Impotência':'⛓️', 'Perda':'🥀' };
+const peEmo = (n) => (PE_EMOJI_BLOCO[n] || '') + ' ';
 
 // Soma por blocos e deteção do(s) mais forte(s). vals[b][q] = número (0 = por responder).
 function peRanking(lista, vals) {
@@ -155,11 +157,11 @@ function peRanking(lista, vals) {
 function peRankingHtml(rk, maxBloco, rotulo) {
   if (!rk.max) return 'Aguarda preenchimento...';
   const dom = rk.itens.filter(x => x.dominante), perto = rk.itens.filter(x => x.perto);
-  let h = `<div style="text-align:left;"><div style="font-weight:800;color:#1e3a8a;margin-bottom:8px;">${dom.length > 1 ? rotulo + ' dominantes (empate)' : rotulo + ' dominante'}: ${dom.map(x => peEsc(x.nome)).join(' + ')} (${rk.max} pontos)</div>`;
+  let h = `<div style="text-align:left;"><div style="font-weight:800;color:#1e3a8a;margin-bottom:8px;">${dom.length > 1 ? rotulo + ' dominantes (empate)' : rotulo + ' dominante'}: ${dom.map(x => peEmo(x.nome) + peEsc(x.nome)).join(' + ')} (${rk.max} pontos) 🏆</div>`;
   if (perto.length) h += `<div style="font-size:0.85rem;color:#92400e;margin-bottom:8px;">Também muito presente: ${perto.map(x => peEsc(x.nome) + ' (' + x.soma + ')').join(', ')}</div>`;
   rk.itens.slice().sort((a, b) => b.soma - a.soma).forEach(x => {
     const pct = Math.round(x.soma / maxBloco * 100);
-    h += `<div style="margin:5px 0;font-size:0.82rem;"><div style="display:flex;justify-content:space-between;"><span>${x.dominante ? '★ ' : ''}${peEsc(x.nome)}</span><b>${x.soma}/${maxBloco}</b></div><div style="background:#e2e8f0;border-radius:6px;height:8px;"><div style="width:${pct}%;background:${x.dominante ? '#1e3a8a' : (x.perto ? '#d97706' : '#94a3b8')};height:8px;border-radius:6px;"></div></div></div>`;
+    h += `<div style="margin:5px 0;font-size:0.82rem;"><div style="display:flex;justify-content:space-between;"><span>${x.dominante ? '🏆 ' : ''}${peEmo(x.nome)}${peEsc(x.nome)}</span><b>${x.soma}/${maxBloco}</b></div><div style="background:#e2e8f0;border-radius:6px;height:8px;"><div style="width:${pct}%;background:${x.dominante ? '#1e3a8a' : (x.perto ? '#d97706' : '#94a3b8')};height:8px;border-radius:6px;"></div></div></div>`;
   });
   return h + '</div>';
 }
@@ -1046,10 +1048,10 @@ function peTabelaBlocos(lista, prefixo, escala, calc, titulo, intro, idRes) {
   let html = `<h4 style="color:#1e3a8a;margin-bottom:12px;">${titulo}</h4><p style="font-size:0.85rem;color:#64748b;margin-bottom:16px;">${intro}</p>`;
   const cols = escala.length;
   lista.forEach((bloco, bIdx) => {
-    html += `<div style="background:#fff1f2;padding:10px 14px;border-radius:6px;font-weight:700;color:#dc2626;margin-top:16px;margin-bottom:10px;">Bloco ${bIdx + 1} — ${peEsc(bloco.name)}</div>
+    html += `<div style="background:#fff1f2;padding:10px 14px;border-radius:6px;font-weight:700;color:#dc2626;margin-top:16px;margin-bottom:10px;">${peEmo(bloco.name)}Bloco ${bIdx + 1} — ${peEsc(bloco.name)}</div>
       <table style="width:100%;border-collapse:collapse;">
         <tr><th style="text-align:left;padding:8px;font-size:0.82rem;color:#1e3a8a;background:#f8fafc;border:1px solid #e2e8f0;">Afirmação</th>
-        ${Array.from({ length: cols }, (_, n) => `<th style="padding:8px;font-size:0.82rem;color:#1e3a8a;background:#f8fafc;border:1px solid #e2e8f0;">${n + 1}</th>`).join('')}</tr>`;
+        ${Array.from({ length: cols }, (_, n) => `<th style="padding:6px;font-size:0.82rem;color:#1e3a8a;background:#f8fafc;border:1px solid #e2e8f0;">${n + 1}<br>${(escala[n].split(' ')[1] || '')}</th>`).join('')}</tr>`;
     bloco.q.forEach((q, qIdx) => {
       html += `<tr><td style="padding:10px 8px;font-size:0.82rem;border:1px solid #e2e8f0;">${peEsc(q)}</td>`;
       for (let i = 1; i <= cols; i++) html += `<td style="text-align:center;border:1px solid #e2e8f0;"><input type="radio" name="${prefixo}_${bIdx}_${qIdx}" value="${i}" onchange="window.${calc}()"></td>`;
@@ -3277,7 +3279,7 @@ function peMontarEnvio(formId, fichas) {
   if (lista) {
     const opcoes = formId === 'medos' ? PE_ESCALA_MEDOS : PE_ESCALA_ESCUDOS;
     const perguntas = []; const blocosSoma = [];
-    lista.forEach(b => { const de = perguntas.length; b.q.forEach(q => perguntas.push({ id: 'p' + perguntas.length, label: q, tipo: 'opcao', opcoes })); blocosSoma.push({ nome: b.name, de, ate: perguntas.length - 1 }); });
+    lista.forEach(b => { const de = perguntas.length; b.q.forEach(q => perguntas.push({ id: 'p' + perguntas.length, label: q, tipo: 'opcao', opcoes })); blocosSoma.push({ nome: b.name, emoji: (PE_EMOJI_BLOCO[b.name] || ''), de, ate: perguntas.length - 1 }); });
     return { titulo: PE_TITULOS_Q[formId], descricao: formId === 'medos' ? 'Indique o quanto concorda com cada afirmação. Responda depressa, com a primeira resposta que lhe surgir; não há certo nem errado. As suas respostas são confidenciais.' : 'Indique o quanto cada afirmação descreve o que sente neste momento. Não há certo nem errado. As suas respostas são confidenciais.', perguntas, blocosSoma, escalaMax: opcoes.length };
   }
   const f = fichas || peLerConfig().forms;
@@ -3309,7 +3311,7 @@ async function peQLer(qId) {
   const d = snap.data();
   const resp = {};
   (Array.isArray(d.respostas) ? d.respostas : []).forEach(a => { const m = /^p(\d+)$/.exec(String((a && a.questionId) || '')); if (m) resp[parseInt(m[1])] = String(a.value == null ? '' : a.value); });
-  return { estado: d.completadoEm ? 'respondido' : 'pendente', resp };
+  return { estado: d.completadoEm ? 'respondido' : 'pendente', resp, doc: d };
 }
 
 async function peGerarEnvioOnline() {
@@ -3357,6 +3359,22 @@ function peAbrirEnvio(qId) {
   window.abrirEnvioFicha({ responseId: qId, titulo: PE_TITULOS_Q[peState.formId] || 'Questionário', patientId: peState.patientId, patientName: peState.patientName || '' });
 }
 
+
+// Mostra ao terapeuta, logo que o paciente responde, a soma por blocos e o dominante.
+async function peMostrarResultadoQ(qId) {
+  try {
+    const q = await peQLer(qId);
+    const el = document.getElementById('pe-link-resultado');
+    if (!q || !el || !q.doc) return;
+    const lista = peState.formId === 'medos' ? PE_MEDOS : (peState.formId === 'escudos' ? PE_ESCUDOS_Q : null);
+    if (!lista) return;
+    const vals = []; let n = 0;
+    lista.forEach((b, bi) => { vals[bi] = b.q.map(() => parseInt(q.resp[n++], 10) || 0); });
+    const rk = peRanking(lista, vals);
+    el.innerHTML = `<div style="background:white;border:1px solid #86efac;border-radius:10px;padding:12px;">${peRankingHtml(rk, lista[0].q.length * (peState.formId === 'medos' ? 5 : 3), peState.formId === 'medos' ? 'Medo' : 'Escudo')}</div>`;
+  } catch (_) {}
+}
+
 function peRenderLinkPanel(qId, link, status) {
   const panel = document.getElementById('pe-link-panel');
   if (!panel) return;
@@ -3366,11 +3384,13 @@ function peRenderLinkPanel(qId, link, status) {
       <div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:16px;">
         <div style="font-weight:700;color:#166534;margin-bottom:6px;">✅ Questionário respondido!</div>
         <div style="font-size:0.85rem;color:#166534;margin-bottom:14px;">O paciente já respondeu e a resposta ficou guardada na ficha dele. Pode carregá-la no formulário.</div>
+        <div id="pe-link-resultado" style="margin-bottom:12px;"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button onclick="window.peCarregarRespostasQ('${qId}')" style="background:#16a34a;color:white;border:none;padding:10px 20px;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;">📥 Carregar Respostas no Formulário</button>
           <button onclick="window.peNovoLinkQ()" style="background:#e2e8f0;border:none;padding:10px 14px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;">🔄 Criar Novo</button>
         </div>
       </div>`;
+    peMostrarResultadoQ(qId);
   } else {
     panel.innerHTML = `
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;">
@@ -3539,6 +3559,7 @@ window.peColarRespostas        = peColarRespostas;
 window.peGuardarFicha          = peGuardarFicha;
 window.peCalcMedos             = peCalcMedos;
 window.peCalcEscudos           = peCalcEscudos;
+window.peMostrarResultadoQ     = peMostrarResultadoQ;
 window.peEscolherVia           = peEscolherVia;
 window.peToggleQuadrante       = peToggleQuadrante;
 window.peIniciarVia            = peIniciarVia;

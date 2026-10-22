@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-22-46';
+const APP_VERSION = '2026-10-22-47';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -5463,21 +5463,30 @@ window.removePackage = async function(patientId, idx){
 
 
 // Questionários de pontuação (medos, escudos): soma por bloco e destaque do(s) mais forte(s).
+function resumoSomaLinha(r){
+  const bl = r && r.blocosSoma; const resp = (r && (r.respostas || r.answers)) || [];
+  if (!Array.isArray(bl) || !bl.length) return '';
+  const val = {};
+  resp.forEach(a => { const m = /^p(\d+)$/.exec(String(a.questionId || '')); if (m) val[+m[1]] = parseInt(String(a.value || ''), 10) || 0; });
+  const it = bl.map(b => { let s = 0; for (let k = b.de; k <= b.ate; k++) s += val[k] || 0; return { n: (b.emoji ? b.emoji + ' ' : '') + b.nome, s }; });
+  const top = Math.max(...it.map(x => x.s)); if (!top) return '';
+  return `<div style="font-size:.85rem;color:#1e3a8a;font-weight:700;">🏆 ${it.filter(x => x.s === top).map(x => escapeHtml(x.n)).join(' + ')} (${top} pontos)</div>`;
+}
 function resumoSomaBlocos(r, respostas){
   const bl = r && r.blocosSoma;
   if (!Array.isArray(bl) || !bl.length) return '';
   const val = {};
   (respostas || []).forEach(a => { const m = /^p(\d+)$/.exec(String(a.questionId || '')); if (m) val[+m[1]] = parseInt(String(a.value || ''), 10) || 0; });
-  const itens = bl.map((b, i) => { let soma = 0; for (let k = b.de; k <= b.ate; k++) soma += val[k] || 0; return { nome: b.nome, soma, max: (b.ate - b.de + 1) * (r.escalaMax || 5) }; });
+  const itens = bl.map((b, i) => { let soma = 0; for (let k = b.de; k <= b.ate; k++) soma += val[k] || 0; return { nome: b.nome, emoji: b.emoji || '', soma, max: (b.ate - b.de + 1) * (r.escalaMax || 5) }; });
   const top = Math.max(...itens.map(x => x.soma));
   if (!top) return '';
   itens.forEach(x => { x.dom = x.soma === top; x.perto = !x.dom && x.soma >= Math.ceil(top * 0.9); });
   const dom = itens.filter(x => x.dom);
   const perto = itens.filter(x => x.perto);
   return `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px;margin-bottom:12px;">
-    <div style="font-weight:800;color:#1e3a8a;margin-bottom:6px;">Resultado automático: ${dom.map(x => escapeHtml(x.nome)).join(' + ')} (${top} pontos)${dom.length > 1 ? ' — empate' : ''}</div>
+    <div style="font-weight:800;color:#1e3a8a;margin-bottom:6px;">📊 Resultado automático: ${dom.map(x => (x.emoji ? x.emoji + ' ' : '') + escapeHtml(x.nome)).join(' + ')} (${top} pontos)${dom.length > 1 ? ' — empate' : ''} 🏆</div>
     ${perto.length ? `<div style="font-size:.85rem;color:#92400e;margin-bottom:6px;">Também muito presente: ${perto.map(x => escapeHtml(x.nome) + ' (' + x.soma + ')').join(', ')}</div>` : ''}
-    ${itens.slice().sort((a, b) => b.soma - a.soma).map(x => `<div style="margin:5px 0;font-size:.85rem;"><div style="display:flex;justify-content:space-between;"><span>${x.dom ? '★ ' : ''}${escapeHtml(x.nome)}</span><b>${x.soma}/${x.max}</b></div><div style="background:#e2e8f0;border-radius:6px;height:8px;"><div style="width:${Math.round(x.soma / x.max * 100)}%;background:${x.dom ? '#1e3a8a' : (x.perto ? '#d97706' : '#94a3b8')};height:8px;border-radius:6px;"></div></div></div>`).join('')}
+    ${itens.slice().sort((a, b) => b.soma - a.soma).map(x => `<div style="margin:5px 0;font-size:.85rem;"><div style="display:flex;justify-content:space-between;"><span>${x.dom ? '🏆 ' : ''}${x.emoji ? x.emoji + ' ' : ''}${escapeHtml(x.nome)}</span><b>${x.soma}/${x.max}</b></div><div style="background:#e2e8f0;border-radius:6px;height:8px;"><div style="width:${Math.round(x.soma / x.max * 100)}%;background:${x.dom ? '#1e3a8a' : (x.perto ? '#d97706' : '#94a3b8')};height:8px;border-radius:6px;"></div></div></div>`).join('')}
   </div>`;
 }
 
@@ -6149,6 +6158,7 @@ async function renderRespostas(main){
         <div style="flex:1;min-width:0;">
           <strong>${escapeHtml(r.patientName || r.respondentName || '—')}</strong>
           <div class="muted" style="font-size:.8rem;">${escapeHtml(r.titulo || r.formTitle || 'Ficha')}${dt ? ' · ' + dt : ''}</div>
+          ${resumoSomaLinha(r)}
           <div style="color:#16a34a;font-size:.8rem;">✅ Já guardada na ficha do paciente e na área do paciente</div>
         </div>
         <button class="primary" style="white-space:nowrap;flex-shrink:0;" onclick="viewPatient('${r.patientId}')">Abrir ficha</button>
