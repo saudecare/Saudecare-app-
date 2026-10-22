@@ -77,7 +77,7 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
           set +e
-          npx --yes firebase-tools@latest deploy --only functions:peModulo --project saudecare-app --non-interactive --force > deploy.log 2>&1
+          npx --yes firebase-tools@latest deploy --only functions:peModulo,functions:fichaAutoAnexar --project saudecare-app --non-interactive --force > deploy.log 2>&1
           code=$?
           sed 's/\x1b\[[0-9;]*m//g' deploy.log | tail -15
           if [ $code -ne 0 ]; then echo "::error::$(sed 's/\x1b\[[0-9;]*m//g' deploy.log | tail -8 | tr '\n' ' ' | cut -c1-1500)"; exit $code; fi
