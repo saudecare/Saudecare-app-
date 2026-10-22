@@ -308,6 +308,7 @@ async function renderPesquisaEmocional(main) {
       <div id="pe-step-0" class="pe-step" style="display:block;">
         <div class="card" style="padding:20px;">
           <button id="pe-btn-nova-consulta" onclick="window.peAbrirNovaConsulta()" style="width:100%;background:#1e3a8a;color:white;padding:16px;border:none;border-radius:10px;font-size:1.05rem;font-weight:700;cursor:pointer;">➕ Nova Consulta</button>
+          <button onclick="window.peAbrirEnviarQuestionarios()" style="width:100%;margin-top:10px;background:#b45309;border:none;color:white;padding:14px;border-radius:10px;font-size:0.98rem;font-weight:700;cursor:pointer;">📨 Enviar questionários ao paciente</button>
           <button onclick="window.peAbrirEditorConhecimento()" style="width:100%;margin-top:10px;background:white;border:1px solid #1e3a8a;color:#1e3a8a;padding:12px;border-radius:10px;font-size:0.92rem;font-weight:700;cursor:pointer;">📚 Editar conhecimento do método</button>
           <div id="pe-escolher-paciente" style="display:none;margin-top:18px;">
             <div style="font-size:1.05rem;font-weight:700;color:#1e3a8a;margin-bottom:12px;border-bottom:2px solid #fef3c7;padding-bottom:10px;">Escolher paciente</div>
@@ -3063,6 +3064,116 @@ function peRenderEscudosMapa() {
   el.innerHTML=html; el.style.display='block';
 }
 
+
+// ─── ENVIAR QUESTIONÁRIOS (atalho na página inicial do módulo) ───────
+const PE_ENVIOS_LISTA = [
+  { id:'pre-consulta', nome:'Pré-Consulta', desc:'Ficha de história e motivo da consulta' },
+  { id:'pos-consulta', nome:'Pós-Consulta', desc:'Como correu desde a última sessão' },
+  { id:'crianca', nome:'Criança', desc:'Anamnese para crianças e jovens' },
+  { id:'cuidador', nome:'Cuidador', desc:'Anamnese preenchida por pai, mãe ou cuidador' },
+  { id:'medos', nome:'Medos Subconscientes', desc:'28 afirmações a avaliar de 1 a 5' }
+];
+
+function peEnvFechar() { const m = document.getElementById('pe-env-modal'); if (m) m.remove(); }
+
+async function peAbrirEnviarQuestionarios() {
+  peEnvFechar();
+  const m = document.createElement('div');
+  m.id = 'pe-env-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:99990;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px;';
+  m.innerHTML = `<div style="background:white;border-radius:14px;max-width:560px;width:100%;padding:18px;margin:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <b style="color:#1e3a8a;font-size:1.05rem;">📨 Enviar questionários</b>
+      <button onclick="window.peEnvFechar()" style="background:#e2e8f0;border:none;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer;">✖</button>
+    </div>
+    <div id="pe-env-corpo"></div></div>`;
+  document.body.appendChild(m);
+  peEnvPassoPaciente();
+  if (!peState.pacientes) {
+    try {
+      const snap = await db().collection(`tenants/${tenantId()}/patients`).where('active','!=',false).orderBy('active').orderBy('fullName').limit(1000).get();
+      peState.pacientes = [];
+      snap.forEach(doc => { peState.pacientes.push({ id: doc.id, ...doc.data() }); });
+    } catch (e) { console.error(e); const c = document.getElementById('pe-env-lista'); if (c) c.innerHTML = '<div style="color:#dc2626;padding:12px;">Erro ao carregar pacientes.</div>'; return; }
+  }
+  peEnvFiltrar();
+}
+
+function peEnvPassoPaciente() {
+  const c = document.getElementById('pe-env-corpo'); if (!c) return;
+  c.innerHTML = `<div style="font-weight:700;color:#334155;margin-bottom:8px;">1. Escolha o paciente</div>
+    <input type="search" id="pe-env-busca" oninput="window.peEnvFiltrar()" placeholder="🔍 Nome, telefone ou e-mail..." autocomplete="off" style="width:100%;padding:12px;border:2px solid #bfdbfe;border-radius:10px;font-size:1rem;margin-bottom:10px;box-sizing:border-box;">
+    <div id="pe-env-lista" style="display:grid;gap:8px;max-height:55vh;overflow:auto;"><div style="padding:14px;color:#64748b;text-align:center;">A carregar...</div></div>`;
+  setTimeout(() => { const i = document.getElementById('pe-env-busca'); if (i) i.focus(); }, 80);
+}
+
+function peEnvFiltrar() {
+  const c = document.getElementById('pe-env-lista'); if (!c || !peState.pacientes) return;
+  const q = peNorm((document.getElementById('pe-env-busca') || {}).value);
+  const qDig = q.replace(/\D/g, '');
+  const f = !q ? peState.pacientes : peState.pacientes.filter(p => peNorm(p.fullName || p.nome).includes(q) || peNorm(p.email).includes(q) || (qDig.length >= 3 && String(p.phone || '').replace(/\D/g, '').includes(qDig)));
+  if (!f.length) { c.innerHTML = '<div style="padding:14px;color:#64748b;text-align:center;">Nenhum paciente encontrado.</div>'; return; }
+  c.innerHTML = '';
+  f.slice(0, 50).forEach(p => {
+    const d = document.createElement('div');
+    d.style.cssText = 'border:1px solid #e2e8f0;border-radius:10px;padding:12px;cursor:pointer;';
+    d.innerHTML = `<div style="font-weight:700;color:#0f172a;">${peEsc(p.fullName || p.nome || '—')}</div><div style="font-size:0.8rem;color:#64748b;">${peEsc(p.phone || p.email || '')}</div>`;
+    d.onclick = () => peEnvPassoFichas(p.id);
+    c.appendChild(d);
+  });
+}
+
+function peEnvPassoFichas(patientId) {
+  const p = (peState.pacientes || []).find(x => x.id === patientId); if (!p) return;
+  const nome = p.fullName || p.nome || '';
+  const c = document.getElementById('pe-env-corpo'); if (!c) return;
+  c.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+      <span style="background:#fef3c7;color:#b45309;padding:4px 12px;border-radius:20px;font-weight:700;">${peEsc(nome)}</span>
+      <button onclick="window.peEnvPassoPaciente();window.peEnvFiltrar()" style="background:none;border:none;color:#1e3a8a;text-decoration:underline;font-weight:700;cursor:pointer;">⬅ Trocar paciente</button></div>
+    <div style="font-weight:700;color:#334155;margin-bottom:8px;">2. Escolha o questionário a enviar</div>
+    <div style="display:grid;gap:8px;">${PE_ENVIOS_LISTA.map(f => `<div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <div><div style="font-weight:700;color:#1e3a8a;">${f.nome}</div><div style="font-size:0.78rem;color:#64748b;">${f.desc}</div></div>
+      <button onclick="window.peEnvEnviar('${f.id}','${patientId}')" style="background:#1e3a8a;color:white;border:none;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer;white-space:nowrap;">📤 Enviar</button></div>`).join('')}</div>
+    <div style="font-size:0.78rem;color:#64748b;margin-top:10px;">Pode enviar por WhatsApp, e-mail ou área do paciente. Quando ele responder, a ficha fica guardada no processo dele.</div>`;
+  peState._envPaciente = { id: patientId, nome };
+}
+
+async function peEnvEnviar(formId, patientId) {
+  const p = (peState.pacientes || []).find(x => x.id === patientId); if (!p) return;
+  const nome = p.fullName || p.nome || '';
+  let titulo, perguntas;
+  if (formId === 'medos') {
+    titulo = 'Questionário de Medos Subconscientes';
+    const esc5 = ['1 – Discordo totalmente', '2', '3', '4', '5 – Concordo totalmente'];
+    perguntas = [];
+    PE_MEDOS.forEach((b, bi) => b.q.forEach((q, qi) => perguntas.push({ id: 'p' + perguntas.length, label: q, tipo: 'opcao', opcoes: esc5 })));
+  } else {
+    titulo = PE_TITULOS_Q[formId] || 'Questionário';
+    const fichas = peLerConfig().forms;
+    perguntas = (fichas[formId] || []).map((x, i) => { const q = { id: 'p' + i, label: x.q, tipo: x.tipo || 'texto' }; if (x.opcoes && x.opcoes.length) q.opcoes = x.opcoes; return q; });
+  }
+  if (!perguntas.length) return mostrarAviso('⚠️ Este questionário não tem perguntas.');
+  try {
+    const ref = await db().collection('public_form_responses').add({
+      tenantId: tenantId(),
+      formId: 'pe-' + formId,
+      titulo,
+      descricao: formId === 'medos' ? 'Para cada afirmação, escolha de 1 (discordo totalmente) a 5 (concordo totalmente). As suas respostas são confidenciais.' : 'Por favor responda às perguntas abaixo com honestidade. As suas respostas são confidenciais.',
+      perguntas,
+      patientId,
+      patientName: nome,
+      criadoPorEquipa: true,
+      status: 'pending_review',
+      criadoEm: new Date()
+    });
+    peEnvFechar();
+    if (typeof window.abrirEnvioFicha === 'function') window.abrirEnvioFicha({ responseId: ref.id, titulo, patientId, patientName: nome });
+  } catch (e) {
+    console.error(e);
+    mostrarAviso('❌ Não foi possível criar o questionário. Verifique a ligação.');
+  }
+}
+
 // ─── QUESTIONÁRIOS ONLINE ─────────────────────────────────────────
 
 function peGerarQId() {
@@ -3381,6 +3492,11 @@ window.peCarregarRespostasQ    = peCarregarRespostasQ;
 window.peNovoLinkQ             = peNovoLinkQ;
 window.peVerificarQExistente   = peVerificarQExistente;
 window.peAbrirEnvio = peAbrirEnvio;
+window.peAbrirEnviarQuestionarios = peAbrirEnviarQuestionarios;
+window.peEnvFechar = peEnvFechar;
+window.peEnvFiltrar = peEnvFiltrar;
+window.peEnvPassoPaciente = peEnvPassoPaciente;
+window.peEnvEnviar = peEnvEnviar;
 window.peSelecionarZonas       = peSelecionarZonas;
 window.peConsolidarEscudosMapa = peConsolidarEscudosMapa;
 window.peRenderEscudosMapa     = peRenderEscudosMapa;
