@@ -2215,7 +2215,7 @@ function peObservacaoGeral(un, escudo, ep) {
   h += `<p style="font-size:0.9rem;line-height:1.6;color:#334155;">${resumo}</p>`; t += resumo + '\n\n';
   nSist.forEach(c => {
     const nomes = porCat[c].map(p => p.nome).join('; ');
-    h += `<div style="border-left:4px solid #b45309;background:#fffbeb;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:0.88rem;color:#334155;"><b>${PE_CAT_NOME[c]} (${porCat[c].length}):</b> ${peSistemaTxt(c)}<div style="font-size:0.8rem;color:#64748b;margin-top:4px;">${peEsc(nomes)}</div></div>`;
+    h += `<div class="pe-nobreak" style="border-left:4px solid #b45309;background:#fffbeb;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:0.88rem;color:#334155;"><b>${PE_CAT_NOME[c]} (${porCat[c].length}):</b> ${peSistemaTxt(c)}<div style="font-size:0.8rem;color:#64748b;margin-top:4px;">${peEsc(nomes)}</div></div>`;
     t += `• ${PE_CAT_NOME[c]} (${porCat[c].length}): ${peSistemaTxt(c)}\n  ${nomes}\n`;
   });
   const temas = Array.from(new Set(un.map(p => String(p.desc).replace(/\.$/, '')).filter(Boolean)));
@@ -2265,7 +2265,7 @@ function peConstruirRelatorioPaciente() {
     h += `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">${PE_CAT_NOME[cid]}</div>`; t += `— ${PE_CAT_NOME[cid].toUpperCase()} —\n`;
     lista.forEach(p => {
       const ex = peExemplosDe(p.id);
-      h += `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #1e3a8a;border-radius:10px;padding:12px;margin-bottom:10px;break-inside:avoid;page-break-inside:avoid;">
+      h += `<div class="pe-nobreak" style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #1e3a8a;border-radius:10px;padding:12px;margin-bottom:10px;break-inside:avoid;page-break-inside:avoid;">
         <div style="font-weight:700;color:#0f172a;">${peEsc(p.nome)}</div>
         <div style="font-size:0.76rem;color:#64748b;margin-bottom:6px;">${peEsc(p.zonas.map(peZonaCurta).join(' · '))}</div>
         <div style="font-size:0.88rem;color:#334155;margin-bottom:6px;">🔎 <b>Tema:</b> ${peEsc(p.desc)}</div>
@@ -2282,7 +2282,7 @@ function peConstruirRelatorioPaciente() {
   let marcas = 0; const notas = [];
   (peState.quadrants || []).forEach(q => { const d = peState.mappingData[q.val]; if (!d || d.visitada === false) return; marcas += (d.lateralMarks || []).length; if (d.lateralNotes) notas.push(d.lateralNotes); });
   if (marcas || notas.length) {
-    h += `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px;margin-bottom:10px;"><div style="font-weight:700;color:#b45309;">Leitura dos Lados</div><div style="font-size:0.88rem;color:#334155;">${marcas ? `Foram assinalados ${marcas} ${marcas === 1 ? 'local' : 'locais'} no contorno do corpo, que mostram onde sentes tensão ou peso.` : ''} ${notas.map(peEsc).join(' · ')}</div></div>`;
+    h += `<div class="pe-nobreak" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px;margin-bottom:10px;"><div style="font-weight:700;color:#b45309;">Leitura dos Lados</div><div style="font-size:0.88rem;color:#334155;">${marcas ? `Foram assinalados ${marcas} ${marcas === 1 ? 'local' : 'locais'} no contorno do corpo, que mostram onde sentes tensão ou peso.` : ''} ${notas.map(peEsc).join(' · ')}</div></div>`;
     t += `LATERALIDADE\n${marcas ? `Foram assinalados ${marcas} ${marcas === 1 ? 'local' : 'locais'} no contorno do corpo.\n` : ''}${notas.join(' · ')}\n\n`;
   }
   if (escudo !== 'Não Especificado') {
@@ -2394,7 +2394,7 @@ function peConstruirPlano() {
   const selamento = (titulo) => {
     if (!af) return;
     const cmd = `«Liberto agora o sentimento de ${escudo.toUpperCase()}: ${af.libera}, que ficou retido no meu corpo. Deixo ir também tudo o que não me ajuda a crescer; fica só o que preciso de aprender, e o resto entrego com gratidão.»`;
-    h += `<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px;margin:6px 0 14px;break-inside:avoid;page-break-inside:avoid;">
+    h += `<div class="pe-nobreak" style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px;margin:6px 0 14px;break-inside:avoid;page-break-inside:avoid;">
       <div style="font-weight:700;color:#7c3aed;margin-bottom:6px;">🛡️ ${titulo}</div>
       <p style="font-size:0.9rem;line-height:1.55;color:#334155;">Só depois de massajares todos os pontos desta parte, dos dois lados: dá um autoabraço, respira fundo e repete em voz alta:</p>
       <p style="font-size:0.9rem;line-height:1.55;color:#1e3a8a;font-style:italic;">${peEsc(cmd)}</p>
@@ -2425,7 +2425,7 @@ function peConstruirPlano() {
     t += `\n${lf === 'frente' ? 'FRENTE DO CORPO' : 'COSTAS'} · lado ${lado.toLowerCase()} (nos mapas, os pontos a vermelho são os detetados):\n`;
     h += '<div>';
     mapas.forEach(m => {
-      h += `<div style="display:inline-block;vertical-align:top;width:100%;max-width:320px;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:0 6px 8px 0;break-inside:avoid;page-break-inside:avoid;">
+      h += `<div class="pe-nobreak" style="display:inline-block;vertical-align:top;width:100%;max-width:320px;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:0 6px 8px 0;break-inside:avoid;page-break-inside:avoid;">
         <div style="font-weight:700;color:#1e3a8a;margin-bottom:6px;">${m.sistema}</div>
         <div style="display:flex;justify-content:center;">${m.svg}</div>
         ${lf === 'costas' && m.sistema !== 'Eixo Inferior' ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px;margin-top:8px;font-size:0.82rem;color:#92400e;"><b>Nas costas:</b> ${m.sistema === 'Eixo Superior' ? 'massaja no <b>osso mais saliente da parte de trás do pescoço (nuca)</b>' : 'massaja no <b>pescoço, mais ou menos a meio, no osso mais saliente</b>'}, um ponto de cada vez, pela ordem dos números.</div>` : ''}
@@ -2514,7 +2514,7 @@ function peResumoDeFonte(un, escudo, ep, nome, consulta, data) {
     t += 'PERGUNTAS PARA REFLETIRES\n' + perguntas.map(x => ` - ${x}`).join('\n') + '\n\n';
   }
   const consc = peTxt('consc'), refl = peTxt('refl');
-  h += sec('💡', 'Tomada de consciência') + `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;">${li(consc, '#166534')}</div>`;
+  h += sec('💡', 'Tomada de consciência') + `<div class="pe-nobreak" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;">${li(consc, '#166534')}</div>`;
   t += 'TOMADA DE CONSCIÊNCIA\n' + consc.map(x => ` - ${x}`).join('\n') + '\n\n';
   h += sec('🌱', 'Para fazeres esta semana') + li(refl);
   t += 'PARA FAZERES ESTA SEMANA\n' + refl.map(x => ` - ${x}`).join('\n') + '\n\n';
@@ -2784,7 +2784,7 @@ async function peBaixarPdf(qual) {
       margin: [10, 8, 12, 8], filename: nome, image: { type:'jpeg', quality:0.88 },
       html2canvas: { scale:1.6, useCORS:true, backgroundColor:'#ffffff', windowWidth:720 },
       jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
-      pagebreak: { mode:['css', 'legacy'], avoid:['li', 'img'] }
+      pagebreak: { mode:['css', 'legacy'], avoid:['li', 'img', '.pe-nobreak', 'h3'] }
     }).from(host).outputPdf('blob');
     const f = new File([blob], nome, { type:'application/pdf' });
     if (navigator.canShare && navigator.canShare({ files:[f] })) {
@@ -3754,14 +3754,14 @@ function peHtmlConhecimento() {
     h += titulo(PE_CAT_NOME[cat.id] || cat.name);
     cat.points.forEach(pt => {
       const extra = peExtraDe(pt.id);
-      h += `<div style="margin-bottom:10px;page-break-inside:avoid;"><div style="font-weight:700;">${B(pt.name)}${pt.organ ? ` <span style="font-weight:400;color:#475569;">— ${B(pt.organ)}</span>` : ''}</div>
+      h += `<div class="pe-nobreak" style="margin-bottom:10px;page-break-inside:avoid;"><div style="font-weight:700;">${B(pt.name)}${pt.organ ? ` <span style="font-weight:400;color:#475569;">— ${B(pt.organ)}</span>` : ''}</div>
         ${pt.desc ? `<div><i>Tema:</i> ${B(pt.desc)}</div>` : ''}${pt.r ? `<div><i>Pergunta:</i> ${B(pt.r)}</div>` : ''}${lista(peExemplosDe(pt.id))}${extra ? `<div><i>Conhecimento adicional:</i> ${B(extra)}</div>` : ''}</div>`;
     });
   });
   h += titulo('Padrões (antes “Escudos”)');
   Object.keys(PE_ESCUDOS_AFINIDADES).forEach(e => {
     const t = peEscudoTxt(e) || { desc: '', ex: [] }, a = peAfinidade(e) || {};
-    h += `<div style="margin-bottom:10px;page-break-inside:avoid;"><div style="font-weight:700;">${B(e)}</div>${t.desc ? `<div>${B(t.desc)}</div>` : ''}${lista(t.ex)}${a.libera ? `<div><i>O que liberta:</i> ${B(a.libera)}</div>` : ''}${a.afi ? `<div><i>Afirmação:</i> ${B(a.afi)}</div>` : ''}</div>`;
+    h += `<div class="pe-nobreak" style="margin-bottom:10px;page-break-inside:avoid;"><div style="font-weight:700;">${B(e)}</div>${t.desc ? `<div>${B(t.desc)}</div>` : ''}${lista(t.ex)}${a.libera ? `<div><i>O que liberta:</i> ${B(a.libera)}</div>` : ''}${a.afi ? `<div><i>Afirmação:</i> ${B(a.afi)}</div>` : ''}</div>`;
   });
   h += titulo('Textos do relatório e do plano');
   ['intro', 'aviso', 'dica', 'regra'].forEach(k => { const v = peTxt(k); if (v) h += `<p style="margin:4px 0;"><b>${B(k)}:</b> ${B(v)}</p>`; });
@@ -3785,7 +3785,7 @@ async function pePdfConhecimento() {
       margin: [10, 8, 12, 8], filename: nome, image: { type:'jpeg', quality:0.9 },
       html2canvas: { scale:1.5, useCORS:true, backgroundColor:'#ffffff', windowWidth:720 },
       jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
-      pagebreak: { mode:['css', 'legacy'], avoid:['li'] }
+      pagebreak: { mode:['css', 'legacy'], avoid:['li', '.pe-nobreak'] }
     }).from(host).outputPdf('blob');
     const f = new File([blob], nome, { type:'application/pdf' });
     if (navigator.canShare && navigator.canShare({ files:[f] })) {
