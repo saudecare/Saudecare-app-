@@ -1916,6 +1916,8 @@ const PE_TXT_DEF = {
   aviso: 'Este relatório é uma ferramenta de autoconhecimento no âmbito de uma terapia complementar e não substitui o acompanhamento médico ou psicológico.',
   dica: 'O mapa mostra a localização de cada ponto. Se tiveres dúvida sobre se estás a massajar o local correto, faz a massagem ao mesmo tempo que dizes em voz alta o nome da glândula ou do órgão desse ponto: a energia ajusta-se e chega ao local correto.',
   regra: 'Trata um lado de cada vez, começando pelo lado direito. Enquanto massajas os pontos de um lado, mantém uma mão na têmpora (fonte) desse mesmo lado. Quando terminares todos os pontos desse lado (frente e costas), troca a mão para a têmpora do outro lado e repete com os pontos desse lado. Se o mesmo ponto saiu nos dois lados, massaja-o em cada lado, cada um do seu lado.',
+  resumoIntro: 'Este é o resumo da tua consulta, em poucas linhas. Não tens de te identificar com tudo: repara no que te desperta uma emoção, uma imagem ou uma recordação — é aí que está o que merece ser olhado com carinho.',
+  consc: ['Este padrão nasceu para te proteger e, na altura, foi útil.','Hoje já podes olhar para ele sem medo: o que se torna consciente deixa de mandar em silêncio.','Nesta semana, repara em que momentos ele aparece. Basta reparar, sem te julgares.'],
   refl: ['Que acontecimento ou pessoa te veio à cabeça enquanto lias?','Com quem poderias falar sobre isto?','Escreve num caderno, esta semana, o que te vier à memória — sem julgar.'],
   passos: [
     'Lava as mãos, senta-te ou deita-te com conforto e respira fundo 3 vezes.',
@@ -2010,7 +2012,7 @@ function peRenderEditor() {
     <label style="font-size:0.78rem;font-weight:700;color:#475569;">Logótipo (imagem)</label><input type="file" id="pe-m-logo" accept="image/*" style="${peEdI}">
     <button onclick="window.peEdGuardarMarca()" style="${peEdB('#16a34a','white')}">💾 Guardar marca</button> <button onclick="window.peEdRepor('marca','')" style="${peEdB('white','#334155','#cbd5e1')}">↩ Repor padrão</button>`;
   } else {
-    h += ['intro','refl','aviso','dica','regra','passos'].map(k => { const v = peTxt(k); const nome = { intro:'Introdução do relatório', refl:'Perguntas de reflexão (uma por linha)', aviso:'Aviso final', dica:'Dica de localização', regra:'Regra lado a lado', passos:'Passos da massagem (um por linha)' }[k]; return peEdCampo('pe-tx-' + k, nome, Array.isArray(v) ? v.join('\n') : v, Array.isArray(v) ? 6 : 3) + `<button onclick="window.peEdRepor('textos','${k}')" style="${peEdB('white','#334155','#cbd5e1')}margin-bottom:12px;">↩ Repor padrão</button>`; }).join('') + `<button onclick="window.peEdGuardarTextos()" style="${peEdB('#16a34a','white')}width:100%;">💾 Guardar textos</button>`;
+    h += ['intro','resumoIntro','refl','consc','aviso','dica','regra','passos'].map(k => { const v = peTxt(k); const nome = { intro:'Introdução do relatório completo', resumoIntro:'Introdução do resumo curto para o paciente', consc:'Tomada de consciência no resumo (uma frase por linha)', refl:'Perguntas de reflexão (uma por linha)', aviso:'Aviso final', dica:'Dica de localização', regra:'Regra lado a lado', passos:'Passos da massagem (um por linha)' }[k]; return peEdCampo('pe-tx-' + k, nome, Array.isArray(v) ? v.join('\n') : v, Array.isArray(v) ? 6 : 3) + `<button onclick="window.peEdRepor('textos','${k}')" style="${peEdB('white','#334155','#cbd5e1')}margin-bottom:12px;">↩ Repor padrão</button>`; }).join('') + `<button onclick="window.peEdGuardarTextos()" style="${peEdB('#16a34a','white')}width:100%;">💾 Guardar textos</button>`;
   }
   h += `</div><div style="margin-top:14px;display:grid;gap:8px;"><button onclick="window.peEdDesfazer()" style="${peEdB('#fffbeb','#92400e','#fde68a')}">↩ Desfazer a última gravação</button><button id="pe-ed-tudo" onclick="window.peEdReporTudo()" style="${peEdB('white','#b91c1c','#fca5a5')}">♻️ Repor TUDO ao padrão</button></div></div>`;
   ov.innerHTML = h;
@@ -2074,7 +2076,7 @@ async function peEdGuardarEscudo(i) {
 }
 async function peEdGuardarTextos() {
   const K = peEdClone(); K.textos = {};
-  ['intro','refl','aviso','dica','regra','passos'].forEach(k => {
+  ['intro','resumoIntro','refl','consc','aviso','dica','regra','passos'].forEach(k => {
     if (Array.isArray(PE_TXT_DEF[k])) { const l = peEdLinhas('pe-tx-' + k); if (l.length && JSON.stringify(l) !== JSON.stringify(PE_TXT_DEF[k])) K.textos[k] = l; }
     else { const v = peEdV('pe-tx-' + k); if (v && v !== PE_TXT_DEF[k]) K.textos[k] = v; }
   });
@@ -2480,6 +2482,60 @@ function peCabecalhoDoc(titulo) {
     <div style="font-size:1.2rem;font-weight:800;">${peEsc(titulo)}</div>
     <div style="font-size:0.85rem;opacity:.9;margin-top:2px;">${peEsc(nome)} · Consulta n.º ${consulta} · ${data}</div></div></div>`;
 }
+
+// ─── RELATÓRIO RESUMIDO PARA O PACIENTE (curto, sem termos técnicos) ───
+function peResumoDeFonte(un, escudo, ep, nome, consulta, data) {
+  const sel = (listas, max) => { const out = []; for (let n = 0; n < 3 && out.length < max; n++) listas.forEach(l => { const x = l[n]; if (x && !out.includes(x) && out.length < max) out.push(x); }); return out; };
+  const eventos = sel(un.map(p => peExemplosDe(p.id)), 6);
+  const perguntas = []; un.forEach(p => { if (p.r && !perguntas.includes(p.r) && perguntas.length < 5) perguntas.push(p.r); });
+  const marca = [peMarca().nome.toUpperCase(), peMarca().lema].filter(Boolean).join(' — ');
+  const sec = (emoji, titulo) => `<h3 style="color:#1e3a8a;margin:16px 0 6px;font-size:1.02rem;">${emoji} ${peEsc(titulo)}</h3>`;
+  const li = (a, cor) => `<ul style="font-size:0.9rem;line-height:1.55;color:${cor || '#334155'};margin:0 0 4px 18px;padding:0;">${a.map(x => `<li style="margin-bottom:4px;">${peEsc(x)}</li>`).join('')}</ul>`;
+  const intro = peTxt('resumoIntro');
+  let h = `<div style="background:linear-gradient(135deg,#1e3a8a,#0f172a);color:white;border-radius:12px;padding:14px;margin-bottom:12px;display:flex;gap:12px;align-items:center;">
+    ${peMarcaLogo(60)}
+    <div><div style="font-size:0.74rem;letter-spacing:2px;color:#fcd34d;font-weight:700;">${peEsc(peMarca().nome.toUpperCase())}</div>
+    <div style="font-size:1.15rem;font-weight:800;">O Resumo da Tua Consulta</div>
+    <div style="font-size:0.82rem;opacity:.9;margin-top:2px;">${peEsc(nome)} · Consulta n.º ${consulta} · ${data}</div></div></div>
+    <p style="font-size:0.92rem;line-height:1.6;color:#334155;">${peEsc(intro)}</p>`;
+  let t = `${marca}\nO RESUMO DA TUA CONSULTA\n${nome} · Consulta n.º ${consulta} · ${data}\n\n${intro}\n\n`;
+  if (escudo && escudo !== 'Não Especificado') {
+    const e = peEscudoTxt(escudo); const origem = peTextoOrigem(ep);
+    const frases = e && e.desc ? String(e.desc).split(/(?<=\.)\s+/).slice(0, 2).join(' ') : '';
+    h += sec('🛡️', 'O teu padrão: ' + escudo) + (frases ? `<p style="font-size:0.9rem;line-height:1.6;color:#334155;margin:0 0 6px;">${peEsc(frases)}</p>` : '') + (origem ? `<p style="font-size:0.88rem;color:#475569;margin:0;">⏳ ${peEsc(origem)}</p>` : '');
+    t += `O TEU PADRÃO: ${escudo.toUpperCase()}\n${frases}\n${origem ? origem + '\n' : ''}\n`;
+  }
+  if (eventos.length) {
+    h += sec('📌', 'Situações que podem ter marcado') + li(eventos);
+    t += 'SITUAÇÕES QUE PODEM TER MARCADO\n' + eventos.map(x => ` - ${x}`).join('\n') + '\n\n';
+  }
+  if (perguntas.length) {
+    h += sec('❓', 'Perguntas para refletires') + li(perguntas, '#1e3a8a');
+    t += 'PERGUNTAS PARA REFLETIRES\n' + perguntas.map(x => ` - ${x}`).join('\n') + '\n\n';
+  }
+  const consc = peTxt('consc'), refl = peTxt('refl');
+  h += sec('💡', 'Tomada de consciência') + `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;">${li(consc, '#166534')}</div>`;
+  t += 'TOMADA DE CONSCIÊNCIA\n' + consc.map(x => ` - ${x}`).join('\n') + '\n\n';
+  h += sec('🌱', 'Para fazeres esta semana') + li(refl);
+  t += 'PARA FAZERES ESTA SEMANA\n' + refl.map(x => ` - ${x}`).join('\n') + '\n\n';
+  const aviso = peTxt('aviso');
+  h += `<p style="font-size:0.72rem;color:#64748b;border-top:1px solid #e2e8f0;padding-top:8px;margin-top:12px;">${peEsc(aviso)}</p><div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:8px;font-size:0.76rem;color:#64748b;">${peMarcaLogo(24)} ${peEsc([peMarca().nome, peMarca().lema].filter(Boolean).join(' · '))}</div>`;
+  t += aviso + '\n';
+  return { html: `<div id="pe-doc-resumo">${h}</div>`, texto: t };
+}
+function peConstruirRelatorioResumo() {
+  const consulta = ((peState.historico && peState.historico.mapeamentos && peState.historico.mapeamentos.length) || 0) + 1;
+  return peResumoDeFonte(peUnicos(peColetarPontos()), peEscudoFinal(), peLerEpocaFinal(), peState.patientName || '', consulta, new Date().toLocaleDateString('pt-PT'));
+}
+// Para consultas já guardadas: refaz o resumo a partir dos pontos gravados.
+function peResumoDeGuardado(d) {
+  const cfg = peLerConfig(); const mapa = {};
+  cfg.categories.forEach(c => c.points.forEach(pt => { mapa[pt.id] = pt; }));
+  const vistos = new Set(); const un = [];
+  (d.pontos || []).forEach(p => { if (vistos.has(p.id)) return; vistos.add(p.id); const o = mapa[p.id] || {}; un.push({ id: p.id, nome: p.nome || o.name || '', desc: o.desc || '', r: o.r || '', cat: p.cat }); });
+  return peResumoDeFonte(un, d.escudo || 'Não Especificado', { epoca: d.epoca || '', tempo: d.tempo || '' }, peState.patientName || '', d.consulta || 1, d.data || '');
+}
+
 function peConstruirDocumentoPaciente() {
   const r = peConstruirRelatorioPaciente();
   const incl = peIncluirPlano();
@@ -2490,10 +2546,11 @@ function peConstruirDocumentoPaciente() {
   const marca = [peMarca().nome.toUpperCase(), peMarca().lema].filter(Boolean).join(' — ');
   const htmlRel = `<div id="pe-doc-rel">${r.html}${incl ? '' : htmlNotas}</div>`;
   const htmlPlano = incl ? `<div id="pe-doc-plano">${peCabecalhoDoc('O Teu Plano de Tratamento em Casa')}${p.html}${htmlNotas}<div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:14px;font-size:0.78rem;color:#64748b;">${peMarcaLogo(26)} ${peEsc([peMarca().nome, peMarca().lema].filter(Boolean).join(' · '))}</div></div>` : '';
+  const rs = peConstruirRelatorioResumo();
   const textoRel = r.texto + (incl ? '' : txtNotas);
   const textoPlano = incl ? `${marca}\nO TEU PLANO DE TRATAMENTO EM CASA\n${peState.patientName || ''}\n` + p.texto + txtNotas : '';
   return { html: `<div id="pe-doc-paciente">${r.html}${p.html}${htmlNotas}</div>`, texto: r.texto + p.texto + txtNotas,
-    htmlRel, htmlPlano, textoRel, textoPlano };
+    htmlRel, htmlPlano, textoRel, textoPlano, htmlResumo: rs.html, textoResumo: rs.texto };
 }
 
 function peRenderPrevia() {
@@ -2638,6 +2695,12 @@ function peVerRegisto(docId) {
 }
 
 function peDocPartes() {
+  const b = peDocPartesBase(); const d = (peState.docAtual && peState.docAtual.dados) || {};
+  if (d.htmlResumo) { b.htmlResumo = d.htmlResumo; b.textoResumo = d.textoResumo || ''; }
+  else if ((d.pontos && d.pontos.length) || (d.escudo && d.escudo !== 'Não Especificado')) { try { const r = peResumoDeGuardado(d); b.htmlResumo = r.html; b.textoResumo = r.texto; } catch (_) {} }
+  return b;
+}
+function peDocPartesBase() {
   const D = peState.docAtual || { html:'', texto:'', dados:{} };
   const d = D.dados || {};
   if (d.htmlRelatorio || d.htmlPlano) return { htmlRel:d.htmlRelatorio || D.html, htmlPlano:d.htmlPlano || '', textoRel:d.textoRelatorio || D.texto, textoPlano:d.textoPlano || '' };
@@ -2660,8 +2723,9 @@ function peMostrarDocumento(deHistorico) {
   const P = peDocPartes();
   el.innerHTML = `<div class="card" style="padding:20px;">
     <div style="font-size:1.1rem;font-weight:700;color:#16a34a;margin-bottom:14px;border-bottom:2px solid #dcfce7;padding-bottom:10px;">${deHistorico ? '📄 Documentos do paciente' : '✅ Guardado na ficha — documentos prontos a enviar'}</div>
-    ${peBlocoDoc('rel', '1 · Relatório do paciente', P.htmlRel)}
-    ${P.htmlPlano ? peBlocoDoc('plano', '2 · Plano de tratamento em casa', P.htmlPlano) : '<div style="font-size:0.85rem;color:#64748b;margin-bottom:14px;">Esta consulta não inclui plano de tratamento em casa.</div>'}
+    ${P.htmlResumo ? peBlocoDoc('resumo', '1 · Resumo curto para o paciente ✨ (recomendado para enviar)', P.htmlResumo) : ''}
+    ${peBlocoDoc('rel', (P.htmlResumo ? '2' : '1') + ' · Relatório completo e detalhado (para ti)', P.htmlRel)}
+    ${P.htmlPlano ? peBlocoDoc('plano', (P.htmlResumo ? '3' : '2') + ' · Plano de tratamento em casa', P.htmlPlano) : '<div style="font-size:0.85rem;color:#64748b;margin-bottom:14px;">Esta consulta não inclui plano de tratamento em casa.</div>'}
     <div style="font-size:0.78rem;color:#64748b;text-align:center;">O PDF fica pronto a enviar: no telemóvel abre a partilha (WhatsApp, e-mail…); no computador é descarregado.</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0;">
       <button onclick="window.peVoltarAoPaciente()" style="background:white;border:1px solid #e2e8f0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;">👤 Voltar ao paciente</button>
@@ -2683,7 +2747,7 @@ function peCarregarHtml2Pdf() {
 }
 function peNomeFicheiro(qual) {
   const n = String(peState.patientName || 'paciente').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '');
-  return `${qual === 'plano' ? 'Plano-de-Tratamento' : 'Relatorio'}-${n}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  return `${qual === 'plano' ? 'Plano-de-Tratamento' : (qual === 'resumo' ? 'Resumo-da-Consulta' : 'Relatorio')}-${n}-${new Date().toISOString().slice(0, 10)}.pdf`;
 }
 // O gerador de PDF não desenha bem SVG: converte cada mapa numa imagem antes.
 async function peSvgParaImagem(host) {
@@ -2703,7 +2767,7 @@ async function peSvgParaImagem(host) {
   }
 }
 async function peBaixarPdf(qual) {
-  const P = peDocPartes(); const html = qual === 'plano' ? P.htmlPlano : P.htmlRel;
+  const P = peDocPartes(); const html = qual === 'plano' ? P.htmlPlano : (qual === 'resumo' ? P.htmlResumo : P.htmlRel);
   if (!html) { mostrarAviso('Não há conteúdo para este PDF.'); return; }
   mostrarAviso('A preparar o PDF…');
   let host, wrap;
@@ -2733,7 +2797,7 @@ async function peBaixarPdf(qual) {
   finally { if (wrap) wrap.remove(); }
 }
 
-function peDocTexto(qual) { const P = peDocPartes(); return (qual === 'plano' ? P.textoPlano : qual === 'rel' ? P.textoRel : (peState.docAtual && peState.docAtual.texto)) || ''; }
+function peDocTexto(qual) { const P = peDocPartes(); return (qual === 'plano' ? P.textoPlano : qual === 'rel' ? P.textoRel : qual === 'resumo' ? P.textoResumo : (peState.docAtual && peState.docAtual.texto)) || ''; }
 
 function peTelefoneWA() {
   const pd = peState.pacienteDados || {}, rq = pd.requester, viaR = !!(rq && rq.enviarParaResponsavel && (rq.nome || rq.phone || rq.email));
@@ -2745,7 +2809,7 @@ function peAbrirLink(url) { if (typeof window.openExternalLink === 'function') w
 
 function peEnviarWhatsApp(qual) {
   const nome = (peState.patientName || '').split(' ')[0];
-  let txt = `Olá ${nome}! ${qual === 'plano' ? 'Segue o teu plano de tratamento em casa.' : 'Segue o teu relatório da consulta de pesquisa.'}\n\n` + peDocTexto(qual);
+  let txt = `Olá ${nome}! ${qual === 'plano' ? 'Segue o teu plano de tratamento em casa.' : (qual === 'resumo' ? 'Segue o resumo da tua consulta.' : 'Segue o teu relatório da consulta de pesquisa.')}\n\n` + peDocTexto(qual);
   if (txt.length > 3500) txt = txt.slice(0, 3400) + `\n\n[…] ${qual === 'plano' ? 'O plano completo, com os mapas' : 'O relatório completo, com as imagens'}, segue em PDF.`;
   peAbrirLink(`https://wa.me/${peTelefoneWA()}?text=${encodeURIComponent(txt)}`);
 }
@@ -2753,7 +2817,7 @@ function peEnviarEmail(qual) {
   const pd = peState.pacienteDados || {}, rq = pd.requester;
   const mail = (rq && rq.enviarParaResponsavel && rq.email) || pd.email || '';
   const corpo = peDocTexto(qual).slice(0, 1500) + '\n\n[…] O documento completo, com as imagens, segue em anexo (PDF).';
-  peAbrirLink(`mailto:${mail}?subject=${encodeURIComponent(qual === 'plano' ? 'O teu plano de tratamento em casa' : 'O teu relatório de pesquisa')}&body=${encodeURIComponent(corpo)}`);
+  peAbrirLink(`mailto:${mail}?subject=${encodeURIComponent(qual === 'plano' ? 'O teu plano de tratamento em casa' : (qual === 'resumo' ? 'O resumo da tua consulta' : 'O teu relatório de pesquisa'))}&body=${encodeURIComponent(corpo)}`);
 }
 
 async function peVoltarAoPaciente() {
@@ -2776,7 +2840,7 @@ async function peEmitirPaciente(relatorioTec, escudo, data) {
     escudo, path:2, data, mapId, estado, consulta, epoca:ep.epoca || '', tempo:ep.tempo || '',
     notas:(document.getElementById('pe-receita')?.value || '').trim(),
     pontos:pontos.map(p => ({ k:p.k, id:p.id, nome:p.nome, cat:p.cat, zona:p.zona })),
-    mapa:{ zonas }, htmlRelatorio:doc.htmlRel, htmlPlano:doc.htmlPlano, textoRelatorio:doc.textoRel, textoPlano:doc.textoPlano, audios21:peLerAudios21Cfg(), semPlano:!peIncluirPlano()
+    mapa:{ zonas }, htmlRelatorio:doc.htmlRel, htmlResumo:doc.htmlResumo, textoResumo:doc.textoResumo, htmlPlano:doc.htmlPlano, textoRelatorio:doc.textoRel, textoPlano:doc.textoPlano, audios21:peLerAudios21Cfg(), semPlano:!peIncluirPlano()
   }));
   let ok = true;
   if (peState.patientId) ok = await guardarNaFicha(peState.patientId, { tipo:'pesquisa_emocional', titulo:`Pesquisa Emocional — ${data}`, texto:relatorioTec + '\n\nRELATÓRIO PARA O PACIENTE:\n' + doc.texto, dados });
