@@ -78,7 +78,7 @@ export function renderEstudio(main, ctx){
   }
   const esc = ctx.escapeHtml;
   let modo = 'v', cur = 0, correr = false, raf = 0, tmr = 0, t0 = 0, temVid = false;
-  let pico = 0, mixDest = null, itens = [], total = 0, stream = null, rec = null, pedacos = [], actx = null, ana = null, nTakes = 0, urls = [];
+  let fundo = { on: false, vol: 0.4, buf: null }, fundoStop = null, bgCtx = null, pico = 0, mixDest = null, itens = [], total = 0, stream = null, rec = null, pedacos = [], actx = null, ana = null, nTakes = 0, urls = [];
   let fotoEl = null, logoImg = null, pubId = null, falando = false, semVoz = false;
   const ps = { formato: 'cartaz', prop: '9:16', fundo: 'roxo' };
 
@@ -136,6 +136,7 @@ export function renderEstudio(main, ctx){
       <span class="evm" id="ev-clock" style="margin-left:auto;font-variant-numeric:tabular-nums;">0:00</span>
      </div>
      <div class="evm" id="ev-vrow">Vídeo (opcional, para veres as imagens): <input type="file" id="ev-vf" accept="video/*"> <button id="ev-mus" aria-pressed="false">Música do vídeo: desligada</button><br>Com a música ligada, usa auscultadores.</div>
+     <div class="evrow" id="ev-bg"><button id="ev-bgon" aria-pressed="false">🎵 Som de fundo: desligado</button><label class="evm">Volume <input type="range" id="ev-bgvol" min="5" max="100" value="40"></label><label class="evm">Ou a tua música: <input type="file" id="ev-bgf" accept="audio/*"></label><span class="evm" style="flex-basis:100%">Sem ficheiro, uso uma música ambiente suave. O som de fundo entra na gravação (vídeo e áudio). Usa auscultadores para a voz não apanhar a música duas vezes.</span></div>
      <div class="evrow" id="ev-medtools" hidden>
       <button id="ev-new">+ Nova meditação</button><button id="ev-edit" hidden>✏️ Editar</button><button id="ev-del" hidden>🗑️ Apagar</button>
      </div>
@@ -229,7 +230,7 @@ export function renderEstudio(main, ctx){
     $('ev-vrow').hidden = modo !== 'v'; $('ev-pz').hidden = modo === 'v'; $('ev-medtools').hidden = modo !== 'm'; $('ev-ctools').hidden = modo !== 'c';
     if (vazio){
       $('ev-t').textContent = 'Ainda sem publicações'; $('ev-s').textContent = '';
-      sc.innerHTML = '<p class="evm" style="padding:0 6px">Carrega em «+ Nova publicação» e escolhe um modelo para começares.</p>';
+      sc.innerHTML = '<p class="evm" style="padding:0 6px">O vídeo narrado aparece aqui, ao lado do texto, assim que criares uma publicação. Carrega em «+ Nova publicação» e escolhe um modelo.</p>';
       itens = []; total = 0; $('ev-phone').hidden = true; $('ev-stage').style.gridTemplateColumns = '1fr';
       $('ev-cedit').hidden = $('ev-cdel').hidden = $('ev-ouvir').hidden = $('ev-voz').hidden = true;
       $('ev-go').disabled = $('ev-ler').disabled = true; $('ev-clock').textContent = '0:00'; return;
@@ -289,14 +290,31 @@ export function renderEstudio(main, ctx){
     pico = 0;
     if (video){ camEl.srcObject = stream; try { await camEl.play(); } catch(e){} }
   }
+  function iniciarFundo(c, destinos){
+    const g = c.createGain(); g.gain.value = 0; g.gain.linearRampToValueAtTime(fundo.vol * 0.5, c.currentTime + 2); destinos.forEach(d => g.connect(d)); const fontes = [];
+    if (fundo.buf){ const sb = c.createBufferSource(); sb.buffer = fundo.buf; sb.loop = true; sb.connect(g); sb.start(); fontes.push(sb); }
+    else {
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(g);
+      [110, 164.81, 220, 261.63, 329.63].forEach((f, i) => [-4, 4].forEach(dt => {
+        const o = c.createOscillator(); o.type = i % 2 ? 'triangle' : 'sine'; o.frequency.value = f; o.detune.value = dt;
+        const og = c.createGain(); og.gain.value = 0.16 / Math.pow(i + 1, 0.4); const l = c.createOscillator(); l.frequency.value = 0.06 + i * 0.03; const lg = c.createGain(); lg.gain.value = 0.06;
+        l.connect(lg); lg.connect(og.gain); o.connect(og); og.connect(lp); o.start(); l.start(); fontes.push(o, l);
+      }));
+    }
+    return () => { try { g.gain.setTargetAtTime(0, c.currentTime, 0.25); } catch(e){} setTimeout(() => { fontes.forEach(x => { try { x.stop(); } catch(e){} }); try { g.disconnect(); } catch(e){} }, 1500); };
+  }
   function tipoVideo(){ return ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ''; }
   function comecar(){
     rec = null;
     if (stream || semVoz){
       const xx = lista()[cur]; const comVideo = modo === 'c' && xx && xx.formato !== 'audio';
-      let fonte = stream, mt = '';
-      if (comVideo){ mt = tipoVideo(); const cs = $('ev-cv').captureStream(30); if (stream){ const faixas = (mixDest && mixDest.stream.getAudioTracks().length) ? mixDest.stream.getAudioTracks() : stream.getAudioTracks(); faixas.forEach(tr => cs.addTrack(tr)); } fonte = cs; }
-      else { const tipos = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm']; mt = tipos.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ''; }
+      let fonte = stream, mt = ''; const usaMix = fundo.on && actx && mixDest; let bgDest = null;
+      if (fundo.on){
+        if (usaMix) fundoStop = iniciarFundo(actx, [mixDest, actx.destination]);
+        else { bgCtx = new (window.AudioContext || window.webkitAudioContext)(); bgDest = bgCtx.createMediaStreamDestination(); fundoStop = iniciarFundo(bgCtx, [bgDest, bgCtx.destination]); }
+      }
+      if (comVideo){ mt = tipoVideo(); const cs = $('ev-cv').captureStream(30); if (stream){ const faixas = (mixDest && mixDest.stream.getAudioTracks().length) ? mixDest.stream.getAudioTracks() : stream.getAudioTracks(); faixas.forEach(tr => cs.addTrack(tr)); } else if (bgDest) bgDest.stream.getAudioTracks().forEach(tr => cs.addTrack(tr)); fonte = cs; }
+      else { if (usaMix) fonte = mixDest.stream; const tipos = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm']; mt = tipos.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ''; }
       pedacos = []; rec = new MediaRecorder(fonte, mt ? Object.assign({ mimeType: mt }, comVideo ? { videoBitsPerSecond: 4000000 } : {}) : {});
       const nome = lista()[cur];
       rec.ondataavailable = e => { if (e.data.size) pedacos.push(e.data); };
@@ -330,6 +348,7 @@ export function renderEstudio(main, ctx){
   }
   function parar(fim){
     correr = false; semVoz = false; cancelAnimationFrame(raf); clearInterval(tmr); $('ev-count').hidden = true; $('ev-lvl').style.width = '0';
+    if (fundoStop){ fundoStop(); fundoStop = null; const bc = bgCtx; bgCtx = null; if (bc) setTimeout(() => { try { bc.close(); } catch(e){} }, 1800); }
     if (rec && rec.state !== 'inactive') rec.stop(); else soltarMic();
     if (temVid) vid.pause();
     $('ev-go').disabled = false; $('ev-ler').disabled = false; $('ev-go').textContent = fim ? 'Gravar outra vez' : 'Gravar e ler'; $('ev-stop').disabled = true;
@@ -365,6 +384,9 @@ export function renderEstudio(main, ctx){
   $('ev-ler').onclick = () => { avisar(''); soltarMic(); contagem(); };
   $('ev-stop').onclick = () => parar(false);
   $('ev-vf').onchange = () => { const f = $('ev-vf').files[0]; if (!f) return; const u = URL.createObjectURL(f); urls.push(u); vid.src = u; temVid = true; desenhar(); };
+  $('ev-bgon').onclick = () => { fundo.on = !fundo.on; $('ev-bgon').setAttribute('aria-pressed', fundo.on); $('ev-bgon').textContent = '🎵 Som de fundo: ' + (fundo.on ? 'ligado' : 'desligado'); };
+  $('ev-bgvol').oninput = () => { fundo.vol = $('ev-bgvol').value / 100; };
+  $('ev-bgf').onchange = async () => { const f = $('ev-bgf').files[0]; if (!f){ fundo.buf = null; return; } try { const c = new (window.AudioContext || window.webkitAudioContext)(); fundo.buf = await c.decodeAudioData(await f.arrayBuffer()); c.close(); fundo.on = true; $('ev-bgon').setAttribute('aria-pressed', true); $('ev-bgon').textContent = '🎵 Som de fundo: ligado (a tua música)'; } catch(e){ fundo.buf = null; ctx.toast('Não consegui ler esse ficheiro de som.', true); } };
   $('ev-mus').onclick = () => { const on = $('ev-mus').getAttribute('aria-pressed') !== 'true'; $('ev-mus').setAttribute('aria-pressed', on); $('ev-mus').textContent = 'Música do vídeo: ' + (on ? 'ligada' : 'desligada'); vid.muted = !on; };
   function trocar(m){
     if (correr) parar(false); pararVoz(); modo = m; cur = 0; temVid = false; vid.removeAttribute('src'); $('ev-editor').hidden = true; $('ev-peditor').hidden = true;
