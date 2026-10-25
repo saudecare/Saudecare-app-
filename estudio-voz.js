@@ -181,7 +181,8 @@ export function renderEstudio(main, ctx){
     <label class="evm" for="ev-pr">Ritmo da leitura</label>
     <select id="ev-pr"><option value="1.8">Calmo</option><option value="2.3" selected>Normal</option><option value="2.8">Rápido</option></select>
     <p class="evm" id="ev-pe" style="margin-top:8px"></p>
-    <div class="evrow" style="margin-top:8px"><button class="evmain" id="ev-pgv">🎬 Guardar e gerar vídeo (sem voz)</button><button class="evmain" id="ev-pgc">🖼️ Guardar e gerar cartaz</button></div>
+    <div class="evrow" style="margin-top:8px"><button class="evmain" id="ev-pgm">🎙️ Guardar e gravar vídeo com a minha voz</button><button class="evmain" id="ev-pgv">🎬 Guardar e gerar vídeo sem voz</button></div>
+    <div class="evrow" style="margin-top:8px"><button class="evmain" id="ev-pgc">🖼️ Guardar e gerar cartaz (imagem)</button></div>
     <div class="evrow" style="margin-top:8px"><button id="ev-psave">Só guardar</button><button id="ev-pcancel">Cancelar</button></div>
    </div>
    <div id="ev-plan" hidden>
@@ -585,6 +586,7 @@ export function renderEstudio(main, ctx){
   }
   $('ev-psave').onclick = () => guardarPub();
   $('ev-pgc').onclick = () => guardarPub(gerarCartaz);
+  $('ev-pgm').onclick = () => { if (ps.formato !== 'cartaz'){ ps.formato = 'cartaz'; chipsDe('ev-pf', 'cartaz'); } guardarPub(() => { ctx.toast('Carrega em Gravar e fala. O vídeo grava a tua voz e as legendas.'); $('ev-phone').scrollIntoView({ behavior: 'smooth', block: 'center' }); }); };
   $('ev-pgv').onclick = () => { if (ps.formato !== 'cartaz'){ ps.formato = 'cartaz'; chipsDe('ev-pf', 'cartaz'); } guardarPub(() => { $('ev-cvideo').click(); }); };
 
   $('ev-cdel').onclick = async () => {
