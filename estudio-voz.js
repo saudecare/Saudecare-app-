@@ -37,6 +37,32 @@ export function lerTexto(txt, padrao, extra){
   });
   return out.filter(x => x[0]);
 }
+/* Texto colado de uma legenda de redes sociais: tira links, #hashtags, @menções, emojis e marcas de formatação,
+   e parte em frases curtas, uma por linha, para caberem no ecrã. */
+function partirFrase(f){
+  const ws = f.split(/\s+/).filter(Boolean);
+  if (ws.length <= 12) return [ws.join(' ')];
+  const partes = f.replace(/([,;])\s+/g, '$1\n').split('\n'); const out = []; let cur = '';
+  partes.forEach(p => { if (cur && (cur + ' ' + p).trim().split(/\s+/).length > 12){ out.push(cur.trim()); cur = p; } else cur = (cur + ' ' + p).trim(); });
+  if (cur) out.push(cur.trim());
+  return out.flatMap(p => { const w = p.split(/\s+/).filter(Boolean); if (w.length <= 14) return [p]; const r = []; for (let i = 0; i < w.length; i += 10) r.push(w.slice(i, i + 10).join(' ')); return r; });
+}
+export function prepararTexto(raw){
+  let t = String(raw || '');
+  t = t.replace(/https?:\/\/\S+/gi, ' ').replace(/\bwww\.\S+/gi, ' ');
+  t = t.replace(/[#@][\p{L}\p{N}_]+/gu, ' ');
+  t = t.replace(/[\p{Extended_Pictographic}\u200d\ufe0f\u20e3]/gu, ' ');
+  t = t.replace(/[*_`>~]+/g, '').replace(/[ \t]+/g, ' ');
+  const out = [];
+  t.split(/\r?\n/).map(l => l.trim()).forEach(l => {
+    if (!l || !/[\p{L}\p{N}]/u.test(l)) return;
+    const m = l.match(/^(.*?)\s*\|\s*(\d{1,3})$/); const base = m ? m[1] : l; const pausa = m ? ' | ' + m[2] : '';
+    const frases = base.replace(/([.!?…:])\s+/g, '$1\n').split('\n').map(x => x.trim()).filter(x => /[\p{L}\p{N}]/u.test(x));
+    frases.forEach((f, i) => { const ps = partirFrase(f); ps.forEach((q, j) => out.push(q + (i === frases.length - 1 && j === ps.length - 1 ? pausa : ''))); });
+  });
+  return out.join('\n');
+}
+const lerPub = txt => lerTexto(prepararTexto(txt), 0.8, 1);
 function cronometrar(linhas, rate, cta){
   let t = 1.5; const itens = [];
   linhas.forEach(([text, p]) => { const d = palavras(text) / (rate || 2.3) + 0.5; itens.push({ t, text, pausa: p, dur: d }); t += d + p; });
@@ -53,7 +79,7 @@ export function renderEstudio(main, ctx){
   const esc = ctx.escapeHtml;
   let modo = 'v', cur = 0, correr = false, raf = 0, tmr = 0, t0 = 0, temVid = false;
   let itens = [], total = 0, stream = null, rec = null, pedacos = [], actx = null, ana = null, nTakes = 0, urls = [];
-  let fotoEl = null, logoImg = null, pubId = null, falando = false;
+  let fotoEl = null, logoImg = null, pubId = null, falando = false, semVoz = false;
   const ps = { formato: 'cartaz', prop: '9:16', fundo: 'roxo' };
 
   main.innerHTML = `
@@ -114,7 +140,7 @@ export function renderEstudio(main, ctx){
       <button id="ev-new">+ Nova meditação</button><button id="ev-edit" hidden>✏️ Editar</button><button id="ev-del" hidden>🗑️ Apagar</button>
      </div>
      <div class="evrow" id="ev-ctools" hidden>
-      <button id="ev-cnew">+ Nova publicação</button><button id="ev-cedit">✏️ Editar</button><button id="ev-cdel">🗑️ Apagar</button>
+      <button id="ev-cnew">+ Nova publicação</button><button id="ev-ccartaz">🖼️ Cartaz (imagem)</button><button id="ev-cvideo">🎬 Vídeo sem voz</button><button id="ev-cedit">✏️ Editar</button><button id="ev-cdel">🗑️ Apagar</button>
       <select id="ev-voz" aria-label="Voz do aparelho"></select><button id="ev-ouvir">🔊 Ouvir texto</button>
       <p class="evm" style="flex-basis:100%">«Ouvir» usa a voz do telemóvel só para testares o ritmo e não grava. Para publicar, grava a tua voz.</p>
      </div>
@@ -135,8 +161,9 @@ export function renderEstudio(main, ctx){
     <div class="evrow evmod" id="ev-pmod"></div>
     <label class="evm" for="ev-pt">Título</label>
     <input type="text" id="ev-pt" placeholder="Ex.: Workshop de Reiki, hoje às 21h">
-    <label class="evm" for="ev-px">O que vais dizer (uma frase por linha)</label>
+    <label class="evm" for="ev-px">O texto da publicação (podes colar uma legenda inteira)</label>
     <textarea id="ev-px" rows="9" placeholder="Escreve como falas. Cada linha é uma frase que aparece no ecrã.&#10;Se quiseres uma pausa maior, põe | e os segundos no fim da linha. Exemplo: Respira fundo. | 5"></textarea>
+    <div class="evrow"><button id="ev-arrumar" type="button">✨ Arrumar o texto</button><span class="evm">Tira links, hashtags e emojis e separa em frases.</span></div>
     <label class="evm" for="ev-pc">Frase final no ecrã (opcional)</label>
     <input type="text" id="ev-pc" placeholder="Ex.: Entra no grupo · link na bio">
     <label class="evm">Formato</label>
@@ -154,7 +181,8 @@ export function renderEstudio(main, ctx){
     <label class="evm" for="ev-pr">Ritmo da leitura</label>
     <select id="ev-pr"><option value="1.8">Calmo</option><option value="2.3" selected>Normal</option><option value="2.8">Rápido</option></select>
     <p class="evm" id="ev-pe" style="margin-top:8px"></p>
-    <div class="evrow" style="margin-top:8px"><button class="evmain" id="ev-psave">Guardar</button><button id="ev-pcancel">Cancelar</button></div>
+    <div class="evrow" style="margin-top:8px"><button class="evmain" id="ev-pgv">🎬 Guardar e gerar vídeo (sem voz)</button><button class="evmain" id="ev-pgc">🖼️ Guardar e gerar cartaz</button></div>
+    <div class="evrow" style="margin-top:8px"><button id="ev-psave">Só guardar</button><button id="ev-pcancel">Cancelar</button></div>
    </div>
    <div id="ev-plan" hidden>
     <div class="evread">
@@ -187,7 +215,7 @@ export function renderEstudio(main, ctx){
   function lista(){
     if (modo === 'v') return VIDEOS;
     const custom = ctx.getCustom() || [];
-    if (modo === 'c') return custom.filter(m => m.tipo === 'pub').map(m => ({ id: m.id, titulo: m.titulo, sub: 'Publicação · ' + (FORMATOS[m.formato] || 'só áudio'), linhas: lerTexto(m.texto, 0.8, 1), propria: true, pub: true, texto: m.texto, cta: m.cta || '', formato: m.formato || 'audio', prop: m.prop || '9:16', fundo: m.fundo || 'roxo', ritmo: m.ritmo || 2.3 }));
+    if (modo === 'c') return custom.filter(m => m.tipo === 'pub').map(m => ({ id: m.id, titulo: m.titulo, sub: 'Publicação · ' + (FORMATOS[m.formato] || 'só áudio'), linhas: lerPub(m.texto), propria: true, pub: true, texto: m.texto, cta: m.cta || '', formato: m.formato || 'audio', prop: m.prop || '9:16', fundo: m.fundo || 'roxo', ritmo: m.ritmo || 2.3 }));
     const proprias = custom.filter(m => m.tipo !== 'pub').map(m => ({ id: m.id, titulo: m.titulo, sub: 'Meditação própria', linhas: lerTexto(m.texto), propria: true, texto: m.texto }));
     return MEDS.concat(proprias);
   }
@@ -261,10 +289,10 @@ export function renderEstudio(main, ctx){
   function tipoVideo(){ return ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ''; }
   function comecar(){
     rec = null;
-    if (stream){
+    if (stream || semVoz){
       const xx = lista()[cur]; const comVideo = modo === 'c' && xx && xx.formato !== 'audio';
       let fonte = stream, mt = '';
-      if (comVideo){ mt = tipoVideo(); const cs = $('ev-cv').captureStream(30); stream.getAudioTracks().forEach(tr => cs.addTrack(tr)); fonte = cs; }
+      if (comVideo){ mt = tipoVideo(); const cs = $('ev-cv').captureStream(30); if (stream) stream.getAudioTracks().forEach(tr => cs.addTrack(tr)); fonte = cs; }
       else { const tipos = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm']; mt = tipos.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ''; }
       pedacos = []; rec = new MediaRecorder(fonte, mt ? Object.assign({ mimeType: mt }, comVideo ? { videoBitsPerSecond: 4000000 } : {}) : {});
       const nome = lista()[cur];
@@ -273,7 +301,7 @@ export function renderEstudio(main, ctx){
       rec.onstop = () => { guardarTake(rec.mimeType || tipo || 'audio/webm', nome); soltarMic(); };
       rec.start(1000);
     }
-    correr = true; $('ev-go').innerHTML = stream ? '<span class="evrec"></span>A gravar' : 'A ler…'; $('ev-go').disabled = true; $('ev-ler').disabled = true; $('ev-stop').disabled = false;
+    correr = true; $('ev-go').innerHTML = (stream || semVoz) ? '<span class="evrec"></span>A gravar' : 'A ler…'; $('ev-go').disabled = true; $('ev-ler').disabled = true; $('ev-stop').disabled = false;
     if (modo === 'v' && temVid){ vid.currentTime = 0; vid.muted = $('ev-mus').getAttribute('aria-pressed') !== 'true'; vid.play().catch(() => {}); }
     t0 = performance.now(); raf = requestAnimationFrame(tick);
   }
@@ -298,7 +326,7 @@ export function renderEstudio(main, ctx){
     $('ev-takes').prepend(d);
   }
   function parar(fim){
-    correr = false; cancelAnimationFrame(raf); clearInterval(tmr); $('ev-count').hidden = true; $('ev-lvl').style.width = '0';
+    correr = false; semVoz = false; cancelAnimationFrame(raf); clearInterval(tmr); $('ev-count').hidden = true; $('ev-lvl').style.width = '0';
     if (rec && rec.state !== 'inactive') rec.stop(); else soltarMic();
     if (temVid) vid.pause();
     $('ev-go').disabled = false; $('ev-ler').disabled = false; $('ev-go').textContent = fim ? 'Gravar outra vez' : 'Gravar e ler'; $('ev-stop').disabled = true;
@@ -463,7 +491,7 @@ export function renderEstudio(main, ctx){
   };
   /* editor de publicações */
   function chipsDe(grupo, val){ main.querySelectorAll('#' + grupo + ' button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === String(val))); }
-  function estimar(){ const L = lerTexto($('ev-px').value, 0.8, 1); const r = cronometrar(L, parseFloat($('ev-pr').value) || 2.3, $('ev-pc').value.trim()); $('ev-pe').textContent = L.length ? 'Duração estimada: ' + fmt(r.total) + (r.total > 90 ? ' (acima de 90 s, os stories cortam o vídeo)' : '') : ''; }
+  function estimar(){ const L = lerPub($('ev-px').value); const r = cronometrar(L, parseFloat($('ev-pr').value) || 2.3, $('ev-pc').value.trim()); $('ev-pe').textContent = L.length ? 'Duração estimada: ' + fmt(r.total) + (r.total > 90 ? ' (acima de 90 s, os stories cortam o vídeo)' : '') : ''; }
   function abrirPub(x){
     pubId = x ? x.id : null; $('ev-pt').value = x ? x.titulo : ''; $('ev-px').value = x ? x.texto : ''; $('ev-pc').value = x ? x.cta : '';
     ps.formato = x ? x.formato : 'cartaz'; ps.prop = x ? x.prop : '9:16'; ps.fundo = x ? x.fundo : 'roxo';
@@ -474,6 +502,12 @@ export function renderEstudio(main, ctx){
   }
   [['ev-pf', 'formato'], ['ev-pp', 'prop'], ['ev-pb', 'fundo']].forEach(([g, k]) => main.querySelectorAll('#' + g + ' button').forEach(b => { b.onclick = () => { ps[k] = b.dataset.v; chipsDe(g, ps[k]); }; }));
   MODELOS.forEach((m, i) => { const b = document.createElement('button'); b.textContent = m.nome; b.onclick = () => { $('ev-pt').value = m.titulo; $('ev-px').value = m.texto; $('ev-pc').value = m.cta; ps.formato = m.formato; chipsDe('ev-pf', ps.formato); estimar(); }; $('ev-pmod').appendChild(b); });
+  $('ev-px').onpaste = () => setTimeout(() => {
+    const v = prepararTexto($('ev-px').value); if (v && v !== $('ev-px').value.trim()){ $('ev-px').value = v; ctx.toast('Texto arrumado: tirei links, hashtags e emojis e separei em frases.'); }
+    if (!$('ev-pt').value.trim()) $('ev-pt').value = ($('ev-px').value.split('\n')[0] || '').slice(0, 60);
+    estimar();
+  }, 0);
+  $('ev-arrumar').onclick = () => { $('ev-px').value = prepararTexto($('ev-px').value); estimar(); };
   $('ev-px').oninput = estimar; $('ev-pc').oninput = estimar; $('ev-pr').onchange = estimar;
   $('ev-pbf').onchange = () => {
     const f = $('ev-pbf').files[0]; if (!f) return; const u = URL.createObjectURL(f); urls.push(u);
@@ -496,17 +530,63 @@ export function renderEstudio(main, ctx){
     } catch(e){ m.textContent = 'Não consegui criar a imagem agora (a ligação falhou ou demorou demasiado). Tenta outra vez.'; }
     finally { $('ev-iag').disabled = false; }
   };
+  function slugDe(t){ return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'publicacao'; }
+  function gerarCartaz(){
+    const x = lista()[cur]; if (!x || !x.pub){ ctx.toast('Escolhe uma publicação primeiro.', true); return; }
+    const d = PROPS[x.prop] || PROPS['9:16']; const k = 1.5, W = Math.round(d[0] * k), H = Math.round(d[1] * k);
+    const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+    const foto = x.fundo === 'foto' && fotoEl; const th = TEMAS[foto ? 'foto' : (x.fundo !== 'foto' && TEMAS[x.fundo] ? x.fundo : 'roxo')];
+    if (foto && cobrir(g, fotoEl, W, H)){ g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(0, 0, W, H); }
+    else if (x.fundo === 'creme'){ const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#FAF5EA'); gr.addColorStop(1, '#F1E7D3'); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
+    else if (x.fundo === 'escuro'){ g.fillStyle = '#2A2433'; g.fillRect(0, 0, W, H); }
+    else { const gr = g.createRadialGradient(W / 2, H * 0.2, 10, W / 2, H * 0.2, H * 0.9); gr.addColorStop(0, '#5A4380'); gr.addColorStop(0.45, '#3A2F4F'); gr.addColorStop(1, '#2A2433'); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
+    const ls = Math.round(Math.min(W, H) * 0.14); const lg = logo();
+    if (lg.complete && lg.naturalWidth){ g.save(); g.beginPath(); g.arc(W / 2, H * 0.04 + ls / 2, ls / 2, 0, Math.PI * 2); g.clip(); g.drawImage(lg, (W - ls) / 2, H * 0.04, ls, ls); g.restore(); }
+    g.textBaseline = 'middle'; g.textAlign = 'left';
+    const centrar = (txt, fs, cor, y0, maxW, peso) => { g.font = (peso || '700') + ' ' + fs + 'px Georgia, serif'; const q = quebrar(g, txt, maxW); const lh = fs * 1.3; g.fillStyle = cor; q.linhas.forEach((ln, i) => { const lw = ln.reduce((a, o) => a + o.ww, 0) + q.sp * (ln.length - 1); let xx = (W - lw) / 2; ln.forEach(o => { g.fillText(o.w, xx, y0 + i * lh + lh / 2); xx += o.ww + q.sp; }); }); return q.linhas.length * lh; };
+    g.font = '700 ' + Math.round(W * 0.028) + 'px sans-serif'; g.fillStyle = th.hi; g.textAlign = 'center'; g.fillText('HIKARI FAFE ESCOLA DE REIKI', W / 2, H * 0.04 + ls + W * 0.04); g.textAlign = 'left';
+    let y = H * 0.04 + ls + W * 0.09;
+    y += centrar(x.titulo, Math.round(W * 0.075), th.hi, y, W * 0.84) + W * 0.04;
+    const limite = H * (x.cta ? 0.83 : 0.93); let textos = x.linhas.map(l => l[0]); if (textos.length > 1 && textos[0].trim() === String(x.titulo).trim()) textos = textos.slice(1);
+    let fs = Math.round(W * 0.052), altura = 0;
+    const medir = f => { g.font = '600 ' + f + 'px Georgia, serif'; return textos.reduce((a, t) => a + quebrar(g, t, W * 0.8).linhas.length * f * 1.3 + f * 0.5, 0); };
+    while (fs > W * 0.03 && (altura = medir(fs)) > limite - y) fs -= 2;
+    textos.forEach(t => { y += centrar(t, fs, th.txt, y, W * 0.8, '600') + fs * 0.5; });
+    if (x.cta){ g.font = '700 ' + Math.round(W * 0.045) + 'px Georgia, serif'; const tw = Math.min(W * 0.88, g.measureText(x.cta).width + W * 0.1); const ph = W * 0.11, py = H * 0.9 - ph / 2; g.fillStyle = th.hi; g.beginPath(); if (g.roundRect) g.roundRect((W - tw) / 2, py, tw, ph, ph / 2); else g.rect((W - tw) / 2, py, tw, ph); g.fill(); g.fillStyle = (x.fundo === 'creme') ? '#FAF5EA' : '#2A2433'; g.textAlign = 'center'; g.fillText(x.cta, W / 2, H * 0.9); g.textAlign = 'left'; }
+    c.toBlob(blob => {
+      if (!blob){ ctx.toast('Não consegui criar o cartaz.', true); return; }
+      nTakes++; const url = URL.createObjectURL(blob); urls.push(url); const nomeF = slugDe(x.titulo) + '_cartaz' + nTakes + '.png';
+      if (nTakes === 1) $('ev-takes').innerHTML = '';
+      const dv = document.createElement('div'); dv.className = 'evtake';
+      dv.innerHTML = '<span></span><img alt="Cartaz" style="flex:1 1 150px;max-width:160px;max-height:290px;object-fit:contain;border-radius:10px"><a class="evmain" download>Guardar</a><button type="button" data-a="partilhar" hidden>Partilhar</button>';
+      dv.querySelector('span').textContent = x.titulo + ' · cartaz'; dv.querySelector('img').src = url; const a = dv.querySelector('a'); a.href = url; a.download = nomeF;
+      const ficheiro = new File([blob], nomeF, { type: 'image/png' }); const pt = dv.querySelector('[data-a=partilhar]');
+      try { if (navigator.canShare && navigator.canShare({ files: [ficheiro] })){ pt.hidden = false; pt.onclick = async () => { try { await navigator.share({ files: [ficheiro], title: x.titulo }); } catch(e){ if (!e || e.name !== 'AbortError') ctx.toast('Não consegui abrir a partilha. Usa o botão Guardar.', true); } }; } } catch(e){}
+      $('ev-takes').prepend(dv); ctx.toast('Cartaz pronto. Carrega em Guardar.'); $('ev-takesbox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 'image/png');
+  }
+  $('ev-ccartaz').onclick = gerarCartaz;
+  $('ev-cvideo').onclick = () => {
+    const x = lista()[cur]; if (!x || !x.pub){ ctx.toast('Escolhe uma publicação primeiro.', true); return; }
+    if (x.formato !== 'cartaz'){ ctx.toast('O vídeo sem voz usa o formato «Vídeo com legendas». Carrega em Editar e muda o formato.', true); return; }
+    if (!$('ev-cv').captureStream || !window.MediaRecorder){ avisar('Este telemóvel não grava vídeo a partir do ecrã. Usa o cartaz (imagem), ou abre a Vindora no Chrome.'); return; }
+    if (correr) return; avisar(''); semVoz = true; $('ev-phone').scrollIntoView({ behavior: 'smooth', block: 'center' }); comecar();
+  };
   $('ev-cnew').onclick = () => abrirPub(null);
   $('ev-cedit').onclick = () => { const x = lista()[cur]; if (x && x.pub) abrirPub(x); };
   $('ev-pcancel').onclick = () => { $('ev-peditor').hidden = true; };
-  $('ev-psave').onclick = async () => {
+  async function guardarPub(depois){
     const titulo = $('ev-pt').value.trim(), texto = $('ev-px').value.trim();
-    if (!titulo || !lerTexto(texto, 0.8, 1).length){ ctx.toast('Escreve o título e pelo menos uma frase.', true); return; }
+    if (!titulo || !lerPub(texto).length){ ctx.toast('Escreve o título e pelo menos uma frase.', true); return false; }
     const item = { id: pubId || ('p' + Date.now().toString(36) + 'x'), tipo: 'pub', titulo, texto, cta: $('ev-pc').value.trim(), formato: ps.formato, prop: ps.prop, fundo: ps.fundo, ritmo: parseFloat($('ev-pr').value) || 2.3 };
     const atual = ctx.getCustom() || []; const nova = pubId ? atual.map(m => m.id === pubId ? item : m) : atual.concat([item]);
-    try { await ctx.save(nova); ctx.toast('Publicação guardada.'); $('ev-peditor').hidden = true; cur = nova.filter(m => m.tipo === 'pub').findIndex(m => m.id === item.id); desenhar(); }
-    catch(e){ ctx.toast('Não consegui guardar: ' + (e.message || e), true); }
-  };
+    try { await ctx.save(nova); ctx.toast('Publicação guardada.'); $('ev-peditor').hidden = true; cur = nova.filter(m => m.tipo === 'pub').findIndex(m => m.id === item.id); desenhar(); if (depois) depois(); return true; }
+    catch(e){ ctx.toast('Não consegui guardar: ' + (e.message || e), true); return false; }
+  }
+  $('ev-psave').onclick = () => guardarPub();
+  $('ev-pgc').onclick = () => guardarPub(gerarCartaz);
+  $('ev-pgv').onclick = () => { if (ps.formato !== 'cartaz'){ ps.formato = 'cartaz'; chipsDe('ev-pf', 'cartaz'); } guardarPub(() => { $('ev-cvideo').click(); }); };
+
   $('ev-cdel').onclick = async () => {
     const x = lista()[cur]; if (!x || !x.pub) return;
     if (!await ctx.confirmar('Apagar publicação', 'Apagar "' + x.titulo + '"?\n\nEsta acção não pode ser desfeita.')) return;
