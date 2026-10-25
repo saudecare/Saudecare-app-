@@ -78,7 +78,7 @@ export function renderEstudio(main, ctx){
   }
   const esc = ctx.escapeHtml;
   let modo = 'v', cur = 0, correr = false, raf = 0, tmr = 0, t0 = 0, temVid = false;
-  let itens = [], total = 0, stream = null, rec = null, pedacos = [], actx = null, ana = null, nTakes = 0, urls = [];
+  let pico = 0, mixDest = null, itens = [], total = 0, stream = null, rec = null, pedacos = [], actx = null, ana = null, nTakes = 0, urls = [];
   let fotoEl = null, logoImg = null, pubId = null, falando = false, semVoz = false;
   const ps = { formato: 'cartaz', prop: '9:16', fundo: 'roxo' };
 
@@ -273,7 +273,7 @@ export function renderEstudio(main, ctx){
     if (k >= 0){ const el = itens[k].el, sc = $('ev-script'); sc.scrollTop = el.offsetTop - sc.clientHeight / 2 + el.clientHeight / 2; }
     if (modo !== 'v'){ const it = itens[k]; let f = 0; if (it){ const fim = it.t + it.dur; f = t > fim ? Math.min(1, (t - fim) / it.pausa) : 0; } $('ev-pzi').style.width = (f * 100) + '%'; }
   }
-  function nivel(){ if (!ana) return; const a = new Uint8Array(ana.fftSize); ana.getByteTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v - 128)); $('ev-lvl').style.width = Math.min(100, m * 1.6) + '%'; }
+  function nivel(){ if (!ana) return; const a = new Uint8Array(ana.fftSize); ana.getByteTimeDomainData(a); let m = 0; for (const v of a) m = Math.max(m, Math.abs(v - 128)); if (m > pico) pico = m; $('ev-lvl').style.width = Math.min(100, m * 1.6) + '%'; }
   function tick(){
     if (!correr) return;
     if (!document.getElementById('ev-root')){ parar(false); return; }
@@ -281,10 +281,12 @@ export function renderEstudio(main, ctx){
     if (t > total + 1 || (modo === 'v' && temVid && vid.ended)){ parar(true); return; }
     pintar(t); if (modo === 'c') pintarCv(t); raf = requestAnimationFrame(tick);
   }
-  function soltarMic(){ if (camEl) camEl.srcObject = null; if (stream){ stream.getTracks().forEach(tr => tr.stop()); stream = null; } if (actx){ try { actx.close(); } catch(e){} actx = null; ana = null; } }
+  function soltarMic(){ if (camEl) camEl.srcObject = null; if (stream){ stream.getTracks().forEach(tr => tr.stop()); stream = null; } if (actx){ try { actx.close(); } catch(e){} actx = null; ana = null; mixDest = null; } }
   async function abrirMic(video){
     stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false }, video: video ? { facingMode: 'user', width: { ideal: 1080 }, height: { ideal: 1920 } } : false });
-    actx = new (window.AudioContext || window.webkitAudioContext)(); ana = actx.createAnalyser(); ana.fftSize = 512; actx.createMediaStreamSource(stream).connect(ana);
+    actx = new (window.AudioContext || window.webkitAudioContext)(); ana = actx.createAnalyser(); ana.fftSize = 512; const srcN = actx.createMediaStreamSource(stream); srcN.connect(ana); try { mixDest = actx.createMediaStreamDestination(); srcN.connect(mixDest); } catch(e){ mixDest = null; }
+    try { await actx.resume(); } catch(e){}
+    pico = 0;
     if (video){ camEl.srcObject = stream; try { await camEl.play(); } catch(e){} }
   }
   function tipoVideo(){ return ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ''; }
@@ -293,13 +295,13 @@ export function renderEstudio(main, ctx){
     if (stream || semVoz){
       const xx = lista()[cur]; const comVideo = modo === 'c' && xx && xx.formato !== 'audio';
       let fonte = stream, mt = '';
-      if (comVideo){ mt = tipoVideo(); const cs = $('ev-cv').captureStream(30); if (stream) stream.getAudioTracks().forEach(tr => cs.addTrack(tr)); fonte = cs; }
+      if (comVideo){ mt = tipoVideo(); const cs = $('ev-cv').captureStream(30); if (stream){ const faixas = (mixDest && mixDest.stream.getAudioTracks().length) ? mixDest.stream.getAudioTracks() : stream.getAudioTracks(); faixas.forEach(tr => cs.addTrack(tr)); } fonte = cs; }
       else { const tipos = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm']; mt = tipos.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ''; }
       pedacos = []; rec = new MediaRecorder(fonte, mt ? Object.assign({ mimeType: mt }, comVideo ? { videoBitsPerSecond: 4000000 } : {}) : {});
       const nome = lista()[cur];
       rec.ondataavailable = e => { if (e.data.size) pedacos.push(e.data); };
       const tipo = mt;
-      rec.onstop = () => { guardarTake(rec.mimeType || tipo || 'audio/webm', nome); soltarMic(); };
+      const tinhaMic = !!stream; rec.onstop = () => { guardarTake(rec.mimeType || tipo || 'audio/webm', nome); if (tinhaMic && pico < 3) ctx.toast('Atenção: o microfone não captou som neste vídeo. Confirma que falaste e que o browser tem permissão para o microfone.', true); soltarMic(); };
       rec.start(1000);
     }
     correr = true; $('ev-go').innerHTML = (stream || semVoz) ? '<span class="evrec"></span>A gravar' : 'A ler…'; $('ev-go').disabled = true; $('ev-ler').disabled = true; $('ev-stop').disabled = false;
