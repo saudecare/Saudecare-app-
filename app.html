@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-25-06';
+const APP_VERSION = '2026-10-25-07';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -18757,6 +18757,16 @@ async function renderEstudioVoz(main){
         const res = await fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/estudio-imagem', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken }, body: JSON.stringify({ action: 'criarImagem', tenantId, prompt, proporcao }) });
         let j = null; try { j = await res.json(); } catch(e){}
         return j || { ok: false, mensagem: 'A criação demorou demasiado ou a função ainda não foi publicada no Netlify.' };
+      },
+      narrar: async (texto, voz, estilo) => {
+        const idToken = await auth.currentUser.getIdToken();
+        const ctrl = new AbortController(); const tm = setTimeout(() => ctrl.abort(), 20000);
+        try {
+          const res = await fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/estudio-narracao', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken }, body: JSON.stringify({ action: 'narrar', tenantId, texto, voz, estilo }), signal: ctrl.signal });
+          let j = null; try { j = await res.json(); } catch(e){}
+          return j && (j.ok || j.motivo) ? j : { ok: false, mensagem: 'A função de narração ainda não foi publicada no Netlify, ou demorou demasiado.' };
+        } catch(e){ return { ok: false, mensagem: 'Sem resposta da função de narração. Já a publicaste no Netlify?' }; }
+        finally { clearTimeout(tm); }
       },
       escapeHtml, toast, confirmar: reikiConfirmar
     });

@@ -63,9 +63,9 @@ export function prepararTexto(raw){
   return out.join('\n');
 }
 const lerPub = txt => lerTexto(prepararTexto(txt), 0.8, 1);
-function cronometrar(linhas, rate, cta){
+function cronometrar(linhas, rate, cta, durs){
   let t = 1.5; const itens = [];
-  linhas.forEach(([text, p]) => { const d = palavras(text) / (rate || 2.3) + 0.5; itens.push({ t, text, pausa: p, dur: d }); t += d + p; });
+  linhas.forEach(([text, p], i) => { const d = (durs && durs[i] != null) ? durs[i] + 0.3 : palavras(text) / (rate || 2.3) + 0.5; itens.push({ t, text, pausa: p, dur: d }); t += d + p; });
   return { itens, total: t + (cta ? 3.5 : 0.8) };
 }
 function paraTexto(linhas){ return linhas.map(([t, p]) => t + ' | ' + p).join('\n'); }
@@ -79,7 +79,7 @@ export function renderEstudio(main, ctx){
   const esc = ctx.escapeHtml;
   let modo = 'v', cur = 0, correr = false, raf = 0, tmr = 0, t0 = 0, temVid = false;
   let fundo = { on: false, vol: 0.4, buf: null }, fundoStop = null, bgCtx = null, pico = 0, mixDest = null, itens = [], total = 0, stream = null, rec = null, pedacos = [], actx = null, ana = null, nTakes = 0, urls = [];
-  let fotoEl = null, logoImg = null, pubId = null, falando = false, semVoz = false;
+  let fotoEl = null, logoImg = null, pubId = null, falando = false, semVoz = false, narrando = false, narr = {}, narrAc = null, ouvirStop = null;
   const ps = { formato: 'cartaz', prop: '9:16', fundo: 'roxo' };
 
   main.innerHTML = `
@@ -143,7 +143,11 @@ export function renderEstudio(main, ctx){
      <div class="evrow" id="ev-ctools" hidden>
       <button id="ev-cnew">+ Nova publicação</button><button id="ev-ccartaz">🖼️ Cartaz (imagem)</button><button id="ev-cvideo">🎬 Vídeo sem voz</button><button id="ev-cedit">✏️ Editar</button><button id="ev-cdel">🗑️ Apagar</button>
       <select id="ev-voz" aria-label="Voz do aparelho"></select><button id="ev-ouvir">🔊 Ouvir texto</button>
-      <p class="evm" style="flex-basis:100%">«Ouvir» usa a voz do telemóvel só para testares o ritmo e não grava. Para publicar, grava a tua voz.</p>
+      <div class="evrow" style="flex-basis:100%;margin-top:6px"><span class="evm">🗣️ Narração por IA:</span>
+       <select id="ev-nvoz" aria-label="Voz da narração"><option value="Orus">Voz masculina firme</option><option value="Charon">Voz masculina grave</option><option value="Alnilam">Voz masculina clara</option><option value="Gacrux">Voz madura</option><option value="Algenib">Voz rouca e forte</option><option value="Vindemiatrix">Voz feminina suave</option><option value="Sulafat">Voz feminina calorosa</option></select>
+       <select id="ev-nest" aria-label="Estilo da narração"><option value="serena">Calma, serena e forte</option><option value="meditacao">Muito calma (meditação)</option><option value="energica">Clara e confiante</option></select>
+       <button id="ev-ngerar" class="evmain">🗣️ Gerar narração</button><button id="ev-nouvir">▶️ Ouvir narração</button><button id="ev-nvideo" class="evmain">🎬 Vídeo com narração</button></div>
+      <p class="evm" style="flex-basis:100%">«Ouvir texto» usa a voz do telemóvel só para testares o ritmo e não grava. Para publicar, grava a tua voz.</p>
      </div>
      <div class="everr" id="ev-err" role="alert" style="min-height:1.4em"></div>
      <div class="evcount" id="ev-count" hidden>3</div>
@@ -247,7 +251,7 @@ export function renderEstudio(main, ctx){
     $('ev-edit').hidden = $('ev-del').hidden = !x.propria;
     if (modo === 'v'){ itens = x.cenas.filter(c => c.voz).map(c => ({ t: c.start + c.va, text: c.voz })); total = x.total; $('ev-s').textContent = x.sub; }
     else if (modo === 'c'){
-      const r = cronometrar(x.linhas, x.ritmo, x.cta); itens = r.itens; total = r.total;
+      const r = cronometrar(x.linhas, x.ritmo, x.cta, narrDe(x)); itens = r.itens; total = r.total;
       $('ev-s').textContent = x.sub + ' · cerca de ' + fmt(total) + (x.fundo === 'foto' && !fotoEl ? ' · escolhe outra vez a foto de fundo' : '');
       const d = PROPS[x.prop] || PROPS['9:16']; const c = $('ev-cv'); if (c.width !== d[0] || c.height !== d[1]){ c.width = d[0]; c.height = d[1]; }
     }
@@ -306,15 +310,19 @@ export function renderEstudio(main, ctx){
   function tipoVideo(){ return ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ''; }
   function comecar(){
     rec = null;
-    if (stream || semVoz){
+    if (stream || semVoz || narrando){
       const xx = lista()[cur]; const comVideo = modo === 'c' && xx && xx.formato !== 'audio';
       let fonte = stream, mt = ''; const usaMix = fundo.on && actx && mixDest; let bgDest = null;
-      if (fundo.on){
-        if (usaMix) fundoStop = iniciarFundo(actx, [mixDest, actx.destination]);
-        else { bgCtx = new (window.AudioContext || window.webkitAudioContext)(); bgDest = bgCtx.createMediaStreamDestination(); fundoStop = iniciarFundo(bgCtx, [bgDest, bgCtx.destination]); }
+      if (fundo.on || narrando){
+        if (usaMix && !narrando) fundoStop = iniciarFundo(actx, [mixDest, actx.destination]);
+        else {
+          bgCtx = new (window.AudioContext || window.webkitAudioContext)(); bgDest = bgCtx.createMediaStreamDestination(); const ds = [bgDest, bgCtx.destination];
+          const sf = fundo.on ? iniciarFundo(bgCtx, ds) : null; const sn = narrando ? agendarNarracao(bgCtx, ds) : null;
+          fundoStop = () => { if (sf) sf(); if (sn) sn(); };
+        }
       }
       if (comVideo){ mt = tipoVideo(); const cs = $('ev-cv').captureStream(30); if (stream){ const faixas = (mixDest && mixDest.stream.getAudioTracks().length) ? mixDest.stream.getAudioTracks() : stream.getAudioTracks(); faixas.forEach(tr => cs.addTrack(tr)); } else if (bgDest) bgDest.stream.getAudioTracks().forEach(tr => cs.addTrack(tr)); fonte = cs; }
-      else { if (usaMix) fonte = mixDest.stream; const tipos = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm']; mt = tipos.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ''; }
+      else { if (usaMix && !narrando) fonte = mixDest.stream; else if (bgDest) fonte = bgDest.stream; const tipos = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm']; mt = tipos.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ''; }
       pedacos = []; rec = new MediaRecorder(fonte, mt ? Object.assign({ mimeType: mt }, comVideo ? { videoBitsPerSecond: 4000000 } : {}) : {});
       const nome = lista()[cur];
       rec.ondataavailable = e => { if (e.data.size) pedacos.push(e.data); };
@@ -322,9 +330,9 @@ export function renderEstudio(main, ctx){
       const tinhaMic = !!stream; rec.onstop = () => { guardarTake(rec.mimeType || tipo || 'audio/webm', nome); if (tinhaMic && pico < 3) ctx.toast('Atenção: o microfone não captou som neste vídeo. Confirma que falaste e que o browser tem permissão para o microfone.', true); soltarMic(); };
       rec.start(1000);
     }
-    correr = true; $('ev-go').innerHTML = (stream || semVoz) ? '<span class="evrec"></span>A gravar' : 'A ler…'; $('ev-go').disabled = true; $('ev-ler').disabled = true; $('ev-stop').disabled = false;
+    correr = true; $('ev-go').innerHTML = (stream || semVoz || narrando) ? '<span class="evrec"></span>A gravar' : 'A ler…'; $('ev-go').disabled = true; $('ev-ler').disabled = true; $('ev-stop').disabled = false;
     if (modo === 'v' && temVid){ vid.currentTime = 0; vid.muted = $('ev-mus').getAttribute('aria-pressed') !== 'true'; vid.play().catch(() => {}); }
-    t0 = performance.now(); raf = requestAnimationFrame(tick);
+    t0 = performance.now() + (narrando ? 120 : 0); raf = requestAnimationFrame(tick);
   }
   function guardarTake(tipo, x){
     const blob = new Blob(pedacos, { type: tipo }); const isVid = String(tipo).startsWith('video');
@@ -347,7 +355,7 @@ export function renderEstudio(main, ctx){
     $('ev-takes').prepend(d);
   }
   function parar(fim){
-    correr = false; semVoz = false; cancelAnimationFrame(raf); clearInterval(tmr); $('ev-count').hidden = true; $('ev-lvl').style.width = '0';
+    correr = false; semVoz = false; narrando = false; cancelAnimationFrame(raf); clearInterval(tmr); $('ev-count').hidden = true; $('ev-lvl').style.width = '0';
     if (fundoStop){ fundoStop(); fundoStop = null; const bc = bgCtx; bgCtx = null; if (bc) setTimeout(() => { try { bc.close(); } catch(e){} }, 1800); }
     if (rec && rec.state !== 'inactive') rec.stop(); else soltarMic();
     if (temVid) vid.pause();
@@ -596,6 +604,65 @@ export function renderEstudio(main, ctx){
     if (x.formato !== 'cartaz'){ ctx.toast('O vídeo sem voz usa o formato «Vídeo com legendas». Carrega em Editar e muda o formato.', true); return; }
     if (!$('ev-cv').captureStream || !window.MediaRecorder){ avisar('Este telemóvel não grava vídeo a partir do ecrã. Usa o cartaz (imagem), ou abre a Vindora no Chrome.'); return; }
     if (correr) return; avisar(''); semVoz = true; $('ev-phone').scrollIntoView({ behavior: 'smooth', block: 'center' }); comecar();
+  };
+  /* ---- Narração com voz gerada por IA ---- */
+  function chaveNarr(x){ return x.linhas.map(l => l[0]).join('\n'); }
+  function narrDe(x){ const n = x && narr[x.id]; return n && n.key === chaveNarr(x) ? n.durs : null; }
+  function narrAtual(){ const x = lista()[cur]; return x && narr[x.id] && narr[x.id].key === chaveNarr(x) ? narr[x.id] : null; }
+  function pcmParaBuffer(ac, b64, taxa){
+    const bin = atob(b64); const n = bin.length >> 1; const buf = ac.createBuffer(1, n, taxa); const ch = buf.getChannelData(0);
+    for (let i = 0; i < n; i++){ let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (v & 0x8000) v -= 0x10000; ch[i] = v / 32768; }
+    return buf;
+  }
+  function agendarNarracao(c, destinos){
+    const n = narrAtual(); const fontes = []; if (!n) return () => {};
+    const g = c.createGain(); g.gain.value = 1; destinos.forEach(d => g.connect(d));
+    itens.forEach((it, i) => { if (!n.bufs[i]) return; const sb = c.createBufferSource(); sb.buffer = n.bufs[i]; sb.connect(g); sb.start(c.currentTime + 0.1 + it.t); fontes.push(sb); });
+    return () => { fontes.forEach(f => { try { f.stop(); } catch(e){} }); try { g.disconnect(); } catch(e){} };
+  }
+  async function gerarNarracao(){
+    const x = lista()[cur]; if (!x || !x.pub){ ctx.toast('Escolhe uma publicação primeiro.', true); return; }
+    if (!ctx.narrar){ avisar('A narração por IA ainda não está ligada nesta versão da Vindora.'); return; }
+    const textos = x.linhas.map(l => l[0]); const voz = $('ev-nvoz').value, estilo = $('ev-nest').value;
+    avisar(''); $('ev-ngerar').disabled = true; $('ev-nouvir').disabled = true; $('ev-nvideo').disabled = true;
+    if (!narrAc) narrAc = new (window.AudioContext || window.webkitAudioContext)();
+    const bufs = new Array(textos.length); const fila = textos.map((t, i) => i); let feitas = 0, erro = '';
+    $('ev-err').style.color = '#a9a3c7'; $('ev-err').textContent = 'A criar a voz… 0 de ' + textos.length;
+    const trabalhador = async () => {
+      while (fila.length && !erro){
+        const i = fila.shift(); let r = null;
+        for (let t = 0; t < 2; t++){
+          try { r = await ctx.narrar(textos[i], voz, estilo); } catch(e){ r = { ok: false, motivo: 'rede', mensagem: 'Sem ligação à Vindora. Tenta outra vez.' }; }
+          if (r && r.ok) break; if (r && ['limite', 'semChave', 'quota', 'vazio'].includes(r.motivo)) break;
+        }
+        if (!r || !r.ok){ erro = (r && r.mensagem) || 'Não consegui criar a voz. A função do Netlify já foi publicada?'; return; }
+        try { bufs[i] = pcmParaBuffer(narrAc, r.audio, r.taxa || 24000); } catch(e){ erro = 'O áudio recebido não é válido.'; return; }
+        feitas++; $('ev-err').textContent = 'A criar a voz… ' + feitas + ' de ' + textos.length;
+      }
+    };
+    await Promise.all([trabalhador(), trabalhador(), trabalhador()]);
+    $('ev-ngerar').disabled = false; $('ev-nouvir').disabled = false; $('ev-nvideo').disabled = false; $('ev-err').style.color = '';
+    if (erro){ $('ev-err').textContent = ''; avisar(erro); return; }
+    narr[x.id] = { key: chaveNarr(x), voz, estilo, bufs, durs: bufs.map(b => b.duration) };
+    $('ev-err').textContent = ''; desenhar(); ctx.toast('Narração pronta. Carrega em Ouvir ou em Vídeo com narração.');
+  }
+  function ouvirNarr(){
+    if (ouvirStop){ ouvirStop(); ouvirStop = null; $('ev-nouvir').textContent = '▶️ Ouvir narração'; return; }
+    const n = narrAtual(); if (!n){ ctx.toast('Gera primeiro a narração.', true); return; }
+    const c = new (window.AudioContext || window.webkitAudioContext)(); const st = agendarNarracao(c, [c.destination]);
+    const fim = setTimeout(() => { if (ouvirStop){ ouvirStop(); ouvirStop = null; $('ev-nouvir').textContent = '▶️ Ouvir narração'; } }, (total + 1) * 1000);
+    ouvirStop = () => { clearTimeout(fim); st(); setTimeout(() => { try { c.close(); } catch(e){} }, 300); };
+    $('ev-nouvir').textContent = '⏹️ Parar';
+  }
+  $('ev-ngerar').onclick = gerarNarracao;
+  $('ev-nouvir').onclick = ouvirNarr;
+  $('ev-nvideo').onclick = () => {
+    const x = lista()[cur]; if (!x || !x.pub){ ctx.toast('Escolhe uma publicação primeiro.', true); return; }
+    if (!narrAtual()){ ctx.toast('Gera primeiro a narração, e volta a carregar.', true); return; }
+    if (x.formato === 'audio'){ if (!window.MediaRecorder){ avisar('Este telemóvel não grava áudio.'); return; } }
+    else if (x.formato !== 'cartaz'){ ctx.toast('O vídeo com narração usa o formato «Vídeo com legendas». Carrega em Editar e muda o formato.', true); return; }
+    else if (!$('ev-cv').captureStream || !window.MediaRecorder){ avisar('Este telemóvel não grava vídeo a partir do ecrã. Abre a Vindora no Chrome.'); return; }
+    if (correr) return; if (ouvirStop) ouvirNarr(); avisar(''); narrando = true; $('ev-phone').scrollIntoView({ behavior: 'smooth', block: 'center' }); comecar();
   };
   $('ev-cnew').onclick = () => abrirPub(null);
   $('ev-cedit').onclick = () => { const x = lista()[cur]; if (x && x.pub) abrirPub(x); };
