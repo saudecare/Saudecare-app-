@@ -8,7 +8,7 @@ const BASE = [
   { id: 'f396', hz: '396 Hz', titulo: 'Solfeggio 396 Hz',
     para: 'Nas tradições vibracionais é associada a libertar medos, culpa e bloqueios, e a sentir mais segurança e confiança.',
     como: 'Põe auscultadores, senta-te ou deita-te confortavelmente e fecha os olhos. Respira devagar. Se te vierem pensamentos, deixa-os passar e volta à respiração. Mantém o volume baixo e agradável.',
-    tempo: '10 a 15 minutos' },
+    tempo: '10 a 15 minutos', link: 'https://zenmix.io/mix/Hushed%20Glacier--29a20' },
   { id: 'f432', hz: '432 Hz', titulo: 'Música a 432 Hz',
     para: 'Associada à harmonia, à calma e ao equilíbrio. Muita gente usa-a para relaxar, meditar e acalmar a mente ao fim do dia.',
     como: 'Ouve num sítio calmo, sem interrupções. Podes ficar a olhar para uma vela ou fechar os olhos. Acompanha a música com respirações lentas e profundas.',
@@ -35,7 +35,7 @@ export function linkParaPlayer(url){
   if (/\.(mp3|m4a|wav|ogg|aac)(\?|#|$)/i.test(u)) return { tipo: 'audio', src: u };
   const y = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{6,})/i);
   if (y) return { tipo: 'youtube', src: 'https://www.youtube-nocookie.com/embed/' + y[1] + '?rel=0' };
-  return null;
+  return { tipo: 'site', src: u }; // qualquer outro site: abre noutra janela
 }
 
 export function renderFrequencias(main, ctx){
@@ -59,7 +59,7 @@ export function renderFrequencias(main, ctx){
       ${f.tempo ? `<p style="margin:8px 0 0;"><strong>⏱️ Quanto tempo</strong><br>${esc(f.tempo)}</p>` : ''}
       <div class="fq-palco" style="margin-top:10px;"></div>
       <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap;">
-        ${pl ? `<button class="primary fq-ouvir">▶ Ouvir</button>` : `<span class="muted">Ainda sem música. Carrega em ✏️ Editar e cola o link.</span>`}
+        ${pl ? `<button class="primary fq-ouvir">${pl.tipo === 'site' ? '🔗 Abrir a música' : '▶ Ouvir'}</button>` : `<span class="muted">Ainda sem música. Carrega em ✏️ Editar e cola o link.</span>`}
         <button class="ghost fq-partilhar">📤 Partilhar</button>
         <button class="ghost fq-editar">✏️ Editar</button>
       </div>
@@ -72,7 +72,7 @@ export function renderFrequencias(main, ctx){
       <h3>✏️ ${f._novo ? 'Nova frequência' : 'Editar frequência'}</h3>
       <label class="muted" for="fq-t">Título</label><input type="text" id="fq-t" value="${esc(f.titulo)}" placeholder="Ex.: Solfeggio 528 Hz" style="margin:4px 0 8px;">
       <label class="muted" for="fq-h">Frequência</label><input type="text" id="fq-h" value="${esc(f.hz)}" placeholder="Ex.: 528 Hz" style="margin:4px 0 8px;">
-      <label class="muted" for="fq-l">Link da música (Google Drive, YouTube ou ficheiro mp3)</label><input type="url" id="fq-l" value="${esc(f.link)}" placeholder="https://drive.google.com/file/d/…" style="margin:4px 0 4px;">
+      <label class="muted" for="fq-l">Link da música (Google Drive, YouTube, mp3 ou outro site)</label><input type="url" id="fq-l" value="${esc(f.link)}" placeholder="https://drive.google.com/file/d/…" style="margin:4px 0 4px;">
       <p class="muted" style="font-size:.8rem;margin:0 0 8px;">No Drive: abre o ficheiro, toca em Partilhar e escolhe «Qualquer pessoa com o link», depois copia o link.</p>
       <label class="muted" for="fq-p">Para que serve</label><textarea id="fq-p" rows="3" style="margin:4px 0 8px;">${esc(f.para)}</textarea>
       <label class="muted" for="fq-c">Como fazer</label><textarea id="fq-c" rows="3" style="margin:4px 0 8px;">${esc(f.como)}</textarea>
@@ -95,6 +95,7 @@ export function renderFrequencias(main, ctx){
       const o = c.querySelector('.fq-ouvir');
       if (o) o.onclick = () => {
         const pl = linkParaPlayer(f.link), pa = c.querySelector('.fq-palco'); if (!pl) return;
+        if (pl.tipo === 'site'){ window.open(pl.src, '_blank', 'noopener'); return; }
         if (pl.tipo === 'audio') pa.innerHTML = `<audio controls preload="none" src="${esc(pl.src)}" style="width:100%"></audio>`;
         else pa.innerHTML = `<iframe src="${esc(pl.src)}" title="${esc(f.titulo)}" width="100%" height="${pl.tipo === 'youtube' ? 220 : 90}" style="border:0;border-radius:10px;" allow="autoplay; encrypted-media" loading="lazy"></iframe>`;
         o.style.display = 'none';
@@ -119,7 +120,7 @@ export function renderFrequencias(main, ctx){
         const v = id => main.querySelector(id).value.trim();
         const item = { id: atual.id, titulo: v('#fq-t').slice(0, 80), hz: v('#fq-h').slice(0, 20), link: v('#fq-l'), para: v('#fq-p').slice(0, 600), como: v('#fq-c').slice(0, 800), tempo: v('#fq-d').slice(0, 60) };
         if (!item.titulo){ ctx.toast('Escreve o título.', true); return; }
-        if (item.link && !linkParaPlayer(item.link)){ ctx.toast('Esse link não parece ser do Drive, do YouTube nem um ficheiro mp3. Confirma-o.', true); return; }
+        if (item.link && !linkParaPlayer(item.link)){ ctx.toast('O link tem de começar por https://. Confirma-o.', true); return; }
         const nova = novo ? lista.concat([item]) : lista.map(x => x.id === item.id ? item : x);
         g.disabled = true;
         try { await guardar(nova); novo = null; editarId = null; ctx.toast('Guardado ✓'); desenhar(); }
