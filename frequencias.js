@@ -5,30 +5,51 @@ export const TENANT_FREQ = 'hikari-terapias';
 
 const AVISO = 'Prática de relaxamento e bem-estar. Não substitui acompanhamento médico.';
 const BASE = [
-  { id: 'f396', hz: '396 Hz', titulo: 'Solfeggio 396 Hz',
+  { id: 'f174', hz: '174 Hz', titulo: 'Solfeggio 174 Hz', link: 'frequencias/174hz.mp3',
+    para: 'Associada ao relaxamento do corpo e à sensação de segurança. Usa-se para aliviar a tensão e acalmar o corpo e as emoções.',
+    como: 'Deita-te ou senta-te com apoio, com auscultadores. Faz uma respiração lenta e vai soltando os ombros, a barriga e o maxilar de cada vez que expiras.',
+    tempo: '10 a 20 minutos' },
+  { id: 'f285', hz: '285 Hz', titulo: 'Solfeggio 285 Hz', link: 'frequencias/285hz.mp3',
+    para: 'Associada à renovação, ao equilíbrio e à calma mental. Boa para recomeçar o dia ou depois de um período cansativo.',
+    como: 'Fecha os olhos e imagina o corpo a ser envolvido por uma luz suave. Respira devagar e deixa o corpo pesar.',
+    tempo: '10 a 15 minutos' },
+  { id: 'f396', hz: '396 Hz', titulo: 'Solfeggio 396 Hz', link: 'frequencias/396hz.mp3',
     para: 'Nas tradições vibracionais é associada a libertar medos, culpa e bloqueios, e a sentir mais segurança e confiança.',
     como: 'Põe auscultadores, senta-te ou deita-te confortavelmente e fecha os olhos. Respira devagar. Se te vierem pensamentos, deixa-os passar e volta à respiração. Mantém o volume baixo e agradável.',
-    tempo: '10 a 15 minutos', link: 'https://zenmix.io/mix/Hushed%20Glacier--29a20' },
-  { id: 'f432', hz: '432 Hz', titulo: 'Música a 432 Hz',
+    tempo: '10 a 15 minutos' },
+  { id: 'f417', hz: '417 Hz', titulo: 'Solfeggio 417 Hz', link: 'frequencias/417hz.mp3',
+    para: 'Associada a largar o que já não serve, a mudar e a recomeçar. Muita gente usa-a para limpar a energia e ganhar ideias novas.',
+    como: 'Ouve com os olhos fechados. A cada expiração, imagina que deixas ir uma preocupação. No fim, escreve numa folha uma coisa que queres mudar.',
+    tempo: '10 a 15 minutos' },
+  { id: 'f432', hz: '432 Hz', titulo: 'Música a 432 Hz', link: 'frequencias/432hz.mp3',
     para: 'Associada à harmonia, à calma e ao equilíbrio. Muita gente usa-a para relaxar, meditar e acalmar a mente ao fim do dia.',
-    como: 'Ouve num sítio calmo, sem interrupções. Podes ficar a olhar para uma vela ou fechar os olhos. Acompanha a música com respirações lentas e profundas.',
+    como: 'Ouve num sítio calmo, sem interrupções. Podes ficar a olhar para uma vela ou fechar os olhos. Acompanha o som com respirações lentas e profundas.',
     tempo: '15 a 30 minutos' },
-  { id: 'f528', hz: '528 Hz', titulo: 'Solfeggio 528 Hz',
+  { id: 'f528', hz: '528 Hz', titulo: 'Solfeggio 528 Hz', link: 'frequencias/528hz.mp3',
     para: 'Conhecida como a frequência do amor e da transformação. Associada ao bem-estar, à alegria e à reconexão com a nossa energia.',
     como: 'Ouve com auscultadores, de olhos fechados, com uma mão no coração. Imagina uma luz verde ou dourada a encher o peito a cada respiração.',
     tempo: '10 a 20 minutos' },
-  { id: 'f741', hz: '741 Hz', titulo: 'Solfeggio 741 Hz',
+  { id: 'f639', hz: '639 Hz', titulo: 'Solfeggio 639 Hz', link: 'frequencias/639hz.mp3',
+    para: 'Associada à ligação com os outros, às relações e à comunicação. Boa antes de uma conversa importante ou para abrir o coração.',
+    como: 'Senta-te com a coluna direita e uma mão no peito. Pensa numa pessoa de quem gostas e envia-lhe, em silêncio, uma intenção de paz.',
+    tempo: '10 a 15 minutos' },
+  { id: 'f741', hz: '741 Hz', titulo: 'Solfeggio 741 Hz', link: 'frequencias/741hz.mp3',
     para: 'Associada à limpeza, à clareza e à expressão. Usa-se para sentir a mente mais leve e arrumada.',
     como: 'Ouve com a coluna direita e os ombros soltos. A cada expiração, imagina que largas o que já não precisas. Bebe um copo de água no fim.',
     tempo: '10 a 15 minutos' },
-  { id: 'f852', hz: '852 Hz', titulo: 'Solfeggio 852 Hz',
+  { id: 'f852', hz: '852 Hz', titulo: 'Solfeggio 852 Hz', link: 'frequencias/852hz.mp3',
     para: 'Associada à intuição, ao silêncio interior e à ligação espiritual. Boa para meditar e acalmar o ruído mental.',
     como: 'Ouve em silêncio, de olhos fechados, com atenção na zona entre as sobrancelhas. Não precisas de fazer nada, só de estar presente.',
+    tempo: '15 a 20 minutos' },
+  { id: 'f963', hz: '963 Hz', titulo: 'Solfeggio 963 Hz', link: 'frequencias/963hz.mp3',
+    para: 'Associada à ligação espiritual, à expansão da consciência e à sensação de unidade. Usa-se em meditações mais profundas.',
+    como: 'Fica sentado, com a coluna direita, de olhos fechados. Sente o topo da cabeça e imagina uma luz a descer devagar pelo corpo. Faz esta prática com calma e sem pressa.',
     tempo: '15 a 20 minutos' }
 ];
 
 export function linkParaPlayer(url){
   const u = String(url || '').trim();
+  if (/^frequencias\/[\w-]+\.mp3$/.test(u)) return { tipo: 'local', src: u }; // som criado na própria app
   if (!/^https:\/\//i.test(u)) return null;
   const d = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[^#]*&)?id=)([\w-]{15,})/i);
   if (d) return { tipo: 'drive', src: 'https://drive.google.com/file/d/' + d[1] + '/preview' };
@@ -44,7 +65,9 @@ export function renderFrequencias(main, ctx){
     return;
   }
   const esc = ctx.escapeHtml;
-  let lista = ctx.get(); if (!lista.length) lista = BASE.map(x => Object.assign({ link: '' }, x));
+  let lista = ctx.get();
+  if (!lista.length) lista = BASE.map(x => Object.assign({}, x));
+  else lista = lista.map(x => { const b = BASE.find(y => y.id === x.id); return b && !x.link ? Object.assign({}, x, { link: b.link }) : x; });
   let editarId = null;
 
   const guardar = async nova => { await ctx.save(nova); lista = nova; };
@@ -72,7 +95,7 @@ export function renderFrequencias(main, ctx){
       <h3>✏️ ${f._novo ? 'Nova frequência' : 'Editar frequência'}</h3>
       <label class="muted" for="fq-t">Título</label><input type="text" id="fq-t" value="${esc(f.titulo)}" placeholder="Ex.: Solfeggio 528 Hz" style="margin:4px 0 8px;">
       <label class="muted" for="fq-h">Frequência</label><input type="text" id="fq-h" value="${esc(f.hz)}" placeholder="Ex.: 528 Hz" style="margin:4px 0 8px;">
-      <label class="muted" for="fq-l">Link da música (Google Drive, YouTube, mp3 ou outro site)</label><input type="url" id="fq-l" value="${esc(f.link)}" placeholder="https://drive.google.com/file/d/…" style="margin:4px 0 4px;">
+      <label class="muted" for="fq-l">Link da música (já vem preenchido; podes trocar por Drive, YouTube, mp3 ou outro site)</label><input type="url" id="fq-l" value="${esc(f.link)}" placeholder="https://drive.google.com/file/d/…" style="margin:4px 0 4px;">
       <p class="muted" style="font-size:.8rem;margin:0 0 8px;">No Drive: abre o ficheiro, toca em Partilhar e escolhe «Qualquer pessoa com o link», depois copia o link.</p>
       <label class="muted" for="fq-p">Para que serve</label><textarea id="fq-p" rows="3" style="margin:4px 0 8px;">${esc(f.para)}</textarea>
       <label class="muted" for="fq-c">Como fazer</label><textarea id="fq-c" rows="3" style="margin:4px 0 8px;">${esc(f.como)}</textarea>
@@ -87,16 +110,27 @@ export function renderFrequencias(main, ctx){
   function desenhar(){
     main.innerHTML = `<h2>🎶 Frequências</h2>
       <p class="muted">Músicas de frequência para relaxar e meditar. Carrega em «Ouvir» e segue as indicações de cada uma.</p>
-      <div class="row" style="margin-bottom:12px;"><button class="primary" id="fq-novo">+ Nova frequência</button></div>
+      <div class="row" style="margin-bottom:12px;gap:8px;flex-wrap:wrap;"><button class="primary" id="fq-novo">+ Nova frequência</button><button class="ghost" id="fq-repor">↻ Repor as da lista</button></div>
       <div id="fq-lista">${novo ? editor(novo) : ''}${lista.map(f => f.id === editarId ? editor(f) : cartao(f)).join('')}</div>`;
     main.querySelector('#fq-novo').onclick = () => { editarId = null; novo = { id: 'f' + Date.now().toString(36), hz: '', titulo: '', link: '', para: '', como: '', tempo: '', _novo: true }; desenhar(); window.scrollTo(0, 0); };
+    main.querySelector('#fq-repor').onclick = async () => {
+      const faltam = BASE.filter(b => !lista.some(x => x.id === b.id));
+      if (!faltam.length){ ctx.toast('A lista já tem todas as frequências.'); return; }
+      try { await guardar(lista.concat(faltam.map(x => Object.assign({}, x)))); ctx.toast('Juntei ' + faltam.length + ' frequência(s) à lista ✓'); desenhar(); } catch(e){ ctx.toast('Não consegui guardar: ' + (e.message || e), true); }
+    };
     main.querySelectorAll('[data-f]').forEach(c => {
       const f = lista.find(x => x.id === c.dataset.f); if (!f) return;
       const o = c.querySelector('.fq-ouvir');
       if (o) o.onclick = () => {
         const pl = linkParaPlayer(f.link), pa = c.querySelector('.fq-palco'); if (!pl) return;
         if (pl.tipo === 'site'){ window.open(pl.src, '_blank', 'noopener'); return; }
-        if (pl.tipo === 'audio') pa.innerHTML = `<audio controls preload="none" src="${esc(pl.src)}" style="width:100%"></audio>`;
+        if (pl.tipo === 'local' || pl.tipo === 'audio'){
+          pa.innerHTML = `<audio controls loop ${pl.tipo === 'local' ? 'autoplay ' : ''}preload="auto" src="${esc(pl.src)}" style="width:100%"></audio>
+            <div class="row" style="margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap;"><label class="muted" for="fqt-${esc(f.id)}">⏲️ Parar sozinho ao fim de</label>
+            <select id="fqt-${esc(f.id)}" style="width:auto;"><option value="0">Não parar</option><option value="10">10 minutos</option><option value="15">15 minutos</option><option value="20">20 minutos</option><option value="30">30 minutos</option></select></div>`;
+          const au = pa.querySelector('audio'), sel = pa.querySelector('select'); let tm = null;
+          sel.onchange = () => { clearTimeout(tm); const m = Number(sel.value); if (!m) return; ctx.toast('Vai parar sozinho daqui a ' + m + ' minutos.'); tm = setTimeout(() => { let v = au.volume; const id = setInterval(() => { v = Math.max(0, v - 0.05); au.volume = v; if (v <= 0){ clearInterval(id); au.pause(); au.volume = 1; } }, 200); }, m * 60000); };
+        }
         else pa.innerHTML = `<iframe src="${esc(pl.src)}" title="${esc(f.titulo)}" width="100%" height="${pl.tipo === 'youtube' ? 220 : 90}" style="border:0;border-radius:10px;" allow="autoplay; encrypted-media" loading="lazy"></iframe>`;
         o.style.display = 'none';
       };
