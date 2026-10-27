@@ -1,5 +1,0 @@
-<!doctype html><meta charset=utf-8><body><div id=m></div><script type=module>
-import {renderFrequencias} from './frequencias.js';
-window.saved=null;
-renderFrequencias(document.getElementById('m'),{tenantId:'hikari-terapias',get:()=>[],save:async l=>{window.saved=l},escapeHtml:s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),toast:m=>{window.t=m},confirmar:async()=>true});
-window.ready=true;</script>
