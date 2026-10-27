@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-27-02';
+const APP_VERSION = '2026-10-27-03';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4310,6 +4310,7 @@ window.savePatient = async function(){
     __triagem.patientNome = fullName;
     __triagem.anterior = null; __triagem.numConsulta = 1;
     { const ex = extraPac; if (ex.birthDate) __triagem.dataNascimento = ex.birthDate; if (ex.birthCountry) __triagem.paisNascimento = ex.birthCountry; __triagem.requester = ex.requester && ex.requester.enviarParaResponsavel ? ex.requester : null; }
+    __triagem.passo = 1; __triagem._ultimo = 0; // segue logo para a consulta, sem ter de ir ao fim do ecrã
     renderView('triagemBaixaVibracao', { manterEstado: true });
   } else {
     renderView('patients');
@@ -5746,7 +5747,11 @@ window.deletePatient = async function(patientId, name){
     }catch(e){ restos++; }
     toast(restos ? 'Paciente apagado, mas ' + restos + ' registo(s) associado(s) não foram removidos. Contacte o apoio.' : 'Paciente apagado, com todos os registos associados.', !!restos);
     closePatientOverlay();
-    renderView('patients');
+    if (window.__triagemApagando){
+      window.__allPatientsCache = null;
+      if (__triagem && __triagem.patientId === patientId){ __triagem.patientId = null; __triagem.patientNome = ''; __triagem.anterior = null; __triagem._ultimaSemTratamento = null; __triagem.numConsulta = 1; }
+      renderView('triagemBaixaVibracao', { manterEstado: true });
+    } else renderView('patients');
   } catch(e){
     toast('Erro ao apagar o paciente: ' + (e.message || e), true);
     console.error('deletePatient:', e);
@@ -11750,14 +11755,24 @@ function triagemPasso0Paciente(main){
     const q = stripAccents(document.getElementById('triagemBuscaPaciente').value.trim());
     const lista = !q ? window.__allPatientsCache : window.__allPatientsCache.filter(p => stripAccents(p.fullName||'').includes(q));
     const box = document.getElementById('triagemListaPacientes');
-    box.innerHTML = lista.map(p => `<div class="row" style="padding:8px;cursor:pointer;border-bottom:1px solid #eee;" onclick="window.__triagemEscolherPaciente('${p.id}','${escapeAttrJs(p.fullName)}')"><span>${escapeHtml(p.fullName)}</span></div>`).join('') || '<p class="muted">Sem resultados.</p>';
+    box.innerHTML = lista.map(p => `<div class="row" style="padding:8px;cursor:pointer;border-bottom:1px solid #eee;align-items:center;gap:8px;" onclick="window.__triagemEscolherPaciente('${p.id}','${escapeAttrJs(p.fullName)}')"><span style="flex:1">${escapeHtml(p.fullName)}</span><button class="ghost" style="width:auto;flex:none;padding:4px 10px;min-height:36px;" title="Apagar paciente" aria-label="Apagar ${escapeHtml(p.fullName)}" onclick="event.stopPropagation();window.__triagemApagarPaciente('${p.id}','${escapeAttrJs(p.fullName)}')">🗑️</button></div>`).join('') || '<p class="muted">Sem resultados.</p>';
   };
   window.__triagemEscolherPaciente = async function(id, nome){
     __triagem.patientId = id; __triagem.patientNome = nome;
     const pc = (window.__allPatientsCache || []).find(x => x.id === id);
     if (pc){ if (pc.birthDate && !__triagem.dataNascimento) __triagem.dataNascimento = pc.birthDate; if (pc.birthCountry && !__triagem.paisNascimento) __triagem.paisNascimento = pc.birthCountry; __triagem.requester = pc.requester && pc.requester.enviarParaResponsavel ? pc.requester : null; }
     await triagemCarregarAnterior(id);
-    renderTriagemPasso(main);
+    if (__triagem._ultimaSemTratamento){
+      // Há uma triagem pendente: mostra o cartão e leva o ecrã até ele, para decidir.
+      renderTriagemPasso(main);
+      setTimeout(() => { const c = document.getElementById('triagemLimpezaCard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 60);
+      return;
+    }
+    __triagem.passo++; window.scrollTo(0, 0); renderTriagemPasso(main); // segue logo para a consulta
+  };
+  window.__triagemApagarPaciente = async function(id, nome){
+    window.__triagemApagando = true;
+    try{ await window.deletePatient(id, nome); } finally { window.__triagemApagando = false; }
   };
   window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
   window.__triagemFiltrarPacientes();
