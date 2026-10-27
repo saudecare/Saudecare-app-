@@ -59,6 +59,27 @@ export function linkParaPlayer(url){
   return { tipo: 'site', src: u }; // qualquer outro site: abre noutra janela
 }
 
+/* Imagem de cada frequência, desenhada na hora (SVG): cores, anéis e pétalas diferentes por frequência. Sem ficheiros. */
+const CORES = { 174: ['#c9826b', '#3a1f33'], 285: ['#f08a5d', '#3d1f2e'], 396: ['#e0524a', '#33142a'], 417: ['#f2a93b', '#3a1d2a'], 432: ['#45b8b0', '#10303a'],
+  528: ['#58c27d', '#0f3226'], 639: ['#4cc3dd', '#0d2d45'], 741: ['#5b8def', '#14234f'], 852: ['#7a6af0', '#1d1a52'], 963: ['#b36ee6', '#2a1650'] };
+export function imagemSvg(f){
+  const n = parseInt(String(f.hz || f.titulo || '').replace(/[^\d]/g, ''), 10) || 0;
+  let h = 0; for (const c of String(f.id || 'x')) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const par = CORES[n] || ['hsl(' + (h % 360) + ',65%,62%)', 'hsl(' + ((h + 40) % 360) + ',55%,16%)'];
+  const k = ((n || h) % 5) + 6, id = 'g' + (n || h);
+  let petalas = '';
+  for (let i = 0; i < k; i++) petalas += `<ellipse cx="200" cy="150" rx="14" ry="64" transform="rotate(${(360 / k) * i} 200 150) translate(0 -46)" fill="#fff" fill-opacity=".13" stroke="#fff" stroke-opacity=".35" stroke-width="1"/>`;
+  let estrelas = ''; for (let i = 0; i < 16; i++){ const x = (h * (i + 3) * 37) % 400, y = (h * (i + 5) * 53) % 300; estrelas += `<circle cx="${x}" cy="${y}" r="${(i % 3) * 0.6 + 0.7}" fill="#fff" fill-opacity="${0.3 + (i % 4) * 0.12}"/>`; }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${String(f.titulo || '').replace(/[<>&"]/g, '')}" style="display:block;width:100%;height:100%">
+    <defs><radialGradient id="${id}" cx="50%" cy="50%" r="75%"><stop offset="0" stop-color="${par[0]}"/><stop offset="1" stop-color="${par[1]}"/></radialGradient>
+    <radialGradient id="${id}c" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+    <rect width="400" height="300" fill="url(#${id})"/>${estrelas}
+    <circle cx="200" cy="150" r="118" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="1.5"/><circle cx="200" cy="150" r="92" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="1.5"/>
+    <circle cx="200" cy="150" r="66" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="1.5"/>${petalas}
+    <path d="M0 232 Q50 212 100 232 T200 232 T300 232 T400 232 V300 H0Z" fill="#000" fill-opacity=".14"/><path d="M0 254 Q50 238 100 254 T200 254 T300 254 T400 254 V300 H0Z" fill="#000" fill-opacity=".16"/>
+    <circle cx="200" cy="150" r="34" fill="url(#${id}c)"/></svg>`;
+}
+
 export function renderFrequencias(main, ctx){
   if (ctx.tenantId !== TENANT_FREQ){
     main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>';
@@ -74,7 +95,8 @@ export function renderFrequencias(main, ctx){
 
   function cartao(f){
     const pl = linkParaPlayer(f.link);
-    return `<div class="card" data-f="${esc(f.id)}" style="margin-bottom:12px;">
+    return `<div class="card" data-f="${esc(f.id)}" style="margin-bottom:12px;padding-top:0;overflow:hidden;">
+      <div style="margin:0 -18px 12px;height:190px;">${imagemSvg(f)}</div>
       <h3 style="margin:0 0 2px;">🎶 ${esc(f.titulo)}</h3>
       ${f.hz ? `<p class="muted" style="margin:0 0 8px;">${esc(f.hz)}</p>` : ''}
       ${f.para ? `<p style="margin:8px 0 0;"><strong>✨ Para que serve</strong><br>${esc(f.para).replace(/\n/g, '<br>')}</p>` : ''}
@@ -88,6 +110,15 @@ export function renderFrequencias(main, ctx){
       </div>
       <p class="muted" style="margin:10px 0 0;font-size:.8rem;">${AVISO}</p>
     </div>`;
+  }
+
+  function curto(t){ const x = String(t || '').split(/(?<=[.!?])\s/)[0]; return x.length > 120 ? x.slice(0, 117) + '…' : x; }
+  function botao(f){
+    return `<button type="button" data-abrir="${esc(f.id)}" class="fq-tile" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:var(--card,#fff);box-shadow:0 2px 10px rgba(0,0,0,.14);min-width:0;" aria-label="${esc(f.titulo)}">
+      <div style="height:110px;">${imagemSvg(f)}</div>
+      <div style="padding:10px 12px 12px;"><strong style="display:block;font-size:1rem;">${esc(f.titulo)}</strong>
+      <span class="muted" style="display:block;font-size:.82rem;margin-top:4px;line-height:1.3;">${esc(curto(f.para))}</span>
+      ${f.tempo ? `<span class="muted" style="display:block;font-size:.78rem;margin-top:6px;">⏱️ ${esc(f.tempo)}</span>` : ''}</div></button>`;
   }
 
   function editor(f){
@@ -106,14 +137,19 @@ export function renderFrequencias(main, ctx){
       </div></div>`;
   }
 
-  let novo = null;
+  let novo = null, aberto = null;
   function desenhar(){
-    main.innerHTML = `<h2>🎶 Frequências</h2>
-      <p class="muted">Músicas de frequência para relaxar e meditar. Carrega em «Ouvir» e segue as indicações de cada uma.</p>
+    const emEdicao = novo || editarId, fa = aberto && lista.find(x => x.id === aberto);
+    if (emEdicao) main.innerHTML = `<h2>🎶 Frequências</h2>` + (novo ? editor(novo) : editor(lista.find(x => x.id === editarId)));
+    else if (fa) main.innerHTML = `<div class="row" style="margin-bottom:10px;"><button class="ghost" id="fq-voltar">← Todas as frequências</button></div>` + cartao(fa);
+    else main.innerHTML = `<h2>🎶 Frequências</h2>
+      <p class="muted">Escolhe uma frequência. Dentro de cada uma tens a descrição, como fazer, o tempo e a música.</p>
       <div class="row" style="margin-bottom:12px;gap:8px;flex-wrap:wrap;"><button class="primary" id="fq-novo">+ Nova frequência</button><button class="ghost" id="fq-repor">↻ Repor as da lista</button></div>
-      <div id="fq-lista">${novo ? editor(novo) : ''}${lista.map(f => f.id === editarId ? editor(f) : cartao(f)).join('')}</div>`;
-    main.querySelector('#fq-novo').onclick = () => { editarId = null; novo = { id: 'f' + Date.now().toString(36), hz: '', titulo: '', link: '', para: '', como: '', tempo: '', _novo: true }; desenhar(); window.scrollTo(0, 0); };
-    main.querySelector('#fq-repor').onclick = async () => {
+      <div id="fq-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">${lista.map(botao).join('')}</div>`;
+    main.querySelectorAll('[data-abrir]').forEach(b => b.onclick = () => { aberto = b.dataset.abrir; desenhar(); window.scrollTo(0, 0); });
+    const vv = main.querySelector('#fq-voltar'); if (vv) vv.onclick = () => { aberto = null; desenhar(); };
+    const bn = main.querySelector('#fq-novo'); if (bn) bn.onclick = () => { editarId = null; novo = { id: 'f' + Date.now().toString(36), hz: '', titulo: '', link: '', para: '', como: '', tempo: '', _novo: true }; desenhar(); window.scrollTo(0, 0); };
+    const br = main.querySelector('#fq-repor'); if (br) br.onclick = async () => {
       const faltam = BASE.filter(b => !lista.some(x => x.id === b.id));
       if (!faltam.length){ ctx.toast('A lista já tem todas as frequências.'); return; }
       try { await guardar(lista.concat(faltam.map(x => Object.assign({}, x)))); ctx.toast('Juntei ' + faltam.length + ' frequência(s) à lista ✓'); desenhar(); } catch(e){ ctx.toast('Não consegui guardar: ' + (e.message || e), true); }
@@ -148,7 +184,7 @@ export function renderFrequencias(main, ctx){
       const ap = main.querySelector('#fq-apagar');
       if (ap) ap.onclick = async () => {
         if (!await ctx.confirmar('Apagar frequência', 'Apagar "' + atual.titulo + '"?')) return;
-        try { await guardar(lista.filter(x => x.id !== atual.id)); editarId = null; ctx.toast('Apagada.'); desenhar(); } catch(e){ ctx.toast('Não consegui apagar: ' + (e.message || e), true); }
+        try { await guardar(lista.filter(x => x.id !== atual.id)); editarId = null; aberto = null; ctx.toast('Apagada.'); desenhar(); } catch(e){ ctx.toast('Não consegui apagar: ' + (e.message || e), true); }
       };
       g.onclick = async () => {
         const v = id => main.querySelector(id).value.trim();
