@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-10-27-01';
+const APP_VERSION = '2026-10-27-02';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11655,45 +11655,64 @@ window.__triagemContinuar = async function(){
   renderTriagemPasso(document.getElementById('mainView'));
 };
 function triagemHojeISO(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
-// As triagens guardadas não se alteram (regras do Firestore): marcar a limpeza grava uma nova versão
-// que substitui a anterior, com a mesma data de triagem e a data em que a limpeza foi feita.
-window.__triagemMarcarLimpeza = async function(){
+// Estado da limpeza (protocolo de cura) de uma triagem: pendente, feita ou cancelada.
+// As triagens guardadas não se alteram (regras do Firestore): cada mudança grava uma nova versão
+// que substitui a anterior, com a mesma data de triagem.
+function triagemEstadoLimpeza(u){ return (u && u.limpezaEstado) || (u && u.limpezaFeita ? 'feita' : 'pendente'); }
+window.__triagemSetLimpeza = async function(estado){
   const u = __triagem._ultimaSemTratamento; if (!u || !__triagem.patientId){ toast('Não há triagem para marcar.', true); return; }
-  const v = (document.getElementById('triagemLimpezaData') || {}).value;
-  if (!v){ toast('Escolha a data em que fez a limpeza.', true); return; }
-  const [a, m, d] = v.split('-').map(Number);
-  const quando = new Date(a, m - 1, d, 12, 0, 0);
-  if (quando.getTime() > Date.now() + 86400000){ toast('A data da limpeza não pode ser no futuro.', true); return; }
-  const btn = document.getElementById('triagemLimpezaBtn'); if (btn){ btn.disabled = true; btn.textContent = 'A guardar…'; }
+  const extra = { limpezaEstado: estado, limpezaFeita: estado === 'feita', limpezaData: null, limpezaMotivo: null };
+  if (estado === 'feita'){
+    const v = (document.getElementById('triagemLimpezaData') || {}).value;
+    if (!v){ toast('Escolha a data em que fez a limpeza.', true); return; }
+    const [a, m, d] = v.split('-').map(Number); const quando = new Date(a, m - 1, d, 12, 0, 0);
+    if (quando.getTime() > Date.now() + 86400000){ toast('A data da limpeza não pode ser no futuro.', true); return; }
+    extra.limpezaData = Timestamp.fromDate(quando);
+  }
+  if (estado === 'cancelada'){
+    extra.limpezaData = Timestamp.fromDate(new Date());
+    extra.limpezaMotivo = ((document.getElementById('triagemLimpezaMotivo') || {}).value || '').trim().slice(0, 200) || null;
+  }
+  const btns = document.querySelectorAll('#triagemLimpezaCard button'); btns.forEach(b => b.disabled = true);
   try{
     const copia = { ...u }; delete copia._id;
     await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
-      ...copia, continuacaoDe: u._id, limpezaFeita: true, limpezaData: Timestamp.fromDate(quando), generatedAt: u.generatedAt || serverTimestamp()
+      ...copia, ...extra, continuacaoDe: u._id, generatedAt: u.generatedAt || serverTimestamp()
     });
-    toast('Limpeza registada ✓');
+    toast(estado === 'feita' ? 'Limpeza registada ✓' : estado === 'cancelada' ? 'Limpeza marcada como cancelada' : 'Limpeza marcada como pendente');
     await triagemCarregarAnterior(__triagem.patientId);
     renderTriagemPasso(document.getElementById('mainView'));
   }catch(e){
-    console.error('Falha ao registar a limpeza:', e);
-    toast('⚠️ Não consegui registar a limpeza. Tente outra vez.', true);
-    if (btn){ btn.disabled = false; btn.textContent = '✅ Limpeza já feita'; }
+    console.error('Falha ao registar o estado da limpeza:', e);
+    toast('⚠️ Não consegui guardar. Tente outra vez.', true);
+    btns.forEach(b => b.disabled = false);
   }
 };
 function triagemCartaoContinuar(){
   const u = __triagem._ultimaSemTratamento; if (!__triagem.patientId || !u) return '';
-  const dt = u.generatedAt?.toDate ? u.generatedAt.toDate().toLocaleDateString('pt-PT') : '';
-  const feita = u.limpezaFeita && u.limpezaData?.toDate ? u.limpezaData.toDate().toLocaleDateString('pt-PT') : '';
-  if (feita) return `<div class="card" style="border:2px solid var(--primary);margin-top:10px;"><h3>✅ Limpeza feita em ${feita}</h3>
-    <p class="muted">Triagem${dt ? ' de ' + dt : ''}. A limpeza ficou registada na ficha. Se quiser registar as etiquetas aplicadas, continue a partir desta triagem.</p>
-    <button class="ghost" onclick="window.__triagemContinuar()">Registar as etiquetas aplicadas</button></div>`;
-  return `<div class="card" style="border:2px solid var(--primary);margin-top:10px;"><h3>🕓 Triagem${dt ? ' de ' + dt : ''} a aguardar decisão</h3>
-    <p class="muted">Foi feita só a triagem. Ainda não foi feito nenhum tratamento nem limpeza. Se decidir avançar, aplica aqui a primeira limpeza a partir desta mesma triagem, sem repetir nada.</p>
-    <button class="primary" onclick="window.__triagemContinuar()">Aplicar o tratamento agora</button>
+  const fmt = t => t && t.toDate ? t.toDate().toLocaleDateString('pt-PT') : '';
+  const dt = fmt(u.generatedAt), est = triagemEstadoLimpeza(u), quando = fmt(u.limpezaData);
+  const pago = __triagem.pagoAntes ? `<p style="margin:8px 0 0;">💶 <strong>Já recebido: ${__triagem.pagoAntes}€</strong>${u.preco ? ' de ' + u.preco + '€' : ''}${u.preco && __triagem.pagoAntes >= Number(u.preco) ? ' (pago na totalidade)' : ''}</p>` : '';
+  const cab = (cor, tit) => `<div class="card" id="triagemLimpezaCard" style="border:2px solid ${cor};margin-top:10px;"><h3>${tit}</h3>`;
+  if (est === 'feita') return cab('var(--primary)', '✅ Limpeza feita' + (quando ? ' em ' + quando : '')) +
+    `<p class="muted">Triagem${dt ? ' de ' + dt : ''}. A limpeza ficou registada na ficha.</p>${pago}
+    <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap;"><button class="ghost" onclick="window.__triagemContinuar()">Registar as etiquetas aplicadas</button><button class="ghost" onclick="window.__triagemSetLimpeza('pendente')">↩️ Voltar a pendente</button></div></div>`;
+  if (est === 'cancelada') return cab('#b94a48', '❌ Limpeza cancelada' + (quando ? ' em ' + quando : '')) +
+    `<p class="muted">Triagem${dt ? ' de ' + dt : ''}.${u.limpezaMotivo ? ' Motivo: ' + escapeHtml(u.limpezaMotivo) : ''}</p>${pago}
+    <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap;"><button class="ghost" onclick="window.__triagemSetLimpeza('pendente')">↩️ Voltar a pendente</button><button class="ghost" onclick="window.__triagemContinuar()">Aplicar o tratamento agora</button></div></div>`;
+  return cab('#d9822b', '🕓 Limpeza pendente') +
+    `<p class="muted">Triagem${dt ? ' de ' + dt : ''}. Foi feita só a triagem. A limpeza (protocolo de cura) ainda não foi feita: fica pendente até a marcares como feita ou cancelada.</p>${pago}
+    <button class="primary" style="margin-top:10px;" onclick="window.__triagemContinuar()">Aplicar o tratamento agora</button>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e3e3e3;">
-      <p class="muted" style="margin-bottom:6px;">Já fez a limpeza fora da app? Registe aqui e a data em que a fez:</p>
+      <p class="muted" style="margin-bottom:6px;">Já fez a limpeza fora da app?</p>
       <label class="muted" for="triagemLimpezaData">Data da limpeza</label>
       <input type="date" id="triagemLimpezaData" value="${triagemHojeISO()}" max="${triagemHojeISO()}" style="margin:4px 0 8px;">
-      <button class="ghost" id="triagemLimpezaBtn" onclick="window.__triagemMarcarLimpeza()">✅ Limpeza já feita</button>
+      <button class="ghost" onclick="window.__triagemSetLimpeza('feita')">✅ Limpeza já feita</button>
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e3e3e3;">
+      <p class="muted" style="margin-bottom:6px;">A pessoa desistiu ou não vai avançar?</p>
+      <input type="text" id="triagemLimpezaMotivo" maxlength="200" placeholder="Motivo (opcional)" style="margin-bottom:8px;">
+      <button class="ghost" onclick="window.__triagemSetLimpeza('cancelada')">❌ Cancelar limpeza</button>
     </div></div>`;
 }
 function renderTriagemPasso(main){
