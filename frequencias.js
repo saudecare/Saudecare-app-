@@ -88,7 +88,7 @@ export function renderFrequencias(main, ctx){
   const esc = ctx.escapeHtml;
   let lista = ctx.get();
   if (!lista.length) lista = BASE.map(x => Object.assign({}, x));
-  else lista = lista.map(x => { const b = BASE.find(y => y.id === x.id); return b && !x.link ? Object.assign({}, x, { link: b.link }) : x; });
+  else lista = lista.map(x => { const b = BASE.find(y => y.id === x.id); return b && (!x.link || /zenmix\.io/i.test(x.link)) ? Object.assign({}, x, { link: b.link }) : x; });
   let editarId = null;
 
   const guardar = async nova => { await ctx.save(nova); lista = nova; };
