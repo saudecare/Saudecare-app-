@@ -80,6 +80,17 @@ export function imagemSvg(f){
     <circle cx="200" cy="150" r="34" fill="url(#${id}c)"/></svg>`;
 }
 
+/* Jornada: todas as frequências seguidas, cada uma o tempo adequado, com transição suave. Usa os mesmos sons, sem ficheiros novos. */
+const TEMPOS = { f174: 10, f285: 10, f396: 12, f417: 12, f432: 15, f528: 15, f639: 10, f741: 10, f852: 15, f963: 15 };
+const TEMPO_CURTA = 5, FADE = 3500;
+export function imagemJornada(){
+  const cs = ['#c9826b', '#f08a5d', '#e0524a', '#f2a93b', '#45b8b0', '#58c27d', '#4cc3dd', '#5b8def', '#7a6af0', '#b36ee6'];
+  let an = ''; cs.forEach((c, i) => { an += `<circle cx="200" cy="150" r="${128 - i * 11}" fill="none" stroke="${c}" stroke-width="7" stroke-opacity=".85"/>`; });
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Jornada completa" style="display:block;width:100%;height:100%">
+    <defs><radialGradient id="gj" cx="50%" cy="50%" r="75%"><stop offset="0" stop-color="#2b2063"/><stop offset="1" stop-color="#0c0a26"/></radialGradient><radialGradient id="gjc" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+    <rect width="400" height="300" fill="url(#gj)"/>${an}<circle cx="200" cy="150" r="22" fill="url(#gjc)"/></svg>`;
+}
+
 export function renderFrequencias(main, ctx){
   if (ctx.tenantId !== TENANT_FREQ){
     main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>';
@@ -121,6 +132,14 @@ export function renderFrequencias(main, ctx){
       ${f.tempo ? `<span class="muted" style="display:block;font-size:.78rem;margin-top:6px;">⏱️ ${esc(f.tempo)}</span>` : ''}</div></button>`;
   }
 
+  function botaoJornada(){
+    return `<button type="button" data-abrir="jornada" class="fq-tile" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:var(--card,#fff);box-shadow:0 2px 10px rgba(0,0,0,.14);min-width:0;grid-column:1/-1;" aria-label="Jornada completa">
+      <div style="height:110px;">${imagemJornada()}</div>
+      <div style="padding:10px 12px 12px;"><strong style="display:block;font-size:1rem;">🌈 Jornada completa</strong>
+      <span class="muted" style="display:block;font-size:.82rem;margin-top:4px;line-height:1.3;">Todas as frequências seguidas, cada uma pelo tempo adequado, numa só audição.</span>
+      <span class="muted" style="display:block;font-size:.78rem;margin-top:6px;">⏱️ Completa 2 h 4 min · Curta 50 min</span></div></button>`;
+  }
+
   function editor(f){
     return `<div class="card" style="border:2px solid var(--primary);margin-bottom:12px;">
       <h3>✏️ ${f._novo ? 'Nova frequência' : 'Editar frequência'}</h3>
@@ -137,17 +156,65 @@ export function renderFrequencias(main, ctx){
       </div></div>`;
   }
 
-  let novo = null, aberto = null;
+  let novo = null, aberto = null, jor = null;
+  function pararJornada(){ if (jor){ clearInterval(jor.iv); try { jor.au.pause(); jor.au.src = ''; } catch(e){} jor = null; } }
+  const mmss = ms => { const t = Math.max(0, Math.round(ms / 1000)); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+  function seqJornada(curta){
+    return BASE.map(b => { const x = lista.find(y => y.id === b.id) || b; const pl = linkParaPlayer(x.link) || linkParaPlayer(b.link); return { hz: b.hz, titulo: b.titulo, min: curta ? TEMPO_CURTA : TEMPOS[b.id], src: pl && (pl.tipo === 'local' || pl.tipo === 'audio') ? pl.src : b.link }; });
+  }
+  function jornadaCard(){
+    const tot = m => BASE.reduce((a, b) => a + (m ? TEMPO_CURTA : TEMPOS[b.id]), 0), fmt = m => m >= 60 ? Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min';
+    return `<div class="card" id="fq-jornada" style="margin-bottom:12px;padding-top:0;overflow:hidden;">
+      <div style="margin:0 -18px 12px;height:190px;">${imagemJornada()}</div>
+      <h3 style="margin:0 0 2px;">🌈 Jornada completa</h3><p class="muted" style="margin:0 0 8px;">As ${BASE.length} frequências seguidas</p>
+      <p style="margin:8px 0 0;"><strong>✨ Para que serve</strong><br>Uma viagem sonora com todas as frequências, da mais grave à mais aguda, cada uma pelo tempo adequado e com transições suaves entre elas. Para quando queres um momento longo de relaxamento ou meditação, sem teres de mexer no telemóvel.</p>
+      <p style="margin:8px 0 0;"><strong>🧘 Como fazer</strong><br>Prepara um sítio calmo, deita-te ou senta-te confortavelmente, usa auscultadores e põe o volume baixo. Deixa o telemóvel a tocar e o ecrã ligado. Podes saltar para a seguinte quando quiseres.</p>
+      <p style="margin:8px 0 0;"><strong>⏱️ Ordem e tempo</strong></p>
+      <ol style="margin:4px 0 0 18px;padding:0;">${BASE.map(b => `<li>${esc(b.hz)} · ${TEMPOS[b.id]} min <span class="muted">(curta: ${TEMPO_CURTA} min)</span></li>`).join('')}</ol>
+      <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;" id="fq-jbtns"><button class="primary" id="fq-jc">▶ Jornada completa (${fmt(tot(false))})</button><button class="ghost" id="fq-jk">▶ Jornada curta (${fmt(tot(true))})</button></div>
+      <div id="fq-jplayer" style="margin-top:12px;" hidden>
+        <p id="fq-jstat" style="margin:0 0 6px;font-weight:600;"></p>
+        <div style="height:8px;border-radius:6px;background:rgba(128,128,128,.25);overflow:hidden;"><i id="fq-jbar" style="display:block;height:100%;width:0;background:var(--primary);"></i></div>
+        <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap;"><button class="ghost" id="fq-jpausa">⏸️ Pausa</button><button class="ghost" id="fq-jseg">⏭️ Seguinte</button><button class="ghost" id="fq-jpara">⏹️ Parar</button></div>
+      </div>
+      <p class="muted" style="margin:10px 0 0;font-size:.8rem;">${AVISO}</p></div>`;
+  }
+  function ligarJornada(){
+    const q = id => main.querySelector(id);
+    function iniciar(curta){
+      pararJornada();
+      const seq = seqJornada(curta), au = new Audio(); au.loop = true; au.preload = 'auto';
+      jor = { seq, au, i: 0, t0: 0, pausado: false, pAt: 0 };
+      const ir = i => { jor.i = i; au.src = seq[i].src; au.volume = 0; jor.t0 = Date.now(); au.play().catch(() => ctx.toast('Não consegui tocar. Toca outra vez no botão.', true)); };
+      q('#fq-jbtns').hidden = true; q('#fq-jplayer').hidden = false;
+      jor.iv = setInterval(() => {
+        if (!jor || jor.pausado) return;
+        const it = jor.seq[jor.i], dur = it.min * 60000, el = Date.now() - jor.t0;
+        if (el >= dur){ if (jor.i + 1 < jor.seq.length){ ir(jor.i + 1); } else { pararJornada(); ctx.toast('Jornada terminada. 🙏'); desenhar(); } return; }
+        jor.au.volume = Math.max(0, Math.min(1, el / FADE, (dur - el) / FADE));
+        q('#fq-jstat').textContent = `🎶 ${it.hz} · ${jor.i + 1} de ${jor.seq.length} · faltam ${mmss(dur - el)}`;
+        const totalMs = jor.seq.reduce((a, x) => a + x.min * 60000, 0), feito = jor.seq.slice(0, jor.i).reduce((a, x) => a + x.min * 60000, 0) + el;
+        q('#fq-jbar').style.width = (feito / totalMs * 100).toFixed(1) + '%';
+      }, 500);
+      ir(0);
+      q('#fq-jpausa').onclick = () => { if (!jor) return; if (jor.pausado){ jor.t0 += Date.now() - jor.pAt; jor.pausado = false; jor.au.play(); q('#fq-jpausa').textContent = '⏸️ Pausa'; } else { jor.pausado = true; jor.pAt = Date.now(); jor.au.pause(); q('#fq-jpausa').textContent = '▶ Continuar'; } };
+      q('#fq-jseg').onclick = () => { if (!jor) return; if (jor.i + 1 < jor.seq.length){ if (jor.pausado){ jor.pausado = false; q('#fq-jpausa').textContent = '⏸️ Pausa'; } ir(jor.i + 1); } else ctx.toast('Esta é a última frequência.'); };
+      q('#fq-jpara').onclick = () => { pararJornada(); desenhar(); };
+    }
+    q('#fq-jc').onclick = () => iniciar(false); q('#fq-jk').onclick = () => iniciar(true);
+  }
   function desenhar(){
-    const emEdicao = novo || editarId, fa = aberto && lista.find(x => x.id === aberto);
+    const emEdicao = novo || editarId, fa = aberto && aberto !== 'jornada' && lista.find(x => x.id === aberto);
     if (emEdicao) main.innerHTML = `<h2>🎶 Frequências</h2>` + (novo ? editor(novo) : editor(lista.find(x => x.id === editarId)));
+    else if (aberto === 'jornada') { main.innerHTML = `<div class="row" style="margin-bottom:10px;"><button class="ghost" id="fq-voltar">← Todas as frequências</button></div>` + jornadaCard(); ligarJornada(); }
     else if (fa) main.innerHTML = `<div class="row" style="margin-bottom:10px;"><button class="ghost" id="fq-voltar">← Todas as frequências</button></div>` + cartao(fa);
     else main.innerHTML = `<h2>🎶 Frequências</h2>
       <p class="muted">Escolhe uma frequência. Dentro de cada uma tens a descrição, como fazer, o tempo e a música.</p>
       <div class="row" style="margin-bottom:12px;gap:8px;flex-wrap:wrap;"><button class="primary" id="fq-novo">+ Nova frequência</button><button class="ghost" id="fq-repor">↻ Repor as da lista</button></div>
-      <div id="fq-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">${lista.map(botao).join('')}</div>`;
+      <div id="fq-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">${botaoJornada()}${lista.map(botao).join('')}</div>`;
+    if (aberto !== 'jornada') pararJornada();
     main.querySelectorAll('[data-abrir]').forEach(b => b.onclick = () => { aberto = b.dataset.abrir; desenhar(); window.scrollTo(0, 0); });
-    const vv = main.querySelector('#fq-voltar'); if (vv) vv.onclick = () => { aberto = null; desenhar(); };
+    const vv = main.querySelector('#fq-voltar'); if (vv) vv.onclick = () => { pararJornada(); aberto = null; desenhar(); };
     const bn = main.querySelector('#fq-novo'); if (bn) bn.onclick = () => { editarId = null; novo = { id: 'f' + Date.now().toString(36), hz: '', titulo: '', link: '', para: '', como: '', tempo: '', _novo: true }; desenhar(); window.scrollTo(0, 0); };
     const br = main.querySelector('#fq-repor'); if (br) br.onclick = async () => {
       const faltam = BASE.filter(b => !lista.some(x => x.id === b.id));
