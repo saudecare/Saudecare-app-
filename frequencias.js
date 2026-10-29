@@ -47,6 +47,14 @@ const BASE = [
     tempo: '15 a 20 minutos' }
 ];
 
+const EXTRA = [
+  { id: 'fdormir', hz: '45 min', titulo: '🌙 Jornada para dormir', link: 'frequencias/jornada-dormir.mp3',
+    para: 'Todas as frequências seguidas, numa só audição de 45 minutos, com transições muito suaves e a descer devagar até ao silêncio. Feita para adormecer ou para relaxar profundamente.',
+    como: 'Põe o telemóvel perto, com o volume bem baixo, e deita-te com as luzes apagadas. Podes usar auscultadores ou uma coluna pequena. Carrega em Ouvir e fecha os olhos. Quando acabar, fica em silêncio. Não precisas de fazer mais nada.',
+    tempo: '45 minutos' }
+];
+const TODAS = BASE.concat(EXTRA);
+
 export function linkParaPlayer(url){
   const u = String(url || '').trim();
   if (/^frequencias\/[\w-]+\.mp3$/.test(u)) return { tipo: 'local', src: u }; // som criado na própria app
@@ -63,6 +71,7 @@ export function linkParaPlayer(url){
 const CORES = { 174: ['#c9826b', '#3a1f33'], 285: ['#f08a5d', '#3d1f2e'], 396: ['#e0524a', '#33142a'], 417: ['#f2a93b', '#3a1d2a'], 432: ['#45b8b0', '#10303a'],
   528: ['#58c27d', '#0f3226'], 639: ['#4cc3dd', '#0d2d45'], 741: ['#5b8def', '#14234f'], 852: ['#7a6af0', '#1d1a52'], 963: ['#b36ee6', '#2a1650'] };
 export function imagemSvg(f){
+  if (f.id === 'fdormir') return imagemJornada();
   const n = parseInt(String(f.hz || f.titulo || '').replace(/[^\d]/g, ''), 10) || 0;
   let h = 0; for (const c of String(f.id || 'x')) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const par = CORES[n] || ['hsl(' + (h % 360) + ',65%,62%)', 'hsl(' + ((h + 40) % 360) + ',55%,16%)'];
@@ -98,8 +107,8 @@ export function renderFrequencias(main, ctx){
   }
   const esc = ctx.escapeHtml;
   let lista = ctx.get();
-  if (!lista.length) lista = BASE.map(x => Object.assign({}, x));
-  else lista = lista.map(x => { const b = BASE.find(y => y.id === x.id); return b && (!x.link || /zenmix\.io/i.test(x.link)) ? Object.assign({}, x, { link: b.link }) : x; });
+  if (!lista.length) lista = TODAS.map(x => Object.assign({}, x));
+  else { if (!lista.some(x => x.id === 'fdormir')) lista = lista.concat([Object.assign({}, EXTRA[0])]); lista = lista.map(x => { const b = TODAS.find(y => y.id === x.id); return b && (!x.link || /zenmix\.io/i.test(x.link)) ? Object.assign({}, x, { link: b.link }) : x; }); }
   let editarId = null;
 
   const guardar = async nova => { await ctx.save(nova); lista = nova; };
@@ -217,7 +226,7 @@ export function renderFrequencias(main, ctx){
     const vv = main.querySelector('#fq-voltar'); if (vv) vv.onclick = () => { pararJornada(); aberto = null; desenhar(); };
     const bn = main.querySelector('#fq-novo'); if (bn) bn.onclick = () => { editarId = null; novo = { id: 'f' + Date.now().toString(36), hz: '', titulo: '', link: '', para: '', como: '', tempo: '', _novo: true }; desenhar(); window.scrollTo(0, 0); };
     const br = main.querySelector('#fq-repor'); if (br) br.onclick = async () => {
-      const faltam = BASE.filter(b => !lista.some(x => x.id === b.id));
+      const faltam = TODAS.filter(b => !lista.some(x => x.id === b.id));
       if (!faltam.length){ ctx.toast('A lista já tem todas as frequências.'); return; }
       try { await guardar(lista.concat(faltam.map(x => Object.assign({}, x)))); ctx.toast('Juntei ' + faltam.length + ' frequência(s) à lista ✓'); desenhar(); } catch(e){ ctx.toast('Não consegui guardar: ' + (e.message || e), true); }
     };
@@ -228,7 +237,7 @@ export function renderFrequencias(main, ctx){
         const pl = linkParaPlayer(f.link), pa = c.querySelector('.fq-palco'); if (!pl) return;
         if (pl.tipo === 'site'){ window.open(pl.src, '_blank', 'noopener'); return; }
         if (pl.tipo === 'local' || pl.tipo === 'audio'){
-          pa.innerHTML = `<audio controls loop ${pl.tipo === 'local' ? 'autoplay ' : ''}preload="auto" src="${esc(pl.src)}" style="width:100%"></audio>
+          pa.innerHTML = `<audio controls ${/jornada-dormir/.test(pl.src) ? '' : 'loop '}${pl.tipo === 'local' ? 'autoplay ' : ''}preload="auto" src="${esc(pl.src)}" style="width:100%"></audio>
             <div class="row" style="margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap;"><label class="muted" for="fqt-${esc(f.id)}">⏲️ Parar sozinho ao fim de</label>
             <select id="fqt-${esc(f.id)}" style="width:auto;"><option value="0">Não parar</option><option value="10">10 minutos</option><option value="15">15 minutos</option><option value="20">20 minutos</option><option value="30">30 minutos</option></select></div>`;
           const au = pa.querySelector('audio'), sel = pa.querySelector('select'); let tm = null;
