@@ -139,3 +139,678 @@ export const MODELO_VAZIO = {
   ],
   temasDias: []
 };
+
+
+/* Salmos (textos fornecidos pelo Ricardo). Cada um é um ciclo de dias seguidos. */
+export const SALMOS_PADRAO = [
+ {
+  "padraoId": "salmo-91",
+  "versaoPadrao": 1,
+  "regra": "seguidos",
+  "tipo": "ciclo",
+  "icone": "escudo",
+  "emoji": "🛡️",
+  "titulo": "Salmo 91 · Proteção",
+  "subtitulo": "Escudo de proteção e confiança em Deus",
+  "dias": 21,
+  "ordem": 2,
+  "seccoes": [
+   {
+    "tipo": "aviso",
+    "titulo": "Regra: dias seguidos",
+    "texto": "Esta prática faz-se durante 21 dias seguidos, sem interrupção. Se te esqueceres de algum dia, recomeças do Dia 1. Esta página avisa-te e deixa-te recomeçar com um toque."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "O Salmo 91 é um salmo de proteção e de confiança em Deus. Tradicionalmente reza-se para pedir proteção contra o medo, a inveja, o «mau-olhado» e as influências negativas, e para sentir um escudo de luz à tua volta.\n\nDuração sugerida: 21 dias seguidos, sobretudo quando sentires o ambiente à tua volta muito pesado.\n\nNão é magia nem promessa de resultados: é um tempo diário de silêncio, fé e confiança."
+   },
+   {
+    "tipo": "passos",
+    "titulo": "Como fazer",
+    "itens": [
+     "Escolhe uma hora fixa, de manhã ou à noite, e um sítio calmo onde ninguém te interrompa. Põe o telemóvel em silêncio.",
+     "Se quiseres, acende uma vela branca (num sítio seguro) e põe ao lado um copo de água.",
+     "Respira fundo três vezes, devagar.",
+     "Lê o salmo completo em voz alta e repete-o 3 vezes seguidas. Esta página mostra-o em partes; faz as 3 vezes antes de marcares o dia.",
+     "Fica um minuto em silêncio, a respirar. Agradece.",
+     "Marca o dia como feito."
+    ]
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "Cuidados importantes",
+    "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico, psicológico, jurídico ou financeiro, nem a toma de medicação.\n\nSe sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, não esperes: fala com o teu médico, liga para o SNS 24 (808 24 24 24) ou, em emergência, para o 112.\n\nReza para a tua proteção e libertação, nunca para desejar mal a ninguém. Se acenderes uma vela, fá-lo com segurança e nunca a deixes sozinha acesa."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "No último dia: selar",
+    "texto": "No dia 21, depois de rezares, fica um pouco mais em silêncio e agradece o caminho que fizeste. Põe a mão no peito e diz: «Está feito. Fica selado. Que a luz me proteja e me guie.»"
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Abertura",
+    "texto": "Respiro fundo, três vezes.\nEstou em segurança.\nEste momento é meu e é sagrado.\n\nPeço que este tempo seja abençoado e protegido."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Lembrete",
+    "texto": "Vais ler o Salmo 91 completo.\nRepete-o 3 vezes seguidas, em voz alta.\n\n(Quando terminares a 1.ª leitura, volta ao passo «Salmo 91 · parte 1» com o botão ← Anterior.)"
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Salmo 91 · parte 1 de 4",
+    "texto": "Tu que habitas sob a proteção do Altíssimo e moras à sombra do Omnipotente,\n\ndizes ao Senhor: \"Meu refúgio, minha fortaleza, meu Deus, em quem confio\".\n\nÉ ele quem te livrará do laço do caçador e da peste perniciosa.\n\nEle te cobrirá com as suas plumas, sob as suas asas encontrarás refúgio. A sua fidelidade ser-te-á um escudo e uma couraça."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Salmo 91 · parte 2 de 4",
+    "texto": "Não temerás os terrores da noite, nem a flecha que voa de dia,\n\nnem a peste que se propaga nas trevas, nem o mal que devasta ao meio-dia.\n\nCaiam mil ao teu lado e dez mil à tua direita; tu não serás atingido.\n\nMal abrirás os olhos, verás o castigo dos pecadores."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Salmo 91 · parte 3 de 4",
+    "texto": "Porque disseste: \"O Senhor é o meu refúgio\", fizeste do Altíssimo a tua morada.\n\nNenhum mal te atingirá, nenhum flagelo aproximar-se-á da tua tenda.\n\nPorque ele dará ordens aos seus anjos a teu respeito, para que te guardem em todos os teus caminhos.\n\nEles levar-te-ão nas suas mãos, para que o teu pé não tropece em nenhuma pedra."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Salmo 91 · parte 4 de 4",
+    "texto": "Pisarás sobre o leão e a víbora, calcarás aos pés o leãozinho e o dragão.\n\n\"Pois que se uniu a mim, eu o livrarei; protegê-lo-ei, porque conhece o meu nome.\n\nQuando me invocar, eu o atenderei; estarei com ele na tribulação, livrá-lo-ei e o glorificarei.\n\nSaciá-lo-ei com uma longa vida e lhe mostrarei a minha salvação.\""
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Encerramento",
+    "texto": "Obrigado/a.\nFecho agora este momento\ncom paz e com confiança.\nA luz fica comigo,\nem mim e à minha volta.\nÁmen."
+   }
+  ],
+  "temasDias": [
+   {
+    "titulo": "O começo",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia sob a proteção de Deus",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   },
+   {
+    "titulo": "O último dia",
+    "intencao": "Estou sob a proteção do Altíssimo. Nada me atingirá.",
+    "acao": ""
+   }
+  ]
+ },
+ {
+  "padraoId": "salmo-51",
+  "versaoPadrao": 1,
+  "regra": "seguidos",
+  "tipo": "ciclo",
+  "icone": "agua",
+  "emoji": "🧼",
+  "titulo": "Salmo 51 · Purificação",
+  "subtitulo": "Limpeza interior e renovação do coração",
+  "dias": 7,
+  "ordem": 3,
+  "seccoes": [
+   {
+    "tipo": "aviso",
+    "titulo": "Regra: dias seguidos",
+    "texto": "Esta prática faz-se durante 7 dias seguidos, sem interrupção. Se te esqueceres de algum dia, recomeças do Dia 1. Esta página avisa-te e deixa-te recomeçar com um toque."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "O Salmo 51 é o salmo do arrependimento e da purificação: pede a Deus um coração limpo e um espírito renovado. Tradicionalmente reza-se para limpeza interior e espiritual, para largar culpas e energias pesadas e para recomeçar com leveza.\n\nDuração sugerida: 7 dias seguidos, 1 vez por dia."
+   },
+   {
+    "tipo": "passos",
+    "titulo": "Como fazer",
+    "itens": [
+     "Se quiseres, toma antes um banho de purificação (por exemplo, com sal grosso e um raminho de arruda, se fizer parte da tua tradição). É opcional.",
+     "Escolhe um sítio calmo e respira fundo três vezes.",
+     "Lê o salmo uma vez, devagar e em voz alta, deixando sair o que pesa.",
+     "Fica um minuto em silêncio, a respirar.",
+     "Marca o dia como feito."
+    ]
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "Cuidados importantes",
+    "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico, psicológico, jurídico ou financeiro, nem a toma de medicação.\n\nSe sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, não esperes: fala com o teu médico, liga para o SNS 24 (808 24 24 24) ou, em emergência, para o 112.\n\nReza para a tua proteção e libertação, nunca para desejar mal a ninguém. Se acenderes uma vela, fá-lo com segurança e nunca a deixes sozinha acesa."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "No último dia: selar",
+    "texto": "No dia 7, depois de rezares, fica um pouco mais em silêncio e agradece o caminho que fizeste. Põe a mão no peito e diz: «Está feito. Fica selado. Que a luz me proteja e me guie.»"
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Abertura",
+    "texto": "Respiro fundo, três vezes.\nEstou em segurança.\nEste momento é meu e é sagrado.\n\nPeço que este tempo seja abençoado e protegido."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Salmo 51 · parte 1 de 4",
+    "texto": "Tem piedade de mim, ó Deus, segundo a tua bondade; segundo a multidão das tuas misericórdias, apaga a minha iniquidade.\n\nLava-me completamente da minha malícia e purifica-me do meu pecado.\n\nPorque eu conheço a minha iniquidade e o meu pecado está sempre diante de mim.\n\nContra ti, só contra ti pequei, e fiz o que é mau aos teus olhos, para que sejas justiceiro nas tuas palavras e reto no teu julgamento.\n\nEis que eu nasci na iniquidade e em pecado me concebeu minha mãe."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Salmo 51 · parte 2 de 4",
+    "texto": "Mas tu amas a verdade no íntimo; no segredo do coração me ensinas a sabedoria.\n\nPurifica-me com o hissopo e ficarei limpo; lava-me e ficarei mais branco do que a neve.\n\nFaz-me ouvir palavras de gozo e de alegria, e exultarão os ossos que trituraste.\n\nDesvia o teu rosto dos meus pecados e apaga todas as minhas iniquidades.\n\nCria em mim, ó Deus, um coração puro e renova no meu peito um espírito firme."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Salmo 51 · parte 3 de 4",
+    "texto": "Não me rejeites da tua presença e não retires de mim o teu santo espírito.\n\nDevolve-me a alegria da tua salvação e confirma-me com um espírito generoso.\n\nEnsinarei aos iníquos os teus caminhos e os pecadores hão de converter-se a ti.\n\nLivra-me do sangue, ó Deus, Deus da minha salvação, e a minha língua exaltará a tua justiça.\n\nSenhor, abre os meus lábios e a minha boca cantará os teus louvores."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Salmo 51 · parte 4 de 4",
+    "texto": "Se quisesses um sacrifício, eu lho teria oferecido; mas tu não te deleitas com holocaustos.\n\nO sacrifício aceitável a Deus é o espírito contrito; um coração arrependido e humilhado, ó Deus, não o desprezarás.\n\nNo teu bom prazer, faz bem a Sião; reconstrói os muros de Jerusalém.\n\nEntão aceitarás os sacrifícios legítimos, as oferendas e os holocaustos; então serão colocados novilhos sobre o teu altar."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Encerramento",
+    "texto": "Obrigado/a.\nFecho agora este momento\ncom paz e com confiança.\nA luz fica comigo,\nem mim e à minha volta.\nÁmen."
+   }
+  ],
+  "temasDias": [
+   {
+    "titulo": "O começo",
+    "intencao": "Peço um coração limpo e um espírito renovado.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de purificação",
+    "intencao": "Peço um coração limpo e um espírito renovado.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de purificação",
+    "intencao": "Peço um coração limpo e um espírito renovado.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de purificação",
+    "intencao": "Peço um coração limpo e um espírito renovado.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de purificação",
+    "intencao": "Peço um coração limpo e um espírito renovado.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de purificação",
+    "intencao": "Peço um coração limpo e um espírito renovado.",
+    "acao": ""
+   },
+   {
+    "titulo": "O último dia",
+    "intencao": "Peço um coração limpo e um espírito renovado.",
+    "acao": ""
+   }
+  ]
+ },
+ {
+  "padraoId": "salmo-144",
+  "versaoPadrao": 1,
+  "regra": "seguidos",
+  "tipo": "ciclo",
+  "icone": "chave",
+  "emoji": "🔓",
+  "titulo": "Salmo 144 · Abertura de caminhos",
+  "subtitulo": "Prosperidade, coragem e vitória sobre as dificuldades",
+  "dias": 30,
+  "ordem": 4,
+  "seccoes": [
+   {
+    "tipo": "aviso",
+    "titulo": "Regra: dias seguidos",
+    "texto": "Esta prática faz-se durante 30 dias seguidos, sem interrupção. Se te esqueceres de algum dia, recomeças do Dia 1. Esta página avisa-te e deixa-te recomeçar com um toque."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "O Salmo 144 é um salmo de louvor e de confiança na vitória sobre as dificuldades. Tradicionalmente reza-se para pedir abertura de caminhos, prosperidade e libertação de bloqueios na vida material e profissional.\n\nDuração sugerida: 30 dias seguidos, 1 vez por dia, de manhã."
+   },
+   {
+    "tipo": "passos",
+    "titulo": "Como fazer",
+    "itens": [
+     "Faz esta oração de manhã, num sítio calmo. Respira fundo três vezes.",
+     "Lê o salmo uma vez, devagar e em voz alta.",
+     "Ao terminar, fecha os olhos e imagina com calma as oportunidades, o trabalho e o dinheiro a fluírem para a tua vida de forma justa e boa. Agradece como se já estivesse a acontecer.",
+     "Se quiseres, escreve no caderno uma ação concreta para esse dia (um contacto, uma candidatura, uma conta a organizar). A fé caminha junto com a ação.",
+     "Marca o dia como feito."
+    ]
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "Cuidados importantes",
+    "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico, psicológico, jurídico ou financeiro, nem a toma de medicação.\n\nSe sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, não esperes: fala com o teu médico, liga para o SNS 24 (808 24 24 24) ou, em emergência, para o 112.\n\nReza para a tua proteção e libertação, nunca para desejar mal a ninguém. Se acenderes uma vela, fá-lo com segurança e nunca a deixes sozinha acesa."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "No último dia: selar",
+    "texto": "No dia 30, depois de rezares, fica um pouco mais em silêncio e agradece o caminho que fizeste. Põe a mão no peito e diz: «Está feito. Fica selado. Que a luz me proteja e me guie.»"
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Abertura",
+    "texto": "Respiro fundo, três vezes.\nEstou em segurança.\nEste momento é meu e é sagrado.\n\nPeço que este tempo seja abençoado e protegido."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Salmo 144 · parte 1 de 3",
+    "texto": "Bendito seja o Senhor, a minha rocha, que treina as minhas mãos para a batalha e os meus dedos para a guerra;\n\nmeu aliado e minha fortaleza, meu refúgio e meu libertador; meu escudo, em quem confio, aquele que me submete os povos.\n\nSenhor, que é o homem para que cuides dele, o filho do homem para que te lembres dele?\n\nO homem é semelhante a um sopro; os seus dias são como a sombra que passa.\n\nSenhor, inclina os teus céus e desce; toca as montanhas para que fumeguem."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Salmo 144 · parte 2 de 3",
+    "texto": "Lança relâmpagos e dispersa os inimigos; despacha as tuas setas e confunde-os.\n\nEstende as tuas mãos do alto; liberta-me e salva-me das águas profundas, das mãos dos estrangeiros,\n\ncuja boca fala mentiras e cuja mão direita é uma direita de falsidade.\n\nA ti, ó Deus, cantarei um cântico novo; cantar-te-ei louvores com a harpa de dez cordas,\n\na ti que dás a vitória aos reis e livras o teu servo Davi da espada maligna."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Salmo 144 · parte 3 de 3",
+    "texto": "Liberta-me e salva-me das mãos dos estrangeiros, cuja boca fala mentiras e cuja mão direita é uma direita de falsidade.\n\nSejam os nossos filhos, na sua juventude, como plantas viçosas; e as nossas filhas como colunas esculpidas para ornamentar um palácio.\n\nEstejam cheios os nossos celeiros, transbordantes de toda a espécie de provisões; multipliquem-se os nossos rebanhos aos milhares e às dezenas de milhares nos nossos campos.\n\nEstejam os nossos bois bem carregados; não haja brechas nos muros, nem assaltos, nem gritos de dor nas nossas praças.\n\nFeliz o povo que está numa situação destas! Feliz o povo cujo Deus é o Senhor!"
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Encerramento",
+    "texto": "Obrigado/a.\nFecho agora este momento\ncom paz e com confiança.\nA luz fica comigo,\nem mim e à minha volta.\nÁmen."
+   }
+  ],
+  "temasDias": [
+   {
+    "titulo": "O começo",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia de caminhos abertos",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   },
+   {
+    "titulo": "O último dia",
+    "intencao": "Peço que se abram os caminhos certos e que a abundância chegue de forma justa.",
+    "acao": ""
+   }
+  ]
+ },
+ {
+  "padraoId": "salmos-ritual-7",
+  "versaoPadrao": 1,
+  "regra": "seguidos",
+  "tipo": "ciclo",
+  "icone": "luz",
+  "emoji": "🪐",
+  "titulo": "Ritual dos 3 Salmos",
+  "subtitulo": "Purificar, proteger e abrir caminhos: 51 + 91 + 144",
+  "dias": 7,
+  "ordem": 5,
+  "seccoes": [
+   {
+    "tipo": "aviso",
+    "titulo": "Regra: dias seguidos",
+    "texto": "Esta prática faz-se durante 7 dias seguidos, sem interrupção. Se te esqueceres de algum dia, recomeças do Dia 1. Esta página avisa-te e deixa-te recomeçar com um toque."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Este é o ciclo completo dos três salmos, num só ritual diário: primeiro limpas (Salmo 51), depois proteges (Salmo 91) e por fim abres caminhos (Salmo 144).\n\nDuração sugerida: 7 dias seguidos (há quem o faça durante 9)."
+   },
+   {
+    "tipo": "passos",
+    "titulo": "Como fazer",
+    "itens": [
+     "Escolhe uma hora fixa e um sítio calmo. Acende uma vela branca (num sítio seguro), com um copo de água ao lado.",
+     "Reza primeiro o Salmo 51, uma vez (limpa o que pesa).",
+     "Reza em seguida o Salmo 91, três vezes seguidas (cria o escudo de proteção).",
+     "Reza por fim o Salmo 144, uma vez (abre os caminhos limpos).",
+     "Fica um minuto em silêncio e agradece. Apaga a vela e bebe a água.",
+     "Marca o dia como feito."
+    ]
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "Cuidados importantes",
+    "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico, psicológico, jurídico ou financeiro, nem a toma de medicação.\n\nSe sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, não esperes: fala com o teu médico, liga para o SNS 24 (808 24 24 24) ou, em emergência, para o 112.\n\nReza para a tua proteção e libertação, nunca para desejar mal a ninguém. Se acenderes uma vela, fá-lo com segurança e nunca a deixes sozinha acesa."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "No último dia: selar",
+    "texto": "No dia 7, depois de rezares, fica um pouco mais em silêncio e agradece o caminho que fizeste. Põe a mão no peito e diz: «Está feito. Fica selado. Que a luz me proteja e me guie.»"
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Abertura",
+    "texto": "Respiro fundo, três vezes.\nEstou em segurança.\nEste momento é meu e é sagrado.\n\nPeço que este tempo seja abençoado e protegido."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "1 · Salmo 51 (uma vez) · parte 1 de 4",
+    "texto": "Tem piedade de mim, ó Deus, segundo a tua bondade; segundo a multidão das tuas misericórdias, apaga a minha iniquidade.\n\nLava-me completamente da minha malícia e purifica-me do meu pecado.\n\nPorque eu conheço a minha iniquidade e o meu pecado está sempre diante de mim.\n\nContra ti, só contra ti pequei, e fiz o que é mau aos teus olhos, para que sejas justiceiro nas tuas palavras e reto no teu julgamento.\n\nEis que eu nasci na iniquidade e em pecado me concebeu minha mãe."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "1 · Salmo 51 (uma vez) · parte 2 de 4",
+    "texto": "Mas tu amas a verdade no íntimo; no segredo do coração me ensinas a sabedoria.\n\nPurifica-me com o hissopo e ficarei limpo; lava-me e ficarei mais branco do que a neve.\n\nFaz-me ouvir palavras de gozo e de alegria, e exultarão os ossos que trituraste.\n\nDesvia o teu rosto dos meus pecados e apaga todas as minhas iniquidades.\n\nCria em mim, ó Deus, um coração puro e renova no meu peito um espírito firme."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "1 · Salmo 51 (uma vez) · parte 3 de 4",
+    "texto": "Não me rejeites da tua presença e não retires de mim o teu santo espírito.\n\nDevolve-me a alegria da tua salvação e confirma-me com um espírito generoso.\n\nEnsinarei aos iníquos os teus caminhos e os pecadores hão de converter-se a ti.\n\nLivra-me do sangue, ó Deus, Deus da minha salvação, e a minha língua exaltará a tua justiça.\n\nSenhor, abre os meus lábios e a minha boca cantará os teus louvores."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "1 · Salmo 51 (uma vez) · parte 4 de 4",
+    "texto": "Se quisesses um sacrifício, eu lho teria oferecido; mas tu não te deleitas com holocaustos.\n\nO sacrifício aceitável a Deus é o espírito contrito; um coração arrependido e humilhado, ó Deus, não o desprezarás.\n\nNo teu bom prazer, faz bem a Sião; reconstrói os muros de Jerusalém.\n\nEntão aceitarás os sacrifícios legítimos, as oferendas e os holocaustos; então serão colocados novilhos sobre o teu altar."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "2 · Salmo 91 (três vezes) · parte 1 de 4",
+    "texto": "Tu que habitas sob a proteção do Altíssimo e moras à sombra do Omnipotente,\n\ndizes ao Senhor: \"Meu refúgio, minha fortaleza, meu Deus, em quem confio\".\n\nÉ ele quem te livrará do laço do caçador e da peste perniciosa.\n\nEle te cobrirá com as suas plumas, sob as suas asas encontrarás refúgio. A sua fidelidade ser-te-á um escudo e uma couraça."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "2 · Salmo 91 (três vezes) · parte 2 de 4",
+    "texto": "Não temerás os terrores da noite, nem a flecha que voa de dia,\n\nnem a peste que se propaga nas trevas, nem o mal que devasta ao meio-dia.\n\nCaiam mil ao teu lado e dez mil à tua direita; tu não serás atingido.\n\nMal abrirás os olhos, verás o castigo dos pecadores."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "2 · Salmo 91 (três vezes) · parte 3 de 4",
+    "texto": "Porque disseste: \"O Senhor é o meu refúgio\", fizeste do Altíssimo a tua morada.\n\nNenhum mal te atingirá, nenhum flagelo aproximar-se-á da tua tenda.\n\nPorque ele dará ordens aos seus anjos a teu respeito, para que te guardem em todos os teus caminhos.\n\nEles levar-te-ão nas suas mãos, para que o teu pé não tropece em nenhuma pedra."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "2 · Salmo 91 (três vezes) · parte 4 de 4",
+    "texto": "Pisarás sobre o leão e a víbora, calcarás aos pés o leãozinho e o dragão.\n\n\"Pois que se uniu a mim, eu o livrarei; protegê-lo-ei, porque conhece o meu nome.\n\nQuando me invocar, eu o atenderei; estarei com ele na tribulação, livrá-lo-ei e o glorificarei.\n\nSaciá-lo-ei com uma longa vida e lhe mostrarei a minha salvação.\""
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "3 · Salmo 144 (uma vez) · parte 1 de 3",
+    "texto": "Bendito seja o Senhor, a minha rocha, que treina as minhas mãos para a batalha e os meus dedos para a guerra;\n\nmeu aliado e minha fortaleza, meu refúgio e meu libertador; meu escudo, em quem confio, aquele que me submete os povos.\n\nSenhor, que é o homem para que cuides dele, o filho do homem para que te lembres dele?\n\nO homem é semelhante a um sopro; os seus dias são como a sombra que passa.\n\nSenhor, inclina os teus céus e desce; toca as montanhas para que fumeguem."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "3 · Salmo 144 (uma vez) · parte 2 de 3",
+    "texto": "Lança relâmpagos e dispersa os inimigos; despacha as tuas setas e confunde-os.\n\nEstende as tuas mãos do alto; liberta-me e salva-me das águas profundas, das mãos dos estrangeiros,\n\ncuja boca fala mentiras e cuja mão direita é uma direita de falsidade.\n\nA ti, ó Deus, cantarei um cântico novo; cantar-te-ei louvores com a harpa de dez cordas,\n\na ti que dás a vitória aos reis e livras o teu servo Davi da espada maligna."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "3 · Salmo 144 (uma vez) · parte 3 de 3",
+    "texto": "Liberta-me e salva-me das mãos dos estrangeiros, cuja boca fala mentiras e cuja mão direita é uma direita de falsidade.\n\nSejam os nossos filhos, na sua juventude, como plantas viçosas; e as nossas filhas como colunas esculpidas para ornamentar um palácio.\n\nEstejam cheios os nossos celeiros, transbordantes de toda a espécie de provisões; multipliquem-se os nossos rebanhos aos milhares e às dezenas de milhares nos nossos campos.\n\nEstejam os nossos bois bem carregados; não haja brechas nos muros, nem assaltos, nem gritos de dor nas nossas praças.\n\nFeliz o povo que está numa situação destas! Feliz o povo cujo Deus é o Senhor!"
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Encerramento",
+    "texto": "Obrigado/a.\nFecho agora este momento\ncom paz e com confiança.\nA luz fica comigo,\nem mim e à minha volta.\nÁmen."
+   }
+  ],
+  "temasDias": [
+   {
+    "titulo": "O começo",
+    "intencao": "Limpo, protejo e abro caminhos, com fé e com gratidão.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia do ritual",
+    "intencao": "Limpo, protejo e abro caminhos, com fé e com gratidão.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia do ritual",
+    "intencao": "Limpo, protejo e abro caminhos, com fé e com gratidão.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia do ritual",
+    "intencao": "Limpo, protejo e abro caminhos, com fé e com gratidão.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia do ritual",
+    "intencao": "Limpo, protejo e abro caminhos, com fé e com gratidão.",
+    "acao": ""
+   },
+   {
+    "titulo": "Mais um dia do ritual",
+    "intencao": "Limpo, protejo e abro caminhos, com fé e com gratidão.",
+    "acao": ""
+   },
+   {
+    "titulo": "O último dia",
+    "intencao": "Limpo, protejo e abro caminhos, com fé e com gratidão.",
+    "acao": ""
+   }
+  ]
+ }
+];

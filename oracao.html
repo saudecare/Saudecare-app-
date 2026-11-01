@@ -176,7 +176,9 @@ const ARTE_LUZ = `<svg class="arte" viewBox="0 0 200 200" role="img" aria-label=
 <path d="M76 152h48M84 160h32" stroke="var(--marca)" stroke-width="3" stroke-linecap="round"/>
 ${ESTRELAS}</svg>`;
 const ORNA = `<svg class="orna" viewBox="0 0 120 18" aria-hidden="true"><g fill="none" stroke="var(--dest)" stroke-width="1.6" stroke-linecap="round"><path d="M6 9h38M76 9h38"/><path d="M60 3l3 6-3 6-3-6z" fill="var(--dest)"/><circle cx="48" cy="9" r="1.6" fill="var(--dest)"/><circle cx="72" cy="9" r="1.6" fill="var(--dest)"/></g></svg>`;
+const arteDe = () => O.icone ? (O.icone === 'escudo' ? ARTE_ESCUDO : ARTE_LUZ) : (O.tipo === 'ciclo' || /🛡|⚔/.test(O.emoji || '') ? ARTE_ESCUDO : ARTE_LUZ);
 const ICONE_SEMANA = (n) => {
+  if (O.icone) { const c0 = '<svg class="tema-img" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="var(--marca)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'; if (O.icone === 'agua') return c0 + '<path d="M32 8C22 22 14 30 14 40a18 18 0 0 0 36 0C50 30 42 22 32 8z" fill="var(--caixa)"/><path d="M24 42a8 8 0 0 0 8 8" stroke="var(--dest)"/></g></svg>'; if (O.icone === 'chave') return c0 + '<circle cx="21" cy="32" r="11" fill="var(--caixa)"/><path d="M32 32h24M48 32v9M56 32v7" stroke="var(--dest)"/></g></svg>'; if (O.icone === 'escudo') return c0 + '<path d="M32 8l18 7v16c0 12-8 21-18 25-10-4-18-13-18-25V15z" fill="var(--caixa)"/><path d="M32 22v22M23 32h18" stroke="var(--dest)"/></g></svg>'; return c0 + '<circle cx="32" cy="32" r="10" fill="var(--dest)" stroke="var(--marca)"/><path d="M32 8v8M32 48v8M8 32h8M48 32h8M15 15l6 6M43 43l6 6M49 15l-6 6M21 43l-6 6" stroke="var(--dest)"/></g></svg>'; }
   const c = '<svg class="tema-img" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="var(--marca)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">';
   if (n <= 7) return c + '<path d="M32 8C22 22 14 30 14 40a18 18 0 0 0 36 0C50 30 42 22 32 8z" fill="var(--caixa)"/><path d="M24 42a8 8 0 0 0 8 8" stroke="var(--dest)"/></g></svg>';
   if (n <= 14) return c + '<path d="M8 32c10-14 18 14 28 0s14-6 20-2"/><path d="M28 18l8 28M36 18l-8 28" stroke="var(--dest)"/></g></svg>';
@@ -329,7 +331,7 @@ function passosRezar() {
 }
 function ecraInicio() {
   const prox = O.dias ? proximo() : 0, comecou = O.dias && est.inicio, completo = O.dias && est.feitos.length >= O.dias;
-  const arte = O.tipo === 'ciclo' || /🛡|⚔/.test(O.emoji || '') ? ARTE_ESCUDO : ARTE_LUZ;
+  const arte = arteDe();
   let h = `<div class="capa">${arte}${envio && envio.patientNome ? `<p class="ola">Olá, ${esc(String(envio.patientNome).split(' ')[0])} 🌿</p>` : ''}<h1>${esc(O.titulo)}</h1>${O.subtitulo ? `<p>${esc(O.subtitulo)}</p>` : ''}</div>`;
   if (quebrou()) h += `<div class="quebra">⚠️ <b>Passou um dia sem rezares.</b><br>Pela regra desta oração (21 dias seguidos), recomeças do Dia 1. Não faz mal: um novo começo também é caminho.<button class="btn grande" id="bRecomecar">🔄 Recomeçar do Dia 1</button></div>`;
   else if (O.dias && comecou && !completo) {
@@ -409,7 +411,7 @@ function acessoPessoal() {
   const antigo = lerLS('vo_c_' + id, null); // progresso feito antes, só neste telemóvel: é mantido
   const feitosAntes = antigo && antigo.feitos ? antigo.feitos.length : 0;
   $('barra').hidden = false;
-  $('app').innerHTML = `<div class="capa">${O.tipo === 'ciclo' || /🛡|⚔/.test(O.emoji || '') ? ARTE_ESCUDO : ARTE_LUZ}<h1>${esc(O.titulo)}</h1>${O.subtitulo ? `<p>${esc(O.subtitulo)}</p>` : ''}</div>
+  $('app').innerHTML = `<div class="capa">${arteDe()}<h1>${esc(O.titulo)}</h1>${O.subtitulo ? `<p>${esc(O.subtitulo)}</p>` : ''}</div>
     <section style="text-align:center"><h2>🌿 Antes de começar</h2><div class="corpo"><p>Escreve o teu nome. Fica com um acesso só teu, que guarda o teu progresso e ao qual podes voltar quando quiseres.${feitosAntes ? `<br><b>Já tens ${feitosAntes} ${feitosAntes === 1 ? 'dia feito' : 'dias feitos'} e vamos mantê-${feitosAntes === 1 ? 'lo' : 'los'}.</b>` : ''}</p></div>
     <input id="nomeP" type="text" maxlength="80" autocomplete="name" placeholder="O teu nome" style="width:100%;min-height:52px;font-size:1.1rem;padding:10px 14px;border:2px solid var(--linha);border-radius:14px;background:var(--bg);color:var(--tinta);margin:6px 0 12px;">
     <button class="btn grande" id="entrarP">Entrar 🙏</button><p id="errP" style="color:#b3261e;margin-top:8px"></p></section>`;

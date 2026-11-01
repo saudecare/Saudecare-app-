@@ -1,7 +1,7 @@
 /* Orações e Salmos — biblioteca da Hikari Fafe: criar, editar, ordenar e enviar por link ao paciente.
    Ferramenta exclusiva da conta hikari-terapias. Cada oração é um documento em «oracoes/{id}» e a página
    de leitura do paciente é oracao.html?o={id} (feita para telemóvel e para qualquer ecrã). */
-import { ORACAO_MIGUEL, MODELO_VAZIO } from './oracoes-padrao.js';
+import { ORACAO_MIGUEL, MODELO_VAZIO, SALMOS_PADRAO } from './oracoes-padrao.js';
 
 export const TENANT_ORACOES = 'hikari-terapias';
 const BASE_LINK = 'https://vindora.pt/oracao.html?o=';
@@ -32,6 +32,15 @@ export function renderOracoes(main, ctx) {
     if (!lista.length && !semente) {
       try { await ctx.gravar(null, Object.assign(clone(ORACAO_MIGUEL), { ordem: 1 })); try { localStorage.setItem('oracoes_semente_v1', '1'); } catch (_) {} lista = await ctx.listar(); } catch (_) {}
     }
+    // instala os salmos (91, 51, 144 e o ritual) uma só vez; se os apagares, não voltam sozinhos
+    let salmos = false; try { salmos = localStorage.getItem('oracoes_salmos_v1') === '1'; } catch (_) {}
+    if (!salmos) {
+      try {
+        for (const sd of SALMOS_PADRAO) if (!lista.some((o) => o.padraoId === sd.padraoId)) await ctx.gravar(null, clone(sd));
+        try { localStorage.setItem('oracoes_salmos_v1', '1'); } catch (_) {}
+        lista = await ctx.listar(); ctx.toast('Salmos 91, 51, 144 e o ritual instalados. 📜');
+      } catch (_) {}
+    }
     // atualiza a oração do Arcanjo Miguel para a versão mais recente (a que tem o texto completo dos 21 dias)
     try {
       const velha = lista.find((o) => o.padraoId === ORACAO_MIGUEL.padraoId && (o.versaoPadrao || 1) < ORACAO_MIGUEL.versaoPadrao);
@@ -48,12 +57,15 @@ export function renderOracoes(main, ctx) {
         <button class="primary" id="o-nova">➕ Nova oração ou salmo</button>
       </div>
       <p class="muted" style="margin:0 0 12px;">🌐 O <b>Link geral</b> pode ser partilhado com quem quiseres: cada pessoa que o abrir escreve o nome e fica com o seu próprio acesso. Escreve ou edita as orações e envia por link ao paciente. A página abre bem no telemóvel, com letra ajustável e fundo claro, sépia ou escuro.</p>
+      ${SALMOS_PADRAO.every((sd) => lista.some((o) => o.padraoId === sd.padraoId)) ? '' : `<div class="card" style="margin-bottom:12px;"><p style="margin:0 0 8px;">Faltam alguns salmos na tua lista.</p><button class="ghost" id="o-salmos">📜 Instalar Salmos 91, 51, 144 e o ritual</button></div>`}
       ${temMiguel ? '' : `<div class="card" style="margin-bottom:12px;"><p style="margin:0 0 8px;">A oração de 21 dias do Arcanjo Miguel não está na tua lista.</p><button class="ghost" id="o-miguel">✨ Instalar a oração do Arcanjo Miguel (21 dias)</button></div>`}
       <div id="o-lista">${lista.map(cartao).join('') || '<div class="card"><p class="muted">Ainda sem orações. Carrega em «Nova oração ou salmo».</p></div>'}</div>
       ${painelEnvios()}`;
     main.querySelector('#o-nova').onclick = () => abrirEditor(null);
     const m = main.querySelector('#o-miguel');
     if (m) m.onclick = async () => { await ctx.gravar(null, Object.assign(clone(ORACAO_MIGUEL), { ordem: 1 })); ctx.toast('Oração instalada.'); carregar(); };
+    const sb = main.querySelector('#o-salmos');
+    if (sb) sb.onclick = async () => { for (const sd of SALMOS_PADRAO) if (!lista.some((o) => o.padraoId === sd.padraoId)) await ctx.gravar(null, clone(sd)); ctx.toast('Salmos instalados.'); carregar(); };
     main.querySelectorAll('[data-acao]').forEach((b) => { b.onclick = () => acao(b.dataset.acao, b.dataset.id); });
     main.querySelectorAll('[data-env]').forEach((b) => { b.onclick = () => acaoEnvio(b.dataset.env, b.dataset.id); });
   }
