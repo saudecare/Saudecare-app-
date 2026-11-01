@@ -414,6 +414,10 @@ service cloud.firestore {
         allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
+      match /apometria/{docId} {
+        allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+      }
+
       match /farmacia/{entryId} {
         allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }

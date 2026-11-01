@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-01-06';
+const APP_VERSION = '2026-11-01-07';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1844,7 +1844,8 @@ const NAV_GROUPS = {
     { view: 'estudioVoz', icon: '🎙️', label: 'Estúdio de Voz', tenantOnly: 'hikari-terapias' },
     { view: 'frequencias', icon: '🎶', label: 'Frequências', tenantOnly: 'hikari-terapias' },
     { view: 'oracoes', icon: '🙏', label: 'Orações e Salmos', tenantOnly: 'hikari-terapias' },
-    { view: 'pesqIntegrada', icon: '🧭', label: 'Pesquisa Integrada', tenantOnly: 'hikari-terapias' }
+    { view: 'apometria', icon: '🌀', label: 'Apometria', tenantOnly: 'hikari-terapias' },
+    { view: 'pesqIntegrada', icon: '🧭', label: 'Atendimento Guiado', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1958,6 +1959,7 @@ function renderView(view, opts){
   else if (view === 'estudioVoz') renderEstudioVoz(main);
   else if (view === 'frequencias') renderFrequenciasApp(main);
   else if (view === 'oracoes') renderOracoesApp(main);
+  else if (view === 'apometria') renderApometriaApp(main);
   else if (view === 'pesqIntegrada') renderPesqIntegradaApp(main);
   else if (view === 'pedidoMetodo') { import('./pe-pedido.js').then(() => window.renderPedidoMetodo(main)).catch(e => { main.innerHTML = '<div class="card"><p class="muted">' + ((e && e.message) || 'Indisponível') + '</p></div>'; }); }
   else if (view === 'pesquisaEmocional') { (window.carregarPE ? window.carregarPE() : Promise.resolve()).then(() => window.renderPesquisaEmocional?.(main)).catch(e => { main.innerHTML = '<div class="card"><h2>🔒 Método indisponível</h2><p class="muted">' + ((e && e.message) || 'Sem acesso.') + '</p></div>'; }); }
@@ -18911,6 +18913,24 @@ async function renderOracoesApp(main){
   }
 }
 
+async function renderApometriaApp(main){
+  if (tenantId !== 'hikari-terapias'){
+    main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>';
+    return;
+  }
+  try {
+    const mod = await import('./apometria-escola.js?v=' + APP_VERSION);
+    mod.renderApometria(main, {
+      tenantId,
+      carregarMeus: async () => { const s = await getDoc(doc(db, 'tenants', tenantId, 'apometria', 'meus')); return s.exists() ? (s.data().comandos || {}) : {}; },
+      gravarMeus: async (comandos) => { await setDoc(doc(db, 'tenants', tenantId, 'apometria', 'meus'), { comandos, atualizadoEm: serverTimestamp() }); },
+      escapeHtml, toast, confirmar: reikiConfirmar
+    });
+  } catch(e){
+    main.innerHTML = '<div class="card"><h2>🌀 Apometria</h2><p class="muted">Não consegui abrir: ' + escapeHtml(e.message || String(e)) + '</p><button class="primary" onclick="renderView(\'apometria\')">Tentar outra vez</button></div>';
+  }
+}
+
 async function renderPesqIntegradaApp(main){
   if (tenantId !== 'hikari-terapias'){
     main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>';
@@ -18932,6 +18952,8 @@ async function renderPesqIntegradaApp(main){
       },
       gravar: async (pid, dados) => { await addDoc(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), { ...dados, generatedAt: serverTimestamp() }); },
       dataPT: t => t ? new Date(t).toLocaleDateString('pt-PT') : '—',
+      carregarMeus: async () => { const s = await getDoc(doc(db, 'tenants', tenantId, 'apometria', 'meus')); return s.exists() ? (s.data().comandos || {}) : {}; },
+      abrirTriagem: () => renderView('triagemBaixaVibracao'),
       escapeHtml, toast, confirmar: reikiConfirmar
     });
   } catch(e){
