@@ -86,6 +86,9 @@
   body{padding-bottom:max(92px,calc(80px + env(safe-area-inset-bottom)));}
   .aviso-net{background:var(--aviso);border:1px solid var(--dest);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:.9rem;}
   .ola{font-size:1.1rem!important;color:var(--dest)!important;font-weight:700;}
+  .quebra{background:var(--aviso);border:2px solid var(--dest);border-radius:16px;padding:14px;text-align:center;margin:10px 0;}
+  .regra{text-align:center;font-size:.9rem;color:var(--suave);margin:6px 0;}
+  .hojefeito{text-align:center;color:var(--suave);margin:12px 0;font-weight:600;}
   .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;background:var(--card);border-top:1px solid var(--linha);padding:6px max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));gap:4px;}
   .tabs[hidden]{display:none;}
   .capa .arte{width:min(170px,44vw);} .capa{padding-top:8px;}
@@ -293,10 +296,21 @@ function desenharCaminho() {
   $('grelha').onclick = (e) => { const b = e.target.closest('button[data-d]'); if (!b) return; ver = +b.dataset.d; desenharCaminho(); };
   $('marcar').onclick = () => {
     const i = est.feitos.indexOf(ver);
+    if (i < 0 && jaFezHoje()) { alert('Já fizeste o dia de hoje. Volta amanhã para o próximo.'); return; }
     if (i >= 0) { est.feitos.splice(i, 1); delete est.feitosEm[ver]; } else { est.feitos.push(ver); est.feitos.sort((a, b) => a - b); est.feitosEm[ver] = new Date().toISOString(); const p = proximo(); if (p) ver = p; }
     guardarEst(); desenharCaminho();
   };
 }
+
+
+// regra «21 dias seguidos»: avisa se falhou um dia e não deixa marcar dois dias no mesmo dia
+const diaLocal = (iso) => { const d = new Date(iso); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
+function ultimoFeito() { const v = Object.values(est.feitosEm || {}).filter(Boolean).sort(); return v.length ? v[v.length - 1] : ''; }
+function diasDesdeUltimo() { const u = ultimoFeito(); if (!u) return -1; const h = new Date(); return Math.round((new Date(h.getFullYear(), h.getMonth(), h.getDate()).getTime() - diaLocal(u)) / 86400000); }
+const regraSeguidos = () => O.regra === 'seguidos' && O.dias;
+const quebrou = () => regraSeguidos() && est.feitos.length > 0 && est.feitos.length < O.dias && diasDesdeUltimo() >= 2;
+const jaFezHoje = () => regraSeguidos() && est.feitos.length < O.dias && diasDesdeUltimo() === 0;
+function recomecar() { est.feitos = []; est.feitosEm = {}; est.inicio = hojeISO(); ver = 1; guardarEst(); }
 
 // ── navegação por separadores (um ecrã de cada vez) ──
 let vista = 'inicio', passo = 0, feitoAgora = false;
@@ -317,11 +331,14 @@ function ecraInicio() {
   const prox = O.dias ? proximo() : 0, comecou = O.dias && est.inicio, completo = O.dias && est.feitos.length >= O.dias;
   const arte = O.tipo === 'ciclo' || /🛡|⚔/.test(O.emoji || '') ? ARTE_ESCUDO : ARTE_LUZ;
   let h = `<div class="capa">${arte}${envio && envio.patientNome ? `<p class="ola">Olá, ${esc(String(envio.patientNome).split(' ')[0])} 🌿</p>` : ''}<h1>${esc(O.titulo)}</h1>${O.subtitulo ? `<p>${esc(O.subtitulo)}</p>` : ''}</div>`;
-  if (O.dias && comecou && !completo) {
+  if (quebrou()) h += `<div class="quebra">⚠️ <b>Passou um dia sem rezares.</b><br>Pela regra desta oração (21 dias seguidos), recomeças do Dia 1. Não faz mal: um novo começo também é caminho.<button class="btn grande" id="bRecomecar">🔄 Recomeçar do Dia 1</button></div>`;
+  else if (O.dias && comecou && !completo) {
     const t = (O.temasDias || [])[prox - 1] || {};
-    h += `<div class="hoje cartaoHoje">${ICONE_SEMANA(prox)}<div class="dia">Dia ${prox} de ${O.dias} · hoje</div><h3>${esc(t.titulo || '')}</h3>${t.intencao ? `<p>${esc(t.intencao)}</p>` : ''}</div>`;
+    h += `<div class="hoje cartaoHoje">${ICONE_SEMANA(prox)}<div class="dia">Dia ${prox} de ${O.dias} · ${jaFezHoje() ? "amanhã" : "hoje"}</div><h3>${esc(t.titulo || '')}</h3>${t.intencao ? `<p>${esc(t.intencao)}</p>` : ''}</div>`;
   } else if (completo) h += `<div class="final">🌟 <b>Completaste os ${O.dias} dias.</b><br>Que a luz continue contigo.</div>`;
-  h += `<button class="btn grande" id="bRezar">🙏 ${O.dias && comecou && !completo ? 'Rezar o dia ' + prox : 'Começar a rezar'}</button>`;
+  if (jaFezHoje()) h += `<p class="hojefeito">🌙 Já fizeste o dia de hoje. Volta amanhã para o dia ${prox}.</p>`;
+  if (regraSeguidos()) h += `<p class="regra">📌 ${O.dias} dias seguidos, sem interrupção. Se falhares um dia, recomeças do Dia 1.</p>`;
+  if (!quebrou()) h += `<button class="btn grande" id="bRezar">🙏 ${O.dias && comecou && !completo ? (jaFezHoje() ? 'Rezar outra vez' : 'Rezar o dia ' + prox) : 'Começar a rezar'}</button>`;
   if (O.dias) h += `<button class="btn sec" id="bCam">🗓️ O meu caminho${comecou ? ' · ' + est.feitos.length + '/' + O.dias : ''}</button>`;
   if (infos().length) h += `<button class="btn sec" id="bSaber">📖 Saber mais: para que serve e como fazer</button>`;
   return h;
@@ -337,7 +354,8 @@ function ecraRezar() {
     const ultimo = O.dias && ver === O.dias;
     const selar = ultimo ? seccoes().find((x) => x.tipo === 'texto' && /selar|21/i.test(x.titulo || '')) : null;
     h += `<section class="oracao passo fim">${ORNA}<h2>🌟 Amén. Está feito.</h2><div class="corpo"><p>Respira fundo e agradece.</p>${t && t.acao ? `<p class="acao"><b>Para hoje:</b> ${esc(t.acao)}</p>` : ''}${selar ? `<div style="text-align:left">${blocoTexto(selar.texto)}</div>` : ''}</div></section>`;
-    if (O.dias) h += `<button class="btn grande" id="bFeito">${est.feitos.includes(ver) ? '↩ Desmarcar o dia ' + ver : '✅ Já fiz o dia ' + ver}</button>`;
+    if (O.dias && jaFezHoje() && !est.feitos.includes(ver)) h += `<p class="hojefeito">🌙 O dia de hoje já está feito. Volta amanhã.</p>`;
+    else if (O.dias) h += `<button class="btn grande" id="bFeito">${est.feitos.includes(ver) ? '↩ Desmarcar o dia ' + ver : '✅ Já fiz o dia ' + ver}</button>`;
     else h += `<button class="btn grande" id="bRezei">${feitoAgora ? '✅ Registado. Obrigado!' : '🙏 Já rezei'}</button>${est.vezes ? `<p style="text-align:center;color:var(--suave)">Já rezaste ${est.vezes} ${est.vezes === 1 ? 'vez' : 'vezes'} com este link.</p>` : ''}`;
   }
   h += `<div class="nav2"><button class="btn sec" id="bAnt" ${passo === 0 ? 'disabled' : ''}>← Anterior</button>${passo < n - 1 ? '<button class="btn" id="bSeg">Seguinte →</button>' : '<button class="btn" id="bIni">🏠 Início</button>'}</div>`;
@@ -360,7 +378,7 @@ function mostrar() {
   $('tabs').hidden = false;
   if (vista === 'caminho') desenharCaminho();
   const on = (id, f) => { const e = $(id); if (e) e.onclick = f; };
-  on('bRezar', () => irPara('rezar')); on('bCam', () => irPara('caminho')); on('bSaber', () => irPara('saber'));
+  on('bRezar', () => irPara('rezar')); on('bRecomecar', () => { recomecar(); irPara('inicio'); }); on('bCam', () => irPara('caminho')); on('bSaber', () => irPara('saber'));
   on('bSeg', () => { passo++; mostrar(); window.scrollTo(0, 0); }); on('bAnt', () => { passo = Math.max(0, passo - 1); mostrar(); window.scrollTo(0, 0); });
   on('bIni', () => irPara('inicio'));
   on('bRezei', () => { if (feitoAgora) return; est.vezes = (est.vezes || 0) + 1; feitoAgora = true; guardarEst(); mostrar(); });

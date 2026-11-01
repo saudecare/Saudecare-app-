@@ -32,6 +32,11 @@ export function renderOracoes(main, ctx) {
     if (!lista.length && !semente) {
       try { await ctx.gravar(null, Object.assign(clone(ORACAO_MIGUEL), { ordem: 1 })); try { localStorage.setItem('oracoes_semente_v1', '1'); } catch (_) {} lista = await ctx.listar(); } catch (_) {}
     }
+    // atualiza a oração do Arcanjo Miguel para a versão mais recente (a que tem o texto completo dos 21 dias)
+    try {
+      const velha = lista.find((o) => o.padraoId === ORACAO_MIGUEL.padraoId && (o.versaoPadrao || 1) < ORACAO_MIGUEL.versaoPadrao);
+      if (velha) { await ctx.gravar(velha.id, Object.assign(clone(ORACAO_MIGUEL), { ordem: velha.ordem || 1 })); lista = await ctx.listar(); ctx.toast('Oração do Arcanjo Miguel atualizada com o texto completo. ✅'); }
+    } catch (_) {}
     vistaLista();
   }
 

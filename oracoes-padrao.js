@@ -3,12 +3,19 @@
 
 export const ORACAO_MIGUEL = {
   padraoId: 'arcanjo-miguel-21',
+  versaoPadrao: 2,
+  regra: 'seguidos',
   tipo: 'ciclo',
   emoji: '🛡️',
   titulo: 'Oração de Limpeza do Arcanjo Miguel',
   subtitulo: '21 dias de limpeza, proteção e libertação',
   dias: 21,
   seccoes: [
+    {
+      tipo: 'aviso',
+      titulo: 'Regra imprescindível',
+      texto: 'Esta oração deve ser recitada durante 21 dias seguidos, sem interrupção.\n\nSe te esqueceres de algum dia, deves recomeçar do Dia 1.'
+    },
     {
       tipo: 'texto',
       titulo: 'Para que serve',
@@ -27,7 +34,7 @@ export const ORACAO_MIGUEL = {
         'Lava as mãos e a cara. Se quiseres, acende uma vela branca ou azul (num sítio seguro, longe de cortinas e de crianças) e põe ao lado um copo de água.',
         'Senta-te ou fica de pé, com a coluna direita e os ombros soltos. Respira fundo três vezes, devagar.',
         'Lê a «Abertura» em voz alta ou em silêncio.',
-        'Lê a «Oração do Dia» devagar, de preferência em voz alta. Quando chegares à intenção, diz em voz alta a intenção do dia.',
+        'Lê a «Oração dos 21 dias», em cinco partes, devagar e de preferência em voz alta. Na 2.ª parte, diz o teu nome completo quando a oração o pedir. Depois, se quiseres, diz em voz alta a intenção do dia.',
         'Se fizer parte da tua fé, podes acrescentar a oração tradicional a São Miguel (opcional, mais abaixo).',
         'Fica dois minutos em silêncio, a respirar, sem pedir nada. Repara no que sentes no corpo.',
         'Lê o «Encerramento» e agradece. Apaga a vela e bebe o copo de água.',
@@ -42,7 +49,7 @@ export const ORACAO_MIGUEL = {
     {
       tipo: 'texto',
       titulo: 'E se falhar um dia?',
-      texto: 'Não faz mal e não precisas de te culpar. Retoma no dia seguinte, no dia em que ficaste, e acrescenta um dia no fim. O quadro desta página mostra sempre o próximo dia por fazer.\n\nPode acontecer que, nestes dias, fiquem mais à tona emoções, sonhos intensos ou cansaço. É normal: é o que está a ser arrumado. Descansa, bebe água, caminha ao ar livre e sê gentil contigo.'
+      texto: 'A regra desta oração é clara: são 21 dias seguidos, sem interrupção. Se te esqueceres de algum dia, recomeças do Dia 1. Esta página ajuda-te: se passar um dia sem rezares, avisa-te e podes recomeçar com um toque.\n\nNão precisas de te culpar. Recomeçar faz parte do caminho.\n\nPode acontecer que, nestes dias, fiquem mais à tona emoções, sonhos intensos ou cansaço. É normal: é o que está a ser arrumado. Descansa, bebe água, caminha ao ar livre e sê gentil contigo.'
     },
     {
       tipo: 'aviso',
@@ -56,8 +63,28 @@ export const ORACAO_MIGUEL = {
     },
     {
       tipo: 'oracao',
-      titulo: 'Oração do Dia',
-      texto: 'Arcanjo São Miguel,\nprincípe da luz, guardião e guerreiro de Deus,\neu chamo-te agora, com fé e de coração aberto.\nVem ao meu lado e protege-me.\n\nEnvolve-me no teu manto de luz azul.\nÀ minha frente e atrás de mim,\nà minha direita e à minha esquerda,\npor cima de mim e por baixo de mim:\nque só a luz me rodeie.\n\nCom a tua espada de luz, corta agora\ntudo o que me prende ao medo, à culpa e à dor.\nCorta os laços que me pesam\ne que já não me pertencem.\nCorta-os com firmeza e com amor,\nsem ódio e sem mágoa.\n\nLimpa o meu corpo, a minha mente e o meu coração.\nLimpa a minha casa e todos os lugares por onde passo.\nAfasta de mim e dos meus\ntudo o que não vem do bem:\na energia pesada, a inveja,\nas palavras e os pensamentos que me fazem mal.\nQue tudo isso seja transformado em luz.\n\nDá-me coragem para seguir em frente,\nclareza para escolher bem\ne paz para descansar.\nLembra-me, todos os dias,\nde que não estou sozinho/a.\n\n(Diz agora, em voz alta, a intenção do dia.)\n\nPeço a Deus, Fonte de toda a luz,\nque confirme esta limpeza e esta proteção.\nAgradeço-te, Arcanjo Miguel,\npor estares comigo.\nQue assim seja. Ámen.'
+      titulo: "1.ª parte · Proteção e canal de luz",
+      texto: "Eu apelo ao Cristo para acalmar os meus medos e para apagar todo o mecanismo de controlo externo que possa interferir com esta cura. Peço ao meu Eu Superior que feche a minha aura e estabeleça um canal Crístico para os propósitos da minha cura, para que só as energias Crísticas possam fluir até mim. Não se poderá fazer outro uso deste canal que não seja para o fluxo de energias Divinas.\n\nAgora apelo ao Arcanjo Miguel da 13.ª Dimensão que sele e proteja completamente esta sagrada experiência. Agora apelo ao Círculo de Segurança da 13.ª Dimensão para que sele, proteja e aumente completamente o escudo do Arcanjo Miguel, assim como para que remova qualquer coisa que não seja de natureza Crística e que exista atualmente dentro deste campo.\n\nAgora apelo aos Mestres Ascensionados e aos nossos assistentes Crísticos para que removam e dissolvam completamente todos e cada um dos implantes e das suas energias semeadas, parasitas, armas espirituais e dispositivos de limitação autoimpostos, tanto conhecidos como desconhecidos. Uma vez completado isto, apelo pela completa restauração e reparação do campo de energia original, infundido com a energia dourada de Cristo.\n\n«Eu Sou livre! Eu Sou livre! Eu Sou livre! Eu Sou livre! Eu Sou livre! Eu Sou livre! Eu Sou livre!»"
+    },
+    {
+      tipo: 'oracao',
+      titulo: "2.ª parte · Libertação de contratos e laços",
+      texto: "Eu, o ser conhecido como (diz o teu nome completo), nesta encarnação particular, por este meio revogo e renuncio a todos e cada um dos compromissos de fidelidade, votos, acordos e/ou contratos de associação que já não servem o meu bem mais elevado, nesta vida, em vidas passadas, em vidas simultâneas, em todas as dimensões, períodos de tempo e localizações.\n\nAgora ordeno a todas as entidades (que estão ligadas a estes contratos, organizações e associações a que agora renuncio) que cessem e desistam e que abandonem o meu campo de energia agora e para sempre, e de forma retroativa, levando consigo os seus artefactos, dispositivos e energias semeadas.\n\nPara assegurar isto, apelo ao sagrado espírito Shekinah para que seja testemunha da dissolução de todos os contratos, dispositivos e energias semeadas que não honram a Deus. Isto inclui todas as alianças que não honram a Deus como Ser Supremo. Além disso, peço que o Espírito Santo «testemunhe» esta libertação completa de tudo o que infringe a vontade de Deus. Declaro isto daqui em diante e retroativamente. E assim seja."
+    },
+    {
+      tipo: 'oracao',
+      titulo: "3.ª parte · Aliança e dedicação",
+      texto: "Agora volto a garantir a minha aliança com Deus através do domínio do Cristo e a dedicar o meu ser inteiro, o meu ser físico, mental, emocional e espiritual, à vibração de Cristo, desde este momento em diante e de forma retroativa. Mais ainda, dedico a minha vida, o meu trabalho, tudo o que penso, digo e faço, e todas as coisas no meu ambiente que ainda me servem, à vibração de Cristo também.\n\nAlém disso, dedico o meu ser à minha própria maestria e ao caminho da ascensão, tanto do planeta como a minha. Havendo declarado tudo isto, autorizo agora o Cristo e o meu próprio Ser Superior a fazerem mudanças na minha vida para acomodar esta nova dedicação, e peço ao Espírito Santo que testemunhe isto também.\n\nDeclaro isto a Deus. Que seja escrito no Livro da Vida. Que assim seja. Graças a Deus."
+    },
+    {
+      tipo: 'oracao',
+      titulo: "4.ª parte · Perdão e cura",
+      texto: "Ao Universo e à Mente de Deus inteira, e a cada ser nela contido, a todos os lugares onde tenha estado, às experiências de que tenha participado e a todos os seres que necessitam desta cura, sejam conhecidos ou desconhecidos de mim: qualquer coisa que se mantenha entre nós, eu agora curo e perdoo.\n\nApelo ao Santo Espírito Shekinah, ao Senhor Metatron, ao Senhor Maitreya e a Saint Germain para que ajudem e testemunhem esta cura. Perdoo-vos por tudo o que necessite de ser perdoado entre vós e mim. Peço-vos que me perdoeis por tudo o que necessite de ser perdoado entre vós e mim. O mais importante: perdoo-me a mim próprio/a por tudo o que necessite de ser perdoado entre as minhas encarnações passadas e o meu Ser Superior.\n\nEstamos agora coletivamente curados e perdoados, curados e perdoados, curados e perdoados. Todos estamos agora elevados aos nossos seres Crísticos. Estamos plenos e rodeados do amor dourado de Cristo. Estamos plenos e rodeados da dourada luz de Cristo. Somos livres de todas as vibrações de terceira e quarta dimensão de dor, medo e ira."
+    },
+    {
+      tipo: 'oracao',
+      titulo: "5.ª parte · Selo e agradecimento",
+      texto: "Todos os portões e laços psíquicos unidos a estas entidades, dispositivos implantados, contratos ou energias semeadas estão agora libertados e curados. Apelo a Saint Germain para que transmute e retifique com a Chama Violeta todas as minhas energias que me foram tiradas e as devolva agora no seu estado purificado.\n\nUma vez que estas energias tenham regressado a mim, peço que os canais através dos quais a minha energia era drenada sejam dissolvidos completamente. Peço ao Senhor Metatron que nos liberte das cadeias da dualidade. Peço que o selo do Domínio do Cristo seja colocado sobre mim. Peço ao Espírito Santo que testemunhe que isto se cumpre. E assim é.\n\nAgora peço ao Cristo que esteja comigo e cure as minhas feridas e cicatrizes. Peço também ao Arcanjo Miguel que me marque com o seu selo, para que eu seja protegido/a para sempre das influências que me impedem de fazer a vontade do Nosso Criador.\n\nE assim seja! Dou graças a Deus, aos Mestres Ascensionados, ao comando Ashtar Sheran, aos Anjos e Arcanjos e a todos os demais que têm participado nesta cura e elevação contínua do meu ser. Sela!\n\nSanto, Santo, Santo é o Senhor Deus do universo!\nKodoish, Kodoish, Kodoish, Adonai Tsebaioth!"
     },
     {
       tipo: 'oracao',
