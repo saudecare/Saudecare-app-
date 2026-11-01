@@ -466,6 +466,16 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Orações e salmos da Hikari Fafe: o paciente abre pelo link (só lê um documento, que tem um código impossível de adivinhar);
+    // só a equipa da conta hikari-terapias lista, cria, altera e apaga.
+    match /oracoes/{oracaoId} {
+      allow get: if true;
+      allow list: if isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias';
+      allow create: if isEquipaClinica('hikari-terapias') && request.resource.data.tenantId == 'hikari-terapias';
+      allow update: if isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias' && request.resource.data.tenantId == 'hikari-terapias';
+      allow delete: if isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias';
+    }
+
     match /public_form_responses/{responseId} {
       // Terapeuta cria o documento e o paciente recebe o link
       // criadoPorEquipa (ficha já ligada a um paciente) só pode ser marcada por quem tem sessão nessa conta.
