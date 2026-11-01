@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-01-05';
+const APP_VERSION = '2026-11-01-06';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1843,7 +1843,8 @@ const NAV_GROUPS = {
     { view: 'mesinhas', icon: '🌿', label: 'Ervas e Mesinhas Antigas', tenantOnly: 'hikari-terapias' },
     { view: 'estudioVoz', icon: '🎙️', label: 'Estúdio de Voz', tenantOnly: 'hikari-terapias' },
     { view: 'frequencias', icon: '🎶', label: 'Frequências', tenantOnly: 'hikari-terapias' },
-    { view: 'oracoes', icon: '🙏', label: 'Orações e Salmos', tenantOnly: 'hikari-terapias' }
+    { view: 'oracoes', icon: '🙏', label: 'Orações e Salmos', tenantOnly: 'hikari-terapias' },
+    { view: 'pesqIntegrada', icon: '🧭', label: 'Pesquisa Integrada', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1957,6 +1958,7 @@ function renderView(view, opts){
   else if (view === 'estudioVoz') renderEstudioVoz(main);
   else if (view === 'frequencias') renderFrequenciasApp(main);
   else if (view === 'oracoes') renderOracoesApp(main);
+  else if (view === 'pesqIntegrada') renderPesqIntegradaApp(main);
   else if (view === 'pedidoMetodo') { import('./pe-pedido.js').then(() => window.renderPedidoMetodo(main)).catch(e => { main.innerHTML = '<div class="card"><p class="muted">' + ((e && e.message) || 'Indisponível') + '</p></div>'; }); }
   else if (view === 'pesquisaEmocional') { (window.carregarPE ? window.carregarPE() : Promise.resolve()).then(() => window.renderPesquisaEmocional?.(main)).catch(e => { main.innerHTML = '<div class="card"><h2>🔒 Método indisponível</h2><p class="muted">' + ((e && e.message) || 'Sem acesso.') + '</p></div>'; }); }
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
@@ -18906,6 +18908,34 @@ async function renderOracoesApp(main){
     });
   } catch(e){
     main.innerHTML = '<div class="card"><h2>🙏 Orações e Salmos</h2><p class="muted">Não consegui abrir: ' + escapeHtml(e.message || String(e)) + '</p><button class="primary" onclick="renderView(\'oracoes\')">Tentar outra vez</button></div>';
+  }
+}
+
+async function renderPesqIntegradaApp(main){
+  if (tenantId !== 'hikari-terapias'){
+    main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>';
+    return;
+  }
+  try {
+    const mod = await import('./apometria.js?v=' + APP_VERSION);
+    mod.renderPesquisaIntegrada(main, {
+      tenantId,
+      pacientes: async () => {
+        const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+        const l = []; snap.forEach(d => { const p = d.data(); if (p.active !== false) l.push({ id: d.id, fullName: p.fullName || '', phone: p.phone || '', email: p.email || '' }); });
+        return l.sort((x, y) => x.fullName.localeCompare(y.fullName, 'pt'));
+      },
+      listar: async (pid) => {
+        const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'));
+        const l = []; snap.forEach(d => { const r = d.data(); if (r.tipo === 'pesquisa-integrada') l.push({ id: d.id, t: r.generatedAt && r.generatedAt.toMillis ? r.generatedAt.toMillis() : 0, dados: r.dados || {} }); });
+        return l.sort((x, y) => y.t - x.t);
+      },
+      gravar: async (pid, dados) => { await addDoc(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), { ...dados, generatedAt: serverTimestamp() }); },
+      dataPT: t => t ? new Date(t).toLocaleDateString('pt-PT') : '—',
+      escapeHtml, toast, confirmar: reikiConfirmar
+    });
+  } catch(e){
+    main.innerHTML = '<div class="card"><h2>🧭 Pesquisa Integrada</h2><p class="muted">Não consegui abrir: ' + escapeHtml(e.message || String(e)) + '</p><button class="primary" onclick="renderView(\'pesqIntegrada\')">Tentar outra vez</button></div>';
   }
 }
 
