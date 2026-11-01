@@ -42,7 +42,7 @@ export function renderOracoes(main, ctx) {
         <h2 style="margin:0;">🙏 Orações e Salmos</h2>
         <button class="primary" id="o-nova">➕ Nova oração ou salmo</button>
       </div>
-      <p class="muted" style="margin:0 0 12px;">Escreve ou edita as orações e envia por link ao paciente. A página abre bem no telemóvel, com letra ajustável e fundo claro, sépia ou escuro.</p>
+      <p class="muted" style="margin:0 0 12px;">🌐 O <b>Link geral</b> pode ser partilhado com quem quiseres: cada pessoa que o abrir escreve o nome e fica com o seu próprio acesso. Escreve ou edita as orações e envia por link ao paciente. A página abre bem no telemóvel, com letra ajustável e fundo claro, sépia ou escuro.</p>
       ${temMiguel ? '' : `<div class="card" style="margin-bottom:12px;"><p style="margin:0 0 8px;">A oração de 21 dias do Arcanjo Miguel não está na tua lista.</p><button class="ghost" id="o-miguel">✨ Instalar a oração do Arcanjo Miguel (21 dias)</button></div>`}
       <div id="o-lista">${lista.map(cartao).join('') || '<div class="card"><p class="muted">Ainda sem orações. Carrega em «Nova oração ou salmo».</p></div>'}</div>
       ${painelEnvios()}`;
@@ -86,6 +86,7 @@ export function renderOracoes(main, ctx) {
       </div>
       <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px;">
         <button class="primary" data-acao="enviar" data-id="${esc(o.id)}">📤 Enviar ao paciente</button>
+        <button class="ghost" data-acao="geral" data-id="${esc(o.id)}">🌐 Link geral</button>
         <button class="ghost" data-acao="ver" data-id="${esc(o.id)}">👁 Ver como o paciente</button>
         <button class="ghost" data-acao="editar" data-id="${esc(o.id)}">✏️ Editar</button>
         <button class="ghost" data-acao="duplicar" data-id="${esc(o.id)}">⧉ Duplicar</button>
@@ -95,7 +96,8 @@ export function renderOracoes(main, ctx) {
 
   async function acao(a, id) {
     const o = lista.find((x) => x.id === id); if (!o) return;
-    if (a === 'ver') window.open(BASE_LINK + id, '_blank');
+    if (a === 'ver') window.open(BASE_LINK + id + '&pre=1', '_blank');
+    else if (a === 'geral') { try { await navigator.clipboard.writeText(BASE_LINK + id); ctx.toast('Link geral copiado. Cada pessoa que o abrir cria o seu próprio acesso.'); } catch (_) { window.prompt('Copia este link:', BASE_LINK + id); } }
     else if (a === 'editar') abrirEditor(o);
     else if (a === 'enviar') modalEnviar(o);
     else if (a === 'duplicar') { const c = clone(o); delete c.id; delete c.padraoId; c.titulo = (o.titulo || '') + ' (cópia)'; await ctx.gravar(null, c); ctx.toast('Duplicada.'); carregar(); }

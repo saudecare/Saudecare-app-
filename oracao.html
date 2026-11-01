@@ -129,7 +129,7 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, doc, getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, doc, getDoc, updateDoc, addDoc, collection } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const app = initializeApp({
   apiKey:'AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg', authDomain:'saudecare-app.firebaseapp.com', projectId:'saudecare-app',
@@ -382,6 +382,34 @@ function desenhar() {
   mostrar();
 }
 
+
+// ── link geral: cada pessoa recebe o seu próprio acesso (e fica a lembrar-se neste telemóvel) ──
+function acessoPessoal() {
+  let t = ''; try { t = localStorage.getItem('vo_t_' + id) || ''; } catch (_) {}
+  if (t) { location.replace(location.pathname + '?e=' + encodeURIComponent(t)); return; }
+  document.title = (O.titulo || 'Oração') + ' — Hikari Fafe';
+  const antigo = lerLS('vo_c_' + id, null); // progresso feito antes, só neste telemóvel: é mantido
+  const feitosAntes = antigo && antigo.feitos ? antigo.feitos.length : 0;
+  $('barra').hidden = false;
+  $('app').innerHTML = `<div class="capa">${O.tipo === 'ciclo' || /🛡|⚔/.test(O.emoji || '') ? ARTE_ESCUDO : ARTE_LUZ}<h1>${esc(O.titulo)}</h1>${O.subtitulo ? `<p>${esc(O.subtitulo)}</p>` : ''}</div>
+    <section style="text-align:center"><h2>🌿 Antes de começar</h2><div class="corpo"><p>Escreve o teu nome. Fica com um acesso só teu, que guarda o teu progresso e ao qual podes voltar quando quiseres.${feitosAntes ? `<br><b>Já tens ${feitosAntes} ${feitosAntes === 1 ? 'dia feito' : 'dias feitos'} e vamos mantê-${feitosAntes === 1 ? 'lo' : 'los'}.</b>` : ''}</p></div>
+    <input id="nomeP" type="text" maxlength="80" autocomplete="name" placeholder="O teu nome" style="width:100%;min-height:52px;font-size:1.1rem;padding:10px 14px;border:2px solid var(--linha);border-radius:14px;background:var(--bg);color:var(--tinta);margin:6px 0 12px;">
+    <button class="btn grande" id="entrarP">Entrar 🙏</button><p id="errP" style="color:#b3261e;margin-top:8px"></p></section>`;
+  $('entrarP').onclick = async () => {
+    const nome = $('nomeP').value.trim();
+    if (nome.length < 2) { $('errP').textContent = 'Escreve o teu nome, por favor.'; return; }
+    $('entrarP').disabled = true; $('entrarP').textContent = 'A criar o teu acesso…';
+    const agora = new Date().toISOString();
+    try {
+      const r = await addDoc(collection(db, 'oracoes_envios'), {
+        tenantId: 'hikari-terapias', oracaoId: id, titulo: O.titulo || '', patientId: '', patientNome: nome, origem: 'auto',
+        feitos: (antigo && antigo.feitos) || [], feitosEm: {}, inicio: (antigo && antigo.inicio) || '', vezes: (antigo && antigo.vezes) || 0,
+        abertoEm: agora, ultimaAtividade: agora, criadoEmIso: agora });
+      try { localStorage.setItem('vo_t_' + id, r.id); } catch (_) {}
+      location.replace(location.pathname + '?e=' + encodeURIComponent(r.id));
+    } catch (_) { $('entrarP').disabled = false; $('entrarP').textContent = 'Entrar 🙏'; $('errP').textContent = 'Não consegui criar o acesso. Verifica a internet e tenta outra vez.'; }
+  };
+}
 const q = new URLSearchParams(location.search);
 id = q.get('o') || ''; envioId = q.get('e') || '';
 const erro = (t, m) => { $('app').innerHTML = `<div class="estado"><h2>${t}</h2><p>${m}</p></div>`; };
@@ -389,14 +417,16 @@ const erro = (t, m) => { $('app').innerHTML = `<div class="estado"><h2>${t}</h2>
   try {
     if (envioId) {
       const se = await getDoc(doc(db, 'oracoes_envios', envioId));
-      if (!se.exists()) return erro('Link não encontrado', 'O link pode estar incompleto ou ter sido apagado. Pede um novo link.');
-      envio = se.data(); id = envio.oracaoId;
+      if (!se.exists()) { try { for (const k of Object.keys(localStorage)) if (k.startsWith('vo_t_') && localStorage.getItem(k) === envioId) localStorage.removeItem(k); } catch (_) {} return erro('Link não encontrado', 'O link pode estar incompleto ou ter sido apagado. Pede um novo link a quem te enviou.'); }
+      envio = se.data(); id = envio.oracaoId; try { localStorage.setItem('vo_t_' + id, envioId); } catch (_) {}
       updateDoc(doc(db, 'oracoes_envios', envioId), { abertoEm: new Date().toISOString(), ultimaAtividade: new Date().toISOString() }).catch(() => {});
     }
     if (!id) return erro('Link inválido', 'Pede um novo link a quem te enviou.');
     const s = await getDoc(doc(db, 'oracoes', id));
     if (!s.exists()) return erro('Não encontrei esta oração', 'O link pode ter sido apagado ou estar incompleto. Pede um novo link.');
-    O = s.data(); desenhar();
+    O = s.data();
+    if (!envioId && !q.get('pre')) return acessoPessoal();
+    desenhar();
   } catch (_) { erro('Sem ligação', 'Verifica a internet e tenta outra vez.'); }
 })();
 </script>

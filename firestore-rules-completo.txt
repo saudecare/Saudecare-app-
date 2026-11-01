@@ -481,7 +481,14 @@ service cloud.firestore {
     match /oracoes_envios/{envioId} {
       allow get: if true;
       allow list: if isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias';
-      allow create: if isEquipaClinica('hikari-terapias') && request.resource.data.tenantId == 'hikari-terapias';
+      allow create: if (isEquipaClinica('hikari-terapias') && request.resource.data.tenantId == 'hikari-terapias')
+        // auto-registo: quem abre o link geral de uma oração cria o seu próprio acesso
+        || (request.resource.data.tenantId == 'hikari-terapias'
+            && request.resource.data.origem == 'auto'
+            && request.resource.data.keys().hasOnly(['tenantId', 'oracaoId', 'titulo', 'patientId', 'patientNome', 'origem', 'feitos', 'feitosEm', 'inicio', 'vezes', 'abertoEm', 'ultimaAtividade', 'criadoEmIso'])
+            && request.resource.data.patientNome is string && request.resource.data.patientNome.size() <= 80
+            && request.resource.data.feitos.size() <= 60
+            && exists(/databases/$(database)/documents/oracoes/$(request.resource.data.oracaoId)));
       allow update: if (isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias' && request.resource.data.tenantId == 'hikari-terapias')
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['feitos', 'feitosEm', 'inicio', 'ultimaAtividade', 'vezes', 'abertoEm'])
             && request.resource.data.feitos.size() <= 60
