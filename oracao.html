@@ -84,6 +84,8 @@
   @media (max-width:380px){.vol input{width:50px;}}
 
   body{padding-bottom:max(92px,calc(80px + env(safe-area-inset-bottom)));}
+  .aviso-net{background:var(--aviso);border:1px solid var(--dest);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:.9rem;}
+  .ola{font-size:1.1rem!important;color:var(--dest)!important;font-weight:700;}
   .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;background:var(--card);border-top:1px solid var(--linha);padding:6px max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));gap:4px;}
   .tabs[hidden]{display:none;}
   .capa .arte{width:min(170px,44vw);} .capa{padding-top:8px;}
@@ -127,7 +129,7 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, doc, getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const app = initializeApp({
   apiKey:'AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg', authDomain:'saudecare-app.firebaseapp.com', projectId:'saudecare-app',
@@ -245,8 +247,14 @@ function blocoOracao(t) {
 }
 
 // ── caminho dos dias (guardado só neste telemóvel) ──
-let O = null, id = '', est = { inicio: '', feitos: [] }, ver = 0;
-const chave = () => 'vo_c_' + id;
+let O = null, id = '', est = { inicio: '', feitos: [], feitosEm: {}, vezes: 0 }, ver = 0, envioId = '', envio = null;
+function guardarEst(extra) {
+  gravarLS(chave(), est);
+  if (!envioId) return;
+  const d = Object.assign({ inicio: est.inicio || '', feitos: est.feitos, feitosEm: est.feitosEm || {}, vezes: est.vezes || 0, ultimaAtividade: new Date().toISOString() }, extra || {});
+  updateDoc(doc(db, 'oracoes_envios', envioId), d).catch(() => { const a = document.getElementById('app'); if (a && !document.getElementById('avisoNet')) a.insertAdjacentHTML('afterbegin', '<div id="avisoNet" class="aviso-net">⚠️ Não consegui guardar o progresso na internet. Fica guardado neste telemóvel.</div>'); });
+}
+const chave = () => 'vo_c_' + (envioId || id);
 const hojeISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const proximo = () => { for (let n = 1; n <= O.dias; n++) if (!est.feitos.includes(n)) return n; return 0; };
 function semanaDe(n) { return n <= 7 ? 'Semana 1 · Limpar' : n <= 14 ? 'Semana 2 · Cortar' : 'Semana 3 · Proteger e selar'; }
@@ -258,7 +266,7 @@ function desenharCaminho() {
     el.innerHTML = `<h2>🗓️ O teu caminho de ${O.dias} dias</h2>
       <div class="corpo"><p>Quando estiveres pronto/a, começa. Cada dia tens aqui a intenção e uma pequena ação. O teu progresso fica guardado neste telemóvel.</p></div>
       <button class="btn" id="comecar">✨ Começar hoje</button>`;
-    $('comecar').onclick = () => { est.inicio = hojeISO(); ver = 1; gravarLS(chave(), est); mostrar(); };
+    $('comecar').onclick = () => { est.inicio = hojeISO(); ver = 1; guardarEst(); mostrar(); };
     return;
   }
   if (!ver) ver = prox || O.dias;
@@ -285,13 +293,13 @@ function desenharCaminho() {
   $('grelha').onclick = (e) => { const b = e.target.closest('button[data-d]'); if (!b) return; ver = +b.dataset.d; desenharCaminho(); };
   $('marcar').onclick = () => {
     const i = est.feitos.indexOf(ver);
-    if (i >= 0) est.feitos.splice(i, 1); else { est.feitos.push(ver); est.feitos.sort((a, b) => a - b); const p = proximo(); if (p) ver = p; }
-    gravarLS(chave(), est); desenharCaminho();
+    if (i >= 0) { est.feitos.splice(i, 1); delete est.feitosEm[ver]; } else { est.feitos.push(ver); est.feitos.sort((a, b) => a - b); est.feitosEm[ver] = new Date().toISOString(); const p = proximo(); if (p) ver = p; }
+    guardarEst(); desenharCaminho();
   };
 }
 
 // ── navegação por separadores (um ecrã de cada vez) ──
-let vista = 'inicio', passo = 0;
+let vista = 'inicio', passo = 0, feitoAgora = false;
 const seccoes = () => (O.seccoes || []);
 const oracoes = () => seccoes().filter((s) => s.tipo === 'oracao');
 const infos = () => seccoes().filter((s) => s.tipo !== 'oracao');
@@ -308,7 +316,7 @@ function passosRezar() {
 function ecraInicio() {
   const prox = O.dias ? proximo() : 0, comecou = O.dias && est.inicio, completo = O.dias && est.feitos.length >= O.dias;
   const arte = O.tipo === 'ciclo' || /🛡|⚔/.test(O.emoji || '') ? ARTE_ESCUDO : ARTE_LUZ;
-  let h = `<div class="capa">${arte}<h1>${esc(O.titulo)}</h1>${O.subtitulo ? `<p>${esc(O.subtitulo)}</p>` : ''}</div>`;
+  let h = `<div class="capa">${arte}${envio && envio.patientNome ? `<p class="ola">Olá, ${esc(String(envio.patientNome).split(' ')[0])} 🌿</p>` : ''}<h1>${esc(O.titulo)}</h1>${O.subtitulo ? `<p>${esc(O.subtitulo)}</p>` : ''}</div>`;
   if (O.dias && comecou && !completo) {
     const t = (O.temasDias || [])[prox - 1] || {};
     h += `<div class="hoje cartaoHoje">${ICONE_SEMANA(prox)}<div class="dia">Dia ${prox} de ${O.dias} · hoje</div><h3>${esc(t.titulo || '')}</h3>${t.intencao ? `<p>${esc(t.intencao)}</p>` : ''}</div>`;
@@ -329,8 +337,8 @@ function ecraRezar() {
     const ultimo = O.dias && ver === O.dias;
     const selar = ultimo ? seccoes().find((x) => x.tipo === 'texto' && /selar|21/i.test(x.titulo || '')) : null;
     h += `<section class="oracao passo fim">${ORNA}<h2>🌟 Amén. Está feito.</h2><div class="corpo"><p>Respira fundo e agradece.</p>${t && t.acao ? `<p class="acao"><b>Para hoje:</b> ${esc(t.acao)}</p>` : ''}${selar ? `<div style="text-align:left">${blocoTexto(selar.texto)}</div>` : ''}</div></section>`;
-    if (O.dias && est.inicio) h += `<button class="btn grande" id="bFeito">${est.feitos.includes(ver) ? '↩ Desmarcar o dia ' + ver : '✅ Já fiz o dia ' + ver}</button>`;
-    else if (O.dias) h += `<button class="btn grande" id="bComecar2">✨ Começar o caminho de ${O.dias} dias</button>`;
+    if (O.dias) h += `<button class="btn grande" id="bFeito">${est.feitos.includes(ver) ? '↩ Desmarcar o dia ' + ver : '✅ Já fiz o dia ' + ver}</button>`;
+    else h += `<button class="btn grande" id="bRezei">${feitoAgora ? '✅ Registado. Obrigado!' : '🙏 Já rezei'}</button>${est.vezes ? `<p style="text-align:center;color:var(--suave)">Já rezaste ${est.vezes} ${est.vezes === 1 ? 'vez' : 'vezes'} com este link.</p>` : ''}`;
   }
   h += `<div class="nav2"><button class="btn sec" id="bAnt" ${passo === 0 ? 'disabled' : ''}>← Anterior</button>${passo < n - 1 ? '<button class="btn" id="bSeg">Seguinte →</button>' : '<button class="btn" id="bIni">🏠 Início</button>'}</div>`;
   return h;
@@ -355,30 +363,42 @@ function mostrar() {
   on('bRezar', () => irPara('rezar')); on('bCam', () => irPara('caminho')); on('bSaber', () => irPara('saber'));
   on('bSeg', () => { passo++; mostrar(); window.scrollTo(0, 0); }); on('bAnt', () => { passo = Math.max(0, passo - 1); mostrar(); window.scrollTo(0, 0); });
   on('bIni', () => irPara('inicio'));
-  on('bComecar2', () => { est.inicio = hojeISO(); ver = ver || 1; gravarLS(chave(), est); mostrar(); });
+  on('bRezei', () => { if (feitoAgora) return; est.vezes = (est.vezes || 0) + 1; feitoAgora = true; guardarEst(); mostrar(); });
   on('bFeito', () => {
+    if (!est.inicio) est.inicio = hojeISO();
     const k = est.feitos.indexOf(ver);
-    if (k >= 0) est.feitos.splice(k, 1); else { est.feitos.push(ver); est.feitos.sort((a, b) => a - b); }
-    gravarLS(chave(), est); irPara('inicio');
+    if (k >= 0) { est.feitos.splice(k, 1); delete est.feitosEm[ver]; } else { est.feitos.push(ver); est.feitos.sort((a, b) => a - b); est.feitosEm[ver] = new Date().toISOString(); }
+    guardarEst(); const nx = proximo(); if (nx) ver = nx; feitoAgora = k < 0; irPara('inicio');
   });
   on('partilhar', () => navigator.share({ title: O.titulo, url: location.href }).catch(() => {}));
 }
 $('tabs').onclick = (e) => { const b = e.target.closest('button[data-v]'); if (b) irPara(b.dataset.v); };
 function desenhar() {
   document.title = (O.titulo || 'Oração') + ' — Hikari Fafe';
-  if (O.dias) { est = Object.assign({ inicio: '', feitos: [] }, lerLS(chave(), {})); ver = proximo() || O.dias; }
+  est = Object.assign({ inicio: '', feitos: [], feitosEm: {}, vezes: 0 }, lerLS(chave(), {}));
+  if (envio) { est.inicio = envio.inicio || est.inicio; est.feitos = (envio.feitos || est.feitos).slice(); est.feitosEm = envio.feitosEm || est.feitosEm || {}; est.vezes = envio.vezes || 0; }
+  if (O.dias) ver = proximo() || O.dias;
   $('barra').hidden = false; $('rodape').hidden = false;
   mostrar();
 }
 
-id = new URLSearchParams(location.search).get('o') || '';
-if (!id) { $('app').innerHTML = '<div class="estado"><h2>Link inválido</h2><p>Pede um novo link a quem te enviou.</p></div>'; }
-else {
-  getDoc(doc(db, 'oracoes', id)).then((s) => {
-    if (!s.exists()) { $('app').innerHTML = '<div class="estado"><h2>Não encontrei esta oração</h2><p>O link pode ter sido apagado ou estar incompleto. Pede um novo link.</p></div>'; return; }
+const q = new URLSearchParams(location.search);
+id = q.get('o') || ''; envioId = q.get('e') || '';
+const erro = (t, m) => { $('app').innerHTML = `<div class="estado"><h2>${t}</h2><p>${m}</p></div>`; };
+(async () => {
+  try {
+    if (envioId) {
+      const se = await getDoc(doc(db, 'oracoes_envios', envioId));
+      if (!se.exists()) return erro('Link não encontrado', 'O link pode estar incompleto ou ter sido apagado. Pede um novo link.');
+      envio = se.data(); id = envio.oracaoId;
+      updateDoc(doc(db, 'oracoes_envios', envioId), { abertoEm: new Date().toISOString(), ultimaAtividade: new Date().toISOString() }).catch(() => {});
+    }
+    if (!id) return erro('Link inválido', 'Pede um novo link a quem te enviou.');
+    const s = await getDoc(doc(db, 'oracoes', id));
+    if (!s.exists()) return erro('Não encontrei esta oração', 'O link pode ter sido apagado ou estar incompleto. Pede um novo link.');
     O = s.data(); desenhar();
-  }).catch(() => { $('app').innerHTML = '<div class="estado"><h2>Sem ligação</h2><p>Verifica a internet e tenta outra vez.</p></div>'; });
-}
+  } catch (_) { erro('Sem ligação', 'Verifica a internet e tenta outra vez.'); }
+})();
 </script>
 </body>
 </html>

@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-01-01';
+const APP_VERSION = '2026-11-01-02';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -18887,6 +18887,16 @@ async function renderOracoesApp(main){
         return r.id;
       },
       apagar: id => deleteDoc(doc(db, 'oracoes', id)),
+      criarEnvio: async dados => {
+        const r = await addDoc(collection(db, 'oracoes_envios'), { ...dados, tenantId, feitos: [], feitosEm: {}, vezes: 0, abertoEm: '', ultimaAtividade: '', criadoEmIso: new Date().toISOString(), criadoEm: serverTimestamp() });
+        return r.id;
+      },
+      listarEnvios: async () => {
+        const snap = await getDocs(query(collection(db, 'oracoes_envios'), where('tenantId', '==', tenantId)));
+        const l = []; snap.forEach(d => { const x = d.data(); delete x.criadoEm; l.push({ id: d.id, ...x }); });
+        return l;
+      },
+      apagarEnvio: id => deleteDoc(doc(db, 'oracoes_envios', id)),
       pacientes: async () => {
         const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
         const l = []; snap.forEach(d => { const p = d.data(); if (p.active !== false) l.push({ id: d.id, fullName: p.fullName || '', phone: p.phone || '', email: p.email || '' }); });

@@ -476,6 +476,19 @@ service cloud.firestore {
       allow delete: if isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias';
     }
 
+    // Um envio = o link único de uma pessoa para uma oração. Quem tem o link (id aleatório) pode
+    // ler e só atualizar o próprio progresso; a equipa gere tudo.
+    match /oracoes_envios/{envioId} {
+      allow get: if true;
+      allow list: if isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias';
+      allow create: if isEquipaClinica('hikari-terapias') && request.resource.data.tenantId == 'hikari-terapias';
+      allow update: if (isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias' && request.resource.data.tenantId == 'hikari-terapias')
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['feitos', 'feitosEm', 'inicio', 'ultimaAtividade', 'vezes', 'abertoEm'])
+            && request.resource.data.feitos.size() <= 60
+            && request.resource.data.vezes is int && request.resource.data.vezes <= 100000);
+      allow delete: if isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias';
+    }
+
     match /public_form_responses/{responseId} {
       // Terapeuta cria o documento e o paciente recebe o link
       // criadoPorEquipa (ficha já ligada a um paciente) só pode ser marcada por quem tem sessão nessa conta.

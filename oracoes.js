@@ -5,6 +5,7 @@ import { ORACAO_MIGUEL, MODELO_VAZIO } from './oracoes-padrao.js';
 
 export const TENANT_ORACOES = 'hikari-terapias';
 const BASE_LINK = 'https://vindora.pt/oracao.html?o=';
+const BASE_ENVIO = 'https://vindora.pt/oracao.html?e=';
 const TIPOS_DOC = { oracao: '🙏 Oração', salmo: '📜 Salmo', ciclo: '🗓️ Ciclo de dias' };
 const TIPOS_SEC = { texto: 'Texto', passos: 'Passos (um por linha)', oracao: 'Oração (texto de leitura)', aviso: 'Aviso' };
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -16,11 +17,12 @@ export function renderOracoes(main, ctx) {
   }
   const esc = ctx.escapeHtml;
   let lista = [];
+  let envios = [];
   let ed = null; // documento em edição: { id|null, ...dados }
 
   async function carregar() {
     main.innerHTML = '<div class="card"><p class="muted">A carregar as orações…</p></div>';
-    try { lista = await ctx.listar(); }
+    try { lista = await ctx.listar(); try { envios = await ctx.listarEnvios(); } catch (_) { envios = []; } }
     catch (e) {
       main.innerHTML = `<div class="card"><h2>🙏 Orações e Salmos</h2><p class="muted" style="color:var(--danger)">Ainda não está ativado na conta (falta publicar as regras da base de dados). ${esc(e.message || '')}</p><button class="primary" id="o-tent">Tentar outra vez</button></div>`;
       main.querySelector('#o-tent').onclick = carregar; return;
@@ -42,12 +44,37 @@ export function renderOracoes(main, ctx) {
       </div>
       <p class="muted" style="margin:0 0 12px;">Escreve ou edita as orações e envia por link ao paciente. A página abre bem no telemóvel, com letra ajustável e fundo claro, sépia ou escuro.</p>
       ${temMiguel ? '' : `<div class="card" style="margin-bottom:12px;"><p style="margin:0 0 8px;">A oração de 21 dias do Arcanjo Miguel não está na tua lista.</p><button class="ghost" id="o-miguel">✨ Instalar a oração do Arcanjo Miguel (21 dias)</button></div>`}
-      <div id="o-lista">${lista.map(cartao).join('') || '<div class="card"><p class="muted">Ainda sem orações. Carrega em «Nova oração ou salmo».</p></div>'}</div>`;
+      <div id="o-lista">${lista.map(cartao).join('') || '<div class="card"><p class="muted">Ainda sem orações. Carrega em «Nova oração ou salmo».</p></div>'}</div>
+      ${painelEnvios()}`;
     main.querySelector('#o-nova').onclick = () => abrirEditor(null);
     const m = main.querySelector('#o-miguel');
     if (m) m.onclick = async () => { await ctx.gravar(null, Object.assign(clone(ORACAO_MIGUEL), { ordem: 1 })); ctx.toast('Oração instalada.'); carregar(); };
     main.querySelectorAll('[data-acao]').forEach((b) => { b.onclick = () => acao(b.dataset.acao, b.dataset.id); });
+    main.querySelectorAll('[data-env]').forEach((b) => { b.onclick = () => acaoEnvio(b.dataset.env, b.dataset.id); });
   }
+
+  // ───────── painel dos envios (link único por pessoa + progresso) ─────────
+  const dataPT = (iso) => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }); };
+  function painelEnvios() {
+    if (!envios.length) return `<h3 style="margin:18px 0 6px;">👥 Quem recebeu</h3><p class="muted">Quando enviares uma oração a alguém, aparece aqui com o progresso.</p>`;
+    const ord = envios.slice().sort((a, b) => String(b.ultimaAtividade || b.criadoEmIso || '').localeCompare(String(a.ultimaAtividade || a.criadoEmIso || '')));
+    return `<h3 style="margin:18px 0 6px;">👥 Quem recebeu <span class="muted" style="font-size:.85rem;">(cada pessoa tem o seu link)</span></h3>` + ord.map((e) => {
+      const o = lista.find((x) => x.id === e.oracaoId) || {}; const dias = o.dias || 0; const f = (e.feitos || []).length;
+      const pct = dias ? Math.round(f / dias * 100) : 0;
+      const prog = dias ? `<div style="height:8px;background:#e8e3d6;border-radius:9px;overflow:hidden;margin:6px 0 2px;"><i style="display:block;height:100%;width:${pct}%;background:#b7791f;"></i></div><span style="font-size:.85rem;">${f >= dias ? '🌟 Completou os ' + dias + ' dias' : f + ' de ' + dias + ' dias feitos'}</span>`
+        : `<span style="font-size:.85rem;">${e.vezes ? '🙏 Rezou ' + e.vezes + (e.vezes === 1 ? ' vez' : ' vezes') : (e.abertoEm ? '👀 Já abriu, ainda não marcou' : '⏳ Ainda não abriu')}</span>`;
+      return `<div class="card" style="margin-bottom:8px;"><div class="row" style="gap:8px;"><strong>${esc(e.patientNome || 'Sem nome')}</strong><span class="muted" style="font-size:.8rem;">${esc(o.emoji || '🙏')} ${esc(e.titulo || o.titulo || '')}</span></div>
+        ${prog}<div class="muted" style="font-size:.78rem;margin-top:2px;">${e.abertoEm ? 'Abriu: ' + dataPT(e.abertoEm) + ' · ' : 'Ainda não abriu · '}Última atividade: ${dataPT(e.ultimaAtividade)}</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="ghost" data-env="copiar" data-id="${esc(e.id)}">🔗 Copiar link</button><button class="ghost" data-env="wa" data-id="${esc(e.id)}">📱 Reenviar</button><button class="ghost" data-env="apagar" data-id="${esc(e.id)}" style="color:var(--danger)">🗑️</button></div></div>`;
+    }).join('');
+  }
+  async function acaoEnvio(a, id) {
+    const e = envios.find((x) => x.id === id); if (!e) return; const link = BASE_ENVIO + id;
+    if (a === 'copiar') { try { await navigator.clipboard.writeText(link); ctx.toast('Link copiado.'); } catch (_) { ctx.toast('Não consegui copiar.', true); } }
+    else if (a === 'wa') { const d = String(e.telefone || '').replace(/\D/g, ''); const t = d.length === 9 ? '351' + d : d; window.open(`https://wa.me/${t}?text=${encodeURIComponent(mensagem(e.patientNome, e.titulo, link))}`, '_blank'); }
+    else if (a === 'apagar') { if (!(await ctx.confirmar('Apagar este envio?', 'O link desta pessoa deixa de funcionar e perde-se o progresso dela.', 'Apagar'))) return; await ctx.apagarEnvio(id); ctx.toast('Apagado.'); carregar(); }
+  }
+  const mensagem = (nome, titulo, link) => `Olá${nome ? ' ' + String(nome).split(' ')[0] : ''}! 🙏 Enviei-te «${titulo}» para leres com calma, no telemóvel. Este link é só teu e guarda o teu progresso:\n${link}`;
 
   function cartao(o) {
     const dias = o.dias ? ` · ${o.dias} dias` : '';
@@ -80,14 +107,14 @@ export function renderOracoes(main, ctx) {
 
   // ───────── enviar ─────────
   async function modalEnviar(o) {
-    const link = BASE_LINK + o.id;
     const fundo = document.createElement('div');
     fundo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:14px;overflow:auto;';
     fundo.innerHTML = `<div class="card" style="max-width:480px;width:100%;background:#fff;margin:auto;">
       <div class="row"><strong>📤 Enviar «${esc(o.titulo)}»</strong><button class="ghost" id="e-x">✖</button></div>
-      <p class="muted" style="margin:8px 0;">Escolhe o paciente (ou envia só o link).</p>
+      <p class="muted" style="margin:8px 0;">Cada pessoa recebe <b>o seu próprio link</b>, que guarda o progresso dela. Escolhe o paciente ou escreve um nome.</p>
       <input id="e-busca" type="search" placeholder="🔍 Procurar paciente…" style="width:100%;margin-bottom:8px;">
-      <div id="e-pac" style="max-height:34vh;overflow:auto;display:grid;gap:6px;margin-bottom:10px;"></div>
+      <div id="e-pac" style="max-height:30vh;overflow:auto;display:grid;gap:6px;margin-bottom:8px;"></div>
+      <input id="e-nome" type="text" placeholder="…ou escreve o nome da pessoa" style="width:100%;margin-bottom:8px;">
       <div id="e-esc" class="muted" style="margin-bottom:8px;"></div>
       <div style="display:grid;gap:8px;">
         <button class="primary" id="e-wa">📱 WhatsApp</button>
@@ -95,27 +122,39 @@ export function renderOracoes(main, ctx) {
         <button class="ghost" id="e-copiar">🔗 Copiar link</button>
         <button class="ghost" id="e-part">📤 Partilhar…</button>
       </div>
-      <div style="background:#f3f6fa;border-radius:8px;padding:8px;margin-top:10px;word-break:break-all;font-size:.8rem;user-select:all;">${esc(link)}</div></div>`;
+      <div id="e-link" style="background:#f3f6fa;border-radius:8px;padding:8px;margin-top:10px;word-break:break-all;font-size:.8rem;user-select:all;display:none;"></div></div>`;
     document.body.appendChild(fundo);
-    const fecha = () => fundo.remove();
+    const fecha = () => { fundo.remove(); carregar(); };
     fundo.querySelector('#e-x').onclick = fecha; fundo.onclick = (e) => { if (e.target === fundo) fecha(); };
     let pacs = []; let sel = null;
     try { pacs = await ctx.pacientes(); } catch (_) {}
     const norm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const nomeAtual = () => sel ? sel.fullName : fundo.querySelector('#e-nome').value.trim();
     const pinta = () => {
       const q = norm(fundo.querySelector('#e-busca').value);
       const f = pacs.filter((p) => !q || norm(p.fullName).includes(q) || norm(p.email).includes(q) || String(p.phone || '').replace(/\D/g, '').includes(q.replace(/\D/g, '') || '§')).slice(0, 40);
       const box = fundo.querySelector('#e-pac');
       box.innerHTML = f.map((p) => `<button class="ghost" data-p="${esc(p.id)}" style="text-align:left;">${esc(p.fullName)} <span class="muted" style="font-size:.8rem;">${esc(p.phone || p.email || '')}</span></button>`).join('') || '<span class="muted">Nenhum paciente encontrado.</span>';
-      box.querySelectorAll('[data-p]').forEach((b) => { b.onclick = () => { sel = pacs.find((p) => p.id === b.dataset.p); fundo.querySelector('#e-esc').textContent = '✔ ' + sel.fullName; }; });
+      box.querySelectorAll('[data-p]').forEach((b) => { b.onclick = () => { sel = pacs.find((p) => p.id === b.dataset.p); fundo.querySelector('#e-nome').value = ''; fundo.querySelector('#e-esc').textContent = '✔ ' + sel.fullName; fundo.querySelector('#e-link').style.display = 'none'; }; });
     };
     fundo.querySelector('#e-busca').oninput = pinta; pinta();
-    const msg = () => `Olá${sel ? ' ' + String(sel.fullName).split(' ')[0] : ''}! 🙏 Enviei-te «${o.titulo}» para leres com calma, no telemóvel:\n${link}`;
-    const tel = () => { const d = String((sel && sel.phone) || '').replace(/\D/g, ''); return d.length === 9 ? '351' + d : d; };
-    fundo.querySelector('#e-wa').onclick = () => window.open(`https://wa.me/${tel()}?text=${encodeURIComponent(msg())}`, '_blank');
-    fundo.querySelector('#e-mail').onclick = () => { location.href = `mailto:${(sel && sel.email) || ''}?subject=${encodeURIComponent(o.titulo)}&body=${encodeURIComponent(msg())}`; };
-    fundo.querySelector('#e-copiar').onclick = async () => { try { await navigator.clipboard.writeText(link); ctx.toast('Link copiado.'); } catch (_) { ctx.toast('Não consegui copiar. Seleciona o link e copia à mão.', true); } };
-    fundo.querySelector('#e-part').onclick = async () => { try { if (navigator.share) await navigator.share({ title: o.titulo, text: msg() }); else { await navigator.clipboard.writeText(msg()); ctx.toast('Mensagem copiada.'); } } catch (_) {} };
+    fundo.querySelector('#e-nome').oninput = () => { sel = null; fundo.querySelector('#e-esc').textContent = ''; fundo.querySelector('#e-link').style.display = 'none'; };
+    // cria (ou reutiliza) o link único desta pessoa para esta oração
+    async function obterLink() {
+      const nome = nomeAtual(); if (!nome) { ctx.toast('Escolhe um paciente ou escreve um nome.', true); return null; }
+      let e = envios.find((x) => x.oracaoId === o.id && ((sel && x.patientId === sel.id) || (!sel && !x.patientId && x.patientNome === nome)));
+      if (!e) {
+        const dados = { oracaoId: o.id, titulo: o.titulo || '', patientId: sel ? sel.id : '', patientNome: nome, telefone: sel ? sel.phone : '', email: sel ? sel.email : '' };
+        try { const id = await ctx.criarEnvio(dados); e = Object.assign({ id, feitos: [], vezes: 0 }, dados); envios.push(e); }
+        catch (err) { ctx.toast('Não consegui criar o link: ' + (err.message || err), true); return null; }
+      }
+      const link = BASE_ENVIO + e.id; const box = fundo.querySelector('#e-link'); box.textContent = link; box.style.display = 'block';
+      return { link, e };
+    }
+    fundo.querySelector('#e-wa').onclick = async () => { const r = await obterLink(); if (!r) return; const d = String((sel && sel.phone) || '').replace(/\D/g, ''); const t = d.length === 9 ? '351' + d : d; window.open(`https://wa.me/${t}?text=${encodeURIComponent(mensagem(nomeAtual(), o.titulo, r.link))}`, '_blank'); };
+    fundo.querySelector('#e-mail').onclick = async () => { const r = await obterLink(); if (!r) return; location.href = `mailto:${(sel && sel.email) || ''}?subject=${encodeURIComponent(o.titulo)}&body=${encodeURIComponent(mensagem(nomeAtual(), o.titulo, r.link))}`; };
+    fundo.querySelector('#e-copiar').onclick = async () => { const r = await obterLink(); if (!r) return; try { await navigator.clipboard.writeText(r.link); ctx.toast('Link copiado.'); } catch (_) { ctx.toast('Não consegui copiar. Seleciona o link e copia à mão.', true); } };
+    fundo.querySelector('#e-part').onclick = async () => { const r = await obterLink(); if (!r) return; const m = mensagem(nomeAtual(), o.titulo, r.link); try { if (navigator.share) await navigator.share({ title: o.titulo, text: m }); else { await navigator.clipboard.writeText(m); ctx.toast('Mensagem copiada.'); } } catch (_) {} };
   }
 
   // ───────── editor ─────────
