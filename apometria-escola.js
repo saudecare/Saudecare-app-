@@ -1,12 +1,12 @@
 /* 🌀 Apometria — aprender, treinar e guardar os teus próprios comandos. Exclusivo da Hikari Fafe.
    Os textos são de raiz. Os «comandos» da tua formação escreves tu aqui: ficam só na tua conta. */
-import { CORPOS, LICOES, TECNICAS } from './apometria-dados.js';
+import { CORPOS, LICOES, TECNICAS, PROCEDIMENTO } from './apometria-dados.js';
 
 export function renderApometria(main, ctx) {
   if (ctx.tenantId !== 'hikari-terapias') { main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica.</p></div>'; return; }
   const esc = ctx.escapeHtml;
-  let aba = 'aprender'; let meus = {}; let sujo = false;
-  const ABAS = [['aprender', '📖 Aprender'], ['tecnicas', '🧰 Técnicas'], ['comandos', '✍️ Os meus comandos'], ['contador', '🔢 Contador']];
+  let aba = 'procedimento'; let meus = {}; let sujo = false;
+  const ABAS = [['procedimento', '🧭 Procedimento'], ['aprender', '📖 Aprender'], ['tecnicas', '🧰 Técnicas'], ['comandos', '✍️ Os meus comandos'], ['contador', '🔢 Contador']];
   const paragrafos = (t) => String(t).split('\n\n').map((p) => `<p style="margin:0 0 .7em;">${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
 
   function ver() {
@@ -14,11 +14,16 @@ export function renderApometria(main, ctx) {
       <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;">${ABAS.map(([id, t]) => `<button data-aba="${id}" class="${aba === id ? 'primary' : 'ghost'}" style="white-space:nowrap;">${t}</button>`).join('')}</div><div id="ap-c"></div>`;
     main.querySelectorAll('[data-aba]').forEach((b) => b.onclick = () => { aba = b.dataset.aba; ver(); });
     const c = main.querySelector('#ap-c');
-    if (aba === 'aprender') c.innerHTML = aprender();
+    if (aba === 'procedimento') c.innerHTML = procedimento();
+    else if (aba === 'aprender') c.innerHTML = aprender();
     else if (aba === 'tecnicas') c.innerHTML = tecnicas();
     else if (aba === 'comandos') { c.innerHTML = comandos(); ligarComandos(c); }
     else { c.innerHTML = contador(); ligarContador(c); }
   }
+  const procedimento = () => { const tot = PROCEDIMENTO.reduce((a, p) => a + p.min, 0); return `<div class="card" style="margin-bottom:10px;background:#eef6ff;"><b>O procedimento certo, passo a passo</b><div class="muted" style="font-size:.85rem;margin-top:4px;">São ${PROCEDIMENTO.length} fases, por esta ordem, com cerca de ${Math.round(tot / 5) * 5} minutos no total (uma sessão completa). Numa 1.ª consulta ou com pessoas sensíveis, faz só as fases 1 a 4, 6, 9, 10 e 11. Para trabalhar com a pessoa à frente, abre o 🧭 Atendimento Guiado.</div></div>` + PROCEDIMENTO.map((p) => `<details class="card" style="margin-bottom:8px;" ${p.n === 1 ? 'open' : ''}><summary style="cursor:pointer;font-weight:700;min-height:42px;display:flex;align-items:center;gap:8px;"><span style="background:#1e3a5f;color:#fff;border-radius:50%;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${p.n}</span><span>${esc(p.titulo)}<br><span class="muted" style="font-size:.75rem;font-weight:400;">${esc(p.fase)} · ${p.min} min</span></span></summary>
+      <div style="margin-top:8px;font-size:.92rem;"><b>🎯 Objetivo:</b> ${esc(p.objetivo)}<ol style="margin:8px 0 0 18px;">${p.fazer.map((f) => `<li style="margin-bottom:4px;">${esc(f)}</li>`).join('')}</ol>
+      ${p.cuidado ? `<div style="color:#b45309;margin-top:6px;">⚠️ ${esc(p.cuidado)}</div>` : ''}${p.dist ? `<div style="color:#0369a1;margin-top:6px;">📡 À distância: ${esc(p.dist)}</div>` : ''}
+      ${meus[p.tec] ? `<div style="background:#f3f6fa;border-radius:10px;padding:10px;margin-top:8px;"><b>✍️ O teu comando (${esc((TECNICAS.find((t) => t.id === p.tec) || {}).nome || '')})</b><div style="white-space:pre-wrap;font-size:.85rem;margin-top:4px;max-height:220px;overflow:auto;">${esc(meus[p.tec])}</div></div>` : ''}</div></details>`).join(''); };
   const aprender = () => LICOES.map((l, i) => `<details class="card" style="margin-bottom:8px;" ${i === 0 ? 'open' : ''}><summary style="cursor:pointer;font-weight:700;font-size:1.02rem;min-height:40px;display:flex;align-items:center;">${l.emoji} ${esc(l.titulo)}</summary><div style="margin-top:8px;">${paragrafos(l.texto)}</div></details>`).join('')
     + `<div class="card"><b>🧍 Os 7 corpos num relance</b>${CORPOS.map((c) => `<div style="margin-top:6px;font-size:.9rem;">${c.emoji} <b>${esc(c.nome)}</b><br><span class="muted">${esc(c.sobre)}</span></div>`).join('')}</div>`;
   const tecnicas = () => TECNICAS.map((t) => `<details class="card" style="margin-bottom:8px;"><summary style="cursor:pointer;font-weight:700;min-height:40px;display:flex;align-items:center;">${t.nome} <span class="muted" style="font-size:.78rem;margin-left:8px;">${esc(t.dur)}</span></summary>
