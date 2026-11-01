@@ -82,9 +82,32 @@
   .vol{display:none;align-items:center;gap:6px;} .vol.on{display:flex;} .vol input{width:70px;accent-color:var(--marca);}
   @media (max-width:480px){.barra:has(.vol.on) .marca span{display:none;}}
   @media (max-width:380px){.vol input{width:50px;}}
+
+  body{padding-bottom:max(92px,calc(80px + env(safe-area-inset-bottom)));}
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;background:var(--card);border-top:1px solid var(--linha);padding:6px max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));gap:4px;}
+  .tabs[hidden]{display:none;}
+  .capa .arte{width:min(170px,44vw);} .capa{padding-top:8px;}
+  .tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:0;min-height:56px;border:none;background:transparent;color:var(--suave);font-size:.74rem;font-weight:700;border-radius:12px;cursor:pointer;line-height:1.2;padding:4px 2px;}
+  .tabs button span{font-size:1.45rem;line-height:1.2;}
+  .tabs button.ac{background:var(--caixa);color:var(--marca);}
+  .btn.grande{min-height:62px;font-size:1.15rem;margin:14px 0 10px;}
+  .btn + .btn,.btn + .nav2,.cartaoHoje + .btn{margin-top:10px;}
+  .btn[disabled]{opacity:.35;pointer-events:none;}
+  .cartaoHoje{text-align:center;border:1px solid var(--linha);}
+  .pontos{display:flex;justify-content:center;gap:8px;margin:4px 0 2px;}
+  .pontos i{width:10px;height:10px;border-radius:50%;background:var(--linha);} .pontos i.ok{background:var(--dest);opacity:.6;} .pontos i.ac{background:var(--marca);transform:scale(1.35);}
+  section.passo{min-height:52vh;display:flex;flex-direction:column;justify-content:center;margin-top:12px;}
+  section.passo.fim .acao{border:none;text-align:left;}
+  .nav2{display:flex;gap:10px;margin-top:12px;} .nav2 .btn{margin:0;flex:1;}
+  .tit2{font-family:Georgia,serif;color:var(--marca);font-size:1.5rem;margin:6px 0 12px;text-align:center;}
+  details.ac{background:var(--card);border:1px solid var(--linha);border-radius:16px;margin:10px 0;padding:0 16px;}
+  details.ac.aviso{background:var(--aviso);}
+  details.ac summary{list-style:none;cursor:pointer;min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:700;color:var(--marca);font-size:1.05rem;}
+  details.ac summary::-webkit-details-marker{display:none;} details.ac summary::after{content:'＋';font-size:1.3rem;color:var(--dest);} details.ac[open] summary::after{content:'−';}
+  details.ac .corpo{padding:0 0 14px;}
   @media (min-width:700px){:root{--fs:1.2rem;} section{padding:26px 28px;}}
   @media (prefers-reduced-motion:reduce){.arte *{animation:none!important;} *{transition:none!important;scroll-behavior:auto!important;}}
-  @media print{.vol,#musica,.barra,.indice,#caminho .btn,.grelha{display:none!important;} body{background:#fff;color:#000;} section{border:none;break-inside:avoid;}}
+  @media print{.tabs,.vol,#musica,.barra,.indice,#caminho .btn,.grelha{display:none!important;} body{background:#fff;color:#000;} section{border:none;break-inside:avoid;}}
 </style>
 </head>
 <body>
@@ -99,6 +122,7 @@
   </div>
 </div>
 <main id="app"><div class="estado">A abrir…</div></main>
+<nav class="tabs" id="tabs" hidden aria-label="Navegação"></nav>
 <footer id="rodape" hidden>Prática espiritual e de bem-estar. Não substitui o acompanhamento médico ou psicológico.<br>Hikari Fafe · Corpo · Mente · Alma · Espírito</footer>
 
 <script type="module">
@@ -234,7 +258,7 @@ function desenharCaminho() {
     el.innerHTML = `<h2>🗓️ O teu caminho de ${O.dias} dias</h2>
       <div class="corpo"><p>Quando estiveres pronto/a, começa. Cada dia tens aqui a intenção e uma pequena ação. O teu progresso fica guardado neste telemóvel.</p></div>
       <button class="btn" id="comecar">✨ Começar hoje</button>`;
-    $('comecar').onclick = () => { est.inicio = hojeISO(); ver = 1; gravarLS(chave(), est); desenharCaminho(); };
+    $('comecar').onclick = () => { est.inicio = hojeISO(); ver = 1; gravarLS(chave(), est); mostrar(); };
     return;
   }
   if (!ver) ver = prox || O.dias;
@@ -255,41 +279,96 @@ function desenharCaminho() {
       ${t.intencao ? `<p><b>Intenção:</b> ${esc(t.intencao)}</p>` : ''}
       ${t.acao ? `<p class="acao"><b>Para este dia:</b> ${esc(t.acao)}</p>` : ''}
     </div>
-    <a class="btn sec" href="#${PRIMEIRA_ORACAO}">📖 Ir para a oração</a>
+    <button class="btn sec" id="irRezar">🙏 Rezar o dia ${ver}</button>
     <button class="btn" id="marcar" style="margin-top:10px">${feito ? '↩ Desmarcar o dia ' + ver : '✅ Já fiz o dia ' + ver}</button>`;
+  $('irRezar').onclick = () => irPara('rezar');
   $('grelha').onclick = (e) => { const b = e.target.closest('button[data-d]'); if (!b) return; ver = +b.dataset.d; desenharCaminho(); };
   $('marcar').onclick = () => {
     const i = est.feitos.indexOf(ver);
     if (i >= 0) est.feitos.splice(i, 1); else { est.feitos.push(ver); est.feitos.sort((a, b) => a - b); const p = proximo(); if (p) ver = p; }
     gravarLS(chave(), est); desenharCaminho();
-    if (est.feitos.length >= O.dias) window.scrollTo({ top: $('caminho').offsetTop - 70, behavior: 'smooth' });
   };
 }
 
-let PRIMEIRA_ORACAO = 'caminho';
+// ── navegação por separadores (um ecrã de cada vez) ──
+let vista = 'inicio', passo = 0;
+const seccoes = () => (O.seccoes || []);
+const oracoes = () => seccoes().filter((s) => s.tipo === 'oracao');
+const infos = () => seccoes().filter((s) => s.tipo !== 'oracao');
+function irPara(v) { vista = v; passo = 0; mostrar(); window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' }); }
+function corpoSeccao(s) {
+  if (s.tipo === 'passos') return `<ol class="passos">${(s.itens || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ol>`;
+  if (s.tipo === 'oracao') return blocoOracao(s.texto);
+  return blocoTexto(s.texto);
+}
+function passosRezar() {
+  const l = oracoes().map((s) => ({ t: 'oracao', s }));
+  l.push({ t: 'fim' }); return l;
+}
+function ecraInicio() {
+  const prox = O.dias ? proximo() : 0, comecou = O.dias && est.inicio, completo = O.dias && est.feitos.length >= O.dias;
+  const arte = O.tipo === 'ciclo' || /🛡|⚔/.test(O.emoji || '') ? ARTE_ESCUDO : ARTE_LUZ;
+  let h = `<div class="capa">${arte}<h1>${esc(O.titulo)}</h1>${O.subtitulo ? `<p>${esc(O.subtitulo)}</p>` : ''}</div>`;
+  if (O.dias && comecou && !completo) {
+    const t = (O.temasDias || [])[prox - 1] || {};
+    h += `<div class="hoje cartaoHoje">${ICONE_SEMANA(prox)}<div class="dia">Dia ${prox} de ${O.dias} · hoje</div><h3>${esc(t.titulo || '')}</h3>${t.intencao ? `<p>${esc(t.intencao)}</p>` : ''}</div>`;
+  } else if (completo) h += `<div class="final">🌟 <b>Completaste os ${O.dias} dias.</b><br>Que a luz continue contigo.</div>`;
+  h += `<button class="btn grande" id="bRezar">🙏 ${O.dias && comecou && !completo ? 'Rezar o dia ' + prox : 'Começar a rezar'}</button>`;
+  if (O.dias) h += `<button class="btn sec" id="bCam">🗓️ O meu caminho${comecou ? ' · ' + est.feitos.length + '/' + O.dias : ''}</button>`;
+  if (infos().length) h += `<button class="btn sec" id="bSaber">📖 Saber mais: para que serve e como fazer</button>`;
+  return h;
+}
+function ecraRezar() {
+  const ps = passosRezar(), n = ps.length; passo = Math.min(passo, n - 1);
+  const p = ps[passo];
+  let h = `<div class="pontos" aria-label="Passo ${passo + 1} de ${n}">${ps.map((_, k) => `<i class="${k === passo ? 'ac' : k < passo ? 'ok' : ''}"></i>`).join('')}</div>`;
+  if (p.t === 'oracao') {
+    h += `<section class="oracao passo">${ORNA}${p.s.titulo ? `<h2>${esc(p.s.titulo)}</h2>` : ''}<div class="corpo">${corpoSeccao(p.s)}</div></section>`;
+  } else {
+    const t = O.dias ? (O.temasDias || [])[ver - 1] : null;
+    const ultimo = O.dias && ver === O.dias;
+    const selar = ultimo ? seccoes().find((x) => x.tipo === 'texto' && /selar|21/i.test(x.titulo || '')) : null;
+    h += `<section class="oracao passo fim">${ORNA}<h2>🌟 Amén. Está feito.</h2><div class="corpo"><p>Respira fundo e agradece.</p>${t && t.acao ? `<p class="acao"><b>Para hoje:</b> ${esc(t.acao)}</p>` : ''}${selar ? `<div style="text-align:left">${blocoTexto(selar.texto)}</div>` : ''}</div></section>`;
+    if (O.dias && est.inicio) h += `<button class="btn grande" id="bFeito">${est.feitos.includes(ver) ? '↩ Desmarcar o dia ' + ver : '✅ Já fiz o dia ' + ver}</button>`;
+    else if (O.dias) h += `<button class="btn grande" id="bComecar2">✨ Começar o caminho de ${O.dias} dias</button>`;
+  }
+  h += `<div class="nav2"><button class="btn sec" id="bAnt" ${passo === 0 ? 'disabled' : ''}>← Anterior</button>${passo < n - 1 ? '<button class="btn" id="bSeg">Seguinte →</button>' : '<button class="btn" id="bIni">🏠 Início</button>'}</div>`;
+  return h;
+}
+function ecraSaber() {
+  const l = infos(); if (!l.length) return '<div class="estado">Sem mais informação.</div>';
+  return `<h1 class="tit2">📖 Saber mais</h1>` + l.map((s, k) => `<details class="ac ${s.tipo === 'aviso' ? 'aviso' : ''}" ${k === 0 ? 'open' : ''}><summary>${s.tipo === 'aviso' ? '⚠️ ' : ''}${esc(s.titulo || 'Texto')}</summary><div class="corpo">${corpoSeccao(s)}</div></details>`).join('');
+}
+function mostrar() {
+  const temC = !!O.dias, temS = infos().length > 0;
+  let h;
+  if (vista === 'caminho' && temC) h = '<section id="caminho"></section>';
+  else if (vista === 'rezar') h = ecraRezar();
+  else if (vista === 'saber' && temS) h = ecraSaber();
+  else { vista = 'inicio'; h = ecraInicio(); }
+  const tabs = [['inicio', '🏠', 'Início'], ['rezar', '🙏', 'Rezar']].concat(temC ? [['caminho', '🗓️', 'Caminho']] : [], temS ? [['saber', '📖', 'Saber mais']] : []);
+  $('app').innerHTML = h + (navigator.share && vista === 'inicio' ? `<button class="btn sec" id="partilhar">📤 Partilhar com alguém</button>` : '');
+  $('tabs').innerHTML = tabs.map(([v, e, t]) => `<button data-v="${v}" class="${v === vista ? 'ac' : ''}"><span>${e}</span>${t}</button>`).join('');
+  $('tabs').hidden = false;
+  if (vista === 'caminho') desenharCaminho();
+  const on = (id, f) => { const e = $(id); if (e) e.onclick = f; };
+  on('bRezar', () => irPara('rezar')); on('bCam', () => irPara('caminho')); on('bSaber', () => irPara('saber'));
+  on('bSeg', () => { passo++; mostrar(); window.scrollTo(0, 0); }); on('bAnt', () => { passo = Math.max(0, passo - 1); mostrar(); window.scrollTo(0, 0); });
+  on('bIni', () => irPara('inicio'));
+  on('bComecar2', () => { est.inicio = hojeISO(); ver = ver || 1; gravarLS(chave(), est); mostrar(); });
+  on('bFeito', () => {
+    const k = est.feitos.indexOf(ver);
+    if (k >= 0) est.feitos.splice(k, 1); else { est.feitos.push(ver); est.feitos.sort((a, b) => a - b); }
+    gravarLS(chave(), est); irPara('inicio');
+  });
+  on('partilhar', () => navigator.share({ title: O.titulo, url: location.href }).catch(() => {}));
+}
+$('tabs').onclick = (e) => { const b = e.target.closest('button[data-v]'); if (b) irPara(b.dataset.v); };
 function desenhar() {
   document.title = (O.titulo || 'Oração') + ' — Hikari Fafe';
-  const secs = (O.seccoes || []);
-  const idx = []; let html = `<div class="capa">${O.tipo === 'ciclo' || /🛡|⚔/.test(O.emoji || '') ? ARTE_ESCUDO : ARTE_LUZ}<h1>${esc(O.titulo)}</h1>${O.subtitulo ? `<p>${esc(O.subtitulo)}</p>` : ''}</div>`;
-  secs.forEach((s, i) => { if (s.tipo === 'oracao' && PRIMEIRA_ORACAO === 'caminho') PRIMEIRA_ORACAO = 's' + i; });
-  const nav = [];
-  if (O.dias) nav.push(['caminho', '🗓️ O meu caminho']);
-  secs.forEach((s, i) => nav.push(['s' + i, (s.tipo === 'oracao' ? '🙏 ' : '') + (s.titulo || 'Texto')]));
-  if (nav.length > 2) html += `<nav class="indice" aria-label="Índice">${nav.map(([a, t]) => `<a href="#${a}">${esc(t)}</a>`).join('')}</nav>`;
-  if (O.dias) html += `<section id="caminho"></section>`;
-  secs.forEach((s, i) => {
-    const cls = s.tipo === 'oracao' ? 'oracao' : s.tipo === 'aviso' ? 'aviso' : '';
-    let corpo;
-    if (s.tipo === 'passos') corpo = `<ol class="passos">${(s.itens || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ol>`;
-    else if (s.tipo === 'oracao') corpo = blocoOracao(s.texto);
-    else corpo = blocoTexto(s.texto);
-    html += `<section id="s${i}" class="${cls}">${s.tipo === 'oracao' ? ORNA : ''}${s.titulo ? `<h2>${s.tipo === 'aviso' ? '⚠️ ' : ''}${esc(s.titulo)}</h2>` : ''}<div class="corpo">${corpo}</div></section>`;
-  });
-  if (navigator.share) html += `<button class="btn sec" id="partilhar" style="margin-top:6px">📤 Partilhar com alguém</button>`;
-  $('app').innerHTML = html;
+  if (O.dias) { est = Object.assign({ inicio: '', feitos: [] }, lerLS(chave(), {})); ver = proximo() || O.dias; }
   $('barra').hidden = false; $('rodape').hidden = false;
-  if (O.dias) { est = Object.assign({ inicio: '', feitos: [] }, lerLS(chave(), {})); desenharCaminho(); }
-  const p = $('partilhar'); if (p) p.onclick = () => { navigator.share({ title: O.titulo, url: location.href }).catch(() => {}); };
+  mostrar();
 }
 
 id = new URLSearchParams(location.search).get('o') || '';
