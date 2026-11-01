@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-01-10';
+const APP_VERSION = '2026-11-01-11';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1844,8 +1844,7 @@ const NAV_GROUPS = {
     { view: 'estudioVoz', icon: '🎙️', label: 'Estúdio de Voz', tenantOnly: 'hikari-terapias' },
     { view: 'frequencias', icon: '🎶', label: 'Frequências', tenantOnly: 'hikari-terapias' },
     { view: 'oracoes', icon: '🙏', label: 'Orações e Salmos', tenantOnly: 'hikari-terapias' },
-    { view: 'apometria', icon: '🌀', label: 'Apometria', tenantOnly: 'hikari-terapias' },
-    { view: 'pesqIntegrada', icon: '🧭', label: 'Atendimento Guiado', tenantOnly: 'hikari-terapias' }
+    { view: 'metodoHikari', icon: '🔮', label: 'Pêndulo + Apometria', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1959,6 +1958,7 @@ function renderView(view, opts){
   else if (view === 'estudioVoz') renderEstudioVoz(main);
   else if (view === 'frequencias') renderFrequenciasApp(main);
   else if (view === 'oracoes') renderOracoesApp(main);
+  else if (view === 'metodoHikari') renderMetodoHikari(main);
   else if (view === 'apometria') renderApometriaApp(main);
   else if (view === 'pesqIntegrada') renderPesqIntegradaApp(main);
   else if (view === 'pedidoMetodo') { import('./pe-pedido.js').then(() => window.renderPedidoMetodo(main)).catch(e => { main.innerHTML = '<div class="card"><p class="muted">' + ((e && e.message) || 'Indisponível') + '</p></div>'; }); }
@@ -18913,11 +18913,23 @@ async function renderOracoesApp(main){
   }
 }
 
+function renderMetodoHikari(main){
+  if (tenantId !== 'hikari-terapias'){ main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2></div>'; return; }
+  const cartao = (v, emoji, titulo, texto, botao) => `<div class="card" style="margin-bottom:10px;"><div style="display:flex;gap:12px;align-items:flex-start;"><div style="font-size:2rem;line-height:1;">${emoji}</div><div style="flex:1;"><strong style="font-size:1.05rem;">${titulo}</strong><div class="muted" style="margin:4px 0 10px;font-size:.9rem;">${texto}</div><button class="primary" onclick="renderView('${v}')">${botao}</button></div></div></div>`;
+  main.innerHTML = `<h2 style="margin:0 0 4px;">🔮 Pêndulo + Apometria</h2>
+    <p class="muted" style="margin:0 0 12px;">O teu método completo, num só sítio: a pesquisa com o pêndulo, o procedimento da apometria e o atendimento guiado, em sintonia. Para atender (presencial ou à distância), começa pelo <b>Atendimento Guiado</b>.</p>
+    ${cartao('pesqIntegrada', '🧭', 'Atendimento Guiado', 'O guia passo a passo: pesquisa (energias 1 a 40, chakras 1 a 9 em %, abertura de caminhos, Bovis), plano à medida e modo de sessão com os teus comandos. Presencial e à distância.', 'Começar um atendimento')}
+    ${cartao('apometria', '🌀', 'Apometria', 'Procedimento em 12 fases, lições, técnicas, contador de impulsos e os teus comandos da formação.', 'Abrir a Apometria')}
+    ${cartao('triagemBaixaVibracao', '🎴', 'Triagem — Pêndulo Hebraico', 'A triagem completa com as 40 energias, etiquetas hebraicas, Bovis e tratamento por sessões, ligada à ficha do paciente.', 'Abrir a Triagem')}`;
+}
+
 async function renderApometriaApp(main){
   if (tenantId !== 'hikari-terapias'){
     main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>';
     return;
   }
+  main.innerHTML = '<button class="ghost" style="margin-bottom:8px;" onclick="renderView(\'metodoHikari\')">← Pêndulo + Apometria</button><div id="hub-corpo"></div>';
+  main = main.querySelector('#hub-corpo');
   try {
     const mod = await import('./apometria-escola.js?v=' + APP_VERSION);
     mod.renderApometria(main, {
@@ -18936,6 +18948,8 @@ async function renderPesqIntegradaApp(main){
     main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>';
     return;
   }
+  main.innerHTML = '<button class="ghost" style="margin-bottom:8px;" onclick="renderView(\'metodoHikari\')">← Pêndulo + Apometria</button><div id="hub-corpo"></div>';
+  main = main.querySelector('#hub-corpo');
   try {
     const mod = await import('./apometria.js?v=' + APP_VERSION);
     mod.renderPesquisaIntegrada(main, {

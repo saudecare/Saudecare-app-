@@ -1,14 +1,14 @@
 /* Pesquisa Integrada (pêndulo + apometria) — ferramenta exclusiva da Hikari Fafe.
    Guia passo a passo: paciente e segurança → 7 corpos → o que saiu na pesquisa → chakras → plano à medida → guardar na ficha. */
-import { NIVEIS, CORPOS, CHAKRAS, ALERTAS, ACHADOS, TECNICAS, TEXTO_PACIENTE, MODALIDADES, MSG_ANTES_DISTANCIA, MSG_DEPOIS_DISTANCIA } from './apometria-dados.js';
+import { NIVEIS, CORPOS, CHAKRAS, ALERTAS, ACHADOS, TECNICAS, TEXTO_PACIENTE, CAUSAS_40, NIVEIS_ABERTURA, faixaChakra, nivelDePct, MODALIDADES, MSG_ANTES_DISTANCIA, MSG_DEPOIS_DISTANCIA } from './apometria-dados.js';
 
 const TENANT = 'hikari-terapias';
-const PASSOS = ['Paciente', 'Corpos', 'Pesquisa', 'Chakras', 'Plano', 'Sessão', 'Guardar'];
+const PASSOS = ['Paciente', 'Corpos', 'Energias', 'Chakras', 'Plano', 'Sessão', 'Guardar'];
 const COACH = [
   'Prepara o espaço e a pessoa. Escolhe presencial ou à distância e confirma o consentimento. Só avanças quando tiveres a certeza de que a pessoa está de acordo.',
-  'Faz a pesquisa com o pêndulo: um corpo de cada vez, do físico ao átmico. Começa o tratamento pelo corpo que ficar mais fraco. Se a pessoa estiver à distância, trabalha sobre o nome (ou a fotografia).',
-  'Agora vê o que está a perturbar. Assinala só o que o pêndulo confirmou. Em dúvida, volta a perguntar. Não precisas de assinalar tudo.',
-  'Passo opcional. Os chakras mais fechados dizem por onde começar a harmonização.',
+  'Faz a pesquisa com o pêndulo: um corpo de cada vez, do físico ao átmico (carinha ou %). Começa o tratamento pelo corpo que ficar mais fraco. Se a pessoa estiver à distância, trabalha sobre o nome (ou a fotografia).',
+  'Pesquisa as energias numeradas de 1 a 40, como já fazes. Assinala só o que o pêndulo confirmou. Em dúvida, volta a perguntar.',
+  'Mede o Bovis inicial, a % de abertura de cada chakra (1 a 9) e o nível de abertura de caminhos. Os chakras mais fechados dizem por onde começar.',
   'Revê o plano. Poucas técnicas bem feitas valem mais do que muitas. Se houver sinais de cuidado, mantém só o que é suave.',
   'Hora de trabalhar. Segue a técnica atual, marca os passos e passa à seguinte. Vai devagar. No fim, aterra sempre a pessoa.',
   'Regista, compara com a vez anterior e envia a mensagem. À distância, faz o acompanhamento passadas 24 a 48 horas.'
@@ -25,7 +25,7 @@ export function renderPesquisaIntegrada(main, ctx) {
   const esc = ctx.escapeHtml;
   let pacs = []; let hist = []; let meus = {}; let inicioSessao = 0; let tecAtual = 0;
   let S, passo;
-  const novo = () => ({ pac: null, alertas: {}, primeira: false, corpos: {}, achados: {}, chakras: {}, escolhidas: null, notas: '', bovisIni: '', bovisFin: '', modo: 'presencial', check: {}, testemunho: '', hora: '', feitas: {}, passosFeitos: {} });
+  const novo = () => ({ pac: null, alertas: {}, primeira: false, corpos: {}, achados: {}, chakras: {}, escolhidas: null, notas: '', bovisIni: '', bovisFin: '', causas: {}, chakraPct: {}, corpoPct: {}, caminhos: null, modo: 'presencial', check: {}, testemunho: '', hora: '', feitas: {}, passosFeitos: {} });
   S = novo(); passo = 0;
 
   const corpoNome = (id) => (CORPOS.find((c) => c.id === id) || {}).nome || id;
@@ -34,6 +34,11 @@ export function renderPesquisaIntegrada(main, ctx) {
   const urgente = () => ALERTAS.some((a) => a.urgente && S.alertas[a.id]);
   const delicado = () => ALERTAS.some((a) => S.alertas[a.id] && ['sens', 'medo', 'menor', 'gravida'].includes(a.id));
 
+  function recalcAchados() {
+    const novo = {};
+    CAUSAS_40.forEach((c) => { if (S.causas[c.n]) { const d = ACHADOS.find((x) => x.id === c.cat); if (d && !novo[c.cat]) novo[c.cat] = S.achados[c.cat] || { n: 1, corpos: d.corpos.slice(), sub: [] }; } });
+    S.achados = novo;
+  }
   /* ───── plano sugerido à medida ───── */
   function sugerir() {
     const pont = {};
@@ -54,15 +59,18 @@ export function renderPesquisaIntegrada(main, ctx) {
 
   /* ───── relatórios ───── */
   function textoTerapeuta() {
-    const L = [`PESQUISA INTEGRADA — ${S.pac ? S.pac.fullName : ''} — ${new Date().toLocaleDateString('pt-PT')}`, ''];
+    const L = [`ATENDIMENTO GUIADO — ${S.pac ? S.pac.fullName : ''} — ${new Date().toLocaleDateString('pt-PT')}`, ''];
     L.push('Alertas assinalados: ' + (ALERTAS.filter((a) => S.alertas[a.id]).map((a) => a.texto).join('; ') || 'nenhum'));
     L.push('', '== 7 corpos ==');
     CORPOS.forEach((c) => L.push(`${c.n}. ${c.nome}: ${nivel(S.corpos[c.id] || 0).rotulo}`));
-    L.push('', '== O que saiu na pesquisa ==');
-    const ac = Object.entries(S.achados); if (!ac.length) L.push('Nada assinalado.');
+    L.push('', '== Energias detetadas (1 a 40) ==');
+    const det = CAUSAS_40.filter((c) => S.causas[c.n]); L.push(det.length ? det.map((c) => `${c.n}. ${c.nome}`).join('\n') : 'Nada assinalado.');
+    L.push('', '== Detalhe por tipo ==');
+    const ac = Object.entries(S.achados);
     ac.forEach(([id, a]) => { const d = ACHADOS.find((x) => x.id === id); L.push(`• ${d.nome} — ${nivel(a.n).rotulo}${a.corpos && a.corpos.length ? ' · corpos: ' + a.corpos.map(corpoNome).join(', ') : ''}${a.sub && a.sub.length ? ' · ' + a.sub.join(', ') : ''}`); });
-    const ch = Object.entries(S.chakras).filter(([, v]) => v > 0);
-    if (ch.length) { L.push('', '== Chakras =='); ch.forEach(([i, v]) => L.push(`• ${CHAKRAS[i]}: ${nivel(v).rotulo}`)); }
+    const chp = Object.entries(S.chakraPct).filter(([, v]) => v != null);
+    if (chp.length) { L.push('', '== Chakras (% de abertura) =='); chp.forEach(([i, v]) => L.push(`${+i + 1}. ${CHAKRAS[i]}: ${v}% — ${faixaChakra(v).rotulo}`)); }
+    if (S.caminhos != null) L.push('', 'Abertura de caminhos: ' + NIVEIS_ABERTURA[S.caminhos]);
     L.push('', '== Plano da sessão ==');
     planoAtual().forEach((t, i) => { const d = TECNICAS.find((x) => x.id === t); L.push(`${i + 1}. ${d.nome}`); });
     if (S.bovisIni || S.bovisFin) L.push('', `Bovis: ${S.bovisIni || '—'} → ${S.bovisFin || '—'}`);
@@ -119,21 +127,24 @@ export function renderPesquisaIntegrada(main, ctx) {
   }
   function passo1() {
     return `<p class="muted" style="margin:0 0 4px;">Com o pêndulo, vê como está cada corpo. Toca na carinha que corresponde.${S.modo === 'distancia' ? ' À distância: pesquisa sobre o nome ou a fotografia.' : ''}</p><div class="card" style="margin-bottom:8px;">${mapaSvg(S.corpos)}</div>` +
-      CORPOS.map((c) => `<div class="card" style="margin-bottom:8px;"><div class="row"><b>${c.emoji} ${c.n}. ${esc(c.nome)}</b></div><div class="muted" style="font-size:.82rem;margin:2px 0 8px;">${esc(c.sobre)} <i>Sinais: ${esc(c.sinais)}</i></div>${botoesNivel('corpo:' + c.id, S.corpos[c.id] ?? -1)}</div>`).join('') + nav();
+      CORPOS.map((c) => `<div class="card" style="margin-bottom:8px;"><div class="row"><b>${c.emoji} ${c.n}. ${esc(c.nome)}</b></div><div class="muted" style="font-size:.82rem;margin:2px 0 8px;">${esc(c.sobre)} <i>Sinais: ${esc(c.sinais)}</i></div>${botoesNivel('corpo:' + c.id, S.corpos[c.id] ?? -1)}<div style="margin-top:6px;font-size:.82rem;">ou % de vibração: <input type="number" min="0" max="100" data-cpct="${c.id}" value="${S.corpoPct[c.id] ?? ''}" placeholder="—" style="width:76px;"> %</div></div>`).join('') + nav();
   }
   function passo2() {
-    return `<p class="muted" style="margin:0 0 8px;">Toca no que o pêndulo detetou. Podes indicar a intensidade e os corpos afetados.</p>` +
-      ACHADOS.map((d) => {
-        const a = S.achados[d.id];
-        return `<div class="card" style="margin-bottom:8px;${a ? 'border:2px solid #1e3a5f;' : ''}"><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;"><input type="checkbox" data-ac="${d.id}" ${a ? 'checked' : ''} style="width:22px;height:22px;flex-shrink:0;"><span><b>${esc(d.nome)}</b><br><span class="muted" style="font-size:.82rem;">${esc(d.simples)}</span></span></label>
-        ${a ? `<div style="margin-top:8px;">${botoesNivel('ach:' + d.id, a.n)}
-          <div style="margin-top:8px;font-size:.82rem;"><b>Corpos afetados:</b><br>${CORPOS.map((c) => `<label style="display:inline-flex;gap:4px;align-items:center;margin:2px 8px 2px 0;"><input type="checkbox" data-ac-c="${d.id}|${c.id}" ${(a.corpos || []).includes(c.id) ? 'checked' : ''} style="width:16px;height:16px;">${c.emoji} ${esc(c.nome.replace(/ \(.*\)/, ''))}</label>`).join('')}</div>
-          ${d.subs ? `<div style="margin-top:6px;font-size:.82rem;"><b>Tipo:</b><br>${d.subs.map((s) => `<label style="display:flex;gap:6px;align-items:center;margin:2px 0;"><input type="checkbox" data-ac-s="${d.id}|${esc(s)}" ${(a.sub || []).includes(s) ? 'checked' : ''} style="width:16px;height:16px;">${esc(s)}</label>`).join('')}</div>` : ''}</div>` : ''}</div>`;
-      }).join('') + nav();
+    const nDet = Object.values(S.causas).filter(Boolean).length;
+    const cats = Object.keys(S.achados);
+    return `<p class="muted" style="margin:0 0 6px;">Pesquisa cada número com o pêndulo e marca só os que confirmares. <b>${nDet}</b> de ${CAUSAS_40.length} detetadas.</p>
+      <div class="card" style="margin-bottom:10px;">${CAUSAS_40.map((c) => `<label style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;"><span style="width:26px;height:26px;border-radius:50%;background:${S.causas[c.n] ? '#1e3a5f' : '#eef2ee'};color:${S.causas[c.n] ? '#fff' : '#333'};display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;">${c.n}</span><input type="checkbox" data-causa="${c.n}" ${S.causas[c.n] ? 'checked' : ''} style="width:22px;height:22px;flex-shrink:0;"><span style="flex:1;font-size:.92rem;">${esc(c.nome)}</span></label>`).join('')}</div>
+      ${cats.length ? `<h3 style="margin:10px 0 6px;">Detalhe do que saiu</h3><p class="muted" style="margin:0 0 6px;font-size:.85rem;">Indica a intensidade, os corpos afetados e o tipo, para o plano ficar à medida.</p>` : ''}` +
+      cats.map((id) => { const d = ACHADOS.find((x) => x.id === id); const a = S.achados[id]; const nums = CAUSAS_40.filter((c) => c.cat === id && S.causas[c.n]).map((c) => c.n).join(', ');
+        return `<div class="card" style="margin-bottom:8px;border:2px solid #1e3a5f;"><b>${esc(d.nome)}</b> <span class="muted" style="font-size:.78rem;">(n.º ${nums})</span><div style="margin-top:8px;">${botoesNivel('ach:' + id, a.n)}</div>
+          <div style="margin-top:8px;font-size:.82rem;"><b>Corpos afetados:</b><br>${CORPOS.map((c) => `<label style="display:inline-flex;gap:4px;align-items:center;margin:2px 8px 2px 0;"><input type="checkbox" data-ac-c="${id}|${c.id}" ${(a.corpos || []).includes(c.id) ? 'checked' : ''} style="width:16px;height:16px;">${c.emoji} ${esc(c.nome.replace(/ \(.*\)/, ''))}</label>`).join('')}</div>
+          ${d.subs ? `<div style="margin-top:6px;font-size:.82rem;"><b>Tipo:</b><br>${d.subs.map((x) => `<label style="display:flex;gap:6px;align-items:center;margin:2px 0;"><input type="checkbox" data-ac-s="${id}|${esc(x)}" ${(a.sub || []).includes(x) ? 'checked' : ''} style="width:16px;height:16px;">${esc(x)}</label>`).join('')}</div>` : ''}</div>`; }).join('') + nav();
   }
   function passo3() {
-    return `<p class="muted" style="margin:0 0 8px;">Opcional: como estão os chakras? Se já fizeste isto na pesquisa, salta este passo.</p>` +
-      CHAKRAS.map((c, i) => `<div class="card" style="margin-bottom:6px;"><b>${i + 1}. ${esc(c)}</b><div style="margin-top:6px;">${botoesNivel('chk:' + i, S.chakras[i] ?? -1)}</div></div>`).join('') + nav(true, 'Seguinte → o plano');
+    return `<div class="card" style="margin-bottom:10px;"><b>⚡ Bovis inicial</b><div class="muted" style="font-size:.82rem;margin:2px 0 6px;">Mede agora. O final mede-se só no fim, depois de aplicar tudo.</div><input id="pi-bi2" type="number" placeholder="ex: 6500" value="${esc(S.bovisIni)}" style="width:100%"></div>
+      <div class="card" style="margin-bottom:10px;"><b>🌈 Chakras 1 a 9 — % de abertura</b><p class="muted" style="font-size:.8rem;margin:4px 0 8px;">100% = totalmente aberto. 70–89% equilibrado · 90–100% muito aberto (aterrar) · 40–69% pouco aberto · abaixo de 40% muito fechado. É uma escala de apoio.</p>
+      ${CHAKRAS.map((c, i) => { const f = faixaChakra(S.chakraPct[i]); return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div style="flex:1;font-weight:700;font-size:.92rem;">${i + 1} — ${esc(c)}<div style="font-size:.75rem;font-weight:400;color:${f.cor};min-height:1em;">${esc(f.rotulo)}</div></div><input type="number" min="0" max="100" data-chk-pct="${i}" value="${S.chakraPct[i] ?? ''}" placeholder="—" style="width:86px;font-size:1.05rem;"> %</div>`; }).join('')}</div>
+      <div class="card"><b>🚪 Nível de abertura de caminhos</b><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">${NIVEIS_ABERTURA.map((n, i) => `<button data-cam="${i}" style="padding:12px 4px;border-radius:12px;border:2px solid ${S.caminhos === i ? '#1e3a5f' : '#ddd'};background:${S.caminhos === i ? '#e7eef7' : '#fff'};font-weight:700;cursor:pointer;">${n}</button>`).join('')}</div></div>` + nav(true, 'Seguinte → o plano');
   }
   function passo4() {
     const sug = sugerir(); const plano = planoAtual();
@@ -202,6 +213,13 @@ export function renderPesquisaIntegrada(main, ctx) {
     });
     main.querySelectorAll('[data-al]').forEach((c) => c.onchange = () => { S.alertas[c.dataset.al] = c.checked; S.escolhidas = null; const y = window.scrollY; ver(); window.scrollTo(0, y); });
     const prim = q('#pi-prim'); if (prim) prim.onchange = () => { S.primeira = prim.checked; S.escolhidas = null; };
+    main.querySelectorAll('[data-causa]').forEach((c) => c.onchange = () => {
+      S.causas[c.dataset.causa] = c.checked; recalcAchados(); S.escolhidas = null; const y = window.scrollY; ver(); window.scrollTo(0, y);
+    });
+    main.querySelectorAll('[data-chk-pct]').forEach((c) => c.onchange = () => { const v = c.value === '' ? null : Math.max(0, Math.min(100, parseInt(c.value, 10) || 0)); S.chakraPct[c.dataset.chkPct] = v; const f = faixaChakra(v); if (f.v == null) delete S.chakras[c.dataset.chkPct]; else S.chakras[c.dataset.chkPct] = f.v; S.escolhidas = null; const y = window.scrollY; ver(); window.scrollTo(0, y); });
+    main.querySelectorAll('[data-cpct]').forEach((c) => c.onchange = () => { if (c.value === '') { delete S.corpoPct[c.dataset.cpct]; return; } const v = Math.max(0, Math.min(100, parseInt(c.value, 10) || 0)); S.corpoPct[c.dataset.cpct] = v; S.corpos[c.dataset.cpct] = nivelDePct(v); S.escolhidas = null; const y = window.scrollY; ver(); window.scrollTo(0, y); });
+    main.querySelectorAll('[data-cam]').forEach((b) => b.onclick = () => { S.caminhos = +b.dataset.cam; const y = window.scrollY; ver(); window.scrollTo(0, y); });
+    const bi2 = q('#pi-bi2'); if (bi2) bi2.oninput = () => { S.bovisIni = bi2.value; };
     main.querySelectorAll('[data-ac]').forEach((c) => c.onchange = () => {
       const id = c.dataset.ac; if (c.checked) { const d = ACHADOS.find((x) => x.id === id); S.achados[id] = { n: 1, corpos: d.corpos.slice(), sub: [] }; } else delete S.achados[id];
       S.escolhidas = null; const y = window.scrollY; ver(); window.scrollTo(0, y);
@@ -239,7 +257,7 @@ export function renderPesquisaIntegrada(main, ctx) {
     on('#pi-gravar', async () => {
       if (!S.pac) return ctx.toast('Escolhe primeiro o paciente.', true);
       try {
-        await ctx.gravar(S.pac.id, { tipo: 'pesquisa-integrada', reportText: textoTerapeuta(), textoPaciente: textoPaciente(), dados: { modo: S.modo, testemunho: S.testemunho, hora: S.hora, feitas: S.feitas, minutos: inicioSessao ? Math.round((Date.now() - inicioSessao) / 60000) : 0, corpos: S.corpos, achados: S.achados, chakras: S.chakras, plano: planoAtual(), alertas: S.alertas, bovisIni: S.bovisIni, bovisFin: S.bovisFin, notas: S.notas, primeira: S.primeira } });
+        await ctx.gravar(S.pac.id, { tipo: 'pesquisa-integrada', reportText: textoTerapeuta(), textoPaciente: textoPaciente(), dados: { causas: S.causas, chakraPct: S.chakraPct, corpoPct: S.corpoPct, caminhos: S.caminhos, modo: S.modo, testemunho: S.testemunho, hora: S.hora, feitas: S.feitas, minutos: inicioSessao ? Math.round((Date.now() - inicioSessao) / 60000) : 0, corpos: S.corpos, achados: S.achados, chakras: S.chakras, plano: planoAtual(), alertas: S.alertas, bovisIni: S.bovisIni, bovisFin: S.bovisFin, notas: S.notas, primeira: S.primeira } });
         ctx.toast('Guardado na ficha. ✅'); hist = await ctx.listar(S.pac.id);
       } catch (e) { ctx.toast('Não consegui guardar: ' + (e.message || e), true); }
     });

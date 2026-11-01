@@ -114,3 +114,33 @@ export const PROCEDIMENTO = [
   { n: 11, fase: 'Cuidar de ti', titulo: 'Desligar e repor a tua energia', tec: 'selar', min: 5, objetivo: 'Não levares nada contigo.', fazer: ['Pede para desligar de tudo o que não é teu e repor a tua energia.', 'Lava as mãos e bebe água. Se puderes, descansa uns minutos.'] },
   { n: 12, fase: 'Depois', titulo: 'Registar e combinar o seguimento', tec: 'casa', min: 10, objetivo: 'Fechar com registo e plano.', fazer: ['Mede o Bovis final, regista e compara com a vez anterior.', 'Envia a mensagem à pessoa com o que fazer em casa.', 'Marca a próxima sessão, pelo menos 7 dias depois.'], dist: 'Fala uns minutos com a pessoa no fim e faz o acompanhamento 24 a 48 horas depois.' }
 ];
+
+/* ───── Pesquisa pelo pêndulo, ao estilo do método: energias 1 a 40, chakras 1 a 9 (%), abertura de caminhos ───── */
+export const CAUSAS_40 = [
+  [1, 'Miasma', 'miasma'], [2, 'Olho Gordo / Inveja', 'olho'], [3, 'Magia Consciente', 'magia'], [4, 'Magia Inconsciente', 'magia'],
+  [5, 'Trabalho Feito / Ritual', 'magia'], [6, 'Bumerangue (trabalho enviado que retrocedeu)', 'magia'], [7, 'Obsessor / Entidade Agarrada', 'presenca'],
+  [8, 'Possessão Parcial', 'presenca'], [9, 'Larva Astral', 'larva'], [10, 'Ataque Psíquico Ativo', 'magia'], [11, 'Implante Energético', 'implante'],
+  [12, 'Chip Energético', 'implante'], [13, 'Campo Electromagnético', 'ambiente'], [14, 'Geopatia', 'ambiente'], [15, 'Vínculo/Cordão Kármico Negativo', 'cordoes'],
+  [16, 'Amarração', 'cordoes'], [17, 'Ligação a Pessoa Tóxica (fio de dreno)', 'cordoes'], [18, 'Herança Familiar Negativa (Miasma Ancestral)', 'heranca'],
+  [19, 'Praga/Maldição de Linhagem Familiar', 'heranca'], [20, 'Padrão Repetido na Família (ciclo geracional)', 'heranca'], [21, 'Karma de Vidas Passadas', 'vidas'],
+  [22, 'Voto de Pobreza (de vida passada)', 'vidas'], [23, 'Voto de Solidão/Castidade (de vida passada)', 'vidas'], [24, 'Voto de Silêncio (de vida passada)', 'vidas'],
+  [25, 'Contrato Kármico de Dependência', 'vidas'], [26, 'Bloqueio Psicológico/Emocional Reprimido', 'trauma'], [27, 'Trauma Não Resolvido (desta vida)', 'trauma'],
+  [28, 'Padrão Mental Autossabotador', 'trauma'], [29, 'Culpa Inconsciente', 'trauma'], [30, 'Medo Paralisante Enraizado', 'trauma'],
+  [31, 'Ansiedade Energética Crónica', 'trauma'], [32, 'Memória Celular de Trauma', 'trauma'], [33, 'Egrégora Negativa (pensamento-forma coletivo)', 'larva'],
+  [34, 'Fragmentação/Desconexão da Alma', 'fragmenta'], [35, 'Interferência de Baixo Astral em Sonhos', 'presenca'], [36, 'Sobrecarga de Empatia', 'cansaco'],
+  [37, 'Fadiga Energética Crónica sem causa física', 'cansaco'], [38, 'Bloqueio de Abundância por Crença Herdada', 'heranca'],
+  [39, 'Autossabotagem por Medo do Sucesso', 'trauma'], [40, 'Bloqueio de Criatividade/Fertilidade', 'trauma']
+].map(([n, nome, cat]) => ({ n, nome, cat }));
+
+export const NIVEIS_ABERTURA = ['Aberto', 'Parcialmente Aberto', 'Bloqueado', 'Muito Bloqueado'];
+/* % de abertura de um chakra → nível de atenção (0 equilibrado … 3 forte) e rótulo */
+export function faixaChakra(p) {
+  if (p == null || p === '' || isNaN(p)) return { v: null, rotulo: '', cor: '#9ca3af' };
+  p = +p;
+  if (p >= 90) return { v: 1, rotulo: 'Muito aberto (convém aterrar)', cor: '#ca8a04' };
+  if (p >= 70) return { v: 0, rotulo: 'Equilibrado', cor: '#16a34a' };
+  if (p >= 40) return { v: 2, rotulo: 'Pouco aberto', cor: '#ea580c' };
+  return { v: 3, rotulo: 'Muito fechado', cor: '#dc2626' };
+}
+/* % de um corpo → nível */
+export function nivelDePct(p) { p = +p; return p >= 70 ? 0 : p >= 50 ? 1 : p >= 30 ? 2 : 3; }
