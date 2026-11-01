@@ -25,9 +25,16 @@ export function renderApometria(main, ctx) {
     ${t.nota ? `<div style="color:#b45309;font-size:.85rem;margin:6px 0;">⚠️ ${esc(t.nota)}</div>` : ''}<ol style="margin:8px 0 0 18px;">${t.passos.map((p) => `<li style="margin-bottom:5px;">${esc(p)}</li>`).join('')}</ol>${meus[t.id] ? `<div class="card" style="background:#f3f6fa;margin-top:8px;"><b>✍️ O teu comando</b><div style="white-space:pre-wrap;font-size:.9rem;margin-top:4px;">${esc(meus[t.id])}</div></div>` : ''}</details>`).join('');
   const comandos = () => `<p class="muted" style="margin:0 0 8px;">Escreve aqui, nas tuas palavras ou como aprendeste na tua formação, o que dizes em cada técnica. Fica só na tua conta e aparece no Atendimento Guiado, no momento certo.</p>`
     + TECNICAS.map((t) => `<div class="card" style="margin-bottom:8px;"><b>${t.nome}</b><textarea data-cmd="${t.id}" rows="3" placeholder="O teu comando para esta técnica…" style="width:100%;margin-top:6px;">${esc(meus[t.id] || '')}</textarea></div>`).join('')
-    + `<button class="primary" id="ap-gravar" style="width:100%;margin-top:6px;">💾 Guardar os meus comandos</button>`;
+    + `<button class="primary" id="ap-gravar" style="width:100%;margin-top:6px;">💾 Guardar os meus comandos</button>
+    <details class="card" style="margin-top:12px;"><summary style="cursor:pointer;font-weight:700;">📥 Importar de um texto</summary><p class="muted" style="font-size:.85rem;margin:6px 0;">Cola aqui um texto em que cada técnica começa por uma linha <b>### nome</b> (por exemplo ### preparar). Os comandos entram nas caixas acima; depois carrega em Guardar.</p><textarea id="ap-imp" rows="6" style="width:100%"></textarea><button class="ghost" id="ap-imp-b" style="margin-top:6px;">Importar</button></details>`;
   function ligarComandos(c) {
     c.querySelectorAll('[data-cmd]').forEach((t) => t.oninput = () => { meus[t.dataset.cmd] = t.value; sujo = true; });
+    c.querySelector('#ap-imp-b').onclick = () => {
+      const txt = c.querySelector('#ap-imp').value; const ids = TECNICAS.map((t) => t.id); let n = 0;
+      txt.split(/^###\s*/m).slice(1).forEach((bloco) => { const nl = bloco.indexOf('\n'); const id = bloco.slice(0, nl < 0 ? undefined : nl).trim().split(/\s+/)[0]; const corpo = nl < 0 ? '' : bloco.slice(nl + 1).trim(); if (ids.includes(id) && corpo) { meus[id] = corpo; n++; } });
+      if (!n) return ctx.toast('Não encontrei nenhuma técnica. Cada bloco tem de começar por ### nome.', true);
+      sujo = true; ctx.toast(n + ' técnicas importadas. Confirma e carrega em Guardar.'); ver(); aba = 'comandos'; ver();
+    };
     c.querySelector('#ap-gravar').onclick = async () => { try { await ctx.gravarMeus(meus); sujo = false; ctx.toast('Guardado. ✅'); } catch (e) { ctx.toast('Não consegui guardar: ' + (e.message || e), true); } };
   }
   const contador = () => `<div class="card" style="text-align:center;"><p class="muted" style="margin:0 0 8px;">Conta os «impulsos» de um comando. Toca no botão grande a cada repetição.</p>
