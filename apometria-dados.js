@@ -144,3 +144,48 @@ export function faixaChakra(p) {
 }
 /* % de um corpo → nível */
 export function nivelDePct(p) { p = +p; return p >= 70 ? 0 : p >= 50 ? 1 : p >= 30 ? 2 : 3; }
+
+/* ───── Questionário de pré-consulta (enviado ao paciente por link; as respostas cruzam com a pesquisa) ───── */
+const ESC = ['0 · Nunca', '1 · Às vezes', '2 · Muitas vezes', '3 · Quase sempre'];
+const q = (bloco, label, extra = {}) => Object.assign({ bloco, label, tipo: 'opcao', opcoes: ESC }, extra);
+const sn = (bloco, label, extra = {}) => Object.assign({ bloco, label, tipo: 'sim_nao' }, extra);
+export const PRE_TITULO = 'Questionário de pré-consulta';
+export const PRE_DESCRICAO = 'Estas perguntas ajudam-me a preparar a sua consulta com cuidado. Responda com sinceridade e sem pressa. As respostas são confidenciais. Se não souber, escolha a que lhe parecer mais próxima.';
+export const PRE_CONSULTA = [
+  // Segurança
+  sn('Antes de tudo', 'Tem algum diagnóstico psiquiátrico, ou ouve vozes ou sente que alguém o/a controla?', { alerta: 'psi' }),
+  sn('Antes de tudo', 'Tem epilepsia ou já teve crises convulsivas?', { alerta: 'epi' }),
+  sn('Antes de tudo', 'Está grávida?', { alerta: 'gravida' }),
+  sn('Antes de tudo', 'Tem menos de 18 anos?', { alerta: 'menor' }),
+  sn('Antes de tudo', 'Nas últimas semanas, pensou em desistir da vida ou em fazer mal a si próprio/a? (Se sim, fale connosco. Em urgência, ligue 112 ou SNS 24: 808 24 24 24.)', { alerta: 'suic' }),
+  q('Antes de tudo', 'Tem receio ou medo deste tipo de trabalho?', { alertaMin: 2, alerta: 'medo' }),
+  { bloco: 'Antes de tudo', label: 'Toma alguma medicação ou faz algum tratamento neste momento? Qual?', tipo: 'area' },
+  // Corpo físico
+  q('Corpo e energia', 'Tem dores ou tensão no corpo sem explicação clara?', { corpo: 'fisico', causas: [32] }),
+  q('Corpo e energia', 'Fica doente com frequência ou demora a recuperar?', { corpo: 'fisico', causas: [37] }),
+  q('Corpo e energia', 'Sente-se sem energia, mesmo depois de dormir?', { corpo: 'etereo', causas: [37, 1] }),
+  q('Corpo e energia', 'Sente-se esgotado/a depois de estar com certas pessoas ou em certos lugares?', { corpo: 'etereo', causas: [17, 36, 13, 14] }),
+  // Emoções
+  q('Emoções', 'Sente medo ou ansiedade sem um motivo claro?', { corpo: 'astral', causas: [30, 31] }),
+  q('Emoções', 'Tem emoções fortes (tristeza, raiva) que parecem «subir» de repente?', { corpo: 'astral', causas: [26, 27] }),
+  q('Emoções', 'Tem pesadelos ou sonhos pesados com frequência?', { corpo: 'astral', causas: [35, 7] }),
+  q('Emoções', 'Sente culpa que não sabe explicar?', { corpo: 'astral', causas: [29] }),
+  // Mente
+  q('Mente', 'Tem pensamentos repetitivos que não consegue parar?', { corpo: 'mental-inf', causas: [28] }),
+  q('Mente', 'Tem pensamentos ou impulsos que sente que «não são seus»?', { corpo: 'mental-inf', causas: [7, 8] }),
+  q('Mente', 'Sente que se sabota quando as coisas começam a correr bem?', { corpo: 'mental-inf', causas: [39, 28] }),
+  q('Mente', 'Sente-se perdido/a, sem sentido ou sem direção na vida?', { corpo: 'mental-sup', causas: [34, 21] }),
+  q('Coração e espírito', 'Tem dificuldade em perdoar ou em confiar nos outros?', { corpo: 'budico', causas: [15, 29] }),
+  q('Coração e espírito', 'Sente-se desligado/a da sua fé ou de si mesmo/a?', { corpo: 'atmico', causas: [34] }),
+  // O que se passa à volta
+  q('À sua volta', 'Sente-se «pesado/a» em casa ou no trabalho?', { causas: [13, 14, 1] }),
+  q('À sua volta', 'Sente que alguém lhe tem inveja ou lhe quer mal?', { causas: [2, 3, 4, 5, 10] }),
+  q('À sua volta', 'Desde um certo acontecimento, tudo começou a correr mal?', { causas: [5, 27] }),
+  q('À sua volta', 'Há padrões que se repetem na sua família (doenças, separações, dificuldades de dinheiro)?', { causas: [18, 19, 20, 38] }),
+  q('À sua volta', 'Tem uma relação ou situação que o/a prende e drena?', { causas: [15, 16, 17] }),
+  q('À sua volta', 'Sente-se muito sensível ao que os outros sentem?', { causas: [36] }),
+  q('À sua volta', 'O dinheiro ou o trabalho parecem sempre «bloqueados», por mais que se esforce?', { causas: [38, 22] }),
+  { bloco: 'Para terminar', label: 'Qual é o principal motivo da sua consulta?', tipo: 'area' },
+  { bloco: 'Para terminar', label: 'Desde quando se sente assim, e o que já tentou?', tipo: 'area' }
+].map((p, i) => Object.assign({ id: 'p' + i }, p));
+export const PRE_FORM_ID = 'pi-pre';

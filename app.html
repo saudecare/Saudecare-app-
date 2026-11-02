@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-02-01';
+const APP_VERSION = '2026-11-02-02';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -18969,6 +18969,25 @@ async function renderPesqIntegradaApp(main){
       dataPT: t => t ? new Date(t).toLocaleDateString('pt-PT') : '—',
       carregarMeus: async () => { const s = await getDoc(doc(db, 'tenants', tenantId, 'apometria', 'meus')); return s.exists() ? (s.data().comandos || {}) : {}; },
       abrirTriagem: () => renderView('triagemBaixaVibracao'),
+      abrirEnvio: o => window.abrirEnvioFicha && window.abrirEnvioFicha(o),
+      criarPreConsulta: async (pac, form) => {
+        const r = await addDoc(collection(db, 'public_form_responses'), { tenantId, formId: 'pi-pre', patientId: pac.id, patientName: pac.fullName || '', criadoPorEquipa: true, status: 'pending_review', criadoEm: new Date(), titulo: form.titulo, descricao: form.descricao, perguntas: form.perguntas });
+        return r.id;
+      },
+      lerPreConsulta: async (pid) => {
+        const ms = v => v && v.toMillis ? v.toMillis() : (v && v.seconds ? v.seconds * 1000 : (v ? new Date(v).getTime() : 0));
+        const paraResp = arr => { const o = {}; (Array.isArray(arr) ? arr : []).forEach(x => { if (x && x.questionId) o[x.questionId] = x.value; }); return o; };
+        let melhor = null;
+        try {
+          const s1 = await getDocs(collection(db, 'tenants', tenantId, 'patients', pid, 'formResponses'));
+          s1.forEach(d => { const x = d.data(); if (x.formId === 'pi-pre') { const t = ms(x.submittedAt || x.completadoEm); if (!melhor || t > melhor.quando) melhor = { id: x.sourceResponseId || d.id, estado: 'respondido', resp: paraResp(x.respostas), quando: t }; } });
+        } catch (e) {}
+        try {
+          const s2 = await getDocs(query(collection(db, 'public_form_responses'), where('tenantId', '==', tenantId), where('patientId', '==', pid)));
+          s2.forEach(d => { const x = d.data(); if (x.formId !== 'pi-pre') return; const resp = x.completadoEm && Array.isArray(x.respostas); const t = ms(x.completadoEm || x.criadoEm); if (!melhor || (resp && (melhor.estado !== 'respondido' || t > melhor.quando)) || (!resp && melhor.estado !== 'respondido' && t > melhor.quando)) melhor = { id: d.id, estado: resp ? 'respondido' : 'pendente', resp: resp ? paraResp(x.respostas) : {}, quando: t }; });
+        } catch (e) {}
+        return melhor;
+      },
       escapeHtml, toast, confirmar: reikiConfirmar
     });
   } catch(e){
