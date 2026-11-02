@@ -214,3 +214,38 @@ export const SEG_FORM = [
   { curto: 'Acontecimentos', label: 'Aconteceu alguma coisa importante desde a última sessão?', tipo: 'area' },
   { curto: 'Quer falar', label: 'Sente que precisa de falar comigo antes da próxima consulta?', tipo: 'sim_nao' }
 ].map((p, i) => Object.assign({ id: 's' + i }, p));
+
+/* ───── Consciência e responsabilidade do paciente (escrito de raiz) ───── */
+export const MSG_CONSCIENCIA = `🌿 Antes da nossa consulta, quero partilhar contigo algo importante.
+
+🕊️ O meu papel é o de intercessor: sirvo de ponte. Com o pêndulo e as técnicas energéticas, peço, pesquiso e trabalho para o teu bem, e abro caminhos com respeito pelo teu livre-arbítrio. Eu não te posso curar nem mudar a tua vida por ti.
+
+🌱 A mudança real é tua. As terapias dão-te um empurrão, limpam e libertam, mas, se a pessoa voltar aos mesmos pensamentos, emoções, ambientes e hábitos, o mesmo tende a regressar. Quem se compromete a mudar o que depende de si, mantém os resultados.
+
+🧲 Atraímos aquilo em que vibramos. O que pensamos, sentimos e fazemos, dia após dia, cria o nosso estado de energia, e é esse estado que atrai pessoas, situações e oportunidades semelhantes. Por isso, na consulta confirmo, com o pêndulo, o estado em que vibras, e voltamos a medir nas consultas seguintes para veres a tua evolução.
+
+🙏 Vem de coração aberto, com sinceridade, e disposto/a a fazer a tua parte. Isto complementa, e nunca substitui, o acompanhamento médico e psicológico.`;
+
+export const DICAS_VIBRACAO = {
+  gerais: [
+    '🌅 Começa o dia com 5 minutos de silêncio, respiração calma e gratidão por três coisas.',
+    '💧 Bebe água, come com consciência, dorme o suficiente e sai ao ar livre. Um corpo cuidado sustenta uma vibração mais alta.',
+    '🗣️ Vigia o que dizes e pensas de ti. As queixas repetidas e a crítica constante baixam a vibração.',
+    '🧹 Arruma a casa e o espaço onde vives. Abre as janelas, deixa entrar luz e tira o que é velho e pesado.',
+    '👥 Repara em quem te enche e em quem te esgota. Aproxima-te de quem te faz bem e põe limites com amor.',
+    '📵 Reduz as notícias, as redes sociais e os conteúdos pesados, sobretudo antes de dormir.',
+    '🙏 Reza, medita ou ora todos os dias, mesmo que sejam poucos minutos. A constância vale mais do que a intensidade.',
+    '🤝 Perdoa, devagar e sem pressas. Guardar mágoa prende a tua energia à pessoa ou ao acontecimento.',
+    '🎯 Escolhe uma pequena mudança concreta nesta semana e cumpre-a. Os atos criam novos hábitos de vibração.'
+  ],
+  corpos: {
+    fisico: '🏃 Corpo físico: movimenta-te todos os dias (caminhar já chega), come comida simples e descansa bem.',
+    etereo: '⚡ Vitalidade: apanha sol, caminha descalço/a na natureza e evita estar com quem te cansa.',
+    astral: '💧 Emoções: escreve o que sentes, chora se precisares e não guardes tudo. Pede ajuda se for demasiado.',
+    'mental-inf': '🧠 Pensamentos: quando um pensamento negativo voltar, nota-o, respira e troca-o por um mais verdadeiro e gentil.',
+    'mental-sup': '🧭 Propósito: pergunta-te o que te faz sentir vivo/a e dá um pequeno passo nessa direção.',
+    budico: '💚 Amor e compaixão: faz um gesto de bondade por dia, sem esperar nada em troca.',
+    atmico: '✨ Essência: reserva tempo para a tua fé, para a natureza e para ti, sem distrações.'
+  },
+  fecho: 'Na próxima consulta voltamos a medir como estás a vibrar. Cada passo conta. 🌟'
+};

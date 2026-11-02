@@ -1,6 +1,6 @@
 /* Pesquisa Integrada (pêndulo + apometria) — ferramenta exclusiva da Hikari Fafe.
    Guia passo a passo: paciente e segurança → 7 corpos → o que saiu na pesquisa → chakras → plano à medida → guardar na ficha. */
-import { NIVEIS, CORPOS, CHAKRAS, ALERTAS, ACHADOS, TECNICAS, TEXTO_PACIENTE, CAUSAS_40, NIVEIS_ABERTURA, faixaChakra, nivelDePct, MODALIDADES, MSG_ANTES_DISTANCIA, MSG_DEPOIS_DISTANCIA, PRE_CONSULTA, PRE_TITULO, PRE_DESCRICAO, PRE_FORM_ID, SEG_FORM, SEG_FORM_ID, SEG_TITULO, SEG_DESCRICAO } from './apometria-dados.js';
+import { NIVEIS, CORPOS, CHAKRAS, ALERTAS, ACHADOS, TECNICAS, TEXTO_PACIENTE, CAUSAS_40, NIVEIS_ABERTURA, faixaChakra, nivelDePct, MODALIDADES, MSG_ANTES_DISTANCIA, MSG_DEPOIS_DISTANCIA, PRE_CONSULTA, PRE_TITULO, PRE_DESCRICAO, PRE_FORM_ID, SEG_FORM, SEG_FORM_ID, SEG_TITULO, SEG_DESCRICAO, MSG_CONSCIENCIA, DICAS_VIBRACAO } from './apometria-dados.js';
 
 const TENANT = 'hikari-terapias';
 const PASSOS = ['Paciente', 'Corpos', 'Energias', 'Chakras', 'Plano', 'Sessão', 'Guardar'];
@@ -125,13 +125,16 @@ export function renderPesquisaIntegrada(main, ctx) {
   function textoPaciente() {
     const nome = S.pac ? String(S.pac.fullName).split(' ')[0] : '';
     const tem = Object.entries(S.achados).map(([id]) => ACHADOS.find((x) => x.id === id)).filter(Boolean);
-    const L = [`Olá${nome ? ' ' + nome : ''}! 🌿`, '', TEXTO_PACIENTE.intro, ''];
+    const L = [`Olá${nome ? ' ' + nome : ''}! 🌿`, '', TEXTO_PACIENTE.intro, '', '🕊️ Eu sou um intercessor: peço e trabalho para o teu bem, mas a mudança que se mantém é a tua. Atraímos o que vibramos, por isso a tua parte é cuidar do teu estado todos os dias.', ''];
     const fracos = CORPOS.filter((c) => (S.corpos[c.id] || 0) >= 2);
     if (fracos.length) L.push('O que a pesquisa mostrou que precisa de mais atenção: ' + fracos.map((c) => c.nome.replace(/ \(.*\)/, '').toLowerCase()).join(', ') + '.', '');
     if (tem.length) { L.push('Foram sentidos sinais de:'); tem.forEach((d) => L.push(`• ${d.nome}: ${d.simples}`)); L.push(''); }
     const casa = planoAtual().map((t) => TECNICAS.find((x) => x.id === t)).filter((d) => d.dur === 'em casa' || ['oracao', 'meditacao'].includes(d.id));
     if (casa.length) { L.push('Para fazeres em casa:'); casa.forEach((d) => L.push(`• ${d.nome}`)); L.push(''); }
-    L.push(TEXTO_PACIENTE.fim);
+    L.push('🌟 A tua parte, para não voltares ao mesmo:');
+    fracos.slice(0, 3).forEach((c) => { const d = DICAS_VIBRACAO.corpos[c.id]; if (d) L.push(d); });
+    DICAS_VIBRACAO.gerais.slice(0, 5).forEach((d) => L.push(d));
+    L.push('', DICAS_VIBRACAO.fecho, '', TEXTO_PACIENTE.fim);
     return L.join('\n');
   }
 
@@ -165,6 +168,9 @@ export function renderPesquisaIntegrada(main, ctx) {
       <div style="margin:8px 0;display:grid;gap:6px;">${c.consultas.map((x, i) => `<div style="display:flex;gap:8px;align-items:center;font-size:.9rem;"><span style="width:26px;height:26px;border-radius:50%;background:${x.feita ? '#166534' : i === f ? '#1e3a5f' : '#e5e7eb'};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">${x.feita ? '✓' : i + 1}</span><span style="flex:1;">${x.feita ? 'Feita em ' + ctx.dataPT(x.data) : i === f ? 'Esta consulta' : 'Por marcar'}</span><button class="ghost" data-pago="${i}" style="padding:4px 10px;${x.pago ? 'border-color:#166534;color:#166534;' : ''}">${x.pago ? '💶 Paga' : '💶 Por pagar'}</button></div>`).join('')}</div>${aviso}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;"><button class="ghost" id="pi-cic-alt">✏️ Alterar nº</button><button class="ghost" id="pi-cic-novo">🔁 Novo percurso</button></div></div>`;
   }
+  function cartaoConsc() {
+    return `<div class="card" style="margin:10px 0;background:#faf5ff;"><b>🕊️ Mensagem de consciência</b><div style="font-size:.88rem;margin:4px 0 8px;">Explica ao paciente que és um intercessor, que a mudança é dele e como atraímos pela nossa vibração. Envia antes da 1.ª consulta.</div><div style="display:grid;gap:6px;"><button class="ghost" id="pi-con-wa">📱 Enviar por WhatsApp</button><button class="ghost" id="pi-con-ver">👁️ Ler / copiar</button></div><pre id="pi-con-txt" style="display:none;white-space:pre-wrap;font-family:inherit;font-size:.85rem;background:#fff;padding:10px;border-radius:8px;margin-top:8px;">${esc(MSG_CONSCIENCIA)}</pre></div>`;
+  }
   function cartaoSeg() {
     if (!S.pac) return ''; const c = cur(); if (!(nFeitas(c) >= 1 || (!c && hist.length))) return '';
     const a = analiseSeg(); const m = a && a.media != null ? a.media : null;
@@ -186,7 +192,7 @@ export function renderPesquisaIntegrada(main, ctx) {
       <div class="card" style="margin-bottom:8px;"><b>Antes de começar</b>${mod.checklist.map((c, i) => `<label style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:.9rem;"><input type="checkbox" data-chk="${S.modo}${i}" ${S.check[S.modo + i] ? 'checked' : ''} style="width:20px;height:20px;"> ${esc(c)}</label>`).join('')}
       ${S.modo === 'distancia' ? `<label style="display:block;margin-top:8px;font-size:.88rem;">Testemunho (nome completo, data de nascimento, fotografia…)<input id="pi-test" value="${esc(S.testemunho)}" style="width:100%"></label><label style="display:block;margin-top:6px;font-size:.88rem;">Hora combinada<input id="pi-hora" type="time" value="${esc(S.hora)}"></label><button class="ghost" id="pi-wa-antes" style="margin-top:8px;width:100%;">📱 Enviar à pessoa as instruções para a sessão à distância</button>` : ''}</div>`;
     return `<p class="muted" style="margin:0 0 8px;">Escolhe o paciente e assinala os sinais de cuidado. Isto ajuda a app a sugerir só o que é adequado a esta pessoa.</p>
-      ${S.pac ? `<div class="card" style="display:flex;gap:8px;align-items:center;"><b style="flex:1;color:#166534;">✔ ${esc(S.pac.fullName)}</b><button class="ghost" id="pi-trocar">Trocar</button></div>${cartaoCiclo()}${cartaoPre()}${cartaoSeg()}` : `<input id="pi-busca" type="search" placeholder="🔍 Procurar paciente…" style="width:100%;margin-bottom:8px;"><div id="pi-pacs" style="max-height:40vh;overflow:auto;display:grid;gap:6px;margin-bottom:8px;"></div>`}
+      ${S.pac ? `<div class="card" style="display:flex;gap:8px;align-items:center;"><b style="flex:1;color:#166534;">✔ ${esc(S.pac.fullName)}</b><button class="ghost" id="pi-trocar">Trocar</button></div>${cartaoCiclo()}${cartaoPre()}${cartaoSeg()}${cartaoConsc()}` : `<input id="pi-busca" type="search" placeholder="🔍 Procurar paciente…" style="width:100%;margin-bottom:8px;"><div id="pi-pacs" style="max-height:40vh;overflow:auto;display:grid;gap:6px;margin-bottom:8px;"></div>`}
       ${blocoMod}
       <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><input type="checkbox" id="pi-prim" ${S.primeira ? 'checked' : ''} style="width:20px;height:20px;"> É a 1.ª consulta (limita as etiquetas a 10 e os tratamentos intensos)</label>
       <h3 style="margin:12px 0 6px;">Sinais de cuidado</h3>
@@ -319,12 +325,14 @@ export function renderPesquisaIntegrada(main, ctx) {
     on('#pi-feita', () => { const plano = planoAtual(); S.feitas[plano[tecAtual]] = true; if (tecAtual < plano.length - 1) tecAtual++; ver(); window.scrollTo(0, 0); });
     on('#pi-etq', () => { if (ctx.abrirTriagem) ctx.abrirTriagem(); });
     const enviarPre = async () => {
-      try { const id = await ctx.criarPreConsulta(S.pac, { titulo: PRE_TITULO, descricao: PRE_DESCRICAO + ' No fim encontra o termo de consentimento, que precisa de aceitar.', perguntas: PRE_CONSULTA.map((p) => { const o = { id: p.id, label: p.label, tipo: p.tipo }; if (p.opcoes) o.opcoes = p.opcoes; return o; }) }); pre = { id, estado: 'pendente' }; ctx.abrirEnvio({ responseId: id, titulo: PRE_TITULO, patientId: S.pac.id, patientName: S.pac.fullName }); ver(); }
+      try { const id = await ctx.criarPreConsulta(S.pac, { titulo: PRE_TITULO, descricao: PRE_DESCRICAO + ' O terapeuta é um intercessor: a mudança que se mantém depende também de si. No fim encontra o termo de consentimento, que precisa de aceitar.', perguntas: PRE_CONSULTA.map((p) => { const o = { id: p.id, label: p.label, tipo: p.tipo }; if (p.opcoes) o.opcoes = p.opcoes; return o; }) }); pre = { id, estado: 'pendente' }; ctx.abrirEnvio({ responseId: id, titulo: PRE_TITULO, patientId: S.pac.id, patientName: S.pac.fullName }); ver(); }
       catch (e) { ctx.toast('Não consegui criar o questionário: ' + (e.message || e), true); }
     };
     on('#pi-pre-env', enviarPre); on('#pi-pre-novo', enviarPre);
     on('#pi-pre-reenv', () => ctx.abrirEnvio({ responseId: pre.id, titulo: PRE_TITULO, patientId: S.pac.id, patientName: S.pac.fullName }));
     on('#pi-pre-ref', async () => { try { pre = await ctx.lerPreConsulta(S.pac.id); aplicarPre(); ctx.toast(pre && pre.estado === 'respondido' ? 'Respostas carregadas. ✅' : 'Ainda sem respostas.'); } catch (e) { ctx.toast('Não consegui ver.', true); } ver(); });
+    on('#pi-con-wa', () => { const d = String((S.pac && S.pac.phone) || '').replace(/\D/g, ''); const t = d.length === 9 ? '351' + d : d; window.open(`https://wa.me/${t}?text=${encodeURIComponent(MSG_CONSCIENCIA)}`, '_blank'); });
+    on('#pi-con-ver', async () => { const e = q('#pi-con-txt'); if (e) e.style.display = e.style.display === 'none' ? 'block' : 'none'; try { await navigator.clipboard.writeText(MSG_CONSCIENCIA); ctx.toast('Copiado.'); } catch (_) {} });
     on('#pi-trocar', () => { S.pac = null; S.alertas = {}; pre = null; seg = null; cic = { ciclos: [] }; hist = []; ver(); });
     const gCic = async () => { try { await ctx.gravarCiclo(S.pac.id, cic); } catch (e) { ctx.toast('Não consegui guardar o percurso.', true); } };
     main.querySelectorAll('[data-ncons]').forEach((b) => b.onclick = async () => {
