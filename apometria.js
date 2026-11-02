@@ -101,7 +101,7 @@ export function renderPesquisaIntegrada(main, ctx) {
   /* ───── relatórios ───── */
   function textoTerapeuta() {
     const L = [`ATENDIMENTO GUIADO — ${S.pac ? S.pac.fullName : ''} — ${new Date().toLocaleDateString('pt-PT')}`, ''];
-    { const c = cur(); if (c) { const f = Math.min(nFeitas(c) + 1, c.total); const x = c.consultas[f - 1]; L.push(`Consulta ${f} de ${c.total}${c.total === 1 ? ' (única)' : ''} — ${x && x.pago ? 'paga' : 'por pagar'}`, ''); } }
+    { const c = cur(); if (c) { const f = Math.min(nFeitas(c) + 1, c.total); const x = c.consultas[f - 1]; L.push(`Consulta ${f} de ${c.total}${c.total === 1 ? ' (única)' : ''} — ${x && x.pago ? 'paga' : 'por pagar'}${x && x.valor ? ' (' + x.valor + ' €)' : ''}`, ''); } }
     { const sg = analiseSeg(); if (sg) { L.push('== Como se sentiu desde a última sessão ==', ...sg.linhas.map((l) => `${l.curto}: ${l.v}`), sg.reac ? 'Teve reações depois da sessão.' : '', ...sg.txt, sg.quer ? 'Pediu para falar contigo antes da próxima consulta.' : '', ''); } }
     L.push('Alertas assinalados: ' + (ALERTAS.filter((a) => S.alertas[a.id]).map((a) => a.texto).join('; ') || 'nenhum'));
     L.push('', '== 7 corpos ==');
@@ -132,8 +132,9 @@ export function renderPesquisaIntegrada(main, ctx) {
     const casa = planoAtual().map((t) => TECNICAS.find((x) => x.id === t)).filter((d) => d.dur === 'em casa' || ['oracao', 'meditacao'].includes(d.id));
     if (casa.length) { L.push('Para fazeres em casa:'); casa.forEach((d) => L.push(`• ${d.nome}`)); L.push(''); }
     L.push('🌟 A tua parte, para não voltares ao mesmo:');
-    fracos.slice(0, 3).forEach((c) => { const d = DICAS_VIBRACAO.corpos[c.id]; if (d) L.push(d); });
-    DICAS_VIBRACAO.gerais.slice(0, 5).forEach((d) => L.push(d));
+    tem.slice(0, 3).forEach((d) => { const t = DICAS_VIBRACAO.achados[d.id]; if (t) L.push(t); });
+    fracos.slice(0, 2).forEach((c) => { const d = DICAS_VIBRACAO.corpos[c.id]; if (d) L.push(d); });
+    DICAS_VIBRACAO.gerais.slice(0, 4).forEach((d) => L.push(d));
     L.push('', DICAS_VIBRACAO.fecho, '', TEXTO_PACIENTE.fim);
     return L.join('\n');
   }
@@ -165,7 +166,7 @@ export function renderPesquisaIntegrada(main, ctx) {
     const completo = f >= c.total; const passou = f > 0 && f < c.total && dias > 30;
     const aviso = completo ? `<div style="margin:8px 0;padding:8px;border-radius:8px;background:#ecfdf5;font-size:.85rem;">✅ Percurso concluído. Se a pessoa voltou, começa um <b>novo percurso</b>: pede-se um novo questionário de pré-consulta.</div>` : passou ? `<div style="margin:8px 0;padding:8px;border-radius:8px;background:#fef3c7;font-size:.85rem;">⏳ Passaram <b>${dias} dias</b> desde a última consulta. Se a pessoa está a recomeçar, abre um <b>novo percurso</b>.</div>` : '';
     return `<div class="card" style="margin:10px 0;background:#fffaf0;"><b>📆 Percurso: consulta ${Math.min(f + 1, c.total)} de ${c.total}${c.total === 1 ? ' (única)' : ''}</b>
-      <div style="margin:8px 0;display:grid;gap:6px;">${c.consultas.map((x, i) => `<div style="display:flex;gap:8px;align-items:center;font-size:.9rem;"><span style="width:26px;height:26px;border-radius:50%;background:${x.feita ? '#166534' : i === f ? '#1e3a5f' : '#e5e7eb'};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">${x.feita ? '✓' : i + 1}</span><span style="flex:1;">${x.feita ? 'Feita em ' + ctx.dataPT(x.data) : i === f ? 'Esta consulta' : 'Por marcar'}</span><button class="ghost" data-pago="${i}" style="padding:4px 10px;${x.pago ? 'border-color:#166534;color:#166534;' : ''}">${x.pago ? '💶 Paga' : '💶 Por pagar'}</button></div>`).join('')}</div>${aviso}
+      <div style="margin:8px 0;display:grid;gap:6px;">${c.consultas.map((x, i) => `<div style="display:flex;gap:8px;align-items:center;font-size:.9rem;"><span style="width:26px;height:26px;border-radius:50%;background:${x.feita ? '#166534' : i === f ? '#1e3a5f' : '#e5e7eb'};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">${x.feita ? '✓' : i + 1}</span><span style="flex:1;">${x.feita ? 'Feita em ' + ctx.dataPT(x.data) : i === f ? 'Esta consulta' : 'Por marcar'}</span><input type="number" inputmode="decimal" data-val="${i}" value="${x.valor || ''}" placeholder="€" style="width:64px;padding:4px;"><button class="ghost" data-pago="${i}" style="padding:4px 10px;${x.pago ? 'border-color:#166534;color:#166534;' : ''}">${x.pago ? '💶 Paga' : '💶 Por pagar'}</button></div>`).join('')}</div>${aviso}${(() => { const v = c.consultas.reduce((t, x) => t + (+x.valor || 0), 0); const rec = c.consultas.reduce((t, x) => t + (x.pago ? +x.valor || 0 : 0), 0); return v ? `<div style="font-size:.85rem;margin:6px 0;">💶 Total <b>${v} €</b> · recebido <b>${rec} €</b> · por receber <b>${v - rec} €</b></div>` : ''; })()}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;"><button class="ghost" id="pi-cic-alt">✏️ Alterar nº</button><button class="ghost" id="pi-cic-novo">🔁 Novo percurso</button></div></div>`;
   }
   function cartaoConsc() {
@@ -342,6 +343,7 @@ export function renderPesquisaIntegrada(main, ctx) {
       escN = false; await gCic(); ver();
     });
     main.querySelectorAll('[data-pago]').forEach((b) => b.onclick = async () => { const c = cur(); const x = c.consultas[+b.dataset.pago]; x.pago = !x.pago; x.pagoEm = x.pago ? Date.now() : 0; await gCic(); const y = window.scrollY; ver(); window.scrollTo(0, y); });
+    main.querySelectorAll('[data-val]').forEach((e) => e.onchange = async () => { const c = cur(); c.consultas[+e.dataset.val].valor = +e.value || 0; await gCic(); const y = window.scrollY; ver(); window.scrollTo(0, y); });
     on('#pi-cic-alt', () => { escN = true; ver(); }); on('#pi-cic-canc', () => { escN = false; ver(); });
     on('#pi-cic-novo', async () => { if (!(await ctx.confirmar('Novo percurso?', 'O percurso atual fica fechado e começa um novo, com novo questionário de pré-consulta.', 'Começar novo'))) return; const c = cur(); if (c) c.fechado = true; await gCic(); escN = false; ver(); });
     const enviarSeg = async () => {

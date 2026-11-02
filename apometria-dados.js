@@ -249,3 +249,21 @@ export const DICAS_VIBRACAO = {
   },
   fecho: 'Na próxima consulta voltamos a medir como estás a vibrar. Cada passo conta. 🌟'
 };
+
+/* Dica de responsabilidade por tipo de achado (o que a pessoa pode fazer da sua parte) */
+DICAS_VIBRACAO.achados = {
+  miasma: '🌫️ Energias densas: ventila a casa, evita ambientes e conteúdos pesados e faz um banho de sal grosso quando te sentires carregado/a.',
+  olho: '👁️ Inveja: não exponhas tudo nas redes e na conversa. Protege-te com a tua oração e agradece o que é teu sem comparações.',
+  magia: '🛡️ Trabalhos feitos: mantém a tua oração diária de proteção, não alimentes o medo e corta contacto com quem te quer mal.',
+  'magia-vp': '⏳ Memórias de trabalhos antigos: liberta-os com perdão e com a tua oração. O medo antigo já não manda em ti.',
+  presenca: '🕯️ Presença ligada: reza com firmeza, mantém uma rotina estável e evita o álcool e ambientes que baixam a tua vibração.',
+  larva: '🧠 Formas-pensamento: o que alimentas com pensamentos repetidos ganha força. Pára, respira e troca o pensamento.',
+  implante: '🔓 Implantes: faz a tua proteção diária e vigia crenças e hábitos que te prendem, para não recriares o que foi libertado.',
+  cordoes: '✂️ Cordões: corta, com amor, relações e dependências que te drenam. Põe limites e evita voltar a ligar-te ao mesmo padrão.',
+  heranca: '👪 Padrões de família: percebe o que se repete e escolhe fazer diferente. Pode ajudar falar, perdoar e honrar quem veio antes.',
+  vidas: '🌀 Vidas passadas: o que ficou resolvido aqui deve ser vivido no presente, com novas escolhas.',
+  trauma: '💧 Trauma: dá-te tempo, fala com alguém de confiança e, se precisares, procura também apoio psicológico.',
+  ambiente: '🏠 Ambiente pesado: arruma, limpa e deixa entrar luz e ar. Afasta aparelhos do sítio onde dormes e faz a limpeza do espaço que combinámos.',
+  fragmenta: '🧩 Essência fragmentada: cria momentos de presença (respiração, natureza, silêncio) para te sentires inteiro/a.',
+  cansaco: '🔋 Cansaço de energia: dorme e come bem, caminha ao sol e evita quem te cansa.'
+};
