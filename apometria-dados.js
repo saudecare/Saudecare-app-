@@ -197,3 +197,20 @@ export const PRE_CONSULTA = [
   { bloco: 'Consentimento', label: 'Para confirmar, escreva aqui o seu nome completo (funciona como assinatura).', tipo: 'area' }
 ].map((p, i) => Object.assign({ id: 'p' + i }, p));
 export const PRE_FORM_ID = 'pi-pre';
+
+/* ───── Questionário de acompanhamento («como se tem sentido») ───── */
+const MEL = ['0 · Pior', '1 · Na mesma', '2 · Um pouco melhor', '3 · Muito melhor'];
+export const SEG_FORM_ID = 'pi-seg';
+export const SEG_TITULO = 'Como se tem sentido';
+export const SEG_DESCRICAO = 'Passou algum tempo desde a última sessão. Conte-me, com sinceridade, como tem estado. Isto ajuda-me a ajustar o acompanhamento.';
+export const SEG_FORM = [
+  { curto: 'Em geral', label: 'Em geral, como se sente comparado com antes da última sessão?', tipo: 'opcao', opcoes: MEL, medir: true },
+  { curto: 'Sono', label: 'Como tem dormido?', tipo: 'opcao', opcoes: MEL, medir: true },
+  { curto: 'Energia', label: 'Como está a sua energia e disposição?', tipo: 'opcao', opcoes: MEL, medir: true },
+  { curto: 'Emoções', label: 'Como estão as suas emoções (calma, ansiedade, tristeza)?', tipo: 'opcao', opcoes: MEL, medir: true },
+  { curto: 'Motivo da consulta', label: 'E o motivo que o/a trouxe à consulta, como está?', tipo: 'opcao', opcoes: MEL, medir: true },
+  { curto: 'Reações', label: 'Teve reações depois da sessão (cansaço, sono pesado, sonhos intensos, vontade de chorar)?', tipo: 'sim_nao' },
+  { curto: 'O que notou', label: 'O que notou de diferente, bom ou menos bom?', tipo: 'area' },
+  { curto: 'Acontecimentos', label: 'Aconteceu alguma coisa importante desde a última sessão?', tipo: 'area' },
+  { curto: 'Quer falar', label: 'Sente que precisa de falar comigo antes da próxima consulta?', tipo: 'sim_nao' }
+].map((p, i) => Object.assign({ id: 's' + i }, p));
