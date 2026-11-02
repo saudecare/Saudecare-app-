@@ -28,6 +28,7 @@ export function renderPesquisaIntegrada(main, ctx) {
   const novo = () => ({ pac: null, alertas: {}, primeira: false, corpos: {}, achados: {}, chakras: {}, escolhidas: null, notas: '', bovisIni: '', bovisFin: '', causas: {}, chakraPct: {}, corpoPct: {}, caminhos: null, modo: 'presencial', check: {}, testemunho: '', hora: '', feitas: {}, passosFeitos: {} });
   S = novo(); passo = 0;
 
+  const rt = (s) => esc(String(s).split('[NOME]').join(S.pac ? S.pac.fullName : '(nome da pessoa)')).split('\n').map((l) => l.startsWith('🗣️') ? `<div style="margin:3px 0;padding:6px 8px;background:#eef4ff;border-left:3px solid #1e3a5f;border-radius:6px;font-style:italic;">${l}</div>` : `<div style="margin:2px 0;">${l}</div>`).join('');
   const corpoNome = (id) => (CORPOS.find((c) => c.id === id) || {}).nome || id;
   const nivel = (v) => NIVEIS.find((n) => n.v === v) || NIVEIS[0];
   const graves = () => ALERTAS.filter((a) => a.grave && S.alertas[a.id]);
@@ -229,7 +230,7 @@ export function renderPesquisaIntegrada(main, ctx) {
       return `<div class="card" style="margin-bottom:8px;"><div class="row" style="gap:6px;"><b>${d.nome}</b><span class="muted" style="font-size:.78rem;">${esc(d.dur)}</span></div>
         ${d.limite && S.primeira ? `<div style="font-size:.8rem;color:#b45309;margin-top:4px;">📌 ${esc(d.limite)}</div>` : ''}
         ${d.nota ? `<div style="font-size:.8rem;color:#b45309;margin-top:4px;">⚠️ ${esc(d.nota)}</div>` : ''}
-        <details style="margin-top:6px;"><summary style="cursor:pointer;font-size:.85rem;">Ver passos</summary><ol style="margin:6px 0 0 18px;font-size:.88rem;">${d.passos.map((p) => `<li style="margin-bottom:4px;">${esc(p)}</li>`).join('')}</ol></details>
+        <details style="margin-top:6px;"><summary style="cursor:pointer;font-size:.85rem;">Ver passos</summary><ol style="margin:6px 0 0 18px;font-size:.88rem;">${d.passos.map((p) => `<li style="margin-bottom:6px;">${rt(p)}</li>`).join('')}</ol></details>
         ${fixa ? '' : `<div class="row" style="gap:6px;margin-top:8px;"><button class="ghost" data-up="${id}" ${i === 0 ? 'disabled' : ''}>▲</button><button class="ghost" data-dn="${id}" ${i === S.escolhidas.length - 1 ? 'disabled' : ''}>▼</button><button class="ghost" data-rm="${id}" style="color:#dc2626">Tirar</button></div>`}</div>`;
     };
     const fora = TECNICAS.filter((t) => !t.fixa && t.id !== 'pesquisa' && !S.escolhidas.includes(t.id));
@@ -256,7 +257,7 @@ export function renderPesquisaIntegrada(main, ctx) {
       <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px;">${lista}</div>
       <div class="card" style="border:2px solid #1e3a5f;"><h3 style="margin:0 0 4px;">${d.nome}</h3><div class="muted" style="font-size:.8rem;">⏱️ ${esc(d.dur)}</div>
         ${d.nota ? `<div style="color:#b45309;font-size:.85rem;margin-top:6px;">⚠️ ${esc(d.nota)}</div>` : ''}${d.limite && S.primeira ? `<div style="color:#b45309;font-size:.85rem;margin-top:6px;">📌 ${esc(d.limite)}</div>` : ''}
-        <div style="margin-top:10px;">${d.passos.map((p, i) => `<label style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:1rem;"><input type="checkbox" data-pf="${id}|${i}" ${pf[i] ? 'checked' : ''} style="width:24px;height:24px;flex-shrink:0;margin-top:2px;"> <span>${esc(p)}</span></label>`).join('')}</div>
+        <div style="margin-top:10px;">${d.passos.map((p, i) => `<label style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:1rem;"><input type="checkbox" data-pf="${id}|${i}" ${pf[i] ? 'checked' : ''} style="width:24px;height:24px;flex-shrink:0;margin-top:2px;"> <span style="flex:1;">${rt(p)}</span></label>`).join('')}</div>
         ${meus[id] ? `<div style="background:#f3f6fa;border-radius:10px;padding:10px;margin-top:6px;"><b>✍️ O teu comando</b><div style="white-space:pre-wrap;margin-top:4px;">${esc(meus[id])}</div></div>` : ''}${dist}${extra}
         <button class="primary" id="pi-feita" style="width:100%;min-height:54px;margin-top:12px;font-size:1.05rem;">${tecAtual < plano.length - 1 ? '✅ Feita. Passar à seguinte →' : '✅ Última técnica feita'}</button></div>
       <div class="row" style="gap:8px;margin-top:12px;"><button class="ghost" id="pi-ant" style="flex:1">← Plano</button><button class="primary" id="pi-seg" style="flex:2">Terminar → guardar</button></div>`;

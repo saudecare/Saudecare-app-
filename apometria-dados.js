@@ -267,3 +267,170 @@ DICAS_VIBRACAO.achados = {
   fragmenta: '🧩 Essência fragmentada: cria momentos de presença (respiração, natureza, silêncio) para te sentires inteiro/a.',
   cansaco: '🔋 Cansaço de energia: dorme e come bem, caminha ao sol e evita quem te cansa.'
 };
+
+/* ───── Roteiro exato: o que fazer e o que dizer, passo a passo (texto de raiz) ─────
+   «[NOME]» é trocado pelo nome do paciente. Os teus comandos próprios (Os meus comandos) aparecem sempre por cima. */
+const F = (t) => '✋ Faz: ' + t;
+const D = (t) => '🗣️ Diz em voz alta: «' + t + '»';
+const FD = (f, d) => F(f) + '\n' + D(d);
+const PERG = (t) => '🔮 Pergunta ao pêndulo: «' + t + '»';
+const PROC1 = [
+  FD('Lava as mãos com água fresca. Fica de pé, com os pés bem assentes no chão, e respira fundo três vezes.', 'Eu estou aqui para servir, só para o bem. Que tudo o que eu fizer hoje seja para a maior cura e luz de [NOME].'),
+  FD('Olha a pessoa nos olhos e explica-lhe, com calma.', '[NOME], vou fazer uma pesquisa e um trabalho energético e espiritual para o teu bem. Não substitui o médico nem o psicólogo. Podes parar a qualquer momento, basta levantares a mão. Estás de acordo que eu comece?'),
+  F('Espera o «sim» da pessoa. Depois confirma com o pêndulo.') + '\n' + PERG('Tenho o consentimento de [NOME] para este trabalho hoje?'),
+  F('Se a resposta for «não» ou se tiveres dúvida, para aqui. Sem consentimento não se começa.')
+];
+const PROC2 = [
+  FD('Junta as mãos à frente do peito e fecha os olhos.', 'Em nome de Deus e da Luz, peço proteção para mim, para [NOME] e para este espaço. Só o bem entra e só o bem sai.'),
+  D('Peço ao Arcanjo Miguel, aos meus guias e mentores e a toda a equipa de Luz que estejam presentes e nos envolvam num escudo de proteção. Agradeço. Assim seja.'),
+  F('Visualiza uma esfera de luz dourada a envolver-te a ti e à pessoa. Conta devagar de 1 a 7 enquanto ela cresce e fica firme.'),
+  FD('Combina o sinal de paragem com a pessoa.', 'Se alguma coisa te incomodar, levanta a mão e eu paro de imediato.')
+];
+const ROT = {
+  preparar: [...PROC1, ...PROC2],
+  sintonizar: [
+    F('Coloca à tua frente o nome completo e a data de nascimento da pessoa (ou a fotografia). Mão esquerda aberta sobre eles.'),
+    D('Sintonizo com [NOME]: com o seu corpo físico, etérico, astral, mental inferior, mental superior, búdico e átmico, com respeito e com permissão.'),
+    PERG('Posso trabalhar hoje com [NOME]?') + '\n' + F('Se a resposta for «sim», continua. Se for «não», para e marca outro dia.'),
+    PERG('Qual é a prioridade de hoje para [NOME]?') + '\n' + F('Regista o que sair no Atendimento Guiado.'),
+    D('Peço permissão à essência de [NOME] para este trabalho, sempre para o seu bem.') + '\n' + F('Confirma com o pêndulo.')
+  ],
+  pesquisa: [
+    F('Segura o pêndulo e deixa-o parar. Define as respostas.') + '\n' + D('Mostra-me o SIM.') + '\n' + D('Mostra-me o NÃO.'),
+    F('Corpo a corpo, do físico ao átmico.') + '\n' + PERG('O corpo físico de [NOME] está equilibrado? Qual é a percentagem de vibração?') + '\n' + F('Repete para o etérico, astral, mental inferior, mental superior, búdico e átmico. Regista cada um.'),
+    F('Lista de 1 a 40, um número de cada vez.') + '\n' + PERG('[NOME] tem o número 1, Miasma?') + '\n' + F('Assinala só o que o pêndulo confirmar. Segue para o 2, o 3… até ao 40. Em dúvida, pergunta outra vez.'),
+    F('Chakras de 1 a 9.') + '\n' + PERG('Qual é a percentagem de abertura do chakra 1?') + '\n' + F('Repete até ao 9 e regista as percentagens.'),
+    PERG('A abertura de caminhos de [NOME] está: aberta, parcialmente aberta, bloqueada ou muito bloqueada?'),
+    F('Mede o Bovis inicial e regista.')
+  ],
+  etiquetas: [
+    PERG('Das etiquetas hebraicas, quais devo aplicar hoje a [NOME]?') + '\n' + F('Na 1.ª consulta, no máximo 10. Da 2.ª em diante, só as que saíram na pesquisa. Faz a lista por ordem.'),
+    F('Para cada etiqueta: pega nela, coloca-a sobre o nome de [NOME] e a outra mão aberta por cima.') + '\n' + D('Aplico a etiqueta [nome da etiqueta] em [NOME], só para o seu bem. Assim seja.'),
+    F('Observa o pêndulo até estabilizar. Quando parar, passa à etiqueta seguinte.'),
+    PERG('A aplicação de hoje está completa?') + '\n' + F('Se não, pergunta o que falta.'),
+    F('Só no fim, depois de todas as etiquetas, mede o Bovis final.')
+  ],
+  limpeza: [
+    F('Com as mãos em concha, a poucos centímetros do corpo, começa acima da cabeça. Desce devagar: cabeça, peito, abdómen, pernas, pés. Faz 3 passagens.'),
+    D('Tudo o que pesa e não pertence a [NOME] sai agora do seu campo e é transformado em luz violeta, em nome da Luz. Assim seja.'),
+    F('Entre cada passagem, sacode as mãos ou lava-as.'),
+    F('Se saiu magia, vai para o tratamento anti-magia. Se saiu cordão, vai para o corte de cordões.'),
+    PERG('O campo de [NOME] está limpo?') + '\n' + D('Este campo está limpo e cheio de luz.')
+  ],
+  cordoes: [
+    FD('Pergunta à pessoa.', '[NOME], de que pessoa ou situação queres libertar-te hoje?'),
+    PERG('Posso cortar o laço entre [NOME] e [PESSOA OU SITUAÇÃO]?'),
+    F('Visualiza o laço como um fio de luz. Faz com a mão o gesto de cortar, como uma lâmina de luz, sem ódio.'),
+    D('Em nome da Luz, corto com amor todo o cordão e laço entre [NOME] e [PESSOA OU SITUAÇÃO]. Devolvo a [NOME] o que é seu, e a [PESSOA] o que é dela. Cada um segue livre e em paz. Assim seja.'),
+    D('O lugar do corte é agora preenchido de luz dourada e fica curado.'),
+    PERG('O corte está completo?')
+  ],
+  antimagia: [
+    F('Primeiro faz a proteção do espaço e da pessoa (passo «Preparar e proteger»).'),
+    D('Em nome de Deus e da Luz, peço que todo o trabalho, feitiço, pedido ou intenção negativa dirigida a [NOME] seja agora desfeito, retirado e devolvido à Luz, sem mal para ninguém. Desfaço tudo o que foi feito, em qualquer tempo e lugar. Assim seja.') + '\n' + F('Repete a frase 3 vezes, com calma.'),
+    PERG('Há ainda algum trabalho ativo sobre [NOME]?') + '\n' + F('Se sim, repete até o pêndulo dizer «não».'),
+    F('Faz a limpeza do campo.'),
+    D('[NOME] fica protegido(a) por um escudo de luz azul, que só deixa entrar o bem. Assim seja.')
+  ],
+  implantes: [
+    D('Peço permissão à essência de [NOME] e proteção ao Arcanjo Miguel para libertar o que foi colocado no seu campo.'),
+    PERG('Em que corpo e em que zona está o implante ou chip?') + '\n' + F('Regista o corpo e a zona.'),
+    D('Em nome da Luz, tudo o que foi implantado, ligado ou instalado no campo de [NOME] é agora desligado, removido e dissolvido em luz. Assim seja.'),
+    D('O campo de [NOME] é reparado e preenchido de luz dourada.'),
+    PERG('O campo de [NOME] está limpo e reparado?')
+  ],
+  acolher: [
+    F('Faz a tua proteção completa.') + '\n' + D('Peço à minha equipa espiritual que esteja presente e me proteja.'),
+    D('A quem estiver ligado(a) a [NOME]: eu falo contigo com paz e respeito, não te vou fazer mal. Esta pessoa tem a sua vida, e tu tens o teu caminho.'),
+    F('Fala sempre com calma. Nunca confrontes nem tentes assustar.'),
+    D('Há uma luz para ti. Podes seguir para ela agora, acompanhado(a) por quem te ama e te espera. Vai em paz.'),
+    D('O campo de [NOME] está agora fechado e selado em luz. Assim seja.') + '\n' + PERG('O campo está livre de presenças?')
+  ],
+  desdobra: [
+    FD('Explica à pessoa, com palavras simples.', '[NOME], vamos fazer um relaxamento guiado. Vais ficar bem presente e eu estou aqui contigo. Se quiseres parar, levanta a mão.'),
+    FD('Com voz calma e lenta.', 'Fecha os olhos. Respira fundo pelo nariz e solta pela boca. Mais uma vez. Sente o corpo pesado e relaxado.'),
+    D('Em nome da Luz, e com o consentimento de [NOME], os seus corpos subtis afastam-se suavemente do corpo físico, numa contagem de 1 a 7: 1, 2, 3, 4, 5, 6, 7. Dirigem-se para um espaço de luz e de cura, em total segurança.'),
+    D('Neste espaço de luz, tudo o que pesa é limpo, tudo o que está ferido é reparado e tudo o que está partido é restaurado.') + '\n' + F('Trabalha agora o que saiu na pesquisa (limpeza, libertação, reparação). Faz uma pausa de 1 a 2 minutos entre cada coisa.'),
+    D('Em nome da Luz, os corpos de [NOME] regressam ao corpo físico, um a um, com suavidade: o mental, o astral, o etérico. Alinham-se, encaixam e acoplam ao corpo físico, numa contagem de 7 a 1: 7, 6, 5, 4, 3, 2, 1. Ficam bem acoplados e alinhados.'),
+    FD('Com voz firme e clara. Dá à pessoa um copo de água.', '[NOME], sente os teus pés no chão. Respira fundo, mexe as mãos e os pés. Quando quiseres, abre os olhos. Estás aqui, bem presente.') + '\n' + F('Só termina quando a pessoa estiver bem presente.')
+  ],
+  vidas: [
+    PERG('Há algum voto ou memória de outra vida a pesar em [NOME]? Qual?') + '\n' + F('Regista o voto ou a memória que sair.'),
+    D('Em nome da Luz, revogo e liberto este voto de [NOME], com amor e com gratidão pelo que ensinou. Já não tem poder sobre esta vida. Assim seja.'),
+    FD('Pede à pessoa para repetir contigo.', 'Eu liberto-me deste voto e escolho viver em paz e em liberdade, aqui e agora.'),
+    PERG('O voto está libertado?') + '\n' + F('Fecha com uma oração.')
+  ],
+  chakras: [
+    F('Começa pelos chakras mais fechados e termina sempre pelo coração (4) e pela coroa (7).'),
+    F('Mão aberta a uns 5 cm do chakra, com o pêndulo por cima.') + '\n' + D('Harmonizo o chakra [nome do chakra] de [NOME], que se equilibra agora na sua frequência perfeita.'),
+    F('Espera até o pêndulo estabilizar. Mede outra vez a percentagem.') + '\n' + PERG('Qual é agora a percentagem do chakra [nome do chakra]?'),
+    F('Se algum estiver demasiado aberto (acima de 90%), vai mais devagar e termina a aterrar.'),
+    D('Os chakras de [NOME] estão alinhados, equilibrados e protegidos. Assim seja.')
+  ],
+  reiki: [
+    F('Pede à pessoa que se deite, confortável, de olhos fechados.'),
+    D('Peço que a energia universal flua através de mim, só para o bem de [NOME].'),
+    F('Mãos nos pontos: cabeça (3 min), garganta (3 min), coração (3 min), plexo solar (3 min), abdómen (3 min), e nos pontos que a pesquisa indicou. Dá mais tempo ao corpo que saiu mais fraco.'),
+    D('Agradeço pela energia recebida. Assim seja.')
+  ],
+  oracao: [
+    F('Abre a ferramenta «Orações e Salmos» e escolhe a oração certa (Arcanjo Miguel, Salmo 91, Salmo 51…).'),
+    D('Vamos rezar juntos, [NOME]. Respira fundo e repete comigo, devagar.'),
+    F('Reza a oração por inteiro, sem pressa.'),
+    F('Envia o link da oração ao paciente para continuar em casa.')
+  ],
+  protecao: [
+    FD('Diz à pessoa, em voz calma.', 'Imagina que, à tua volta, nasce uma esfera de luz azul. Ela envolve-te dos pés à cabeça. Respira e sente-te forte e seguro(a).'),
+    D('Este escudo mantém-se dia e noite e só deixa entrar o bem. Assim seja.')
+  ],
+  meditacao: [
+    F('Escolhe a meditação certa para o tema que saiu.'),
+    FD('Envia o áudio ou o link à pessoa.', '[NOME], faz esta meditação durante 7 dias, sempre à mesma hora, num sítio calmo e com o telemóvel em silêncio.')
+  ],
+  banho: [
+    FD('Explica à pessoa.', 'Faz o teu banho normal. No fim, deixa a água morna cair sobre a cabeça e o corpo todo, dos pés à cabeça, durante 3 minutos.'),
+    D('Enquanto a água cai, diz em pensamento: tudo o que pesa sai de mim e vai com a água. Estou limpo(a) e em paz.'),
+    F('Opcional: um punhado de sal grosso na água do banho, ou ervas da tua tradição. Enxagua no fim com água limpa e veste roupa limpa.')
+  ],
+  espaco: [
+    F('Abre todas as janelas e arruma um canto que tenhas adiado.'),
+    F('Começa pelo fundo da casa e caminha em direção à porta, passando por cada divisão, com sal, som ou fumo.'),
+    D('Neste espaço só entra o que é de Luz. Tudo o que pesa sai agora. Que a paz habite esta casa. Assim seja.'),
+    F('No fim, fecha as janelas e reza uma oração de proteção.')
+  ],
+  casa: [
+    FD('Envia por mensagem à pessoa.', 'Para os próximos dias, peço-te: 1) rezar a tua oração todos os dias; 2) fazer a meditação à mesma hora; 3) beber água e descansar; 4) escrever como te sentes. Na próxima consulta voltamos a medir como estás.'),
+    F('Junta o link da oração da pessoa.')
+  ],
+  selar: [
+    FD('Mãos abertas sobre a pessoa.', 'Em nome da Luz, sela-se o campo de [NOME] com luz dourada. Nada entra que não seja bom. Agradeço aos guias e aos anjos que ajudaram. O trabalho está entregue a Deus.'),
+    D('Fecho todos os corpos, faixas e portais que foram abertos, de 7 a 1: 7, 6, 5, 4, 3, 2, 1. Está tudo fechado e em ordem.'),
+    FD('Aterra a pessoa.', '[NOME], sente os pés no chão, respira fundo e bebe água. Estás bem presente.'),
+    F('Mede o Bovis final e regista.'),
+    FD('Cuida de ti.', 'Desligo-me de tudo o que não é meu e reponho a minha energia. Assim seja.') + '\n' + F('Lava as mãos e bebe água.'),
+    F('Marca a próxima sessão, pelo menos 7 dias depois.')
+  ]
+};
+TECNICAS.forEach((t) => { if (ROT[t.id]) t.passos = ROT[t.id]; });
+const PROC_FAZER = {
+  1: PROC1, 2: PROC2, 3: ROT.sintonizar, 4: ROT.pesquisa,
+  5: [
+    FD('Só com pessoas sem sinais de alerta e com consentimento.', 'Em nome da Luz, abrem-se agora, em [NOME], apenas os corpos e as faixas que precisam de ser tratados hoje, e só esses.'),
+    D('Abrem-se os pontos do tempo e as memórias que precisam de ser tratados hoje, com suavidade e em segurança.'),
+    PERG('Os corpos e as faixas indicados estão abertos e seguros?'),
+    F('Se tiveres dúvida, salta para a limpeza e o Reiki.')
+  ],
+  6: [...ROT.limpeza, ...ROT.antimagia.slice(1, 3)],
+  7: ROT.acolher, 8: [...ROT.desdobra, ...ROT.implantes],
+  9: ROT.chakras, 10: ROT.selar.slice(0, 3),
+  11: [
+    FD('Para ti, no fim.', 'Desligo-me de tudo o que não é meu e reponho a minha energia. Assim seja.'),
+    F('Lava as mãos com água fresca, bebe um copo de água e descansa uns minutos.')
+  ],
+  12: [
+    F('Mede o Bovis final, regista no Atendimento Guiado e compara com a vez anterior.'),
+    FD('Envia a mensagem à pessoa com o que fazer em casa.', 'Obrigado pela confiança, [NOME]. Nos próximos dias descansa, bebe água e reza a tua oração. A mudança que se mantém é a tua. Na próxima consulta voltamos a medir.'),
+    F('Marca a próxima sessão, pelo menos 7 dias depois.')
+  ]
+};
+PROCEDIMENTO.forEach((p) => { if (PROC_FAZER[p.n]) p.fazer = PROC_FAZER[p.n]; });
