@@ -23,9 +23,9 @@ function mapaSvg(corpos) {
 export function renderPesquisaIntegrada(main, ctx) {
   if (ctx.tenantId !== TENANT) { main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica.</p></div>'; return; }
   const esc = ctx.escapeHtml;
-  let cic = { ciclos: [] }; let seg = null; let escN = false; let pre = null; let pacs = []; let hist = []; let meus = {}; let inicioSessao = 0; let tecAtual = 0;
+  let bars = []; let barAberto = null; let cic = { ciclos: [] }; let seg = null; let escN = false; let pre = null; let pacs = []; let hist = []; let meus = {}; let inicioSessao = 0; let tecAtual = 0;
   let S, passo;
-  const novo = () => ({ pac: null, alertas: {}, primeira: false, corpos: {}, achados: {}, chakras: {}, escolhidas: null, notas: '', bovisIni: '', bovisFin: '', causas: {}, chakraPct: {}, corpoPct: {}, caminhos: null, modo: 'presencial', check: {}, testemunho: '', hora: '', feitas: {}, passosFeitos: {} });
+  const novo = () => ({ barom: {}, pac: null, alertas: {}, primeira: false, corpos: {}, achados: {}, chakras: {}, escolhidas: null, notas: '', bovisIni: '', bovisFin: '', causas: {}, chakraPct: {}, corpoPct: {}, caminhos: null, modo: 'presencial', check: {}, testemunho: '', hora: '', feitas: {}, passosFeitos: {} });
   S = novo(); passo = 0;
 
   const rt = (s) => esc(String(s).split('[NOME]').join(S.pac ? S.pac.fullName : '(nome da pessoa)')).split('\n').map((l) => l.startsWith('🗣️') ? `<div style="margin:3px 0;padding:6px 8px;background:#eef4ff;border-left:3px solid #1e3a5f;border-radius:6px;font-style:italic;">${l}</div>` : `<div style="margin:2px 0;">${l}</div>`).join('');
@@ -111,6 +111,7 @@ export function renderPesquisaIntegrada(main, ctx) {
     const det = CAUSAS_40.filter((c) => S.causas[c.n]); L.push(det.length ? det.map((c) => `${c.n}. ${c.nome}`).join('\n') : 'Nada assinalado.');
     { const an = analisePre(); if (an) { const sug = Object.keys(an.sug).map(Number); const conf = sug.filter((n) => S.causas[n]); const so = sug.filter((n) => !S.causas[n]); const so2 = det.filter((c) => !sug.includes(c.n)).map((c) => c.n);
       L.push('', '== Cruzamento com o questionário de pré-consulta ==', `Termo de consentimento: ${an.consentimento ? 'aceite' + (an.assinatura ? ' (assinado: ' + an.assinatura + ')' : '') : 'NÃO aceite'}`, `Confirmadas pelo pêndulo e indicadas pelo paciente: ${conf.join(', ') || 'nenhuma'}`, `Indicadas pelo paciente e não confirmadas: ${so.join(', ') || 'nenhuma'}`, `Detetadas só pelo pêndulo: ${so2.join(', ') || 'nenhuma'}`); } }
+    { const bl = bars.filter((b) => Object.values(S.barom[b.id] || {}).some(Boolean)); if (bl.length) { L.push('', '== Barómetros auxiliares =='); bl.forEach((b) => { const m = S.barom[b.id]; L.push(`${b.titulo}: ` + b.itens.map((t, i) => (m[i + 1] ? `${i + 1}. ${t}` : '')).filter(Boolean).join('; ')); }); } }
     L.push('', '== Detalhe por tipo ==');
     const ac = Object.entries(S.achados);
     ac.forEach(([id, a]) => { const d = ACHADOS.find((x) => x.id === id); L.push(`• ${d.nome} — ${nivel(a.n).rotulo}${a.corpos && a.corpos.length ? ' · corpos: ' + a.corpos.map(corpoNome).join(', ') : ''}${a.sub && a.sub.length ? ' · ' + a.sub.join(', ') : ''}`); });
@@ -206,7 +207,18 @@ export function renderPesquisaIntegrada(main, ctx) {
     return `<p class="muted" style="margin:0 0 4px;">Com o pêndulo, vê como está cada corpo. Toca na carinha que corresponde.${S.modo === 'distancia' ? ' À distância: pesquisa sobre o nome ou a fotografia.' : ''}</p><div class="card" style="margin-bottom:8px;">${mapaSvg(S.corpos)}</div>` +
       CORPOS.map((c) => `<div class="card" style="margin-bottom:8px;"><div class="row"><b>${c.emoji} ${c.n}. ${esc(c.nome)}</b></div><div class="muted" style="font-size:.82rem;margin:2px 0 8px;">${esc(c.sobre)} <i>Sinais: ${esc(c.sinais)}</i></div>${(() => { const a = analisePre(); return a && a.dicas[c.id] != null ? `<div style="font-size:.8rem;margin-bottom:6px;color:${nivel(a.dicas[c.id]).cor};">📨 Pelo questionário: ${nivel(a.dicas[c.id]).carinha} ${nivel(a.dicas[c.id]).rotulo} (confirma com o pêndulo)</div>` : ''; })()}${botoesNivel('corpo:' + c.id, S.corpos[c.id] ?? -1)}<div style="margin-top:6px;font-size:.82rem;">ou % de vibração: <input type="number" min="0" max="100" data-cpct="${c.id}" value="${S.corpoPct[c.id] ?? ''}" placeholder="—" style="width:76px;"> %</div></div>`).join('') + nav();
   }
-  function passo2() {
+  function passo2() { return barAberto ? vistaBarometro() : passo2base() + cartaoBar(); }
+  function vistaBarometro() {
+    const b = bars.find((x) => x.id === barAberto); if (!b) { barAberto = null; return ''; }
+    const m = S.barom[b.id] || {}; const n = Object.values(m).filter(Boolean).length;
+    return `<button class="ghost" id="pi-bar-voltar" style="margin-bottom:8px;">← Voltar às energias</button><h3 style="margin:0 0 4px;">🎯 ${esc(b.titulo)}</h3><p class="muted" style="margin:0 0 8px;font-size:.88rem;">Diz os números, um de cada vez, e marca só os que o pêndulo confirmar. <b>${n}</b> de ${b.itens.length} marcados.</p><div class="card">${b.itens.map((t, i) => `<label style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;"><span style="width:26px;height:26px;border-radius:50%;background:${m[i + 1] ? '#1e3a5f' : '#eef2ee'};color:${m[i + 1] ? '#fff' : '#333'};display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0;">${i + 1}</span><input type="checkbox" data-bar="${esc(b.id)}|${i + 1}" ${m[i + 1] ? 'checked' : ''} style="width:22px;height:22px;flex-shrink:0;"><span style="flex:1;font-size:.92rem;">${esc(t)}</span></label>`).join('')}</div><button class="primary" id="pi-bar-voltar2" style="width:100%;margin-top:10px;">✔ Guardar e voltar</button>`;
+  }
+  function cartaoBar() {
+    if (!bars.length) return `<div class="card" style="margin-top:12px;background:#f5f9ff;"><b>🎯 Barómetros auxiliares</b><div class="muted" style="font-size:.85rem;margin-top:4px;">Ainda não tens barómetros guardados. Importa-os em Apometria → 🎯 Barómetros.</div></div>`;
+    const marc = (b) => Object.values(S.barom[b.id] || {}).filter(Boolean).length;
+    return `<div class="card" style="margin-top:12px;background:#f5f9ff;"><b>🎯 Barómetros auxiliares (${bars.length})</b><div class="muted" style="font-size:.85rem;margin:4px 0 8px;">Pesquisa como as energias: dizes os números e o pêndulo escolhe.</div><input id="pi-bar-busca" type="search" placeholder="🔍 Procurar barómetro…" style="width:100%;margin-bottom:8px;"><div id="pi-bar-lista" style="display:grid;gap:6px;">${bars.map((b) => `<button class="ghost" data-barabrir="${esc(b.id)}" data-t="${esc(b.titulo.toLowerCase())}" style="text-align:left;display:flex;justify-content:space-between;gap:8px;"><span>${esc(b.titulo)}</span><span>${marc(b) ? '✅ ' + marc(b) : b.itens.length}</span></button>`).join('')}</div></div>`;
+  }
+  function passo2base() {
     const nDet = Object.values(S.causas).filter(Boolean).length; const an = analisePre(); const sug = an ? an.sug : {}; const nSug = Object.keys(sug).length;
     const cats = Object.keys(S.achados);
     return `<p class="muted" style="margin:0 0 6px;">Pesquisa cada número com o pêndulo e marca só os que confirmares. <b>${nDet}</b> de ${CAUSAS_40.length} detetadas.${nSug ? ` <b>⭐ ${nSug}</b> foram sugeridas pelas respostas do paciente: confirma-as com o pêndulo.` : ''}</p>
@@ -281,7 +293,7 @@ export function renderPesquisaIntegrada(main, ctx) {
   function ligar() {
     const q = (s) => main.querySelector(s);
     const on = (s, f) => { const e = q(s); if (e) e.onclick = f; };
-    on('#pi-novo', async () => { if (await ctx.confirmar('Recomeçar?', 'O que não guardaste perde-se.', 'Recomeçar')) { S = novo(); passo = 0; hist = []; pre = null; seg = null; cic = { ciclos: [] }; escN = false; inicioSessao = 0; tecAtual = 0; ver(); } });
+    on('#pi-novo', async () => { if (await ctx.confirmar('Recomeçar?', 'O que não guardaste perde-se.', 'Recomeçar')) { S = novo(); passo = 0; hist = []; pre = null; seg = null; cic = { ciclos: [] }; escN = false; barAberto = null; inicioSessao = 0; tecAtual = 0; ver(); } });
     on('#pi-ant', () => { passo = Math.max(0, passo - 1); ver(); window.scrollTo(0, 0); });
     on('#pi-seg', () => { passo++; ver(); window.scrollTo(0, 0); });
     main.querySelectorAll('[data-nv]').forEach((b) => b.onclick = () => {
@@ -336,6 +348,10 @@ export function renderPesquisaIntegrada(main, ctx) {
     on('#pi-pre-ref', async () => { try { pre = await ctx.lerPreConsulta(S.pac.id); aplicarPre(); ctx.toast(pre && pre.estado === 'respondido' ? 'Respostas carregadas. ✅' : 'Ainda sem respostas.'); } catch (e) { ctx.toast('Não consegui ver.', true); } ver(); });
     on('#pi-con-wa', () => { const d = String((S.pac && S.pac.phone) || '').replace(/\D/g, ''); const t = d.length === 9 ? '351' + d : d; window.open(`https://wa.me/${t}?text=${encodeURIComponent(MSG_CONSCIENCIA)}`, '_blank'); });
     on('#pi-con-ver', async () => { const e = q('#pi-con-txt'); if (e) e.style.display = e.style.display === 'none' ? 'block' : 'none'; try { await navigator.clipboard.writeText(MSG_CONSCIENCIA); ctx.toast('Copiado.'); } catch (_) {} });
+    main.querySelectorAll('[data-barabrir]').forEach((b) => b.onclick = () => { barAberto = b.dataset.barabrir; ver(); window.scrollTo(0, 0); });
+    main.querySelectorAll('[data-bar]').forEach((c) => c.onchange = () => { const [id, n] = c.dataset.bar.split('|'); (S.barom[id] = S.barom[id] || {})[n] = c.checked; const y = window.scrollY; ver(); window.scrollTo(0, y); });
+    on('#pi-bar-voltar', () => { barAberto = null; ver(); }); on('#pi-bar-voltar2', () => { barAberto = null; ver(); window.scrollTo(0, 0); });
+    const bb = q('#pi-bar-busca'); if (bb) bb.oninput = () => { const t = bb.value.toLowerCase(); main.querySelectorAll('[data-barabrir]').forEach((x) => { x.style.display = !t || x.dataset.t.includes(t) ? '' : 'none'; }); };
     on('#pi-trocar', () => { S.pac = null; S.alertas = {}; pre = null; seg = null; cic = { ciclos: [] }; hist = []; ver(); });
     const gCic = async () => { try { await ctx.gravarCiclo(S.pac.id, cic); } catch (e) { ctx.toast('Não consegui guardar o percurso.', true); } };
     main.querySelectorAll('[data-ncons]').forEach((b) => b.onclick = async () => {
@@ -363,7 +379,7 @@ export function renderPesquisaIntegrada(main, ctx) {
     on('#pi-gravar', async () => {
       if (!S.pac) return ctx.toast('Escolhe primeiro o paciente.', true);
       try {
-        await ctx.gravar(S.pac.id, { tipo: 'pesquisa-integrada', reportText: textoTerapeuta(), textoPaciente: textoPaciente(), dados: { consulta: (() => { const c = cur(); return c ? { n: Math.min(nFeitas(c) + 1, c.total), total: c.total, paga: !!(c.consultas[nFeitas(c)] || {}).pago } : null; })(), seguimento: (() => { const sg = analiseSeg(); return sg ? { media: sg.media, linhas: sg.linhas, reacoes: sg.reac } : null; })(), preConsulta: (() => { const an = analisePre(); return an ? { consentimento: an.consentimento, assinatura: an.assinatura, id: pre.id || '', sugeridas: Object.keys(an.sug).map(Number), dicas: an.dicas } : null; })(), causas: S.causas, chakraPct: S.chakraPct, corpoPct: S.corpoPct, caminhos: S.caminhos, modo: S.modo, testemunho: S.testemunho, hora: S.hora, feitas: S.feitas, minutos: inicioSessao ? Math.round((Date.now() - inicioSessao) / 60000) : 0, corpos: S.corpos, achados: S.achados, chakras: S.chakras, plano: planoAtual(), alertas: S.alertas, bovisIni: S.bovisIni, bovisFin: S.bovisFin, notas: S.notas, primeira: S.primeira } });
+        await ctx.gravar(S.pac.id, { tipo: 'pesquisa-integrada', reportText: textoTerapeuta(), textoPaciente: textoPaciente(), dados: { barometros: (() => { const o = {}; bars.forEach((b) => { const m = S.barom[b.id] || {}; const l = b.itens.map((t, i) => (m[i + 1] ? t : '')).filter(Boolean); if (l.length) o[b.titulo] = l; }); return o; })(), consulta: (() => { const c = cur(); return c ? { n: Math.min(nFeitas(c) + 1, c.total), total: c.total, paga: !!(c.consultas[nFeitas(c)] || {}).pago } : null; })(), seguimento: (() => { const sg = analiseSeg(); return sg ? { media: sg.media, linhas: sg.linhas, reacoes: sg.reac } : null; })(), preConsulta: (() => { const an = analisePre(); return an ? { consentimento: an.consentimento, assinatura: an.assinatura, id: pre.id || '', sugeridas: Object.keys(an.sug).map(Number), dicas: an.dicas } : null; })(), causas: S.causas, chakraPct: S.chakraPct, corpoPct: S.corpoPct, caminhos: S.caminhos, modo: S.modo, testemunho: S.testemunho, hora: S.hora, feitas: S.feitas, minutos: inicioSessao ? Math.round((Date.now() - inicioSessao) / 60000) : 0, corpos: S.corpos, achados: S.achados, chakras: S.chakras, plano: planoAtual(), alertas: S.alertas, bovisIni: S.bovisIni, bovisFin: S.bovisFin, notas: S.notas, primeira: S.primeira } });
         { let c = cur(); if (!c) { c = { id: 'c' + Date.now(), inicio: Date.now(), total: 1, consultas: [{ feita: false, pago: false }], fechado: false }; cic.ciclos.push(c); }
           const x = c.consultas.find((k) => !k.feita); if (x) { x.feita = true; x.data = Date.now(); } try { await ctx.gravarCiclo(S.pac.id, cic); } catch (_) {} }
         ctx.toast('Guardado na ficha. ✅'); hist = await ctx.listar(S.pac.id);
@@ -371,5 +387,5 @@ export function renderPesquisaIntegrada(main, ctx) {
     });
   }
 
-  (async () => { try { pacs = await ctx.pacientes(); } catch (_) {} try { meus = (await ctx.carregarMeus()) || {}; } catch (_) {} ver(); })();
+  (async () => { try { pacs = await ctx.pacientes(); } catch (_) {} try { meus = (await ctx.carregarMeus()) || {}; } catch (_) {} try { bars = ctx.carregarBarometros ? await ctx.carregarBarometros() : []; } catch (_) {} ver(); })();
 }

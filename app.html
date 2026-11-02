@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-02-08';
+const APP_VERSION = '2026-11-02-09';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -18936,6 +18936,8 @@ async function renderApometriaApp(main){
     mod.renderApometria(main, {
       tenantId,
       carregarMeus: async () => { const s = await getDoc(doc(db, 'tenants', tenantId, 'apometria', 'meus')); return s.exists() ? (s.data().comandos || {}) : {}; },
+      carregarBarometros: async () => { const s = await getDoc(doc(db, 'tenants', tenantId, 'apometria', 'barometros')); return s.exists() ? (s.data().charts || []) : []; },
+      gravarBarometros: async (charts) => { await setDoc(doc(db, 'tenants', tenantId, 'apometria', 'barometros'), { charts, atualizadoEm: serverTimestamp() }); },
       gravarMeus: async (comandos) => { await setDoc(doc(db, 'tenants', tenantId, 'apometria', 'meus'), { comandos, atualizadoEm: serverTimestamp() }); },
       escapeHtml, toast, confirmar: reikiConfirmar
     });
@@ -18968,6 +18970,8 @@ async function renderPesqIntegradaApp(main){
       gravar: async (pid, dados) => { await addDoc(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), { ...dados, generatedAt: serverTimestamp() }); },
       dataPT: t => t ? new Date(t).toLocaleDateString('pt-PT') : '—',
       carregarMeus: async () => { const s = await getDoc(doc(db, 'tenants', tenantId, 'apometria', 'meus')); return s.exists() ? (s.data().comandos || {}) : {}; },
+      carregarBarometros: async () => { const s = await getDoc(doc(db, 'tenants', tenantId, 'apometria', 'barometros')); return s.exists() ? (s.data().charts || []) : []; },
+      gravarBarometros: async (charts) => { await setDoc(doc(db, 'tenants', tenantId, 'apometria', 'barometros'), { charts, atualizadoEm: serverTimestamp() }); },
       abrirTriagem: () => renderView('triagemBaixaVibracao'),
       abrirEnvio: o => window.abrirEnvioFicha && window.abrirEnvioFicha(o),
       criarPreConsulta: async (pac, form, formId) => {
