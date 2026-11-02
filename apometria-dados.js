@@ -151,14 +151,18 @@ const q = (bloco, label, extra = {}) => Object.assign({ bloco, label, tipo: 'opc
 const sn = (bloco, label, extra = {}) => Object.assign({ bloco, label, tipo: 'sim_nao' }, extra);
 export const PRE_TITULO = 'Questionário de pré-consulta';
 export const PRE_DESCRICAO = 'Estas perguntas ajudam-me a preparar a sua consulta com cuidado. Responda com sinceridade e sem pressa. As respostas são confidenciais. Se não souber, escolha a que lhe parecer mais próxima.';
+export const PRE_TERMO = 'TERMO DE CONSENTIMENTO INFORMADO. Declaro que fui informado/a de que a pesquisa com pêndulo, a apometria, o Reiki e outras técnicas energéticas são terapias complementares de bem-estar e acompanhamento espiritual. Não substituem o diagnóstico, o tratamento nem a medicação prescritos por um médico, e não prometem curas. Compreendo que participo de forma livre e voluntária, que posso interromper a sessão a qualquer momento, e que as informações que dei são verdadeiras e completas. Comprometo-me a manter o acompanhamento médico que já tenho. Se a sessão for à distância, autorizo a realização do trabalho sem estar presente. Li e aceito este termo.';
 export const PRE_CONSULTA = [
   // Segurança
   sn('Antes de tudo', 'Tem algum diagnóstico psiquiátrico, ou ouve vozes ou sente que alguém o/a controla?', { alerta: 'psi' }),
   sn('Antes de tudo', 'Tem epilepsia ou já teve crises convulsivas?', { alerta: 'epi' }),
   sn('Antes de tudo', 'Está grávida?', { alerta: 'gravida' }),
   sn('Antes de tudo', 'Tem menos de 18 anos?', { alerta: 'menor' }),
+  sn('Antes de tudo', 'Neste momento sente-se muito frágil, sensível ou emotivo/a (por exemplo, por um luto ou uma crise recente)?', { alerta: 'sens' }),
   sn('Antes de tudo', 'Nas últimas semanas, pensou em desistir da vida ou em fazer mal a si próprio/a? (Se sim, fale connosco. Em urgência, ligue 112 ou SNS 24: 808 24 24 24.)', { alerta: 'suic' }),
   q('Antes de tudo', 'Tem receio ou medo deste tipo de trabalho?', { alertaMin: 2, alerta: 'medo' }),
+  sn('Antes de tudo', 'Já fez antes terapias energéticas, apometria, pêndulo ou trabalhos espirituais?'),
+  { bloco: 'Antes de tudo', label: 'Nome completo e data de nascimento (preciso deles para o seu mapa)', tipo: 'area' },
   { bloco: 'Antes de tudo', label: 'Toma alguma medicação ou faz algum tratamento neste momento? Qual?', tipo: 'area' },
   // Corpo físico
   q('Corpo e energia', 'Tem dores ou tensão no corpo sem explicação clara?', { corpo: 'fisico', causas: [32] }),
@@ -186,6 +190,10 @@ export const PRE_CONSULTA = [
   q('À sua volta', 'Sente-se muito sensível ao que os outros sentem?', { causas: [36] }),
   q('À sua volta', 'O dinheiro ou o trabalho parecem sempre «bloqueados», por mais que se esforce?', { causas: [38, 22] }),
   { bloco: 'Para terminar', label: 'Qual é o principal motivo da sua consulta?', tipo: 'area' },
-  { bloco: 'Para terminar', label: 'Desde quando se sente assim, e o que já tentou?', tipo: 'area' }
+  { bloco: 'Para terminar', label: 'Desde quando se sente assim, e o que já tentou?', tipo: 'area' },
+  { bloco: 'Consentimento', label: 'Prefere a consulta presencial ou à distância? (Se for à distância, indique um local calmo onde possa estar sozinho/a durante cerca de 1 hora.)', tipo: 'area' },
+  Object.assign(sn('Consentimento', PRE_TERMO), { consentimento: true }),
+  sn('Consentimento', 'Autorizo o tratamento dos meus dados pessoais e de saúde, exclusivamente para o acompanhamento terapêutico, nos termos do RGPD. Posso pedir o acesso, a correção ou o apagamento dos dados quando quiser.'),
+  { bloco: 'Consentimento', label: 'Para confirmar, escreva aqui o seu nome completo (funciona como assinatura).', tipo: 'area' }
 ].map((p, i) => Object.assign({ id: 'p' + i }, p));
 export const PRE_FORM_ID = 'pi-pre';

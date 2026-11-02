@@ -49,8 +49,10 @@ export function renderPesquisaIntegrada(main, ctx) {
       if (sc >= 2) (q.causas || []).forEach((n) => { sug[n] = Math.max(sug[n] || 0, sc); });
     });
     const dicas = {}; Object.entries(grupo).forEach(([id, a]) => { const m = a.reduce((x, y) => x + y, 0) / a.length; dicas[id] = m < 0.5 ? 0 : m < 1.25 ? 1 : m < 2 ? 2 : 3; });
-    const motivo = PRE_CONSULTA.filter((q) => q.tipo === 'area').map((q) => (r[q.id] ? `${q.label} ${r[q.id]}` : '')).filter(Boolean).join('\n');
-    return { alertas, dicas, sug, motivo };
+    const motivo = PRE_CONSULTA.filter((q) => q.tipo === 'area' && /motivo|Desde quando/.test(q.label)).map((q) => (r[q.id] ? `${q.label} ${r[q.id]}` : '')).filter(Boolean).join('\n');
+    const qc = PRE_CONSULTA.find((x) => x.consentimento); const consentimento = !!(qc && /^sim/i.test(String(r[qc.id] || '')));
+    const qn = PRE_CONSULTA.filter((x) => x.tipo === 'area' && /nome completo/i.test(x.label)).pop(); const assinatura = qn ? String(r[qn.id] || '') : '';
+    return { alertas, dicas, sug, motivo, consentimento, assinatura };
   }
   function aplicarPre() {
     const a = analisePre(); if (!a) return;
@@ -90,7 +92,7 @@ export function renderPesquisaIntegrada(main, ctx) {
     L.push('', '== Energias detetadas (1 a 40) ==');
     const det = CAUSAS_40.filter((c) => S.causas[c.n]); L.push(det.length ? det.map((c) => `${c.n}. ${c.nome}`).join('\n') : 'Nada assinalado.');
     { const an = analisePre(); if (an) { const sug = Object.keys(an.sug).map(Number); const conf = sug.filter((n) => S.causas[n]); const so = sug.filter((n) => !S.causas[n]); const so2 = det.filter((c) => !sug.includes(c.n)).map((c) => c.n);
-      L.push('', '== Cruzamento com o questionário de pré-consulta ==', `Confirmadas pelo pêndulo e indicadas pelo paciente: ${conf.join(', ') || 'nenhuma'}`, `Indicadas pelo paciente e não confirmadas: ${so.join(', ') || 'nenhuma'}`, `Detetadas só pelo pêndulo: ${so2.join(', ') || 'nenhuma'}`); } }
+      L.push('', '== Cruzamento com o questionário de pré-consulta ==', `Termo de consentimento: ${an.consentimento ? 'aceite' + (an.assinatura ? ' (assinado: ' + an.assinatura + ')' : '') : 'NÃO aceite'}`, `Confirmadas pelo pêndulo e indicadas pelo paciente: ${conf.join(', ') || 'nenhuma'}`, `Indicadas pelo paciente e não confirmadas: ${so.join(', ') || 'nenhuma'}`, `Detetadas só pelo pêndulo: ${so2.join(', ') || 'nenhuma'}`); } }
     L.push('', '== Detalhe por tipo ==');
     const ac = Object.entries(S.achados);
     ac.forEach(([id, a]) => { const d = ACHADOS.find((x) => x.id === id); L.push(`• ${d.nome} — ${nivel(a.n).rotulo}${a.corpos && a.corpos.length ? ' · corpos: ' + a.corpos.map(corpoNome).join(', ') : ''}${a.sub && a.sub.length ? ' · ' + a.sub.join(', ') : ''}`); });
@@ -282,7 +284,7 @@ export function renderPesquisaIntegrada(main, ctx) {
     on('#pi-feita', () => { const plano = planoAtual(); S.feitas[plano[tecAtual]] = true; if (tecAtual < plano.length - 1) tecAtual++; ver(); window.scrollTo(0, 0); });
     on('#pi-etq', () => { if (ctx.abrirTriagem) ctx.abrirTriagem(); });
     const enviarPre = async () => {
-      try { const id = await ctx.criarPreConsulta(S.pac, { titulo: PRE_TITULO, descricao: PRE_DESCRICAO, perguntas: PRE_CONSULTA.map((p) => { const o = { id: p.id, label: p.label, tipo: p.tipo }; if (p.opcoes) o.opcoes = p.opcoes; return o; }) }); pre = { id, estado: 'pendente' }; ctx.abrirEnvio({ responseId: id, titulo: PRE_TITULO, patientId: S.pac.id, patientName: S.pac.fullName }); ver(); }
+      try { const id = await ctx.criarPreConsulta(S.pac, { titulo: PRE_TITULO, descricao: PRE_DESCRICAO + ' No fim encontra o termo de consentimento, que precisa de aceitar.', perguntas: PRE_CONSULTA.map((p) => { const o = { id: p.id, label: p.label, tipo: p.tipo }; if (p.opcoes) o.opcoes = p.opcoes; return o; }) }); pre = { id, estado: 'pendente' }; ctx.abrirEnvio({ responseId: id, titulo: PRE_TITULO, patientId: S.pac.id, patientName: S.pac.fullName }); ver(); }
       catch (e) { ctx.toast('Não consegui criar o questionário: ' + (e.message || e), true); }
     };
     on('#pi-pre-env', enviarPre); on('#pi-pre-novo', enviarPre);
@@ -296,7 +298,7 @@ export function renderPesquisaIntegrada(main, ctx) {
     on('#pi-gravar', async () => {
       if (!S.pac) return ctx.toast('Escolhe primeiro o paciente.', true);
       try {
-        await ctx.gravar(S.pac.id, { tipo: 'pesquisa-integrada', reportText: textoTerapeuta(), textoPaciente: textoPaciente(), dados: { preConsulta: (() => { const an = analisePre(); return an ? { id: pre.id || '', sugeridas: Object.keys(an.sug).map(Number), dicas: an.dicas } : null; })(), causas: S.causas, chakraPct: S.chakraPct, corpoPct: S.corpoPct, caminhos: S.caminhos, modo: S.modo, testemunho: S.testemunho, hora: S.hora, feitas: S.feitas, minutos: inicioSessao ? Math.round((Date.now() - inicioSessao) / 60000) : 0, corpos: S.corpos, achados: S.achados, chakras: S.chakras, plano: planoAtual(), alertas: S.alertas, bovisIni: S.bovisIni, bovisFin: S.bovisFin, notas: S.notas, primeira: S.primeira } });
+        await ctx.gravar(S.pac.id, { tipo: 'pesquisa-integrada', reportText: textoTerapeuta(), textoPaciente: textoPaciente(), dados: { preConsulta: (() => { const an = analisePre(); return an ? { consentimento: an.consentimento, assinatura: an.assinatura, id: pre.id || '', sugeridas: Object.keys(an.sug).map(Number), dicas: an.dicas } : null; })(), causas: S.causas, chakraPct: S.chakraPct, corpoPct: S.corpoPct, caminhos: S.caminhos, modo: S.modo, testemunho: S.testemunho, hora: S.hora, feitas: S.feitas, minutos: inicioSessao ? Math.round((Date.now() - inicioSessao) / 60000) : 0, corpos: S.corpos, achados: S.achados, chakras: S.chakras, plano: planoAtual(), alertas: S.alertas, bovisIni: S.bovisIni, bovisFin: S.bovisFin, notas: S.notas, primeira: S.primeira } });
         ctx.toast('Guardado na ficha. ✅'); hist = await ctx.listar(S.pac.id);
       } catch (e) { ctx.toast('Não consegui guardar: ' + (e.message || e), true); }
     });
