@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-03-5';
+const APP_VERSION = '2026-11-03-6';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10840,7 +10840,18 @@ const CARTO_VALORES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 window.ctPreencherNome = function(){
   const sel = document.getElementById('ctPaciente');
   const p = (window.__allPatientsCache||[]).find(x => x.id === sel?.value);
-  if (p && document.getElementById('ctNome')) document.getElementById('ctNome').value = p.fullName || '';
+  if (!p) return;
+  // Tudo o que a ficha já tem entra sozinho: nome e data de nascimento.
+  if (document.getElementById('ctNome')) document.getElementById('ctNome').value = p.fullName || '';
+  if (document.getElementById('ctData')) document.getElementById('ctData').value = p.birthDate || '';
+};
+// Mesmo princípio no separador "Várias perguntas": ao escolher o paciente, a
+// leitura passa a ser sobre ele (primeiro nome), sem ter de escrever.
+window.cpPreencherPaciente = function(){
+  const sel = document.getElementById('cpPaciente');
+  const p = (window.__allPatientsCache||[]).find(x => x.id === sel?.value);
+  const campo = document.getElementById('cpSobre');
+  if (p && campo) campo.value = (p.fullName || '').trim().split(/\s+/)[0] || '';
 };
 
 async function renderCartomancia(main){
@@ -17661,7 +17672,7 @@ function cpFormHTML(){
   return `<div class="card">
     <p class="muted" style="margin-bottom:8px;">Para quem faz várias perguntas numa só consulta. Cada pergunta tem as suas cartas e a sua resposta.</p>
     <label>Paciente (para ficar no histórico dele)</label>
-    <select id="cpPaciente"><option value="">— sem ficha —</option>${(window.__allPatientsCache || []).map(p => `<option value="${p.id}">${escapeHtml(p.fullName || '')}</option>`).join('')}</select>
+    <select id="cpPaciente" onchange="cpPreencherPaciente()"><option value="">— sem ficha —</option>${(window.__allPatientsCache || []).map(p => `<option value="${p.id}">${escapeHtml(p.fullName || '')}</option>`).join('')}</select>
     <label>Leitura sobre (a pessoa de quem se fala)</label><input id="cpSobre" placeholder="ex: Rafael">
     <label>Relatório para (quem perguntou)</label><input id="cpPara" placeholder="ex: Ana, mãe do Rafael">
     <label>Tratar por</label><select id="cpTrat"><option value="tu">Tu</option><option value="voce">Você</option></select>
