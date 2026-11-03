@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-02-11';
+const APP_VERSION = '2026-11-03-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2529,9 +2529,10 @@ async function renderHome(main){
   if (bookingReqSnap && bookingReqSnap.size){
     alerts.push({ id: 'bookingReq', icon: '📩', text: `${bookingReqSnap.size} pedido(s) de marcação por rever`, action: "abrirPedidosMarcacao()" });
   }
-  if (pendingFormsSnap.size){
-    alerts.push({ id: 'pendingForms', icon: '📝', text: `${pendingFormsSnap.size} resposta(s) de ficha por associar a um paciente`, action: "renderView('forms')" });
-  }
+  // Respostas de fichas: já não é um alerta pequeno — tem cartão em destaque no topo do Início
+  const respProntas = pendingFormsSnap.docs.filter(d => d.data().completadoEm).length;
+  const respAguardam = pendingFormsSnap.size - respProntas;
+  const respostasCartao = ehGestor() ? '' : cartaoRespostasHtml(respProntas, respAguardam);
 
   // A conta da Hikari Fafe é, ao mesmo tempo, subscritora normal E
   // administradora da plataforma Vindora — por isso, quando está a usar
@@ -2651,6 +2652,7 @@ async function renderHome(main){
 
   const SHORTCUTS = [
     { icon: '🩺', label: 'Nova Consulta', action: 'startNewConsultationFlow()' },
+    ...(ehGestor() ? [] : [{ icon: '📥', label: 'Respostas de Fichas', action: "renderView('respostas')", badge: respProntas }]),
     { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
     { icon: '🗓️', label: 'Disponibilidade e Marcações', action: "openProfileSection('disponibilidade')" },
     { icon: '💚', label: 'Central do Paciente', action: "renderView('portalPaciente')" },
@@ -2663,13 +2665,14 @@ async function renderHome(main){
   ];
   const shortcutsHtml = SHORTCUTS.map(s => `
     <button class="profile-tile" onclick="${s.action}">
-      <span class="ptile-icon">${s.icon}</span><span>${s.label}</span>
+      <span class="ptile-icon">${s.icon}</span><span>${s.label}</span>${s.badge ? `<span style="position:absolute;top:6px;right:8px;background:#ef4444;color:#fff;border-radius:999px;min-width:22px;height:22px;padding:0 6px;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;">${s.badge}</span>` : ''}
     </button>`).join('');
 
   main.innerHTML = `
     <h2 style="margin-bottom:2px;">${greeting}${firstName ? ', ' + escapeHtml(firstName) : ''} 👋</h2>
     <p class="muted" style="margin-bottom:14px;">${now.toLocaleDateString('pt-PT', { weekday:'long', day:'2-digit', month:'long' })}</p>
 
+    ${respostasCartao}
     ${chkHtml}
     <div class="card">
       <label for="homeAjuda" style="font-weight:600;">❓ Não sabes como fazer alguma coisa?</label>
@@ -6104,6 +6107,33 @@ async function syncPublicServices(){
 // um paciente — evita escrita direta e não autenticada nos dados internos.
 let formQuestionsDraft = [];
 
+// ── Cartão em destaque das respostas de fichas (Início e página de Fichas) ──
+// prontas = preenchidas pelo cliente; aguardam = enviadas e ainda sem resposta.
+function cartaoRespostasHtml(prontas, aguardam){
+  const temNovas = prontas > 0;
+  const fundo = temNovas
+    ? 'linear-gradient(135deg,#2f6f5e,#3f9a7f)'
+    : 'linear-gradient(135deg,#5b7f74,#6f968a)';
+  const titulo = temNovas
+    ? (prontas === 1 ? '1 resposta nova!' : prontas + ' respostas novas!')
+    : 'Respostas de fichas';
+  const sub = temNovas
+    ? 'Clientes que já preencheram — toque para ver e guardar na ficha.'
+    : (aguardam > 0 ? 'Ainda nenhuma resposta nova.' : 'Quando um cliente preencher uma ficha, aparece aqui.');
+  const chipAguardam = aguardam > 0
+    ? `<span style="background:rgba(255,255,255,.2);border-radius:999px;padding:3px 10px;font-size:.8rem;white-space:nowrap;">⏳ ${aguardam} a aguardar</span>`
+    : '';
+  return `<div onclick="renderView('respostas')" role="button" style="cursor:pointer;margin-bottom:14px;padding:16px;border-radius:16px;background:${fundo};color:#fff;box-shadow:0 4px 14px rgba(47,111,94,.35);display:flex;align-items:center;gap:14px;">
+    <div style="position:relative;font-size:2.3rem;line-height:1;flex-shrink:0;">📥${temNovas ? `<span style="position:absolute;top:-8px;right:-12px;background:#ef4444;color:#fff;border-radius:999px;min-width:24px;height:24px;padding:0 6px;font-size:.85rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;">${prontas}</span>` : ''}</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:1.15rem;font-weight:700;">${titulo}</div>
+      <div style="font-size:.88rem;opacity:.92;margin:2px 0 6px;">${sub}</div>
+      ${chipAguardam}
+    </div>
+    <div style="background:#fff;color:#2f6f5e;border-radius:12px;padding:10px 14px;font-weight:700;white-space:nowrap;flex-shrink:0;">Ver ›</div>
+  </div>`;
+}
+
 // ── Página dedicada: Respostas de Fichas ─────────────────────────────────
 async function renderRespostas(main){
   main.innerHTML = '<p class="muted">A carregar respostas…</p>';
@@ -6265,17 +6295,22 @@ async function renderForms(main){
   });
   if (!rows) rows = '<p class="muted">Ainda não tem fichas. Escolha um modelo pronto acima, ou toque em "+ Nova ficha" para criar do zero.</p>';
 
+  // Contagem para o cartão em destaque das respostas (falha silenciosa)
+  let respProntas = 0, respAguardam = 0;
+  try{
+    const rs = await getDocs(query(collection(db, 'public_form_responses'), where('tenantId','==',tenantId), where('status','==','pending_review')));
+    rs.forEach(d => { if (d.data().completadoEm) respProntas++; else respAguardam++; });
+  }catch(e){ console.warn('contagem de respostas indisponível', e); }
+
   main.innerHTML = `
     ${abasModelos('forms')}
     <div class="row"><h2>Fichas / Questionários</h2>
       <button class="primary" onclick="openNewForm()">+ Nova ficha</button>
     </div>
+    ${cartaoRespostasHtml(respProntas, respAguardam)}
     ${hintBox('Crie questionários avulsos para os seus clientes preencherem antes ou depois de um atendimento — avaliação inicial, satisfação, o que for útil à sua prática. Enviados por link próprio, sem precisar de estar dentro de uma consulta. Diferente de "Os Meus Métodos" (o que usa durante a própria consulta, com pontos/mapeamento).')}
     ${passosHtml('Como funciona (3 passos)', ['<strong>Crie</strong> a ficha (ou escolha um modelo pronto).','Toque em <strong>📤 Enviar Online</strong> e envie o link por WhatsApp ou email.','As respostas chegam a <strong>📥 Respostas recebidas</strong>, sem o cliente precisar de conta.'])}
     ${modelosEmDestaque('forms')}
-    <div style="margin-bottom:12px;">
-      <button class="ghost" onclick="renderView('respostas')" style="display:flex;align-items:center;gap:.5rem;">📥 Ver Respostas recebidas</button>
-    </div>
     <div class="card"><h3 style="margin-top:0;">As minhas fichas</h3>${rows}</div>
     <div id="formBuilderContainer"></div>
   `;
