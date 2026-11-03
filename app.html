@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-03-3';
+const APP_VERSION = '2026-11-03-4';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -17793,14 +17793,43 @@ function cartoAvisoFalha(motivo){
   toast('Não deu: ' + motivo + '. Enquanto isso, use o separador "Várias perguntas" — funciona sem servidor.', true);
 }
 
+// Número aleatório justo (sem viés) a partir do gerador seguro do telemóvel.
+function cartoAleatorio(max){
+  const lim = Math.floor(4294967296 / max) * max;
+  const buf = new Uint32Array(1);
+  do { crypto.getRandomValues(buf); } while (buf[0] >= lim);
+  return buf[0] % max;
+}
+
+// O sorteio é feito AQUI, no telemóvel (baralho de 52 cartas, sem repetir) —
+// não depende de servidor. Só o relatório escrito precisa do servidor.
 window.sortearCartasApp = async function(){
   const n = parseInt(document.getElementById('ctNumCartas').value, 10);
+  const baralho = [];
+  Object.keys(CARTO_NAIPES).forEach(k => CARTO_VALORES.forEach(v => baralho.push({ naipeKey: k, valor: v })));
+  const sorteadas = [];
+  while (sorteadas.length < n + 1) sorteadas.push(baralho.splice(cartoAleatorio(baralho.length), 1)[0]);
+  const naipesEl = document.querySelectorAll('.ctCartaNaipe');
+  const valoresEl = document.querySelectorAll('.ctCartaValor');
+  naipesEl.forEach((el,i) => { if (sorteadas[i]) { el.value = sorteadas[i].naipeKey; valoresEl[i].value = sorteadas[i].valor; } });
+  // Carta de Tempo: só se já estiver escolhida; senão fica "nenhuma" (opcional)
+  const tn = document.getElementById('ctTempoNaipe');
+  if (tn && tn.value){ const t = sorteadas[n]; tn.value = t.naipeKey; document.getElementById('ctTempoValor').value = t.valor; }
+  const nomes = Array.from(naipesEl).map((el,i) => CARTO_NAIPES[el.value] + ' ' + valoresEl[i].value);
+  toast('🎲 Cartas sorteadas: ' + nomes.join(' · '));
+
+  // Tenta já gerar o relatório; se o servidor falhar, as cartas ficam sorteadas nos campos.
   const nome = document.getElementById('ctNome').value.trim() || 'Cliente';
   const dataNascimento = document.getElementById('ctData').value;
   const pergunta = document.getElementById('ctPergunta').value.trim();
-  toast('A sortear as cartas…');
-  const r = await cartoChamar({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, sortear:true, numCartas:n });
-  if (!r.ok){ cartoAvisoFalha(r.motivo); return; }
+  const cartasEscolhidas = Array.from(naipesEl).map((el,i) => ({ naipeKey: el.value, valor: valoresEl[i].value }));
+  const tempoNaipe = tn ? tn.value : '';
+  const cartaTempo = tempoNaipe ? { naipeKey: tempoNaipe, valor: document.getElementById('ctTempoValor').value } : null;
+  const r = await cartoChamar({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, cartasEscolhidas, cartaTempo });
+  if (!r.ok){
+    toast('As cartas ficaram sorteadas nos campos ✅, mas o relatório não saiu: ' + r.motivo + '. Tente "Gerar relatório" daqui a pouco.', true);
+    return;
+  }
   mostrarRelatorioCartomancia(r.data.relatorio);
 };
 
