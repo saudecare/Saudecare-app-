@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-03-4';
+const APP_VERSION = '2026-11-03-5';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -17726,11 +17726,14 @@ window.cpGerar = function(){
   const d = { perguntas, sobre: document.getElementById('cpSobre').value.trim(), para: document.getElementById('cpPara').value.trim(),
     trat: document.getElementById('cpTrat').value, patientId: document.getElementById('cpPaciente').value,
     assinatura: (currentTenantDoc?.businessName || currentUserDisplayName || '') };
+  cpMostrar(d);
+};
+function cpMostrar(d, aviso){
   __cpUltimo = d;
   const texto = cpTextoRelatorio(d);
   document.getElementById('ctResultado').innerHTML = `<div class="card" style="border:2px solid var(--primary);">
     <h3>✉️ Relatório${d.para ? ' para ' + escapeHtml(d.para) : ''}</h3>
-    <p class="muted" style="margin:4px 0 8px;">Rascunho feito com os significados do método. Lê, acrescenta a tua interpretação onde quiseres e só depois guarda ou envia.</p>
+    <p class="muted" style="margin:4px 0 8px;">${aviso ? escapeHtml(aviso) + ' ' : ''}Rascunho feito com os significados do método. Lê, acrescenta a tua interpretação onde quiseres e só depois guarda ou envia.</p>
     <textarea id="cpTexto" rows="22" style="width:100%;">${escapeHtml(texto)}</textarea>
     <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;">
       <button class="primary" onclick="cpGuardar()">💾 Guardar</button>
@@ -17738,7 +17741,19 @@ window.cpGerar = function(){
       <button class="ghost" onclick="shareReportPDF('Leitura das cartas', document.getElementById('cpTexto').value)">📤 Partilhar</button>
     </div></div>`;
   document.getElementById('ctResultado').scrollIntoView({ behavior: 'smooth' });
-};
+}
+// Quando o servidor das cartas não responde, o relatório sai na mesma, feito
+// aqui na app com os significados do método (editável antes de enviar).
+function cartoRelatorioLocal(nome, pergunta, cartasEscolhidas, cartaTempo, motivo){
+  const cartas = cartasEscolhidas.map(c => ({ naipe: c.naipeKey, valor: c.valor }));
+  const n = cartas.length;
+  const perguntas = [{ texto: pergunta || 'Leitura geral', cartas }];
+  if (cartaTempo) perguntas.push({ texto: 'Carta de Tempo — quando pode acontecer?', cartas: [{ naipe: cartaTempo.naipeKey, valor: cartaTempo.valor }] });
+  const d = { perguntas, sobre: nome, para: '', trat: 'voce',
+    patientId: document.getElementById('ctPaciente')?.value || '',
+    assinatura: (currentTenantDoc?.businessName || currentUserDisplayName || '') };
+  cpMostrar(d, 'O servidor das cartas não respondeu (' + motivo + '), por isso o relatório foi feito aqui na app.');
+}
 window.cpGuardar = async function(){
   const d = __cpUltimo; if (!d) return;
   const texto = document.getElementById('cpTexto').value;
@@ -17827,7 +17842,8 @@ window.sortearCartasApp = async function(){
   const cartaTempo = tempoNaipe ? { naipeKey: tempoNaipe, valor: document.getElementById('ctTempoValor').value } : null;
   const r = await cartoChamar({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, cartasEscolhidas, cartaTempo });
   if (!r.ok){
-    toast('As cartas ficaram sorteadas nos campos ✅, mas o relatório não saiu: ' + r.motivo + '. Tente "Gerar relatório" daqui a pouco.', true);
+    cartoRelatorioLocal(nome, pergunta, cartasEscolhidas, cartaTempo, r.motivo);
+    toast('Cartas sorteadas e relatório feito na app ✅');
     return;
   }
   mostrarRelatorioCartomancia(r.data.relatorio);
@@ -17845,7 +17861,11 @@ window.gerarRelatorioCartomancia = async function(){
 
   toast('A gerar o relatório…');
   const r = await cartoChamar({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, cartasEscolhidas, cartaTempo });
-  if (!r.ok){ cartoAvisoFalha(r.motivo); return; }
+  if (!r.ok){
+    cartoRelatorioLocal(nome, pergunta, cartasEscolhidas, cartaTempo, r.motivo);
+    toast('Relatório feito na app (o servidor não respondeu) ✅');
+    return;
+  }
   mostrarRelatorioCartomancia(r.data.relatorio);
 };
 
