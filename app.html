@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-03-2';
+const APP_VERSION = '2026-11-03-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -6181,16 +6181,18 @@ async function renderRespostas(main){
             <div class="muted" style="font-size:.8rem;">${titulo}${dataCriada ? ' · ' + dataCriada : ''}</div>
           </div>
           <button class="primary" style="white-space:nowrap;flex-shrink:0;" onclick="openAttachResponse('${d.id}')">Associar a paciente</button>
+          <button class="ghost" style="flex-shrink:0;" title="Apagar" aria-label="Apagar resposta" onclick="apagarRespostaFicha('${d.id}')">🗑️</button>
         </div>`;
       } else {
-        // Ainda não preenchida
-        const patNome = r.patientName ? escapeHtml(r.patientName) : '—';
-        htmlAguardar += `<div class="appt-item row" style="align-items:center;">
+        // Ainda não preenchida — toque abre as opções (copiar link, WhatsApp, apagar…)
+        const patNome = r.patientName ? escapeHtml(r.patientName) : 'Sem nome';
+        htmlAguardar += `<div class="appt-item row" style="align-items:center;cursor:pointer;" onclick="abrirOpcoesFicha('${d.id}')">
           <div style="flex:1;min-width:0;">
             <strong>${patNome}</strong>
             <div class="muted" style="font-size:.8rem;">${titulo}${dataCriada ? ' · enviada ' + dataCriada : ''}</div>
             <div class="muted" style="color:#f59e0b;font-size:.8rem;">⏳ A aguardar resposta do paciente</div>
           </div>
+          <span style="flex-shrink:0;font-size:1.3rem;opacity:.7;" aria-hidden="true">⋯</span>
         </div>`;
       }
     }
@@ -6206,6 +6208,7 @@ async function renderRespostas(main){
           <div style="color:#16a34a;font-size:.8rem;">✅ Já guardada na ficha do paciente e na área do paciente</div>
         </div>
         <button class="primary" style="white-space:nowrap;flex-shrink:0;" onclick="viewPatient('${r.patientId}')">Abrir ficha</button>
+        <button class="ghost" style="flex-shrink:0;" title="Apagar" aria-label="Apagar resposta" onclick="apagarRespostaFicha('${r.id}')">🗑️</button>
       </div>`;
     });
     if (!htmlPreenchidas) htmlPreenchidas = '<p class="muted">Nenhuma resposta por associar.</p>';
@@ -6228,6 +6231,61 @@ async function renderRespostas(main){
     main.innerHTML = `<p class="muted" style="color:var(--danger);">Não foi possível carregar as respostas. Erro: ${escapeHtml(e.message||'desconhecido')}</p>`;
   }
 }
+
+// ── Opções ao tocar numa ficha enviada (copiar link, WhatsApp, apagar…) ──
+window.abrirOpcoesFicha = async function(responseId){
+  let r;
+  try {
+    const snap = await getDoc(doc(db, 'public_form_responses', responseId));
+    if (!snap.exists()){ toast('Esta ficha já não existe.', true); renderView('respostas'); return; }
+    r = snap.data();
+  } catch(e){ toast('Não foi possível abrir a ficha: ' + (e.message||e), true); return; }
+
+  const link = `https://vindora.pt/form-publica.html?r=${responseId}`;
+  const titulo = r.titulo || r.formTitle || r.formId || 'Ficha';
+  const nome = r.patientName || r.respondentName || 'Sem nome';
+  const dt = r.criadoEm?.toDate ? r.criadoEm.toDate().toLocaleDateString('pt-PT') : '';
+  const msg = `Olá${r.patientName ? ' ' + r.patientName : ''}! Por favor preencha esta ficha: ${link}`;
+  window.__fichaOpcoes = { id: responseId, link, titulo, msg };
+
+  document.getElementById('_fichaOpcoesModal')?.remove();
+  const m = document.createElement('div');
+  m.id = '_fichaOpcoesModal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+  m.onclick = (ev) => { if (ev.target === m) m.remove(); };
+  m.innerHTML = `<div style="background:var(--card,#fff);color:var(--text,inherit);border-radius:1rem;padding:1.25rem;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.4);max-height:90vh;overflow:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+      <h3 style="margin:0;">⏳ Ficha enviada</h3>
+      <button onclick="document.getElementById('_fichaOpcoesModal').remove()" aria-label="Fechar" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:inherit;">✕</button>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <strong>${escapeHtml(nome)}</strong>
+      <div class="muted" style="font-size:.85rem;">${escapeHtml(titulo)}${dt ? ' · enviada ' + dt : ''}</div>
+      <div class="muted" style="color:#f59e0b;font-size:.85rem;">A aguardar resposta do paciente</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="primary" onclick="window.copiarTexto(window.__fichaOpcoes.link, 'Link copiado ✅')">📋 Copiar link</button>
+      <button class="ghost" onclick="window.open('https://wa.me/?text=' + encodeURIComponent(window.__fichaOpcoes.msg), '_blank')">💬 Enviar por WhatsApp</button>
+      <button class="ghost" onclick="window.partilharLink(window.__fichaOpcoes.link, window.__fichaOpcoes.titulo)">📤 Partilhar…</button>
+      <button class="ghost" onclick="window.open(window.__fichaOpcoes.link, '_blank')">👁️ Abrir a ficha</button>
+      <button class="ghost" style="color:var(--danger,#dc2626);border-color:var(--danger,#dc2626);" onclick="apagarRespostaFicha('${responseId}')">🗑️ Apagar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+};
+
+window.apagarRespostaFicha = async function(responseId){
+  const ok = await confirmar('Apagar esta ficha? O link deixa de funcionar e a resposta (se existir) é removida desta lista. Não se pode desfazer.');
+  if (!ok) return;
+  try {
+    await deleteDoc(doc(db, 'public_form_responses', responseId));
+    document.getElementById('_fichaOpcoesModal')?.remove();
+    toast('🗑️ Ficha apagada.');
+    renderView('respostas');
+  } catch(e){
+    toast('Não foi possível apagar: ' + (e.message||e), true);
+  }
+};
 
 function passosHtml(titulo, passos){
   return `<div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,rgba(0,0,0,0.02),rgba(0,0,0,0.0));">
