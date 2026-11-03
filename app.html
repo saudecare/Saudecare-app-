@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-03-1';
+const APP_VERSION = '2026-11-03-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -17712,18 +17712,38 @@ window.montarCamposCartas = function(){
     </div>`).join('');
 };
 
+// Chama o servidor das cartas e devolve sempre uma resposta clara, mesmo
+// quando o servidor está em baixo — antes falhava em silêncio e o botão
+// parecia "não fazer nada".
+async function cartoChamar(corpo){
+  try{
+    const res = await fetch(CARTO_FUNCTION_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + await currentUser.getIdToken() },
+      body: JSON.stringify(corpo)
+    });
+    let data = null;
+    try{ data = await res.json(); }catch(_){}
+    if (res.ok && data && data.ok) return { ok: true, data };
+    const motivo = (data && (data.erro || data.error || data.message)) || ('o servidor respondeu ' + res.status);
+    return { ok: false, motivo };
+  }catch(e){
+    console.error('Cartomancia: servidor indisponível', e);
+    return { ok: false, motivo: 'não consegui ligar ao servidor das cartas (' + (e.message || 'sem ligação') + ')' };
+  }
+}
+function cartoAvisoFalha(motivo){
+  toast('Não deu: ' + motivo + '. Enquanto isso, use o separador "Várias perguntas" — funciona sem servidor.', true);
+}
+
 window.sortearCartasApp = async function(){
   const n = parseInt(document.getElementById('ctNumCartas').value, 10);
   const nome = document.getElementById('ctNome').value.trim() || 'Cliente';
   const dataNascimento = document.getElementById('ctData').value;
   const pergunta = document.getElementById('ctPergunta').value.trim();
-  const res = await fetch(CARTO_FUNCTION_URL, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + await currentUser.getIdToken() },
-    body: JSON.stringify({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, sortear:true, numCartas:n })
-  });
-  const data = await res.json();
-  if (!data.ok){ toast('Erro ao sortear.', true); return; }
-  mostrarRelatorioCartomancia(data.relatorio);
+  toast('A sortear as cartas…');
+  const r = await cartoChamar({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, sortear:true, numCartas:n });
+  if (!r.ok){ cartoAvisoFalha(r.motivo); return; }
+  mostrarRelatorioCartomancia(r.data.relatorio);
 };
 
 window.gerarRelatorioCartomancia = async function(){
@@ -17736,13 +17756,10 @@ window.gerarRelatorioCartomancia = async function(){
   const tempoNaipe = document.getElementById('ctTempoNaipe').value;
   const cartaTempo = tempoNaipe ? { naipeKey: tempoNaipe, valor: document.getElementById('ctTempoValor').value } : null;
 
-  const res = await fetch(CARTO_FUNCTION_URL, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + await currentUser.getIdToken() },
-    body: JSON.stringify({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, cartasEscolhidas, cartaTempo })
-  });
-  const data = await res.json();
-  if (!data.ok){ toast('Erro ao gerar relatório.', true); return; }
-  mostrarRelatorioCartomancia(data.relatorio);
+  toast('A gerar o relatório…');
+  const r = await cartoChamar({ action: 'gerarConsultaProfissional', tenantId, nome, dataNascimento, pergunta, foco: document.getElementById('ctFoco').value, cartasEscolhidas, cartaTempo });
+  if (!r.ok){ cartoAvisoFalha(r.motivo); return; }
+  mostrarRelatorioCartomancia(r.data.relatorio);
 };
 
 let __ultimoRelatorioCarto = null;
