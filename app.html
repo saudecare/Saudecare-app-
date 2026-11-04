@@ -354,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-04-6';
+const APP_VERSION = '2026-11-04-7';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1845,7 +1845,8 @@ const NAV_GROUPS = {
     { view: 'estudioVoz', icon: '🎙️', label: 'Estúdio de Voz', tenantOnly: 'hikari-terapias' },
     { view: 'frequencias', icon: '🎶', label: 'Frequências', tenantOnly: 'hikari-terapias' },
     { view: 'oracoes', icon: '🙏', label: 'Orações e Salmos', tenantOnly: 'hikari-terapias' },
-    { view: 'metodoHikari', icon: '🔮', label: 'Pêndulo + Apometria', tenantOnly: 'hikari-terapias' }
+    { view: 'metodoHikari', icon: '🔮', label: 'Pêndulo + Apometria', tenantOnly: 'hikari-terapias' },
+    { view: 'etiquetasEtericas', icon: '🏷️', label: 'Etiquetas Etéricas', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
     { view: 'finances', icon: '💶', label: 'Finanças' },
@@ -1955,6 +1956,7 @@ function renderView(view, opts){
   else if (view === 'mapaAlma') renderMapaAlma(main);
   else if (view === 'cartomancia') renderCartomancia(main);
   else if (view === 'triagemBaixaVibracao') renderTriagemBaixaVibracao(main, opts);
+  else if (view === 'etiquetasEtericas') renderEtiquetasEtericas(main);
   else if (view === 'reikiAlunos') renderReikiAlunos(main);
   else if (view === 'mesinhas') renderMesinhas(main);
   else if (view === 'estudioVoz') renderEstudioVoz(main);
@@ -11372,6 +11374,7 @@ function etqBadge(pt){
   const it = etqRegisto().mapa[etqChave(pt)]; if (!it) return '';
   return `<span style="display:inline-block;min-width:44px;text-align:center;padding:2px 9px;border-radius:99px;background:${ETQ_COR[it.grupo]};color:#fff;font-weight:700;font-size:.95rem;margin-right:6px;">${escapeHtml(it.codigo)}</span>`;
 }
+window.__triagemPtsEtq = function(){ try { return triagemItensAplicar().map(i => i.pt); } catch(e){ return []; } };
 window.abrirListaEtiquetas = function(){
   const reg = etqRegisto();
   const todas = reg.lista.filter(x => x.grupo === 'N').sort((a, b) => a.num - b.num).concat(reg.lista.filter(x => x.grupo !== 'N'));
@@ -11380,7 +11383,7 @@ window.abrirListaEtiquetas = function(){
   ov.innerHTML = `<div style="max-width:760px;margin:0 auto;">
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;">
       <h2 style="margin:0;flex:1;">🏷️ Etiquetas numeradas</h2>
-      <button class="ghost" id="etqImp">🖨️ Imprimir</button><button class="ghost" id="etqFechar">✖ Fechar</button></div>
+      <button class="primary" id="etqEter">✨ Aplicar por via etérica</button><button class="ghost" id="etqImp">🖨️ Imprimir</button><button class="ghost" id="etqFechar">✖ Fechar</button></div>
     <input id="etqPesq" placeholder="Procurar por número (ex.: 24, A7, B3) ou palavra (ex.: inveja, perdoar)…" style="width:100%;margin:10px 0;font-size:1rem;padding:10px;" autofocus>
     <div id="etqChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
     <p class="muted" style="margin:0 0 6px;">Nomes de Deus: número do próprio Nome (1–72). A, B, C: etiquetas das outras listas, numeradas por ordem. Itens novos entram sempre no fim, para não mudar as etiquetas que já numeraste.</p>
@@ -11401,6 +11404,7 @@ window.abrirListaEtiquetas = function(){
   ov.addEventListener('click', e => {
     const t = e.target; if (!t || !t.id && !t.getAttribute) return;
     if (t.id === 'etqFechar') ov.remove();
+    else if (t.id === 'etqEter'){ ov.remove(); abrirEtiquetasEtericas(); }
     else if (t.id === 'etqImp'){ const w = window.open('', '_blank'); if (!w){ toast('O navegador bloqueou a janela de impressão.', true); return; } w.document.write('<meta charset="utf-8"><title>Etiquetas numeradas</title><style>body{font-family:sans-serif}div.l{display:flex;gap:10px;padding:5px;border-bottom:1px solid #ccc;align-items:center}b{min-width:70px}</style><h2>Etiquetas numeradas</h2>' + todas.map(x => `<div class="l"><b>${escapeHtml(x.codigo)}</b><span dir="rtl" style="min-width:120px">${x.img ? `<img src="${new URL(x.img, location.href).href}" style="height:40px">` : escapeHtml(x.heb)}</span><span>${escapeHtml(x.pt)}</span></div>`).join('')); w.document.close(); w.print(); }
     else if (t.getAttribute('data-k')){ filtro = t.getAttribute('data-k'); pintar(); }
   });
@@ -12188,6 +12192,7 @@ function triagemPassoTratamento(main){
       <div id="triagemEtqLista" style="margin-top:8px;"></div>
       <p id="triagemEtqContagem" class="muted" style="margin-top:8px;"></p>
       <button class="ghost" onclick="abrirListaEtiquetas()" style="margin-top:6px;">🏷️ Procurar etiqueta (lista numerada)</button>
+      <button class="ghost" onclick="abrirEtiquetasEtericas(__triagemPtsEtq())" style="margin-top:6px;">✨ Aplicar por via etérica (sem etiquetas físicas)</button>
       <button class="ghost" id="triagemEtqTodas" style="margin-top:6px;">Marcar todas como aplicadas</button>
     </div>
     <div class="card" style="border:2px solid var(--primary);">
@@ -19495,6 +19500,108 @@ async function renderOracoesApp(main){
   }
 }
 
+/* ══ Etiquetas Etéricas ═════════════════════════════════════════════════
+   Aplicar a energia das etiquetas SEM as etiquetas físicas: invocação de todas
+   ao mesmo tempo (com o pêndulo) ou uma a uma. Usa a mesma numeração das etiquetas. */
+let __ee = null;
+function eeNovo(){ return { passo:'escolher', sel:[], filtro:'*', q:'', modo:'', i:0, feitas:{}, pacienteId:'', fase:0 }; }
+function eeItens(){ const reg = etqRegisto(); return reg.lista.filter(x => x.grupo === 'N').sort((a, b) => a.num - b.num).concat(reg.lista.filter(x => x.grupo !== 'N')); }
+function eeSelecionadas(){ const m = etqRegisto().mapa; return __ee.sel.map(k => m[k]).filter(Boolean); }
+function eeImgHeb(x, h){ return x.img ? `<img src="${x.img}" alt="" style="height:${h}px;max-width:100%;object-fit:contain;">` : `<span dir="rtl" style="font-size:${Math.round(h * .6)}px;">${escapeHtml(x.heb)}</span>`; }
+window.abrirEtiquetasEtericas = function(preSel){
+  __ee = eeNovo();
+  if (Array.isArray(preSel)) __ee.sel = preSel.map(etqChave).filter(k => etqRegisto().mapa[k]);
+  document.querySelectorAll('[id="etqFechar"]').forEach(b => b.click());
+  renderView('etiquetasEtericas');
+};
+async function renderEtiquetasEtericas(main){
+  if (tenantId !== 'hikari-terapias'){ main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2></div>'; return; }
+  if (!__ee) __ee = eeNovo();
+  await carregarPacientes();
+  eePintar(main);
+}
+function eePintar(main){
+  main = main || document.getElementById('mainView');
+  const E = __ee;
+  const pacs = (window.__allPatientsCache || []).map(p => `<option value="${p.id}" ${E.pacienteId === p.id ? 'selected' : ''}>${escapeHtml(p.fullName || '')}</option>`).join('');
+  let h = `<h2 style="margin:0 0 4px;">🏷️ Etiquetas Etéricas</h2>
+    <p class="muted" style="margin:0 0 10px;">Aplica a energia das etiquetas sem as teres contigo: invocas todas ao mesmo tempo ou uma a uma, com o pêndulo. O método é o mesmo que com as etiquetas físicas, por isso podes usar uma coisa ou outra.</p>`;
+  if (E.passo === 'escolher'){
+    const itens = eeItens(), q = etqChave(E.q), qc = q.replace(/\s+/g, '');
+    const vis = itens.filter(x => (E.filtro === '*' || x.grupo === E.filtro) && (!q || x.codigo.toLowerCase().replace(/\s+/g, '').indexOf(qc) >= 0 || x.pt.toLowerCase().indexOf(q) >= 0));
+    const chips = [['*', 'Todas'], ['N', 'Nomes de Deus'], ['A', 'A'], ['B', 'B'], ['C', 'C']];
+    h += `<div class="card"><label>Para quem é? (opcional, fica guardado na ficha)</label>
+      <select id="eePac" onchange="__eeSet('pacienteId', this.value)"><option value="">— sem paciente —</option>${pacs}</select>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px;">
+        <button class="ghost" onclick="eePreset('base')">⚡ Limpeza geral rápida</button>
+        <button class="ghost" onclick="eePreset('limpar')">🧹 Limpar seleção</button></div></div>
+      <div class="card"><h3>1. Escolhe as etiquetas (${E.sel.length} escolhida${E.sel.length === 1 ? '' : 's'})</h3>
+      <input id="eeQ" value="${escapeHtml(E.q)}" placeholder="Número (24, A7) ou palavra (inveja, perdoar)…" style="width:100%;margin:6px 0;" oninput="__eeSet('q', this.value, true)">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">${chips.map(([k, t]) => `<button class="${E.filtro === k ? 'primary' : 'ghost'}" style="padding:5px 12px;" onclick="__eeSet('filtro','${k}')">${t}</button>`).join('')}</div>
+      <div style="max-height:52vh;overflow:auto;">${vis.map(x => { const k = etqChave(x.pt), on = E.sel.indexOf(k) >= 0;
+        return `<div onclick="eeTog('${escapeAttrJs(k)}')" style="display:flex;gap:10px;align-items:center;padding:8px;margin-top:4px;border-radius:10px;cursor:pointer;background:${on ? '#eef7ee' : '#f7f7f5'};">
+          <span style="font-size:1.3rem;">${on ? '☑' : '⬜'}</span>${etqBadge(x.pt)}<span style="min-width:90px;text-align:center;">${eeImgHeb(x, 34)}</span><span style="flex:1;font-size:.9rem;">${escapeHtml(x.pt)}</span></div>`; }).join('') || '<p class="muted">Nenhuma etiqueta encontrada.</p>'}</div></div>
+      <div class="row" style="gap:8px;"><button class="primary" ${E.sel.length ? '' : 'disabled'} onclick="__eeSet('passo','modo')">Seguinte →</button></div>`;
+  } else if (E.passo === 'modo'){
+    const sel = eeSelecionadas();
+    h += `<div class="card"><h3>2. Como queres aplicar?</h3>
+      <p class="muted">${sel.length} etiqueta(s): ${sel.map(x => escapeHtml(x.codigo)).join(' · ')}</p>
+      <button class="primary" style="width:100%;margin-top:10px;padding:14px;" onclick="eeComecar('todas')">⚡ Todas ao mesmo tempo<br><small>Invoco a energia de todas em conjunto e aplico com o pêndulo</small></button>
+      <button class="ghost" style="width:100%;margin-top:10px;padding:14px;" onclick="eeComecar('uma')">1️⃣ Uma a uma<br><small>Invoco e aplico cada etiqueta em separado</small></button></div>
+      <button class="ghost" onclick="__eeSet('passo','escolher')">← Voltar</button>`;
+  } else if (E.passo === 'sessao' && E.modo === 'todas'){
+    const sel = eeSelecionadas();
+    const nome = (window.__allPatientsCache || []).find(p => p.id === E.pacienteId)?.fullName || '';
+    const fases = [
+      ['🌬️ Preparar', 'Respira fundo três vezes. Coloca a intenção de limpar, harmonizar e abrir caminhos' + (nome ? ' para ' + nome : '') + '. Pega no pêndulo e centra-te.'],
+      ['🙏 Invocar todas em conjunto', `Diz em voz alta ou em pensamento:<br><em>"Invoco, ao mesmo tempo, a energia de todas estas etiquetas${nome ? ' para ' + escapeHtml(nome) : ''}: ${sel.map(x => escapeHtml(x.codigo)).join(', ')}. Que atuem em conjunto, em harmonia, com a mesma força que teriam as etiquetas físicas. Assim seja."</em>`],
+      ['🎯 Aplicar com o pêndulo', 'Segura o pêndulo sobre a pessoa, a fotografia ou o testemunho. Deixa-o rodar no sentido que ele indicar, até abrandar e parar ou mudar de movimento. Esse é o sinal de que a energia foi aplicada.'],
+      ['✨ Selar e agradecer', 'Agradece. Fecha o campo com a tua oração ou comando de fecho. Beber água ajuda a assentar. Regista a sessão abaixo.']
+    ];
+    h += `<div class="card" style="border:2px solid var(--primary);"><h3>⚡ Todas ao mesmo tempo</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0;">${sel.map(x => `<div style="text-align:center;width:104px;">${eeImgHeb(x, 40)}<div>${etqBadge(x.pt)}</div><div style="font-size:.72rem;color:#666;">${escapeHtml(x.pt.length > 60 ? x.pt.slice(0, 58) + '…' : x.pt)}</div></div>`).join('')}</div></div>
+      ${fases.map((f, i) => `<div class="card" onclick="__eeSet('fase',${i + 1})" style="cursor:pointer;background:${E.fase > i ? '#eef7ee' : '#fff'};"><strong>${E.fase > i ? '☑' : '⬜'} ${f[0]}</strong><p style="margin-top:6px;">${f[1]}</p></div>`).join('')}
+      <div class="row" style="gap:8px;"><button class="ghost" onclick="__eeSet('passo','modo')">← Voltar</button><button class="primary" onclick="eeConcluir()">✔ Concluir e registar</button></div>`;
+  } else if (E.passo === 'sessao' && E.modo === 'uma'){
+    const sel = eeSelecionadas(), x = sel[E.i], feitas = Object.keys(E.feitas).length;
+    h += `<div class="card"><div style="height:10px;border-radius:99px;background:#eee;overflow:hidden;"><div style="height:100%;width:${Math.round(feitas / sel.length * 100)}%;background:linear-gradient(90deg,#c0398b,#5b2a86);"></div></div>
+      <p class="muted" style="margin-top:6px;text-align:center;">Etiqueta ${E.i + 1} de ${sel.length} · ${feitas} aplicada(s)</p></div>
+      <div class="card" style="text-align:center;border:2px solid var(--primary);">
+        <div style="margin:6px 0;">${etqBadge(x.pt)}</div><div style="background:#fff;border-radius:12px;padding:8px;">${eeImgHeb(x, 90)}</div>
+        <h3 style="margin-top:10px;">${escapeHtml(x.pt)}</h3>
+        <p style="text-align:left;margin-top:10px;"><strong>🙏 Invocar:</strong> <em>"Invoco a energia da etiqueta ${escapeHtml(x.codigo)}: ${escapeHtml(x.pt)}. Que atue agora, com a mesma força da etiqueta física."</em></p>
+        <p style="text-align:left;margin-top:8px;"><strong>🎯 Pêndulo:</strong> segura-o sobre a pessoa, a fotografia ou o testemunho e deixa-o rodar até abrandar e parar ou mudar de movimento.</p>
+        <button class="primary" style="width:100%;margin-top:12px;padding:12px;" onclick="eeFeita()">${E.i + 1 < sel.length ? '✔ Aplicada, próxima →' : '✔ Aplicada, terminar'}</button></div>
+      <div class="row" style="gap:8px;"><button class="ghost" ${E.i ? '' : 'disabled'} onclick="__eeSet('i',${E.i - 1})">← Anterior</button><button class="ghost" onclick="__eeSet('passo','modo')">Sair</button></div>`;
+  } else if (E.passo === 'fim'){
+    h += `<div class="card" style="text-align:center;"><div style="font-size:3rem;">✨</div><h3>Sessão concluída</h3><p class="muted">${E.guardado ? 'Ficou registada na ficha do paciente.' : 'Não ficou ligada a nenhum paciente.'}</p>
+      <button class="primary" onclick="abrirEtiquetasEtericas()">Nova aplicação</button></div>`;
+  }
+  main.innerHTML = h;
+}
+window.__eeSet = function(k, v, semRepintar){
+  __ee[k] = v; if (k === 'passo' && v === 'modo') __ee.fase = 0;
+  if (semRepintar){ const q = document.getElementById('eeQ'); eePintar(); const n = document.getElementById('eeQ'); if (n){ n.focus(); n.setSelectionRange(n.value.length, n.value.length); } return; }
+  eePintar();
+};
+window.eeTog = function(k){ const i = __ee.sel.indexOf(k); if (i >= 0) __ee.sel.splice(i, 1); else __ee.sel.push(k); const y = document.querySelector('#mainView div[style*="overflow:auto"]')?.scrollTop || 0; eePintar(); const d = document.querySelector('#mainView div[style*="overflow:auto"]'); if (d) d.scrollTop = y; };
+window.eePreset = function(t){
+  if (t === 'limpar') __ee.sel = [];
+  else { const ks = []; TRIAGEM_PROTOCOLO_COMPLETO.forEach(f => f.itens.forEach(i => { if (i.base && etqRegisto().mapa[etqChave(i.pt)] && ks.indexOf(etqChave(i.pt)) < 0) ks.push(etqChave(i.pt)); })); __ee.sel = ks; }
+  eePintar();
+};
+window.eeComecar = function(modo){ __ee.modo = modo; __ee.passo = 'sessao'; __ee.i = 0; __ee.feitas = {}; __ee.fase = 0; eePintar(); };
+window.eeFeita = function(){ const sel = eeSelecionadas(); __ee.feitas[__ee.i] = true; if (__ee.i + 1 < sel.length){ __ee.i++; eePintar(); } else eeConcluir(); };
+window.eeConcluir = async function(){
+  const sel = eeSelecionadas(); __ee.guardado = false;
+  if (__ee.pacienteId){
+    const texto = `Etiquetas aplicadas por via etérica (${__ee.modo === 'todas' ? 'todas ao mesmo tempo, com o pêndulo' : 'uma a uma, com o pêndulo'}):\n` + sel.map(x => `• [${x.codigo}] ${x.pt}`).join('\n');
+    __ee.guardado = await guardarNaFicha(__ee.pacienteId, { tipo:'etiquetas-eterico', titulo:'Etiquetas etéricas', texto, dados:{ modo:__ee.modo, etiquetas: sel.map(x => ({ codigo:x.codigo, pt:x.pt })) } });
+    toast(__ee.guardado ? 'Registado na ficha ✓' : 'Não consegui registar na ficha.', !__ee.guardado);
+  }
+  __ee.passo = 'fim'; eePintar();
+};
+
 function renderMetodoHikari(main){
   if (tenantId !== 'hikari-terapias'){ main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2></div>'; return; }
   const cartao = (v, emoji, titulo, texto, botao) => `<div class="card" style="margin-bottom:10px;"><div style="display:flex;gap:12px;align-items:flex-start;"><div style="font-size:2rem;line-height:1;">${emoji}</div><div style="flex:1;"><strong style="font-size:1.05rem;">${titulo}</strong><div class="muted" style="margin:4px 0 10px;font-size:.9rem;">${texto}</div><button class="primary" onclick="renderView('${v}')">${botao}</button></div></div></div>`;
@@ -19503,6 +19610,7 @@ function renderMetodoHikari(main){
     ${cartao('pesqIntegrada', '🧭', 'Atendimento Guiado', 'O guia passo a passo: pesquisa (energias 1 a 40, chakras 1 a 9 em %, abertura de caminhos, Bovis), plano à medida e modo de sessão com os teus comandos. Presencial e à distância.', 'Começar um atendimento')}
     ${cartao('apometria', '🌀', 'Apometria', 'Procedimento em 12 fases, lições, técnicas, contador de impulsos e os teus comandos da formação.', 'Abrir a Apometria')}
     <div class="card" style="margin-bottom:10px;"><div style="display:flex;gap:12px;align-items:flex-start;"><div style="font-size:2rem;line-height:1;">🎯</div><div style="flex:1;"><strong style="font-size:1.05rem;">Barómetros auxiliares</strong><div class="muted" style="font-size:.88rem;margin:4px 0 8px;">74 listas numeradas para a pesquisa com o pêndulo (obsessão, implantes, emoções, saúde, ervas, arcanjos…). Dizes os números e marcas o que ressoa. Também aparecem no Atendimento Guiado.</div><button class="primary" onclick="window.__apoAba='barometros';renderView('apometria')">Abrir os Barómetros</button></div></div></div>
+    ${cartao('etiquetasEtericas', '🏷️', 'Etiquetas Etéricas', 'Aplica a energia das etiquetas sem as teres contigo: invocas todas ao mesmo tempo com o pêndulo, ou uma a uma. Mesmo método que com as etiquetas físicas.', 'Abrir')}
     ${cartao('triagemBaixaVibracao', '🎴', 'Triagem — Pêndulo Hebraico', 'A triagem completa com as 40 energias, etiquetas hebraicas, Bovis e tratamento por sessões, ligada à ficha do paciente.', 'Abrir a Triagem')}`;
 }
 
