@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-04-2';
+const APP_VERSION = '2026-11-04-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11159,15 +11159,15 @@ const TRIAGEM_BAIXA_VIBRACAO = [
 ];
 
 const TRIAGEM_CHAKRAS_9 = [
-  { n:1, nome:"Raiz", temas:["Segurança","Força vital perfeita","Poder pessoal"], descricao:"Rege a segurança, sobrevivência e ligação ao corpo físico." },
-  { n:2, nome:"Sacro", temas:["Fertilidade","Equilíbrio Hormonal","Energia Sexual"], descricao:"Rege a criatividade, sexualidade e prazer." },
-  { n:3, nome:"Plexo Solar", temas:["Auto-estima","Coragem","Poder pessoal"], descricao:"Rege a autoestima, vontade pessoal e poder de ação." },
-  { n:4, nome:"Coração", temas:["Amor incondicional","Amor Próprio","Perdoar"], descricao:"Rege o amor, a compaixão e as relações." },
-  { n:5, nome:"Garganta", temas:["Verdade","Vontade"], descricao:"Rege a comunicação e a expressão da verdade pessoal." },
-  { n:6, nome:"Terceiro Olho", temas:["Clareza","Silêncio mental"], descricao:"Rege a intuição e a clareza mental." },
-  { n:7, nome:"Coroa", temas:["Rendição ao Divino","Protecção Divina","Fé"], descricao:"Rege a ligação espiritual e o propósito de vida." },
-  { n:8, nome:"Estrela da Alma", temas:["Conexão com a fonte","Rendição ao Divino"], descricao:"Rege a ligação com o propósito da alma e a missão de vida." },
-  { n:9, nome:"Portal Estelar", temas:["Unidade com o Todo","Serviço à humanidade"], descricao:"Rege a ligação à consciência universal e o serviço aos outros." }
+  { n:1, nome:"Raiz", temas:["Segurança","Força vital perfeita","Poder pessoal"], descricao:"Rege a segurança, sobrevivência e ligação ao corpo físico.", exemplo:"Sente insegurança com o dinheiro, a casa ou o futuro, e dificuldade em ter os pés assentes na terra." },
+  { n:2, nome:"Sacro", temas:["Fertilidade","Equilíbrio Hormonal","Energia Sexual"], descricao:"Rege a criatividade, sexualidade e prazer.", exemplo:"Sente-se sem prazer nem criatividade, ou com emoções que oscilam muito nas relações." },
+  { n:3, nome:"Plexo Solar", temas:["Auto-estima","Coragem","Poder pessoal"], descricao:"Rege a autoestima, vontade pessoal e poder de ação.", exemplo:"Custa-lhe dizer «não», duvida de si e sente um nó no estômago quando está sob pressão." },
+  { n:4, nome:"Coração", temas:["Amor incondicional","Amor Próprio","Perdoar"], descricao:"Rege o amor, a compaixão e as relações.", exemplo:"Fecha-se nas relações, guarda mágoas e custa-lhe perdoar, aos outros ou a si." },
+  { n:5, nome:"Garganta", temas:["Verdade","Vontade"], descricao:"Rege a comunicação e a expressão da verdade pessoal.", exemplo:"Engole o que queria dizer, tem medo de falar em público ou sente a garganta apertada quando devia exprimir-se." },
+  { n:6, nome:"Terceiro Olho", temas:["Clareza","Silêncio mental"], descricao:"Rege a intuição e a clareza mental.", exemplo:"Tem a mente confusa ou cheia de pensamentos, hesita em decidir e não confia na intuição." },
+  { n:7, nome:"Coroa", temas:["Rendição ao Divino","Protecção Divina","Fé"], descricao:"Rege a ligação espiritual e o propósito de vida.", exemplo:"Sente-se desligado(a) da fé ou do sentido da vida, com uma sensação de vazio por dentro." },
+  { n:8, nome:"Estrela da Alma", temas:["Conexão com a fonte","Rendição ao Divino"], descricao:"Rege a ligação com o propósito da alma e a missão de vida.", exemplo:"Sente que não está a viver a sua missão, como se algo maior o(a) chamasse e não soubesse o quê." },
+  { n:9, nome:"Portal Estelar", temas:["Unidade com o Todo","Serviço à humanidade"], descricao:"Rege a ligação à consciência universal e o serviço aos outros.", exemplo:"Sente-se separado(a) dos outros e do mundo ou, ao contrário, absorve demasiado o sofrimento à volta." }
 ];
 const TRIAGEM_NIVEIS_ABERTURA = ['Aberto','Parcialmente Aberto','Bloqueado','Muito Bloqueado'];
 
@@ -12106,6 +12106,23 @@ function triagemPassoTratamento(main){
   };
 }
 
+/* Descrição e exemplo por item: botão ℹ️ em cada linha + um botão para ver todas de uma vez. */
+function infoItemHTML(id, descricao, exemplo){
+  if (!descricao && !exemplo) return '';
+  return `<div id="${id}" class="info-bloco" style="display:none;margin:2px 0 8px 34px;padding:8px 10px;background:#f1f7f4;border-left:3px solid var(--primary,#2f6f5e);border-radius:6px;font-size:.85rem;line-height:1.45;">
+    ${descricao ? `<div><b>O que é:</b> ${escapeHtml(descricao)}</div>` : ''}
+    ${exemplo ? `<div style="margin-top:4px;font-style:italic;"><b>Exemplo:</b> ${escapeHtml(exemplo)}</div>` : ''}</div>`;
+}
+function infoBotaoHTML(id){ return `<button type="button" class="ghost" aria-label="O que é e exemplo" title="O que é e exemplo" onclick="infoToggle('${id}')" style="width:auto;padding:2px 8px;font-size:15px;line-height:1.2;flex-shrink:0;">ℹ️</button>`; }
+window.infoToggle = function(id){ const e = document.getElementById(id); if (e) e.style.display = (e.style.display === 'none' || !e.style.display) ? 'block' : 'none'; };
+window.infoToggleTodos = function(btn){
+  const blocos = document.querySelectorAll('.info-bloco'); if (!blocos.length) return;
+  const abrir = !Array.from(blocos).every(b => b.style.display === 'block');
+  blocos.forEach(b => { b.style.display = abrir ? 'block' : 'none'; });
+  if (btn) btn.textContent = abrir ? '📖 Esconder as descrições' : '📖 Mostrar todas as descrições e exemplos';
+};
+function infoTodosBotaoHTML(){ return `<button type="button" class="ghost" onclick="infoToggleTodos(this)" style="margin:4px 0 8px;">📖 Mostrar todas as descrições e exemplos</button>`; }
+
 /* PASSO 3 — Baixa Vibração numerada (seleção direta, sem cartas) */
 function triagemPassoBaixaVibracao(main){
   main.innerHTML = `
@@ -12113,13 +12130,15 @@ function triagemPassoBaixaVibracao(main){
     ${triagemProgressoHTML()}
     <div class="card">
       <h3>4. Baixa Vibração — Pesquisa com o Pêndulo (${TRIAGEM_BAIXA_VIBRACAO.length} causas)</h3>
-      <p class="muted">Pesquise cada número com o pêndulo e marque apenas os que confirmar.</p>
+      <p class="muted">Pesquise cada número com o pêndulo e marque apenas os que confirmar. Toque em ℹ️ para ver o que é e um exemplo.</p>
+      ${infoTodosBotaoHTML()}
       ${TRIAGEM_BAIXA_VIBRACAO.map(item => `
         <div class="row" style="align-items:flex-start;padding:7px 0;border-bottom:1px solid #f0f0f0;">
           <span style="width:24px;height:24px;border-radius:50%;background:#eef2ee;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;">${item.n}</span>
           <input type="checkbox" id="triagem-bv-${item.n}" style="width:20px;height:20px;margin:0 8px;flex-shrink:0;" ${__triagem.baixaVibracao[item.n-1]?'checked':''} onchange="window.__triagemToggleBV(${item.n}, this.checked)">
           <label for="triagem-bv-${item.n}" style="flex:1;font-size:14px;">${escapeHtml(item.nome)}${(__triagem.anterior?.baixaVibracaoDetetada || []).indexOf(item.nome) >= 0 ? ' <span class="muted" style="font-size:12px;">(confirmada na última consulta)</span>' : ''}</label>
-        </div>`).join('')}
+          ${infoBotaoHTML('bv-info-' + item.n)}
+        </div>${infoItemHTML('bv-info-' + item.n, item.descricao, item.exemplo)}`).join('')}
     </div>
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
@@ -12140,11 +12159,13 @@ function triagemPassoChakras(main){
       <h3>5. Chakras (1 a 9) — Percentagem de Abertura</h3>
       <p class="muted">Pesquise cada chakra com o pêndulo e registe a percentagem de abertura (100% = totalmente aberto).</p>
       <p class="muted" style="font-size:.85rem;">Referência de trabalho: 70% a 89% = equilibrado · 90% a 100% = muito aberto (sente-se com intensidade, convém aterrar) · 40% a 69% = pouco aberto, a trabalhar · abaixo de 40% = muito fechado. Não há um valor universal validado: é uma escala de apoio à leitura.</p>
+      ${infoTodosBotaoHTML()}
       ${TRIAGEM_CHAKRAS_9.map((c,i) => `
         <div class="row" style="margin-bottom:10px;align-items:center;">
+          ${infoBotaoHTML('chk-info-' + c.n)}
           <label style="font-weight:700;flex:1;">${c.n} — ${escapeHtml(c.nome)}${triagemChakraAntes(c.nome) != null ? ` <span class="muted" style="font-weight:400;font-size:12px;">(última vez: ${triagemChakraAntes(c.nome)}%)</span>` : ''}</label>
           <input type="number" min="0" max="100" style="width:90px;" value="${__triagem.chakras[i]}" oninput="window.__triagemSetChakra(${i}, this.value)"> %
-        </div>`).join('')}
+        </div>${infoItemHTML('chk-info-' + c.n, c.descricao, c.exemplo).replace('margin:2px 0 8px 34px', 'margin:-4px 0 10px 0')}`).join('')}
     </div>
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
@@ -19278,6 +19299,8 @@ async function renderPesqIntegradaApp(main){
     const mod = await import('./apometria.js?v=' + APP_VERSION);
     mod.renderPesquisaIntegrada(main, {
       tenantId,
+      infoCausas: TRIAGEM_BAIXA_VIBRACAO.map(x => ({ n: x.n, descricao: x.descricao, exemplo: x.exemplo })),
+      infoChakras: TRIAGEM_CHAKRAS_9.map(x => ({ nome: x.nome, descricao: x.descricao, exemplo: x.exemplo })),
       pacientes: async () => {
         const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
         const l = []; snap.forEach(d => { const p = d.data(); if (p.active !== false) l.push({ id: d.id, fullName: p.fullName || '', phone: p.phone || '', email: p.email || '' }); });
