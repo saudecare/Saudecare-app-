@@ -4,6 +4,7 @@
 //  (pergunta, escolha com conhecimento, instrução, tratamento, notas).
 //  Não toca nos métodos antigos (lista livre / mapeamento por zonas).
 // ═══════════════════════════════════════════════════════════════════
+import { rbFragmento, rbPreVisualizar } from './relatorio-bonito.js';
 
 const iconeUri = (o) => (typeof o.icone === 'number' && window.CG_IMG && window.CG_IMG.icones[o.icone]) ? window.CG_IMG.uri(window.CG_IMG.icones[o.icone]) : '';
 const esc = (t) => (window.escapeHtml ? window.escapeHtml(String(t == null ? '' : t)) : String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
@@ -503,11 +504,40 @@ function blocoDoc(qual, titulo, html) {
     <details style="margin-bottom:10px;"><summary style="cursor:pointer;font-weight:600;" class="muted">👁 Ver como fica</summary><div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-top:8px;">${html}</div></details>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">${b('#16a34a', '📄 PDF para enviar', `cgPdf('${qual}')`)}${b('#25D366', '📱 WhatsApp', `cgWhatsApp('${qual}')`)}${b('#1e3a8a', '✉️ E-mail', `cgEmail('${qual}')`)}<button class="ghost" onclick="cgCopiar('${qual}')">📋 Copiar texto</button></div></div>`;
 }
+// Relatório ilustrado (cores e nome do subscritor), com os mesmos dados do relatório normal.
+export function cgModeloBonito(proto, resp, nomePaciente, data, marca) {
+  const m = marca || marcaAtual();
+  const blocos = [], resumo = [], plano = [];
+  for (const s of proto.steps || []) {
+    const r = resp[s.id] || {};
+    if (s.type === 'pergunta' && s.noRelatorio !== false) {
+      const v = r.lista ? r.lista.join(', ') : (r.valor || '');
+      if (v) resumo.push(`${s.title}: ${v}`);
+    }
+    if ((s.type === 'escolha' || s.type === 'mapa') && s.noRelatorio !== false) {
+      const sel = selecionados(s, r);
+      if (sel.length) blocos.push({ tipo: 'detalhe', icone: '🔎', titulo: s.title, intro: 'Toca em cada item para ver mais.', itens: sel.map(o => ({ nome: o.label, descricao: [o.tema ? 'Tema: ' + o.tema : '', o.pergunta ? 'Pergunta para te questionares: ' + o.pergunta : '', o.extra ? 'Para saberes mais: ' + o.extra : ''].filter(Boolean).join('\n'), exemplo: (o.exemplos || []).join(' · ') })) });
+    }
+    if (s.type === 'notas' && s.noRelatorio && r.valor) blocos.push({ tipo: 'texto', icone: '📝', titulo: s.title, paras: [r.valor] });
+    if (s.type === 'mapa' && s.noPlano) { const sel = selecionados(s, r); if (sel.length) plano.push({ rotulo: s.title + ' · pontos a trabalhar', texto: sel.map(o => o.label).join(', ') }); }
+    if (s.type === 'instrucao' && s.noPlano && s.texto) plano.push({ rotulo: s.title, texto: s.texto });
+    if (s.type === 'tratamento' && s.noPlano && (s.passos || []).length) plano.push({ rotulo: s.title, texto: s.passos.map((p, i) => `${i + 1}. ${p}`).join('  ') + (s.segundos > 0 ? ` (temporizador sugerido: ${fmtT(s.segundos)})` : '') });
+  }
+  if (resumo.length) blocos.unshift({ tipo: 'lista', icone: '📋', titulo: 'Resumo', marca: '•', itens: resumo });
+  if (plano.length) blocos.push({ tipo: 'linha', icone: '🏡', titulo: 'O teu plano em casa', passos: plano });
+  return { tema: 'geral', cor: m.cor, emoji: '🌿', titulo: proto.name || 'A tua consulta', subtitulo: 'Relatório pessoal', nome: nomePaciente, data, assinatura: m.nome || '', blocos, aviso: AVISO };
+}
+window.cgBonito = () => {
+  const data = new Date().toLocaleDateString('pt-PT');
+  try { rbPreVisualizar(cgModeloBonito(EX.proto, EX.resp, EX.patientName, data)); } catch (e) { console.error(e); aviso('Não consegui abrir o relatório ilustrado.', true); }
+};
+
 function mostrarResultado(preview) {
   const o = EX.out;
   EX.area.innerHTML = `<div class="card">
     <h2>${preview ? '🔎 Pré-visualização do resultado' : '✅ Consulta guardada na ficha'}</h2>
     ${preview ? '<p class="muted" style="margin-bottom:10px;">Nada disto foi guardado.</p>' : ''}
+    <button class="primary" style="width:100%;margin-bottom:14px;padding:12px;" onclick="cgBonito()">✨ Ver relatório ilustrado (bonito e interativo)</button>
     ${blocoDoc('rel', '1 · Relatório do paciente', o.htmlRel)}
     ${o.htmlPlano ? blocoDoc('plano', '2 · Plano / receita em casa', o.htmlPlano) : '<p class="muted">Esta consulta não tem plano em casa (marque "incluir no plano" nos passos que quiser).</p>'}
     <p class="muted" style="text-align:center;">O PDF fica pronto a enviar: no telemóvel abre a partilha (WhatsApp, e-mail…); no computador é descarregado.</p>
@@ -523,7 +553,8 @@ async function cgConcluir() {
   if (!prev && EX.patientId) {
     try { const sn = await window.db().doc(`tenants/${window.tenantId()}/patients/${EX.patientId}`).get(); EX.contacto = sn.data() || {}; } catch (_) { EX.contacto = {}; }
     if (window.guardarNaFicha) {
-      const ok = await window.guardarNaFicha(EX.patientId, { tipo: 'consulta_guiada', titulo: EX.proto.name, texto: t.texto,
+      let bonito = ''; try { bonito = rbFragmento(cgModeloBonito(EX.proto, EX.resp, EX.patientName, data)); } catch (_) {}
+      const ok = await window.guardarNaFicha(EX.patientId, { tipo: 'consulta_guiada', titulo: EX.proto.name, texto: t.texto, reportHtml: bonito,
         dados: JSON.parse(JSON.stringify({ protocoloId: EX.protoId || '', respostas: EX.resp, relatorio: t.relatorio, plano: t.plano, htmlRelatorio: docs.htmlRel, htmlPlano: docs.htmlPlano, data })) });
       if (!ok) aviso('⚠️ Não consegui gravar na ficha. Copie o relatório antes de sair.', true);
     }

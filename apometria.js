@@ -1,5 +1,6 @@
 /* Pesquisa Integrada (pêndulo + apometria) — ferramenta exclusiva da Hikari Fafe.
    Guia passo a passo: paciente e segurança → 7 corpos → o que saiu na pesquisa → chakras → plano à medida → guardar na ficha. */
+import { rbPreVisualizar, rbFragmento } from './relatorio-bonito.js';
 import { NIVEIS, CORPOS, CHAKRAS, ALERTAS, ACHADOS, TECNICAS, TEXTO_PACIENTE, CAUSAS_40, NIVEIS_ABERTURA, faixaChakra, nivelDePct, MODALIDADES, MSG_ANTES_DISTANCIA, MSG_DEPOIS_DISTANCIA, PRE_CONSULTA, PRE_TITULO, PRE_DESCRICAO, PRE_FORM_ID, SEG_FORM, SEG_FORM_ID, SEG_TITULO, SEG_DESCRICAO, MSG_CONSCIENCIA, DICAS_VIBRACAO } from './apometria-dados.js';
 
 const TENANT = 'hikari-terapias';
@@ -139,6 +140,32 @@ export function renderPesquisaIntegrada(main, ctx) {
     DICAS_VIBRACAO.gerais.slice(0, 4).forEach((d) => L.push(d));
     L.push('', DICAS_VIBRACAO.fecho, '', TEXTO_PACIENTE.fim);
     return L.join('\n');
+  }
+
+  // Relatório ilustrado para o paciente (mesma informação da mensagem serena, com gráficos e caixas que abrem).
+  function modeloBonito() {
+    const nome = S.pac ? String(S.pac.fullName).split(' ')[0] : '';
+    const blocos = [];
+    blocos.push({ tipo: 'texto', icone: '🌿', titulo: nome ? 'Olá, ' + nome : 'Olá', paras: [TEXTO_PACIENTE.intro, 'Eu sou um intercessor: peço e trabalho para o teu bem, mas a mudança que se mantém é a tua. Atraímos o que vibramos, por isso a tua parte é cuidar do teu estado todos os dias.'] });
+    const comCorpos = CORPOS.filter((c) => S.corpos[c.id] != null);
+    if (comCorpos.length) blocos.push({ tipo: 'barras', icone: '🧘', titulo: 'Os teus 7 corpos', intro: 'Quanto mais cheia a barra, mais atenção esse corpo pede neste momento.', itens: comCorpos.map((c) => { const v = S.corpos[c.id] || 0; return { nome: c.emoji + ' ' + c.nome.replace(/ \(.*\)/, ''), valor: v / 3 * 100 || 3, texto: nivel(v).carinha + ' ' + nivel(v).rotulo, nota: v >= 2 ? c.sinais : '' }; }) });
+    const tem = Object.keys(S.achados).map((id) => ACHADOS.find((x) => x.id === id)).filter(Boolean);
+    blocos.push(tem.length ? { tipo: 'detalhe', icone: '🔎', titulo: 'O que foi sentido', intro: 'Toca em cada item para perceber o que é.', itens: tem.map((d) => ({ nome: d.nome, descricao: d.simples })) } : { tipo: 'texto', icone: '🔎', titulo: 'O que foi sentido', paras: ['Nada de relevante foi assinalado. ✨'] });
+    const chp = Object.entries(S.chakraPct).filter(([, v]) => v != null);
+    if (chp.length >= 3) {
+      const med = Math.round(chp.reduce((a, [, v]) => a + v, 0) / chp.length);
+      blocos.push({ tipo: 'medidor', icone: '⚡', titulo: 'Abertura dos teus chakras', valor: med, destaque: med >= 70 ? 'Bem abertos' : (med >= 45 ? 'Em equilíbrio parcial' : 'Pedem cuidado'), legenda: 'Média da abertura dos centros de energia avaliados.' });
+      blocos.push({ tipo: 'radar', icone: '🕸️', titulo: 'O mapa dos teus chakras', itens: chp.map(([i, v]) => ({ nome: CHAKRAS[i], rotulo: String(+i + 1), valor: v })) });
+    }
+    if (S.caminhos != null) blocos.push({ tipo: 'texto', icone: '🛤️', titulo: 'Abertura de caminhos', paras: [NIVEIS_ABERTURA[S.caminhos]] });
+    const casa = planoAtual().map((t) => TECNICAS.find((x) => x.id === t)).filter((d) => d && (d.dur === 'em casa' || ['oracao', 'meditacao'].includes(d.id)));
+    if (casa.length) blocos.push({ tipo: 'lista', icone: '🏡', titulo: 'Para fazeres em casa', marca: '✔️', itens: casa.map((d) => d.nome) });
+    const dicas = [];
+    tem.slice(0, 3).forEach((d) => { const t = DICAS_VIBRACAO.achados[d.id]; if (t) dicas.push(t); });
+    CORPOS.filter((c) => (S.corpos[c.id] || 0) >= 2).slice(0, 2).forEach((c) => { const d = DICAS_VIBRACAO.corpos[c.id]; if (d) dicas.push(d); });
+    DICAS_VIBRACAO.gerais.slice(0, 4).forEach((d) => dicas.push(d));
+    blocos.push({ tipo: 'lista', icone: '🌟', titulo: 'A tua parte, para não voltares ao mesmo', marca: '🌱', itens: dicas });
+    return { tema: 'triagem', emoji: '🧭', titulo: 'O teu Atendimento', subtitulo: 'Relatório pessoal', nome: S.pac ? S.pac.fullName : '', data: new Date().toLocaleDateString('pt-PT'), assinatura: 'Hikari Fafe', blocos, mensagem: DICAS_VIBRACAO.fecho + '\n\n' + TEXTO_PACIENTE.fim };
   }
 
   /* ───── ecrãs ───── */
@@ -291,7 +318,7 @@ export function renderPesquisaIntegrada(main, ctx) {
       <label>Notas da sessão<textarea id="pi-notas" rows="3" style="width:100%">${esc(S.notas)}</textarea></label>${comp}
       <details open style="margin:10px 0;"><summary><b>📋 Resumo para ti</b></summary><pre style="white-space:pre-wrap;font-family:inherit;font-size:.85rem;background:#f6f7f9;padding:10px;border-radius:8px;">${esc(textoTerapeuta())}</pre></details>
       <details style="margin:10px 0;"><summary><b>💌 Mensagem para o paciente (serena)</b></summary><pre id="pi-pt" style="white-space:pre-wrap;font-family:inherit;font-size:.85rem;background:#f6f7f9;padding:10px;border-radius:8px;">${esc(textoPaciente())}</pre></details>
-      <div style="display:grid;gap:8px;"><button class="primary" id="pi-gravar">💾 Guardar na ficha do paciente</button><button class="ghost" id="pi-wa">📱 Enviar mensagem ao paciente por WhatsApp</button><button class="ghost" id="pi-copiar">📋 Copiar o resumo</button>${S.modo === 'distancia' ? '<button class="ghost" id="pi-wa-depois">📡 Mensagem de acompanhamento (à distância)</button>' : ''}</div>
+      <div style="display:grid;gap:8px;"><button class="primary" id="pi-bonito">✨ Relatório ilustrado para o paciente</button><button class="primary" id="pi-gravar">💾 Guardar na ficha do paciente</button><button class="ghost" id="pi-wa">📱 Enviar mensagem ao paciente por WhatsApp</button><button class="ghost" id="pi-copiar">📋 Copiar o resumo</button>${S.modo === 'distancia' ? '<button class="ghost" id="pi-wa-depois">📡 Mensagem de acompanhamento (à distância)</button>' : ''}</div>
       <div class="row" style="margin-top:12px;"><button class="ghost" id="pi-ant">← Anterior</button></div>`;
   }
 
@@ -384,6 +411,14 @@ export function renderPesquisaIntegrada(main, ctx) {
     const nt = q('#pi-notas'); if (nt) nt.oninput = () => { S.notas = nt.value; };
     on('#pi-copiar', async () => { try { await navigator.clipboard.writeText(textoTerapeuta()); ctx.toast('Copiado.'); } catch (_) { ctx.toast('Não consegui copiar.', true); } });
     on('#pi-wa', () => { const d = String((S.pac && S.pac.phone) || '').replace(/\D/g, ''); const t = d.length === 9 ? '351' + d : d; window.open(`https://wa.me/${t}?text=${encodeURIComponent(textoPaciente())}`, '_blank'); });
+    on('#pi-bonito', () => {
+      let m; try { m = modeloBonito(); } catch (e) { console.error(e); return ctx.toast('Não consegui montar o relatório ilustrado.', true); }
+      rbPreVisualizar(m, { aoGuardar: async () => {
+        if (!S.pac) return ctx.toast('Escolhe primeiro o paciente.', true);
+        try { await ctx.gravar(S.pac.id, { tipo: 'relatorio-ilustrado', protocolName: 'Atendimento Guiado (relatório ilustrado)', reportText: textoPaciente(), reportHtml: rbFragmento(m) }); ctx.toast('Relatório ilustrado guardado na ficha e no portal do paciente. ✅'); }
+        catch (e) { ctx.toast('Não consegui guardar: ' + (e.message || e), true); }
+      } });
+    });
     on('#pi-gravar', async () => {
       if (!S.pac) return ctx.toast('Escolhe primeiro o paciente.', true);
       try {

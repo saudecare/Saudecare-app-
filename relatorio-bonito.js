@@ -200,11 +200,18 @@ function bloco(b, T) {
   }
 }
 
+function mixHex(h1, h2, t) {
+  const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const a = p(h1), b = p(h2);
+  return '#' + a.map((x, i) => Math.round(x + (b[i] - x) * t).toString(16).padStart(2, '0')).join('');
+}
 // modelo: { tema, titulo, subtitulo, nome, data, assinatura, blocos:[], mensagem, aviso }
 export function rbFragmento(m) {
   const T = TEMAS[m.tema] || TEMAS.geral;
-  const estilo = `--a:${T.a};--b:${T.b};--c:${T.c};--fundo:${T.fundo}`;
-  const onda = `<svg class="onda" viewBox="0 0 400 34" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 Q50 0 100 16 T200 16 T300 16 T400 14 V34 H0Z" fill="${T.fundo}"/></svg>`;
+  let A = T.a, B = T.b, FU = T.fundo;
+  if (/^#[0-9a-fA-F]{6}$/.test(m.cor || '')) { A = m.cor; B = mixHex(m.cor, '#ffffff', 0.38); FU = mixHex(m.cor, '#ffffff', 0.94); }
+  const estilo = `--a:${A};--b:${B};--c:${T.c};--fundo:${FU}`;
+  const onda = `<svg class="onda" viewBox="0 0 400 34" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 Q50 0 100 16 T200 16 T300 16 T400 14 V34 H0Z" fill="${FU}"/></svg>`;
   return `<style>${CSS}</style><div class="rbx" style="${estilo}">
     <div class="hero">${estrelas()}<span class="emo">${m.emoji || T.emoji}</span><h1>${esc(m.titulo || 'O seu relatório')}</h1>
       ${m.subtitulo ? `<p>${esc(m.subtitulo)}</p>` : ''}<p>${m.nome ? '✦ ' + esc(m.nome) + ' ✦ ' : ''}${esc(m.data || '')}</p>${onda}</div>
