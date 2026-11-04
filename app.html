@@ -354,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-04-5';
+const APP_VERSION = '2026-11-04-6';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11231,6 +11231,80 @@ const TRIAGEM_ETQ_USAR_EM_NOS = [
   {heb:"אור",pt:"Luz, iluminação"},{heb:"נקיי",pt:"Limpeza de impurezas"},{heb:"תעלה מריהיה שלמה",pt:"Canal central perfeito"},
   {heb:"חבור בהעין",pt:"Conexão com a fonte"},{heb:"אהבה",pt:"Amor"}
 ];
+const NOMES72_TODOS = [
+ "Viagem no Tempo: Como consertar o passado",
+ "Resgate da Centelha Divina, Recuperar a energia",
+ "Fazendo Milagres",
+ "Eliminando Pensamentos Negativos",
+ "Cura o Corpo, a Mente e a Alma",
+ "Estado de Sonho - Ativando mensagens do subconsciente",
+ "Retifique o DNA de sua Alma",
+ "Limpar toda negatividade interna e externa",
+ "Atraia Anjos de Luz e a Boa Sorte",
+ "Regeneração de Órgãos Doentes ou Danificados e Proteção contra Inveja e Pesadelos",
+ "Expulsar os Resíduos do Mal e Purificar os lugares",
+ "Ativar o Amor Incondicional e Trazer Alegria",
+ "Paraíso na Terra - Criando harmonia dentro e fora",
+ "Paz Interna e Externa",
+ "Aconselhe-se com seu Eu Superior intuindo o que vai acontecer",
+ "Livre-se da depressão e Anime-se completamente",
+ "Retirar o Peso da Vida e Retificar o Ego",
+ "Fertilidade – Bloqueios de criatividade",
+ "Falar com Deus - Elevar almas a mundos de Luz",
+ "Libertar-se dos vícios - Fortalecer a Consciência Espiritual",
+ "Paz de Espirito - Superar limites e Fechar-se para ações reativas",
+ "Cura mental e psicológica e Para afastar pessoas negativas",
+ "Ativar a Luz e o Verbo Divinos e Para atrair alegria",
+ "Libertar-se do ciúme, inveja, dor, sofrimento e vícios",
+ "Falar e Ouvir a Verdade - honestidade",
+ "Eliminar o Caos de sua vida e Para melhorar a Organização do Tempo",
+ "Pacto de Prosperidade com Deus",
+ "Atrair a Alma Gémea",
+ "Eliminar o Ódio e Para Aceitar a Cura Espiritual",
+ "Conecte-se a sua centelha divina e atraia a alegria (OM)",
+ "Para retirar o carma e a auto-obsessão e para terminar projetos inacabados",
+ "Memórias - Quebrando o ciclo.",
+ "Revelando o Lado Negro - Elimine os obstáculos que cria",
+ "Esqueça Você Mesmo - Abrindo-se para uma outra visão",
+ "Energia Sexual - Sexo saudável e positivo Aprenda a ser humilde",
+ "Ativar a coragem e eliminar o medo",
+ "Plano Geral - Vendo o bem oculto em cada desafio",
+ "Prosperidade: Compartilhar para Receber e Receber para Compartilhar",
+ "Diamante em Estado Bruto - Transformando o carvão da sua vida em diamantes",
+ "Falando as Palavras Certas, nas ocasiões certas",
+ "Atraia a Compaixão e a Misericórdia e Melhore a Auto-Estima",
+ "Revelando o Oculto- Vendo a verdade e lidando com ela, Acessando Segredos",
+ "Desafiando a Gravidade - Realizando o poder da mente sobre a matéria.",
+ "Amenizando julgamentos carmicos",
+ "Atraindo Prosperidade e Sustento Físico e Financeiro",
+ "Certeza e Autoconfiança",
+ "Transformação Global - Acelerar a evolução espiritual",
+ "Unidade - Unindo os opostos",
+ "Felicidade - Retificar o Passado desde a Semente da Criação e Atrair a felicidade",
+ "O Suficiente Nunca É Suficiente - Pense Grande",
+ "Retirar as Sementes de Culpa",
+ "Paixão - Ativar o Fogo da Paixão Espiritual",
+ "Atraindo Proteção, Cura e Amizades Verdadeiras",
+ "A Morte da Morte - Atrair o Fluxo da Vida",
+ "Pensamento em Ação - Transformar o seu Destino",
+ "Dissipando a Raiva - Retirando a raiva e o pensamento de dependência",
+ "Escutando Sua Alma - Acessando os arquivos espirituais e os propósitos de nossa alma",
+ "Seguindo em Frente - Quando você precisa de força para seguir seu caminho",
+ "Cordão Umbilical - Conectando-se com a força vital",
+ "Liberdade - Liberte-se da depressão e das limitações físicas e espirituais",
+ "Água - Removendo negatividade da fonte da vida",
+ "Pais - Mestres, Não Pregadores - Melhorando Relacionamentos e laços afetivos",
+ "Valorização - receber mais Valorização, o Reconhecimento e a Gratidão Interior e Exterior",
+ "Afastar a negatividade e Ativar o magnetismo físico e espiritual",
+ "Responsabilidade - Afaste o sentimento de vingança e de vitimismo",
+ "Temor a Deus - Desperte a chama divina e Aceite agir de acordo com a sua alma",
+ "Grandes Expectativas: Gerir o seu tempo e aprender a valorizar o que possui",
+ "Contactando Almas que Partiram - Elevar as almas de pessoas que partiram para a Luz",
+ "Achados e Perdidos - Ativar a clarividência e ver a espiritualidade",
+ "Eliminar os bloqueios psíquicos do sucesso",
+ "Ativar o dom da profecia e a sabedoria divina",
+ "Purificação Espiritual - Purifique seu espírito e ambientes limpando resíduos energéticos"
+];
 const TRIAGEM_NOMES_72 = [
   {n:1,heb:"והו",pt:"Viagem no Tempo: Como consertar o passado"},{n:2,heb:"ילי",pt:"Resgate da Centelha Divina, Recuperar a energia"},
   {n:4,heb:"עלם",pt:"Eliminando Pensamentos Negativos"},{n:5,heb:"מהש",pt:"Cura o Corpo, a Mente e a Alma"},
@@ -11285,6 +11359,8 @@ function etqRegisto(){
     mapa[k] = it; lista.push(it);
   };
   TRIAGEM_NOMES_72.forEach(x => add('N', x.n, x.heb, x.pt));
+  NOMES72_TODOS.forEach((pt, i) => { if (!lista.some(x => x.grupo === 'N' && x.num === i + 1)) add('N', i + 1, '', pt); });
+  lista.forEach(x => { if (x.grupo === 'N') x.img = 'nomes72/' + String(x.num).padStart(2, '0') + '.jpg'; });
   let a = 0; TRIAGEM_ETQ_NOVAS01.forEach(x => { if (!mapa[etqChave(x.pt)]) add('A', ++a, x.heb, x.pt); });
   let b = 0; TRIAGEM_ETQ_USAR_EM_NOS.forEach(x => { if (!mapa[etqChave(x.pt)]) add('B', ++b, x.heb, x.pt); });
   let c = 0; TRIAGEM_PROTOCOLO_COMPLETO.forEach(f => f.itens.forEach(x => { if (!mapa[etqChave(x.pt)]) add('C', ++c, x.heb, x.pt, x.nota); }));
@@ -11298,10 +11374,7 @@ function etqBadge(pt){
 }
 window.abrirListaEtiquetas = function(){
   const reg = etqRegisto();
-  const nomes = {}; TRIAGEM_NOMES_72.forEach(x => nomes[x.n] = x);
-  const todas = [];
-  for (let n = 1; n <= 72; n++) todas.push(nomes[n] ? reg.mapa[etqChave(nomes[n].pt)] : { grupo:'N', num:n, codigo:'Nome ' + n, heb:'', pt:'(descrição ainda não registada na app)', vazio:true });
-  reg.lista.filter(x => x.grupo !== 'N').forEach(x => todas.push(x));
+  const todas = reg.lista.filter(x => x.grupo === 'N').sort((a, b) => a.num - b.num).concat(reg.lista.filter(x => x.grupo !== 'N'));
   const ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;overflow:auto;padding:12px';
   ov.innerHTML = `<div style="max-width:760px;margin:0 auto;">
@@ -11322,13 +11395,13 @@ window.abrirListaEtiquetas = function(){
     const vis = todas.filter(x => (filtro === '*' || x.grupo === filtro) && (!q || x.codigo.toLowerCase().replace(/\s+/g, '').indexOf(q) >= 0 || (/^\d+$/.test(q) && x.grupo === 'N' && String(x.num) === q) || x.pt.toLowerCase().indexOf(qt) >= 0));
     document.getElementById('etqLista').innerHTML = vis.length ? vis.map(x => `<div style="display:flex;gap:10px;align-items:center;padding:8px 6px;border-bottom:1px solid #eee;${x.vazio ? 'opacity:.5;' : ''}">
       <span style="min-width:74px;text-align:center;padding:4px 8px;border-radius:99px;background:${ETQ_COR[x.grupo]};color:#fff;font-weight:700;">${escapeHtml(x.codigo)}</span>
-      <span dir="rtl" style="min-width:90px;font-size:1.2rem;">${escapeHtml(x.heb)}</span>
+      <span dir="rtl" style="min-width:110px;font-size:1.2rem;">${x.img ? `<img src="${x.img}" alt="" style="height:46px;max-width:130px;object-fit:contain;" loading="lazy">` : escapeHtml(x.heb)}</span>
       <span style="flex:1;">${escapeHtml(x.pt)}${x.nota ? `<br><small class="muted">${escapeHtml(x.nota)}</small>` : ''}</span></div>`).join('') : '<p class="muted">Nenhuma etiqueta encontrada.</p>';
   };
   ov.addEventListener('click', e => {
     const t = e.target; if (!t || !t.id && !t.getAttribute) return;
     if (t.id === 'etqFechar') ov.remove();
-    else if (t.id === 'etqImp'){ const w = window.open('', '_blank'); if (!w){ toast('O navegador bloqueou a janela de impressão.', true); return; } w.document.write('<meta charset="utf-8"><title>Etiquetas numeradas</title><style>body{font-family:sans-serif}div.l{display:flex;gap:10px;padding:5px;border-bottom:1px solid #ccc;align-items:center}b{min-width:70px}</style><h2>Etiquetas numeradas</h2>' + todas.filter(x => !x.vazio).map(x => `<div class="l"><b>${escapeHtml(x.codigo)}</b><span dir="rtl" style="min-width:90px">${escapeHtml(x.heb)}</span><span>${escapeHtml(x.pt)}</span></div>`).join('')); w.document.close(); w.print(); }
+    else if (t.id === 'etqImp'){ const w = window.open('', '_blank'); if (!w){ toast('O navegador bloqueou a janela de impressão.', true); return; } w.document.write('<meta charset="utf-8"><title>Etiquetas numeradas</title><style>body{font-family:sans-serif}div.l{display:flex;gap:10px;padding:5px;border-bottom:1px solid #ccc;align-items:center}b{min-width:70px}</style><h2>Etiquetas numeradas</h2>' + todas.map(x => `<div class="l"><b>${escapeHtml(x.codigo)}</b><span dir="rtl" style="min-width:120px">${x.img ? `<img src="${new URL(x.img, location.href).href}" style="height:40px">` : escapeHtml(x.heb)}</span><span>${escapeHtml(x.pt)}</span></div>`).join('')); w.document.close(); w.print(); }
     else if (t.getAttribute('data-k')){ filtro = t.getAttribute('data-k'); pintar(); }
   });
   document.getElementById('etqPesq').addEventListener('input', pintar);
