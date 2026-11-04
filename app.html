@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-04-1';
+const APP_VERSION = '2026-11-04-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -17722,35 +17722,162 @@ function cpPintarPerguntas(){
         <select style="flex:1;" onchange="cpSetCarta(${i},${j},'valor',this.value)">${CARTO_VALORES.map(v => `<option value="${v}" ${q.cartas[j].valor === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>`).join('')}
     </div>`).join('');
 }
+/* Significados completos por carta, no método Hikari Fafe: [como a pessoa se sente, o que tende a acontecer, conselho].
+   Escritos sem género (a pessoa pode ser homem ou mulher) e em português de Portugal. */
+const CP_RICO = {
+  paus: {
+    A: ['com faísca de iniciativa e vontade de começar algo novo', 'tende a surgir um novo começo ou projeto, com energia para avançar', 'dar o primeiro passo sem adiar, enquanto a energia está alta'],
+    2: ['a dividir-se entre dois caminhos de ação', 'tende a surgir uma escolha entre duas direções', 'pesar as duas opções com calma e escolher uma, sem tentar ficar com as duas'],
+    3: ['com expectativa, a ver os primeiros resultados do esforço', 'tendem a chegar os primeiros resultados e uma expansão', 'manter o esforço e abrir-se a novas oportunidades'],
+    4: ['com sensação de estabilidade e de dever cumprido', 'tende a chegar um período de estabilidade e um momento de celebração', 'reconhecer e festejar o que já foi conquistado'],
+    5: ['sob tensão, com a sensação de competição ou de ter de se defender', 'tendem a surgir tensões ou disputas que exigem ação', 'escolher as batalhas, manter a calma e não entrar em provocações'],
+    6: ['com confiança e vontade de ver o esforço reconhecido', 'tende a chegar um reconhecimento público ou uma vitória', 'mostrar o trabalho feito e aceitar o reconhecimento que vier'],
+    7: ['em posição de defesa, a ter de se afirmar', 'tendem a surgir desafios que pedem firmeza', 'defender a posição com persistência, sem agressividade'],
+    8: ['com pressa e a sentir tudo a mexer depressa', 'tendem a chegar notícias e movimento rápido', 'prestar atenção às mensagens e agir depressa quando a oportunidade surgir'],
+    9: ['com cansaço, mas com determinação em não desistir', 'tende a haver um último esforço antes de chegar lá', 'não desistir agora e proteger a energia com pausas'],
+    10: ['com peso a mais às costas, a carregar demasiado', 'tende a aumentar a carga e a responsabilidade se nada mudar', 'pedir ajuda, delegar e largar o que não é essencial'],
+    J: ['com curiosidade e entusiasmo por uma ideia nova', 'tende a chegar uma notícia ou ideia nova, vinda de alguém jovem ou entusiasta', 'explorar a ideia nova sem se comprometer de imediato'],
+    Q: ['com confiança e vontade de ser independente', 'tende a entrar em cena alguém confiante que inspira ação', 'agir com confiança e rodear-se de quem apoia'],
+    K: ['com sentido de liderança e visão', 'tende a abrir-se espaço para liderar ou decidir', 'agir com autoridade e visão de futuro, sem impor']
+  },
+  copas: {
+    A: ['com o coração aberto a um novo sentimento', 'tende a nascer um novo sentimento ou uma ligação afetiva', 'deixar o coração abrir-se, sem pressas'],
+    2: ['com desejo de ligação e de parceria', 'tende a surgir uma parceria, uma reconciliação ou um entendimento', 'dar espaço ao diálogo e à reconciliação'],
+    3: ['com companhia e alegria partilhada', 'tendem a surgir encontros, festejos e boas amizades', 'estar com quem faz bem e partilhar a alegria'],
+    4: ['com apatia e desmotivação, sem ver o que está à frente', 'tende a passar uma oportunidade emocional se não houver abertura', 'olhar de novo para o que está a ser oferecido e sair da inércia'],
+    5: ['com tristeza por uma perda, mas ainda com algo a salvar', 'tende a haver uma perda ou desilusão a lamentar, mas nem tudo se perdeu', 'viver o luto sem ficar preso a ele e olhar para o que ficou'],
+    6: ['com saudade e memórias do passado', 'tende a haver um reencontro ou regresso do passado', 'honrar o passado sem ficar preso a ele'],
+    7: ['com confusão, ilusões e dúvidas', 'tende a haver escolhas confusas e promessas que não se cumprem', 'separar o que é real do que é desejo e decidir com os pés no chão'],
+    8: ['a afastar-se do que já não faz bem', 'tende a haver uma partida ou uma despedida de algo que já não faz sentido', 'ter coragem de deixar o que já não faz bem'],
+    9: ['com satisfação e realização', 'tende a realizar-se um desejo importante', 'agradecer e continuar a cuidar do que já foi conquistado'],
+    10: ['em harmonia e em paz com a família', 'tende a chegar harmonia familiar e felicidade duradoura', 'cuidar dos laços e valorizar a família'],
+    J: ['com sensibilidade, à espera de uma mensagem afetuosa', 'tende a chegar uma mensagem ou uma pessoa sensível', 'dar abertura a mensagens e convites de carinho'],
+    Q: ['com sensibilidade, intuição e vontade de cuidar', 'tende a entrar em cena alguém intuitivo e compreensivo, que apoia', 'ouvir a intuição e deixar-se apoiar por quem cuida'],
+    K: ['com maturidade emocional e equilíbrio', 'tende a surgir equilíbrio entre a razão e o sentimento', 'decidir com a cabeça e o coração juntos']
+  },
+  espadas: {
+    A: ['com a mente a clarear e a ver a verdade', 'tende a surgir uma verdade ou clareza que muda a perspetiva', 'dizer e aceitar a verdade com clareza, sem rodeios'],
+    2: ['em impasse, com medo de escolher', 'tende a haver um impasse e uma decisão adiada', 'decidir com a informação que já tem, em vez de adiar mais'],
+    3: ['com dor ou desilusão guardada', 'tende a haver uma desilusão ou uma dor que precisa de ser sentida', 'reconhecer a dor e falar dela com alguém de confiança'],
+    4: ['com a mente cansada e necessidade de pausa', 'tende a chegar um período de pausa e recuperação', 'descansar e recolher-se para recuperar forças'],
+    5: ['em conflito, com a sensação de que o custo é maior que o ganho', 'tende a haver um conflito ou discussão desgastante', 'evitar discussões e escolher a paz em vez de ter razão'],
+    6: ['com vontade de deixar o difícil para trás', 'tende a chegar uma transição para águas mais calmas', 'seguir em frente com calma e deixar o que pesa para trás'],
+    7: ['com desconfiança e a sensação de que nem tudo está claro', 'tende a haver meias-verdades, segredos ou alguém que não joga limpo', 'ter cuidado com o que partilha e confirmar os factos antes de confiar'],
+    8: ['com sensação de estar preso a uma situação, sem saber como sair', 'tende a haver sensação de bloqueio, mas a saída existe', 'lembrar que a prisão está sobretudo na mente e dar um pequeno passo de cada vez'],
+    9: ['com ansiedade, medos e preocupações, sobretudo à noite', 'tende a haver noites difíceis e uma preocupação maior que a realidade', 'falar do que preocupa e pedir apoio, em vez de guardar tudo para si'],
+    10: ['no fim de um ciclo doloroso', 'tende a terminar uma fase dolorosa: o pior já passou', 'aceitar o fim deste ciclo e preparar o recomeço'],
+    J: ['com a mente analítica e atenta a tudo', 'tende a chegar uma notícia direta ou alguém muito analítico', 'falar com franqueza e ouvir com atenção'],
+    Q: ['com clareza e independência, a ver o que é preciso cortar', 'tende a entrar em cena alguém muito claro e direto, e a ser preciso cortar com algo', 'cortar com o que já não serve, com educação e firmeza'],
+    K: ['com razão e sentido de justiça', 'tende a haver uma decisão justa, tomada com a razão', 'decidir com justiça e apoiar-se nos factos']
+  },
+  ouros: {
+    A: ['com esperança numa nova oportunidade', 'tende a surgir uma nova oportunidade material ou financeira', 'agarrar a oportunidade e planear o primeiro passo concreto'],
+    2: ['a equilibrar duas prioridades práticas', 'tende a haver necessidade de equilibrar duas coisas práticas', 'organizar tempo e dinheiro, sem dispersar'],
+    3: ['com sensação de fazer parte de uma equipa', 'tende a dar frutos o trabalho em equipa', 'colaborar e mostrar as suas competências'],
+    4: ['com necessidade de segurança, a agarrar-se ao que tem', 'tende a haver segurança conquistada, com o risco de fechar demasiado a mão', 'manter a segurança sem fechar demasiado a mão'],
+    5: ['com preocupação material e receio de falta', 'tende a haver uma dificuldade material passageira, com ajuda por perto', 'pedir ajuda sem vergonha e cortar despesas não essenciais'],
+    6: ['com sensação de partilha justa', 'tende a haver uma partilha justa de recursos e a chegar ajuda', 'receber e dar com equilíbrio'],
+    7: ['com paciência a ver o investimento crescer', 'tende a levar tempo o resultado do investimento', 'ter paciência: o que foi plantado ainda está a amadurecer'],
+    8: ['com dedicação, a aperfeiçoar uma competência', 'tende a haver evolução através do trabalho e da dedicação', 'continuar a aperfeiçoar e a dedicar-se ao que faz'],
+    9: ['com orgulho da independência conquistada', 'tende a haver independência e conforto conquistados com o próprio esforço', 'reconhecer o próprio mérito e usufruir do que conquistou'],
+    10: ['com sensação de estabilidade duradoura', 'tende a haver estabilidade duradoura e um legado a construir', 'pensar a longo prazo e construir com solidez'],
+    J: ['com ideias práticas e vontade de trabalhar', 'tende a chegar uma proposta prática ou uma pessoa jovem e trabalhadora', 'aceitar propostas concretas depois de as ver com atenção'],
+    Q: ['com sentido prático e generosidade', 'tende a entrar em cena alguém prático e generoso', 'cuidar do concreto e rodear-se de pessoas práticas e de confiança'],
+    K: ['com visão estratégica e sucesso consolidado', 'tende a consolidar-se o sucesso material', 'planear a longo prazo com visão estratégica']
+  }
+};
+/* Caminho: aberto, fechado ou a meio (aberto com condições) */
+const CP_FECHADO = ['espadas:3','espadas:5','espadas:7','espadas:8','espadas:9','espadas:10','copas:4','copas:5','copas:8','paus:5','paus:10','ouros:5'];
+const CP_ABERTO = ['paus:A','paus:3','paus:4','paus:6','paus:8','paus:J','paus:Q','paus:K','copas:A','copas:2','copas:3','copas:6','copas:9','copas:10','copas:J','copas:Q','copas:K','espadas:A','espadas:6','ouros:A','ouros:3','ouros:4','ouros:6','ouros:8','ouros:9','ouros:10','ouros:J','ouros:Q','ouros:K'];
+/* Sinais de energia mais densa à volta da pessoa (sinais, nunca certezas) */
+const CP_NEG = {
+  'espadas:3': 'dor emocional guardada', 'espadas:5': 'conflitos e energia de disputa',
+  'espadas:7': 'possível inveja, palavras ditas pelas costas ou intenções pouco claras à volta',
+  'espadas:8': 'sensação de bloqueio, como se algo prendesse a pessoa', 'espadas:9': 'peso mental, medos e preocupações, com noites agitadas',
+  'espadas:10': 'a carga de um ciclo doloroso a terminar', 'copas:4': 'desmotivação e energia baixa',
+  'copas:5': 'tristeza e perdas por processar', 'copas:7': 'confusão e ilusões', 'copas:8': 'cansaço emocional',
+  'paus:5': 'tensão e competição', 'paus:10': 'sobrecarga e cansaço', 'ouros:5': 'preocupação material'
+};
+/* Leitura aplicada ao tipo de leitura escolhido: favorável, misto ou cautela */
+const CP_FOCO = {
+  amor: ['No amor e nas relações', 'a tendência é de abertura e de laços que se fortalecem.', 'há luz, mas o coração pede tempo e uma conversa clara.', 'pede-se cuidado com as expectativas e mais diálogo antes de avançar.'],
+  trabalho: ['No trabalho e no dinheiro', 'o caminho profissional está aberto e favorável ao que se pretende.', 'há avanços, mas pedem paciência e boa relação com quem decide.', 'convém ter prudência com decisões e despesas e reforçar o que já está em mãos.'],
+  saude: ['No bem-estar', 'a energia tende a equilibrar-se, mantendo o descanso e os cuidados habituais.', 'há sinais de cansaço a ter em conta; convém descansar e cuidar da rotina.', 'pede-se atenção ao cansaço e ao stress; qualquer sintoma deve ser visto por um profissional de saúde.'],
+  momento: ['No momento atual', 'é uma fase de abertura para avançar.', 'é uma fase de transição, com luzes e sombras.', 'é uma fase que pede calma, resguardo e paciência.'],
+  decisao: ['Na decisão', 'as cartas inclinam para avançar.', 'convém pesar bem e não decidir à pressa.', 'convém adiar a decisão e reunir mais informação.'],
+  simnao: ['Sim ou não', 'a tendência é de SIM.', 'a tendência é de SIM, mas com condições e tempo.', 'a tendência é de NÃO, por agora.']
+};
+function cpCap(t){ t = String(t || ''); return t.charAt(0).toUpperCase() + t.slice(1); }
+function cpCaminho(c){ const k = c.naipe + ':' + c.valor; return CP_ABERTO.indexOf(k) >= 0 ? 'aberto' : (CP_FECHADO.indexOf(k) >= 0 ? 'fechado' : 'a meio'); }
+function cpRico(c){ return (CP_RICO[c.naipe] || {})[c.valor] || ['', '', '']; }
+/* Carta de Tempo: valor da carta × unidade do naipe. Indicação aproximada, nunca uma data. */
+function cpTempoTexto(t){
+  const nome = cpNomeCarta(t);
+  if (['J','Q','K'].indexOf(t.valor) >= 0) return `Carta de Tempo: ${nome}. É uma figura, por isso o prazo não é fixo: depende da ação de uma pessoa e das decisões dela.`;
+  const n = t.valor === 'A' ? 1 : parseInt(t.valor, 10);
+  const un = { paus: ['dia', 'dias'], ouros: ['semana', 'semanas'], copas: ['mês', 'meses'], espadas: ['mês', 'meses'] }[t.naipe] || ['mês', 'meses'];
+  const extra = t.naipe === 'espadas' ? ' As Espadas costumam trazer algum atraso ou espera, por isso é um prazo mais lento.' : '';
+  return `Carta de Tempo: ${nome}. Indica cerca de ${n} ${n === 1 ? un[0] : un[1]}.${extra} É uma indicação aproximada, não uma data certa.`;
+}
 function cpTextoRelatorio(d){
   const tu = d.trat === 'tu';
   const T = { tens: tu ? 'tens' : 'tem', teu: tu ? 'teu' : 'seu', ti: tu ? 'ti' : 'si', fica: tu ? 'Fica' : 'Fique', podes: tu ? 'podes' : 'pode' };
   const quem = d.para ? d.para.split(',')[0].trim() : '';
   const sobre = d.sobre || 'a pessoa';
-  const sec = [];
-  sec.push({ t: quem ? `Para ${quem}` : 'Introdução', p: [`Como combinado, tirei as cartas a pensar nas perguntas que me fizeste sobre ${sobre}. Escrevi as respostas em palavras simples e tentei ser sincero, sem assustar e sem enfeitar. É uma leitura simbólica: mostra tendências e o que está por trás das situações, não é uma certeza nem uma sentença. O futuro depende sempre das escolhas de cada um.`.replace('me fizeste', tu ? 'me fizeste' : 'me fez')] });
   const todas = []; d.perguntas.forEach(q => q.cartas.forEach(c => todas.push(c)));
+  const chavesTodas = todas.map(c => c.naipe + ':' + c.valor);
+  const nAb = todas.filter(c => cpCaminho(c) === 'aberto').length, nFe = todas.filter(c => cpCaminho(c) === 'fechado').length;
+  const tom = nFe === 0 && nAb > 0 ? 1 : (nFe > nAb ? 3 : 2); // 1 favorável · 2 misto · 3 cautela
+  const sec = [];
+  sec.push({ t: quem ? `Para ${quem}` : 'Introdução', p: [`Como combinado, tirei as cartas a pensar nas perguntas que me fizeste sobre ${sobre}. Escrevi as respostas em palavras simples e tentei ser sincero, sem assustar e sem enfeitar. É uma leitura simbólica: mostra como a pessoa se sente, o que está à volta dela, que caminhos estão abertos ou fechados e o que tende a acontecer. Não é uma certeza nem uma sentença. O futuro depende sempre das escolhas de cada um.`.replace('me fizeste', tu ? 'me fizeste' : 'me fez')] });
   sec.push({ t: 'As cartas que saíram', p: [], l: todas.map(c => `${cpNomeCarta(c)}: ${CP_SIGNIF[c.naipe][c.valor]}.`).filter((x, i, a) => a.indexOf(x) === i) });
   d.perguntas.forEach((q, i) => {
-    const lbs = cpEtiquetas(q.cartas.length);
-    const chaves = q.cartas.map(c => `${c.naipe}:${c.valor}`);
-    const nB = chaves.filter(k => CP_BLOQUEIO.indexOf(k) >= 0).length, nF = chaves.filter(k => CP_FAVORAVEL.indexOf(k) >= 0).length;
-    const p = [`Cartas: ${q.cartas.map((c, j) => `${lbs[j]} (${cpNomeCarta(c)})`).join('; ')}.`];
-    if (q.cartas.length === 1) p.push(`A resposta aponta para ${CP_SIGNIF[q.cartas[0].naipe][q.cartas[0].valor]}.`);
-    else if (q.cartas.length === 3) p.push(`Neste momento, a leitura fala de ${CP_SIGNIF[q.cartas[0].naipe][q.cartas[0].valor]}. O que mais pesa tem a ver com ${CP_SIGNIF[q.cartas[1].naipe][q.cartas[1].valor]}. Daqui para a frente, a tendência aponta para ${CP_SIGNIF[q.cartas[2].naipe][q.cartas[2].valor]}.`);
-    else p.push(`A situação atual fala de ${CP_SIGNIF[q.cartas[0].naipe][q.cartas[0].valor]}. O desafio tem a ver com ${CP_SIGNIF[q.cartas[1].naipe][q.cartas[1].valor]}. Do passado recente vem ${CP_SIGNIF[q.cartas[2].naipe][q.cartas[2].valor]}. Mais à frente, aponta para ${CP_SIGNIF[q.cartas[3].naipe][q.cartas[3].valor]}. O conselho das cartas é ${CP_SIGNIF[q.cartas[4].naipe][q.cartas[4].valor]}.`);
-    p.push(nB > nF ? 'No conjunto, esta é uma leitura que pede cuidado e paciência.' : (nF > nB ? 'No conjunto, a tendência é favorável.' : 'No conjunto, a leitura tem luzes e sombras: nem tudo é fácil, nem tudo é difícil.'));
+    const n = q.cartas.length, lbs = cpEtiquetas(n), R = q.cartas.map(cpRico);
+    const linhas = [`Cartas: ${q.cartas.map((c, j) => `${lbs[j]} (${cpNomeCarta(c)})`).join('; ')}.`];
+    // 1) Como a pessoa se sente
+    let sente = `Sente-se ${R[0][0]}.`;
+    if (n > 1 && R[1][0] !== R[0][0]) sente += ` Por trás disso, sente-se também ${R[1][0]}.`;
+    linhas.push('💭 COMO SE SENTE\n' + sente);
+    // 2) Caminhos abertos ou fechados
+    const cams = q.cartas.map((c, j) => `${lbs[j]}: ${cpCaminho(c)}`);
+    const cf = cpCaminho(q.cartas[n === 5 ? 3 : n - 1]);
+    const veredito = cf === 'aberto' ? 'O caminho à frente está ABERTO.' : (cf === 'fechado' ? 'O caminho à frente está FECHADO por agora: pede paciência e mudança de atitude antes de avançar.' : 'O caminho à frente está ABERTO, mas com condições: depende das escolhas e do tempo.');
+    linhas.push('🛤️ CAMINHOS\n' + cams.join(' · ') + '.\n' + veredito);
+    // 3) O que tende a acontecer
+    let prev;
+    if (n === 1) prev = [`- ${cpCap(R[0][1])}.`];
+    else if (n === 3) prev = [`- A curto prazo: ${R[1][1]}.`, `- Mais à frente: ${R[2][1]}.`];
+    else prev = [`- A curto prazo: ${R[1][1]}.`, `- Mais à frente: ${R[3][1]}.`];
+    linhas.push('🔮 O QUE TENDE A ACONTECER\n' + prev.join('\n'));
+    // 4) Conselho e direção
+    let cons;
+    if (n === 1) cons = `${cpCap(R[0][2])}.`;
+    else if (n === 3) cons = `${cpCap(R[1][2])}; e, a seguir, ${R[2][2]}.`;
+    else cons = `${cpCap(R[4][2])}; e, perante o desafio, ${R[1][2]}.`;
+    linhas.push('🧭 CONSELHO E DIREÇÃO\n' + cons);
+    // 5) Leitura aplicada ao tipo de leitura
+    if (d.foco && CP_FOCO[d.foco]) linhas.push(`🎯 ${CP_FOCO[d.foco][0].toUpperCase()}\nNo conjunto, ${CP_FOCO[d.foco][tom]}`);
     const pessoas = q.cartas.filter(c => ['J','Q','K'].indexOf(c.valor) >= 0).map(c => `${cpNomeCarta(c)} (${CP_SIGNIF[c.naipe][c.valor]})`);
-    if (pessoas.length) p.push(`Uma carta de corte representa uma pessoa ou uma energia a entrar em cena: ${pessoas.join('; ')}.`);
-    sec.push({ t: `${i + 1}. ${q.texto || 'Pergunta ' + (i + 1)}`, p });
+    if (pessoas.length) linhas.push(`👤 PESSOAS NA MESA\nUma carta de corte representa uma pessoa ou uma energia a entrar em cena: ${pessoas.join('; ')}.`);
+    sec.push({ t: `${i + 1}. ${q.texto || 'Pergunta ' + (i + 1)}`, p: linhas });
   });
-  const damas = todas.filter(c => c.valor === 'Q').length;
-  const sinais = [];
-  if (!damas) sinais.push('Não saiu nenhuma dama. Nesta leitura, nenhuma figura feminina ocupa o centro da mesa.');
-  const chavesTodas = todas.map(c => `${c.naipe}:${c.valor}`);
-  if (chavesTodas.filter(k => CP_BLOQUEIO.indexOf(k) >= 0).length >= 3) sinais.push('Saíram várias cartas de energia mais densa. Vale a pena confirmar, com uma avaliação mais profunda, se há algo mais a pesar.');
-  if (chavesTodas.filter(k => CP_FAVORAVEL.indexOf(k) >= 0).length >= 3) sinais.push('Há uma boa concentração de cartas de crescimento e realização, uma energia favorável para o que está a nascer.');
-  if (sinais.length) sec.push({ t: 'O que a mesa mostra no conjunto', p: sinais });
+  // Energias à volta da pessoa
+  const negs = chavesTodas.filter(k => CP_NEG[k]).filter((k, i, a) => a.indexOf(k) === i);
+  const ener = [];
+  if (!negs.length) ener.push('A mesa está limpa: não saiu nenhuma carta que aponte para energia negativa à volta da pessoa.');
+  else {
+    ener.push((negs.length >= 2 ? 'Há sinais de uma carga mais densa à volta da pessoa:' : 'Há um sinal leve a ter em conta à volta da pessoa:') + '\n' +
+      negs.map(k => { const [nv, vl] = k.split(':'); return `- ${cpNomeCarta({ naipe: nv, valor: vl })}: ${CP_NEG[k]}.`; }).join('\n'));
+    if (negs.length >= 2) ener.push('Vale a pena confirmar, com uma avaliação mais profunda (Triagem de Baixa Vibração), se há algo mais a pesar. São sinais, não certezas.');
+  }
+  sec.push({ t: 'Energias à volta', p: ener });
+  // Quando
+  if (d.tempo) sec.push({ t: 'Quando?', p: [cpTempoTexto(d.tempo)] });
+  else sec.push({ t: 'Quando?', p: ['Nesta tiragem não saiu nenhuma Carta de Tempo, por isso as cartas não dão um prazo. Mostram apenas a ordem dos acontecimentos: primeiro o que está a acontecer agora e, só depois, o que vem a seguir.'] });
+  // No conjunto
+  const conj = [tom === 1 ? 'No conjunto, a tendência é favorável: há mais caminhos abertos do que fechados.' : (tom === 3 ? 'No conjunto, esta é uma leitura que pede cuidado e paciência: há mais caminhos fechados do que abertos.' : 'No conjunto, a leitura tem luzes e sombras: nem tudo é fácil, nem tudo é difícil.')];
+  if (chavesTodas.filter(k => CP_FAVORAVEL.indexOf(k) >= 0).length >= 3) conj.push('Há uma boa concentração de cartas de crescimento e realização, uma energia favorável para o que está a nascer.');
+  sec.push({ t: 'O que a mesa mostra no conjunto', p: conj });
   sec.push({ t: 'Uma nota importante', p: ['As cartas mostram tendências e não certezas. Este trabalho é complementar e não substitui o acompanhamento médico ou psicológico. As decisões são sempre da própria pessoa.', `Estou disponível para o que precisares. Com carinho,`.replace('precisares', tu ? 'precisares' : 'precisar'), d.assinatura || ''] });
   return sec.map(x => `== ${x.t} ==\n` + [(x.p || []).filter(Boolean).join('\n\n'), (x.l && x.l.length ? x.l.map(y => '- ' + y).join('\n') : '')].filter(Boolean).join('\n\n')).join('\n\n');
 }
@@ -17780,10 +17907,10 @@ function cpMostrar(d, aviso){
 // aqui na app com os significados do método (editável antes de enviar).
 function cartoRelatorioLocal(nome, pergunta, cartasEscolhidas, cartaTempo, motivo){
   const cartas = cartasEscolhidas.map(c => ({ naipe: c.naipeKey, valor: c.valor }));
-  const n = cartas.length;
   const perguntas = [{ texto: pergunta || 'Leitura geral', cartas }];
-  if (cartaTempo) perguntas.push({ texto: 'Carta de Tempo — quando pode acontecer?', cartas: [{ naipe: cartaTempo.naipeKey, valor: cartaTempo.valor }] });
   const d = { perguntas, sobre: nome, para: '', trat: 'voce',
+    foco: document.getElementById('ctFoco')?.value || '',
+    tempo: cartaTempo ? { naipe: cartaTempo.naipeKey, valor: cartaTempo.valor } : null,
     patientId: document.getElementById('ctPaciente')?.value || '',
     assinatura: (currentTenantDoc?.businessName || currentUserDisplayName || '') };
   cpMostrar(d, 'O servidor das cartas não respondeu (' + motivo + '), por isso o relatório foi feito aqui na app.');
