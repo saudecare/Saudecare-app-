@@ -336,6 +336,7 @@
 import { aplicarCorMarca } from './marca.js';
 import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
+import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js';
 import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
 import { corpoMensagem as reikiCorpoMsg, escolherFoto as reikiEscolherFoto } from './reiki-midia-chat.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -353,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-04-3';
+const APP_VERSION = '2026-11-04-4';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11692,13 +11693,14 @@ function __triagemReset(){
    mesmo género, e os `dados` em bruto, para no futuro se poder medir
    a evolução sem depender do texto.
    Serve qualquer subscritor: é a ficha dele, com as ferramentas dele. */
-async function guardarNaFicha(patientId, { tipo, titulo, texto, dados }){
+async function guardarNaFicha(patientId, { tipo, titulo, texto, dados, reportHtml }){
   if (!patientId) return false;
   try {
     await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
       tipo: tipo || 'registo',
       protocolName: titulo || 'Registo',
       reportText: texto || '',
+      ...(reportHtml ? { reportHtml } : {}),
       dados: dados || null,
       generatedAt: serverTimestamp()
     });
@@ -17038,7 +17040,7 @@ function triagemRelatorioCliente(d){
   ]});
 
   const texto = sec.map(s => `== ${s.titulo} ==\n` + s.paras.join('\n\n') + (s.lista && s.lista.length ? '\n\n' + s.lista.map(x => '- ' + x).join('\n') : '')).join('\n\n');
-  return { texto, html: triagemTextoParaHtml(texto) };
+  return { texto, html: triagemTextoParaHtml(texto), sec };
 }
 
 function triagemTextoParaHtml(texto){
@@ -17054,6 +17056,11 @@ function triagemTextoParaHtml(texto){
   return h + `</div>`;
 }
 
+window.triagemVerBonito = function(){
+  const h = window.__triagemUltimoPayload && window.__triagemUltimoPayload.reportHtml;
+  if (!h || h.indexOf('rbx') < 0){ toast('O relatório ilustrado não está disponível nesta triagem.', true); return; }
+  rbPreVisualizarHtml(rbDocumentoDeFragmento(h, 'Triagem energética'), 'Triagem energética');
+};
 window.__triagemGuardarEdicao = async function(){
   const ta = document.getElementById('triagemTextoCliente');
   if (!ta || !window.__triagemUltimoPayload){ toast('Ainda não há relatório para guardar. Gere o relatório primeiro.', true); return; }
@@ -17061,7 +17068,8 @@ window.__triagemGuardarEdicao = async function(){
     // Os relatórios da ficha não se alteram depois de criados (regra de segurança), por isso a versão editada fica como um novo registo.
     const ref = await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
       tipo: 'triagem-energetica', ...window.__triagemUltimoPayload,
-      reportTextCliente: ta.value, reportHtml: triagemTextoParaHtml(ta.value),
+      reportTextCliente: ta.value,
+      reportHtml: (ta.value === window.__triagemTextoClienteAtual && window.__triagemUltimoPayload.reportHtml) ? window.__triagemUltimoPayload.reportHtml : triagemTextoParaHtml(ta.value),
       editadoDe: window.__triagemUltimoReportId || null, generatedAt: serverTimestamp()
     });
     window.__triagemUltimoReportId = ref.id;
@@ -17142,6 +17150,41 @@ function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, 
   html += `<p style="margin-top:20px;font-size:.8rem;color:#999;">Ferramenta de apoio profissional — não substitui diagnóstico médico, psicológico ou psiquiátrico.</p>`;
   html += `</div>`;
   return html;
+}
+
+// Relatório ilustrado da triagem (mesmos dados do relatório em texto, com gráficos e caixas que abrem).
+function triagemModeloBonito(d, cli){
+  const nome = d.primeiroNome;
+  const blocos = [];
+  blocos.push({ tipo:'texto', icone:'👋', titulo:`Olá, ${nome}`, paras:[`Aqui está o retrato do seu momento energético. Toque nas caixas e nos gráficos para ver mais. É um retrato do momento, não uma sentença.`].concat((d.aplicadas && d.aplicadas.length) ? [] : ['Por agora foi feita apenas a triagem. Ainda não foi feita nenhuma limpeza nem tratamento.']) });
+  const ch = d.chakrasTodos || [];
+  if (ch.length){
+    const media = Math.round(ch.reduce((a, c) => a + (Number(c.percentagem) || 0), 0) / ch.length);
+    blocos.push({ tipo:'medidor', icone:'⚡', titulo:'Equilíbrio dos seus centros de energia', valor:media, destaque: media >= 70 ? 'Bem aberto' : (media >= 45 ? 'Em equilíbrio parcial' : 'Pede cuidado'), legenda:`Média de abertura dos ${ch.length} centros energéticos avaliados. Abaixo de ${TRIAGEM_LIMIAR_CHAKRA_ATENCAO}% pede um pouco mais de atenção.` });
+    blocos.push({ tipo:'radar', icone:'🕸️', titulo:'O mapa dos seus centros', intro:'Quanto mais perto da borda, mais aberto está o centro.', itens: ch.map(c => ({ nome:c.nome, rotulo:String(c.nome).split(/[\s(]/)[0], valor:Number(c.percentagem) || 0 })) });
+    blocos.push({ tipo:'barras', icone:'📊', titulo:'Cada centro em detalhe', itens: ch.map(c => ({ nome:c.nome, valor:Number(c.percentagem) || 0, nota: c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO ? 'A vigiar: merece mais atenção e carinho.' : 'Em bom estado.' })) });
+  }
+  const causas = d.causasDetetadas || [];
+  blocos.push(causas.length
+    ? { tipo:'detalhe', icone:'🔎', titulo:'O que foi encontrado', intro:'Toque em cada item para perceber o que é e ver um exemplo do dia a dia.', itens: causas.map(c => ({ nome:c.nome, descricao:c.descricao, exemplo:c.exemplo })) }
+    : { tipo:'texto', icone:'🔎', titulo:'O que foi encontrado', paras:['Nada de baixa vibração foi detetado: o campo está equilibrado. ✨'] });
+  if (d.aberturaNivel) blocos.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras:[String(d.aberturaNivel)] });
+  const c = d.comparacao;
+  if (c){
+    const l = [];
+    (c.resolvidas || []).forEach(x => l.push('✅ Resolvido: ' + x));
+    (c.persistentes || []).forEach(x => l.push('🔁 A continuar a trabalhar: ' + x));
+    (c.novas || []).forEach(x => l.push('🆕 Novo desde a última vez: ' + x));
+    if (c.chakrasComparados && c.chakrasComparados.length) blocos.push({ tipo:'barras', icone:'📈', titulo:'Evolução desde a última sessão', itens: c.chakrasComparados.map(x => ({ nome:x.nome, valor:Number(x.agora) || 0, texto:`${x.antes}% → ${x.agora}%` })) });
+    if (l.length) blocos.push({ tipo:'lista', icone:'🌱', titulo:'O que mudou', marca:'•', itens:l });
+  }
+  const passos = [];
+  if (d.sessoesNecessarias) passos.push({ rotulo:'Sessões recomendadas', texto:`${d.sessoesNecessarias} sessão(ões) de limpeza.` });
+  if (d.temAlgumaCoisaDetetada) passos.push({ rotulo:'Nos dias seguintes', texto:'É normal sentir mais cansaço, emotividade ou sono alterado nos 1 a 3 dias a seguir. É o corpo a processar. Ajuda beber água, descansar e ter momentos calmos.' });
+  passos.push({ rotulo:'Acompanhamento', texto:'Vamos fazendo o ponto da situação em cada sessão.' });
+  blocos.push({ tipo:'linha', icone:'📅', titulo:'Próximos passos', passos });
+  if (cli && cli.sec) blocos.push({ tipo:'secoes', icone:'📖', titulo:'A leitura completa, em palavras', itens: cli.sec.map(x => ({ nome:x.titulo, paras:(x.paras || []).concat((x.lista || []).map(y => '• ' + y)) })) });
+  return { tema:'triagem', emoji:'🌿', titulo:'A sua triagem energética', subtitulo:'Relatório pessoal', nome, data:new Date().toLocaleDateString('pt-PT'), assinatura:'Hikari Fafe', blocos };
 }
 
 async function triagemGerarRelatorio(){
@@ -17266,6 +17309,13 @@ async function triagemGerarRelatorio(){
     sessoesAntes: anteriorDoc ? anteriorDoc.sessoesNecessarias : null, motivoPlano: __triagem.motivoPlano, pagamento: pagamentoInfo
   });
   window.__triagemTextoClienteAtual = clienteRel.texto;
+  let reportHtmlBonitoTriagem = '';
+  try {
+    reportHtmlBonitoTriagem = rbFragmento(triagemModeloBonito({
+      primeiroNome: __triagem.patientNome.split(/\s+/)[0], causasDetetadas, chakrasTodos, aberturaNivel, comparacao,
+      sessoesNecessarias: __triagem.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas: etiquetasAplicadas
+    }, clienteRel));
+  } catch(e){ console.warn('Relatório ilustrado da triagem falhou, uso o simples:', e); }
   const reportHtmlAntigo = gerarReportHtmlPaciente({
     primeiroNome: __triagem.patientNome.split(/\s+/)[0],
     causasDetetadas, chakrasTodos, aberturaNivel, comparacao,
@@ -17278,7 +17328,7 @@ async function triagemGerarRelatorio(){
   const payloadParaGuardar = {
     protocolName: 'Triagem de Baixa Vibração',
     dataNascimento: __triagem.dataNascimento || null, paisNascimento: __triagem.paisNascimento || null, numeroConsulta: __triagem.numConsulta || 1,
-    reportText, reportTextCliente: clienteRel.texto, reportHtml: clienteRel.html,
+    reportText, reportTextCliente: clienteRel.texto, reportHtml: reportHtmlBonitoTriagem || clienteRel.html, reportHtmlSimples: clienteRel.html,
     bovisInicial: __triagem.bovisIni || null, bovisFinal: __triagem.bovisFin || null,
     baixaVibracaoDetetada: causasDetetadas.map(c => c.nome),
     chakras: chakrasTodos.map(c => ({ nome:c.nome, percentagem:c.percentagem })),
@@ -17624,6 +17674,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
       <textarea id="triagemTextoCliente" rows="18" style="width:100%;">${escapeHtml(window.__triagemTextoClienteAtual || '')}</textarea>
       <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;">
         <button class="primary" onclick="window.__triagemGuardarEdicao()">💾 Guardar alterações</button>
+        <button class="primary" onclick="triagemVerBonito()">✨ Ver relatório ilustrado</button>
         <button class="ghost" onclick="downloadReportPDF('Relatório de ${escapeAttrJs(__triagem.patientNome)}', document.getElementById('triagemTextoCliente').value)">📄 Descarregar PDF</button>
         <button class="ghost" onclick="shareReportPDF('Relatório de ${escapeAttrJs(__triagem.patientNome)}', document.getElementById('triagemTextoCliente').value)">📤 Partilhar</button>
       </div>
@@ -17902,6 +17953,51 @@ function cpTextoRelatorio(d){
   sec.push({ t: 'Uma nota importante', p: ['As cartas mostram tendências e não certezas. Este trabalho é complementar e não substitui o acompanhamento médico ou psicológico. As decisões são sempre da própria pessoa.', `Estou disponível para o que precisares. Com carinho,`.replace('precisares', tu ? 'precisares' : 'precisar'), d.assinatura || ''] });
   return sec.map(x => `== ${x.t} ==\n` + [(x.p || []).filter(Boolean).join('\n\n'), (x.l && x.l.length ? x.l.map(y => '- ' + y).join('\n') : '')].filter(Boolean).join('\n\n')).join('\n\n');
 }
+// Relatório bonito (ilustrado e interativo) a partir da mesma leitura do relatório em texto.
+function cpModeloBonito(d, palavras){
+  const tu = d.trat === 'tu';
+  const quem = d.para ? d.para.split(',')[0].trim() : '';
+  const nomeP = quem || d.sobre || '';
+  const blocos = [];
+  const todas = []; d.perguntas.forEach(q => q.cartas.forEach(c => todas.push(c)));
+  const chavesTodas = todas.map(c => c.naipe + ':' + c.valor);
+  const nAb = todas.filter(c => cpCaminho(c) === 'aberto').length, nFe = todas.filter(c => cpCaminho(c) === 'fechado').length;
+  const tom = nFe === 0 && nAb > 0 ? 1 : (nFe > nAb ? 3 : 2);
+  blocos.push({ tipo:'texto', icone:'👋', titulo: quem ? `Para ${quem}` : 'Introdução', paras:[`Tirei as cartas a pensar nas perguntas sobre ${d.sobre || 'a pessoa'}. Escrevi tudo em palavras simples, com sinceridade, sem assustar e sem enfeitar. Toque nas cartas e nas caixas para ver mais.`] });
+  d.perguntas.forEach((q, i) => {
+    const n = q.cartas.length, lbs = cpEtiquetas(n), R = q.cartas.map(cpRico);
+    blocos.push({ tipo:'cartas', icone:'🃏', titulo:`${i + 1}. ${q.texto || 'Leitura'}`, cartas: q.cartas.map((c, j) => ({ naipe:c.naipe, valor:c.valor, rotulo:lbs[j], nome:cpNomeCarta(c), significado:(CP_SIGNIF[c.naipe]||{})[c.valor] || '' })) });
+    const ab = q.cartas.filter(c => cpCaminho(c) === 'aberto').length, me = q.cartas.filter(c => cpCaminho(c) === 'a meio').length;
+    const pct = Math.round((ab + me * 0.5) / n * 100);
+    blocos.push({ tipo:'medidor', icone:'🌡️', titulo:'Energia do momento', valor:pct, destaque: pct >= 65 ? 'Maré favorável' : (pct >= 40 ? 'Maré mista' : 'Pede paciência'), legenda: pct >= 65 ? 'Há mais portas abertas do que fechadas nesta pergunta.' : (pct >= 40 ? 'Há portas abertas e outras que pedem tempo e cuidado.' : 'Várias portas estão fechadas por agora. Não é para sempre: pede calma e mudança de atitude.') });
+    const cf = cpCaminho(q.cartas[n === 5 ? 3 : n - 1]);
+    blocos.push({ tipo:'caminhos', icone:'🛤️', titulo:'Caminhos', itens: q.cartas.map((c, j) => ({ rotulo:lbs[j], estado:cpCaminho(c) })), texto: cf === 'aberto' ? 'O caminho à frente está ABERTO.' : (cf === 'fechado' ? 'O caminho à frente está FECHADO por agora: pede paciência e mudança de atitude antes de avançar.' : 'O caminho à frente está aberto, mas com condições: pede atenção e decisões conscientes.') });
+    let sente = `Sente-se ${R[0][0]}.`; if (n > 1 && R[1][0] !== R[0][0]) sente += ` Por trás disso, sente-se também ${R[1][0]}.`;
+    blocos.push({ tipo:'texto', icone:'💭', titulo:'Como se sente', paras:[sente] });
+    const passos = n === 1 ? [{ rotulo:'Tendência', texto:cpCap(R[0][1]) + '.' }] : (n === 3 ? [{ rotulo:'A curto prazo', texto:cpCap(R[1][1]) + '.' }, { rotulo:'Mais à frente', texto:cpCap(R[2][1]) + '.' }] : [{ rotulo:'A curto prazo', texto:cpCap(R[1][1]) + '.' }, { rotulo:'Mais à frente', texto:cpCap(R[3][1]) + '.' }]);
+    blocos.push({ tipo:'linha', icone:'🔮', titulo:'O que tende a acontecer', passos });
+    const cons = n === 1 ? `${cpCap(R[0][2])}.` : (n === 3 ? `${cpCap(R[1][2])}; e, a seguir, ${R[2][2]}.` : `${cpCap(R[4][2])}; e, perante o desafio, ${R[1][2]}.`);
+    blocos.push({ tipo:'texto', icone:'🧭', titulo:'Conselho e direção', paras:[cons].concat(d.foco && CP_FOCO[d.foco] ? [`${CP_FOCO[d.foco][0]}: no conjunto, ${CP_FOCO[d.foco][tom]}`] : []) });
+  });
+  const negs = chavesTodas.filter(k => CP_NEG[k]).filter((k, i, a) => a.indexOf(k) === i);
+  blocos.push(negs.length
+    ? { tipo:'lista', icone:'🛡️', titulo:'Energias à volta', marca:'⚠️', itens: negs.map(k => { const [nv, vl] = k.split(':'); return `${cpNomeCarta({ naipe:nv, valor:vl })}: ${CP_NEG[k]}.`; }).concat(negs.length >= 2 ? ['São sinais, não certezas. Vale a pena confirmar com uma avaliação mais profunda.'] : []) }
+    : { tipo:'texto', icone:'🛡️', titulo:'Energias à volta', paras:['A mesa está limpa: não saiu nenhuma carta que aponte para energia negativa à volta da pessoa. ✨'] });
+  blocos.push({ tipo:'texto', icone:'⏳', titulo:'Quando?', paras:[ d.tempo ? cpTempoTexto(d.tempo) : 'Nesta tiragem não saiu nenhuma Carta de Tempo, por isso não há prazo. As cartas mostram a ordem dos acontecimentos: primeiro o que está a acontecer agora e só depois o que vem a seguir.' ] });
+  blocos.push({ tipo:'texto', icone:'🌈', titulo:'No conjunto', paras:[ tom === 1 ? 'A tendência é favorável: há mais caminhos abertos do que fechados.' : (tom === 3 ? 'Leitura que pede cuidado e paciência: há mais caminhos fechados do que abertos.' : 'Leitura mista: há portas abertas e outras que pedem tempo.') ] });
+  return { tema:'cartas', emoji:'🔮', titulo:'A sua leitura de cartas', subtitulo: d.sobre ? 'Sobre ' + d.sobre : '', nome: nomeP, data: new Date().toLocaleDateString('pt-PT'), assinatura: d.assinatura || '', blocos, mensagem: palavras || '' };
+}
+window.cpBonito = function(){
+  const d = __cpUltimo; if (!d) return;
+  const palavras = (document.getElementById('cpPalavras')?.value || '').trim();
+  const m = cpModeloBonito(d, palavras);
+  rbPreVisualizar(m, { aoGuardar: async () => {
+    if (!d.patientId){ toast('Escolhe primeiro o paciente (separador das várias perguntas) para guardar na ficha e mostrar no portal.', true); return; }
+    const ok = await guardarNaFicha(d.patientId, { tipo:'cartomancia', titulo:'Leitura de cartas (relatório ilustrado)', texto: cpTextoRelatorio(d), reportHtml: rbFragmento(m), dados:{ perguntas: d.perguntas.map(q => ({ texto:q.texto, cartas:q.cartas.map(cpNomeCarta) })) } });
+    toast(ok ? 'Relatório ilustrado guardado na ficha e disponível no portal do paciente ✓' : 'Não consegui guardar na ficha.', !ok);
+  } });
+};
+
 window.cpGerar = function(){
   const perguntas = __cpPerguntas.map(q => ({ texto: q.texto.trim(), cartas: q.cartas.slice(0, q.n) }));
   if (!perguntas.length || perguntas.some(q => !q.texto)){ toast('Escreve o texto de cada pergunta.', true); return; }
@@ -17917,8 +18013,11 @@ function cpMostrar(d, aviso){
     <h3>✉️ Relatório${d.para ? ' para ' + escapeHtml(d.para) : ''}</h3>
     <p class="muted" style="margin:4px 0 8px;">${aviso ? escapeHtml(aviso) + ' ' : ''}Rascunho feito com os significados do método. Lê, acrescenta a tua interpretação onde quiseres e só depois guarda ou envia.</p>
     <textarea id="cpTexto" rows="22" style="width:100%;">${escapeHtml(texto)}</textarea>
+    <label style="margin-top:10px;">💌 Palavras tuas para a pessoa (opcional, aparecem no relatório ilustrado)</label>
+    <textarea id="cpPalavras" rows="3" style="width:100%;" placeholder="Ex.: Fica tranquilo(a), estou aqui para o que precisares."></textarea>
     <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;">
-      <button class="primary" onclick="cpGuardar()">💾 Guardar</button>
+      <button class="primary" onclick="cpBonito()">✨ Relatório ilustrado</button>
+      <button class="ghost" onclick="cpGuardar()">💾 Guardar</button>
       <button class="ghost" onclick="downloadReportPDF('Leitura das cartas', document.getElementById('cpTexto').value)">📄 Descarregar PDF</button>
       <button class="ghost" onclick="shareReportPDF('Leitura das cartas', document.getElementById('cpTexto').value)">📤 Partilhar</button>
     </div></div>`;
