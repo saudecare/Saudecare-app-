@@ -74,6 +74,14 @@ const CSS = `
 .rbx details.det summary:after{content:'ℹ️';font-size:14px}
 .rbx details.det .in{padding:0 12px 10px;font-size:14px}
 .rbx details.det .in i{display:block;margin-top:5px;color:var(--mut)}
+.rbx .nums{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.rbx .num{width:46%;min-width:140px;background:var(--fundo);border-radius:16px;padding:10px 8px;text-align:center;animation:rbvira .8s ease both}
+.rbx .num summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;align-items:center;gap:6px}
+.rbx .num summary::-webkit-details-marker{display:none}
+.rbx .bola{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;background:radial-gradient(circle at 30% 25%,var(--c),var(--b) 55%,var(--a));box-shadow:0 4px 10px rgba(60,30,90,.3);transition:transform .3s}
+.rbx .num:hover .bola{transform:scale(1.12) rotate(8deg)}
+.rbx .num .nr{font-size:12.5px;font-weight:600;color:var(--a)}
+.rbx .num p{font-size:12.5px;margin:6px 0 0;text-align:left}
 .rbx .galeria{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
 .rbx .galeria img{max-width:100%;width:220px;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 .rbx .msg{background:linear-gradient(135deg,#fff,var(--fundo));border:2px dashed var(--b);border-radius:18px;padding:16px;margin:14px 0}
@@ -177,11 +185,13 @@ function bloco(b, T) {
     case 'caminhos':
       return `<section class="bloco">${tit}<div class="caminhos">${(b.itens || []).map(it => { const k = it.estado === 'aberto' ? 'aberto' : (it.estado === 'fechado' ? 'fechado' : 'meio'); return `<div class="placa ${k}"><b>${k === 'aberto' ? '🟢' : (k === 'fechado' ? '🔴' : '🟡')}</b>${esc(it.rotulo)}<br><small>${k === 'aberto' ? 'Caminho aberto' : (k === 'fechado' ? 'Caminho fechado por agora' : 'Aberto, com condições')}</small></div>`; }).join('')}</div>${b.texto ? `<p>${nl(b.texto)}</p>` : ''}</section>`;
     case 'lista':
-      return `<section class="bloco">${tit}<ul class="lista">${(b.itens || []).map(x => `<li data-i="${esc(b.marca || '•')}">${nl(x)}</li>`).join('')}</ul></section>`;
+      return `<section class="bloco">${tit}<ul class="lista">${(b.itens || []).map(x => `<li data-i="${esc(b.marca != null ? b.marca : '•')}"${b.marca === '' ? ' style="padding-left:12px"' : ''}>${nl(x)}</li>`).join('')}</ul></section>`;
     case 'linha':
       return `<section class="bloco">${tit}<div class="passos">${(b.passos || []).map(p => `<div class="passo"><b>${esc(p.rotulo)}</b><br>${nl(p.texto)}</div>`).join('')}</div></section>`;
     case 'detalhe':
       return `<section class="bloco">${tit}${b.intro ? `<p class="mut">${nl(b.intro)}</p>` : ''}${(b.itens || []).map(it => `<details class="det"><summary>${esc(it.nome)}${it.valor != null ? ` <small style="color:#6d6477;font-weight:400">${Math.round(it.valor)}%</small>` : ''}</summary><div class="in">${it.descricao ? nl(it.descricao) : ''}${it.exemplo ? `<i>Exemplo: ${nl(it.exemplo)}</i>` : ''}</div></details>`).join('')}</section>`;
+    case 'numeros':
+      return `<section class="bloco">${tit}<div class="nums">${(b.itens || []).map((it, i) => `<details class="num" style="animation-delay:${i * .08}s"><summary><span class="bola">${esc(it.valor)}</span><span class="nr">${esc(it.rotulo)}</span></summary><p>${nl(it.texto || '')}</p></details>`).join('')}</div></section>`;
     case 'secoes':
       return `<section class="bloco">${tit}${(b.itens || []).map(it => `<details class="det"><summary>${esc(it.nome)}</summary><div class="in">${(it.paras || []).filter(Boolean).map(p => `<p>${nl(p)}</p>`).join('')}</div></details>`).join('')}</section>`;
     case 'imagens':

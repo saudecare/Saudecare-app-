@@ -103,6 +103,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { rbPreVisualizar } from "./relatorio-bonito.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
@@ -1540,6 +1541,54 @@ function renderPerfilCasalHTML(p){
     </div>`;
 }
 
+// Versão ilustrada e interativa do Mapa da Alma (mesma informação do relatório, em caixas que abrem).
+function mapaModeloBonito(r, full, dom){
+  const tx = (n) => (DONS_NUMERICOS[n] || {}).texto || '';
+  const nm = (n) => (DONS_NUMERICOS[n] || {}).nome || '';
+  const blocos = [];
+  if (r.leituraIntegrada) blocos.push({ tipo:'texto', icone:'🔮', titulo:'A sua leitura', paras:[r.leituraIntegrada] });
+  if (r.tipo !== 'casal'){
+    const n = [{ valor:r.caminhoDeVida, rotulo:'Caminho de Vida · ' + nm(r.caminhoDeVida), texto:tx(r.caminhoDeVida) }];
+    if (full.expressao) n.push({ valor:full.expressao, rotulo:'Expressão · ' + nm(full.expressao), texto:tx(full.expressao) });
+    if (r.motivacao) n.push({ valor:r.motivacao, rotulo:'Número da Alma · ' + nm(r.motivacao), texto:tx(r.motivacao) });
+    if (full.impressao) n.push({ valor:full.impressao, rotulo:'Impressão · ' + nm(full.impressao), texto:tx(full.impressao) });
+    if (r.numExtra){
+      [['pedraAngular','Pedra Angular'],['maturidade','Maturidade'],['atitude','Atitude'],['equilibrio','Equilíbrio']].forEach(([k, t]) => { if (r.numExtra[k]) n.push({ valor:r.numExtra[k], rotulo:t + ' · ' + nm(r.numExtra[k]), texto:tx(r.numExtra[k]) }); });
+    }
+    blocos.push({ tipo:'numeros', icone:'💎', titulo:'A sua assinatura cósmica', itens:n });
+    if (full.luz || full.sombra) blocos.push({ tipo:'lista', icone:'🌗', titulo:'Luz e sombra', itens:[full.luz ? '💎 Luz: ' + full.luz : '', full.sombra ? '🌑 Sombra: ' + full.sombra : ''].filter(Boolean), marca:'' });
+    if (full.carmicasTexto) blocos.push({ tipo:'texto', icone:'🔑', titulo:'Lições cármicas', paras:[full.carmicasTexto, full.excessoTexto].filter(Boolean) });
+  }
+  if (r.anjo && r.anjo.tipo === 'anjo') blocos.push({ tipo:'lista', icone:'🕊️', titulo:'O seu Anjo do Nascimento: ' + r.anjo.nome, marca:'', itens:[`${r.anjo.numero}º da hierarquia dos ${r.anjo.coro}, sob a regência do ${r.anjo.arcanjoRegente}.`, '💎 Virtude: ' + r.anjo.virtude, '🌑 Sombra a vigiar: ' + r.anjo.sombra] });
+  else if (r.anjo && r.anjo.tipo === 'universal') blocos.push({ tipo:'texto', icone:'🕊️', titulo:'A sua essência angelical universal', paras:[r.anjo.nota || ''] });
+  if (r.ciclos && r.ciclos.anoPessoal){
+    const ap = Number(r.ciclos.anoPessoal) || 0;
+    blocos.push({ tipo:'medidor', icone:'📅', titulo:'O seu ano no ciclo de 9 anos', valor:Math.min(100, ap / 9 * 100), destaque:'Ano Pessoal ' + ap, legenda:`${nm(ap)}. ${tx(ap)}  Mês pessoal ${r.ciclos.mesPessoal} · Dia pessoal ${r.ciclos.diaPessoal}.` });
+  }
+  if (r.pinAtivo) blocos.push({ tipo:'linha', icone:'🗻', titulo:'Os seus 4 pináculos (ciclos de vida)', passos: r.pinAtivo.todos.map((p, i) => ({ rotulo:`${i === r.pinAtivo.indice ? '⭐ ' : ''}${i + 1}º Pináculo · ${p.faixa}${i === r.pinAtivo.indice ? ' (o atual)' : ''}`, texto:`${p.numero} — ${nm(p.numero)}. ${tx(p.numero)}` })) });
+  if (r.nodos) blocos.push({ tipo:'lista', icone:'🌑', titulo:'Vidas passadas e propósito (nodos lunares)', marca:'', itens:[`🌑 De onde vem (${r.nodos.nodoSul.signo}): ${NODO_SUL_TEXTOS[r.nodos.nodoSul.signo] || ''}`, `🌕 Para onde vai (${r.nodos.nodoNorte.signo}): ${NODO_NORTE_TEXTOS[r.nodos.nodoNorte.signo] || ''}`, 'Leitura simbólica, não é um facto histórico: serve de bússola de autoconhecimento.'] });
+  if (r.arcanoP){
+    const a = ARCANOS_MAIORES[r.arcanoP] || {}, b = r.arcanoA ? (ARCANOS_MAIORES[r.arcanoA] || {}) : null;
+    blocos.push({ tipo:'numeros', icone:'🃏', titulo:'Os seus arcanos', itens:[{ valor:r.arcanoP, rotulo:'Arcano pessoal · ' + (a.nome || ''), texto:a.texto || '' }].concat(b ? [{ valor:r.arcanoA, rotulo:'Arcano do ano · ' + (b.nome || ''), texto:b.texto || '' }] : []) });
+  }
+  if (full.signoTexto) blocos.push({ tipo:'texto', icone:'♈', titulo:'O seu signo: ' + r.signo, paras:[`Elemento ${full.signoElemento || ''}, regido por ${full.signoRegente || ''}. Cristal do signo: ${full.cristalSigno || ''}.`, full.signoTexto] });
+  if (full.chakraInfo && r.diaInfo) blocos.push({ tipo:'lista', icone:'⚡', titulo:'Chakra em foco: ' + r.diaInfo.chakra, marca:'', itens:[`Cor: ${full.chakraInfo.cor || ''}`, `Significado: ${full.chakraInfo.significado || ''}`, `Sinais de desequilíbrio: ${full.chakraInfo.desequilibrio || ''}`, `Prática de equilíbrio: ${full.chakraInfo.pratica || ''}`] });
+  if (full.casal) blocos.push({ tipo:'texto', icone:'💞', titulo:'Compatibilidade do casal', paras:[`Vibração do casal: ${full.casal.vibracaoCasal}. ${full.casal.vibracaoCasalTexto || ''}`, full.casal.compatNumero ? full.casal.compatNumero.texto : '', full.casal.compatNumero ? full.casal.compatNumero.conselho : ''].filter(Boolean) });
+  if (full.grupo) blocos.push({ tipo:'texto', icone:'👨‍👩‍👧', titulo:'Leitura de grupo', paras:[`Vibração conjunta: ${full.grupo.vibracaoGrupo}. ${full.grupo.vibracaoGrupoTexto || ''}`, full.grupo.harmoniaTexto || ''].filter(Boolean) });
+  const banhos = [];
+  if (full.banhoErvas) banhos.push('🌿 Banho de ervas (' + r.signo + '): ' + full.banhoErvas + (full.banhoModo ? '. ' + full.banhoModo : ''));
+  if (full.banhoDescarrego) banhos.push('🌊 Descarrego: ' + (full.banhoDescarrego.ervas || '') + ' ' + (full.banhoDescarrego.modo || ''));
+  if (full.banhoProtecao) banhos.push('🛡️ Proteção: ' + (full.banhoProtecao.ervas || '') + ' ' + (full.banhoProtecao.modo || ''));
+  if (full.mantra) banhos.push('🎵 Mantra sugerido: ' + full.mantra);
+  if (banhos.length) blocos.push({ tipo:'lista', icone:'🛁', titulo:'Rituais e banhos', marca:'', itens:banhos });
+  if (full.planoAtivacao){
+    const linhas = String(full.planoAtivacao).split('\n').map(x => x.trim()).filter(Boolean);
+    blocos.push({ tipo:'linha', icone:'🗝️', titulo:'Plano de ativação (7 a 21 dias)', passos: linhas.map((l, i) => { const m = l.match(/^([^:–-]{2,28})[:–-]\s*(.+)$/); return m ? { rotulo:m[1].trim(), texto:m[2] } : { rotulo:'Passo ' + (i + 1), texto:l }; }) });
+  }
+  return { tema:'alma', emoji:'🌟', titulo:'O seu Mapa da Alma', subtitulo:'Mapa da Alma Diamante', nome:r.nome, data:new Date().toLocaleDateString('pt-PT'), assinatura:'Hikari Fafe', blocos,
+    aviso:'Leitura simbólica e de autoconhecimento. É um trabalho complementar e não substitui avaliação ou acompanhamento médico ou psicológico.' };
+}
+
 function renderFullReport(data){
   const r = data.freeResult;
   const full = data.fullResult || {};
@@ -1757,12 +1806,14 @@ function renderFullReport(data){
       <p class="muted" style="margin-top:6px;white-space:pre-wrap;">${escapeHtml(full.planoAtivacao||'')}</p>
     </div>
     <div class="card" style="text-align:center;">
-      <button class="btn" id="btnDownloadPdf">📥 Descarregar o meu Mapa em PDF</button>
+      <button class="btn" id="btnBonito">✨ Ver o meu Mapa ilustrado</button>
+      <button class="btn" id="btnDownloadPdf" style="margin-top:8px;">📥 Descarregar o meu Mapa em PDF</button>
       <p class="muted" style="margin-top:8px;">Guarde para reler sempre que precisar, ou imprima.</p>
     </div>
     ${renderShareAndPromoBlock(null, r.nome, r)}
   `;
   document.getElementById('btnDownloadPdf').addEventListener('click', () => downloadFullReportPDF(r, full, dom));
+  document.getElementById('btnBonito').addEventListener('click', () => { try { rbPreVisualizar(mapaModeloBonito(r, full, dom)); } catch(e){ console.error(e); alert('Não consegui abrir a versão ilustrada.'); } });
   wireShareAndPromoButtons(null, r.nome);
 }
 
