@@ -924,6 +924,20 @@ function renderForm(){
   document.getElementById('btnVoltarTipo').addEventListener('click', renderTypeSelector);
   wireElementosExtra();
   wireHoraSelector();
+  aplicarPrefillMapa();
+}
+
+// Cliente com ficha: a app (painel da terapeuta) deixa aqui nome, data de nascimento e
+// contacto por 15 minutos, neste aparelho, para não os escrever de novo.
+function aplicarPrefillMapa(){
+  try{
+    const raw = localStorage.getItem('vd_prefill_mapa');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (!d || !d.ts || Date.now() - d.ts > 15 * 60 * 1000){ localStorage.removeItem('vd_prefill_mapa'); return; }
+    const put = (id, v) => { const el = document.getElementById(id); if (el && v && !el.value) el.value = v; };
+    put('inpNome', d.nome); put('inpData', d.nascimento); put('inpContacto', d.contacto);
+  }catch(_){}
 }
 
 let horaModo = 'nenhuma';
@@ -1017,6 +1031,7 @@ function mostrarLimiteGratis(proxima){
 }
 
 async function onCalcular(){
+  try{ localStorage.removeItem('vd_prefill_mapa'); }catch(_){}
   const nome = document.getElementById('inpNome').value.trim();
   const data = document.getElementById('inpData').value;
   const contacto = document.getElementById('inpContacto').value.trim();

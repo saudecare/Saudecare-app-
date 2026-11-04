@@ -353,7 +353,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-03-6';
+const APP_VERSION = '2026-11-04-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10496,6 +10496,7 @@ async function renderMapaAlma(main){
     main.innerHTML = `<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">O Mapa da Alma é uma ferramenta exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>`;
     return;
   }
+  await carregarPacientes();
   const snap = await getDocs(collection(db, 'tenants', tenantId, 'mapaAlmaLeads'));
   const leads = [];
   snap.forEach(d => leads.push({ id: d.id, ...d.data() }));
@@ -10570,8 +10571,13 @@ async function renderMapaAlma(main){
       <p class="muted" style="margin-top:6px;">Para clientes que atende presencialmente
       ou por telefone, e que não passam pela página pública. Preenche os dados do
       cliente e o mapa sai completo de imediato, sem ecrã de pagamento.</p>
+      <label style="margin-top:10px;">Cliente com ficha (os dados entram sozinhos)</label>
+      <select id="mapaPacienteSel">
+        <option value="">— cliente novo, sem ficha —</option>
+        ${(window.__allPatientsCache||[]).map(p => `<option value="${p.id}">${escapeHtml(p.fullName||'')}</option>`).join('')}
+      </select>
       <button class="primary" style="margin-top:10px;"
-        onclick="window.open('${publicLink}?interno=1','_blank')">➕ Novo mapa para cliente</button>
+        onclick="abrirMapaCliente('${publicLink}?interno=1')">➕ Novo mapa para cliente</button>
       <p class="muted" style="margin-top:8px;font-size:.82rem;">O pedido fica registado
       aqui em <b>Pagos</b>, marcado como presencial, e pode reabrir o mapa quando quiser.</p>
     </div>`;
@@ -10836,6 +10842,23 @@ window.setCartoTab = function(id){ __cartoTab = id; renderCartomancia(document.g
 const CARTO_FUNCTION_URL = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/cartomancia';
 const CARTO_NAIPES = { paus:'♣ Paus', copas:'♥ Copas', espadas:'♠ Espadas', ouros:'♦ Ouros' };
 const CARTO_VALORES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+
+// Dados que a ficha já tem — para NENHUMA ferramenta voltar a pedir o que já está guardado.
+window.dadosPaciente = function(id){
+  const p = (window.__allPatientsCache||[]).find(x => x.id === id);
+  if (!p) return null;
+  return { id: p.id, nome: p.fullName || '', nascimento: p.birthDate || '', pais: p.birthCountry || '',
+           contacto: p.phone || p.email || '', telefone: p.phone || '', email: p.email || '' };
+};
+// Mapa da Alma "cliente": guarda os dados neste aparelho por instantes; a página do mapa lê-os e apaga-os.
+window.abrirMapaCliente = function(url){
+  const d = window.dadosPaciente(document.getElementById('mapaPacienteSel')?.value || '');
+  try {
+    if (d) localStorage.setItem('vd_prefill_mapa', JSON.stringify({ nome: d.nome, nascimento: d.nascimento, contacto: d.contacto, ts: Date.now() }));
+    else localStorage.removeItem('vd_prefill_mapa');
+  } catch(_){}
+  window.open(url, '_blank');
+};
 
 window.ctPreencherNome = function(){
   const sel = document.getElementById('ctPaciente');
