@@ -354,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-04-4';
+const APP_VERSION = '2026-11-04-5';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11269,6 +11269,72 @@ function triagemBuscarEtiquetas(temas, maxResult=2){
   return final.slice(0, maxResult);
 }
 
+/* ─── Numeração das etiquetas físicas ───────────────────────────────────
+   72 Nomes de Deus: o número do próprio Nome (1 a 72).
+   Restantes: A1, A2… (lista NOVAS_01) · B1, B2… (Usar em nós) · C1, C2… (só do protocolo).
+   A numeração segue a ordem das listas: para não baralhar as etiquetas já numeradas,
+   itens novos entram sempre no FIM de cada lista. */
+let __etqReg = null;
+function etqChave(pt){ return String(pt || '').trim().toLowerCase(); }
+function etqRegisto(){
+  if (__etqReg) return __etqReg;
+  const mapa = {}, lista = [];
+  const add = (grupo, num, heb, pt, nota) => {
+    const k = etqChave(pt); if (mapa[k]) return;
+    const it = { grupo, num, codigo: grupo === 'N' ? 'Nome ' + num : grupo + num, heb, pt, nota: nota || '' };
+    mapa[k] = it; lista.push(it);
+  };
+  TRIAGEM_NOMES_72.forEach(x => add('N', x.n, x.heb, x.pt));
+  let a = 0; TRIAGEM_ETQ_NOVAS01.forEach(x => { if (!mapa[etqChave(x.pt)]) add('A', ++a, x.heb, x.pt); });
+  let b = 0; TRIAGEM_ETQ_USAR_EM_NOS.forEach(x => { if (!mapa[etqChave(x.pt)]) add('B', ++b, x.heb, x.pt); });
+  let c = 0; TRIAGEM_PROTOCOLO_COMPLETO.forEach(f => f.itens.forEach(x => { if (!mapa[etqChave(x.pt)]) add('C', ++c, x.heb, x.pt, x.nota); }));
+  __etqReg = { mapa, lista }; return __etqReg;
+}
+function etqCodigo(pt){ const it = etqRegisto().mapa[etqChave(pt)]; return it ? it.codigo : ''; }
+const ETQ_COR = { N:'#5b2a86', A:'#0f6b73', B:'#b8650f', C:'#2f5d8a' };
+function etqBadge(pt){
+  const it = etqRegisto().mapa[etqChave(pt)]; if (!it) return '';
+  return `<span style="display:inline-block;min-width:44px;text-align:center;padding:2px 9px;border-radius:99px;background:${ETQ_COR[it.grupo]};color:#fff;font-weight:700;font-size:.95rem;margin-right:6px;">${escapeHtml(it.codigo)}</span>`;
+}
+window.abrirListaEtiquetas = function(){
+  const reg = etqRegisto();
+  const nomes = {}; TRIAGEM_NOMES_72.forEach(x => nomes[x.n] = x);
+  const todas = [];
+  for (let n = 1; n <= 72; n++) todas.push(nomes[n] ? reg.mapa[etqChave(nomes[n].pt)] : { grupo:'N', num:n, codigo:'Nome ' + n, heb:'', pt:'(descrição ainda não registada na app)', vazio:true });
+  reg.lista.filter(x => x.grupo !== 'N').forEach(x => todas.push(x));
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;overflow:auto;padding:12px';
+  ov.innerHTML = `<div style="max-width:760px;margin:0 auto;">
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;">
+      <h2 style="margin:0;flex:1;">🏷️ Etiquetas numeradas</h2>
+      <button class="ghost" id="etqImp">🖨️ Imprimir</button><button class="ghost" id="etqFechar">✖ Fechar</button></div>
+    <input id="etqPesq" placeholder="Procurar por número (ex.: 24, A7, B3) ou palavra (ex.: inveja, perdoar)…" style="width:100%;margin:10px 0;font-size:1rem;padding:10px;" autofocus>
+    <div id="etqChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
+    <p class="muted" style="margin:0 0 6px;">Nomes de Deus: número do próprio Nome (1–72). A, B, C: etiquetas das outras listas, numeradas por ordem. Itens novos entram sempre no fim, para não mudar as etiquetas que já numeraste.</p>
+    <div id="etqLista"></div></div>`;
+  document.body.appendChild(ov);
+  let filtro = '*';
+  const chips = [['*','Todas'],['N','Nomes de Deus'],['A','A · NOVAS_01'],['B','B · Usar em nós'],['C','C · Protocolo']];
+  const pintar = () => {
+    document.getElementById('etqChips').innerHTML = chips.map(([k, t]) => `<button class="${filtro === k ? 'primary' : 'ghost'}" data-k="${k}" style="padding:6px 12px;">${t}</button>`).join('');
+    const q = etqChave(document.getElementById('etqPesq').value).replace(/\s+/g, '');
+    const qt = etqChave(document.getElementById('etqPesq').value);
+    const vis = todas.filter(x => (filtro === '*' || x.grupo === filtro) && (!q || x.codigo.toLowerCase().replace(/\s+/g, '').indexOf(q) >= 0 || (/^\d+$/.test(q) && x.grupo === 'N' && String(x.num) === q) || x.pt.toLowerCase().indexOf(qt) >= 0));
+    document.getElementById('etqLista').innerHTML = vis.length ? vis.map(x => `<div style="display:flex;gap:10px;align-items:center;padding:8px 6px;border-bottom:1px solid #eee;${x.vazio ? 'opacity:.5;' : ''}">
+      <span style="min-width:74px;text-align:center;padding:4px 8px;border-radius:99px;background:${ETQ_COR[x.grupo]};color:#fff;font-weight:700;">${escapeHtml(x.codigo)}</span>
+      <span dir="rtl" style="min-width:90px;font-size:1.2rem;">${escapeHtml(x.heb)}</span>
+      <span style="flex:1;">${escapeHtml(x.pt)}${x.nota ? `<br><small class="muted">${escapeHtml(x.nota)}</small>` : ''}</span></div>`).join('') : '<p class="muted">Nenhuma etiqueta encontrada.</p>';
+  };
+  ov.addEventListener('click', e => {
+    const t = e.target; if (!t || !t.id && !t.getAttribute) return;
+    if (t.id === 'etqFechar') ov.remove();
+    else if (t.id === 'etqImp'){ const w = window.open('', '_blank'); if (!w){ toast('O navegador bloqueou a janela de impressão.', true); return; } w.document.write('<meta charset="utf-8"><title>Etiquetas numeradas</title><style>body{font-family:sans-serif}div.l{display:flex;gap:10px;padding:5px;border-bottom:1px solid #ccc;align-items:center}b{min-width:70px}</style><h2>Etiquetas numeradas</h2>' + todas.filter(x => !x.vazio).map(x => `<div class="l"><b>${escapeHtml(x.codigo)}</b><span dir="rtl" style="min-width:90px">${escapeHtml(x.heb)}</span><span>${escapeHtml(x.pt)}</span></div>`).join('')); w.document.close(); w.print(); }
+    else if (t.getAttribute('data-k')){ filtro = t.getAttribute('data-k'); pintar(); }
+  });
+  document.getElementById('etqPesq').addEventListener('input', pintar);
+  pintar();
+};
+
 /* ─── Estado da consulta (9 passos) ─────────────────────────────────────
    Passos 0-6 são PURA SELEÇÃO (o que o pêndulo detectou) — sem cartas.
    A Leitura Complementar (passo 7) é a ÚNICA parte com cartas. */
@@ -12048,6 +12114,7 @@ function triagemPassoTratamento(main){
       <p class="muted">${n1 ? '1.ª consulta: protocolo completo.' : 'Etiquetas escolhidas pelo que saiu na triagem de hoje.'} São ${itens.length} etiquetas, por ordem. Toca em cada uma quando a aplicares.</p>
       <div id="triagemEtqLista" style="margin-top:8px;"></div>
       <p id="triagemEtqContagem" class="muted" style="margin-top:8px;"></p>
+      <button class="ghost" onclick="abrirListaEtiquetas()" style="margin-top:6px;">🏷️ Procurar etiqueta (lista numerada)</button>
       <button class="ghost" id="triagemEtqTodas" style="margin-top:6px;">Marcar todas como aplicadas</button>
     </div>
     <div class="card" style="border:2px solid var(--primary);">
@@ -12078,7 +12145,7 @@ function triagemPassoTratamento(main){
       const on = feitas.has(it.heb);
       return cab + `<div class="row" style="gap:10px;padding:10px;margin-top:4px;border-radius:10px;cursor:pointer;background:${on ? '#eef7ee' : '#f7f7f5'};" onclick="window.__triagemTogEtq(${i})">
         <span style="font-size:1.4rem;">${on ? '☑' : '⬜'}</span>
-        <span style="flex:1;"><strong>${i + 1}.</strong> <span dir="rtl" style="font-size:1.1rem;">${escapeHtml(it.heb)}</span><br><span class="muted">${escapeHtml(it.pt)}</span></span></div>`;
+        <span style="flex:1;">${etqBadge(it.pt) || '<strong>' + (i + 1) + '.</strong>'} <span dir="rtl" style="font-size:1.1rem;">${escapeHtml(it.heb)}</span><br><span class="muted">${escapeHtml(it.pt)}</span></span></div>`;
     }).join('');
     const n = itens.filter(it => feitas.has(it.heb)).length;
     document.getElementById('triagemEtqContagem').textContent = `${n} de ${itens.length} aplicadas`;
@@ -17291,11 +17358,11 @@ async function triagemGerarRelatorio(){
   reportText += ehPrimeiraSessao ? triagemProtocoloCompletoTexto(causasDetetadas, chakrasTodos, aberturaNivel) : triagemProtocoloSessaoTexto(causasDetetadas, chakrasTodos, aberturaNivel);
   if (etiquetasAplicadas.length){
     reportText += `== Etiquetas aplicadas nesta sessão (${etiquetasAplicadas.length} de ${itensAplicar.length}) ==\n`;
-    etiquetasAplicadas.forEach((it, i) => { reportText += `${i + 1}. ${it.pt}\n`; });
+    etiquetasAplicadas.forEach((it, i) => { reportText += `${i + 1}. [${etqCodigo(it.pt) || '—'}] ${it.pt}\n`; });
     reportText += `Bovis: ${__triagem.bovisIni || '—'} → ${__triagem.bovisFin || '—'}\n\n`;
   }
   reportText += `== Protocolo de Limpeza (etiquetas a usar) ==\n`;
-  protocoloFinal.forEach(p => { reportText += `• ${p.item.heb}  —  ${p.item.pt}${p.item.numero ? ' (Nome '+p.item.numero+' dos 72 Nomes de Deus)' : ''}  [${p.fonte} · ${p.motivo}]\n`; });
+  protocoloFinal.forEach(p => { reportText += `• [${etqCodigo(p.item.pt) || '—'}] ${p.item.heb}  —  ${p.item.pt}  [${p.fonte} · ${p.motivo}]\n`; });
   reportText += `\n== Sessões de Limpeza Recomendadas ==\n${__triagem.sessoesNecessarias || '—'} sessão(ões) · Preço indicado: ${__triagem.preco ? __triagem.preco+'€' : '—'}\n`;
   if (temAlgumaCoisaDetetada) reportText += `\n== Aviso ao Paciente — Reações Pós-Limpeza ==\n${NOTA_CRISE_DE_CURA}\n`;
 
@@ -17338,11 +17405,11 @@ async function triagemGerarRelatorio(){
       porTras: __triagem.leituraComplementar.porTras.nome,
       tendencia: __triagem.leituraComplementar.tendencia.nome
     } : null,
-    protocolo: protocoloFinal.map(p => ({ fonte:p.fonte, heb:p.item.heb, pt:p.item.pt, numero:p.item.numero||null, motivo:p.motivo })),
+    protocolo: protocoloFinal.map(p => ({ codigo: etqCodigo(p.item.pt) || null, fonte:p.fonte, heb:p.item.heb, pt:p.item.pt, numero:p.item.numero||null, motivo:p.motivo })),
     sessoesNecessarias: __triagem.sessoesNecessarias || null,
     preco: __triagem.preco || null,
     pagamento: pagamentoInfo,
-    etiquetasAplicadas: etiquetasAplicadas.map(it => ({ heb: it.heb, pt: it.pt, fase: it.fase })),
+    etiquetasAplicadas: etiquetasAplicadas.map(it => ({ codigo: etqCodigo(it.pt) || null, heb: it.heb, pt: it.pt, fase: it.fase })),
     tratamentoAplicado: etiquetasAplicadas.length > 0,
     continuacaoDe: __triagem.continuacaoDe || null,
     motivoPlano: __triagem.motivoPlano || null,
@@ -17580,7 +17647,7 @@ function triagemAplicadasHTML(aplicadas, total){
   return `<div class="card" style="border:2px solid var(--primary);">
     <h3>✅ Tratamento aplicado nesta sessão</h3>
     <p class="muted">${aplicadas.length} de ${total} etiquetas · Bovis ${escapeHtml(__triagem.bovisIni || '—')} → ${escapeHtml(__triagem.bovisFin || '—')}</p>
-    ${aplicadas.map((it, i) => `<div style="margin-top:4px;">${i + 1}. <span dir="rtl">${escapeHtml(it.heb)}</span> — ${escapeHtml(it.pt)}</div>`).join('')}
+    ${aplicadas.map((it, i) => `<div style="margin-top:4px;">${i + 1}. ${etqBadge(it.pt)}<span dir="rtl">${escapeHtml(it.heb)}</span> — ${escapeHtml(it.pt)}</div>`).join('')}
   </div>`;
 }
 function triagemDataLocalISO(d){ const z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; }
@@ -17724,9 +17791,10 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
     </div>` : ''}
     <div class="card">
       <h3>🧴 Protocolo de Limpeza — Etiquetas a Usar</h3>
+      <button class="ghost" onclick="abrirListaEtiquetas()" style="margin-bottom:6px;">🏷️ Ver lista de etiquetas numeradas</button>
       ${protocoloFinal.map(p => `<div class="row" style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
         <span style="direction:rtl;min-width:70px;text-align:right;font-size:16px;">${p.item.heb}</span>
-        <span style="flex:1;margin-left:10px;">${escapeHtml(p.item.pt)}${p.item.numero ? ` <strong>(Nome ${p.item.numero} — 72 Nomes de Deus)</strong>` : ''} <em class="muted">· ${escapeHtml(p.motivo)}</em></span>
+        <span style="flex:1;margin-left:10px;">${etqBadge(p.item.pt)}${escapeHtml(p.item.pt)} <em class="muted">· ${escapeHtml(p.motivo)}</em></span>
         <span class="badge">${escapeHtml(p.fonte)}</span>
       </div>`).join('')}
     </div>
