@@ -89,7 +89,15 @@ export function renderPesquisaIntegrada(main, ctx) {
       const def = ACHADOS.find((x) => x.id === id); if (!def) return;
       def.tecnicas.forEach((t) => { pont[t] = (pont[t] || 0) + (a.n || 1) * 2; });
     });
-    const fracos = Object.values(S.corpos).filter((v) => v >= 2).length;
+    /* O questionário também conta: o que a pessoa indicou entra no plano (com menos peso) enquanto o pêndulo não confirma */
+    const ap = analisePre(); let fracosPre = 0;
+    if (ap) {
+      const catPre = {};
+      CAUSAS_40.forEach((c) => { const sc = ap.sug[c.n]; if (sc && !S.achados[c.cat]) catPre[c.cat] = Math.max(catPre[c.cat] || 0, sc); });
+      Object.entries(catPre).forEach(([id, sc]) => { const def = ACHADOS.find((x) => x.id === id); if (def) def.tecnicas.forEach((t) => { pont[t] = (pont[t] || 0) + sc; }); });
+      fracosPre = Object.entries(ap.dicas).filter(([id, v]) => v >= 2 && S.corpos[id] == null).length;
+    }
+    const fracos = Object.values(S.corpos).filter((v) => v >= 2).length + fracosPre;
     if (fracos) { pont.reiki = (pont.reiki || 0) + fracos; pont.chakras = (pont.chakras || 0) + 1; }
     const mu = Object.values(S.chakras).filter((v) => v >= 2).length; if (mu) pont.chakras = (pont.chakras || 0) + mu;
     const bloqueada = (t) => { const d = TECNICAS.find((x) => x.id === t); return d && d.forte && (graves().length || delicado()); };
@@ -301,7 +309,7 @@ export function renderPesquisaIntegrada(main, ctx) {
         ${fixa ? '' : `<div class="row" style="gap:6px;margin-top:8px;"><button class="ghost" data-up="${id}" ${i === 0 ? 'disabled' : ''}>▲</button><button class="ghost" data-dn="${id}" ${i === S.escolhidas.length - 1 ? 'disabled' : ''}>▼</button><button class="ghost" data-rm="${id}" style="color:#dc2626">Tirar</button></div>`}</div>`;
     };
     const fora = TECNICAS.filter((t) => !t.fixa && t.id !== 'pesquisa' && !S.escolhidas.includes(t.id));
-    return `<p class="muted" style="margin:0 0 8px;">Plano à medida, pelo que saiu${delicado() || S.primeira ? ' e por ser uma pessoa a tratar com mais cuidado: poucas técnicas e só as mais suaves' : ''}. Podes mudar a ordem, tirar ou juntar.</p>
+    return `<p class="muted" style="margin:0 0 8px;">Plano à medida, pelo que saiu${analisePre() ? ' na pesquisa e no questionário da pessoa' : ''}${delicado() || S.primeira ? ' e por ser uma pessoa a tratar com mais cuidado: poucas técnicas e só as mais suaves' : ''}. Podes mudar a ordem, tirar ou juntar.</p>
       ${sug.bloqueadas.length ? `<div class="card" style="background:#fef9e7;margin-bottom:8px;font-size:.85rem;">🛑 Não sugeridas por precaução: ${sug.bloqueadas.map((t) => esc((TECNICAS.find((x) => x.id === t) || {}).nome || t)).join(', ')}.</div>` : ''}
       <h3 style="margin:8px 0 6px;">Começo</h3>${fixas('inicio').map((i) => cartao(i, true)).join('')}
       <h3 style="margin:8px 0 6px;">Tratamento</h3>${S.escolhidas.map((i) => cartao(i, false)).join('') || '<p class="muted">Nenhuma técnica escolhida.</p>'}
@@ -395,7 +403,7 @@ export function renderPesquisaIntegrada(main, ctx) {
     main.querySelectorAll('[data-tec]').forEach((b) => b.onclick = () => { tecAtual = +b.dataset.tec; ver(); });
     main.querySelectorAll('[data-pf]').forEach((c) => c.onchange = () => { const [id, i] = c.dataset.pf.split('|'); (S.passosFeitos[id] = S.passosFeitos[id] || {})[i] = c.checked; });
     on('#pi-feita', () => { const plano = planoAtual(); S.feitas[plano[tecAtual]] = true; if (tecAtual < plano.length - 1) tecAtual++; ver(); window.scrollTo(0, 0); });
-    on('#pi-etq', () => { if (ctx.abrirTriagem) ctx.abrirTriagem(); });
+    on('#pi-etq', () => { if (ctx.abrirTriagem) ctx.abrirTriagem({ pac: S.pac, causas: CAUSAS_40.filter((c) => S.causas[c.n]).map((c) => c.n), caminhos: S.caminhos, chakraPct: S.chakraPct, bovisIni: S.bovisIni }); });
     const enviarPre = async () => {
       try { const id = await ctx.criarPreConsulta(S.pac, { titulo: PRE_TITULO, descricao: PRE_DESCRICAO + ' O terapeuta é um intercessor: a mudança que se mantém depende também de si. No fim encontra o termo de consentimento, que precisa de aceitar.', perguntas: PRE_CONSULTA.map((p) => { const o = { id: p.id, label: p.label, tipo: p.tipo }; if (p.opcoes) o.opcoes = p.opcoes; return o; }) }); pre = { id, estado: 'pendente' }; ctx.abrirEnvio({ responseId: id, titulo: PRE_TITULO, patientId: S.pac.id, patientName: S.pac.fullName }); ver(); }
       catch (e) { ctx.toast('Não consegui criar o questionário: ' + (e.message || e), true); }
