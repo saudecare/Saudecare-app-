@@ -354,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-09-3';
+const APP_VERSION = '2026-11-09-4';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12287,19 +12287,20 @@ window.triEterAbrir = async function(modo, opts){
         <button class="primary" data-a="todasFeitas" style="flex:0 0 auto;width:100%;padding:14px;">✔ Aplicadas todas, concluir</button>`;
     } else {
       const it = itens[idx], q = info(it), on = feitasSet.has(it.key);
-      corpo = `<div style="flex:0 0 auto;display:flex;align-items:center;gap:8px;"><div style="flex:0 0 auto;">${centro(78)}</div>
-          <div style="flex:1;"><div style="height:10px;border-radius:99px;background:#eee;overflow:hidden;"><div style="height:100%;width:${Math.round(nFeitas() / itens.length * 100)}%;background:linear-gradient(90deg,#c0398b,#5b2a86);"></div></div>
-          <small class="muted">Etiqueta ${idx + 1} de ${itens.length} · ${nFeitas()} aplicada(s)</small></div></div>
-        <div style="flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid ${on ? '#2e9d57' : 'var(--primary)'};border-radius:14px;margin:6px 0;padding:6px;text-align:center;">
-          <span style="font-size:12px;font-weight:700;color:#fff;background:${cor(q)};padding:1px 10px;border-radius:99px;">${escapeHtml(q.codigo || '')}</span>
-          <div style="flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;">${q.img ? `<img src="${q.img}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">` : `<span dir="rtl" style="font-size:64px;line-height:1.2;">${escapeHtml(q.heb || '')}</span>`}</div>
-          <b>${escapeHtml(it.pt)}</b>
-          <small class="muted" style="margin-top:4px;">🙏 Invoca a etiqueta · 🎯 pêndulo sobre o testemunho até parar ou mudar</small></div>
+      corpo = `<div style="flex:0 0 auto;"><div style="height:8px;border-radius:99px;background:#eee;overflow:hidden;"><div style="height:100%;width:${Math.round(nFeitas() / itens.length * 100)}%;background:linear-gradient(90deg,#c0398b,#5b2a86);"></div></div>
+          <small class="muted">Etiqueta ${idx + 1} de ${itens.length} · ${nFeitas()} aplicada(s)</small></div>
+        <div style="flex:0 0 38%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid ${on ? '#2e9d57' : 'var(--primary)'};border-radius:14px;margin:4px 0;padding:6px;text-align:center;box-sizing:border-box;">
+          <div style="flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;">${q.img ? `<img src="${q.img}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">` : `<span dir="rtl" style="font-size:56px;line-height:1.2;">${escapeHtml(q.heb || '')}</span>`}</div>
+          <div style="flex:0 0 auto;"><span style="font-size:12px;font-weight:700;color:#fff;background:${cor(q)};padding:1px 10px;border-radius:99px;">${escapeHtml(q.codigo || '')}</span> <b>${escapeHtml(it.pt)}</b></div></div>
+        <div id="triUmaBox" style="flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;"><div id="triUmaCentro"></div></div>
+        <small class="muted" style="flex:0 0 auto;text-align:center;margin-bottom:4px;">🙏 Invoca a etiqueta · 🎯 pêndulo sobre o testemunho até parar ou mudar</small>
         <div style="flex:0 0 auto;display:flex;gap:8px;"><button class="ghost" data-a="ant" ${idx ? '' : 'disabled'} style="padding:14px;">←</button>
           <button class="primary" data-a="feita" style="flex:1;padding:14px;">${idx + 1 < itens.length ? '✔ Aplicada, próxima →' : '✔ Aplicada, terminar'}</button>
           <button class="ghost" data-a="seg" ${idx + 1 < itens.length ? '' : 'disabled'} style="padding:14px;">→</button></div>`;
     }
     ov.innerHTML = topo + painel + corpo;
+    const ub = ov.querySelector('#triUmaBox'), uc = ov.querySelector('#triUmaCentro');
+    if (ub && uc) uc.innerHTML = centro(Math.max(110, Math.min(ub.clientWidth - 10, ub.clientHeight - 6, 260)));
     const c = ov.querySelector('#triCentro');
     if (c){ ajustar(); const sq = ov.querySelector('#triRing'); c.innerHTML = centro(Math.round(parseFloat(sq.style.width) * (itens.length <= 12 ? .34 : .22))); }
   }
