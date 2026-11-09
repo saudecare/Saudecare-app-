@@ -354,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-09-4';
+const APP_VERSION = '2026-11-09-5';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11371,6 +11371,7 @@ function triagemBuscarEtiquetas(temas, maxResult=2){
    itens novos entram sempre no FIM de cada lista. */
 let __etqReg = null;
 function etqChave(pt){ return String(pt || '').trim().toLowerCase(); }
+const NOMES72_HEB = 'והו ילי סיט עלם מהש ללה אכא כהת הזי אלד לאו ההע יזל מבה הרי הקם לאו כלי לוו פהל נלך ייי מלה חהו נתה האא ירת שאה ריי אום לכב ושר יחו להח כוק מנד אני חעם רהע ייז ההה מיכ וול ילה סאל ערי עשל מיה והו דני החש עמם ננא נית מבה פוי נמם ייל הרח מצר ומב יהה ענו מחי דמב מנק איע חבו ראה יבם היי מום'.split(' ');
 function etqRegisto(){
   if (__etqReg) return __etqReg;
   const mapa = {}, lista = [];
@@ -11381,6 +11382,7 @@ function etqRegisto(){
   };
   TRIAGEM_NOMES_72.forEach(x => add('N', x.n, x.heb, x.pt));
   NOMES72_TODOS.forEach((pt, i) => { if (!lista.some(x => x.grupo === 'N' && x.num === i + 1)) add('N', i + 1, '', pt); });
+  lista.forEach(x => { if (x.grupo === 'N' && NOMES72_HEB[x.num - 1]) x.heb = NOMES72_HEB[x.num - 1]; });
   lista.forEach(x => { if (x.grupo === 'N') x.img = 'nomes72/' + String(x.num).padStart(2, '0') + '.jpg'; });
   let a = 0; TRIAGEM_ETQ_NOVAS01.forEach(x => { if (!mapa[etqChave(x.pt)]) add('A', ++a, x.heb, x.pt); });
   let b = 0; TRIAGEM_ETQ_USAR_EM_NOS.forEach(x => { if (!mapa[etqChave(x.pt)]) add('B', ++b, x.heb, x.pt); });
@@ -12264,7 +12266,7 @@ window.triEterAbrir = async function(modo, opts){
     ['✨ Selar', 'Agradece e fecha o campo. Beber água ajuda a assentar.']];
   const tile = (it, i, x, y, t, tamImg) => { const q = info(it), on = feitasSet.has(it.key);
     return `<div data-t="${i}" style="position:absolute;left:${(x - t / 2).toFixed(2)}%;top:${(y - t / 2).toFixed(2)}%;width:${t}%;height:${t}%;border-radius:10px;background:${on ? '#eef7ee' : '#fff'};border:2px solid ${on ? '#2e9d57' : '#d9cde8'};display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;box-sizing:border-box;">
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:2px;box-sizing:border-box;min-height:0;">${q.img ? `<img src="${q.img}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">` : `<span dir="rtl" style="font-size:${tamImg}px;line-height:1.05;text-align:center;">${escapeHtml(q.heb || '')}</span>`}</div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:2px;box-sizing:border-box;min-height:0;"><span dir="rtl" style="font-size:${tamImg}px;line-height:1.05;text-align:center;font-weight:700;">${escapeHtml(q.heb || '')}</span></div>
       <span style="font-size:9px;font-weight:700;color:#fff;background:${cor(q)};padding:0 5px;border-radius:99px;margin-bottom:2px;">${escapeHtml(q.codigo || String(i + 1))}</span></div>`; };
   function ajustar(){ const box = ov.querySelector('#triRingBox'), sq = ov.querySelector('#triRing'); if (!box || !sq) return; const t = Math.max(120, Math.min(box.clientWidth, box.clientHeight)); sq.style.width = sq.style.height = t + 'px'; }
   function pintar(){
@@ -12291,6 +12293,7 @@ window.triEterAbrir = async function(modo, opts){
           <small class="muted">Etiqueta ${idx + 1} de ${itens.length} · ${nFeitas()} aplicada(s)</small></div>
         <div style="flex:0 0 38%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid ${on ? '#2e9d57' : 'var(--primary)'};border-radius:14px;margin:4px 0;padding:6px;text-align:center;box-sizing:border-box;">
           <div style="flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;">${q.img ? `<img src="${q.img}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">` : `<span dir="rtl" style="font-size:56px;line-height:1.2;">${escapeHtml(q.heb || '')}</span>`}</div>
+          ${q.img && q.heb ? `<div dir="rtl" style="flex:0 0 auto;font-size:26px;font-weight:700;line-height:1.1;">${escapeHtml(q.heb)}</div>` : ''}
           <div style="flex:0 0 auto;"><span style="font-size:12px;font-weight:700;color:#fff;background:${cor(q)};padding:1px 10px;border-radius:99px;">${escapeHtml(q.codigo || '')}</span> <b>${escapeHtml(it.pt)}</b></div></div>
         <div id="triUmaBox" style="flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;"><div id="triUmaCentro"></div></div>
         <small class="muted" style="flex:0 0 auto;text-align:center;margin-bottom:4px;">🙏 Invoca a etiqueta · 🎯 pêndulo sobre o testemunho até parar ou mudar</small>
