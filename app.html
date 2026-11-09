@@ -354,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-09-7';
+const APP_VERSION = '2026-11-09-8';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11843,7 +11843,7 @@ function __triagemReset(){
     chakras: TRIAGEM_CHAKRAS_9.map(() => 'ok'), // 'ok' | 'desarmonia' | 'bloqueado', pesquisado com o pêndulo
     aberturaCaminhos: 0, // índice em TRIAGEM_NIVEIS_ABERTURA
     modoCartas: 'auto',
-    leituraComplementar: null,
+    leituraComplementar: null, perguntasCartas: [],
     sessoesNecessarias: '', preco: ''
   };
 }
@@ -11958,6 +11958,7 @@ window.__triagemContinuar = async function(){
   __triagem.sessoesNecessarias = u.sessoesNecessarias ? String(u.sessoesNecessarias) : ''; if (u.preco) __triagem.preco = String(u.preco);
   const L = u.leituraComplementar;
   if (L){ const arc = (nome) => TRIAGEM_ARCANOS.find(x => x.nome === nome); const m = arc(L.momento), p = arc(L.porTras), t = arc(L.tendencia); __triagem.leituraComplementar = (m && p && t) ? { momento:m, porTras:p, tendencia:t } : null; }
+  __triagem.perguntasCartas = (u.perguntasCartas || []).map(q => ({ pergunta:q.pergunta || '', area:q.area || 'geral', horizonte:q.horizonte || 'curto', cartas:(q.cartas || []).map(nm => TRIAGEM_ARCANOS.find(x => x.nome === nm)).filter(Boolean) })).filter(q => q.cartas.length === 3);
   __triagem.passo = 6;
   renderTriagemPasso(document.getElementById('mainView'));
 };
@@ -12577,6 +12578,89 @@ function triagemPassoAbertura(main){
   window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
 }
 
+/* ─── Perguntas às cartas: respostas e previsões por tema ──────────────────
+   Cada carta tem uma leitura por área (amor, trabalho, dinheiro, saúde, família). Para cada pergunta
+   tiram-se 3 cartas: agora, o que está por baixo e a tendência (a curto prazo, 3 meses ou 1 ano).
+   No relatório do cliente as cartas nunca são nomeadas: só aparece o que dizem. */
+const TRI_CARTAS_AREA = {
+  0:{amor:'um recomeço no amor, com abertura ao novo e sem garantias',trabalho:'um recomeço profissional ou uma mudança de caminho',dinheiro:'um passo no desconhecido a nível financeiro, que pede prudência',saude:'um recomeço ao nível do corpo, com novos hábitos',familia:'uma nova etapa na família, ainda por definir'},
+  1:{amor:'a capacidade de conquistar e de se mostrar, ainda por usar',trabalho:'as competências certas à espera de serem postas em prática',dinheiro:'os meios para ganhar mais, desde que se passe à ação',saude:'o poder da vontade para melhorar o próprio estado',familia:'a iniciativa de quem pode mudar o ambiente em casa'},
+  2:{amor:'um sentimento guardado e por dizer',trabalho:'uma oportunidade que ainda não é falada, e uma intuição a ouvir',dinheiro:'informação escondida que convém conhecer antes de decidir',saude:'uma sensibilidade do corpo a que vale a pena prestar atenção',familia:'segredos ou silêncios dentro da família'},
+  3:{amor:'um amor a florescer, com carinho e abundância',trabalho:'um projeto a crescer e a dar frutos',dinheiro:'abundância a desenvolver-se com paciência',saude:'vitalidade e cuidado do corpo, ligados ao bem-estar e à fertilidade',familia:'um ambiente de acolhimento e de cuidado, ou a chegada de algo novo'},
+  4:{amor:'a necessidade de estabilidade e de limites claros na relação',trabalho:'estrutura, responsabilidade e liderança',dinheiro:'organização e disciplina nas finanças',saude:'a necessidade de rotinas e de ordem',familia:'regras e autoridade que pedem equilíbrio'},
+  5:{amor:'crenças herdadas sobre o amor que já não servem',trabalho:'formas antigas de trabalhar que pedem revisão, ou a ajuda de um mentor',dinheiro:'hábitos da família com o dinheiro que convém rever',saude:'um conselho de quem sabe, a seguir com confiança',familia:'tradições e crenças herdadas da família'},
+  6:{amor:'uma escolha entre o coração e a razão',trabalho:'uma decisão importante entre dois caminhos',dinheiro:'uma escolha financeira com vários lados',saude:'uma decisão sobre o tratamento ou o estilo de vida',familia:'uma escolha que mexe com as relações próximas'},
+  7:{amor:'vontade de avançar, mas com direções diferentes entre os dois',trabalho:'movimento e avanço, com a direção ainda por definir',dinheiro:'ganhos que se conquistam com esforço e foco',saude:'energia para recuperar, desde que haja direção',familia:'o movimento de uma mudança, de casa ou de rotina'},
+  8:{amor:'uma ligação que se constrói com paciência e doçura',trabalho:'uma força tranquila, que vence pela persistência',dinheiro:'estabilidade conquistada com calma, sem pressas',saude:'uma vitalidade que regressa aos poucos',familia:'paciência e carinho como forma de resolver tensões'},
+  9:{amor:'a necessidade de um tempo a sós para saber o que se quer',trabalho:'um tempo de reflexão antes de decidir',dinheiro:'prudência e um olhar atento antes de investir',saude:'a necessidade de descanso e de silêncio',familia:'um afastamento temporário que dá clareza'},
+  10:{amor:'uma virada de página no amor',trabalho:'uma mudança de ciclo profissional, que traz novas oportunidades',dinheiro:'uma mudança de sorte nas finanças',saude:'uma fase de viragem, para melhor se houver cuidado',familia:'uma mudança de ciclo na família'},
+  11:{amor:'um equilíbrio por reencontrar entre dar e receber',trabalho:'algo a ser resolvido com justiça, como contratos, decisões ou causas',dinheiro:'contas a acertar, com justiça e com papéis em ordem',saude:'o equilíbrio entre o que se dá ao corpo e o que se tira',familia:'uma questão a resolver com justiça entre familiares'},
+  12:{amor:'uma pausa na relação, que pede outro olhar',trabalho:'um bloqueio temporário, que pede paciência e outra perspetiva',dinheiro:'um período parado, em que convém esperar',saude:'uma fase de recuperação lenta',familia:'uma situação parada que pede outro ponto de vista'},
+  13:{amor:'o fim de um ciclo afetivo, para dar lugar a algo novo',trabalho:'o fecho de uma etapa profissional',dinheiro:'o fim de uma fase financeira, abrindo espaço a outra',saude:'uma transformação profunda, que pede cuidado',familia:'uma transição na família, que pode doer mas liberta'},
+  14:{amor:'uma relação a curar com tempo e equilíbrio',trabalho:'harmonia e bom ritmo no trabalho',dinheiro:'equilíbrio e moderação nas finanças',saude:'uma recuperação gradual e equilibrada',familia:'paz e entendimento a regressar'},
+  15:{amor:'uma ligação que prende e desgasta',trabalho:'uma situação de dependência ou de pressão, de que custa sair',dinheiro:'uma prisão ao dinheiro, a dívidas ou a gastos difíceis de largar',saude:'hábitos ou vícios que pesam',familia:'padrões familiares de controlo ou de dependência'},
+  16:{amor:'uma rutura ou um choque que abala a relação',trabalho:'uma mudança súbita no trabalho',dinheiro:'um imprevisto financeiro que obriga a reorganizar',saude:'um aviso do corpo que pede atenção',familia:'um acontecimento súbito que abala a casa'},
+  17:{amor:'esperança e cura no amor',trabalho:'esperança e novas portas no trabalho',dinheiro:'uma melhoria gradual, com proteção',saude:'uma recuperação com esperança e proteção',familia:'esperança e proteção para a família'},
+  18:{amor:'dúvidas e inseguranças que turvam a relação',trabalho:'pouca clareza sobre o que se passa, e por isso convém não decidir às cegas',dinheiro:'incerteza financeira, que pede cautela',saude:'ansiedade e sono agitado a cuidar',familia:'mal-entendidos e coisas por dizer'},
+  19:{amor:'alegria e clareza no amor',trabalho:'sucesso e reconhecimento a chegar',dinheiro:'uma fase mais próspera e clara',saude:'vitalidade e energia em subida',familia:'alegria e união familiar'},
+  20:{amor:'um chamado interior a rever o passado afetivo e a perdoar',trabalho:'um chamado a mudar de vida profissional',dinheiro:'uma reavaliação das finanças, com decisões a tomar',saude:'um despertar para cuidar de si',familia:'a necessidade de perdão e de acertar contas antigas'},
+  21:{amor:'um ciclo afetivo a fechar-se com sucesso e realização',trabalho:'um ciclo profissional a concluir-se com sucesso',dinheiro:'uma conquista financeira completa',saude:'uma recuperação completa, com proteção',familia:'união e realização no seio da família'}
+};
+const TRI_PERG_AREAS = [['geral','Geral'],['amor','Amor'],['trabalho','Trabalho'],['dinheiro','Dinheiro'],['saude','Saúde'],['familia','Família']];
+const TRI_PERG_HORIZ = [['curto','A curto prazo'],['3m','Próximos 3 meses'],['12m','Próximo ano']];
+function triPergAreaRot(a){ const x = TRI_PERG_AREAS.find(y => y[0] === a); return x ? x[1] : 'Geral'; }
+function triPergHorizRot(h){ return { curto:'a curto prazo', '3m':'nos próximos 3 meses', '12m':'ao longo do próximo ano' }[h] || 'a curto prazo'; }
+function triPergFrase(carta, area){ if (!carta) return ''; const t = area === 'geral' ? carta.tema : ((TRI_CARTAS_AREA[carta.n] || {})[area] || carta.tema); return t; }
+function triPergAreaDoPedido(txt){ const t = triNorm(txt || ''); const m = { amor:'amor', reconciliar:'amor', trabalho:'trabalho', dinheiro:'dinheiro', saude:'saude', ansiedade:'saude', filhos:'familia', familia:'familia' }; const hit = (typeof TRI_PEDIDOS !== 'undefined' ? TRI_PEDIDOS : []).find(p => p.re.test(t) && m[p.id]); return hit ? m[hit.id] : 'geral'; }
+const triCap = x => String(x || '').charAt(0).toUpperCase() + String(x || '').slice(1);
+/* Texto para o cliente: SEM nomes de cartas. */
+function triRespostaPergunta(q){
+  if (!q || !q.cartas || q.cartas.length < 3) return [];
+  const a = q.area || 'geral', h = triPergHorizRot(q.horizonte);
+  return [
+    `<b>Agora:</b> ${triCap(triPergFrase(q.cartas[0], a))}.`,
+    `<b>Por baixo disso:</b> ${triCap(triPergFrase(q.cartas[1], a))}.`,
+    `<b>A tendência, ${h}:</b> ${triCap(triPergFrase(q.cartas[2], a))}.`,
+    `São tendências e não certezas: o futuro também depende das escolhas e do trabalho que se vai fazendo.`
+  ].map(x => x.replace(/<\/?b>/g, ''));
+}
+window.__triPergArea = function(a){ __triagem.__pArea = a; renderTriagemPasso(document.getElementById('mainView')); };
+window.__triPergHoriz = function(h){ __triagem.__pHoriz = h; renderTriagemPasso(document.getElementById('mainView')); };
+window.__triPergUsarPedido = function(){ const t = (__triagem.pedido || '').trim(); if (!t){ toast('Ainda não escreveste o pedido do paciente (passo 5).', true); return; } __triagem.__pTxt = t; __triagem.__pArea = triPergAreaDoPedido(t); renderTriagemPasso(document.getElementById('mainView')); };
+window.__triPergTirar = function(){
+  const area = __triagem.__pArea || 'geral', horizonte = __triagem.__pHoriz || 'curto';
+  const pergunta = ((document.getElementById('triPergTxt') || {}).value || '').trim();
+  let cartas;
+  if (__triagem.modoCartas === 'auto') cartas = triagemTirarVarias(3);
+  else { cartas = ['triPergA','triPergB','triPergC'].map(id => TRIAGEM_ARCANOS.find(x => x.n === parseInt((document.getElementById(id) || {}).value, 10))); if (cartas.some(c => !c)){ toast('Escolhe as 3 cartas.', true); return; } }
+  __triagem.perguntasCartas.push({ pergunta, area, horizonte, cartas });
+  __triagem.__pTxt = '';
+  renderTriagemPasso(document.getElementById('mainView'));
+};
+window.__triPergApagar = function(i){ __triagem.perguntasCartas.splice(i, 1); renderTriagemPasso(document.getElementById('mainView')); };
+window.__triPergRepetir = function(i){ const q = __triagem.perguntasCartas[i]; if (q && __triagem.modoCartas === 'auto'){ q.cartas = triagemTirarVarias(3); renderTriagemPasso(document.getElementById('mainView')); } };
+function triPergHTML(){
+  const area = __triagem.__pArea || 'geral', hor = __triagem.__pHoriz || 'curto';
+  const chip = (on, lab, fn) => `<button type="button" class="${on ? 'primary' : 'ghost'}" style="padding:6px 10px;margin:2px;" onclick="${fn}">${lab}</button>`;
+  const lista = (__triagem.perguntasCartas || []).map((q, i) => `<div class="card" style="margin-top:8px;background:#faf7fd;">
+      <strong>${escapeHtml(triPergAreaRot(q.area))}</strong> · <span class="muted">${escapeHtml(triPergHorizRot(q.horizonte))}</span>${q.pergunta ? `<p style="margin:4px 0;"><em>${escapeHtml(q.pergunta)}</em></p>` : ''}
+      <p class="muted" style="margin:4px 0;">🎴 ${q.cartas.map(c => escapeHtml(c.nome)).join(' · ')}</p>
+      ${triRespostaPergunta(q).slice(0, 3).map(t => `<p style="margin:3px 0;">${escapeHtml(t)}</p>`).join('')}
+      <div class="row" style="gap:6px;">${__triagem.modoCartas === 'auto' ? `<button class="ghost" onclick="window.__triPergRepetir(${i})">🎴 Tirar de novo</button>` : ''}<button class="ghost" onclick="window.__triPergApagar(${i})">🗑️ Apagar</button></div></div>`).join('');
+  return `<div class="card" style="border:2px solid var(--primary);">
+    <h3>🔮 Perguntas às cartas: respostas e previsões</h3>
+    <p class="muted">Para responder a outras questões do paciente, sobre o presente ou o futuro. Cada pergunta usa 3 cartas: agora, o que está por baixo e a tendência. No relatório do cliente aparece só o que dizem, sem nomear as cartas.</p>
+    <label>Tema</label><div>${TRI_PERG_AREAS.map(a => chip(a[0] === area, a[1], `window.__triPergArea('${a[0]}')`)).join('')}</div>
+    <label style="margin-top:8px;">Para quando</label><div>${TRI_PERG_HORIZ.map(h => chip(h[0] === hor, h[1], `window.__triPergHoriz('${h[0]}')`)).join('')}</div>
+    <label style="margin-top:8px;">Pergunta (opcional)</label>
+    <textarea id="triPergTxt" rows="2" style="width:100%;" placeholder="Ex.: vou conseguir a promoção? como vai ficar a minha relação?">${escapeHtml(__triagem.__pTxt || '')}</textarea>
+    <div class="row" style="gap:6px;margin-top:6px;"><button class="ghost" onclick="window.__triPergUsarPedido()">🎯 Usar o pedido do paciente</button></div>
+    ${__triagem.modoCartas === 'auto' ? '' : `<div class="row" style="gap:6px;margin-top:6px;"><select id="triPergA">${triagemOptsVazio()}</select><select id="triPergB">${triagemOptsVazio()}</select><select id="triPergC">${triagemOptsVazio()}</select></div>`}
+    <button class="primary" style="width:100%;margin-top:8px;padding:12px;" onclick="window.__triPergTirar()">${__triagem.modoCartas === 'auto' ? '🎴 Tirar 3 cartas para esta pergunta' : '✔ Guardar estas 3 cartas'}</button>
+    ${lista}
+  </div>`;
+}
+
 /* PASSO 7 — Leitura Complementar (a ÚNICA parte com cartas) */
 function triagemOptsVazio(){ return `<option value="">Escolher…</option>` + TRIAGEM_ARCANOS.map(a => `<option value="${a.n}">${a.n} — ${escapeHtml(a.nome)}</option>`).join(''); }
 function triagemPassoComplementar(main){
@@ -12602,6 +12686,7 @@ function triagemPassoComplementar(main){
            <label>Por Trás Disto</label><select id="triSelP">${triagemOptsVazio()}</select>
            <label>Tendência</label><select id="triSelT">${triagemOptsVazio()}</select>`}
     </div>
+    ${triPergHTML()}
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
       <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
@@ -17420,6 +17505,11 @@ function triagemRelatorioCliente(d){
     ]});
   }
 
+  (d.perguntasCartas || []).forEach(q => {
+    const r = triRespostaPergunta(q); if (!r.length) return;
+    sec.push({ titulo: q.pergunta ? `A pergunta: ${q.pergunta}` : `O que se vê sobre ${triPergAreaRot(q.area).toLowerCase()}`, paras: r });
+  });
+
   const lvTxt = { 'Aberto':'aberto', 'Parcialmente Aberto':'algo travado', 'Bloqueado':'bastante travado', 'Muito Bloqueado':'muito travado' };
   const humanoCausa = (nomeC) => { const it = TRIAGEM_BAIXA_VIBRACAO.find(x => x.nome === nomeC); const h = it && TRI_CAUSA_HUMANA[it.n]; return h ? `${h[0]}: ${h[1]}` : nomeC; };
   if (d.comparacao){
@@ -17749,6 +17839,7 @@ async function triagemGerarRelatorio(){
     comparacao.chakrasComparados.forEach(c => { reportText += `• Chakra ${c.nome}: ${triRotuloEstado(c.antes).toLowerCase()} → ${triRotuloEstado(c.agora).toLowerCase()} ${c.delta>0?'(melhorou)':(c.delta<0?'(piorou)':'(igual)')}\n`; });
     reportText += `\n`;
   }
+  (__triagem.perguntasCartas || []).forEach(q => { reportText += `== Pergunta às cartas: ${triPergAreaRot(q.area)} (${triPergHorizRot(q.horizonte)}) ==\n${q.pergunta ? q.pergunta + '\n' : ''}Cartas: ${q.cartas.map(c => c.nome).join(', ')}\n${triRespostaPergunta(q).join('\n')}\n\n`; });
   if (__triagem.leituraComplementar){
     reportText += `== Leitura Complementar (Cartas) ==\n${triagemSintetizarLeitura(__triagem.patientNome.split(/\s+/)[0], __triagem.leituraComplementar)}\n\n`;
   }
@@ -17768,7 +17859,7 @@ async function triagemGerarRelatorio(){
   const clienteRel = triagemRelatorioCliente({
     primeiroNome: __triagem.patientNome.split(/\s+/)[0], dataNascimento: __triagem.dataNascimento, paisNascimento: __triagem.paisNascimento,
     perfil, causasDetetadas, chakrasTodos, aberturaNivel, comparacao, cruzamento: cruzamentoVidasPassadas,
-    leituraComplementar: __triagem.leituraComplementar, sessoesNecessarias: __triagem.sessoesNecessarias,
+    leituraComplementar: __triagem.leituraComplementar, perguntasCartas: __triagem.perguntasCartas, sessoesNecessarias: __triagem.sessoesNecessarias,
     preco: __triagem.preco, temAlgumaCoisaDetetada,
     aplicadas: etiquetasAplicadas, numConsulta: __triagem.numConsulta || 1, bovisIni: __triagem.bovisIni, bovisFin: __triagem.bovisFin,
     sessoesAntes: anteriorDoc ? anteriorDoc.sessoesNecessarias : null, motivoPlano: __triagem.motivoPlano, pagamento: pagamentoInfo,
@@ -17805,6 +17896,7 @@ async function triagemGerarRelatorio(){
       porTras: __triagem.leituraComplementar.porTras.nome,
       tendencia: __triagem.leituraComplementar.tendencia.nome
     } : null,
+    perguntasCartas: (__triagem.perguntasCartas || []).map(q => ({ pergunta:q.pergunta, area:q.area, horizonte:q.horizonte, cartas:q.cartas.map(c => c.nome), resposta: triRespostaPergunta(q) })),
     protocolo: protocoloFinal.map(p => ({ codigo: etqCodigo(p.item.pt) || null, fonte:p.fonte, heb:p.item.heb, pt:p.item.pt, numero:p.item.numero||null, motivo:p.motivo })),
     sessoesNecessarias: __triagem.sessoesNecessarias || null,
     preco: __triagem.preco || null,
