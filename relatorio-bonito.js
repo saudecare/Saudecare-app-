@@ -89,6 +89,28 @@ const CSS = `
 .rbx .rodape{text-align:center;padding:14px 18px 22px;font-size:12px;color:var(--mut)}
 .rbx .rodape .ass{font-size:15px;color:var(--a);font-weight:700;margin-bottom:6px}
 .rbx .imprimir{display:block;margin:0 auto 6px;border:0;background:none}
+.rbx .sent{display:flex;gap:10px;align-items:flex-start;border-radius:12px;padding:10px 12px;margin:6px 0}
+.rbx .sent .em{font-size:28px;line-height:1.1}
+.rbx .sent b{display:block;font-size:14.5px}
+.rbx .sent small{display:block;font-weight:700;font-size:12px;margin:1px 0 3px}
+.rbx .sent p{margin:0!important;font-size:14px!important}
+.rbx .sent.ok{background:#e3f4e9}.rbx .sent.ok small{color:#1f7a42}
+.rbx .sent.de{background:#fdf0d0}.rbx .sent.de small{color:#9a6b00}
+.rbx .sent.bl{background:#fbe2df}.rbx .sent.bl small{color:#b23a30}
+.rbx table.tab{width:100%;border-collapse:collapse;font-size:14px}
+.rbx table.tab th{text-align:left;color:var(--a);border-bottom:2px solid var(--a);padding:6px}
+.rbx table.tab td{padding:8px 6px;vertical-align:top;border-bottom:1px solid #f0e9f6}
+.rbx table.tab td:first-child{font-weight:700;width:38%}
+.rbx .qd{display:grid;gap:3px;align-items:center;margin-top:8px}
+.rbx .qd .h{font-weight:700;text-align:center;color:var(--mut);font-size:12px}
+.rbx .qd .n{font-size:13px}
+.rbx .qd .c{border-radius:6px;padding:7px 2px;text-align:center;font-weight:700;font-size:11px}
+.rbx .qd .c.ok{background:#e3f4e9;color:#1f7a42}.rbx .qd .c.de{background:#fdf0d0;color:#9a6b00}.rbx .qd .c.bl{background:#fbe2df;color:#b23a30}.rbx .qd .c.na{background:#f0f0f0;color:#888}
+.rbx .pilha{display:flex;height:26px;border-radius:7px;overflow:hidden;margin:3px 0 10px}
+.rbx .pilha span{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px}
+.rbx .pilha .ok{background:#2e9d57}.rbx .pilha .de{background:#e8a317}.rbx .pilha .bl{background:#d0453b}
+.rbx .leg2{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:4px}
+.rbx .leg2 i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 @keyframes rbfloat{50%{transform:translateY(-7px)}}
 @keyframes rbsobe{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes rbvira{from{opacity:0;transform:rotateY(90deg)}to{opacity:1;transform:none}}
@@ -194,6 +216,22 @@ function bloco(b, T) {
       return `<section class="bloco">${tit}<div class="nums">${(b.itens || []).map((it, i) => `<details class="num" style="animation-delay:${i * .08}s"><summary><span class="bola">${esc(it.valor)}</span><span class="nr">${esc(it.rotulo)}</span></summary><p>${nl(it.texto || '')}</p></details>`).join('')}</div></section>`;
     case 'secoes':
       return `<section class="bloco">${tit}${(b.itens || []).map(it => `<details class="det"><summary>${esc(it.nome)}</summary><div class="in">${(it.paras || []).filter(Boolean).map(p => `<p>${nl(p)}</p>`).join('')}</div></details>`).join('')}</section>`;
+    case 'resumo':
+      return `<section class="bloco" style="border:1.5px solid var(--b)">${tit}${(b.paras || []).filter(Boolean).map(p => `<p>${nl(p)}</p>`).join('')}</section>`;
+    case 'sentir': {
+      const EM = { ok: '🙂', de: '😐', bl: '😟' }, LB = { ok: 'Equilibrado', de: 'Em desarmonia', bl: 'Bloqueado' };
+      return `<section class="bloco">${tit}${b.intro ? `<p class="mut">${nl(b.intro)}</p>` : ''}${(b.itens || []).map(it => { const k = EM[it.estado] ? it.estado : 'ok'; return `<div class="sent ${k}"><span class="em">${EM[k]}</span><div><b>${esc(it.nome)}</b><small>${LB[k]}</small><p>${nl(it.texto || '')}</p></div></div>`; }).join('')}</section>`;
+    }
+    case 'tabela':
+      return `<section class="bloco">${tit}${b.intro ? `<p class="mut">${nl(b.intro)}</p>` : ''}<table class="tab"><thead><tr>${(b.cab || []).map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${(b.linhas || []).map(l => `<tr>${l.map(c => `<td>${nl(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`;
+    case 'quadro': {
+      const cols = b.colunas || [], LB = { ok: 'Equilibrado', de: 'Em desarmonia', bl: 'Bloqueado', na: '—' };
+      const grid = `grid-template-columns:minmax(0,1.3fr) repeat(${cols.length},minmax(0,1fr))`;
+      const cont = cols.map((_, i) => { const c = { ok: 0, de: 0, bl: 0 }; (b.linhas || []).forEach(l => { const e = l.estados[i]; if (c[e] != null) c[e]++; }); return c; });
+      return `<section class="bloco">${tit}${b.intro ? `<p class="mut">${nl(b.intro)}</p>` : ''}<div class="qd" style="${grid}"><div></div>${cols.map(c => `<div class="h">${esc(c)}</div>`).join('')}${(b.linhas || []).map(l => `<div class="n">${esc(l.nome)}</div>${l.estados.map(e => `<div class="c ${LB[e] ? e : 'na'}">${LB[e] || '—'}</div>`).join('')}`).join('')}</div>
+        <p style="margin-top:14px;font-weight:700;color:var(--a);font-size:14px">Quantos centros em cada estado</p>${cols.map((c, i) => `<div style="font-size:12px;color:var(--mut)">${esc(c)}</div><div class="pilha">${['ok', 'de', 'bl'].map(k => cont[i][k] ? `<span class="${k}" style="flex:${cont[i][k]}">${cont[i][k]}</span>` : '').join('')}</div>`).join('')}
+        <div class="leg2"><span><i style="background:#2e9d57"></i>Equilibrado</span><span><i style="background:#e8a317"></i>Em desarmonia</span><span><i style="background:#d0453b"></i>Bloqueado</span></div>${b.nota ? `<p class="mut" style="font-size:12px">${nl(b.nota)}</p>` : ''}</section>`;
+    }
     case 'imagens':
       return (b.urls && b.urls.length) ? `<section class="bloco">${tit}<div class="galeria">${b.urls.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join('')}</div></section>` : '';
     default: return '';

@@ -354,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-09-1';
+const APP_VERSION = '2026-11-09-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11836,7 +11836,7 @@ function __triagemReset(){
     dataNascimento: '',
     paisNascimento: '',
     bovisIni: '', bovisFin: '',
-    soTriagem: null, aplicadas: [], continuacaoDe: null, motivoPlano: '', pagoAntes: 0, pagamentoApptId: null, pagamentoValor: '', pagamentoMetodo: '', _ultimaSemTratamento: null, _penultima: null, _avisoFalta: false,
+    soTriagem: null, aplicadas: [], pedido: '', pedidoEtq: [], pedidoTemas: [], continuacaoDe: null, motivoPlano: '', pagoAntes: 0, pagamentoApptId: null, pagamentoValor: '', pagamentoMetodo: '', _ultimaSemTratamento: null, _penultima: null, _avisoFalta: false,
     baixaVibracao: TRIAGEM_BAIXA_VIBRACAO.map(() => false),
     chakras: TRIAGEM_CHAKRAS_9.map(() => 'ok'), // 'ok' | 'desarmonia' | 'bloqueado', pesquisado com o pêndulo
     aberturaCaminhos: 0, // índice em TRIAGEM_NIVEIS_ABERTURA
@@ -12149,6 +12149,159 @@ const TRI_ETQ_SIMPLES = {
   'חבור בהעין':'Fechar com a ligação à fonte'
 };
 function triagemSimples(i){ return TRI_ETQ_SIMPLES[i.heb] || i.pt; }
+/* ─── Pedido do paciente → etiquetas mais indicadas ───────────────────────
+   O terapeuta escreve o que a pessoa quer (deixar um vício, ser promovido, encontrar amor, desbloquear
+   uma situação, engravidar…) e a app escolhe as etiquetas mais indicadas, por ordem de adequação. */
+function triNorm(s){ return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+const TRI_PEDIDOS = [
+  { id:'vicio', rotulo:'deixar um vício', chip:'Deixar um vício', txt:'deixar um vício', re:/vicio|droga|alcool|beber|bebida|fumar|fumo|tabaco|cigarro|jogo|dependencia|compuls/,
+    etq:['Libertar-se dos vícios - Fortalecer a Consciência Espiritual','Libertar-se do ciúme, inveja, dor, sofrimento e vícios','Desintoxicação','Vontade','Força interior'] },
+  { id:'trabalho', rotulo:'o trabalho e o sucesso', chip:'Promoção / trabalho', txt:'ser promovido no trabalho', re:/promoc|promovid|emprego|trabalho|carreira|sucesso|negocio|entrevista|aumento|concurso|empresa/,
+    etq:['Eliminar os bloqueios psíquicos do sucesso','Prosperidade','Confiança','Poder pessoal','Desbloqueio'] },
+  { id:'amor', rotulo:'o amor', chip:'Amor', txt:'encontrar amor', re:/amor|namor|casament|casar|relacao|companheir|parceir|paixao|alma gemea/,
+    etq:['Ativar o Amor Incondicional e Trazer Alegria','Amor','Amor Próprio','Atraindo Proteção, Cura e Amizades Verdadeiras','Perdoar'] },
+  { id:'reconciliar', rotulo:'a reconciliação', chip:'Reconciliar', txt:'reconciliar-se', re:/reconcili|voltar|separa|divorc|ruptura/,
+    etq:['Reconciliação','Perdoar','Libertar mágoas','Amor','Unir'] },
+  { id:'filhos', rotulo:'engravidar', chip:'Engravidar', txt:'engravidar', re:/engravid|gravidez|gestac|fertil|conceb|ter filhos|ter um bebe/,
+    etq:['Fertilidade – Bloqueios de criatividade','Equilíbrio Hormonal','Libertar medos','Paz Interior','Rejuvenescimento celular'] },
+  { id:'desbloquear', rotulo:'desbloquear uma situação', chip:'Desbloquear situação', txt:'desbloquear uma situação', re:/desbloque|bloquead|bloqueio|travad|situacao|resolver|caminhos|sem saida/,
+    etq:['Desbloqueio','Libertação','Liberdade - Liberte-se da depressão e das limitações físicas e espirituais','Para retirar o carma e a auto-obsessão e para terminar projetos inacabados','Vontade'] },
+  { id:'dinheiro', rotulo:'o dinheiro e a abundância', chip:'Dinheiro', txt:'dinheiro e abundância', re:/dinheiro|divida|financ|prosper|abundanc|rendimento|pobreza/,
+    etq:['Prosperidade','Abundância','Eliminar os bloqueios psíquicos do sucesso','Desbloqueio','Confiança'] },
+  { id:'saude', rotulo:'a saúde', chip:'Saúde', txt:'saúde', re:/saude|doenca|doente|cura|cirurgia|operacao|cansaco|imunidade|dores/,
+    etq:['Cura o Corpo, a Mente e a Alma','Regeneração Celular','Imunidade','Regeneração de Órgãos Doentes ou Danificados e Proteção contra Inveja e Pesadelos','Força vital perfeita'] },
+  { id:'ansiedade', rotulo:'a ansiedade e o medo', chip:'Ansiedade / medo', txt:'ansiedade e medo', re:/ansiedade|ansios|depress|tristeza|panico|stress|angustia|medo|fobia|insonia|nervos/,
+    etq:['Cura mental e psicológica e Para afastar pessoas negativas','Livre-se da depressão e Anime-se completamente','Libertar medos','Paz Interior','Tranquilidade'] },
+  { id:'magoas', rotulo:'as mágoas e o perdão', chip:'Mágoas / perdão', txt:'mágoas e perdão', re:/magoa|perdoar|perdao|luto|perda|trauma|passado|ressentim|culpa/,
+    etq:['Libertar mágoas','Perdoar','Libertar memórias dolorosas do passado','Limpeza emocional','Não sentir culpa'] },
+  { id:'protecao', rotulo:'a proteção', chip:'Proteção / inveja', txt:'proteção contra inveja', re:/inveja|olho gordo|mau olhado|protec|negativ|feitico|trabalho feito|azar/,
+    etq:['Protecção Divina','Afastar a negatividade e Ativar o magnetismo físico e espiritual','Limpar toda negatividade interna e externa','Expulsar os Resíduos do Mal e Purificar os lugares'] },
+  { id:'autoestima', rotulo:'a autoestima', chip:'Autoestima', txt:'autoestima', re:/autoestima|auto estima|inseguran|confianca|valor proprio|timid/,
+    etq:['Atraia a Compaixão e a Misericórdia e Melhore a Auto-Estima','Auto-estima','Amor Próprio','Confiança','Poder pessoal'] },
+  { id:'familia', rotulo:'a família e a casa', chip:'Família / casa', txt:'harmonia na família e em casa', re:/familia|casa|discuss|harmonia|filhos|pais|irmao/,
+    etq:['Harmonizar','Unir','Purificação Espiritual - Purifique seu espírito e ambientes limpando resíduos energéticos','Paz','Perdoar'] },
+  { id:'estudos', rotulo:'os estudos', chip:'Estudos / exames', txt:'estudos e exames', re:/exame|estud|concentra|memoria|escola|faculdade/,
+    etq:['Concentração','Clareza','Sabedoria','Confiança','Silêncio mental'] }
+];
+function triPedidoSugerir(texto, max){
+  max = max || 6;
+  const t = triNorm(texto), reg = etqRegisto().mapa, out = [], vistos = new Set();
+  if (!t.trim()) return { etq: [], temas: [] };
+  const hits = TRI_PEDIDOS.filter(p => p.re.test(t));
+  for (let r = 0; out.length < max; r++){
+    let algum = false;
+    hits.forEach(p => { const pt = p.etq[r]; if (!pt) return; algum = true; const k = etqChave(pt); if (reg[k] && !vistos.has(k) && out.length < max){ vistos.add(k); out.push(reg[k].pt); } });
+    if (!algum) break;
+  }
+  if (!hits.length){
+    t.split(/[^a-z]+/).filter(w => w.length >= 4).forEach(w => etqRegisto().lista.forEach(x => { if (out.length < 4 && triNorm(x.pt).indexOf(w) >= 0 && !vistos.has(etqChave(x.pt))){ vistos.add(etqChave(x.pt)); out.push(x.pt); } }));
+  }
+  return { etq: out, temas: hits.map(p => p.rotulo) };
+}
+window.__triPedidoTxt = function(txt){
+  __triagem.pedido = txt;
+  const r = triPedidoSugerir(txt); __triagem.pedidoEtq = r.etq; __triagem.pedidoTemas = r.temas;
+  triPedidoPintar();
+};
+window.__triPedidoChip = function(i){
+  const c = TRI_PEDIDOS[i], atual = (document.getElementById('triPedidoTxt') || {}).value || '';
+  if (triNorm(atual).indexOf(triNorm(c.txt)) >= 0) return;
+  const novo = atual.trim() ? atual.trim().replace(/[,.;]$/, '') + ', ' + c.txt : c.txt;
+  const el = document.getElementById('triPedidoTxt'); if (el) el.value = novo;
+  window.__triPedidoTxt(novo);
+};
+window.__triPedidoTog = function(i){
+  const pts = (window.__triSugestoes || []), pt = pts[i]; if (!pt) return;
+  const k = __triagem.pedidoEtq.findIndex(x => etqChave(x) === etqChave(pt));
+  if (k >= 0) __triagem.pedidoEtq.splice(k, 1); else __triagem.pedidoEtq.push(pt);
+  triPedidoPintar(true);
+};
+function triPedidoPintar(semRecalcular){
+  const el = document.getElementById('triPedidoSug'); if (!el) return;
+  const txt = __triagem.pedido || '';
+  const sug = semRecalcular ? (window.__triSugestoes || []) : triPedidoSugerir(txt).etq;
+  window.__triSugestoes = sug;
+  const reg = etqRegisto().mapa, sel = new Set((__triagem.pedidoEtq || []).map(etqChave));
+  el.innerHTML = !txt.trim() ? '' : (sug.length
+    ? `<p class="muted" style="margin:10px 0 4px;"><strong>Etiquetas mais indicadas${(__triagem.pedidoTemas || []).length ? ' para ' + escapeHtml(__triagem.pedidoTemas.join(', ')) : ''}:</strong> toca para ligar ou desligar.</p>` + sug.map((pt, i) => { const x = reg[etqChave(pt)], on = sel.has(etqChave(pt));
+        return `<div onclick="window.__triPedidoTog(${i})" style="display:flex;gap:8px;align-items:center;padding:8px;margin-top:4px;border-radius:10px;cursor:pointer;background:${on ? '#eef7ee' : '#f7f7f5'};"><span style="font-size:1.3rem;">${on ? '☑' : '⬜'}</span>${etqBadge(pt)}<span style="min-width:64px;text-align:center;">${eeImgHeb(x, 30)}</span><span style="flex:1;font-size:.9rem;">${escapeHtml(pt)}</span></div>`; }).join('')
+    : '<p class="muted" style="margin-top:8px;">Não encontrei etiquetas para esse pedido. Tenta outras palavras ou usa os botões acima.</p>');
+}
+
+/* ─── Limpeza por via etérica: método principal ────────────────────────────
+   Mostra as etiquetas escolhidas (com as imagens) e o testemunho do paciente ao centro, para trabalhar
+   com o pêndulo sobre o telemóvel: todas em conjunto ou uma a uma. */
+function triKeyEtq(it){ return it.heb || ('pt:' + it.pt); }
+window.triEterAbrir = async function(modo){
+  const itens = triagemItensAplicar();
+  if (!itens.length){ toast('Ainda não há etiquetas escolhidas.', true); return; }
+  const reg = etqRegisto().mapa;
+  const info = it => reg[etqChave(it.pt)] || { codigo:'', heb: it.heb, pt: it.pt };
+  let foto = '';
+  try { const ps = await getDoc(doc(db, 'tenants', tenantId, 'patients', __triagem.patientId)); foto = ps.exists() ? (ps.data().photoUrl || '') : ''; } catch(e){}
+  const nome = __triagem.patientNome || '';
+  const nasc = __triagem.dataNascimento ? new Date(__triagem.dataNascimento + 'T12:00:00').toLocaleDateString('pt-PT') : '';
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;overflow:auto;padding:10px;';
+  document.body.appendChild(ov);
+  let m = modo || 'todas', idx = 0;
+  const feitas = () => itens.filter(it => __triagem.aplicadas.indexOf(triKeyEtq(it)) >= 0).length;
+  const marcar = it => { const k = triKeyEtq(it); if (__triagem.aplicadas.indexOf(k) < 0) __triagem.aplicadas.push(k); if (window.__triagemPintarEtq) window.__triagemPintarEtq(); };
+  const testemunho = (tam) => `<div style="width:${tam}px;height:${tam}px;border-radius:50%;margin:auto;background:#f6f0fb;border:3px solid #5b2a86;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;padding:6px;box-sizing:border-box;">
+      ${foto ? `<img src="${escapeAttrJs(foto)}" alt="" style="width:${Math.round(tam * .5)}px;height:${Math.round(tam * .5)}px;border-radius:50%;object-fit:cover;margin-bottom:3px;">` : ''}
+      <b style="font-size:${tam > 120 ? 15 : 12}px;line-height:1.15;">${escapeHtml(nome)}</b>${nasc ? `<small style="font-size:11px;color:#6b5a80;">${nasc}</small>` : ''}
+      <small style="font-size:10px;color:#6b5a80;margin-top:2px;">testemunho</small></div>`;
+  function pintar(){
+    const topo = `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;">
+        <h2 style="margin:0;flex:1;">✨ Limpeza etérica</h2>
+        <button class="${m === 'todas' ? 'primary' : 'ghost'}" data-a="todas" style="padding:6px 12px;">⚡ Todas</button>
+        <button class="${m === 'uma' ? 'primary' : 'ghost'}" data-a="uma" style="padding:6px 12px;">1️⃣ Uma a uma</button>
+        <button class="ghost" data-a="fechar" style="padding:6px 12px;">✖</button></div>`;
+    let corpo = '';
+    if (m === 'todas'){
+      const n = itens.length, tile = n <= 6 ? 25 : (n <= 10 ? 21 : 17), R = 36;
+      const ring = itens.map((it, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n, x = 50 + R * Math.cos(a), y = 50 + R * Math.sin(a), q = info(it), on = __triagem.aplicadas.indexOf(triKeyEtq(it)) >= 0;
+        return `<div style="position:absolute;left:${(x - tile / 2).toFixed(2)}%;top:${(y - tile / 2).toFixed(2)}%;width:${tile}%;aspect-ratio:1/1;border-radius:12px;background:${on ? '#eef7ee' : '#fff'};border:2px solid ${on ? '#2e9d57' : '#d9cde8'};display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:2px;box-sizing:border-box;min-height:0;">${q.img ? `<img src="${q.img}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">` : `<span dir="rtl" style="font-size:${n <= 6 ? 22 : 16}px;line-height:1.1;text-align:center;">${escapeHtml(q.heb || '')}</span>`}</div>
+          <span style="font-size:10px;font-weight:700;color:#fff;background:${ETQ_COR[q.grupo] || '#5b2a86'};padding:1px 6px;border-radius:99px;margin-bottom:2px;">${escapeHtml(q.codigo || String(i + 1))}</span></div>`; }).join('');
+      corpo = `<div style="position:relative;width:100%;max-width:440px;margin:10px auto;aspect-ratio:1/1;">
+          <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:34%;">${testemunho(Math.min(150, Math.round((Math.min(window.innerWidth, 440) - 20) * .34)))}</div>${ring}</div>
+        <p class="muted" style="text-align:center;margin:0 0 6px;">Pêndulo sobre o testemunho ao centro. As etiquetas à volta são aplicadas todas ao mesmo tempo.</p>
+        <div style="margin:8px 0;">${itens.map((it, i) => { const q = info(it); return `<div style="display:flex;gap:8px;align-items:center;padding:6px 4px;border-bottom:1px solid #eee;"><span style="min-width:60px;text-align:center;padding:2px 6px;border-radius:99px;background:${ETQ_COR[q.grupo] || '#5b2a86'};color:#fff;font-weight:700;font-size:12px;">${escapeHtml(q.codigo || String(i + 1))}</span><span style="flex:1;font-size:.92rem;">${escapeHtml(it.pt)}</span></div>`; }).join('')}</div>
+        ${[['🌬️ Preparar', 'Respira fundo três vezes. Coloca a intenção de limpar, harmonizar e abrir caminhos para ' + escapeHtml(nome) + '. Pega no pêndulo e centra-te.'],
+           ['🙏 Invocar todas em conjunto', 'Diz em voz alta ou em pensamento: <em>«Invoco, ao mesmo tempo, a energia de todas estas etiquetas para ' + escapeHtml(nome) + '. Que atuem em conjunto, em harmonia, com a mesma força das etiquetas físicas.»</em>'],
+           ['🎯 Aplicar com o pêndulo', 'Segura o pêndulo sobre o testemunho ao centro e deixa-o rodar até abrandar e parar ou mudar de movimento. Esse é o sinal de que a energia foi aplicada.'],
+           ['✨ Selar e agradecer', 'Agradece e fecha o campo com a tua oração ou comando de fecho. Beber água ajuda a assentar.']].map(f => `<div class="card" style="margin:6px 0;"><strong>${f[0]}</strong><p style="margin-top:4px;">${f[1]}</p></div>`).join('')}
+        <button class="primary" data-a="todasFeitas" style="width:100%;padding:14px;margin-top:6px;">✔ Aplicadas todas, concluir</button>`;
+    } else {
+      const it = itens[idx], q = info(it), on = __triagem.aplicadas.indexOf(triKeyEtq(it)) >= 0;
+      corpo = `<div style="display:flex;gap:10px;align-items:center;justify-content:center;margin:8px 0;">${testemunho(86)}</div>
+        <div style="height:10px;border-radius:99px;background:#eee;overflow:hidden;"><div style="height:100%;width:${Math.round(feitas() / itens.length * 100)}%;background:linear-gradient(90deg,#c0398b,#5b2a86);"></div></div>
+        <p class="muted" style="text-align:center;margin:4px 0 8px;">Etiqueta ${idx + 1} de ${itens.length} · ${feitas()} aplicada(s)</p>
+        <div class="card" style="text-align:center;border:2px solid ${on ? '#2e9d57' : 'var(--primary)'};">
+          <div style="margin:4px 0;">${etqBadge(it.pt)}</div>
+          <div style="background:#fff;border-radius:12px;padding:8px;min-height:150px;display:flex;align-items:center;justify-content:center;">${q.img ? `<img src="${q.img}" alt="" style="max-width:100%;max-height:260px;object-fit:contain;">` : `<span dir="rtl" style="font-size:64px;line-height:1.2;">${escapeHtml(q.heb || '')}</span>`}</div>
+          <h3 style="margin-top:8px;">${escapeHtml(it.pt)}</h3>
+          <p style="text-align:left;margin-top:8px;"><strong>🙏 Invocar:</strong> <em>«Invoco a energia da etiqueta ${escapeHtml(q.codigo || '')}: ${escapeHtml(it.pt)}. Que atue agora, com a mesma força da etiqueta física.»</em></p>
+          <p style="text-align:left;margin-top:6px;"><strong>🎯 Pêndulo:</strong> sobre o testemunho, até abrandar e parar ou mudar de movimento.</p>
+          <button class="primary" data-a="feita" style="width:100%;padding:14px;margin-top:10px;">${idx + 1 < itens.length ? '✔ Aplicada, próxima →' : '✔ Aplicada, terminar'}</button></div>
+        <div class="row" style="gap:8px;"><button class="ghost" data-a="ant" ${idx ? '' : 'disabled'}>← Anterior</button><button class="ghost" data-a="seg" ${idx + 1 < itens.length ? '' : 'disabled'}>Saltar →</button></div>`;
+    }
+    ov.innerHTML = `<div style="max-width:520px;margin:0 auto;">${topo}${corpo}</div>`;
+  }
+  const concluir = () => { ov.remove(); toast(`Limpeza etérica registada: ${feitas()} de ${itens.length} etiquetas ✓`); };
+  ov.addEventListener('click', e => {
+    const b = e.target.closest ? e.target.closest('[data-a]') : null; if (!b) return;
+    const a = b.getAttribute('data-a');
+    if (a === 'fechar'){ ov.remove(); return; }
+    if (a === 'todas' || a === 'uma'){ m = a; pintar(); return; }
+    if (a === 'todasFeitas'){ itens.forEach(marcar); concluir(); return; }
+    if (a === 'feita'){ marcar(itens[idx]); if (idx + 1 < itens.length){ idx++; pintar(); } else concluir(); return; }
+    if (a === 'ant' && idx > 0){ idx--; pintar(); return; }
+    if (a === 'seg' && idx + 1 < itens.length){ idx++; pintar(); }
+  });
+  pintar();
+};
 function triagemItensAplicar(){
   const causas = TRIAGEM_BAIXA_VIBRACAO.filter((x, i) => __triagem.baixaVibracao[i]);
   const chakrasTodos = TRIAGEM_CHAKRAS_9.map((c, i) => ({ ...c, estado: __triagem.chakras[i] }));
@@ -12157,7 +12310,13 @@ function triagemItensAplicar(){
     ? TRIAGEM_PROTOCOLO_COMPLETO.map(f => ({ ...f, itens: f.itens.filter(i => i.base) }))
     : triagemFasesDaSessao(causas, chakrasTodos, ab);
   const out = [];
-  fases.forEach(f => f.itens.forEach(i => out.push({ heb: i.heb, pt: i.pt, fase: f.fase, simples: triagemSimples(i) })));
+  fases.forEach(f => f.itens.forEach(i => out.push({ heb: i.heb, pt: i.pt, fase: f.fase, simples: triagemSimples(i), key: triKeyEtq(i) })));
+  const reg = etqRegisto().mapa;
+  (__triagem.pedidoEtq || []).forEach(pt => {
+    const r = reg[etqChave(pt)]; if (!r || out.some(o => etqChave(o.pt) === etqChave(r.pt))) return;
+    const base = { heb: r.heb || '', pt: r.pt };
+    out.push({ ...base, fase: 'Pedido do paciente', simples: triagemSimples(base), key: triKeyEtq(base), pedido: true });
+  });
   return out;
 }
 // Triagem e tratamento são duas coisas separadas: na 1.ª consulta faz-se só a triagem e a ficha fica
@@ -12205,13 +12364,19 @@ function triagemPassoTratamento(main){
     <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
     ${triagemProgressoHTML()}
     ${triagemSeletorModoHTML(false)}
+    <div class="card" style="border:2px solid var(--primary);">
+      <h3>✨ Limpeza por via etérica <span class="muted" style="font-weight:400;font-size:.8rem;">(método principal)</span></h3>
+      <p class="muted">${itens.length} etiquetas escolhidas pela triagem${(__triagem.pedidoEtq || []).length ? ' e pelo pedido do paciente' : ''}. Trabalha com o pêndulo sobre o telemóvel, com o testemunho do paciente ao centro.</p>
+      <div id="triEterMini" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0;"></div>
+      <button class="primary" style="width:100%;padding:14px;" onclick="triEterAbrir('todas')">⚡ Todas em conjunto, testemunho ao centro</button>
+      <button class="ghost" style="width:100%;padding:14px;margin-top:8px;" onclick="triEterAbrir('uma')">1️⃣ Uma a uma</button>
+    </div>
     <div class="card">
-      <h3>Aplicar o protocolo</h3>
+      <h3>Lista das etiquetas <span class="muted" style="font-weight:400;font-size:.8rem;">(para marcar à mão, ou se usares as etiquetas físicas)</span></h3>
       <p class="muted">${n1 ? '1.ª consulta: protocolo completo.' : 'Etiquetas escolhidas pelo que saiu na triagem de hoje.'} São ${itens.length} etiquetas, por ordem. Toca em cada uma quando a aplicares.</p>
       <div id="triagemEtqLista" style="margin-top:8px;"></div>
       <p id="triagemEtqContagem" class="muted" style="margin-top:8px;"></p>
       <button class="ghost" onclick="abrirListaEtiquetas()" style="margin-top:6px;">🏷️ Procurar etiqueta (lista numerada)</button>
-      <button class="ghost" onclick="abrirEtiquetasEtericas(__triagemPtsEtq())" style="margin-top:6px;">✨ Aplicar por via etérica (sem etiquetas físicas)</button>
       <button class="ghost" id="triagemEtqTodas" style="margin-top:6px;">Marcar todas como aplicadas</button>
     </div>
     <div class="card" style="border:2px solid var(--primary);">
@@ -12236,23 +12401,27 @@ function triagemPassoTratamento(main){
     </div>`;
   function pintar(){
     const feitas = new Set(__triagem.aplicadas);
+    const mini = document.getElementById('triEterMini');
+    if (mini){ const rg = etqRegisto().mapa; mini.innerHTML = itens.map(it => { const q = rg[etqChave(it.pt)] || { heb: it.heb }, on = feitas.has(it.key);
+      return `<div style="width:64px;text-align:center;padding:4px;border-radius:10px;border:2px solid ${on ? '#2e9d57' : '#e3dbee'};background:${on ? '#eef7ee' : '#fff'};">${eeImgHeb(q, 34)}<div style="font-size:10px;font-weight:700;color:${on ? '#2e9d57' : '#5b2a86'};">${escapeHtml(q.codigo || '')}</div></div>`; }).join(''); }
     let fase = '';
     document.getElementById('triagemEtqLista').innerHTML = itens.map((it, i) => {
       const cab = it.fase !== fase ? (fase = it.fase, `<div class="muted" style="margin-top:10px;font-weight:600;">${escapeHtml(it.fase)}</div>`) : '';
-      const on = feitas.has(it.heb);
+      const on = feitas.has(it.key);
       return cab + `<div class="row" style="gap:10px;padding:10px;margin-top:4px;border-radius:10px;cursor:pointer;background:${on ? '#eef7ee' : '#f7f7f5'};" onclick="window.__triagemTogEtq(${i})">
         <span style="font-size:1.4rem;">${on ? '☑' : '⬜'}</span>
         <span style="flex:1;">${etqBadge(it.pt) || '<strong>' + (i + 1) + '.</strong>'} <span dir="rtl" style="font-size:1.1rem;">${escapeHtml(it.heb)}</span><br><span class="muted">${escapeHtml(it.pt)}</span></span></div>`;
     }).join('');
-    const n = itens.filter(it => feitas.has(it.heb)).length;
+    const n = itens.filter(it => feitas.has(it.key)).length;
     document.getElementById('triagemEtqContagem').textContent = `${n} de ${itens.length} aplicadas`;
   }
   window.__triagemTogEtq = function(i){
-    const h = itens[i].heb, k = __triagem.aplicadas.indexOf(h);
+    const h = itens[i].key, k = __triagem.aplicadas.indexOf(h);
     if (k >= 0) __triagem.aplicadas.splice(k, 1); else __triagem.aplicadas.push(h);
     pintar();
   };
-  document.getElementById('triagemEtqTodas').onclick = function(){ __triagem.aplicadas = itens.map(it => it.heb); pintar(); };
+  document.getElementById('triagemEtqTodas').onclick = function(){ __triagem.aplicadas = itens.map(it => it.key); pintar(); };
+  window.__triagemPintarEtq = pintar;
   pintar();
   document.getElementById('triagemBovisInput').addEventListener('input', e => { __triagem.bovisFin = e.target.value; });
   const resumoPag = () => {
@@ -12265,7 +12434,7 @@ function triagemPassoTratamento(main){
   resumoPag();
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
   window.__triagemAvancar = function(){
-    const falta = itens.filter(it => __triagem.aplicadas.indexOf(it.heb) < 0).length;
+    const falta = itens.filter(it => __triagem.aplicadas.indexOf(it.key) < 0).length;
     if (falta && !__triagem._avisoFalta){ __triagem._avisoFalta = true; toast(`Faltam ${falta} etiquetas por marcar. Toca outra vez em Seguinte para continuar mesmo assim.`, true); return; }
     __triagem._avisoFalta = false;
     __triagem.passo++; renderTriagemPasso(main);
@@ -12367,11 +12536,20 @@ function triagemPassoAbertura(main){
         ${TRIAGEM_NIVEIS_ABERTURA.map((niv, idx) => `<option value="${idx}" ${__triagem.aberturaCaminhos===idx?'selected':''}>${niv}</option>`).join('')}
       </select>
     </div>
+    <div class="card" style="border:2px solid var(--primary);">
+      <h3>🎯 O que o paciente pede</h3>
+      <p class="muted">Escreve o que a pessoa quer alcançar ou resolver (ex.: deixar de fumar, ser promovido, encontrar amor, desbloquear uma situação, engravidar). A app escolhe as etiquetas mais indicadas e junta-as ao tratamento. Se não houver pedido, deixa em branco.</p>
+      <textarea id="triPedidoTxt" rows="2" style="width:100%;" placeholder="Ex.: quer deixar de fumar e ser promovido no trabalho">${escapeHtml(__triagem.pedido || '')}</textarea>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${TRI_PEDIDOS.map((c, i) => `<button type="button" class="ghost" style="padding:5px 10px;font-size:.85rem;" onclick="window.__triPedidoChip(${i})">${escapeHtml(c.chip)}</button>`).join('')}</div>
+      <div id="triPedidoSug"></div>
+    </div>
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
       <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
     </div>`;
   document.getElementById('triagemSelAbertura').addEventListener('change', e => __triagem.aberturaCaminhos = parseInt(e.target.value, 10));
+  document.getElementById('triPedidoTxt').addEventListener('input', e => window.__triPedidoTxt(e.target.value));
+  if ((__triagem.pedido || '').trim()) triPedidoPintar(true);
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
   window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
 }
@@ -17164,6 +17342,10 @@ function triagemRelatorioCliente(d){
     sec.push({ titulo:'Desde a última consulta', paras:p, lista });
   }
 
+  if (d.pedido){
+    sec.push({ titulo:'O que pediu', paras:[`${nome} pediu ajuda com: ${d.pedido}. Escolhi etiquetas pensadas para ${(d.pedidoTemas && d.pedidoTemas.length) ? d.pedidoTemas.join(', ') : 'este pedido'} e juntei-as ao trabalho desta consulta.`, `São um apoio para abrir caminho e dar força a essa intenção. Os resultados dependem também do dia a dia e do ritmo de cada pessoa.`] });
+  }
+
   if (d.aplicadas && d.aplicadas.length){
     const pa = [`Nesta consulta (a ${d.numConsulta}.ª) trabalhei à distância, com autorização radiestésica, ${d.aplicadas.length} ${d.aplicadas.length === 1 ? 'etiqueta' : 'etiquetas'}, escolhidas para não gastar demasiado o campo de ${nome} numa só sessão:`];
     if (d.bovisIni && d.bovisFin) pa.push(`A vitalidade (unidades Bovis) estava em ${d.bovisIni} no início e ficou em ${d.bovisFin} no fim do trabalho.`);
@@ -17348,6 +17530,15 @@ function triagemModeloBonito(d, cli){
     (c.chakrasComparados || []).filter(x => x.delta !== 0).forEach(x => l.push((x.delta > 0 ? '🌿 Melhorou: ' : '⚠️ Pede mais atenção: ') + 'centro ' + x.nome + ' (' + triRotuloEstado(x.antes).toLowerCase() + ' → ' + triRotuloEstado(x.agora).toLowerCase() + ')'));
     if (l.length) blocos.push({ tipo:'lista', icone:'🌱', titulo:'O que mudou', marca:'•', itens:l });
   }
+  if (d.pedido) blocos.push({ tipo:'texto', icone:'🎯', titulo:'O que pediu', paras:[`Pediu ajuda com: ${d.pedido}.`, 'As etiquetas foram escolhidas a pensar nesse pedido e juntas ao trabalho de limpeza.'] });
+  if (d.aplicadas && d.aplicadas.length){
+    const rg = etqRegisto().mapa;
+    blocos.push({ tipo:'lista', icone:'✨', titulo:'O trabalho feito hoje (limpeza etérica)', marca:'•', itens: d.aplicadas.map(it => { const q = rg[etqChave(it.pt)]; return (q ? q.codigo + ': ' : '') + (it.simples || it.pt); }) });
+    blocos.push({ tipo:'sentir', icone:'🫶', titulo:'Como se pode sentir agora', intro:'Depois de uma limpeza é normal o corpo e as emoções mexerem um pouco. Não é mau sinal, é sinal de que algo se está a soltar.', itens:[
+      { estado:'ok', nome:'Mais leve', texto:'Pode sentir alívio, calma ou vontade de respirar fundo, como depois de arrumar uma divisão da casa.' },
+      { estado:'de', nome:'Mais sensível', texto:'Pode surgir vontade de chorar, sono diferente ou cansaço. É o corpo a pôr as coisas em ordem. Beber água e descansar ajuda.' },
+      { estado:'bl', nome:'Se pesar demais', texto:'Se algo incomodar muito ou durar mais de uns dias, fale comigo para ajustarmos.' } ] });
+  }
   const passos = [];
   if (d.sessoesNecessarias) passos.push({ rotulo:'Sessões recomendadas', texto:`${d.sessoesNecessarias} sessão(ões) de limpeza.` });
   if (d.temAlgumaCoisaDetetada) passos.push({ rotulo:'Nos dias seguintes', texto:'É normal sentir mais cansaço, emotividade ou sono alterado nos 1 a 3 dias a seguir. É o corpo a processar. Ajuda beber água, descansar e ter momentos calmos.' });
@@ -17395,7 +17586,7 @@ async function triagemGerarRelatorio(){
   let ehPrimeiraSessao = true;
   let anteriorDoc = null;
   const itensAplicar = triagemItensAplicar();
-  const etiquetasAplicadas = itensAplicar.filter(it => __triagem.aplicadas.indexOf(it.heb) >= 0);
+  const etiquetasAplicadas = itensAplicar.filter(it => __triagem.aplicadas.indexOf(it.key) >= 0);
   const pagamentoInfo = await triagemRegistarPagamento();
   try{
     const todosSnap = await getDocs(query(
@@ -17477,14 +17668,16 @@ async function triagemGerarRelatorio(){
     leituraComplementar: __triagem.leituraComplementar, sessoesNecessarias: __triagem.sessoesNecessarias,
     preco: __triagem.preco, temAlgumaCoisaDetetada,
     aplicadas: etiquetasAplicadas, numConsulta: __triagem.numConsulta || 1, bovisIni: __triagem.bovisIni, bovisFin: __triagem.bovisFin,
-    sessoesAntes: anteriorDoc ? anteriorDoc.sessoesNecessarias : null, motivoPlano: __triagem.motivoPlano, pagamento: pagamentoInfo
+    sessoesAntes: anteriorDoc ? anteriorDoc.sessoesNecessarias : null, motivoPlano: __triagem.motivoPlano, pagamento: pagamentoInfo,
+    pedido: (__triagem.pedido || '').trim(), pedidoTemas: __triagem.pedidoTemas || []
   });
   window.__triagemTextoClienteAtual = clienteRel.texto;
   let reportHtmlBonitoTriagem = '';
   try {
     reportHtmlBonitoTriagem = rbFragmento(triagemModeloBonito({
       primeiroNome: __triagem.patientNome.split(/\s+/)[0], causasDetetadas, chakrasTodos, aberturaNivel, comparacao,
-      sessoesNecessarias: __triagem.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas: etiquetasAplicadas
+      sessoesNecessarias: __triagem.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas: etiquetasAplicadas,
+      pedido: (__triagem.pedido || '').trim(), pedidoTemas: __triagem.pedidoTemas || []
     }, clienteRel));
   } catch(e){ console.warn('Relatório ilustrado da triagem falhou, uso o simples:', e); }
   const reportHtmlAntigo = gerarReportHtmlPaciente({
@@ -17825,7 +18018,7 @@ window.__triagemMarcarSessoes = async function(){
 function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfetados, aberturaNivel, protocoloFinal, comparacao, temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA, perfil, ehPrimeiraSessao, cruzamentoVidasPassadas, guardadoComSucesso){
   const main = document.getElementById('mainView');
   const itensAplicar = triagemItensAplicar();
-  const etiquetasAplicadas = itensAplicar.filter(it => __triagem.aplicadas.indexOf(it.heb) >= 0);
+  const etiquetasAplicadas = itensAplicar.filter(it => __triagem.aplicadas.indexOf(it.key) >= 0);
   const sintese = causasDetetadas.length
     ? `A triagem de ${escapeHtml(__triagem.patientNome)} detetou ${causasDetetadas.length} causa(s) — descritas abaixo em linguagem simples.`
     : `A triagem de ${escapeHtml(__triagem.patientNome)} não revelou causas — campo equilibrado.`;
