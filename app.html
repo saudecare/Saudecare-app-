@@ -354,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-09-8';
+const APP_VERSION = '2026-11-09-9';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -17494,6 +17494,24 @@ function triagemRelatorioCliente(d){
   } else {
     sec.push({ titulo:'O que foi percebido', paras:[`A triagem não encontrou nada de especial a pesar em ${nome}. O campo está equilibrado.`] });
   }
+  {
+    const det = new Set((d.causasDetetadas || []).map(c => c.n));
+    const todos = Object.keys(TRI_CAUSA_HUMANA).map(Number).sort((a, b) => a - b);
+    const claros = todos.filter(n => !det.has(n)).map(n => TRI_CAUSA_HUMANA[n][0]);
+    const lst = todos.filter(n => det.has(n)).map(n => `A trabalhar: ${TRI_CAUSA_HUMANA[n][0]}.`);
+    sec.push({ titulo:`Os ${todos.length} pontos que foram verificados`, paras:[
+      `Na triagem foram verificados ${todos.length} pontos, que são as causas mais comuns de peso energético. ${det.size ? (det.size === 1 ? 'Um deles precisa de atenção' : det.size + ' deles precisam de atenção') + ', e todos os outros estão limpos.' : 'Todos estão limpos.'}`,
+      claros.length ? `Pontos limpos (${claros.length}): ${claros.join(', ')}.` : ''
+    ].filter(Boolean), lista: lst });
+  }
+  if (d.aberturaNivel){
+    const iAb = TRIAGEM_NIVEIS_ABERTURA.indexOf(d.aberturaNivel);
+    const exp = ['as portas abrem-se com facilidade e a vida flui','há algum esforço a mais, como uma porta que emperra um pouco','as portas custam muito a abrir, por mais que se esforce','quase tudo parece encerrado, e é o ponto que mais merece trabalho'];
+    sec.push({ titulo:'Abertura de caminhos', paras:[
+      `Mede o quanto a vida de ${nome} flui à frente: trabalho, dinheiro, relações, oportunidades. A escala tem quatro níveis.`,
+      `Neste momento está: ${d.aberturaNivel}${iAb >= 0 ? ', ou seja, ' + exp[iAb] : ''}.`
+    ], lista: TRIAGEM_NIVEIS_ABERTURA.map((n, i) => `${i === iAb ? '➜ ' : ''}${n}: ${exp[i]}`) });
+  }
 
   const L = d.leituraComplementar;
   if (L){
@@ -17576,9 +17594,9 @@ function triagemRelatorioCliente(d){
   sec.push(triResumoLeitura(d, nome, fracos, L));
 
   sec.push({ titulo:'Uma nota importante', paras:[
-    `Este trabalho é complementar e não substitui o acompanhamento médico ou psicológico. Se notarem tristeza profunda, ideias de se magoar ou alterações marcadas de comportamento, procurem ajuda médica sem demora.`,
-    `Estamos disponíveis para esclarecer qualquer dúvida. Com carinho,`,
-    `Hikari Fafe`
+    `Este é um trabalho energético e não substitui o acompanhamento médico ou psicológico. Se notarem tristeza profunda, ideias de se magoar ou alterações marcadas de comportamento, procurem ajuda médica sem demora.`,
+    `Estou disponível para esclarecer qualquer dúvida. Com carinho,`,
+    `Ricardo Correia\nHikari Fafe`
   ]});
 
   const texto = sec.map(s => `== ${s.titulo} ==\n` + s.paras.join('\n\n') + (s.lista && s.lista.length ? '\n\n' + s.lista.map(x => '- ' + x).join('\n') : '')).join('\n\n');
@@ -17709,7 +17727,9 @@ function triagemModeloBonito(d, cli){
   blocos.push(causas.length
     ? { tipo:'detalhe', icone:'🔎', titulo:'O que foi encontrado', intro:'Toque em cada item para perceber o que é e ver um exemplo do dia a dia.', itens: causas.map(c => ({ nome:c.nome, descricao:c.descricao, exemplo:c.exemplo })) }
     : { tipo:'texto', icone:'🔎', titulo:'O que foi encontrado', paras:['Nada de baixa vibração foi detetado: o campo está equilibrado. ✨'] });
-  if (d.aberturaNivel) blocos.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras:[String(d.aberturaNivel)] });
+  const secAb = cli && cli.sec ? cli.sec.find(x => x.titulo === 'Abertura de caminhos') : null;
+  if (secAb) blocos.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras: secAb.paras.concat((secAb.lista || []).map(y => '• ' + y)) });
+  else if (d.aberturaNivel) blocos.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras:[String(d.aberturaNivel)] });
   const c = d.comparacao;
   if (c){
     const l = [];
@@ -17736,9 +17756,9 @@ function triagemModeloBonito(d, cli){
   const secExp = cli && cli.sec ? cli.sec.find(x => /^Porque os centros mudam/.test(x.titulo)) : null;
   const secRes = cli && cli.sec ? cli.sec.find(x => x.titulo === 'Resumo da leitura') : null;
   if (secExp) blocos.push({ tipo:'detalhe', icone:'🔗', titulo:'Porque os centros mudam, e a que estão ligados', intro: secExp.paras[0], itens: (secExp.lista || []).map(t => { const i = t.indexOf('. '); return { nome: i > 0 ? t.slice(0, i) : t, descricao: i > 0 ? t.slice(i + 2) : '', exemplo: '' }; }) });
-  if (cli && cli.sec) blocos.push({ tipo:'secoes', icone:'📖', titulo:'A leitura completa, em palavras', itens: cli.sec.filter(x => x !== secRes && x !== secExp).map(x => ({ nome:x.titulo, paras:(x.paras || []).concat((x.lista || []).map(y => '• ' + y)) })) });
+  if (cli && cli.sec) blocos.push({ tipo:'secoes', icone:'📖', titulo:'A leitura completa, em palavras', itens: cli.sec.filter(x => x !== secRes && x !== secExp && x !== secAb).map(x => ({ nome:x.titulo, paras:(x.paras || []).concat((x.lista || []).map(y => '• ' + y)) })) });
   if (secRes) blocos.push({ tipo:'texto', icone:'🧭', titulo:'Resumo da leitura', paras: secRes.paras.concat((secRes.lista || []).map(y => y.replace(/^\s+/, '• '))) });
-  return { tema:'triagem', emoji:'🌿', titulo:'A sua triagem energética', subtitulo:'Relatório pessoal', nome, data:new Date().toLocaleDateString('pt-PT'), assinatura:'Hikari Fafe', blocos };
+  return { tema:'triagem', emoji:'🌿', titulo:'A sua triagem energética', subtitulo:'Relatório pessoal', nome, data:new Date().toLocaleDateString('pt-PT'), assinatura:'Ricardo Correia · Hikari Fafe', blocos };
 }
 
 async function triagemGerarRelatorio(){
