@@ -185,7 +185,29 @@ export function renderPesquisaIntegrada(main, ctx) {
     else h.push(passo6());
     main.innerHTML = h.join('');
     ligar();
+    agendarPre(500, true);
   }
+  /* Vai ver sozinho se a pessoa já respondeu ao questionário (sem carregar em "Ver se já respondeu") */
+  let tmPre = null; let lendoPre = false; let tentPre = 0;
+  async function atualizarPre() {
+    if (!S.pac || lendoPre) return; lendoPre = true;
+    try {
+      const pid = S.pac.id; const tinha = !!analisePre(); const estAntes = pre ? pre.estado : '';
+      const novo = await ctx.lerPreConsulta(pid); let novoSeg = seg;
+      try { novoSeg = await ctx.lerPreConsulta(pid, SEG_FORM_ID); } catch (_) {}
+      if (!S.pac || S.pac.id !== pid) return;
+      pre = novo; seg = novoSeg;
+      if (!tinha && analisePre()) { aplicarPre(); ctx.toast('A pessoa já respondeu ao questionário: sinais de cuidado preenchidos ✅'); ver(); }
+      else if ((pre ? pre.estado : '') !== estAntes) ver();
+    } catch (_) {} finally { lendoPre = false; }
+  }
+  function agendarPre(atraso, novoCiclo) {
+    clearTimeout(tmPre);
+    if (novoCiclo) tentPre = 0;
+    if (passo !== 0 || !S.pac || !main.isConnected || analisePre() || tentPre >= 60) return;
+    tmPre = setTimeout(async () => { tentPre++; await atualizarPre(); agendarPre(6000); }, atraso);
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && passo === 0 && S.pac && main.isConnected && !analisePre()) { tentPre = 0; atualizarPre(); } });
 
   function cartaoCiclo() {
     if (!S.pac) return ''; const c = cur(); const f = nFeitas(c);
