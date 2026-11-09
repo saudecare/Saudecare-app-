@@ -354,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-09-2';
+const APP_VERSION = '2026-11-09-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12232,68 +12232,87 @@ function triPedidoPintar(semRecalcular){
    Mostra as etiquetas escolhidas (com as imagens) e o testemunho do paciente ao centro, para trabalhar
    com o pêndulo sobre o telemóvel: todas em conjunto ou uma a uma. */
 function triKeyEtq(it){ return it.heb || ('pt:' + it.pt); }
-window.triEterAbrir = async function(modo){
-  const itens = triagemItensAplicar();
+window.triEterAbrir = async function(modo, opts){
+  opts = opts || {};
+  const emTriagem = !opts.itens;
+  const itens = (opts.itens || triagemItensAplicar()).map(i => ({ ...i, key: i.key || triKeyEtq(i) }));
   if (!itens.length){ toast('Ainda não há etiquetas escolhidas.', true); return; }
   const reg = etqRegisto().mapa;
   const info = it => reg[etqChave(it.pt)] || { codigo:'', heb: it.heb, pt: it.pt };
-  let foto = '';
-  try { const ps = await getDoc(doc(db, 'tenants', tenantId, 'patients', __triagem.patientId)); foto = ps.exists() ? (ps.data().photoUrl || '') : ''; } catch(e){}
-  const nome = __triagem.patientNome || '';
-  const nasc = __triagem.dataNascimento ? new Date(__triagem.dataNascimento + 'T12:00:00').toLocaleDateString('pt-PT') : '';
+  const pid = emTriagem ? __triagem.patientId : (opts.pacienteId || '');
+  const pc = (window.__allPatientsCache || []).find(x => x.id === pid) || {};
+  let nome = emTriagem ? (__triagem.patientNome || '') : (pc.fullName || '');
+  let nascIso = emTriagem ? (__triagem.dataNascimento || '') : (pc.birthDate || '');
+  let foto = pc.photoUrl || '';
+  if (!foto && pid){ try { const ps = await getDoc(doc(db, 'tenants', tenantId, 'patients', pid)); if (ps.exists()){ const d = ps.data(); foto = d.photoUrl || ''; nome = nome || d.fullName || ''; nascIso = nascIso || d.birthDate || ''; } } catch(e){} }
+  const nasc = nascIso ? new Date(nascIso + 'T12:00:00').toLocaleDateString('pt-PT') : '';
   const ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;overflow:auto;padding:10px;';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column;height:100dvh;padding:8px 8px calc(8px + env(safe-area-inset-bottom));box-sizing:border-box;';
   document.body.appendChild(ov);
-  let m = modo || 'todas', idx = 0;
-  const feitas = () => itens.filter(it => __triagem.aplicadas.indexOf(triKeyEtq(it)) >= 0).length;
-  const marcar = it => { const k = triKeyEtq(it); if (__triagem.aplicadas.indexOf(k) < 0) __triagem.aplicadas.push(k); if (window.__triagemPintarEtq) window.__triagemPintarEtq(); };
-  const testemunho = (tam) => `<div style="width:${tam}px;height:${tam}px;border-radius:50%;margin:auto;background:#f6f0fb;border:3px solid #5b2a86;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;padding:6px;box-sizing:border-box;">
-      ${foto ? `<img src="${escapeAttrJs(foto)}" alt="" style="width:${Math.round(tam * .5)}px;height:${Math.round(tam * .5)}px;border-radius:50%;object-fit:cover;margin-bottom:3px;">` : ''}
-      <b style="font-size:${tam > 120 ? 15 : 12}px;line-height:1.15;">${escapeHtml(nome)}</b>${nasc ? `<small style="font-size:11px;color:#6b5a80;">${nasc}</small>` : ''}
-      <small style="font-size:10px;color:#6b5a80;margin-top:2px;">testemunho</small></div>`;
+  let m = modo || 'todas', idx = 0, legenda = '', ajuda = false;
+  const feitasSet = new Set(emTriagem ? __triagem.aplicadas : []);
+  const nFeitas = () => itens.filter(it => feitasSet.has(it.key)).length;
+  const marcar = it => { feitasSet.add(it.key); if (emTriagem){ if (__triagem.aplicadas.indexOf(it.key) < 0) __triagem.aplicadas.push(it.key); if (window.__triagemPintarEtq) window.__triagemPintarEtq(); } };
+  const cor = q => ETQ_COR[q.grupo] || '#5b2a86';
+  const centro = (tam) => `<div style="width:${tam}px;height:${tam}px;border-radius:50%;background:#f6f0fb;border:3px solid #5b2a86;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;padding:4px;box-sizing:border-box;">
+      ${foto ? `<img src="${escapeHtml(foto)}" alt="" style="width:${Math.round(tam * .46)}px;height:${Math.round(tam * .46)}px;border-radius:50%;object-fit:cover;margin-bottom:2px;">` : ''}
+      <b style="font-size:${Math.max(10, Math.min(15, Math.round(tam / 9)))}px;line-height:1.1;">${escapeHtml(nome)}</b>${nasc ? `<small style="font-size:${Math.max(9, Math.min(12, Math.round(tam / 12)))}px;color:#6b5a80;">${nasc}</small>` : ''}
+      <small style="font-size:9px;color:#6b5a80;">testemunho</small></div>`;
+  const passos = [['🌬️ Preparar', 'Respira fundo três vezes e centra-te. Intenção: limpar e abrir caminhos' + (nome ? ' para ' + escapeHtml(nome) : '') + '.'],
+    ['🙏 Invocar', 'Diz: <em>«Invoco, ao mesmo tempo, a energia de todas estas etiquetas. Que atuem em conjunto, com a mesma força das etiquetas físicas.»</em>'],
+    ['🎯 Pêndulo', 'Segura-o sobre o testemunho ao centro até abrandar e parar ou mudar de movimento.'],
+    ['✨ Selar', 'Agradece e fecha o campo. Beber água ajuda a assentar.']];
+  const tile = (it, i, x, y, t, tamImg) => { const q = info(it), on = feitasSet.has(it.key);
+    return `<div data-t="${i}" style="position:absolute;left:${(x - t / 2).toFixed(2)}%;top:${(y - t / 2).toFixed(2)}%;width:${t}%;height:${t}%;border-radius:10px;background:${on ? '#eef7ee' : '#fff'};border:2px solid ${on ? '#2e9d57' : '#d9cde8'};display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;box-sizing:border-box;">
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:2px;box-sizing:border-box;min-height:0;">${q.img ? `<img src="${q.img}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">` : `<span dir="rtl" style="font-size:${tamImg}px;line-height:1.05;text-align:center;">${escapeHtml(q.heb || '')}</span>`}</div>
+      <span style="font-size:9px;font-weight:700;color:#fff;background:${cor(q)};padding:0 5px;border-radius:99px;margin-bottom:2px;">${escapeHtml(q.codigo || String(i + 1))}</span></div>`; };
+  function ajustar(){ const box = ov.querySelector('#triRingBox'), sq = ov.querySelector('#triRing'); if (!box || !sq) return; const t = Math.max(120, Math.min(box.clientWidth, box.clientHeight)); sq.style.width = sq.style.height = t + 'px'; }
   function pintar(){
-    const topo = `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;">
-        <h2 style="margin:0;flex:1;">✨ Limpeza etérica</h2>
-        <button class="${m === 'todas' ? 'primary' : 'ghost'}" data-a="todas" style="padding:6px 12px;">⚡ Todas</button>
-        <button class="${m === 'uma' ? 'primary' : 'ghost'}" data-a="uma" style="padding:6px 12px;">1️⃣ Uma a uma</button>
-        <button class="ghost" data-a="fechar" style="padding:6px 12px;">✖</button></div>`;
+    const topo = `<div style="display:flex;gap:6px;align-items:center;flex:0 0 auto;">
+        <b style="flex:1;font-size:1rem;">✨ Limpeza etérica</b>
+        <button class="${m === 'todas' ? 'primary' : 'ghost'}" data-a="todas" style="padding:6px 10px;">⚡ Todas</button>
+        <button class="${m === 'uma' ? 'primary' : 'ghost'}" data-a="uma" style="padding:6px 10px;">1️⃣ Uma a uma</button>
+        <button class="ghost" data-a="ajuda" style="padding:6px 10px;">ℹ️</button>
+        <button class="ghost" data-a="fechar" style="padding:6px 10px;">✖</button></div>`;
+    const painel = ajuda ? `<div style="position:absolute;left:8px;right:8px;top:52px;z-index:5;background:#fff;border:2px solid #5b2a86;border-radius:12px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-height:70dvh;overflow:auto;">${passos.map(f => `<p style="margin:0 0 8px;"><strong>${f[0]}</strong><br>${f[1]}</p>`).join('')}<button class="primary" data-a="ajuda" style="width:100%;">Entendi</button></div>` : '';
     let corpo = '';
     if (m === 'todas'){
-      const n = itens.length, tile = n <= 6 ? 25 : (n <= 10 ? 21 : 17), R = 36;
-      const ring = itens.map((it, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n, x = 50 + R * Math.cos(a), y = 50 + R * Math.sin(a), q = info(it), on = __triagem.aplicadas.indexOf(triKeyEtq(it)) >= 0;
-        return `<div style="position:absolute;left:${(x - tile / 2).toFixed(2)}%;top:${(y - tile / 2).toFixed(2)}%;width:${tile}%;aspect-ratio:1/1;border-radius:12px;background:${on ? '#eef7ee' : '#fff'};border:2px solid ${on ? '#2e9d57' : '#d9cde8'};display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">
-          <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:2px;box-sizing:border-box;min-height:0;">${q.img ? `<img src="${q.img}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">` : `<span dir="rtl" style="font-size:${n <= 6 ? 22 : 16}px;line-height:1.1;text-align:center;">${escapeHtml(q.heb || '')}</span>`}</div>
-          <span style="font-size:10px;font-weight:700;color:#fff;background:${ETQ_COR[q.grupo] || '#5b2a86'};padding:1px 6px;border-radius:99px;margin-bottom:2px;">${escapeHtml(q.codigo || String(i + 1))}</span></div>`; }).join('');
-      corpo = `<div style="position:relative;width:100%;max-width:440px;margin:10px auto;aspect-ratio:1/1;">
-          <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:34%;">${testemunho(Math.min(150, Math.round((Math.min(window.innerWidth, 440) - 20) * .34)))}</div>${ring}</div>
-        <p class="muted" style="text-align:center;margin:0 0 6px;">Pêndulo sobre o testemunho ao centro. As etiquetas à volta são aplicadas todas ao mesmo tempo.</p>
-        <div style="margin:8px 0;">${itens.map((it, i) => { const q = info(it); return `<div style="display:flex;gap:8px;align-items:center;padding:6px 4px;border-bottom:1px solid #eee;"><span style="min-width:60px;text-align:center;padding:2px 6px;border-radius:99px;background:${ETQ_COR[q.grupo] || '#5b2a86'};color:#fff;font-weight:700;font-size:12px;">${escapeHtml(q.codigo || String(i + 1))}</span><span style="flex:1;font-size:.92rem;">${escapeHtml(it.pt)}</span></div>`; }).join('')}</div>
-        ${[['🌬️ Preparar', 'Respira fundo três vezes. Coloca a intenção de limpar, harmonizar e abrir caminhos para ' + escapeHtml(nome) + '. Pega no pêndulo e centra-te.'],
-           ['🙏 Invocar todas em conjunto', 'Diz em voz alta ou em pensamento: <em>«Invoco, ao mesmo tempo, a energia de todas estas etiquetas para ' + escapeHtml(nome) + '. Que atuem em conjunto, em harmonia, com a mesma força das etiquetas físicas.»</em>'],
-           ['🎯 Aplicar com o pêndulo', 'Segura o pêndulo sobre o testemunho ao centro e deixa-o rodar até abrandar e parar ou mudar de movimento. Esse é o sinal de que a energia foi aplicada.'],
-           ['✨ Selar e agradecer', 'Agradece e fecha o campo com a tua oração ou comando de fecho. Beber água ajuda a assentar.']].map(f => `<div class="card" style="margin:6px 0;"><strong>${f[0]}</strong><p style="margin-top:4px;">${f[1]}</p></div>`).join('')}
-        <button class="primary" data-a="todasFeitas" style="width:100%;padding:14px;margin-top:6px;">✔ Aplicadas todas, concluir</button>`;
+      const n = itens.length;
+      let html = '', cw = 34;
+      if (n <= 12){ const t = n === 1 ? 30 : Math.min(27, Math.max(14, 2 * 38 * Math.sin(Math.PI / n) * .9)); itens.forEach((it, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; html += tile(it, i, 50 + 38 * Math.cos(a), 50 + 38 * Math.sin(a), t, n <= 6 ? 20 : 15); }); }
+      else { cw = 22; const no = Math.ceil(n * .58), ni = n - no; itens.forEach((it, i) => { const o = i < no, k = o ? i : i - no, c = o ? no : ni, a = -Math.PI / 2 + k * 2 * Math.PI / c, R = o ? 40 : 24, t = o ? Math.min(19, 251 / no * .95) : Math.min(15, 151 / Math.max(ni, 1) * .95); html += tile(it, i, 50 + R * Math.cos(a), 50 + R * Math.sin(a), t, 11); }); }
+      corpo = `<div id="triRingBox" style="flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;">
+          <div id="triRing" style="position:relative;"><div id="triCentro" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);"></div>${html}</div></div>
+        <div style="flex:0 0 auto;text-align:center;min-height:34px;font-size:.9rem;padding:2px 6px;">${legenda ? legenda : '<span class="muted">Toca numa etiqueta para ler o nome.</span>'}</div>
+        <button class="primary" data-a="todasFeitas" style="flex:0 0 auto;width:100%;padding:14px;">✔ Aplicadas todas, concluir</button>`;
     } else {
-      const it = itens[idx], q = info(it), on = __triagem.aplicadas.indexOf(triKeyEtq(it)) >= 0;
-      corpo = `<div style="display:flex;gap:10px;align-items:center;justify-content:center;margin:8px 0;">${testemunho(86)}</div>
-        <div style="height:10px;border-radius:99px;background:#eee;overflow:hidden;"><div style="height:100%;width:${Math.round(feitas() / itens.length * 100)}%;background:linear-gradient(90deg,#c0398b,#5b2a86);"></div></div>
-        <p class="muted" style="text-align:center;margin:4px 0 8px;">Etiqueta ${idx + 1} de ${itens.length} · ${feitas()} aplicada(s)</p>
-        <div class="card" style="text-align:center;border:2px solid ${on ? '#2e9d57' : 'var(--primary)'};">
-          <div style="margin:4px 0;">${etqBadge(it.pt)}</div>
-          <div style="background:#fff;border-radius:12px;padding:8px;min-height:150px;display:flex;align-items:center;justify-content:center;">${q.img ? `<img src="${q.img}" alt="" style="max-width:100%;max-height:260px;object-fit:contain;">` : `<span dir="rtl" style="font-size:64px;line-height:1.2;">${escapeHtml(q.heb || '')}</span>`}</div>
-          <h3 style="margin-top:8px;">${escapeHtml(it.pt)}</h3>
-          <p style="text-align:left;margin-top:8px;"><strong>🙏 Invocar:</strong> <em>«Invoco a energia da etiqueta ${escapeHtml(q.codigo || '')}: ${escapeHtml(it.pt)}. Que atue agora, com a mesma força da etiqueta física.»</em></p>
-          <p style="text-align:left;margin-top:6px;"><strong>🎯 Pêndulo:</strong> sobre o testemunho, até abrandar e parar ou mudar de movimento.</p>
-          <button class="primary" data-a="feita" style="width:100%;padding:14px;margin-top:10px;">${idx + 1 < itens.length ? '✔ Aplicada, próxima →' : '✔ Aplicada, terminar'}</button></div>
-        <div class="row" style="gap:8px;"><button class="ghost" data-a="ant" ${idx ? '' : 'disabled'}>← Anterior</button><button class="ghost" data-a="seg" ${idx + 1 < itens.length ? '' : 'disabled'}>Saltar →</button></div>`;
+      const it = itens[idx], q = info(it), on = feitasSet.has(it.key);
+      corpo = `<div style="flex:0 0 auto;display:flex;align-items:center;gap:8px;"><div style="flex:0 0 auto;">${centro(78)}</div>
+          <div style="flex:1;"><div style="height:10px;border-radius:99px;background:#eee;overflow:hidden;"><div style="height:100%;width:${Math.round(nFeitas() / itens.length * 100)}%;background:linear-gradient(90deg,#c0398b,#5b2a86);"></div></div>
+          <small class="muted">Etiqueta ${idx + 1} de ${itens.length} · ${nFeitas()} aplicada(s)</small></div></div>
+        <div style="flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid ${on ? '#2e9d57' : 'var(--primary)'};border-radius:14px;margin:6px 0;padding:6px;text-align:center;">
+          <span style="font-size:12px;font-weight:700;color:#fff;background:${cor(q)};padding:1px 10px;border-radius:99px;">${escapeHtml(q.codigo || '')}</span>
+          <div style="flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;">${q.img ? `<img src="${q.img}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">` : `<span dir="rtl" style="font-size:64px;line-height:1.2;">${escapeHtml(q.heb || '')}</span>`}</div>
+          <b>${escapeHtml(it.pt)}</b>
+          <small class="muted" style="margin-top:4px;">🙏 Invoca a etiqueta · 🎯 pêndulo sobre o testemunho até parar ou mudar</small></div>
+        <div style="flex:0 0 auto;display:flex;gap:8px;"><button class="ghost" data-a="ant" ${idx ? '' : 'disabled'} style="padding:14px;">←</button>
+          <button class="primary" data-a="feita" style="flex:1;padding:14px;">${idx + 1 < itens.length ? '✔ Aplicada, próxima →' : '✔ Aplicada, terminar'}</button>
+          <button class="ghost" data-a="seg" ${idx + 1 < itens.length ? '' : 'disabled'} style="padding:14px;">→</button></div>`;
     }
-    ov.innerHTML = `<div style="max-width:520px;margin:0 auto;">${topo}${corpo}</div>`;
+    ov.innerHTML = topo + painel + corpo;
+    const c = ov.querySelector('#triCentro');
+    if (c){ ajustar(); const sq = ov.querySelector('#triRing'); c.innerHTML = centro(Math.round(parseFloat(sq.style.width) * (itens.length <= 12 ? .34 : .22))); }
   }
-  const concluir = () => { ov.remove(); toast(`Limpeza etérica registada: ${feitas()} de ${itens.length} etiquetas ✓`); };
+  const concluir = () => { ov.remove(); window.removeEventListener('resize', onResize); toast(`Limpeza etérica registada: ${nFeitas()} de ${itens.length} etiquetas ✓`); if (opts.onConcluir) opts.onConcluir(Array.from(feitasSet)); };
+  const onResize = () => pintar();
+  window.addEventListener('resize', onResize);
   ov.addEventListener('click', e => {
+    const tl = e.target.closest ? e.target.closest('[data-t]') : null;
+    if (tl){ const it = itens[+tl.getAttribute('data-t')], q = info(it); legenda = `<b>${escapeHtml(q.codigo || '')}</b> · ${escapeHtml(it.pt)}`; pintar(); return; }
     const b = e.target.closest ? e.target.closest('[data-a]') : null; if (!b) return;
     const a = b.getAttribute('data-a');
-    if (a === 'fechar'){ ov.remove(); return; }
+    if (a === 'fechar'){ ov.remove(); window.removeEventListener('resize', onResize); return; }
+    if (a === 'ajuda'){ ajuda = !ajuda; pintar(); return; }
     if (a === 'todas' || a === 'uma'){ m = a; pintar(); return; }
     if (a === 'todasFeitas'){ itens.forEach(marcar); concluir(); return; }
     if (a === 'feita'){ marcar(itens[idx]); if (idx + 1 < itens.length){ idx++; pintar(); } else concluir(); return; }
@@ -19731,7 +19750,9 @@ function eeSelecionadas(){ const m = etqRegisto().mapa; return __ee.sel.map(k =>
 function eeImgHeb(x, h){ return x.img ? `<img src="${x.img}" alt="" style="height:${h}px;max-width:100%;object-fit:contain;">` : `<span dir="rtl" style="font-size:${Math.round(h * .6)}px;">${escapeHtml(x.heb)}</span>`; }
 window.abrirEtiquetasEtericas = function(preSel){
   __ee = eeNovo();
+  if (!Array.isArray(preSel) && typeof __triagem !== 'undefined' && __triagem && __triagem.patientId){ const t = window.__triagemPtsEtq(); if (t.length) preSel = t; }
   if (Array.isArray(preSel)) __ee.sel = preSel.map(etqChave).filter(k => etqRegisto().mapa[k]);
+  if (typeof __triagem !== 'undefined' && __triagem && __triagem.patientId && __ee.sel.length){ __ee.pacienteId = __triagem.patientId; __ee.passo = 'modo'; }
   document.querySelectorAll('[id="etqFechar"]').forEach(b => b.click());
   renderView('etiquetasEtericas');
 };
@@ -19765,7 +19786,8 @@ function eePintar(main){
       <div class="row" style="gap:8px;"><button class="primary" ${E.sel.length ? '' : 'disabled'} onclick="__eeSet('passo','modo')">Seguinte →</button></div>`;
   } else if (E.passo === 'modo'){
     const sel = eeSelecionadas();
-    h += `<div class="card"><h3>2. Como queres aplicar?</h3>
+    const nomeP = (window.__allPatientsCache || []).find(p => p.id === E.pacienteId)?.fullName || '';
+    h += `<div class="card"><h3>2. Como queres aplicar?${nomeP ? ' · ' + escapeHtml(nomeP) : ''}</h3>
       <p class="muted">${sel.length} etiqueta(s): ${sel.map(x => escapeHtml(x.codigo)).join(' · ')}</p>
       <button class="primary" style="width:100%;margin-top:10px;padding:14px;" onclick="eeComecar('todas')">⚡ Todas ao mesmo tempo<br><small>Invoco a energia de todas em conjunto e aplico com o pêndulo</small></button>
       <button class="ghost" style="width:100%;margin-top:10px;padding:14px;" onclick="eeComecar('uma')">1️⃣ Uma a uma<br><small>Invoco e aplico cada etiqueta em separado</small></button></div>
@@ -19811,7 +19833,7 @@ window.eePreset = function(t){
   else { const ks = []; TRIAGEM_PROTOCOLO_COMPLETO.forEach(f => f.itens.forEach(i => { if (i.base && etqRegisto().mapa[etqChave(i.pt)] && ks.indexOf(etqChave(i.pt)) < 0) ks.push(etqChave(i.pt)); })); __ee.sel = ks; }
   eePintar();
 };
-window.eeComecar = function(modo){ __ee.modo = modo; __ee.passo = 'sessao'; __ee.i = 0; __ee.feitas = {}; __ee.fase = 0; eePintar(); };
+window.eeComecar = function(modo){ __ee.modo = modo; triEterAbrir(modo, { itens: eeSelecionadas().map(x => ({ pt: x.pt, heb: x.heb })), pacienteId: __ee.pacienteId, onConcluir: () => eeConcluir() }); };
 window.eeFeita = function(){ const sel = eeSelecionadas(); __ee.feitas[__ee.i] = true; if (__ee.i + 1 < sel.length){ __ee.i++; eePintar(); } else eeConcluir(); };
 window.eeConcluir = async function(){
   const sel = eeSelecionadas(); __ee.guardado = false;
