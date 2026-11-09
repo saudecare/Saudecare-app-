@@ -354,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-09-5';
+const APP_VERSION = '2026-11-09-6';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12699,9 +12699,9 @@ function triagemCruzarVidasPassadas(causasDetetadas, leituraComplementar, perfil
 
 // Leitura complementar em prosa corrida, em vez de 3 linhas soltas —
 // mesma lógica de "leitura de alguém experiente" já usada no Mapa da Alma.
-function triagemSintetizarLeitura(nome, leitura){
-  const { momento, porTras, tendencia } = leitura;
-  return `${nome} está, neste momento, a atravessar ${momento.tema} (${momento.nome}). Por trás disto está ${porTras.tema}, ligado a ${porTras.area} (${porTras.nome}). Se nada mudar, a tendência aponta para ${tendencia.tema} (${tendencia.nome}).`;
+function triagemSintetizarLeitura(nome, leitura, comNomes){
+  const { momento, porTras, tendencia } = leitura, nm = x => comNomes ? ` (${x.nome})` : '';
+  return `${nome} está, neste momento, a atravessar ${momento.tema}${nm(momento)}. Por trás disto está ${porTras.tema}, ligado a ${porTras.area}${nm(porTras)}. Se nada mudar, a tendência aponta para ${tendencia.tema}${nm(tendencia)}.`;
 }
 
 // Compara dois relatórios de Triagem no MESMO formato guardado
@@ -16968,9 +16968,9 @@ const TRI_CHAKRA_HUMANO = {
   'Estrela da Alma':['proximidade ao seu propósito','a sensação de estar longe do seu caminho','conversar sobre o que a pessoa sonha e deseja ser']
 };
 const TRI_CARTA_NOTA = {
-  13:' Esta carta não fala de morte física: fala de um ciclo que se fecha para que outro possa começar.',
+  13:' Isto não fala de morte física: fala de um ciclo que se fecha para que outro possa começar.',
   16:' Uma mudança súbita assusta, mas costuma abrir espaço para uma estrutura mais verdadeira.',
-  15:' Esta carta fala de padrões a que se está preso, e que se podem largar com apoio.',
+  15:' Isto fala de padrões a que se está preso, e que se podem largar com apoio.',
   12:' Uma pausa assim, mesmo desconfortável, dá uma nova perspetiva.',
   18:' Costuma refletir dúvidas e medos que, ao serem ditos, perdem força.'
 };
@@ -17240,7 +17240,7 @@ function triagemAreasVida(d, nome, idade){
   const dom = cv ? DONS_NUMERICOS[cv] : null;
   if (dom && dom.profissoes) tp.push(`Pelo seu Caminho de Vida, ${nome} tem jeito natural para áreas como ${String(dom.profissoes).replace(/\.$/,'')}.`);
   const L2 = d.leituraComplementar;
-  if (L2 && L2.porTras && L2.porTras.area) tp.push(`As cartas falam, por trás de tudo, de ${triMin(L2.porTras.area)}.`);
+  if (L2 && L2.porTras && L2.porTras.area) tp.push(`A leitura aponta, por trás de tudo, para ${triMin(L2.porTras.area)}.`);
   const tr = [tem(28)&&'uma voz interior crítica que trava as decisões', tem(39)&&'o receio de brilhar, que faz atrasar ou desistir perto da meta', tem(40)&&'a criatividade travada', tem(11,38)&&'a sensação de um teto invisível', baixo('Plexo')&&'a pouca confiança em si'].filter(Boolean);
   if (tr.length) tp.push(`O que pode estar a travar a realização: ${triLista(tr)}.`);
   else tp.push('Não foram encontrados bloqueios marcados na área do trabalho.');
@@ -17256,6 +17256,79 @@ function triagemAreasVida(d, nome, idade){
   if (caminhoBloq) dp.push('Com o caminho algo travado, é possível que o esforço não se traduza no resultado esperado. Isto vai-se abrindo com as sessões.');
   out.push({ titulo:'Dinheiro e abundância', paras:dp });
   return out;
+}
+
+// Elos entre chakras: porque é que, ao mexer num, outros se mexem também
+const TRI_CHAKRA_VIZ = {
+  'Raiz':[['Plexo Solar','a segurança de base alimenta a confiança em si'],['Sacro','um chão firme dá espaço ao prazer e à criatividade']],
+  'Sacro':[['Raiz','sem base segura, o prazer e a criatividade encolhem'],['Coração','sentir prazer e sentir amor andam de mãos dadas'],['Plexo Solar','emoções contidas pesam na vontade de agir']],
+  'Plexo Solar':[['Raiz','a confiança em si assenta na segurança de base'],['Coração','quem se valoriza consegue amar e deixar-se amar']],
+  'Coração':[['Garganta','o que se sente precisa de ser dito para não ficar preso'],['Plexo Solar','amar os outros passa por se valorizar a si'],['Sacro','o afeto e a emoção partilham o mesmo fluxo']],
+  'Garganta':[['Coração','só se diz com verdade o que se sente com verdade'],['Terceiro Olho','dizer a verdade clareia a mente']],
+  'Terceiro Olho':[['Garganta','ver com clareza pede coragem para dizer'],['Coroa','a clareza mental abre a ligação ao sentido da vida']],
+  'Coroa':[['Terceiro Olho','a fé e o sentido da vida precisam de uma mente clara'],['Estrela da Alma','a ligação ao que é maior aproxima do propósito']],
+  'Estrela da Alma':[['Coroa','o propósito nasce da ligação ao que é maior'],['Portal Estelar','um propósito claro protege e organiza o campo à volta']],
+  'Portal Estelar':[['Estrela da Alma','sem rumo interior, o campo fica aberto e exposto'],['Raiz','um campo rasgado deixa a pessoa sem chão']]
+};
+function triExplicaChakras(d, nome){
+  const afet = d.chakrasTodos.filter(triChakraAfetado);
+  const aArt = x => String(x).replace(/^as /,'às ').replace(/^os /,'aos ').replace(/^a /,'à ').replace(/^o /,'ao ');
+  const corpoDe = n => { const k = Object.keys(TRI_CHAKRA_CORPO).find(x => String(n).indexOf(x) === 0); return TRI_CHAKRA_CORPO[k] || 'o equilíbrio geral'; };
+  const sent = n => (TRI_CHAKRA_HUMANO[n] && TRI_CHAKRA_HUMANO[n][1]) || 'cansaço e desequilíbrio';
+  const paras = [
+    `Os centros de energia são como divisões da mesma casa, ligadas por corredores. Por isso, quando uma divisão é limpa, o que estava lá preso desloca-se pelos corredores e passa pelas divisões vizinhas. É normal que, depois de uma sessão, um centro melhore e outro, ao lado, fique mais sensível durante uns dias.`,
+    `Há outras razões para um centro mudar de uma sessão para a outra: ao limpar a camada de cima, aparece uma camada mais funda que estava escondida; o dia a dia de ${nome} (sono, emoções, cansaço, preocupações da semana) também inclina a balança; e o pêndulo mede o momento de hoje, não uma característica fixa. Por isso volto a medir tudo em cada consulta.`
+  ];
+  const lista = [];
+  const c = d.comparacao;
+  const mudou = c && c.chakrasComparados ? c.chakrasComparados.filter(x => x.delta !== 0) : [];
+  if (mudou.length){
+    const melhor = new Set(c.chakrasComparados.filter(x => x.delta > 0).map(x => x.nome));
+    mudou.forEach(x => {
+      const viz = TRI_CHAKRA_VIZ[x.nome] || [], rot = `de ${triRotuloEstado(x.antes).toLowerCase()} para ${triRotuloEstado(x.agora).toLowerCase()}`;
+      if (x.delta > 0) lista.push(`${x.nome} melhorou (${rot}). Liga-se ${aArt(corpoDe(x.nome))}. Melhorou porque o trabalho da última sessão soltou o que estava preso e a energia voltou a circular por aqui.`);
+      else {
+        const v = viz.find(z => melhor.has(z[0]));
+        lista.push(`${x.nome} ficou mais sensível (${rot}). Liga-se ${aArt(corpoDe(x.nome))}. ` + (v
+          ? `Isto aconteceu depois de ${v[0]} ter melhorado: ${v[1]}. Quando o centro vizinho se limpa, a energia que estava presa desloca-se e mexe com este, que está mais sensível. É um ajuste, não um retrocesso.`
+          : `Pode ter acontecido porque, ao limpar a camada de cima, surgiu uma camada mais funda que estava escondida, ou porque a semana de ${nome} trouxe emoções ligadas a ${sent(x.nome)}. Vai-se trabalhando nas próximas sessões.`));
+      }
+    });
+  } else if (afet.length){
+    afet.forEach(x => {
+      const viz = TRI_CHAKRA_VIZ[x.nome] || [];
+      lista.push(`${x.nome} (${triRotuloEstado(x.estado).toLowerCase()}): liga-se ${aArt(corpoDe(x.nome))}. Quando está assim, pode sentir ${sent(x.nome)}.` + (viz.length ? ` Está ligado a ${triLista(viz.map(v => v[0]))}, porque ${viz[0][1]}. Ao trabalhar este centro, é normal que ${viz[0][0]} também se mexa nos dias seguintes.` : ''));
+    });
+  } else lista.push(`Todos os centros estão equilibrados neste momento. O trabalho passa agora por manter esse equilíbrio.`);
+  paras.push(`Costumo trabalhar de baixo para cima, começando pelo que dá base e segurança, porque os centros de cima apoiam-se nos de baixo.`);
+  return { titulo:'Porque os centros mudam de uma sessão para a outra, e a que estão ligados', paras, lista };
+}
+
+const aArt2 = x => 'a' + ' ' + x; // 'ligado a' + área
+function triResumoLeitura(d, nome, fracos, L){
+  const primeiroMin = x => triMin(x);
+  const humC = c => { const h = TRI_CAUSA_HUMANA[c.n]; return h ? h[0] : c.nome; };
+  const causas = d.causasDetetadas || [];
+  const paras = [];
+  const lv = { 'Parcialmente Aberto':'algo travado', 'Bloqueado':'bastante travado', 'Muito Bloqueado':'muito travado' }[d.aberturaNivel];
+  paras.push(`A leitura de ${nome} mostra ${fracos.length || causas.length ? 'um momento que pede cuidado, mas com muito por onde crescer' : 'um campo equilibrado, com boa base para avançar'}.${lv ? ` O caminho à frente está ${lv}, e é isso que mais se sente no dia a dia.` : ''}`);
+  const peso = [];
+  causas.slice(0, 4).forEach(c => { const h = TRI_CAUSA_HUMANA[c.n]; peso.push(h ? `${h[0]}: ${h[1]}.` : `${c.nome}.`); });
+  fracos.slice(0, 4).forEach(c => peso.push(`Centro ${c.nome} ${triRotuloEstado(c.estado).toLowerCase()}: ${primeiroMin((TRI_CHAKRA_HUMANO[c.nome] || [])[1] || 'pede atenção')}.`));
+  if (L && L.porTras) paras.push(`Por trás de tudo isto, a leitura aponta para ${triMin(L.porTras.tema)}, ligado ${aArt2(triMin(L.porTras.area))}. É como o fio de onde sai o resto.`);
+  const luz = [];
+  d.chakrasTodos.filter(c => !triChakraAfetado(c)).slice(0, 3).forEach(c => { const L9 = TRI_CHAKRA_LIVRO[c.n]; if (L9) luz.push(`O centro ${c.nome} está equilibrado: ${nome} ${L9.luz}.`); });
+  if (L && L.tendencia) paras.push(`Se nada mudar, a tendência aponta para ${triMin(L.tendencia.tema)}. A boa notícia é que perceber isto já é o primeiro passo para mudar o rumo.`);
+  const plano = [];
+  if (d.sessoesNecessarias) plano.push(`${d.sessoesNecessarias} ${Number(d.sessoesNecessarias) === 1 ? 'sessão' : 'sessões'} de limpeza, feitas com calma e ao ritmo de ${nome}.`);
+  fracos.slice(0, 3).forEach(c => { const h = TRI_CHAKRA_HUMANO[c.nome]; if (h) plano.push(`Em casa, para o centro ${c.nome}: ${h[2]}.`); });
+  plano.push('Descansar, beber água e ter momentos calmos nos 1 a 3 dias a seguir a cada sessão.');
+  const lista = [];
+  if (peso.length){ lista.push('O que mais pesa:'); peso.forEach(x => lista.push('  ' + x)); }
+  if (luz.length){ lista.push('O que está bem:'); luz.forEach(x => lista.push('  ' + x)); }
+  lista.push('O que fazer a seguir:'); plano.forEach(x => lista.push('  ' + x));
+  paras.push(`Mensagem final: ${nome}, nada disto é uma sentença. É um retrato de hoje. Com tempo, limpeza e cuidado, o caminho vai-se abrindo ao seu ritmo.`);
+  return { titulo:'Resumo da leitura', paras, lista };
 }
 
 function triagemRelatorioCliente(d){
@@ -17286,7 +17359,7 @@ function triagemRelatorioCliente(d){
       p.push(`${nome} não tem um Anjo fixo do nascimento: liga-se diretamente aos Anjos Universais.`);
     }
     const arc = ARCANOS_MAIORES[perfil.arcanoP];
-    if (arc) p.push(`O seu Arcano pessoal é ${arc.nome}${TRI_ARCANO_NOTA[perfil.arcanoP]||''}. ${arc.texto}`);
+    if (arc) p.push(`Pela data de nascimento, ${nome} traz uma energia pessoal marcada por: ${triMin(arc.texto).replace(/\.$/, '')}.`);
     const sul = perfil.nodos.nodoSul.signo, norte = perfil.nodos.nodoNorte.signo;
     const sulTxt = (NODO_SUL_TEXTOS[sul]||'').replace(/^Já dominou/,'Já traz de longe o domínio de');
     const norteTxt = NODO_NORTE_TEXTOS[norte] ? NODO_NORTE_TEXTOS[norte].replace(/^O seu caminho de crescimento/,'O caminho de crescimento de '+nome) : `O caminho de crescimento aponta para as qualidades de ${norte}.`;
@@ -17323,6 +17396,7 @@ function triagemRelatorioCliente(d){
     }).filter(Boolean);
     sec.push({ titulo:'Os nove centros de energia, um a um', paras:[`Os chakras são centros de energia ao longo do corpo e acima dele. Esta é a leitura de cada um, em palavras simples. Não é um diagnóstico.`], lista:linhas });
   }
+  sec.push(triExplicaChakras(d, nome));
 
   triagemAreasVida(d, nome, idade).forEach(x => sec.push(x));
 
@@ -17338,10 +17412,11 @@ function triagemRelatorioCliente(d){
 
   const L = d.leituraComplementar;
   if (L){
-    sec.push({ titulo:'O que as cartas mostram', paras:[
-      `No momento atual, a carta ${L.momento.nome} fala de ${L.momento.tema}.${TRI_CARTA_NOTA[L.momento.n]||''}`,
-      `Por baixo disso, a carta ${L.porTras.nome} fala de ${L.porTras.tema}, ligado a ${L.porTras.area}.${TRI_CARTA_NOTA[L.porTras.n]||''}`,
-      `Se nada mudar, a carta ${L.tendencia.nome} aponta para ${L.tendencia.tema}.${TRI_CARTA_NOTA[L.tendencia.n]||''} A boa notícia é que ter consciência disto já é o primeiro passo para mudar o rumo.`
+    sec.push({ titulo:'O que está por trás de tudo isto', paras:[
+      `Para além do que o pêndulo mediu, há uma leitura mais profunda do que ${nome} está a viver.`,
+      `No momento atual, ${nome} atravessa ${triMin(L.momento.tema)}.${TRI_CARTA_NOTA[L.momento.n]||''}`,
+      `Por baixo disso, em silêncio, está ${triMin(L.porTras.tema)}, ligado a ${triMin(L.porTras.area)}.${TRI_CARTA_NOTA[L.porTras.n]||''} É muitas vezes daqui que nascem os bloqueios dos centros de energia e dos pontos encontrados.`,
+      `Se nada mudar, o caminho tende para ${triMin(L.tendencia.tema)}.${TRI_CARTA_NOTA[L.tendencia.n]||''} A boa notícia é que ter consciência disto já é o primeiro passo para mudar o rumo.`
     ]});
   }
 
@@ -17408,6 +17483,8 @@ function triagemRelatorioCliente(d){
   sec.push({ titulo:'O que pode ajudar', paras:ajudar,
     lista: fracos.map(c => `Em casa, para o centro ${c.nome}: ${TRI_CHAKRA_HUMANO[c.nome]?.[2]||'dar tempo e carinho'}.`) });
 
+  sec.push(triResumoLeitura(d, nome, fracos, L));
+
   sec.push({ titulo:'Uma nota importante', paras:[
     `Este trabalho é complementar e não substitui o acompanhamento médico ou psicológico. Se notarem tristeza profunda, ideias de se magoar ou alterações marcadas de comportamento, procurem ajuda médica sem demora.`,
     `Estamos disponíveis para esclarecer qualquer dúvida. Com carinho,`,
@@ -17464,10 +17541,9 @@ function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, 
         <strong style="color:var(--primary);">✨ O seu perfil</strong>
         <p style="margin-top:6px;">Caminho de Vida ${perfil.cv} — ${esc(perfil.cvNome||'')}. Signo de ${esc(perfil.signo.nome)}.</p>
         ${perfil.anjo.tipo === 'anjo' ? `<p style="margin-top:4px;">Anjo do Nascimento: <strong>${esc(perfil.anjo.nome)}</strong>.</p>` : `<p style="margin-top:4px;">Ligação directa aos Anjos Universais (${esc(perfil.anjo.elemento)}).</p>`}
-        <p style="margin-top:4px;">Arcano Pessoal: <strong>${esc(perfil.arcanoPNome)}</strong>.</p>
       </div>`;
     } else {
-      html += `<p style="margin-top:10px;color:#777;font-size:.85rem;">📿 Perfil: Anjo ${esc(perfil.anjo.tipo==='anjo'?perfil.anjo.nome:'Universal')} · Arcano ${esc(perfil.arcanoPNome)} · Ano Pessoal ${perfil.ciclos.anoPessoal}</p>`;
+      html += `<p style="margin-top:10px;color:#777;font-size:.85rem;">📿 Perfil: Anjo ${esc(perfil.anjo.tipo==='anjo'?perfil.anjo.nome:'Universal')} · Ano Pessoal ${perfil.ciclos.anoPessoal}</p>`;
     }
   }
 
@@ -17514,7 +17590,7 @@ function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, 
   }
 
   if (leituraComplementar){
-    html += `<h3 style="color:var(--primary);margin-top:18px;">🃏 O seu momento, pelas cartas</h3>
+    html += `<h3 style="color:var(--primary);margin-top:18px;">🔍 O que está por trás de tudo isto</h3>
       <p style="color:#555;">${esc(triagemSintetizarLeitura(primeiroNome, leituraComplementar))}</p>`;
   }
 
@@ -17567,7 +17643,11 @@ function triagemModeloBonito(d, cli){
   if (d.temAlgumaCoisaDetetada) passos.push({ rotulo:'Nos dias seguintes', texto:'É normal sentir mais cansaço, emotividade ou sono alterado nos 1 a 3 dias a seguir. É o corpo a processar. Ajuda beber água, descansar e ter momentos calmos.' });
   passos.push({ rotulo:'Acompanhamento', texto:'Vamos fazendo o ponto da situação em cada sessão.' });
   blocos.push({ tipo:'linha', icone:'📅', titulo:'Próximos passos', passos });
-  if (cli && cli.sec) blocos.push({ tipo:'secoes', icone:'📖', titulo:'A leitura completa, em palavras', itens: cli.sec.map(x => ({ nome:x.titulo, paras:(x.paras || []).concat((x.lista || []).map(y => '• ' + y)) })) });
+  const secExp = cli && cli.sec ? cli.sec.find(x => /^Porque os centros mudam/.test(x.titulo)) : null;
+  const secRes = cli && cli.sec ? cli.sec.find(x => x.titulo === 'Resumo da leitura') : null;
+  if (secExp) blocos.push({ tipo:'detalhe', icone:'🔗', titulo:'Porque os centros mudam, e a que estão ligados', intro: secExp.paras[0], itens: (secExp.lista || []).map(t => { const i = t.indexOf('. '); return { nome: i > 0 ? t.slice(0, i) : t, descricao: i > 0 ? t.slice(i + 2) : '', exemplo: '' }; }) });
+  if (cli && cli.sec) blocos.push({ tipo:'secoes', icone:'📖', titulo:'A leitura completa, em palavras', itens: cli.sec.filter(x => x !== secRes && x !== secExp).map(x => ({ nome:x.titulo, paras:(x.paras || []).concat((x.lista || []).map(y => '• ' + y)) })) });
+  if (secRes) blocos.push({ tipo:'texto', icone:'🧭', titulo:'Resumo da leitura', paras: secRes.paras.concat((secRes.lista || []).map(y => y.replace(/^\s+/, '• '))) });
   return { tema:'triagem', emoji:'🌿', titulo:'A sua triagem energética', subtitulo:'Relatório pessoal', nome, data:new Date().toLocaleDateString('pt-PT'), assinatura:'Hikari Fafe', blocos };
 }
 
@@ -18109,7 +18189,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
       ${comparacao.chakrasComparados.length ? `<div style="margin-top:6px;">${comparacao.chakrasComparados.map(c => `<div class="row" style="justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f0f0;"><span>${escapeHtml(c.nome)}</span><span>${triRotuloEstado(c.antes)} → <strong>${triRotuloEstado(c.agora)}</strong> <span style="color:${c.delta>0?'#2e7d32':(c.delta<0?'#c0392b':'#777')};">${c.delta>0?'▲':(c.delta<0?'▼':'=')}</span></span></div>`).join('')}</div>` : ''}
     </div>` : ''}
     ${__triagem.leituraComplementar ? `<div class="card"><h3>🃏 Leitura Complementar</h3>
-      <p>${escapeHtml(triagemSintetizarLeitura(__triagem.patientNome.split(/\s+/)[0], __triagem.leituraComplementar))}</p>
+      <p>${escapeHtml(triagemSintetizarLeitura(__triagem.patientNome.split(/\s+/)[0], __triagem.leituraComplementar, true))}</p>
     </div>` : ''}
     <div class="card">
       <h3>🧴 Protocolo de Limpeza — Etiquetas a Usar</h3>
