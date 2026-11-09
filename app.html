@@ -354,7 +354,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-04-8';
+const APP_VERSION = '2026-11-09-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11174,6 +11174,25 @@ const TRIAGEM_CHAKRAS_9 = [
 ];
 const TRIAGEM_NIVEIS_ABERTURA = ['Aberto','Parcialmente Aberto','Bloqueado','Muito Bloqueado'];
 
+/* Chakras SEM percentagens (não existe uma tabela validada do valor certo de cada chakra).
+   Cada chakra fica apenas: 'ok' (equilibrado), 'desarmonia' ou 'bloqueado'.
+   Sessões antigas guardadas com percentagem continuam a abrir: <40% = bloqueado, 40-69% = desarmonia. */
+const TRIAGEM_ESTADOS_CHAKRA = [
+  { id:'ok', rotulo:'Equilibrado', cor:'#2e7d32' },
+  { id:'desarmonia', rotulo:'Em desarmonia', cor:'#d68910' },
+  { id:'bloqueado', rotulo:'Bloqueado', cor:'#c0392b' }
+];
+function triEstadoChakra(c){
+  if (!c) return 'ok';
+  if (c.estado === 'ok' || c.estado === 'desarmonia' || c.estado === 'bloqueado') return c.estado;
+  const p = Number(c.percentagem);
+  if (isNaN(p)) return 'ok';
+  return p < 40 ? 'bloqueado' : (p < 70 ? 'desarmonia' : 'ok');
+}
+function triChakraAfetado(c){ return triEstadoChakra(c) !== 'ok'; }
+function triRotuloEstado(id){ const e = TRIAGEM_ESTADOS_CHAKRA.find(x => x.id === id); return e ? e.rotulo : 'Equilibrado'; }
+function triRankChakra(id){ return id === 'bloqueado' ? 2 : (id === 'desarmonia' ? 1 : 0); }
+
 /* ─── 22 Arcanos Maiores — usados só na Leitura Complementar final ────── */
 const TRIAGEM_ARCANOS = [
   {n:0, nome:"O Louco", tema:"um recomeço ou um salto para o desconhecido", area:"caminho de vida em geral"},
@@ -11819,7 +11838,7 @@ function __triagemReset(){
     bovisIni: '', bovisFin: '',
     soTriagem: null, aplicadas: [], continuacaoDe: null, motivoPlano: '', pagoAntes: 0, pagamentoApptId: null, pagamentoValor: '', pagamentoMetodo: '', _ultimaSemTratamento: null, _penultima: null, _avisoFalta: false,
     baixaVibracao: TRIAGEM_BAIXA_VIBRACAO.map(() => false),
-    chakras: TRIAGEM_CHAKRAS_9.map(() => 100), // percentagem de abertura, pesquisada com o pêndulo
+    chakras: TRIAGEM_CHAKRAS_9.map(() => 'ok'), // 'ok' | 'desarmonia' | 'bloqueado', pesquisado com o pêndulo
     aberturaCaminhos: 0, // índice em TRIAGEM_NIVEIS_ABERTURA
     modoCartas: 'auto',
     leituraComplementar: null,
@@ -11932,7 +11951,7 @@ window.__triagemContinuar = async function(){
   __triagem.bovisIni = u.bovisInicial || ''; __triagem.bovisFin = ''; __triagem.aplicadas = [];
   __triagem.pagamentoValor = ''; await triagemLerPagamentoAnterior(u);
   __triagem.baixaVibracao = TRIAGEM_BAIXA_VIBRACAO.map(c => (u.baixaVibracaoDetetada || []).indexOf(c.nome) >= 0);
-  __triagem.chakras = TRIAGEM_CHAKRAS_9.map(c => { const f = (u.chakras || []).find(x => x.nome === c.nome); return f ? f.percentagem : 100; });
+  __triagem.chakras = TRIAGEM_CHAKRAS_9.map(c => { const f = (u.chakras || []).find(x => x.nome === c.nome); return f ? triEstadoChakra(f) : 'ok'; });
   __triagem.aberturaCaminhos = Math.max(0, TRIAGEM_NIVEIS_ABERTURA.indexOf(u.aberturaCaminhos));
   __triagem.sessoesNecessarias = u.sessoesNecessarias ? String(u.sessoesNecessarias) : ''; if (u.preco) __triagem.preco = String(u.preco);
   const L = u.leituraComplementar;
@@ -12132,7 +12151,7 @@ const TRI_ETQ_SIMPLES = {
 function triagemSimples(i){ return TRI_ETQ_SIMPLES[i.heb] || i.pt; }
 function triagemItensAplicar(){
   const causas = TRIAGEM_BAIXA_VIBRACAO.filter((x, i) => __triagem.baixaVibracao[i]);
-  const chakrasTodos = TRIAGEM_CHAKRAS_9.map((c, i) => ({ ...c, percentagem: __triagem.chakras[i] }));
+  const chakrasTodos = TRIAGEM_CHAKRAS_9.map((c, i) => ({ ...c, estado: __triagem.chakras[i] }));
   const ab = TRIAGEM_NIVEIS_ABERTURA[__triagem.aberturaCaminhos];
   const fases = (__triagem.numConsulta || 1) === 1
     ? TRIAGEM_PROTOCOLO_COMPLETO.map(f => ({ ...f, itens: f.itens.filter(i => i.base) }))
@@ -12297,30 +12316,40 @@ function triagemPassoBaixaVibracao(main){
 }
 
 /* PASSO 4 — Chakras 1-9 (nível escolhido, sem cartas) */
-function triagemChakraAntes(nome){ const c = (__triagem.anterior?.chakras || []).find(x => x.nome === nome); return c ? c.percentagem : null; }
+function triagemChakraAntes(nome){ const c = (__triagem.anterior?.chakras || []).find(x => x.nome === nome); return c ? triEstadoChakra(c) : null; }
 function triagemPassoChakras(main){
+  const botoesEstado = (i) => TRIAGEM_ESTADOS_CHAKRA.map(e => {
+    const on = __triagem.chakras[i] === e.id;
+    return `<button type="button" data-estado="${e.id}" data-cor="${e.cor}" onclick="window.__triagemSetChakra(${i}, '${e.id}')" style="flex:1;min-width:96px;padding:9px 6px;border-radius:10px;border:2px solid ${e.cor};font-weight:700;font-size:13px;cursor:pointer;background:${on ? e.cor : '#fff'};color:${on ? '#fff' : '#444'};">${e.rotulo}</button>`;
+  }).join('');
   main.innerHTML = `
     <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
     ${triagemProgressoHTML()}
     <div class="card">
-      <h3>5. Chakras (1 a 9) — Percentagem de Abertura</h3>
-      <p class="muted">Pesquise cada chakra com o pêndulo e registe a percentagem de abertura (100% = totalmente aberto).</p>
-      <p class="muted" style="font-size:.85rem;">Referência de trabalho: 70% a 89% = equilibrado · 90% a 100% = muito aberto (sente-se com intensidade, convém aterrar) · 40% a 69% = pouco aberto, a trabalhar · abaixo de 40% = muito fechado. Não há um valor universal validado: é uma escala de apoio à leitura.</p>
+      <h3>5. Chakras (1 a 9) — Quais estão em desarmonia ou bloqueados?</h3>
+      <p class="muted">Pesquise com o pêndulo só os chakras que estão <strong>em desarmonia</strong> ou <strong>bloqueados</strong>. Os que não estiverem, deixe em «Equilibrado». Não se usam percentagens.</p>
       ${infoTodosBotaoHTML()}
       ${TRIAGEM_CHAKRAS_9.map((c,i) => `
-        <div class="row" style="margin-bottom:10px;align-items:center;">
+        <div class="row" style="margin-bottom:6px;align-items:center;">
           ${infoBotaoHTML('chk-info-' + c.n)}
-          <label style="font-weight:700;flex:1;">${c.n} — ${escapeHtml(c.nome)}${triagemChakraAntes(c.nome) != null ? ` <span class="muted" style="font-weight:400;font-size:12px;">(última vez: ${triagemChakraAntes(c.nome)}%)</span>` : ''}</label>
-          <input type="number" min="0" max="100" style="width:90px;" value="${__triagem.chakras[i]}" oninput="window.__triagemSetChakra(${i}, this.value)"> %
-        </div>${infoItemHTML('chk-info-' + c.n, c.descricao, c.exemplo).replace('margin:2px 0 8px 34px', 'margin:-4px 0 10px 0')}`).join('')}
+          <label style="font-weight:700;flex:1;">${c.n} — ${escapeHtml(c.nome)}${triagemChakraAntes(c.nome) != null ? ` <span class="muted" style="font-weight:400;font-size:12px;">(última vez: ${triRotuloEstado(triagemChakraAntes(c.nome)).toLowerCase()})</span>` : ''}</label>
+        </div>
+        <div id="chk-grupo-${i}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">${botoesEstado(i)}</div>
+        ${infoItemHTML('chk-info-' + c.n, c.descricao, c.exemplo).replace('margin:2px 0 8px 34px', 'margin:0 0 12px 0')}
+        <div style="margin-bottom:10px;"></div>`).join('')}
     </div>
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
       <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
     </div>`;
-  window.__triagemSetChakra = function(i, val){
-    let n = parseInt(val, 10); if (isNaN(n)) n = 0; if (n < 0) n = 0; if (n > 100) n = 100;
-    __triagem.chakras[i] = n;
+  window.__triagemSetChakra = function(i, estado){
+    __triagem.chakras[i] = estado;
+    const grupo = document.getElementById('chk-grupo-' + i);
+    if (grupo) grupo.querySelectorAll('button').forEach(b => {
+      const on = b.dataset.estado === estado;
+      b.style.background = on ? b.dataset.cor : '#fff';
+      b.style.color = on ? '#fff' : '#444';
+    });
   };
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
   window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
@@ -12475,7 +12504,7 @@ function triagemSintetizarLeitura(nome, leitura){
 }
 
 // Compara dois relatórios de Triagem no MESMO formato guardado
-// (baixaVibracaoDetetada: [nomes], chakras: [{nome,percentagem}],
+// (baixaVibracaoDetetada: [nomes], chakras: [{nome,estado}] (ou, nas antigas, percentagem),
 // bovisInicial/bovisFinal) — usada tanto ao gerar uma nova sessão
 // (comparando com a anterior) como na ficha do paciente, para comparar
 // quaisquer duas sessões já guardadas.
@@ -12487,10 +12516,11 @@ function compararComAnterior(anterior, atual){
   const persistentes = [...causasAtuais].filter(c => causasAnteriores.has(c));
 
   const chakrasAnteriores = {};
-  (anterior.chakras || []).forEach(c => { chakrasAnteriores[c.nome] = c.percentagem; });
+  (anterior.chakras || []).forEach(c => { chakrasAnteriores[c.nome] = triEstadoChakra(c); });
+  // delta > 0 = melhorou (ex.: bloqueado → equilibrado); delta < 0 = piorou
   const chakrasComparados = (atual.chakras || []).map(c => {
-    const antes = chakrasAnteriores[c.nome];
-    return { nome: c.nome, antes: antes ?? null, agora: c.percentagem, delta: (antes != null) ? (c.percentagem - antes) : null };
+    const antes = chakrasAnteriores[c.nome], agora = triEstadoChakra(c);
+    return { nome: c.nome, antes: antes ?? null, agora, delta: (antes != null) ? (triRankChakra(antes) - triRankChakra(agora)) : null };
   }).filter(c => c.delta !== null);
 
   const bovisFinalAnterior = anterior.bovisFinal ? parseFloat(anterior.bovisFinal) : null;
@@ -12538,7 +12568,7 @@ window.viewTriagemEvolucao = async function(patientId){
       ${comp.persistentes.length ? `<div style="margin-top:4px;">🔁 Persistentes: ${comp.persistentes.map(escapeHtml).join(', ')}</div>` : ''}
       ${comp.novas.length ? `<div style="margin-top:4px;">🆕 Novas: ${comp.novas.map(escapeHtml).join(', ')}</div>` : ''}
       ${comp.deltaEntreSessoes != null ? `<div class="muted" style="margin-top:4px;">Bovis entre sessões: ${comp.deltaEntreSessoes>=0?'+':''}${comp.deltaEntreSessoes}</div>` : ''}
-      ${comp.chakrasComparados.length ? comp.chakrasComparados.map(c => `<div class="muted" style="margin-top:2px;">Chakra ${escapeHtml(c.nome)}: ${c.antes}% → ${c.agora}% (${c.delta>=0?'+':''}${c.delta})</div>`).join('') : ''}
+      ${comp.chakrasComparados.length ? comp.chakrasComparados.map(c => `<div class="muted" style="margin-top:2px;">Chakra ${escapeHtml(c.nome)}: ${triRotuloEstado(c.antes)} → ${triRotuloEstado(c.agora)} ${c.delta>0?'▲':(c.delta<0?'▼':'=')}</div>`).join('') : ''}
       ${(!comp.resolvidas.length && !comp.persistentes.length && !comp.novas.length) ? '<div class="muted" style="margin-top:4px;">Sem alterações nas causas detetadas.</div>' : ''}
     </div>`;
   }
@@ -16671,7 +16701,6 @@ window.reikiReporDescricao = function(nivelId){
   if (campo && n) campo.value = n.descricao;
 };
 
-const TRIAGEM_LIMIAR_CHAKRA_ATENCAO = 70; // % abaixo do qual o chakra é sinalizado
 
 /* ─── Versão bonita, calorosa, para a Área do Paciente ──────────────────
    Usa var(--primary) para herdar automaticamente a cor de marca do
@@ -16851,8 +16880,7 @@ const TRI_CHAKRA_LIVRO = {
       sombra:'sofrer demais com as dores do mundo, esgotamento, isolamento e dificuldade em viver o aqui e agora',
       caminho:'proteger o campo energético, servir de forma sustentável e fazer do autocuidado um ato sagrado' }
 };
-// Referência de trabalho (não há um valor universal validado): <40 muito fechado · 40-69 pouco aberto · 70-89 equilibrado · 90-100 muito aberto
-function triChakraNivel(p){ return p < 40 ? 'muito fechado' : p < 70 ? 'pouco aberto' : p < 90 ? 'equilibrado' : 'muito aberto'; }
+function triChakraNivel(c){ return triRotuloEstado(triEstadoChakra(c)).toLowerCase(); }
 function triChakraDominante(dataStr){
   if (!dataStr) return null;
   let n = String(dataStr).replace(/\D/g,'').split('').reduce((a,b) => a + Number(b), 0);
@@ -16920,9 +16948,9 @@ function triPaisLeitura(pais){
 
 function triagemAreasVida(d, nome, idade){
   const out = [];
-  const pc = (inicio) => { const c = d.chakrasTodos.find(x => String(x.nome).indexOf(inicio) === 0); return c ? c.percentagem : null; };
-  const baixo = (inicio) => { const p = pc(inicio); return p !== null && p < TRIAGEM_LIMIAR_CHAKRA_ATENCAO; };
-  const alto  = (inicio) => { const p = pc(inicio); return p !== null && p >= 90; };
+  const pc = (inicio) => { const c = d.chakrasTodos.find(x => String(x.nome).indexOf(inicio) === 0); return c ? triEstadoChakra(c) : null; };
+  const baixo = (inicio) => { const e = pc(inicio); return e !== null && e !== 'ok'; };
+  const alto  = () => false; // sem percentagens já não se distingue «muito aberto»
   const ns = d.causasDetetadas.map(c => Number(c.n));
   const tem = (...l) => l.some(x => ns.indexOf(x) >= 0);
   const cv = d.perfil ? d.perfil.cv : null;
@@ -16986,11 +17014,11 @@ function triagemAreasVida(d, nome, idade){
 
   // ── Saúde e energia ──
   const sp = [];
-  const fr = d.chakrasTodos.filter(c => c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO);
+  const fr = d.chakrasTodos.filter(triChakraAfetado);
   if (fr.length){
-    sp.push(`Os centros com menos abertura costumam associar-se a: ${fr.map(c => { const k = Object.keys(TRI_CHAKRA_CORPO).find(x => String(c.nome).indexOf(x) === 0); return TRI_CHAKRA_CORPO[k] || c.nome; }).join('; ')}. É uma indicação do que pode estar mais sensível, e não um diagnóstico.`);
+    sp.push(`Os centros em desarmonia ou bloqueados costumam associar-se a: ${fr.map(c => { const k = Object.keys(TRI_CHAKRA_CORPO).find(x => String(c.nome).indexOf(x) === 0); return TRI_CHAKRA_CORPO[k] || c.nome; }).join('; ')}. É uma indicação do que pode estar mais sensível, e não um diagnóstico.`);
   //fr.map(c => { const k = Object.keys(TRI_CHAKRA_CORPO).find(x => String(c.nome).indexOf(x) === 0); return TRI_CHAKRA_CORPO[k] || c.nome; }))}. É uma indicação do que pode estar mais sensível, e não um diagnóstico.`);
-  } else sp.push(`Os centros de energia estão bem abertos, o que é um bom sinal para a vitalidade de ${nome}.`);
+  } else sp.push(`Os centros de energia estão equilibrados, o que é um bom sinal para a vitalidade de ${nome}.`);
   const dorm = [tem(35)&&'sono agitado ou pesadelos', tem(37)&&'cansaço persistente sem causa física', tem(31,10)&&'tensão e dificuldade em relaxar', tem(13,14)&&'sono leve ou cansaço em certos locais'].filter(Boolean);
   if (dorm.length) sp.push(`Foi percebido também ${triLista(dorm)}. Convém cuidar do descanso, da rotina do sono e de pausas ao longo do dia.`);
   sp.push('Se houver sintomas físicos, o melhor é falar com o médico de família. Este trabalho serve para apoiar, nunca para substituir.');
@@ -17074,12 +17102,10 @@ function triagemRelatorioCliente(d){
     sec.push({ titulo:`Quem é ${nome}`, paras:p });
   }
 
-  const fortes = d.chakrasTodos.filter(c => c.percentagem >= 90);
-  const fracos = d.chakrasTodos.filter(c => c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO);
+  const fracos = d.chakrasTodos.filter(triChakraAfetado);
   const agora = [];
-  if (fortes.length) agora.push(`Há muita força em ${nome}: ${fortes.slice(0,4).map(c => `no centro ${c.nome} (${TRI_CHAKRA_HUMANO[c.nome]?.[0]||'bem aberto'})`).join('; ')}.`);
   if (fracos.length) agora.push(`Neste momento, o que mais pede cuidado ${fracos.length === 1 ? 'é o centro' : 'são os centros'} ${triLista(fracos.map(c => c.nome))}. Na prática, isto pode traduzir-se em ${triLista(fracos.map(c => TRI_CHAKRA_HUMANO[c.nome]?.[1]||'cansaço'))}.`);
-  else agora.push(`Os centros de energia estão, no geral, bem abertos, o que é um bom sinal.`);
+  else agora.push(`Os centros de energia estão, no geral, equilibrados, o que é um bom sinal.`);
   if (d.aberturaNivel && d.aberturaNivel !== 'Aberto'){
     const lv = { 'Parcialmente Aberto':'algo travado', 'Bloqueado':'bastante travado', 'Muito Bloqueado':'muito travado' }[d.aberturaNivel] || 'travado';
     agora.push(`O caminho à frente de ${nome} parece ${lv} neste momento: é como se, por mais que se esforce, as portas custassem a abrir. Isto não é uma sentença, é algo que se pode trabalhar.`);
@@ -17088,10 +17114,9 @@ function triagemRelatorioCliente(d){
   {
     const linhas = d.chakrasTodos.map(c => {
       const L9 = TRI_CHAKRA_LIVRO[c.n]; if (!L9) return null;
-      const niv = triChakraNivel(c.percentagem);
-      let t = `${L9.nome} (${c.percentagem}%, ${niv}): `;
-      if (c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO) t += `o que pode sentir-se é ${L9.sombra}. Ajuda ${L9.caminho}.`;
-      else if (c.percentagem >= 90) t += `${nome} ${L9.luz}. Por estar muito aberto, sente-se com intensidade, por isso convém manter o aterramento.`;
+      const niv = triChakraNivel(c);
+      let t = `${L9.nome} (${niv}): `;
+      if (triChakraAfetado(c)) t += `o que pode sentir-se é ${L9.sombra}. Ajuda ${L9.caminho}.`;
       else t += `${nome} ${L9.luz}.`;
       return t;
     }).filter(Boolean);
@@ -17126,15 +17151,15 @@ function triagemRelatorioCliente(d){
     const dataAnt = c.dataAnterior?.toDate ? c.dataAnterior.toDate().toLocaleDateString('pt-PT') : null;
     p.push(`Comparei a avaliação de hoje com a da última consulta${dataAnt ? ' (' + dataAnt + ')' : ''}, para ver o que melhorou, o que ficou igual e o que pede mais cuidado.`);
     c.resolvidas.forEach(x => lista.push(`Melhorou, já não aparece: ${humanoCausa(x)}.`));
-    c.chakrasComparados.filter(x => x.delta >= 10).forEach(x => lista.push(`Melhorou: o centro ${x.nome} passou de ${x.antes}% para ${x.agora}%.`));
+    c.chakrasComparados.filter(x => x.delta > 0).forEach(x => lista.push(`Melhorou: o centro ${x.nome} passou de ${triRotuloEstado(x.antes).toLowerCase()} para ${triRotuloEstado(x.agora).toLowerCase()}.`));
     const iA = TRIAGEM_NIVEIS_ABERTURA.indexOf(c.aberturaAntes), iG = TRIAGEM_NIVEIS_ABERTURA.indexOf(c.aberturaAgora);
     if (iA >= 0 && iG >= 0 && iG < iA) lista.push(`Melhorou: o caminho à frente, que estava ${lvTxt[c.aberturaAntes]}, está agora ${lvTxt[c.aberturaAgora]}.`);
     c.persistentes.forEach(x => lista.push(`Continua a pedir atenção: ${humanoCausa(x)}.`));
-    c.chakrasComparados.filter(x => x.delta <= -10).forEach(x => lista.push(`Mais fechado: o centro ${x.nome} passou de ${x.antes}% para ${x.agora}%.`));
+    c.chakrasComparados.filter(x => x.delta < 0).forEach(x => lista.push(`Mais fechado: o centro ${x.nome} passou de ${triRotuloEstado(x.antes).toLowerCase()} para ${triRotuloEstado(x.agora).toLowerCase()}.`));
     if (iA >= 0 && iG >= 0 && iG > iA) lista.push(`Mais travado: o caminho à frente, que estava ${lvTxt[c.aberturaAntes]}, está agora ${lvTxt[c.aberturaAgora]}.`);
     c.novas.forEach(x => lista.push(`Surgiu agora: ${humanoCausa(x)}.`));
     if (c.bovisFinalAnterior != null && c.bovisInicialAtual != null) p.push(`A vitalidade (medida em unidades Bovis) terminou a última consulta em ${c.bovisFinalAnterior} e começou hoje em ${c.bovisInicialAtual}.`);
-    if (c.novas.length || c.chakrasComparados.some(x => x.delta <= -10) || (iA >= 0 && iG > iA))
+    if (c.novas.length || c.chakrasComparados.some(x => x.delta < 0) || (iA >= 0 && iG > iA))
       p.push(`Quando algo piora ou aparece de novo, não quer dizer que o trabalho não esteja a resultar. Depois de uma limpeza, é frequente surgirem camadas mais profundas ou a pessoa ficar mais sensível durante uns dias. Por isso volto a medir tudo em cada sessão.`);
     sec.push({ titulo:'Desde a última consulta', paras:p, lista });
   }
@@ -17260,12 +17285,12 @@ function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, 
     html += `<p style="margin-top:14px;">✨ O seu campo energético está globalmente equilibrado neste momento.</p>`;
   }
 
-  const chakrasAtencao = chakrasTodos.filter(c => c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO);
+  const chakrasAtencao = chakrasTodos.filter(triChakraAfetado);
   html += `<h3 style="color:var(--primary);margin-top:18px;">🌀 Chakras</h3>`;
   if (chakrasAtencao.length){
-    html += `<p>A vigiar: ${chakrasAtencao.map(c => esc(c.nome)+' ('+c.percentagem+'%)').join(', ')}.</p>`;
+    html += `<p>A vigiar: ${chakrasAtencao.map(c => esc(c.nome)+' ('+triRotuloEstado(triEstadoChakra(c)).toLowerCase()+')').join(', ')}.</p>`;
   } else {
-    html += `<p>Todos os chakras estão bem abertos. 🙂</p>`;
+    html += `<p>Todos os chakras estão equilibrados. 🙂</p>`;
   }
   html += `<p style="margin-top:6px;"><strong>Abertura de Caminhos:</strong> ${esc(aberturaNivel)}</p>`;
 
@@ -17304,10 +17329,10 @@ function triagemModeloBonito(d, cli){
   blocos.push({ tipo:'texto', icone:'👋', titulo:`Olá, ${nome}`, paras:[`Aqui está o retrato do seu momento energético. Toque nas caixas e nos gráficos para ver mais. É um retrato do momento, não uma sentença.`].concat((d.aplicadas && d.aplicadas.length) ? [] : ['Por agora foi feita apenas a triagem. Ainda não foi feita nenhuma limpeza nem tratamento.']) });
   const ch = d.chakrasTodos || [];
   if (ch.length){
-    const media = Math.round(ch.reduce((a, c) => a + (Number(c.percentagem) || 0), 0) / ch.length);
-    blocos.push({ tipo:'medidor', icone:'⚡', titulo:'Equilíbrio dos seus centros de energia', valor:media, destaque: media >= 70 ? 'Bem aberto' : (media >= 45 ? 'Em equilíbrio parcial' : 'Pede cuidado'), legenda:`Média de abertura dos ${ch.length} centros energéticos avaliados. Abaixo de ${TRIAGEM_LIMIAR_CHAKRA_ATENCAO}% pede um pouco mais de atenção.` });
-    blocos.push({ tipo:'radar', icone:'🕸️', titulo:'O mapa dos seus centros', intro:'Quanto mais perto da borda, mais aberto está o centro.', itens: ch.map(c => ({ nome:c.nome, rotulo:String(c.nome).split(/[\s(]/)[0], valor:Number(c.percentagem) || 0 })) });
-    blocos.push({ tipo:'barras', icone:'📊', titulo:'Cada centro em detalhe', itens: ch.map(c => ({ nome:c.nome, valor:Number(c.percentagem) || 0, nota: c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO ? 'A vigiar: merece mais atenção e carinho.' : 'Em bom estado.' })) });
+    const afet = ch.filter(triChakraAfetado);
+    blocos.push(afet.length
+      ? { tipo:'detalhe', icone:'🌀', titulo:'Centros de energia que pedem atenção', intro:'Toque em cada centro para perceber o que representa e ver um exemplo do dia a dia. Os restantes centros estão equilibrados.', itens: afet.map(c => ({ nome: c.nome + ' — ' + triRotuloEstado(triEstadoChakra(c)).toLowerCase(), descricao: c.descricao, exemplo: c.exemplo })) }
+      : { tipo:'texto', icone:'🌀', titulo:'Os seus centros de energia', paras:['Todos os centros de energia estão equilibrados neste momento. ✨'] });
   }
   const causas = d.causasDetetadas || [];
   blocos.push(causas.length
@@ -17320,7 +17345,7 @@ function triagemModeloBonito(d, cli){
     (c.resolvidas || []).forEach(x => l.push('✅ Resolvido: ' + x));
     (c.persistentes || []).forEach(x => l.push('🔁 A continuar a trabalhar: ' + x));
     (c.novas || []).forEach(x => l.push('🆕 Novo desde a última vez: ' + x));
-    if (c.chakrasComparados && c.chakrasComparados.length) blocos.push({ tipo:'barras', icone:'📈', titulo:'Evolução desde a última sessão', itens: c.chakrasComparados.map(x => ({ nome:x.nome, valor:Number(x.agora) || 0, texto:`${x.antes}% → ${x.agora}%` })) });
+    (c.chakrasComparados || []).filter(x => x.delta !== 0).forEach(x => l.push((x.delta > 0 ? '🌿 Melhorou: ' : '⚠️ Pede mais atenção: ') + 'centro ' + x.nome + ' (' + triRotuloEstado(x.antes).toLowerCase() + ' → ' + triRotuloEstado(x.agora).toLowerCase() + ')'));
     if (l.length) blocos.push({ tipo:'lista', icone:'🌱', titulo:'O que mudou', marca:'•', itens:l });
   }
   const passos = [];
@@ -17345,10 +17370,10 @@ async function triagemGerarRelatorio(){
       triagemBuscarEtiquetas(item.temas, 2).forEach(r => protocolo.push({...r, motivo: item.nome}));
     }
   });
-  const chakrasTodos = TRIAGEM_CHAKRAS_9.map((c, i) => ({ ...c, percentagem: __triagem.chakras[i] }));
+  const chakrasTodos = TRIAGEM_CHAKRAS_9.map((c, i) => ({ ...c, estado: __triagem.chakras[i] }));
   const chakrasAfetados = [];
   chakrasTodos.forEach(c => {
-    if (c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO){
+    if (triChakraAfetado(c)){
       chakrasAfetados.push(c);
       triagemBuscarEtiquetas(c.temas, 2).forEach(r => protocolo.push({...r, motivo: `Chakra ${c.nome}`}));
     }
@@ -17382,7 +17407,7 @@ async function triagemGerarRelatorio(){
       ehPrimeiraSessao = false;
       comparacao = compararComAnterior(anteriorDoc, {
         baixaVibracaoDetetada: causasDetetadas.map(c => c.nome),
-        chakras: chakrasTodos.map(c => ({ nome:c.nome, percentagem:c.percentagem })),
+        chakras: chakrasTodos.map(c => ({ nome:c.nome, estado: triEstadoChakra(c) })),
         bovisInicial: __triagem.bovisIni, bovisFinal: __triagem.bovisFin, aberturaCaminhos: aberturaNivel
       });
     }
@@ -17418,7 +17443,8 @@ async function triagemGerarRelatorio(){
     causasDetetadas.forEach(c => { reportText += `• ${c.n}. ${c.nome}\n   O que é: ${c.descricao}\n   Exemplo: ${c.exemplo}\n\n`; });
     if (cruzamentoVidasPassadas) reportText += `🔗 Ligação com o Mapa da Alma: ${cruzamentoVidasPassadas.motivo} pode estar ligado ao Nodo Sul em ${cruzamentoVidasPassadas.nodoSulSigno} — ${cruzamentoVidasPassadas.nodoSulTexto}\n\n`;
   } else reportText += 'Nenhuma — campo equilibrado.\n\n';
-  reportText += `== Chakras (percentagem de abertura) ==\n${chakrasTodos.map(c=>`• ${c.nome}: ${c.percentagem}%${c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO ? ' ⚠️ a vigiar' : ''}`).join('\n')}\n\n`;
+  { const afCk = chakrasTodos.filter(triChakraAfetado);
+    reportText += `== Chakras em desarmonia ou bloqueados ==\n${afCk.length ? afCk.map(c => `• ${c.nome}: ${triRotuloEstado(triEstadoChakra(c)).toLowerCase()} ⚠️`).join('\n') + '\nOs restantes chakras estão equilibrados.' : 'Nenhum — todos os chakras estão equilibrados.'}\n\n`; }
   reportText += `== Abertura de Caminhos ==\n${aberturaNivel}\n\n`;
   if (comparacao){
     reportText += `== Evolução desde a última sessão ==\n`;
@@ -17426,7 +17452,7 @@ async function triagemGerarRelatorio(){
     reportText += comparacao.persistentes.length ? `• Persistentes (continuam a precisar de atenção): ${comparacao.persistentes.join(', ')}\n` : '';
     reportText += comparacao.novas.length ? `• Novas desde a última vez: ${comparacao.novas.join(', ')}\n` : '';
     if (comparacao.deltaEntreSessoes != null) reportText += `• Bovis: ${comparacao.deltaEntreSessoes >= 0 ? 'manteve-se/subiu' : 'desceu'} ${Math.abs(comparacao.deltaEntreSessoes)} unidades desde a última sessão (${comparacao.bovisFinalAnterior} → ${comparacao.bovisInicialAtual})\n`;
-    comparacao.chakrasComparados.forEach(c => { reportText += `• Chakra ${c.nome}: ${c.antes}% → ${c.agora}% (${c.delta>=0?'+':''}${c.delta})\n`; });
+    comparacao.chakrasComparados.forEach(c => { reportText += `• Chakra ${c.nome}: ${triRotuloEstado(c.antes).toLowerCase()} → ${triRotuloEstado(c.agora).toLowerCase()} ${c.delta>0?'(melhorou)':(c.delta<0?'(piorou)':'(igual)')}\n`; });
     reportText += `\n`;
   }
   if (__triagem.leituraComplementar){
@@ -17476,7 +17502,7 @@ async function triagemGerarRelatorio(){
     reportText, reportTextCliente: clienteRel.texto, reportHtml: reportHtmlBonitoTriagem || clienteRel.html, reportHtmlSimples: clienteRel.html,
     bovisInicial: __triagem.bovisIni || null, bovisFinal: __triagem.bovisFin || null,
     baixaVibracaoDetetada: causasDetetadas.map(c => c.nome),
-    chakras: chakrasTodos.map(c => ({ nome:c.nome, percentagem:c.percentagem })),
+    chakras: chakrasTodos.map(c => ({ nome:c.nome, estado: triEstadoChakra(c) })),
     aberturaCaminhos: aberturaNivel,
     leituraComplementar: __triagem.leituraComplementar ? {
       momento: __triagem.leituraComplementar.momento.nome,
@@ -17574,7 +17600,7 @@ function triagemFasePrioritaria(f, causasDetetadas, chakrasTodos, aberturaNivel)
   if (f.sempre) return true;
   const ns = causasDetetadas.map(c => Number(c.n));
   if (f.causas && f.causas.some(x => ns.indexOf(x) >= 0)) return true;
-  if (f.chakras && chakrasTodos.some(c => c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO)) return true;
+  if (f.chakras && chakrasTodos.some(triChakraAfetado)) return true;
   if (f.caminhos && aberturaNivel && aberturaNivel !== 'Aberto') return true;
   return false;
 }
@@ -17850,8 +17876,10 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
         <p class="muted" style="margin-top:4px;">${escapeHtml(cruzamentoVidasPassadas.motivo)} pode estar ligado ao Nodo Sul em <strong>${escapeHtml(cruzamentoVidasPassadas.nodoSulSigno)}</strong> — ${escapeHtml(cruzamentoVidasPassadas.nodoSulTexto)}</p>
       </div>` : ''}
     </div>` : ''}
-    <div class="card"><h3>🌀 Chakras (percentagem de abertura)</h3>
-      ${chakrasTodos.map(c => `<p class="muted">${escapeHtml(c.nome)}: <strong>${c.percentagem}%</strong>${c.percentagem < TRIAGEM_LIMIAR_CHAKRA_ATENCAO ? ' ⚠️ a vigiar' : ''}</p>`).join('')}
+    <div class="card"><h3>🌀 Chakras em desarmonia ou bloqueados</h3>
+      ${chakrasTodos.filter(triChakraAfetado).length
+        ? chakrasTodos.filter(triChakraAfetado).map(c => `<p class="muted">${escapeHtml(c.nome)}: <strong style="color:${(TRIAGEM_ESTADOS_CHAKRA.find(e => e.id === triEstadoChakra(c)) || {}).cor || '#c0392b'};">${triRotuloEstado(triEstadoChakra(c))}</strong> ⚠️</p>`).join('') + '<p class="muted">Os restantes chakras estão equilibrados.</p>'
+        : '<p class="muted">Todos os chakras estão equilibrados.</p>'}
     </div>
     <div class="card"><h3>🛤️ Abertura de Caminhos</h3><p><strong>${escapeHtml(aberturaNivel)}</strong></p></div>
     ${comparacao ? `<div class="card" style="border:2px solid #4a9d5f;">
@@ -17862,7 +17890,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
       ${comparacao.novas.length ? `<p style="margin-top:6px;">🆕 <strong>Novas:</strong> ${comparacao.novas.map(escapeHtml).join(', ')}</p>` : ''}
       ${comparacao.aberturaAntes && comparacao.aberturaAgora ? `<p style="margin-top:6px;">🛤️ Abertura de caminhos: ${escapeHtml(comparacao.aberturaAntes)} → <strong>${escapeHtml(comparacao.aberturaAgora)}</strong></p>` : ''}
       ${comparacao.deltaEntreSessoes != null ? `<p style="margin-top:6px;">⚡ Bovis entre consultas: ${comparacao.bovisFinalAnterior} → ${comparacao.bovisInicialAtual} (${comparacao.deltaEntreSessoes >= 0 ? '+' : ''}${comparacao.deltaEntreSessoes})</p>` : ''}
-      ${comparacao.chakrasComparados.length ? `<div style="margin-top:6px;">${comparacao.chakrasComparados.map(c => `<div class="row" style="justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f0f0;"><span>${escapeHtml(c.nome)}</span><span>${c.antes}% → <strong>${c.agora}%</strong> <span style="color:${c.delta>0?'#2e7d32':(c.delta<0?'#c0392b':'#777')};">${c.delta>0?'▲ +':(c.delta<0?'▼ ':'= ')}${c.delta!==0?c.delta:''}</span></span></div>`).join('')}</div>` : ''}
+      ${comparacao.chakrasComparados.length ? `<div style="margin-top:6px;">${comparacao.chakrasComparados.map(c => `<div class="row" style="justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f0f0;"><span>${escapeHtml(c.nome)}</span><span>${triRotuloEstado(c.antes)} → <strong>${triRotuloEstado(c.agora)}</strong> <span style="color:${c.delta>0?'#2e7d32':(c.delta<0?'#c0392b':'#777')};">${c.delta>0?'▲':(c.delta<0?'▼':'=')}</span></span></div>`).join('')}</div>` : ''}
     </div>` : ''}
     ${__triagem.leituraComplementar ? `<div class="card"><h3>🃏 Leitura Complementar</h3>
       <p>${escapeHtml(triagemSintetizarLeitura(__triagem.patientNome.split(/\s+/)[0], __triagem.leituraComplementar))}</p>
