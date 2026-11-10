@@ -353,7 +353,7 @@
     </div>
     <button data-view="home" class="active">🏠 Início</button>
     <button onclick="startNewConsultationFlow()" style="background:var(--primary);color:#fff;font-weight:600;">🩺 Nova Consulta</button>
-    <button data-view="portalPaciente" style="background:#e3f0ea;color:#1a2b26;font-weight:600;">💚 Central do Paciente</button>
+    <button data-view="portalPaciente" style="background:#e3f0ea;color:#1a2b26;font-weight:600;">🧑 Pacientes</button>
     <button data-view="group_agenda">📅 Agenda & Marcações</button>
     <button data-view="group_tools">🧰 Ferramentas</button>
     <button id="navMisticaBtn" data-view="group_mistica" style="display:none;">🔮 Módulos Exclusivos</button>
@@ -394,7 +394,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-10-1';
+const APP_VERSION = '2026-11-10-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1944,7 +1944,6 @@ const NAV_GROUPS = {
     { view: 'knowledge', icon: '🧠', label: 'Fonte de Conhecimento' },
     { view: 'farmacia', icon: '💊', label: 'Farmácia & Interações' },
     { view: 'respostas', icon: '📥', label: 'Respostas de Fichas' },
-    { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
     { view: 'trainings', icon: '🎓', label: 'Formações' },
     { view: 'versoes', icon: '🕘', label: 'Versões anteriores' },
     { view: 'pesquisaEmocional', icon: '🔬', label: 'Pesquisa Emocional Clínica', peAccess: true }
@@ -1962,6 +1961,7 @@ const NAV_GROUPS = {
     { view: 'etiquetasEtericas', icon: '🏷️', label: 'Etiquetas Etéricas', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '💼 O Meu Negócio', items: [
+    { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
     { view: 'finances', icon: '💶', label: 'Finanças' },
     { view: 'team', icon: '👥', label: 'Equipa', hideForRestricted: true },
     { view: 'profile', icon: '🏥', label: 'Perfil do Negócio', ownerOnly: true }
@@ -2100,7 +2100,7 @@ const ONBOARDING_STEPS = [
   { view: 'protocols', titulo: 'Os Seus Métodos', texto: 'Configure os protocolos/métodos de trabalho que usa nas suas consultas.' },
   { view: 'forms', titulo: 'Fichas & Questionários', texto: 'Use as fichas prontas ou crie os seus próprios questionários de avaliação.' },
   { view: 'team', titulo: 'Convidar a sua Equipa', texto: 'Se trabalha com outros profissionais, convide-os aqui — cada um tem o seu próprio acesso.' },
-  { view: 'portalPaciente', titulo: 'Central do Paciente', texto: 'Experimente adicionar o seu primeiro paciente e veja tudo sobre ele: mensagens, consultas, fichas e mais, num único sítio.' },
+  { view: 'portalPaciente', titulo: 'Pacientes', texto: 'Experimente adicionar o seu primeiro paciente e veja tudo sobre ele: mensagens, consultas, fichas e mais, num único sítio.' },
   { view: 'agenda', titulo: 'Agenda', texto: 'Experimente marcar uma consulta na agenda.' },
   { view: 'knowledge', titulo: 'Fonte de Conhecimento', texto: 'Dê uma vista de olhos — pode guardar documentos e materiais aqui.' }
 ];
@@ -2771,7 +2771,7 @@ async function renderHome(main){
     ...(ehGestor() ? [] : [{ icon: '📥', label: 'Respostas de Fichas', action: "renderView('respostas')", badge: respProntas }]),
     { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
     { icon: '🗓️', label: 'Disponibilidade e Marcações', action: "openProfileSection('disponibilidade')" },
-    { icon: '💚', label: 'Central do Paciente', action: "renderView('portalPaciente')" },
+    { icon: '🧑', label: 'Pacientes', action: "renderView('portalPaciente')" },
     { icon: '💶', label: 'Finanças', action: "renderView('finances')" },
     { icon: '📋', label: 'Os Meus Métodos', action: "renderView('protocols')" },
     { icon: '🧠', label: 'Conhecimento', action: "renderView('knowledge')" },
@@ -5001,7 +5001,7 @@ async function renderPatientPortalOverview(main){
     snap.forEach(d => patients.push({ id: d.id, ...d.data() }));
   } catch (err) {
     console.error('renderPatientPortalOverview: pacientes:', err);
-    main.innerHTML = `<h2>💚 Central do Paciente</h2>
+    main.innerHTML = `<h2>🧑 Pacientes</h2>
       <div class="card" style="border:2px solid #e74c3c;">
         <p style="color:#e74c3c;font-weight:700;">⚠️ Não foi possível carregar a lista de pacientes</p>
         <p class="muted" style="word-break:break-word;">${escapeHtml(err?.message || String(err))}</p>
@@ -5029,8 +5029,8 @@ async function renderPatientPortalOverview(main){
   window.__portalOverviewJumpTo = null;
 
   main.innerHTML = `
-    <h2>💚 Central do Paciente</h2>
-    ${hintBox('Escolha um paciente no seletor abaixo e veja logo tudo sobre ele — exatamente o que ele próprio vê no seu Portal.')}
+    <h2>🧑 Pacientes</h2>
+    ${hintBox('Aqui tens todos os teus pacientes. Cria um novo, ou escolhe um no seletor abaixo para ver a ficha, o histórico e o que ele vê no seu Portal.')}
     <div class="profile-grid">
       <button class="profile-tile" onclick="openProfileSection('online')"><span class="ptile-icon">💻</span><span>Consultório Online</span></button>
       <button class="profile-tile" onclick="openProfileSection('mensagens')"><span class="ptile-icon">💬</span><span>Modelos de Mensagens</span></button>
@@ -9467,10 +9467,12 @@ function renderProfileMenu(main){
     <div class="card" style="border:2px solid var(--primary);">
       <label>🔗 O seu link público</label>
       <input readonly value="${publicLink}" onclick="this.select()">
-      <button class="primary" onclick="navigator.clipboard.writeText('${publicLink}').then(()=>toast('Link copiado.'))">Copiar link público</button>
+      <div class="row" style="gap:8px;flex-wrap:wrap;"><button class="primary" onclick="navigator.clipboard.writeText('${publicLink}').then(()=>toast('Link copiado.'))">Copiar link público</button>
+      <button class="ghost" onclick="window.open('${publicLink}','_blank')">🌐 Abrir a minha página</button></div>
       <label style="margin-top:12px;">📅 Link direto para marcações</label>
       <input readonly value="${marcarLink}" onclick="this.select()">
-      <button class="ghost" onclick="navigator.clipboard.writeText('${marcarLink}').then(()=>toast('Link copiado.'))">Copiar link de marcações</button>
+      <div class="row" style="gap:8px;flex-wrap:wrap;"><button class="ghost" onclick="navigator.clipboard.writeText('${marcarLink}').then(()=>toast('Link copiado.'))">Copiar link de marcações</button>
+      <button class="ghost" onclick="window.open('${marcarLink}','_blank')">📅 Abrir marcações</button></div>
       ${tenantRole === 'owner' ? `<details style="margin-top:12px;"><summary class="muted" style="cursor:pointer;">Mudar o nome do endereço</summary>
         <p class="muted" style="margin:8px 0;">É o nome que aparece no link, por exemplo vindora.pt/o-teu-nome. Só letras minúsculas, números e hífenes. Atenção: o link antigo deixa de funcionar, por isso atualiza onde o tenhas divulgado.</p>
         <input id="slugNovo" value="${escapeHtml(currentTenantDoc.slug || '')}" maxlength="40" autocapitalize="none">
