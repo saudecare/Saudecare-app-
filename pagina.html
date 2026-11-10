@@ -85,7 +85,18 @@
   .escola-aviso{margin-top:12px;background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:13px;color:#5a431a;}
   .escola-pontos{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
   .escola-pontos span{background:#f2f6f4;color:var(--primary-dark);font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px;}
-  #escolaReikiSection{scroll-margin-top:60px;}
+  #escolaReikiSection, #ofertasSection{scroll-margin-top:60px;}
+  .tile-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:560px;margin:0 auto;padding:16px 16px 4px;}
+  .tile-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 6px;background:#fff;border:1px solid rgba(31,77,64,.09);border-radius:16px;text-decoration:none;color:var(--primary-dark);font-weight:600;font-size:12.5px;text-align:center;box-shadow:0 2px 6px rgba(20,40,34,.05);}
+  .tile-nav a span{font-size:24px;line-height:1;}
+  .tile-nav a:active{background:var(--primary);color:#fff;}
+  .quick-nav a.on{background:var(--primary);color:#fff;}
+  .cta-bar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);box-shadow:0 -3px 14px rgba(0,0,0,.1);}
+  .cta-bar a{flex:1;text-align:center;padding:12px 8px;border-radius:100px;font-weight:700;font-size:14px;text-decoration:none;background:#f2f6f4;color:var(--primary-dark);}
+  .cta-bar a.main{background:var(--primary);color:#fff;flex:1.6;}
+  body{padding-bottom:74px;}
+  .sobre-clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
+  .ler-mais{background:none;border:0;color:var(--primary);font-weight:700;margin-top:6px;cursor:pointer;font-size:14px;}
   .hidden{display:none !important;}
 </style>
 </head>
@@ -96,6 +107,7 @@
 </div>
 
 <div id="promoBanner"></div>
+<div id="tileNav" class="tile-nav"></div>
 <nav id="quickNav" class="quick-nav"></nav>
 
 <div class="wrap">
@@ -343,6 +355,20 @@ function renderQuickNav(){
     .join('');
   const nav = document.getElementById('quickNav');
   if (links) nav.innerHTML = links; else nav.remove();
+  const presentes = secoes.filter(s => document.getElementById(s.id)?.innerHTML.trim());
+  const tiles = document.getElementById('tileNav');
+  if (tiles){
+    if (presentes.length >= 3) tiles.innerHTML = presentes.map(s => `<a href="#${s.id}"><span>${s.icon}</span>${s.label}</a>`).join('');
+    else tiles.remove();
+  }
+  // Destaca na barra fixa a secção que se está a ver
+  try{
+    if (window.__spy) window.__spy.disconnect();
+    window.__spy = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) document.querySelectorAll('.quick-nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id));
+    }), { rootMargin: '-30% 0px -60% 0px' });
+    presentes.forEach(s => window.__spy.observe(document.getElementById(s.id)));
+  }catch(e){}
 }
 
 // ── "Adicionar ao ecrã principal" com identidade do subscritor ─────────
@@ -398,6 +424,13 @@ function renderHero(profile, slug){
     <a class="cta" href="marcar.html?t=${encodeURIComponent(slug)}">${t('marcar')}</a>
     ${socialLinks ? `<div class="social-row">${socialLinks}</div>` : ''}
   `;
+  const tel = String(profile.phone || '').replace(/[^\d+]/g, '');
+  const wa = social.whatsapp && /^https?:/i.test(social.whatsapp) ? social.whatsapp : '';
+  let bar = document.getElementById('ctaBar');
+  if (!bar){ bar = document.createElement('div'); bar.id = 'ctaBar'; bar.className = 'cta-bar'; document.body.appendChild(bar); }
+  bar.innerHTML = `<a class="main" href="marcar.html?t=${encodeURIComponent(slug)}">📅 ${t('marcar')}</a>`
+    + (wa ? `<a href="${escapeHtml(wa)}" target="_blank" rel="noopener">💬 WhatsApp</a>` : '')
+    + (tel ? `<a href="tel:${escapeHtml(tel)}">📞</a>` : '');
 }
 
 function ofertaLinkSeguro(u){
@@ -438,7 +471,8 @@ function renderAbout(profile){
   if (!profile.about) return;
   document.getElementById('aboutSection').innerHTML = `
     <h2 class="section-title">${t('sobre')}</h2>
-    <div class="card"><p>${escapeHtml(profile.about)}</p></div>
+    <div class="card"><p id="sobreTxt" class="${profile.about.length > 260 ? 'sobre-clamp' : ''}">${escapeHtml(profile.about)}</p>
+      ${profile.about.length > 260 ? '<button class="ler-mais" onclick="document.getElementById(\'sobreTxt\').classList.remove(\'sobre-clamp\');this.remove();">Ler mais ▾</button>' : ''}</div>
   `;
 }
 
