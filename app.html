@@ -348,11 +348,14 @@
     </div>
     <button data-view="home" class="active">🏠 Início</button>
     <button onclick="startNewConsultationFlow()" style="background:var(--primary);color:#fff;font-weight:600;">🩺 Nova Consulta</button>
-    <button data-view="portalPaciente" style="background:#e3f0ea;color:#1a2b26;font-weight:600;">🧑 Pacientes</button>
-    <button data-view="group_agenda">📅 Agenda & Marcações</button>
+    <button data-view="agenda">📅 Agenda</button>
+    <button data-view="patients" style="background:#e3f0ea;color:#1a2b26;font-weight:600;">🧑 Pacientes</button>
+    <button data-view="finances">💶 Pagamentos</button>
+    <button data-view="services">🩺 Serviços & Preços</button>
+    <button data-view="group_agenda">📩 Pedidos & Espera</button>
     <button data-view="group_tools">🧰 Ferramentas</button>
     <button id="navMisticaBtn" data-view="group_mistica" style="display:none;">🔮 Módulos Exclusivos</button>
-    <button data-view="group_business">💼 O Meu Negócio</button>
+    <button data-view="group_business">🏥 A Minha Clínica</button>
     <button data-view="group_account">⚙️ Conta</button>
     <button onclick="installApp()" style="margin-top:20px;">📲 Instalar app no dispositivo</button>
     <button data-view="logout" style="color:#f2b8b8;">Sair</button>
@@ -389,7 +392,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-10-4';
+const APP_VERSION = '2026-11-10-5';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -864,7 +867,7 @@ function startRealtimeNotifications(){
         ));
         total += msgsSnap.size;
       }
-      setNavBadge('portalPaciente', total);
+      setNavBadge('patients', total);
     }catch(e){ /* falha silenciosa — não deve incomodar o resto da app */ }
   };
   checkUnreadMessages();
@@ -1929,7 +1932,7 @@ let __profileSection = null;
 // nível, o que ficava confuso. Agora só há 5 categorias visíveis; cada
 // uma abre uma grelha simples com as funcionalidades lá dentro.
 const NAV_GROUPS = {
-  agenda: { title: '📅 Agenda & Marcações', items: [
+  agenda: { title: '📩 Pedidos & Lista de espera', items: [
     { view: 'agenda', icon: '📅', label: 'Agenda' },
     { view: 'waitlist', icon: '⏳', label: 'Lista de Espera' },
     { view: 'gestorPedidos', icon: '📩', label: 'Pedidos de marcação', gestorOnly: true }
@@ -1955,9 +1958,7 @@ const NAV_GROUPS = {
     { view: 'metodoHikari', icon: '🔮', label: 'Pêndulo + Apometria', tenantOnly: 'hikari-terapias' },
     { view: 'etiquetasEtericas', icon: '🏷️', label: 'Etiquetas Etéricas', tenantOnly: 'hikari-terapias' }
   ]},
-  business: { title: '💼 O Meu Negócio', items: [
-    { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
-    { view: 'finances', icon: '💶', label: 'Finanças' },
+  business: { title: '🏥 A Minha Clínica', items: [
     { view: 'team', icon: '👥', label: 'Equipa', hideForRestricted: true },
     { view: 'profile', icon: '🏥', label: 'Perfil do Negócio', ownerOnly: true }
   ]},
@@ -1975,6 +1976,7 @@ Object.entries(NAV_GROUPS).forEach(([groupKey, group]) => {
   group.items.forEach(it => { NAV_VIEW_TO_GROUP[it.view] = 'group_' + groupKey; });
 });
 
+delete NAV_VIEW_TO_GROUP['agenda']; // Agenda tem botão directo na barra
 // Módulos exclusivos: ligados pela plataforma (painel de admin) em tenants/{id}.modulos.{chave}.
 // A conta da Hikari Fafe tem sempre tudo.
 function temModulo(chave){
@@ -2010,7 +2012,8 @@ function renderGroupMenu(main, groupKey){
 }
 
 function highlightActiveNavGroup(view){
-  const activeTarget = view.startsWith('group_') ? view : (NAV_VIEW_TO_GROUP[view] || view);
+  const direto = document.querySelector('nav button[data-view="' + view + '"]');
+  const activeTarget = direto ? view : (view.startsWith('group_') ? view : (NAV_VIEW_TO_GROUP[view] || view));
   document.querySelectorAll('nav button[data-view]').forEach(b => {
     b.classList.toggle('active', b.dataset.view === activeTarget);
   });
@@ -2020,6 +2023,7 @@ function highlightActiveNavGroup(view){
 function aplicarMenuGestor(){
   if (!ehGestor()) return;
   const permitidos = ['group_agenda', 'group_account', 'logout'];
+  const _ag = document.querySelector('nav button[data-view="agenda"]'); if (_ag) _ag.style.display = 'none';
   document.querySelectorAll('nav button').forEach(b => {
     const v = b.dataset.view;
     if (v === 'home'){ b.textContent = '📅 A minha agenda'; b.dataset.view = 'agenda'; return; }
@@ -2577,7 +2581,7 @@ async function renderFinances(main){
   if (!rows) rows = '<p class="muted">Sem marcações com preço este mês.</p>';
 
   main.innerHTML = `
-    <h2>Finanças</h2>
+    <h2>💶 Pagamentos</h2>
     <div class="card" style="background:#fff8ed;border:1px solid #f0d9a8;">
       <strong style="color:#8a5a00;">⚠️ Isto não é um documento fiscal.</strong>
       <p class="muted" style="margin-top:4px;">Estes valores são só um registo interno de controlo de pagamentos — <strong>não substituem a fatura/recibo</strong>. Por lei, em Portugal precisa de emitir os seus documentos através de um software de faturação certificado pela Autoridade Tributária (ex: Portal das Finanças, Vendus, InvoiceXpress, Moloni). Confirme com o seu contabilista qual se aplica ao seu caso.</p>
@@ -2766,8 +2770,8 @@ async function renderHome(main){
     ...(ehGestor() ? [] : [{ icon: '📥', label: 'Respostas de Fichas', action: "renderView('respostas')", badge: respProntas }]),
     { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
     { icon: '🗓️', label: 'Disponibilidade e Marcações', action: "openProfileSection('disponibilidade')" },
-    { icon: '🧑', label: 'Pacientes', action: "renderView('portalPaciente')" },
-    { icon: '💶', label: 'Finanças', action: "renderView('finances')" },
+    { icon: '🧑', label: 'Pacientes', action: "renderView('patients')" },
+    { icon: '💶', label: 'Pagamentos', action: "renderView('finances')" },
     { icon: '📋', label: 'Os Meus Métodos', action: "renderView('protocols')" },
     { icon: '🧠', label: 'Conhecimento', action: "renderView('knowledge')" },
     { icon: '⏳', label: 'Lista de espera', action: "renderView('waitlist')" },
@@ -3953,10 +3957,12 @@ async function renderPatients(main){
       <button class="primary" onclick="openNewPatient()">+ Novo paciente</button>
     </div>
     ${hintBox('A sua lista de clientes/pacientes, de A a Z. Guarde o consentimento RGPD de cada um antes de registar dados sensíveis — é obrigatório por lei. Toque no selo 💚 de cada paciente para gerir o acesso dele ao Portal.')}
-    <div class="row" style="margin-bottom:8px;">
-      <button class="ghost" onclick="renderView('portalPaciente')">💚 Ver Portal do Paciente (todos)</button>
+    <input id="patientSearchInput" placeholder="🔍 Pesquisar paciente por nome, telefone, email ou NIF…" oninput="filterPatientsList()" style="margin-bottom:8px;font-size:16px;padding:12px;">
+    <div class="row" style="margin-bottom:10px;gap:6px;flex-wrap:wrap;">
+      <button class="ghost small" onclick="filtrarPacientesRapido('todos')">Todos</button>
+      <button class="ghost small" onclick="filtrarPacientesRapido('divida')">💶 Com dívida</button>
+      <button class="ghost small" onclick="renderView('portalPaciente')">💚 Portal e mensagens</button>
     </div>
-    <input id="patientSearchInput" placeholder="🔍 Pesquisar por nome, telefone, email ou NIF…" oninput="filterPatientsList()" style="margin-bottom:10px;">
     <div class="card" id="patientsListBox"></div>
   `;
   renderPatientsListRows(window.__allPatientsCache);
@@ -3993,6 +3999,10 @@ function renderPatientsListRows(list){
   box.innerHTML = rows || '<p class="muted">Ainda sem pacientes.</p>';
 }
 
+window.filtrarPacientesRapido = function(modo){
+  const el = document.getElementById('patientSearchInput'); if (el) el.value = '';
+  renderPatientsListRows(modo === 'divida' ? window.__allPatientsCache.filter(p => p.totalOwed > 0) : window.__allPatientsCache);
+};
 window.filterPatientsList = function(){
   const q = stripAccents(document.getElementById('patientSearchInput').value.trim());
   if (!q){ renderPatientsListRows(window.__allPatientsCache); return; }
