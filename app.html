@@ -392,7 +392,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-10-9';
+const APP_VERSION = '2026-11-10-10';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4586,7 +4586,8 @@ window.viewPatient = async function(patientId){
           ${(typeof r.reportHtml === 'string' && r.reportHtml.indexOf('rbx') >= 0)
             ? `<button class="ghost" onclick="enviarRelatorioPortal('${patientId}')">📲 Link</button><button class="ghost" onclick="pdfDeRelatorioGuardado('${patientId}','${rd.id}')">📄 PDF</button>`
             : (r.protocolName === 'Triagem de Baixa Vibração' ? `<button class="primary" onclick="triagemRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
-              : (r.tipo === 'pesquisa-integrada' ? `<button class="primary" onclick="pesquisaRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>` : ''))}
+              : (r.tipo === 'pesquisa-integrada' ? `<button class="primary" onclick="pesquisaRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
+              : (r.tipo === 'cartomancia' ? `<button class="primary" onclick="cartasRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>` : '')))}
         </div>
       </div>` });
   });
@@ -18976,6 +18977,66 @@ function cpModeloBonito(d, palavras){
   blocos.push({ tipo:'texto', icone:'🌈', titulo:'No conjunto', paras:[ tom === 1 ? 'A tendência é favorável: há mais caminhos abertos do que fechados.' : (tom === 3 ? 'Leitura que pede cuidado e paciência: há mais caminhos fechados do que abertos.' : 'Leitura mista: há portas abertas e outras que pedem tempo.') ] });
   return { tema:'cartas', emoji:'🔮', titulo:'A sua leitura de cartas', subtitulo: d.sobre ? 'Sobre ' + d.sobre : '', nome: nomeP, data: new Date().toLocaleDateString('pt-PT'), assinatura: d.assinatura || '', blocos, mensagem: palavras || '' };
 }
+/* Todas as consultas de cartas usam o mesmo modelo ilustrado. Converte uma carta (vários formatos) em {naipe, valor}. */
+function cartaDeObj(c, nomeTxt){
+  const sa = t => String(t == null ? '' : t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const NAIPES = ['paus', 'copas', 'espadas', 'ouros'];
+  let n = '', v = '';
+  if (c && typeof c === 'object'){ n = sa(c.naipeKey || c.naipe || c.suit); v = String(c.valor != null ? c.valor : (c.value != null ? c.value : '')); }
+  else if (typeof c === 'string') nomeTxt = c;
+  n = NAIPES.find(x => n.indexOf(x) >= 0) || '';
+  const mapV = { as: 'A', valete: 'J', dama: 'Q', rei: 'K' };
+  v = mapV[sa(v)] || v.toUpperCase();
+  if (!n || !v){
+    const m = sa(nomeTxt).match(/(as|valete|dama|rei|\d+)\s+de\s+(paus|copas|espadas|ouros)/);
+    if (m){ v = mapV[m[1]] || m[1]; n = m[2]; }
+  }
+  return (n && v) ? { naipe: n, valor: v } : null;
+}
+function cartoParaD(r, pid){
+  const lp = r.leituraPorPosicao || [];
+  let cartas = (r.cartas || []).map((c, i) => cartaDeObj(c, lp[i] && lp[i].carta)).filter(Boolean);
+  if (!cartas.length) cartas = lp.map(p => cartaDeObj(null, p.carta)).filter(Boolean);
+  if (!cartas.length) return null;
+  const tempo = r.janelaTemporal && r.janelaTemporal.carta ? cartaDeObj(null, r.janelaTemporal.carta) : null;
+  return { perguntas: [{ texto: r.pergunta || 'Leitura geral', cartas }], sobre: r.nome || '', para: '', trat: 'voce', foco: r.foco || '', tempo,
+    patientId: pid || '', assinatura: (currentTenantDoc?.businessName || currentUserDisplayName || '') };
+}
+window.cpEnviarPortal = async function(){
+  const d = __cpUltimo; if (!d) return;
+  if (!d.patientId){ toast('Escolhe primeiro o paciente para guardar na ficha e enviar o link do portal.', true); return; }
+  const palavras = (document.getElementById('cpPalavras')?.value || '').trim();
+  const ok = await guardarNaFicha(d.patientId, { tipo:'cartomancia', titulo:'Leitura de cartas (relatório ilustrado)', texto: cpTextoRelatorio(d), reportHtml: rbFragmento(cpModeloBonito(d, palavras)), dados:{ perguntas: d.perguntas.map(q => ({ texto:q.texto, cartas:q.cartas.map(cpNomeCarta) })) } });
+  if (!ok){ toast('Não consegui guardar na ficha.', true); return; }
+  await enviarRelatorioPortal(d.patientId);
+};
+window.cpPdf = function(){
+  const d = __cpUltimo; if (!d) return;
+  pdfRelatorioIlustrado(rbFragmento(cpModeloBonito(d, (document.getElementById('cpPalavras')?.value || '').trim())), 'Leitura de cartas');
+};
+window.cartasRegerarIlustrado = async function(pid, rid){
+  try{
+    const sn = await getDoc(doc(db, 'tenants', tenantId, 'patients', pid, 'reports', rid));
+    if (!sn.exists()){ toast('Relatório não encontrado.', true); return; }
+    const r = sn.data(), dd = r.dados || {};
+    const pdoc = (await getDoc(doc(db, 'tenants', tenantId, 'patients', pid))).data() || {};
+    let d = null;
+    if (Array.isArray(dd.perguntas) && dd.perguntas.length){
+      const perguntas = dd.perguntas.map(q => ({ texto: q.texto || 'Leitura', cartas: (q.cartas || []).map(c => cartaDeObj(c, typeof c === 'string' ? c : '')).filter(Boolean) })).filter(q => q.cartas.length);
+      if (perguntas.length) d = { perguntas, sobre: (pdoc.fullName || '').split(/\s+/)[0], para: '', trat: 'voce', foco: '', tempo: null, patientId: pid, assinatura: (currentTenantDoc?.businessName || currentUserDisplayName || '') };
+    } else if (Array.isArray(dd.cartas) && dd.cartas.length){
+      d = cartoParaD({ cartas: dd.cartas, pergunta: dd.pergunta || '', nome: (pdoc.fullName || '').split(/\s+/)[0], leituraPorPosicao: [] }, pid);
+    }
+    if (!d){ toast('Esta leitura não tem as cartas guardadas, não dá para a refazer.', true); return; }
+    const data = r.generatedAt && r.generatedAt.toDate ? r.generatedAt.toDate().toLocaleDateString('pt-PT') : '';
+    const m = cpModeloBonito(d, ''); if (data) m.data = data;
+    await addDoc(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), {
+      tipo: 'cartomancia', protocolName: r.protocolName || 'Leitura de cartas (relatório ilustrado)', reportText: r.reportText || '', reportHtml: rbFragmento(m), dados: r.dados || null, origem: rid, generatedAt: r.generatedAt || serverTimestamp()
+    });
+    toast('Relatório ilustrado criado ✓ (já está no portal do paciente).');
+    viewPatient(pid);
+  }catch(e){ console.error(e); toast('Não consegui gerar: ' + (e.message || e), true); }
+};
 window.cpBonito = function(){
   const d = __cpUltimo; if (!d) return;
   const palavras = (document.getElementById('cpPalavras')?.value || '').trim();
@@ -19006,9 +19067,10 @@ function cpMostrar(d, aviso){
     <textarea id="cpPalavras" rows="3" style="width:100%;" placeholder="Ex.: Fica tranquilo(a), estou aqui para o que precisares."></textarea>
     <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;">
       <button class="primary" onclick="cpBonito()">✨ Relatório ilustrado</button>
-      <button class="ghost" onclick="cpGuardar()">💾 Guardar</button>
-      <button class="ghost" onclick="downloadReportPDF('Leitura das cartas', document.getElementById('cpTexto').value)">📄 Descarregar PDF</button>
-      <button class="ghost" onclick="shareReportPDF('Leitura das cartas', document.getElementById('cpTexto').value)">📤 Partilhar</button>
+      <button class="primary" onclick="cpEnviarPortal()">📲 Enviar link do portal</button>
+      <button class="ghost" onclick="cpPdf()">📄 PDF ilustrado</button>
+      <button class="ghost" onclick="cpGuardar()">💾 Guardar só texto</button>
+      <button class="ghost" onclick="downloadReportPDF('Leitura das cartas', document.getElementById('cpTexto').value)">📄 PDF só texto</button>
     </div></div>`;
   document.getElementById('ctResultado').scrollIntoView({ behavior: 'smooth' });
 }
@@ -19237,10 +19299,12 @@ function mostrarRelatorioCartomancia(r, jaGuardada){
     guardarConsultaCartomancia(r);
     const pid = document.getElementById('ctPaciente')?.value || '';
     if (pid){
+      let htmlIlu = ''; try{ const dd = cartoParaD(r, pid); if (dd) htmlIlu = rbFragmento(cpModeloBonito(dd, '')); }catch(e){ console.warn('Modelo ilustrado da consulta:', e); }
       guardarNaFicha(pid, {
         tipo: 'cartomancia',
         titulo: 'Consulta de cartomancia' + (r.foco ? ' — ' + r.foco : ''),
         texto: textoConsultaCartomancia(r),
+        ...(htmlIlu ? { reportHtml: htmlIlu } : {}),
         dados: { cartas: r.cartas, posicoes: (r.leituraPorPosicao||[]).map(p=>p.posicao), pergunta: r.pergunta || '' }
       }).then(ok => toast(ok ? 'Guardado no histórico do paciente ✓' : 'Consulta guardada, mas não entrou na ficha do paciente.', !ok));
     }
@@ -19256,8 +19320,14 @@ function mostrarRelatorioCartomancia(r, jaGuardada){
       ${r.janelaTemporal ? `<p class="muted" style="margin-top:8px;"><strong>Janela temporal (${escapeHtml(r.janelaTemporal.carta)}):</strong> ${escapeHtml(r.janelaTemporal.texto)}</p>` : ''}
       ${r.sinais?.avisoBloqueio ? `<p class="muted" style="margin-top:8px;background:rgba(212,175,55,.12);padding:8px;border-radius:8px;">🛡️ <strong>Sinal detetado:</strong> ${escapeHtml(r.sinais.avisoBloqueio)}</p>` : ''}
       ${r.sinais?.avisoFavoravel ? `<p class="muted" style="margin-top:8px;background:rgba(212,175,55,.12);padding:8px;border-radius:8px;">🌱 <strong>Sinal favorável:</strong> ${escapeHtml(r.sinais.avisoFavoravel)}</p>` : ''}
-      <button class="primary" style="margin-top:10px;" onclick="descarregarPDFCartomancia()">📥 Descarregar em PDF</button>
+      <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <button class="primary" onclick="cpBonito()">✨ Relatório ilustrado</button>
+        <button class="primary" onclick="cpEnviarPortal()">📲 Enviar link do portal</button>
+        <button class="ghost" onclick="cpPdf()">📄 PDF ilustrado</button>
+        <button class="ghost" onclick="descarregarPDFCartomancia()">📥 PDF só texto</button>
+      </div>
     </div>`;
+  { const dd = cartoParaD(r, document.getElementById('ctPaciente')?.value || ''); if (dd) __cpUltimo = dd; }
 }
 
 window.descarregarPDFCartomancia = function(){
