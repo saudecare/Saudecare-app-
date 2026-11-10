@@ -256,6 +256,9 @@ function renderMessages(messages){
   box.scrollTop = box.scrollHeight;
 }
 
+function relTs(r){ const g = r && r.generatedAt; return g && g._seconds ? g._seconds*1000 : (g && g.seconds ? g.seconds*1000 : (Date.parse(g) || 0)); }
+function ehNovoRelatorio(r){ return relTs(r) && (Date.now() - relTs(r)) < 7*86400000; }
+function iconeRelatorio(r){ const t = String(r.protocolName||'') + ' ' + String(r.tipo||''); return /triagem/i.test(t) ? '🌿' : /carta|cartomanc/i.test(t) ? '🔮' : /atendimento|pesquisa|apometria/i.test(t) ? '🧭' : /etiqueta/i.test(t) ? '🏷️' : '📖'; }
 function toggleReport(id){
   const el = document.getElementById('report_' + id);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
@@ -439,6 +442,7 @@ function renderMenu(){
         <span class="tile-icon">💬</span><span>${data.preferredChannel && data.preferredChannel !== 'portal' ? T('tContacto') : T('tMensagens')}</span>
       </button>
       <button class="tile" onclick="openPortalSection('reports')">
+        ${(() => { const n = (data.reports||[]).filter(r => ehNovoRelatorio(r)).length; return n ? '<span class="tile-badge">' + n + '</span>' : ''; })()}
         <span class="tile-icon">📖</span><span>${T('tRelatorios')}${hasHealing ? T('eRotina') : ''}</span>
       </button>
       <button class="tile" onclick="openPortalSection('fichas')">
@@ -607,7 +611,7 @@ function renderPortalSection(name){
         <div class="appt" style="cursor:pointer;" onclick="toggleReport('${r.id}')">
           <div class="row" style="justify-content:space-between;align-items:center;">
             <div>
-              <strong>${escapeHtml(r.protocolName||T('relatorio'))}</strong>
+              <strong>${iconeRelatorio(r)} ${escapeHtml(r.protocolName||T('relatorio'))}</strong> ${ehNovoRelatorio(r) ? '<span class="tile-badge" style="position:static;display:inline-block;">✨ Novo</span>' : ''}
               <span class="muted">${r.generatedAt ? formatDateTime(r.generatedAt) : ''}</span>
             </div>
             <span class="muted">${T('tocarVer')}</span>

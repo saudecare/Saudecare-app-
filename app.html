@@ -180,6 +180,9 @@
 .pe-point-btn { transition: transform .15s, box-shadow .15s; }
 .pe-point-btn:hover { transform: scale(1.12); box-shadow: 0 0 0 3px rgba(255,255,255,.5); }
 .pe-shield-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:.78rem; font-weight:700; background:#7c3aed; color:#fff; }
+  .pacTabs{display:flex;gap:6px;overflow-x:auto;position:sticky;top:0;z-index:5;background:#fff;padding:8px 0;margin-top:12px;border-bottom:1px solid #eef1ef;}
+  .pacTabs button{flex:1;white-space:nowrap;width:auto;padding:9px 10px;font-size:13.5px;}
+  .pacHide{display:none !important;}
 </style>
 </head>
 <body>
@@ -392,7 +395,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-10-10';
+const APP_VERSION = '2026-11-10-11';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4456,6 +4459,10 @@ window.savePatient = async function(){
 };
 
 // ── Janela dedicada da ficha do paciente (em vez de aparecer no fundo da lista) ──
+window.pacTab = function(nome){
+  document.querySelectorAll('#patientOverlay [data-tab]').forEach(el => el.classList.toggle('pacHide', el.dataset.tab !== nome));
+  document.querySelectorAll('#pacTabs button').forEach(b => { b.className = b.dataset.pt === nome ? 'primary' : 'ghost'; });
+};
 function showPatientOverlay(title, bodyHtml){
   document.getElementById('patientOverlay')?.remove();
   const overlay = document.createElement('div');
@@ -4746,7 +4753,13 @@ window.viewPatient = async function(patientId){
         <button class="ghost" onclick="viewPatientEvolution('${patientId}','${escapeHtml(p.fullName)}')">📈 Ver evolução</button>
       </div>
 
-      <details style="margin-top:12px;" open>
+      <div class="pacTabs" id="pacTabs">
+        <button class="primary" data-pt="historico" onclick="pacTab('historico')">📚 Histórico</button>
+        <button class="ghost" data-pt="clinica" onclick="pacTab('clinica')">🩺 Clínica</button>
+        <button class="ghost" data-pt="pagamentos" onclick="pacTab('pagamentos')">💶 Pagamentos${totalOwed > 0 ? ' ⚠️' : ''}</button>
+        <button class="ghost" data-pt="portal" onclick="pacTab('portal')">💚 Portal</button>
+      </div>
+      <details data-tab="clinica" style="margin-top:12px;" open>
         <summary style="cursor:pointer;font-weight:700;">💻 Videochamada</summary>
         <div style="margin-top:8px;">
           ${destinoPaciente(p).phone ? `
@@ -4766,12 +4779,12 @@ window.viewPatient = async function(patientId){
         </div>
       </details>
 
-      <details style="margin-top:10px;" ontoggle="if(this.open) farmPainelCarregar('${patientId}')">
+      <details data-tab="clinica" style="margin-top:10px;" ontoggle="if(this.open) farmPainelCarregar('${patientId}')">
         <summary style="cursor:pointer;font-weight:700;">💊 Medicação & Queixas</summary>
         <div id="medPanel_${patientId}" style="margin-top:8px;"><p class="muted">A abrir…</p></div>
       </details>
 
-      <details style="margin-top:10px;">
+      <details data-tab="clinica" style="margin-top:10px;">
         <summary style="cursor:pointer;font-weight:700;">📝 Notas clínicas & Consentimento ${!p.consentGivenAt ? '⚠️' : ''}</summary>
         <div style="margin-top:8px;">
           <label>Notas clínicas</label>
@@ -4784,7 +4797,7 @@ window.viewPatient = async function(patientId){
         </div>
       </details>
 
-      <details style="margin-top:10px;">
+      <details data-tab="portal" style="margin-top:10px;">
         <summary style="cursor:pointer;font-weight:700;">💚 Portal do paciente</summary>
         <div style="margin-top:8px;">
           <p class="muted" style="margin-bottom:8px;">Espaço próprio do paciente para ver marcações, relatórios, falar consigo entre sessões e entrar na videochamada. Envie-lhe este link uma vez (por WhatsApp/email) — não precisa de criar conta nem password. ⚠️ Este link é único e pessoal deste paciente — não o partilhe com outro paciente nem o publique.</p>
@@ -4800,7 +4813,7 @@ window.viewPatient = async function(patientId){
         </div>
       </details>
 
-      <details style="margin-top:10px;">
+      <details data-tab="portal" style="margin-top:10px;">
         <summary style="cursor:pointer;font-weight:700;">🌱 Diário de Bem-Estar</summary>
         <div style="margin-top:8px;">
           <p class="muted" style="margin-bottom:8px;">Registos que o próprio paciente faz no seu Portal — humor, sono, energia e notas livres, ao longo do tempo. Útil para acompanhar a evolução entre sessões, principalmente em casos de ansiedade, depressão ou qualquer acompanhamento continuado.</p>
@@ -4810,12 +4823,12 @@ window.viewPatient = async function(patientId){
     </div>
     <div id="sendFormContainer"></div>
 
-    <details class="card">
+    <details data-tab="pagamentos" class="card">
       <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">💶 Pagamentos em dívida ${totalOwed > 0 ? '⚠️' : ''}</summary>
       <div style="margin-top:10px;">${paymentsHtml || '<p class="muted">Sem marcações por pagar.</p>'}</div>
     </details>
 
-    <details class="card">
+    <details data-tab="pagamentos" class="card">
       <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">🧾 Faturas</summary>
       <div style="margin-top:10px;">
         <p class="muted" style="margin-bottom:8px;">A Vindora não emite faturas/recibos com valor fiscal. Faça a fatura no seu software certificado (Portal das Finanças, Moloni, Vendus, etc.) e anexe aqui o PDF, para poder enviar ao paciente com um toque.</p>
@@ -4823,7 +4836,7 @@ window.viewPatient = async function(patientId){
       </div>
     </details>
 
-    <details class="card">
+    <details data-tab="pagamentos" class="card">
       <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">📦 Pacotes de sessões</summary>
       <div style="margin-top:10px;">
         ${hintBox('Para vender um conjunto de sessões de uma vez (ex: "5 sessões por 200€"). Ao marcar uma consulta, pode escolher consumir uma sessão de um pacote em vez de cobrar à parte.')}
@@ -4833,7 +4846,7 @@ window.viewPatient = async function(patientId){
       </div>
     </details>
 
-    <details class="card">
+    <details data-tab="clinica" class="card">
       <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">📁 Ficheiros e fotos</summary>
       <div style="margin-top:10px;">
         <p class="muted" style="margin-bottom:6px;font-size:11.5px;">Só para si — o paciente não vê isto no Portal.</p>
@@ -4841,7 +4854,7 @@ window.viewPatient = async function(patientId){
       </div>
     </details>
 
-    <details class="card">
+    <details data-tab="portal" class="card">
       <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">🎧 Materiais enviados ao paciente</summary>
       <div style="margin-top:10px;">
         <p class="muted" style="margin-bottom:8px;">Músicas, meditações, ficheiros ou fotos que aparecem no Portal do paciente, prontos a abrir/descarregar. Use um link (Google Drive, YouTube, etc.) — nunca carregue o ficheiro para aqui, para não gastar armazenamento da app.</p>
@@ -4851,7 +4864,7 @@ window.viewPatient = async function(patientId){
       </div>
     </details>
 
-    <details class="card" open>
+    <details data-tab="historico" class="card" open>
       <summary style="cursor:pointer;font-weight:700;font-size:1.1rem;">📚 Histórico Clínico</summary>
       <div style="margin-top:10px;">
         <div style="margin-bottom:10px;display:flex;justify-content:flex-end;">
@@ -4862,6 +4875,7 @@ window.viewPatient = async function(patientId){
     </details>`;
   window.__currentPatientChannel = p.preferredChannel || 'portal';
   showPatientOverlay(p.fullName, overlayBody);
+  pacTab(window.__pacTabInicial || 'historico'); window.__pacTabInicial = null;
   renderPatientPortalLink(patientId, p);
   renderPatientMessages(patientId);
   renderPatientCheckins(patientId);
