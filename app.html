@@ -67,6 +67,7 @@
   .authPrice .apValor{margin:8px 0 2px;} .authPrice .apValor b{font-size:36px;} .authPrice .apValor span{font-size:15px;margin-left:6px;opacity:.9;}
   .authPrice .apLine{font-size:13px;opacity:.95;margin:0 0 8px;} .authPrice .apList{list-style:none;padding:0;margin:0 0 8px;font-size:14px;line-height:1.7;}
   .authPrice .apPay{font-size:12.5px;opacity:.95;margin:0;}
+  .authPrice button.primary{background:#d4a24c;color:#2b1f06;font-weight:700;border:none;}
   .authTabs{display:flex;border-bottom:1px solid #eef2f0;margin-bottom:18px;}
   .authTabs button{flex:1;background:none;border:none;padding:12px 8px;font-size:14px;cursor:pointer;
     color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;}
@@ -235,12 +236,6 @@
       <p class="apPay" id="apPayNote">Pagamento por MB WAY ou transferência bancária.</p>
       <button class="primary" style="width:100%;margin-top:8px;" onclick="switchAuthTab('register');document.getElementById('regBusinessName')?.focus();">Começar teste grátis</button>
     </div>
-    <div class="authFeatures">
-      <div><b>📅 Agenda inteligente</b>Marcações, mensagens de lembrete prontas e ligação opcional ao Google Calendar</div>
-      <div><b>🧑‍🤝‍🧑 Portal do Paciente</b>Mensagens, relatórios e videochamada incluídos</div>
-      <div><b>📋 Protocolos à medida</b>Fichas e consultas guiadas à medida, com mapa do corpo</div>
-      <div><b>🧠 Biblioteca de Conhecimento</b>O assistente pesquisa nos textos que você guardou</div>
-    </div>
     <p class="authTrust">🔒 Isolamento total entre consultórios — os seus dados nunca se misturam com os de outra conta. 🇪🇺 Dados alojados na União Europeia. 🔐 Ligação encriptada (HTTPS).</p>
   </div>
 
@@ -265,7 +260,7 @@
     </div>
 
     <div id="authPanelRegister" class="hidden">
-      <p class="muted" style="margin-bottom:6px;">Ainda não tem conta e quer começar o seu próprio consultório na Vindora? Registe-se aqui como novo(a) subscritor(a).</p>
+      <p class="muted" style="margin-bottom:6px;">Ainda não tens conta e queres começar o teu próprio consultório na Vindora? Regista-te aqui.</p>
       <div class="trialNote" id="trialDaysNote">✨ dias grátis, sem cartão de crédito. Sem compromisso.</div>
       <label>Nome do teu consultório / prática</label>
       <input id="regBusinessName" placeholder="ex: Clínica Bem-Estar">
@@ -290,7 +285,7 @@
       <label>Cidade</label>
       <input id="regCity" placeholder="ex: Porto" autocomplete="address-level2">
       <p class="muted" style="margin:6px 0 0;font-size:12.5px;">Com estes dados a app cria logo a tua página pública, o teu portal do paciente e os teus primeiros serviços. Depois editas tudo à tua maneira.</p>
-      <label>O seu email</label>
+      <label>O teu email</label>
       <input id="regEmail" type="email" autocomplete="username">
       <label>Palavra-passe</label>
       <input id="regPass" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres">
@@ -394,7 +389,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-10-2';
+const APP_VERSION = '2026-11-10-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
