@@ -63,6 +63,7 @@
 </div>
 
 <header>
+  <img id="hLogo" alt="" style="display:none;max-height:56px;max-width:160px;margin:0 auto 6px;border-radius:8px;object-fit:contain;">
   <h1 id="hBusiness">Portal do Paciente</h1>
   <p id="hPatient"></p>
   <div style="text-align:center;margin-top:4px;"><select id="vdLang" aria-label="Language" style="font-size:12px;padding:3px 6px;border-radius:8px;"></select></div>
@@ -424,6 +425,7 @@ function renderMenu(){
   main.innerHTML = `
     ${crisisBox()}
     <button class="btn btn-block" style="margin-bottom:14px;" onclick="installPortalApp()">${T('instalar')}</button>
+    <a class="btn btn-block" style="margin-bottom:14px;text-align:center;text-decoration:none;display:block;" href="/marcar.html?t=${encodeURIComponent(tenantId)}">📅 ${TF('Marcar nova consulta','Book a new appointment')}</a>
     <div class="tile-grid">
       <button class="tile" onclick="openPortalSection('appointments')">
         ${hasOnlineUpcoming ? '<span class="tile-badge">' + T('tOnline') + '</span>' : ''}
@@ -705,6 +707,7 @@ async function load(){
     portalData = data;
     document.documentElement.style.setProperty('--primary', data.primaryColor || '#1a2b26');
     document.getElementById('hBusiness').textContent = data.businessName;
+    if (data.logoUrl && /^https:/i.test(data.logoUrl)){ const lg = document.getElementById('hLogo'); lg.src = data.logoUrl; lg.style.display = 'block'; }
     document.getElementById('hPatient').textContent = T('ola', { n: data.patientName });
     document.title = data.businessName + ' — ' + T('portalTitle');
     applyPortalManifest(data.businessName, data.primaryColor, data.logoUrl);

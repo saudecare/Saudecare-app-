@@ -276,7 +276,7 @@ function abrirDetalhe(id){
       </div>
       <div class="two">
         <div><label>Plano</label><select id="dPlano">${PLANOS.map(p => `<option value="${p}" ${(t.plan||'start')===p?'selected':''}>${p}</option>`).join('')}</select></div>
-        <div><label>Próximo pagamento</label><input id="dPag" type="date" value="${esc(t.nextPaymentDue||'')}"></div>
+        <div><label>Próximo pagamento</label><input id="dPag" type="date" value="${esc(t.nextPaymentDue||'')}"><button class="ghost small" style="margin-top:6px;" data-act="recebi">✅ Recebi o pagamento (+1 mês)</button></div>
       </div>
       <label>Fim do período de teste</label>
       <div class="row"><input id="dTeste" type="date" value="${iso(t.trialEndsAt)}" style="flex:1;min-width:150px;"><button class="ghost small" data-act="mais" data-d="7">+7 dias</button><button class="ghost small" data-act="mais" data-d="14">+14 dias</button></div>
@@ -438,6 +438,7 @@ document.addEventListener('click', ev => {
   if (a === 'fechar') fechar();
   else if (a === 'csv') csv();
   else if (a === 'copiar') navigator.clipboard?.writeText(b.dataset.v).then(() => toast('Copiado.')).catch(() => toast(b.dataset.v));
+  else if (a === 'recebi'){ const d = new Date(Math.max(Date.now(), new Date(($('dPag').value || hoje()) + 'T12:00:00').getTime())); d.setMonth(d.getMonth()+1); $('dPag').value = d.toISOString().slice(0,10); toast('Próximo pagamento: ' + $('dPag').value + ' — carregue em "Guardar alterações" (e em Ativar, se ainda não está ativo).'); }
   else if (a === 'mais'){ const base = Math.max(Date.now(), new Date(($('dTeste').value || hoje()) + 'T12:00:00').getTime()); $('dTeste').value = new Date(base + (+b.dataset.d)*DIA).toISOString().slice(0,10); toast('Data alterada — carregue em "Guardar alterações".'); }
   else if (a === 'guardar') correr(guardar);
   else if (a === 'estado') correr(() => mudarEstado(b.dataset.v));
