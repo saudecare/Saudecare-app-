@@ -389,7 +389,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-10-3';
+const APP_VERSION = '2026-11-10-4';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -9372,6 +9372,11 @@ function ofertasDesenhar(){
       <textarea rows="2" maxlength="300" oninput="ofertaCampo(${i},'descricao',this.value)">${escapeHtml(o.descricao || '')}</textarea>
       <label>Preço (texto livre, ex: "29 €" ou "Grátis")</label>
       <input value="${escapeHtml(o.preco || '')}" maxlength="30" oninput="ofertaCampo(${i},'preco',this.value)">
+      <label>Preço antes da promoção (aparece riscado, opcional)</label>
+      <input value="${escapeHtml(o.precoAntes || '')}" maxlength="30" placeholder="ex: 40 €" oninput="ofertaCampo(${i},'precoAntes',this.value)">
+      <label>Promoção válida até (opcional — depois desta data a oferta sai sozinha da página)</label>
+      <input type="date" value="${escapeHtml(o.ate || '')}" onchange="ofertaCampo(${i},'ate',this.value)">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400;"><input type="checkbox" style="width:auto;" ${o.destaque ? 'checked' : ''} onchange="ofertaCampo(${i},'destaque',this.checked)"> ⭐ Mostrar em destaque no topo da página</label>
       <label>Texto do botão</label>
       <input value="${escapeHtml(o.botao || '')}" maxlength="30" placeholder="Comprar" oninput="ofertaCampo(${i},'botao',this.value)">
       <label>Para onde leva o botão</label>
@@ -9394,7 +9399,7 @@ function ofertasDesenhar(){
 }
 
 window.ofertaCampo = function(i, campo, valor){ if (__ofertas[i]) __ofertas[i][campo] = valor; };
-window.ofertaAdd = function(){ __ofertas.push({ titulo: '', descricao: '', preco: '', botao: 'Quero saber mais', url: '' }); ofertasDesenhar(); };
+window.ofertaAdd = function(){ __ofertas.push({ titulo: '', descricao: '', preco: '', precoAntes: '', ate: '', destaque: false, botao: 'Quero saber mais', url: '' }); ofertasDesenhar(); };
 window.ofertaRemover = function(i){ __ofertas.splice(i, 1); ofertasDesenhar(); };
 window.ofertaMover = function(i, d){
   const j = i + d;
@@ -9427,6 +9432,7 @@ window.ofertasGuardar = async function(){
     const url = String(o.url || '').trim();
     if (url && !ofertaUrlSegura(url)){ toast('O link da oferta "' + titulo + '" tem de começar por https://', true); return; }
     limpas.push({ titulo, descricao: String(o.descricao || '').trim(), preco: String(o.preco || '').trim(),
+      precoAntes: String(o.precoAntes || '').trim(), ate: /^\d{4}-\d{2}-\d{2}$/.test(String(o.ate || '')) ? o.ate : '', destaque: !!o.destaque,
       botao: String(o.botao || '').trim() || 'Quero saber mais', url });
   }
   try {

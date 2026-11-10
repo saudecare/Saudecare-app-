@@ -95,6 +95,7 @@
   <p class="muted" style="color:#fff;opacity:.8;">…</p>
 </div>
 
+<div id="promoBanner"></div>
 <nav id="quickNav" class="quick-nav"></nav>
 
 <div class="wrap">
@@ -405,17 +406,31 @@ function ofertaLinkSeguro(u){
 }
 
 function renderOfertas(profile){
-  const lista = Array.isArray(profile.ofertas) ? profile.ofertas.filter(o => o && o.titulo) : [];
+  const hoje = new Date().toISOString().slice(0,10);
+  const todas = Array.isArray(profile.ofertas) ? profile.ofertas.filter(o => o && o.titulo) : [];
+  const lista = todas.filter(o => !o.ate || o.ate >= hoje);
   if (!lista.length) return;
+  const btn = o => ofertaLinkSeguro(o.url)
+    ? `<a class="cta" style="background:var(--primary);color:#fff;padding:10px 20px;font-size:14px;display:inline-block;margin-top:6px;" href="${escapeHtml(o.url)}" ${/^https?:/i.test(o.url) ? 'target="_blank" rel="noopener"' : ''}>${escapeHtml(o.botao || 'Quero saber mais')}</a>` : '';
+  const preco = o => o.preco ? `<span class="price">${o.precoAntes ? `<s style="opacity:.55;font-weight:400;margin-right:6px;">${escapeHtml(o.precoAntes)}</s>` : ''}${escapeHtml(o.preco)}</span>` : '';
+  const destaque = lista.filter(o => o.destaque);
+  if (destaque.length){
+    const o = destaque[0];
+    document.getElementById('promoBanner').innerHTML = `<div style="background:#fff7e0;border-bottom:2px solid #d4a24c;padding:12px 16px;text-align:center;">
+      <strong>⭐ ${escapeHtml(o.titulo)}</strong> ${preco(o)}
+      ${o.ate ? `<div style="font-size:12.5px;opacity:.8;">Até ${escapeHtml(o.ate.split('-').reverse().join('/'))}</div>` : ''}
+      ${btn(o)}</div>`;
+  }
   document.getElementById('ofertasSection').innerHTML = `
     <h2 class="section-title">🛍️ Loja</h2>
     ${lista.map(o => `<div class="card service-card" style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
         <h3 style="margin:0;font-size:16px;">${escapeHtml(o.titulo)}</h3>
-        ${o.preco ? `<span class="price">${escapeHtml(o.preco)}</span>` : ''}
+        ${preco(o)}
       </div>
       ${o.descricao ? `<p style="margin:8px 0;">${escapeHtml(o.descricao)}</p>` : ''}
-      ${ofertaLinkSeguro(o.url) ? `<a class="cta" style="background:var(--primary);color:#fff;padding:10px 20px;font-size:14px;display:inline-block;margin-top:6px;" href="${escapeHtml(o.url)}" ${/^https?:/i.test(o.url) ? 'target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(o.botao || t('queroSaber'))}</a>` : ''}
+      ${o.ate ? `<div class="muted" style="font-size:12.5px;">Válido até ${escapeHtml(o.ate.split('-').reverse().join('/'))}</div>` : ''}
+      ${btn(o)}
     </div>`).join('')}`;
 }
 
