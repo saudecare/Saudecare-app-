@@ -27,6 +27,19 @@
   var alvo = '/pagina.html?t=' + encodeURIComponent(slug);
   var hash = location.hash;
   var sub = (partes[1] || '').toLowerCase();
+  if (sub === 'portal'){
+    // Link curto do portal do paciente: vindora.pt/nome/portal?p=...&k=...
+    // Descobre o consultório pelo nome (perfil público) e abre o portal.
+    var url = 'https://firestore.googleapis.com/v1/projects/saudecare-app/databases/(default)/documents/public_tenant_profiles/' + encodeURIComponent(slug) + '?key=AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg';
+    fetch(url).then(function(r){ return r.json(); }).then(function(j){
+      var t = j && j.fields && j.fields.tenantId && j.fields.tenantId.stringValue;
+      if (!t) throw new Error('sem consultório');
+      location.replace('/portal.html?t=' + encodeURIComponent(t) + (extra ? '&' + extra : ''));
+    }).catch(function(){
+      document.getElementById('msg').innerHTML = '<h2>Link não encontrado</h2><p style="margin-top:8px;">Peça um link novo ao seu consultório.</p>';
+    });
+    return;
+  }
   if (sub === 'marcar') alvo = '/marcar.html?t=' + encodeURIComponent(slug);
   else if (sub === 'formacao' && partes[2]) alvo = '/inscricao.html?t=' + encodeURIComponent(slug) + '&tr=' + encodeURIComponent(partes[2]);
   else if (sub === 'formacoes') hash = '#trainingsSection';

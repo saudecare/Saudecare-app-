@@ -123,8 +123,8 @@ const dt = ts => { const m = ms(ts); return m ? new Date(m).toLocaleDateString('
 const iso = ts => { const m = ms(ts); return m ? new Date(m).toISOString().slice(0,10) : ''; };
 const hoje = () => new Date().toISOString().slice(0,10);
 const ESTADOS = { pending_activation:'Por ativar', trial:'Em teste', active:'Ativo', suspended:'Suspenso', cancelled:'Cancelado' };
-const PLANOS = ['start','grow','pro','enterprise','lifetime'];
-const PLANO_PADRAO = { start:{staff:1,kbBytes:5*MB,portalPatients:10}, grow:{staff:3,kbBytes:25*MB,portalPatients:50}, pro:{staff:8,kbBytes:100*MB,portalPatients:200}, enterprise:{staff:20,kbBytes:500*MB,portalPatients:1000} };
+const PLANOS = ['vindora','start','grow','pro','enterprise','lifetime'];
+const PLANO_PADRAO = { vindora:{staff:10,kbBytes:200*MB,portalPatients:1000,price:15}, start:{staff:1,kbBytes:5*MB,portalPatients:10}, grow:{staff:3,kbBytes:25*MB,portalPatients:50}, pro:{staff:8,kbBytes:100*MB,portalPatients:200}, enterprise:{staff:20,kbBytes:500*MB,portalPatients:1000} };
 
 let T = [], P = [], PLANS = {}, CFG = {}, aba = 'geral', filtro = 'todos', busca = '', ordem = 'recentes';
 
@@ -364,7 +364,7 @@ function vPlanos(){
     <div class="card">
       <h3>Catálogo de planos</h3>
       <p class="muted" style="margin-top:0;">Campo vazio = sem limite. As alterações aplicam-se a todos os subscritores desse plano, logo que voltem a entrar. O plano "lifetime" é sempre ilimitado.</p>
-      <div style="overflow-x:auto;"><table><tr><th>Plano</th><th>Profissionais</th><th>Biblioteca (MB)</th><th>Pacientes c/ Portal</th><th>Preço €/mês</th></tr>${['start','grow','pro','enterprise'].map(linha).join('')}
+      <div style="overflow-x:auto;"><table><tr><th>Plano</th><th>Profissionais</th><th>Biblioteca (MB)</th><th>Pacientes c/ Portal</th><th>Preço €/mês</th></tr>${['vindora','start','grow','pro','enterprise'].map(linha).join('')}
         <tr><td><b>lifetime</b></td><td colspan="3" class="muted">Ilimitado</td><td><input data-pl="lifetime" data-k="price" type="number" min="0" step="0.01" value="${PLANS.lifetime?.price ?? ''}" placeholder="€"></td></tr></table></div>
       <div class="row" style="margin-top:10px;"><button data-act="gplanos">💾 Guardar catálogo</button></div>
     </div>
@@ -372,6 +372,7 @@ function vPlanos(){
       <h3>Pagamentos e período de teste</h3>
       <p class="muted" style="margin-top:0;">Isto é o que os subscritores veem em "Plano & Estado" e no registo.</p>
       <label>Dias de teste gratuito</label><input id="cTrial" type="number" min="0" value="${CFG.trialDays ?? ''}" placeholder="7">
+      <label>Preço mensal do plano Vindora (€)</label><input id="cPreco" type="number" min="0" step="0.01" value="${CFG.precoMensal ?? 15}" placeholder="15">
       <label>IBAN</label><input id="cIban" value="${esc(CFG.iban||'')}">
       <label>MB Way</label><input id="cMbway" value="${esc(CFG.mbway||'')}">
       <label>Link de pagamento automático (Hotmart)</label><input id="cHot" value="${esc(CFG.hotmartLink||'')}">
@@ -396,6 +397,7 @@ async function gCfg(){
   const d = $('cTrial').value.trim();
   const out = { iban: $('cIban').value.trim(), mbway: $('cMbway').value.trim(), hotmartLink: $('cHot').value.trim(), contactEmail: $('cMail').value.trim() };
   if (d !== '') out.trialDays = Number(d);
+  const pm = $('cPreco').value.trim(); if (pm !== '') out.precoMensal = Number(pm);
   await setDoc(doc(db, 'settings', 'platformConfig'), out, { merge: true });
   toast('Guardado.'); await carregar();
 }
