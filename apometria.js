@@ -348,7 +348,7 @@ export function renderPesquisaIntegrada(main, ctx) {
       <label>Notas da sessão<textarea id="pi-notas" rows="3" style="width:100%">${esc(S.notas)}</textarea></label>${comp}
       <details open style="margin:10px 0;"><summary><b>📋 Resumo para ti</b></summary><pre style="white-space:pre-wrap;font-family:inherit;font-size:.85rem;background:#f6f7f9;padding:10px;border-radius:8px;">${esc(textoTerapeuta())}</pre></details>
       <details style="margin:10px 0;"><summary><b>💌 Mensagem para o paciente (serena)</b></summary><pre id="pi-pt" style="white-space:pre-wrap;font-family:inherit;font-size:.85rem;background:#f6f7f9;padding:10px;border-radius:8px;">${esc(textoPaciente())}</pre></details>
-      <div style="display:grid;gap:8px;"><button class="primary" id="pi-bonito">✨ Relatório ilustrado para o paciente</button><button class="primary" id="pi-gravar">💾 Guardar na ficha do paciente</button><button class="ghost" id="pi-wa">📱 Enviar mensagem ao paciente por WhatsApp</button><button class="ghost" id="pi-copiar">📋 Copiar o resumo</button>${S.modo === 'distancia' ? '<button class="ghost" id="pi-wa-depois">📡 Mensagem de acompanhamento (à distância)</button>' : ''}</div>
+      <div style="display:grid;gap:8px;"><button class="primary" id="pi-bonito">✨ Relatório ilustrado para o paciente</button><button class="primary" id="pi-portal">📲 Enviar link do portal (relatório ilustrado)</button><button class="ghost" id="pi-pdf">📄 PDF ilustrado</button><button class="primary" id="pi-gravar">💾 Guardar na ficha do paciente</button><button class="ghost" id="pi-wa">📱 Enviar mensagem ao paciente por WhatsApp</button><button class="ghost" id="pi-copiar">📋 Copiar o resumo</button>${S.modo === 'distancia' ? '<button class="ghost" id="pi-wa-depois">📡 Mensagem de acompanhamento (à distância)</button>' : ''}</div>
       <div class="row" style="margin-top:12px;"><button class="ghost" id="pi-ant">← Anterior</button></div>`;
   }
 
@@ -448,6 +448,17 @@ export function renderPesquisaIntegrada(main, ctx) {
         try { await ctx.gravar(S.pac.id, { tipo: 'relatorio-ilustrado', protocolName: 'Atendimento Guiado (relatório ilustrado)', reportText: textoPaciente(), reportHtml: rbFragmento(m) }); ctx.toast('Relatório ilustrado guardado na ficha e no portal do paciente. ✅'); }
         catch (e) { ctx.toast('Não consegui guardar: ' + (e.message || e), true); }
       } });
+    });
+    on('#pi-pdf', () => {
+      let m; try { m = modeloBonito(); } catch (e) { console.error(e); return ctx.toast('Não consegui montar o relatório ilustrado.', true); }
+      rbPreVisualizar(m, { autoImprimir: true });
+    });
+    on('#pi-portal', async () => {
+      if (!S.pac) return ctx.toast('Escolhe primeiro o paciente.', true);
+      let m; try { m = modeloBonito(); } catch (e) { console.error(e); return ctx.toast('Não consegui montar o relatório ilustrado.', true); }
+      try { await ctx.gravar(S.pac.id, { tipo: 'relatorio-ilustrado', protocolName: 'Atendimento Guiado (relatório ilustrado)', reportText: textoPaciente(), reportHtml: rbFragmento(m) }); }
+      catch (e) { return ctx.toast('Não consegui guardar o relatório: ' + (e.message || e), true); }
+      if (ctx.enviarPortal) await ctx.enviarPortal(S.pac.id);
     });
     on('#pi-gravar', async () => {
       if (!S.pac) return ctx.toast('Escolhe primeiro o paciente.', true);

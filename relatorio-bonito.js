@@ -262,14 +262,14 @@ export function rbFragmento(m) {
 // Documento completo (para pré-visualizar, imprimir/guardar em PDF ou descarregar)
 export function rbDocumento(m) {
   return `<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(m.titulo || 'Relatório')}</title>
-<style>body{margin:0;padding:14px;background:#e9e2f0}@page{margin:10mm}@media print{body{padding:0;background:#fff}}</style></head><body>${rbFragmento(m)}</body></html>`;
+<style>body{margin:0;padding:14px;background:#e9e2f0}@page{margin:10mm}@media print{body{padding:0;background:#fff}}</style></head><body>${rbFragmento(m)}<script>addEventListener('beforeprint',function(){document.querySelectorAll('details').forEach(function(d){d.open=true})})<\/script></body></html>`;
 }
 
 // Abre a pré-visualização em ecrã completo, com botões Imprimir/PDF, Descarregar e Fechar.
 export function rbPreVisualizar(m, opcoes) { return rbPreVisualizarHtml(rbDocumento(m), m.titulo, opcoes); }
 export function rbDocumentoDeFragmento(frag, titulo) {
   return `<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(titulo || 'Relatório')}</title>
-<style>body{margin:0;padding:14px;background:#e9e2f0}@page{margin:10mm}@media print{body{padding:0;background:#fff}}</style></head><body>${frag}</body></html>`;
+<style>body{margin:0;padding:14px;background:#e9e2f0}@page{margin:10mm}@media print{body{padding:0;background:#fff}}</style></head><body>${frag}<script>addEventListener('beforeprint',function(){document.querySelectorAll('details').forEach(function(d){d.open=true})})<\/script></body></html>`;
 }
 export function rbPreVisualizarHtml(html, titulo, opcoes) {
   const m = { titulo };
@@ -283,10 +283,11 @@ export function rbPreVisualizarHtml(html, titulo, opcoes) {
     <iframe style="flex:1;border:0;background:#e9e2f0;width:100%"></iframe>`;
   document.body.appendChild(ov);
   const fr = ov.querySelector('iframe'); fr.srcdoc = html;
+  if (opcoes && opcoes.autoImprimir) fr.onload = () => setTimeout(() => { try { fr.contentDocument.querySelectorAll('details').forEach(d => { d.open = true; }); fr.contentWindow.focus(); fr.contentWindow.print(); } catch (_) {} }, 600);
   ov.addEventListener('click', e => {
     const a = e.target && e.target.getAttribute && e.target.getAttribute('data-a'); if (!a) return;
     if (a === 'x') ov.remove();
-    else if (a === 'pdf') { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (_) {} }
+    else if (a === 'pdf') { try { fr.contentDocument.querySelectorAll('details').forEach(d => { d.open = true; }); fr.contentWindow.focus(); fr.contentWindow.print(); } catch (_) {} }
     else if (a === 'html') {
       const url = URL.createObjectURL(new Blob([html], { type: 'text/html' })), l = document.createElement('a');
       l.href = url; l.download = (String(m.titulo || 'relatorio').replace(/[^\w\-]+/g, '_')) + '.html'; l.click(); setTimeout(() => URL.revokeObjectURL(url), 4000);

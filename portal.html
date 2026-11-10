@@ -705,6 +705,8 @@ async function load(){
   try{
     const data = await callPortal('get');
     portalData = data;
+    { const _ts = r => { const g = r && r.generatedAt; return g && g._seconds ? g._seconds*1000 : (g && g.seconds ? g.seconds*1000 : (Date.parse(g) || 0)); };
+      if (Array.isArray(data.reports)) data.reports.sort((x, y) => _ts(y) - _ts(x)); }
     document.documentElement.style.setProperty('--primary', data.primaryColor || '#1a2b26');
     document.getElementById('hBusiness').textContent = data.businessName;
     if (data.logoUrl && /^https:/i.test(data.logoUrl)){ const lg = document.getElementById('hLogo'); lg.src = data.logoUrl; lg.style.display = 'block'; }
@@ -716,6 +718,12 @@ async function load(){
       renderConsentGate();
     } else {
       renderMenu();
+      // Link de relatório: abre logo nos relatórios, com o mais recente aberto.
+      if (params.get('s') === 'reports'){
+        openPortalSection('reports');
+        const primeiro = (data.reports || [])[0];
+        if (primeiro) setTimeout(() => { try { toggleReport(primeiro.id); document.getElementById('report_' + primeiro.id)?.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(e){} }, 150);
+      }
     }
     __portalLastKnownUnread = data.unreadMessagesCount || 0;
     startGlobalMessagePolling();

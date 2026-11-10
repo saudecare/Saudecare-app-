@@ -392,7 +392,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-10-6';
+const APP_VERSION = '2026-11-10-7';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12068,6 +12068,41 @@ async function guardarNaFicha(patientId, { tipo, titulo, texto, dados, reportHtm
   }
 }
 
+/* Envio de relatórios: SEMPRE o mesmo link do portal do paciente.
+   O relatório fica gravado na ficha (reports) e aparece no portal; ao paciente
+   basta abrir o link, que é sempre o mesmo, para ver os relatórios novos junto
+   com as marcações, mensagens e restante informação. Se o portal ainda não
+   estiver ativo, ativa-o agora. */
+window.enviarRelatorioPortal = async function(patientId){
+  if (!patientId){ toast('Escolha primeiro o paciente.', true); return; }
+  try{
+    const ref = doc(db, 'tenants', tenantId, 'patients', patientId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()){ toast('Paciente não encontrado.', true); return; }
+    let p = snap.data();
+    if (!p.portalToken || p.portalRevoked){
+      if (!await _generatePortalToken(patientId)) return;
+      p = (await getDoc(ref)).data();
+    }
+    const link = linkPortalCurto(patientId, p.portalToken) + '&s=reports';
+    const d = destinoPaciente(p);
+    const primeiro = String(p.fullName || '').trim().split(/\s+/)[0] || '';
+    const quem = d.viaResponsavel
+      ? `Olá ${String(d.nome || '').split(/\s+/)[0]}, o relatório de ${primeiro} já está disponível`
+      : `Olá ${primeiro}, o seu relatório já está disponível`;
+    const txt = `${quem} no portal:\n${link}\n\nÉ sempre o mesmo link: guarde-o. Os relatórios novos aparecem lá, juntamente com as marcações e as mensagens.`;
+    let tel = String(d.phone || '').replace(/\D/g, ''); if (tel.length === 9) tel = '351' + tel;
+    if (tel) window.open(`https://wa.me/${tel}?text=${encodeURIComponent(txt)}`, '_blank');
+    else if (window.partilharLink) window.partilharLink(link, 'O seu relatório');
+    else { await navigator.clipboard?.writeText(link); toast('Link copiado.'); }
+  }catch(e){ console.error(e); toast('Não consegui preparar o envio: ' + (e.message || e), true); }
+};
+// PDF igual à versão do link: abre o relatório ilustrado (tudo aberto) e chama "Guardar como PDF".
+window.pdfRelatorioIlustrado = function(html, titulo){
+  if (!html || String(html).indexOf('rbx') < 0){ toast('Este relatório não tem versão ilustrada.', true); return; }
+  rbPreVisualizarHtml(rbDocumentoDeFragmento(html, titulo || 'Relatório'), titulo || 'Relatório', { autoImprimir: true });
+};
+
 async function carregarPacientes(){
   if (!window.__allPatientsCache){
     const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients'), orderBy('fullName')));
@@ -17821,6 +17856,19 @@ function triagemTextoParaHtml(texto){
   return h + `</div>`;
 }
 
+window.triagemIncluirPerfil = async function(){
+  const a = window.__triagemModeloArgs;
+  if (!a || !a.perfil || !window.__triagemUltimoPayload){ toast('Não há perfil para incluir.', true); return; }
+  try{
+    const html = rbFragmento(triagemModeloBonito({ ...a.dados, perfil: a.perfil }, a.cli));
+    const novo = { ...window.__triagemUltimoPayload, reportHtml: html };
+    const ref = await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
+      tipo: 'triagem-energetica', ...novo, editadoDe: window.__triagemUltimoReportId || null, generatedAt: serverTimestamp()
+    });
+    window.__triagemUltimoPayload = novo; window.__triagemUltimoReportId = ref.id;
+    toast('Relatório com o perfil energético guardado ✓ (é este que o paciente vê no portal).');
+  }catch(e){ toast('Não consegui: ' + (e.message || e), true); }
+};
 window.triagemVerBonito = function(){
   const h = window.__triagemUltimoPayload && window.__triagemUltimoPayload.reportHtml;
   if (!h || h.indexOf('rbx') < 0){ toast('O relatório ilustrado não está disponível nesta triagem.', true); return; }
@@ -17921,6 +17969,18 @@ function triagemModeloBonito(d, cli){
   const nome = d.primeiroNome;
   const blocos = [];
   blocos.push({ tipo:'texto', icone:'👋', titulo:`Olá, ${nome}`, paras:[`Aqui está o retrato do seu momento energético. Toque nas caixas e nos gráficos para ver mais. É um retrato do momento, não uma sentença.`].concat((d.aplicadas && d.aplicadas.length) ? [] : ['Por agora foi feita apenas a triagem. Ainda não foi feita nenhuma limpeza nem tratamento.']) });
+  if (d.perfil){
+    const pf = d.perfil, it = [];
+    it.push({ nome:`Caminho de Vida ${pf.cv}${pf.cvNome ? ' — ' + pf.cvNome : ''}`, paras:[`O seu número de Caminho de Vida é ${pf.cv}${pf.cvNome ? ', ' + pf.cvNome : ''}. Mostra a direção geral da sua vida.`] });
+    if (pf.signo && pf.signo.nome) it.push({ nome:`Signo: ${pf.signo.nome}`, paras:['O seu signo solar, a base da forma como se expressa.'] });
+    if (pf.anjo) it.push({ nome: pf.anjo.tipo === 'anjo' ? `Anjo do Nascimento: ${pf.anjo.nome}` : `Anjos Universais (${pf.anjo.elemento})`, paras: pf.anjo.tipo === 'anjo' ? [pf.anjo.virtude || ''] : ['Ligação direta aos Anjos Universais.'] });
+    if (pf.arcanoPNome) it.push({ nome:`Arcano Pessoal: ${pf.arcanoPNome}`, paras:['A carta que descreve a sua energia de fundo.'] });
+    if (pf.nodos){
+      it.push({ nome:`Nodo Sul (vidas passadas): ${pf.nodos.nodoSul.signo}`, paras:[NODO_SUL_TEXTOS[pf.nodos.nodoSul.signo] || ''] });
+      it.push({ nome:`Nodo Norte (propósito): ${pf.nodos.nodoNorte.signo}`, paras:['Para onde a sua alma procura crescer.'] });
+    }
+    blocos.push({ tipo:'secoes', icone:'✨', titulo:'O seu perfil energético', itens: it.filter(x => x.nome) });
+  }
   const ch = d.chakrasTodos || [];
   if (ch.length){
     const afet = ch.filter(triChakraAfetado);
@@ -18093,11 +18153,16 @@ async function triagemGerarRelatorio(){
   window.__triagemTextoClienteAtual = clienteRel.texto;
   let reportHtmlBonitoTriagem = '';
   try {
-    reportHtmlBonitoTriagem = rbFragmento(triagemModeloBonito({
+    // O perfil energético (Mapa da Alma) vai só no relatório da 1ª sessão; nas seguintes
+    // não se repete, a não ser que seja pedido (botão "Incluir perfil energético").
+    const dadosModelo = {
       primeiroNome: __triagem.patientNome.split(/\s+/)[0], causasDetetadas, chakrasTodos, aberturaNivel, comparacao,
       sessoesNecessarias: __triagem.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas: etiquetasAplicadas,
-      pedido: (__triagem.pedido || '').trim(), pedidoTemas: __triagem.pedidoTemas || []
-    }, clienteRel));
+      pedido: (__triagem.pedido || '').trim(), pedidoTemas: __triagem.pedidoTemas || [],
+      perfil: (ehPrimeiraSessao && perfil) ? perfil : null
+    };
+    window.__triagemModeloArgs = { dados: dadosModelo, cli: clienteRel, perfil };
+    reportHtmlBonitoTriagem = rbFragmento(triagemModeloBonito(dadosModelo, clienteRel));
   } catch(e){ console.warn('Relatório ilustrado da triagem falhou, uso o simples:', e); }
   const reportHtmlAntigo = gerarReportHtmlPaciente({
     primeiroNome: __triagem.patientNome.split(/\s+/)[0],
@@ -18459,8 +18524,10 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
       <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;">
         <button class="primary" onclick="window.__triagemGuardarEdicao()">💾 Guardar alterações</button>
         <button class="primary" onclick="triagemVerBonito()">✨ Ver relatório ilustrado</button>
-        <button class="ghost" onclick="downloadReportPDF('Relatório de ${escapeAttrJs(__triagem.patientNome)}', document.getElementById('triagemTextoCliente').value)">📄 Descarregar PDF</button>
-        <button class="ghost" onclick="shareReportPDF('Relatório de ${escapeAttrJs(__triagem.patientNome)}', document.getElementById('triagemTextoCliente').value)">📤 Partilhar</button>
+        <button class="primary" onclick="enviarRelatorioPortal('${__triagem.patientId}')">📲 Enviar link do portal</button>
+        <button class="ghost" onclick="pdfRelatorioIlustrado(window.__triagemUltimoPayload && window.__triagemUltimoPayload.reportHtml, 'Triagem energética')">📄 PDF ilustrado</button>
+        ${(!ehPrimeiraSessao && perfil) ? `<button class="ghost" onclick="triagemIncluirPerfil()">➕ Incluir perfil energético</button>` : ''}
+        <button class="ghost" onclick="downloadReportPDF('Relatório de ${escapeAttrJs(__triagem.patientNome)}', document.getElementById('triagemTextoCliente').value)">📄 PDF só texto</button>
       </div>
     </div>
     ${etiquetasAplicadas.length ? '' : triagemAguardaDecisaoHTML(guardadoComSucesso)}
@@ -20220,6 +20287,7 @@ function eePintar(main){
       <div class="row" style="gap:8px;"><button class="ghost" ${E.i ? '' : 'disabled'} onclick="__eeSet('i',${E.i - 1})">← Anterior</button><button class="ghost" onclick="__eeSet('passo','modo')">Sair</button></div>`;
   } else if (E.passo === 'fim'){
     h += `<div class="card" style="text-align:center;"><div style="font-size:3rem;">✨</div><h3>Sessão concluída</h3><p class="muted">${E.guardado ? 'Ficou registada na ficha do paciente.' : 'Não ficou ligada a nenhum paciente.'}</p>
+      ${E.guardado ? `<div class="row" style="gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;"><button class="primary" onclick="enviarRelatorioPortal('${E.pacienteId}')">📲 Enviar link do portal</button><button class="ghost" onclick="pdfRelatorioIlustrado(window.__eeUltimoHtml, 'Etiquetas etéricas')">📄 PDF ilustrado</button></div>` : ''}
       <button class="primary" onclick="abrirEtiquetasEtericas()">Nova aplicação</button></div>`;
   }
   main.innerHTML = h;
@@ -20241,7 +20309,18 @@ window.eeConcluir = async function(){
   const sel = eeSelecionadas(); __ee.guardado = false;
   if (__ee.pacienteId){
     const texto = `Etiquetas aplicadas por via etérica (${__ee.modo === 'todas' ? 'todas ao mesmo tempo, com o pêndulo' : 'uma a uma, com o pêndulo'}):\n` + sel.map(x => `• [${x.codigo}] ${x.pt}`).join('\n');
-    __ee.guardado = await guardarNaFicha(__ee.pacienteId, { tipo:'etiquetas-eterico', titulo:'Etiquetas etéricas', texto, dados:{ modo:__ee.modo, etiquetas: sel.map(x => ({ codigo:x.codigo, pt:x.pt })) } });
+    let nomeP = ''; try{ nomeP = String((await getDoc(doc(db, 'tenants', tenantId, 'patients', __ee.pacienteId))).data()?.fullName || ''); }catch(e){}
+    let htmlEE = '';
+    try{
+      htmlEE = rbFragmento({ tema:'triagem', emoji:'🏷️', titulo:'O trabalho energético de hoje', subtitulo:'Etiquetas etéricas', nome: nomeP.split(/\s+/)[0], data:new Date().toLocaleDateString('pt-PT'), assinatura:'Ricardo Correia · Hikari Fafe',
+        blocos:[
+          { tipo:'texto', icone:'👋', titulo:`Olá${nomeP ? ', ' + nomeP.split(/\s+/)[0] : ''}`, paras:[`Aqui fica o registo do trabalho energético feito hoje. Foram invocadas ${sel.length} etiqueta(s), ${__ee.modo === 'todas' ? 'todas ao mesmo tempo' : 'uma a uma'}, com o pêndulo. Tem o mesmo efeito que com as etiquetas físicas.`] },
+          { tipo:'lista', icone:'✨', titulo:'O que foi trabalhado', marca:'•', itens: sel.map(x => `${x.codigo ? x.codigo + ': ' : ''}${x.pt}`) },
+          { tipo:'linha', icone:'📅', titulo:'Nos dias seguintes', passos:[{ rotulo:'É normal', texto:'Sentir mais cansaço, sono diferente ou emoções mais à flor da pele durante 1 a 3 dias. É o corpo a processar.' }, { rotulo:'Ajuda', texto:'Beber água, descansar e caminhar ao ar livre.' }, { rotulo:'Se pesar', texto:'Fale comigo para ajustarmos.' }] }
+        ] });
+    }catch(e){ console.warn('Relatório ilustrado das etiquetas falhou:', e); }
+    window.__eeUltimoHtml = htmlEE;
+    __ee.guardado = await guardarNaFicha(__ee.pacienteId, { tipo:'etiquetas-eterico', titulo:'Etiquetas etéricas', texto, reportHtml: htmlEE, dados:{ modo:__ee.modo, etiquetas: sel.map(x => ({ codigo:x.codigo, pt:x.pt })) } });
     toast(__ee.guardado ? 'Registado na ficha ✓' : 'Não consegui registar na ficha.', !__ee.guardado);
   }
   __ee.passo = 'fim'; eePintar();
@@ -20310,6 +20389,7 @@ async function renderPesqIntegradaApp(main){
       carregarBarometros: async () => { const s = await getDoc(doc(db, 'tenants', tenantId, 'apometria', 'barometros')); return s.exists() ? (s.data().charts || []) : []; },
       gravarBarometros: async (charts) => { await setDoc(doc(db, 'tenants', tenantId, 'apometria', 'barometros'), { charts, atualizadoEm: serverTimestamp() }); },
       abrirTriagem: (preset) => { window.__triagemPreset = preset || null; renderView('triagemBaixaVibracao'); },
+      enviarPortal: (pid) => window.enviarRelatorioPortal(pid),
       abrirEnvio: o => window.abrirEnvioFicha && window.abrirEnvioFicha(o),
       criarPreConsulta: async (pac, form, formId) => {
         const r = await addDoc(collection(db, 'public_form_responses'), { tenantId, formId: formId || 'pi-pre', patientId: pac.id, patientName: pac.fullName || '', criadoPorEquipa: true, status: 'pending_review', criadoEm: new Date(), titulo: form.titulo, descricao: form.descricao, perguntas: form.perguntas });
