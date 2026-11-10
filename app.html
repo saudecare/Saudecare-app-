@@ -384,7 +384,7 @@ import {
 import {
   getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager,
   collection, doc, getDoc, getDocs, addDoc, updateDoc,
-  deleteDoc, setDoc, query, where, orderBy, limit, serverTimestamp, Timestamp, onSnapshot, arrayUnion, writeBatch
+  deleteDoc, setDoc, query, where, orderBy, limit, serverTimestamp, Timestamp, onSnapshot, arrayUnion, writeBatch, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ── Verificação automática de versão ────────────────────────────────────
@@ -392,7 +392,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-10-7';
+const APP_VERSION = '2026-11-10-8';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2637,6 +2637,10 @@ async function renderHome(main){
   ]);
 
   const alerts = [];
+  { const pend = patientsSnap.docs.filter(d => d.data().triagemPendente && isPatientVisibleToCurrentStaff(d.data()));
+    window.__triagensPendentes = pend.map(d => { const t = d.data().triagemPendente.desde; return { id: d.id, nome: d.data().fullName || 'Paciente', desde: t && t.toDate ? t.toDate().toLocaleDateString('pt-PT') : '' }; });
+    if (pend.length) alerts.push({ id: 'triagemPend', icon: '🕓', text: `${pend.length} triagem(ns) por tratar: ${window.__triagensPendentes.slice(0, 3).map(x => x.nome.split(/\s+/)[0]).join(', ')}${pend.length > 3 ? '…' : ''} — toque para aplicar a limpeza`, action: 'abrirTriagensPorTratar()' });
+  }
   if (staffSnap){
     const pendingStaff = staffSnap.docs.filter(d => d.data().status === 'pending_activation').length;
     if (pendingStaff) alerts.push({ id: 'staff', icon: '👥', text: `${pendingStaff} pedido(s) de equipa por aprovar`, action: "renderView('team')" });
@@ -3993,6 +3997,7 @@ function renderPatientsListRows(list){
         <div class="muted" style="font-size:12.5px;">${escapeHtml(p.phone||'')} ${p.consentGivenAt ? '' : '· <span style=\"color:var(--danger)\">sem consentimento</span>'}</div>
         <div style="margin-top:3px;cursor:pointer;" onclick="event.stopPropagation();openPortalForPatient('${p.id}')">${portalStatusBadge(p)}</div>
       </div>
+      ${p.triagemPendente ? `<span class="badge" style="background:#fff3cd;color:#7a5b00;" onclick="event.stopPropagation();triagemRetomarPaciente('${p.id}','${escapeAttrJs(p.fullName||'')}')">🕓 Limpeza por fazer</span>` : ''}
       ${p.totalOwed > 0 ? `<span class="badge" style="background:#fdf2f0;color:#b3413a;">${p.totalOwed.toFixed(2)}€</span>` : ''}
     </div>`;
   });
@@ -4719,6 +4724,13 @@ window.viewPatient = async function(patientId){
       <div style="margin-top:10px;padding:8px 12px;background:#eef6f2;border-radius:10px;">
         <span class="muted">✅ Sem valores em dívida.</span>
       </div>`}
+      ${p.triagemPendente ? `
+      <div style="margin-top:10px;padding:12px;background:#fff3cd;border:1.5px solid #e0b84a;border-radius:10px;">
+        <strong style="color:#7a5b00;">🕓 Triagem por tratar</strong>
+        <p class="muted" style="margin:4px 0 8px;">Foi feita a triagem, mas a limpeza (protocolo de cura) ainda não foi aplicada.</p>
+        <button class="primary" onclick="triagemRetomarPaciente('${patientId}','${escapeAttrJs(p.fullName||'')}')">▶ Aplicar a limpeza desta triagem</button>
+      </div>` : ''}
+      ${temModulo('cartomancia') ? `<div style="margin-top:10px;"><button class="ghost" onclick="consultarCartas('${patientId}')">🃏 Consultar as cartas para ${escapeHtml((p.fullName||'').split(/\s+/)[0])}</button></div>` : ''}
       ${customFieldsHtml}
 
       <div class="row" style="margin-top:12px;">
@@ -12143,8 +12155,9 @@ async function renderTriagemBaixaVibracao(main, opts){
 
 function triagemProgressoHTML(){
   const total = 9;
+  const cartas = (__triagem.patientId && temModulo('cartomancia')) ? `<div style="text-align:right;margin:-4px 0 10px;"><button class="ghost" style="width:auto;" onclick="consultarCartas('${__triagem.patientId}','triagem')">🃏 Consultar as cartas</button></div>` : '';
   return `<div class="row" style="gap:4px;margin-bottom:12px;">${Array.from({length: total}).map((_,i) =>
-    `<div style="flex:1;height:5px;border-radius:3px;background:${i <= __triagem.passo ? 'var(--primary)' : '#e5e5e5'};"></div>`).join('')}</div>`;
+    `<div style="flex:1;height:5px;border-radius:3px;background:${i <= __triagem.passo ? 'var(--primary)' : '#e5e5e5'};"></div>`).join('')}</div>${cartas}`;
 }
 
 function triagemPodePularData(){ return !!(__triagem.anterior && __triagem.dataNascimento); }
@@ -12167,6 +12180,17 @@ function triagemTriagensValidas(docs){
   const sup = new Set(); tri.forEach(r => { if (r.continuacaoDe) sup.add(r.continuacaoDe); });
   return tri.filter(r => !r.editadoDe && !sup.has(r._id));
 }
+/* Triagem por tratar: fica um marcador na ficha do paciente (visível no Início, na lista
+   de pacientes e na ficha) até a limpeza ser feita ou cancelada. */
+async function triagemMarcarPendente(patientId, pendente, reportId){
+  if (!patientId) return;
+  try{
+    await updateDoc(doc(db, 'tenants', tenantId, 'patients', patientId),
+      pendente ? { triagemPendente: { reportId: reportId || null, desde: serverTimestamp() } } : { triagemPendente: deleteField() });
+    const pc = (window.__allPatientsCache || []).find(x => x.id === patientId);
+    if (pc){ if (pendente) pc.triagemPendente = { reportId: reportId || null }; else delete pc.triagemPendente; }
+  }catch(e){ console.warn('Marcador de triagem pendente:', e); }
+}
 async function triagemCarregarAnterior(patientId){
   __triagem.anterior = null; __triagem.numConsulta = 1; __triagem._ultimaSemTratamento = null; __triagem._penultima = null; __triagem.continuacaoDe = null; __triagem.soTriagem = null;
   try{
@@ -12181,6 +12205,10 @@ async function triagemCarregarAnterior(patientId){
       await triagemLerPagamentoAnterior(todas[0]);
       if (!(todas[0].etiquetasAplicadas && todas[0].etiquetasAplicadas.length)){ __triagem._ultimaSemTratamento = todas[0]; __triagem._penultima = todas[1] || null; __triagem._totalTriagens = todas.length; }
     }
+    // Mantém o marcador da ficha certo (também para triagens feitas antes deste aviso existir).
+    { const u = __triagem._ultimaSemTratamento, pc = (window.__allPatientsCache || []).find(x => x.id === patientId);
+      const deviaEstar = !!(u && triagemEstadoLimpeza(u) === 'pendente'), esta = !!(pc && pc.triagemPendente);
+      if (deviaEstar !== esta) await triagemMarcarPendente(patientId, deviaEstar, u && u._id); }
   }catch(e){ console.warn('Não foi possível ver a última triagem:', e); }
 }
 // Continuar uma triagem já feita (sem tratamento aplicado): carrega os dados dela e salta direto
@@ -12227,6 +12255,7 @@ window.__triagemSetLimpeza = async function(estado){
     await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
       ...copia, ...extra, continuacaoDe: u._id, generatedAt: u.generatedAt || serverTimestamp()
     });
+    triagemMarcarPendente(__triagem.patientId, estado === 'pendente', u._id);
     toast(estado === 'feita' ? 'Limpeza registada ✓' : estado === 'cancelada' ? 'Limpeza marcada como cancelada' : 'Limpeza marcada como pendente');
     await triagemCarregarAnterior(__triagem.patientId);
     renderTriagemPasso(document.getElementById('mainView'));
@@ -12251,6 +12280,7 @@ function triagemCartaoContinuar(){
   return cab('#d9822b', '🕓 Limpeza pendente') +
     `<p class="muted">Triagem${dt ? ' de ' + dt : ''}. Foi feita só a triagem. A limpeza (protocolo de cura) ainda não foi feita: fica pendente até a marcares como feita ou cancelada.</p>${pago}
     <button class="primary" style="margin-top:10px;" onclick="window.__triagemContinuar()">Aplicar o tratamento agora</button>
+    ${temModulo('cartomancia') ? `<button class="ghost" style="margin-top:8px;" onclick="consultarCartas('${__triagem.patientId}','triagem')">🃏 Consultar as cartas</button>` : ''}
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e3e3e3;">
       <p class="muted" style="margin-bottom:6px;">Já fez a limpeza fora da app?</p>
       <label class="muted" for="triagemLimpezaData">Data da limpeza</label>
@@ -18222,6 +18252,7 @@ async function triagemTentarGravar(payload){
     window.__triagemUltimoReportId = refNovo.id;
     window.__triagemIdTriagem = refNovo.id;
     window.__triagemUltimoPayload = payload;
+    triagemMarcarPendente(__triagem.patientId, !payload.tratamentoAplicado, refNovo.id);
     toast('Triagem guardada na ficha do paciente ✓');
     return true;
   }catch(e){
@@ -18418,6 +18449,36 @@ function triagemAguardaDecisaoHTML(guardado){
     ${guardado ? `<button class="primary" style="margin-top:8px;" onclick="window.__triagemAplicarAgora()">▶ Aplicar já a primeira limpeza</button>` : ''}
   </div>`;
 }
+window.triagemRetomarPaciente = function(pid, nome){
+  if (!pid) return;
+  const pc = (window.__allPatientsCache || []).find(x => x.id === pid);
+  window.__triagemPreset = { pac: { id: pid, fullName: nome || (pc && pc.fullName) || '' } };
+  renderView('triagemBaixaVibracao');
+};
+window.abrirTriagensPorTratar = function(){
+  const l = window.__triagensPendentes || [];
+  if (l.length === 1){ triagemRetomarPaciente(l[0].id, l[0].nome); return; }
+  const main = document.getElementById('mainView');
+  main.innerHTML = `<h2>🕓 Triagens por tratar</h2>
+    <p class="muted" style="margin-bottom:8px;">Triagens feitas em que a limpeza (protocolo de cura) ainda não foi aplicada. Toque para continuar a partir da triagem, sem repetir nada.</p>
+    ${l.map(x => `<div class="card row" style="align-items:center;gap:8px;"><div style="flex:1;"><strong>${escapeHtml(x.nome)}</strong>${x.desde ? `<div class="muted">Triagem de ${escapeHtml(x.desde)}</div>` : ''}</div>
+      <button class="primary" style="width:auto;" onclick="triagemRetomarPaciente('${x.id}','${escapeAttrJs(x.nome)}')">▶ Aplicar</button>
+      <button class="ghost" style="width:auto;" onclick="consultarCartas('${x.id}')">🃏</button></div>`).join('') || '<p class="muted">Nada por tratar. ✅</p>'}`;
+};
+/* Cartas: consultáveis a qualquer momento (durante a triagem, depois do protocolo, ou dias mais tarde)
+   para responder a dúvidas que surjam. Abre "Várias perguntas" já com o paciente escolhido,
+   e a leitura fica guardada na ficha dele. */
+window.consultarCartas = function(pid, retorno){
+  if (!temModulo('cartomancia')){ toast('A Cartomancia não está ativa nesta conta.', true); return; }
+  window.__cartasRetorno = retorno || null;
+  window.__cartasPacienteAbrir = pid || '';
+  __cartoTab = 'perguntas';
+  renderView('cartomancia');
+};
+window.voltarDasCartas = function(){
+  window.__cartasRetorno = null;
+  renderView('triagemBaixaVibracao', { manterEstado: true });
+};
 window.__triagemAplicarAgora = function(){
   if (!window.__triagemIdTriagem){ toast('Guarda primeiro a triagem na ficha do paciente.', true); return; }
   __triagem.continuacaoDe = window.__triagemIdTriagem; __triagem.soTriagem = false;
@@ -18592,6 +18653,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
     <p class="muted" style="margin-top:8px;">Guardado na ficha de ${escapeHtml(__triagem.patientNome)} — ferramenta de apoio profissional, não substitui diagnóstico médico, psicológico ou psiquiátrico.</p>
     <div class="row" style="margin-top:10px;">
       <button class="ghost" onclick="viewPatient('${__triagem.patientId}')">📋 Ver ficha do paciente</button>
+      ${temModulo('cartomancia') ? `<button class="ghost" onclick="consultarCartas('${__triagem.patientId}','triagem')">🃏 Consultar as cartas</button>` : ''}
       <button class="primary" onclick="renderView('triagemBaixaVibracao')">↺ Nova Triagem</button>
     </div>`;
 }
@@ -18610,6 +18672,13 @@ const CP_SIGNIF = {
 };
 const CP_BLOQUEIO = ['espadas:5','espadas:7','espadas:8','espadas:9','espadas:10','copas:4','copas:5','copas:8'];
 const CP_FAVORAVEL = ['ouros:A','ouros:3','ouros:6','ouros:8','ouros:9','ouros:10','copas:A','copas:9','copas:10'];
+const __renderCartomanciaBase = renderCartomancia;
+renderCartomancia = async function(main){
+  await __renderCartomanciaBase(main);
+  if (window.__cartasRetorno === 'triagem') main.insertAdjacentHTML('afterbegin', '<button class="primary" style="margin-bottom:10px;" onclick="voltarDasCartas()">← Voltar à triagem</button>');
+  const pid = window.__cartasPacienteAbrir; window.__cartasPacienteAbrir = '';
+  if (pid && __cartoTab === 'perguntas'){ const sel = document.getElementById('cpPaciente'); if (sel){ sel.value = pid; if (window.cpPreencherPaciente) cpPreencherPaciente(); } }
+};
 let __cpPerguntas = [];
 let __cpUltimo = null;
 function cpNomeCarta(c){ const esp = { A:'Ás', J:'Valete', Q:'Dama', K:'Rei' }; return `${esp[c.valor] || c.valor} de ${(CARTO_NAIPES[c.naipe] || '').replace(/^\S+\s/, '')}`; }
