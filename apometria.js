@@ -21,6 +21,33 @@ function mapaSvg(corpos) {
   return `<svg viewBox="0 0 260 320" style="width:100%;max-width:260px;display:block;margin:6px auto;" role="img" aria-label="Mapa dos 7 corpos">${el}<g>${ord.map((id, k) => { const c = CORPOS.find((x) => x.id === id); return `<text x="130" y="${160 - (150 - k * 19) + 13}" text-anchor="middle" font-size="9" font-weight="600" fill="#111">${c.n}. ${c.nome.replace(/ \(.*\)/, '')}</text>`; }).join('')}</g></svg><div style="text-align:center;font-size:.78rem;">${NIVEIS.map((n) => `<span style="margin:0 6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${n.cor};"></span> ${n.rotulo}</span>`).join('')}</div>`;
 }
 
+// Relatório ilustrado para o paciente (mesma informação da mensagem serena, com gráficos e caixas que abrem).
+// Serve tanto a pesquisa em curso como pesquisas já guardadas (St = dados guardados).
+export function modeloBonitoDeDados(St, pac, plano, dataTxt) {
+    const nome = pac ? String(pac.fullName).split(' ')[0] : '';
+    const blocos = [];
+    blocos.push({ tipo: 'texto', icone: '🌿', titulo: nome ? 'Olá, ' + nome : 'Olá', paras: [TEXTO_PACIENTE.intro, 'Eu sou um intercessor: peço e trabalho para o teu bem, mas a mudança que se mantém é a tua. Atraímos o que vibramos, por isso a tua parte é cuidar do teu estado todos os dias.'] });
+    const comCorpos = CORPOS.filter((c) => St.corpos[c.id] != null);
+    if (comCorpos.length) blocos.push({ tipo: 'barras', icone: '🧘', titulo: 'Os teus 7 corpos', intro: 'Quanto mais cheia a barra, mais atenção esse corpo pede neste momento.', itens: comCorpos.map((c) => { const v = St.corpos[c.id] || 0; return { nome: c.emoji + ' ' + c.nome.replace(/ \(.*\)/, ''), valor: v / 3 * 100 || 3, texto: nivel(v).carinha + ' ' + nivel(v).rotulo, nota: v >= 2 ? c.sinais : '' }; }) });
+    const tem = Object.keys(St.achados).map((id) => ACHADOS.find((x) => x.id === id)).filter(Boolean);
+    blocos.push(tem.length ? { tipo: 'detalhe', icone: '🔎', titulo: 'O que foi sentido', intro: 'Toca em cada item para perceber o que é.', itens: tem.map((d) => ({ nome: d.nome, descricao: d.simples })) } : { tipo: 'texto', icone: '🔎', titulo: 'O que foi sentido', paras: ['Nada de relevante foi assinalado. ✨'] });
+    const chp = Object.entries(St.chakraPct).filter(([, v]) => v != null);
+    if (chp.length >= 3) {
+      const med = Math.round(chp.reduce((a, [, v]) => a + v, 0) / chp.length);
+      blocos.push({ tipo: 'medidor', icone: '⚡', titulo: 'Abertura dos teus chakras', valor: med, destaque: med >= 70 ? 'Bem abertos' : (med >= 45 ? 'Em equilíbrio parcial' : 'Pedem cuidado'), legenda: 'Média da abertura dos centros de energia avaliados.' });
+      blocos.push({ tipo: 'radar', icone: '🕸️', titulo: 'O mapa dos teus chakras', itens: chp.map(([i, v]) => ({ nome: CHAKRAS[i], rotulo: String(+i + 1), valor: v })) });
+    }
+    if (St.caminhos != null) blocos.push({ tipo: 'texto', icone: '🛤️', titulo: 'Abertura de caminhos', paras: [NIVEIS_ABERTURA[St.caminhos]] });
+    const casa = plano.map((t) => TECNICAS.find((x) => x.id === t)).filter((d) => d && (d.dur === 'em casa' || ['oracao', 'meditacao'].includes(d.id)));
+    if (casa.length) blocos.push({ tipo: 'lista', icone: '🏡', titulo: 'Para fazeres em casa', marca: '✔️', itens: casa.map((d) => d.nome) });
+    const dicas = [];
+    tem.slice(0, 3).forEach((d) => { const t = DICAS_VIBRACAO.achados[d.id]; if (t) dicas.push(t); });
+    CORPOS.filter((c) => (St.corpos[c.id] || 0) >= 2).slice(0, 2).forEach((c) => { const d = DICAS_VIBRACAO.corpos[c.id]; if (d) dicas.push(d); });
+    DICAS_VIBRACAO.gerais.slice(0, 4).forEach((d) => dicas.push(d));
+    blocos.push({ tipo: 'lista', icone: '🌟', titulo: 'A tua parte, para não voltares ao mesmo', marca: '🌱', itens: dicas });
+    return { tema: 'triagem', emoji: '🧭', titulo: 'O teu Atendimento', subtitulo: 'Relatório pessoal', nome: pac ? pac.fullName : '', data: dataTxt || new Date().toLocaleDateString('pt-PT'), assinatura: 'Hikari Fafe', blocos, mensagem: DICAS_VIBRACAO.fecho + '\n\n' + TEXTO_PACIENTE.fim };
+  }
+
 export function renderPesquisaIntegrada(main, ctx) {
   if (ctx.tenantId !== TENANT) { main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica.</p></div>'; return; }
   const esc = ctx.escapeHtml;
@@ -150,31 +177,7 @@ export function renderPesquisaIntegrada(main, ctx) {
     return L.join('\n');
   }
 
-  // Relatório ilustrado para o paciente (mesma informação da mensagem serena, com gráficos e caixas que abrem).
-  function modeloBonito() {
-    const nome = S.pac ? String(S.pac.fullName).split(' ')[0] : '';
-    const blocos = [];
-    blocos.push({ tipo: 'texto', icone: '🌿', titulo: nome ? 'Olá, ' + nome : 'Olá', paras: [TEXTO_PACIENTE.intro, 'Eu sou um intercessor: peço e trabalho para o teu bem, mas a mudança que se mantém é a tua. Atraímos o que vibramos, por isso a tua parte é cuidar do teu estado todos os dias.'] });
-    const comCorpos = CORPOS.filter((c) => S.corpos[c.id] != null);
-    if (comCorpos.length) blocos.push({ tipo: 'barras', icone: '🧘', titulo: 'Os teus 7 corpos', intro: 'Quanto mais cheia a barra, mais atenção esse corpo pede neste momento.', itens: comCorpos.map((c) => { const v = S.corpos[c.id] || 0; return { nome: c.emoji + ' ' + c.nome.replace(/ \(.*\)/, ''), valor: v / 3 * 100 || 3, texto: nivel(v).carinha + ' ' + nivel(v).rotulo, nota: v >= 2 ? c.sinais : '' }; }) });
-    const tem = Object.keys(S.achados).map((id) => ACHADOS.find((x) => x.id === id)).filter(Boolean);
-    blocos.push(tem.length ? { tipo: 'detalhe', icone: '🔎', titulo: 'O que foi sentido', intro: 'Toca em cada item para perceber o que é.', itens: tem.map((d) => ({ nome: d.nome, descricao: d.simples })) } : { tipo: 'texto', icone: '🔎', titulo: 'O que foi sentido', paras: ['Nada de relevante foi assinalado. ✨'] });
-    const chp = Object.entries(S.chakraPct).filter(([, v]) => v != null);
-    if (chp.length >= 3) {
-      const med = Math.round(chp.reduce((a, [, v]) => a + v, 0) / chp.length);
-      blocos.push({ tipo: 'medidor', icone: '⚡', titulo: 'Abertura dos teus chakras', valor: med, destaque: med >= 70 ? 'Bem abertos' : (med >= 45 ? 'Em equilíbrio parcial' : 'Pedem cuidado'), legenda: 'Média da abertura dos centros de energia avaliados.' });
-      blocos.push({ tipo: 'radar', icone: '🕸️', titulo: 'O mapa dos teus chakras', itens: chp.map(([i, v]) => ({ nome: CHAKRAS[i], rotulo: String(+i + 1), valor: v })) });
-    }
-    if (S.caminhos != null) blocos.push({ tipo: 'texto', icone: '🛤️', titulo: 'Abertura de caminhos', paras: [NIVEIS_ABERTURA[S.caminhos]] });
-    const casa = planoAtual().map((t) => TECNICAS.find((x) => x.id === t)).filter((d) => d && (d.dur === 'em casa' || ['oracao', 'meditacao'].includes(d.id)));
-    if (casa.length) blocos.push({ tipo: 'lista', icone: '🏡', titulo: 'Para fazeres em casa', marca: '✔️', itens: casa.map((d) => d.nome) });
-    const dicas = [];
-    tem.slice(0, 3).forEach((d) => { const t = DICAS_VIBRACAO.achados[d.id]; if (t) dicas.push(t); });
-    CORPOS.filter((c) => (S.corpos[c.id] || 0) >= 2).slice(0, 2).forEach((c) => { const d = DICAS_VIBRACAO.corpos[c.id]; if (d) dicas.push(d); });
-    DICAS_VIBRACAO.gerais.slice(0, 4).forEach((d) => dicas.push(d));
-    blocos.push({ tipo: 'lista', icone: '🌟', titulo: 'A tua parte, para não voltares ao mesmo', marca: '🌱', itens: dicas });
-    return { tema: 'triagem', emoji: '🧭', titulo: 'O teu Atendimento', subtitulo: 'Relatório pessoal', nome: S.pac ? S.pac.fullName : '', data: new Date().toLocaleDateString('pt-PT'), assinatura: 'Hikari Fafe', blocos, mensagem: DICAS_VIBRACAO.fecho + '\n\n' + TEXTO_PACIENTE.fim };
-  }
+  function modeloBonito() { return modeloBonitoDeDados(S, S.pac, planoAtual()); }
 
   /* ───── ecrãs ───── */
   const barra = () => `<div style="display:flex;gap:4px;margin:6px 0 14px;">${PASSOS.map((p, i) => `<div style="flex:1;text-align:center;font-size:.72rem;padding:6px 2px;border-radius:8px;${i === passo ? 'background:#1e3a5f;color:#fff;font-weight:700;' : i < passo ? 'background:#e7eef7;color:#1e3a5f;' : 'background:#f1f1f1;color:#888;'}">${i + 1}<br>${p}</div>`).join('')}</div>`;
@@ -257,7 +260,7 @@ export function renderPesquisaIntegrada(main, ctx) {
       <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><input type="checkbox" id="pi-prim" ${S.primeira ? 'checked' : ''} style="width:20px;height:20px;"> É a 1.ª consulta (limita as etiquetas a 10 e os tratamentos intensos)</label>
       <h3 style="margin:12px 0 6px;">Sinais de cuidado</h3>
       ${ALERTAS.map((a) => `<label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;font-size:.92rem;"><input type="checkbox" data-al="${a.id}" ${S.alertas[a.id] ? 'checked' : ''} style="width:20px;height:20px;flex-shrink:0;margin-top:2px;"> <span>${esc(a.texto)}</span></label>`).join('')}
-      ${alerta}${S.pac && hist.length ? `<div class="card" style="margin-top:10px;"><b>📚 ${hist.length} pesquisa(s) anterior(es) desta pessoa.</b> No fim vais ver a comparação.</div>` : ''}
+      ${alerta}${S.pac && hist.length ? `<div class="card" style="margin-top:10px;"><b>📚 ${hist.length} pesquisa(s) anterior(es) desta pessoa.</b> No fim vais ver a comparação.${hist.slice(0, 6).map((h, i) => `<div class="row" style="gap:6px;align-items:center;margin-top:6px;"><span style="flex:1;font-size:.9rem;">${ctx.dataPT(h.t)}</span><button class="ghost" data-hist="${i}" style="width:auto;">✨ Relatório ilustrado</button></div>`).join('')}</div>` : ''}
       ${nav(!!S.pac, 'Seguinte → os 7 corpos')}`;
   }
   function passo1() {
@@ -417,6 +420,12 @@ export function renderPesquisaIntegrada(main, ctx) {
     main.querySelectorAll('[data-bar]').forEach((c) => c.onchange = () => { const [id, n] = c.dataset.bar.split('|'); (S.barom[id] = S.barom[id] || {})[n] = c.checked; { const b = bars.find((x) => x.id === id); if (c.checked && b && /suicid/i.test(b.itens[+n - 1] || '')) { S.alertas.suic = true; ctx.toast('⚠️ Sinal de risco assinalado nos sinais de cuidado. Se há risco para a vida: 112 ou SNS 24 (808 24 24 24).'); } } const y = window.scrollY; ver(); window.scrollTo(0, y); });
     on('#pi-bar-voltar', () => { barAberto = null; ver(); }); on('#pi-bar-voltar2', () => { barAberto = null; ver(); window.scrollTo(0, 0); });
     const bb = q('#pi-bar-busca'); if (bb) bb.oninput = () => { const t = bb.value.toLowerCase(); main.querySelectorAll('[data-barabrir]').forEach((x) => { x.style.display = !t || x.dataset.t.includes(t) ? '' : 'none'; }); };
+    main.querySelectorAll('[data-hist]').forEach((bt) => { bt.onclick = async () => {
+      const h = hist[+bt.getAttribute('data-hist')]; if (!h || !h.dados) return ctx.toast('Esta pesquisa não tem dados guardados.', true);
+      if (!S.pac) return ctx.toast('Escolhe primeiro o paciente.', true);
+      let m; try { const d = h.dados; m = modeloBonitoDeDados({ corpos: d.corpos || {}, achados: d.achados || {}, chakraPct: d.chakraPct || {}, caminhos: d.caminhos == null ? null : d.caminhos }, S.pac, d.plano || [], ctx.dataPT(h.t)); } catch (e) { console.error(e); return ctx.toast('Não consegui montar o relatório desta pesquisa.', true); }
+      rbPreVisualizar(m, { aoGuardar: async () => { try { await ctx.gravar(S.pac.id, { tipo: 'relatorio-ilustrado', protocolName: 'Atendimento Guiado (relatório ilustrado)', reportText: '', reportHtml: rbFragmento(m), origem: h.id || null }); ctx.toast('Guardado na ficha e no portal. Já podes enviar o link. ✅'); } catch (e) { ctx.toast('Não consegui guardar: ' + (e.message || e), true); } } });
+    }; });
     on('#pi-trocar', () => { S.pac = null; S.alertas = {}; pre = null; seg = null; cic = { ciclos: [] }; hist = []; ver(); });
     const gCic = async () => { try { await ctx.gravarCiclo(S.pac.id, cic); } catch (e) { ctx.toast('Não consegui guardar o percurso.', true); } };
     main.querySelectorAll('[data-ncons]').forEach((b) => b.onclick = async () => {

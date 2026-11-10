@@ -706,7 +706,12 @@ async function load(){
     const data = await callPortal('get');
     portalData = data;
     { const _ts = r => { const g = r && r.generatedAt; return g && g._seconds ? g._seconds*1000 : (g && g.seconds ? g.seconds*1000 : (Date.parse(g) || 0)); };
-      if (Array.isArray(data.reports)) data.reports.sort((x, y) => _ts(y) - _ts(x)); }
+      if (Array.isArray(data.reports)){
+        data.reports.sort((x, y) => _ts(y) - _ts(x));
+        // Versões antigas que já foram substituídas por uma versão ilustrada não se mostram duas vezes.
+        const subst = new Set(); data.reports.forEach(r => { [r.continuacaoDe, r.editadoDe, r.origem].forEach(v => { if (v) subst.add(v); }); });
+        if (subst.size) data.reports = data.reports.filter(r => !subst.has(r.id));
+      } }
     document.documentElement.style.setProperty('--primary', data.primaryColor || '#1a2b26');
     document.getElementById('hBusiness').textContent = data.businessName;
     if (data.logoUrl && /^https:/i.test(data.logoUrl)){ const lg = document.getElementById('hLogo'); lg.src = data.logoUrl; lg.style.display = 'block'; }

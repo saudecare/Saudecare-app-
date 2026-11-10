@@ -392,7 +392,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-10-8';
+const APP_VERSION = '2026-11-10-9';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4581,7 +4581,13 @@ window.viewPatient = async function(patientId){
           <strong style="display:block;">${escapeHtml(r.protocolName)}</strong>
           <div class="muted">${date}</div>
         </div>
-        <button class="ghost" onclick="viewSavedReport('${patientId}','${rd.id}')">Ver</button>
+        <div class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+          <button class="ghost" onclick="viewSavedReport('${patientId}','${rd.id}')">Ver</button>
+          ${(typeof r.reportHtml === 'string' && r.reportHtml.indexOf('rbx') >= 0)
+            ? `<button class="ghost" onclick="enviarRelatorioPortal('${patientId}')">📲 Link</button><button class="ghost" onclick="pdfDeRelatorioGuardado('${patientId}','${rd.id}')">📄 PDF</button>`
+            : (r.protocolName === 'Triagem de Baixa Vibração' ? `<button class="primary" onclick="triagemRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
+              : (r.tipo === 'pesquisa-integrada' ? `<button class="primary" onclick="pesquisaRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>` : ''))}
+        </div>
       </div>` });
   });
 
@@ -17886,6 +17892,66 @@ function triagemTextoParaHtml(texto){
   return h + `</div>`;
 }
 
+/* Pesquisas já feitas: gera o novo modelo ilustrado a partir do que ficou guardado. */
+window.pdfDeRelatorioGuardado = async function(pid, rid){
+  try{
+    const sn = await getDoc(doc(db, 'tenants', tenantId, 'patients', pid, 'reports', rid));
+    pdfRelatorioIlustrado(sn.exists() ? sn.data().reportHtml : '', (sn.data() || {}).protocolName || 'Relatório');
+  }catch(e){ toast('Não consegui abrir o relatório.', true); }
+};
+window.triagemRegerarIlustrado = async function(pid, rid){
+  try{
+    const sn = await getDoc(doc(db, 'tenants', tenantId, 'patients', pid, 'reports', rid));
+    if (!sn.exists()){ toast('Relatório não encontrado.', true); return; }
+    const r = sn.data();
+    const pdoc = (await getDoc(doc(db, 'tenants', tenantId, 'patients', pid))).data() || {};
+    const nome = pdoc.fullName || '';
+    const causasDetetadas = TRIAGEM_BAIXA_VIBRACAO.filter(c => (r.baixaVibracaoDetetada || []).indexOf(c.nome) >= 0);
+    const chakrasTodos = TRIAGEM_CHAKRAS_9.map(c => { const f = (r.chakras || []).find(x => x.nome === c.nome); return { ...c, estado: f ? triEstadoChakra(f) : 'ok' }; });
+    const aberturaNivel = r.aberturaCaminhos || TRIAGEM_NIVEIS_ABERTURA[0];
+    const aplicadas = r.etiquetasAplicadas || [];
+    const nasc = r.dataNascimento || pdoc.birthDate || '';
+    const perfil = ((r.numeroConsulta || 1) <= 1 && nasc) ? (() => { try{ return calcularPerfilMapaAlma(nome, nasc); }catch(e){ return null; } })() : null;
+    let lc = null; const L = r.leituraComplementar;
+    if (L){ const arc = n => TRIAGEM_ARCANOS.find(x => x.nome === n); const m = arc(L.momento), p2 = arc(L.porTras), t = arc(L.tendencia); lc = (m && p2 && t) ? { momento:m, porTras:p2, tendencia:t } : null; }
+    const primeiroNome = nome.trim().split(/\s+/)[0] || '';
+    const temAlgumaCoisaDetetada = causasDetetadas.length > 0 || chakrasTodos.some(triChakraAfetado) || TRIAGEM_NIVEIS_ABERTURA.indexOf(aberturaNivel) >= 2;
+    let cli = null;
+    try{
+      cli = triagemRelatorioCliente({
+        primeiroNome, dataNascimento: nasc, paisNascimento: r.paisNascimento || pdoc.birthCountry || '',
+        perfil, causasDetetadas, chakrasTodos, aberturaNivel, comparacao: null, cruzamento: null,
+        leituraComplementar: lc, perguntasCartas: [], sessoesNecessarias: r.sessoesNecessarias, preco: r.preco, temAlgumaCoisaDetetada,
+        aplicadas, numConsulta: r.numeroConsulta || 1, bovisIni: r.bovisInicial, bovisFin: r.bovisFinal,
+        sessoesAntes: null, motivoPlano: r.motivoPlano, pagamento: r.pagamento || null, pedido: '', pedidoTemas: []
+      });
+    }catch(e){ console.warn('Texto do cliente não regenerado, uso só o modelo:', e); }
+    const html = rbFragmento(triagemModeloBonito({
+      primeiroNome, causasDetetadas, chakrasTodos, aberturaNivel, comparacao: null,
+      sessoesNecessarias: r.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas, pedido: '', pedidoTemas: [], perfil
+    }, cli));
+    const copia = { ...r, reportHtml: html, continuacaoDe: rid };
+    await addDoc(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), { ...copia, tipo: r.tipo || 'triagem-energetica', generatedAt: r.generatedAt || serverTimestamp() });
+    toast('Relatório ilustrado criado ✓ (já está no portal do paciente).');
+    viewPatient(pid);
+  }catch(e){ console.error(e); toast('Não consegui gerar: ' + (e.message || e), true); }
+};
+window.pesquisaRegerarIlustrado = async function(pid, rid){
+  try{
+    const sn = await getDoc(doc(db, 'tenants', tenantId, 'patients', pid, 'reports', rid));
+    if (!sn.exists()){ toast('Relatório não encontrado.', true); return; }
+    const r = sn.data(), d = r.dados || {};
+    const pdoc = (await getDoc(doc(db, 'tenants', tenantId, 'patients', pid))).data() || {};
+    const mod = await import('./apometria.js?v=' + APP_VERSION);
+    const data = r.generatedAt && r.generatedAt.toDate ? r.generatedAt.toDate().toLocaleDateString('pt-PT') : '';
+    const m = mod.modeloBonitoDeDados({ corpos: d.corpos || {}, achados: d.achados || {}, chakraPct: d.chakraPct || {}, caminhos: d.caminhos == null ? null : d.caminhos }, { id: pid, fullName: pdoc.fullName || '' }, d.plano || [], data);
+    await addDoc(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), {
+      tipo: 'relatorio-ilustrado', protocolName: 'Atendimento Guiado (relatório ilustrado)', reportText: r.textoPaciente || '', reportHtml: rbFragmento(m), origem: rid, generatedAt: r.generatedAt || serverTimestamp()
+    });
+    toast('Relatório ilustrado criado ✓ (já está no portal do paciente).');
+    viewPatient(pid);
+  }catch(e){ console.error(e); toast('Não consegui gerar: ' + (e.message || e), true); }
+};
 window.triagemIncluirPerfil = async function(){
   const a = window.__triagemModeloArgs;
   if (!a || !a.perfil || !window.__triagemUltimoPayload){ toast('Não há perfil para incluir.', true); return; }
