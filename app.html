@@ -392,7 +392,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-10-5';
+const APP_VERSION = '2026-11-10-6';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -9464,7 +9464,7 @@ function renderProfileMenu(main){
     { key: 'negocio', icon: '🏢', label: 'Dados do Negócio' },
     { key: 'contactos', icon: '📞', label: 'Contactos & Redes Sociais' },
     { key: 'disponibilidade', icon: '🗓️', label: 'Disponibilidade & Marcação' },
-    { key: 'salas', icon: '🚪', label: 'Salas de Atendimento' },
+    { key: 'salas', icon: '🚪', label: 'Salas, Profissionais & Atendimento' },
     { key: 'calendar', icon: '📅', label: 'Google Calendar' },
     { key: 'online', icon: '💻', label: 'Consultório Online' },
     { key: 'consentimento', icon: '📄', label: 'Consentimento Informado' },
@@ -9594,17 +9594,56 @@ async function renderProfileSection(main, section){
     `;
   } else if (section === 'salas'){
     const rooms = currentTenantDoc?.rooms || [];
-    const rows = rooms.map(r => `<div class="appt-item row">
-        <strong>${escapeHtml(r.name)}</strong>
+    // Profissionais ativos (dono + equipa) e marcações de hoje, para mostrar
+    // quem está a atender e que salas estão ocupadas neste momento.
+    let profs = [{ uid: tenantId, nome: currentTenantDoc?.profile?.ownerName || currentTenantDoc?.ownerName || 'Eu (titular)' }];
+    try{
+      const st = await getDocs(query(collection(db, 'tenants', tenantId, 'staff'), where('status','==','active')));
+      st.forEach(d => profs.push({ uid: d.id, nome: d.data().name || d.data().email || 'Profissional' }));
+    }catch(e){ /* sem permissão para ver a equipa — mostra só o titular */ }
+    let hoje = [];
+    try{ hoje = (await getAppointmentsForDay(new Date())).filter(a => a.status !== 'cancelled' && !a.noFixedTime); }catch(e){}
+    const agora = new Date();
+    const emCurso = a => { const i = a.startsAt.toDate(); const f = a.endsAt ? a.endsAt.toDate() : new Date(i.getTime()+50*60000); return i <= agora && agora < f; };
+    const salaOcupada = r => hoje.find(a => (a.local||'presencial') === 'presencial' && a.roomId === r.id && emCurso(a));
+    const profOcupado = u => hoje.find(a => a.staffUid === u && emCurso(a));
+    const hh = a => a.startsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
+    const roomRows = rooms.map(r => { const oc = salaOcupada(r); return `<div class="appt-item row" style="align-items:center;gap:8px;">
+        <div style="flex:1;"><input value="${escapeHtml(r.name)}" onchange="renameRoom('${r.id}', this.value)" style="font-weight:600;">
+          <div class="muted" style="font-size:12.5px;margin-top:2px;">${oc ? `🔴 Ocupada agora (${escapeHtml(oc.patientName||'')}, ${escapeHtml(oc.staffName||'')})` : '🟢 Livre agora'}</div></div>
         <button class="danger" onclick="removeRoom('${r.id}')">Remover</button>
-      </div>`).join('') || '<p class="muted">Nenhuma sala configurada — comportamento padrão: qualquer marcação presencial ocupa "a sala" para todos (útil se só tiver um espaço físico).</p>';
+      </div>`; }).join('') || '<p class="muted">Nenhuma sala criada. Se só tem um espaço, não precisa de criar nada: a app trata-o como uma sala única.</p>';
+    const profRows = profs.map(pr => { const oc = profOcupado(pr.uid); return `<div class="appt-item row" style="align-items:center;">
+        <strong>${escapeHtml(pr.nome)}</strong>
+        <span class="muted">${oc ? `🔴 A atender (${(oc.local||'presencial')==='online' ? '💻 online' : '🏢 ' + escapeHtml(oc.roomName || 'presencial')}, até ${oc.endsAt ? oc.endsAt.toDate().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}) : ''})` : '🟢 Livre agora'}</span>
+      </div>`; }).join('');
+    const oc = currentTenantDoc?.onlineConsult || {};
+    const ferr = { whatsapp: 'WhatsApp', jitsi: 'Videochamada incluída (Jitsi)', custom: 'Link próprio (Zoom/Meet)' }[oc.tool || 'whatsapp'];
     inner = `
-      <h2>🚪 Salas de Atendimento</h2>
-      ${hintBox('Se atende em mais de um espaço presencial ao mesmo tempo (sozinho(a) ou com a sua equipa), registe aqui os nomes das salas — assim a app só avisa de sobreposição quando for mesmo a MESMA sala, no mesmo horário. Marcações "Online" nunca ocupam sala.')}
-      <div class="card">${rows}</div>
-      <div class="row" style="align-items:flex-end;gap:8px;margin-top:10px;">
-        <div style="flex:1;"><label>Nome da nova sala</label><input id="newRoomName" placeholder="ex: Sala 1, Consultório A…"></div>
-        <button class="primary" onclick="addRoom()">+ Adicionar</button>
+      <h2>🚪 Salas, Profissionais & Atendimento</h2>
+      ${hintBox('Aqui defines onde e quem atende, e a app evita marcações em cima umas das outras. Regras, em palavras simples: 1) o mesmo profissional nunca tem duas marcações ao mesmo tempo, seja online ou presencial. 2) Uma consulta presencial ocupa uma sala. Duas pessoas só atendem ao mesmo tempo se estiverem em salas diferentes. 3) Uma consulta online não ocupa sala, mas ocupa o profissional. 4) O tempo de preparação de cada serviço conta no fim de cada consulta.')}
+      <div class="card">
+        <h3 style="margin-top:0;">🧑‍⚕️ Profissionais a atender (${profs.length})</h3>
+        ${profRows}
+        <button class="ghost small" style="margin-top:8px;" onclick="renderView('team')">+ Adicionar ou gerir equipa</button>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;">🏢 Salas (${rooms.length})</h3>
+        ${roomRows}
+        <div class="row" style="align-items:flex-end;gap:8px;margin-top:10px;">
+          <div style="flex:1;"><label>Nova sala</label><input id="newRoomName" placeholder="ex: Sala 1, Consultório A…"></div>
+          <button class="primary" onclick="addRoom()">+ Adicionar</button>
+        </div>
+        <div class="row" style="align-items:flex-end;gap:8px;margin-top:10px;">
+          <div style="flex:1;"><label>Ou diz quantas salas tens</label><input id="roomCount" type="number" min="1" max="20" placeholder="ex: 3"></div>
+          <button class="ghost" onclick="createRoomsByCount()">Criar Sala 1, 2, 3…</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;">💻 Atendimento online</h3>
+        <p class="muted">Ferramenta atual: <strong>${escapeHtml(ferr)}</strong>. Quando marcas uma consulta como "Online", não ocupa sala, só o profissional.</p>
+        <button class="ghost" onclick="openProfileSection('online')">Alterar ferramenta online</button>
+        <button class="ghost" onclick="openProfileSection('disponibilidade')">🗓️ Horários de atendimento</button>
       </div>
     `;
   } else if (section === 'disponibilidade'){
@@ -9641,7 +9680,7 @@ async function renderProfileSection(main, section){
       ${hintBox('Defina os dias e horas em que atende. Isto aparece na sua página pública, e quem visitar pode pedir uma marcação dentro desses horários — a marcação só fica confirmada depois de você aceitar, para nunca haver reservas automáticas por engano.')}
       <div class="row" style="margin-bottom:14px;flex-wrap:wrap;">
         <button class="ghost" onclick="openProfileSection('calendar')">📅 Google Calendar</button>
-        <button class="ghost" onclick="openProfileSection('salas')">🚪 Salas de Atendimento</button>
+        <button class="ghost" onclick="openProfileSection('salas')">🚪 Salas e Profissionais</button>
       </div>
       <label>Fuso horário do seu atendimento</label>
       <select id="availTimezone">
@@ -10029,6 +10068,26 @@ window.addRoom = async function(){
   openProfileSection('salas');
 };
 
+window.createRoomsByCount = async function(){
+  const n = parseInt(document.getElementById('roomCount')?.value || '0', 10);
+  if (!n || n < 1 || n > 20){ toast('Indique um número de salas entre 1 e 20.', true); return; }
+  const rooms = [...(currentTenantDoc?.rooms || [])];
+  for (let k = 1; k <= n; k++){
+    const nome = 'Sala ' + k;
+    if (!rooms.some(r => r.name.trim().toLowerCase() === nome.toLowerCase())) rooms.push({ id: 'room_' + Date.now() + k + Math.random().toString(36).slice(2,5), name: nome });
+  }
+  await updateDoc(doc(db, 'tenants', tenantId), { rooms });
+  currentTenantDoc.rooms = rooms;
+  toast('Salas criadas.');
+  openProfileSection('salas');
+};
+window.renameRoom = async function(roomId, novo){
+  novo = String(novo||'').trim(); if (!novo) return;
+  const rooms = (currentTenantDoc?.rooms || []).map(r => r.id === roomId ? { ...r, name: novo } : r);
+  await updateDoc(doc(db, 'tenants', tenantId), { rooms });
+  currentTenantDoc.rooms = rooms;
+  toast('Nome guardado.');
+};
 window.removeRoom = async function(roomId){
   if (!await confirmar('Remover esta sala? Marcações já feitas mantêm a referência, mas deixa de aparecer para escolher em novas marcações.')) return;
   const rooms = (currentTenantDoc?.rooms || []).filter(r => r.id !== roomId);
