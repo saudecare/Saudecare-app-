@@ -395,7 +395,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-11-6';
+const APP_VERSION = '2026-11-11-7';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -20595,7 +20595,8 @@ async function renderCasosApp(main){
     const col = () => collection(db, 'tenants', tenantId, 'casosEnergeticos');
     mod.renderCasos(main, {
       tenantId, escapeHtml, toast, confirmar: reikiConfirmar,
-      etiquetas: eeItens().map(x => ({ codigo: x.codigo, pt: x.pt })),
+      etiquetas: eeItens().map(x => ({ codigo: x.codigo, pt: x.pt, heb: x.heb || '' })),
+      relatorio: { fragmento: rbFragmento, ver: (frag, t) => rbPreVisualizarHtml(rbDocumentoDeFragmento(frag, t), t), pdf: (frag, t) => window.pdfRelatorioIlustrado(frag, t) },
       listar: async () => {
         const snap = await getDocs(col());
         const l = []; snap.forEach(d => { const r = d.data(); l.push({ ...r, id: d.id, _t: r.atualizadoEm && r.atualizadoEm.toMillis ? r.atualizadoEm.toMillis() : 0 }); });
@@ -20632,12 +20633,12 @@ async function renderCasosApp(main){
       },
       etiquetasAuto: ({ primeira, numeros, sugeridas }) => {
         const reg = etqRegisto(), out = [];
-        const add = (pt, fase, pedido) => { const r = reg.mapa[etqChave(pt)]; if (!r || out.some(o => o.codigo === r.codigo)) return; out.push({ codigo: r.codigo, pt: r.pt, fase, pedido: !!pedido }); };
+        const add = (pt, fase, pedido, porque, nota) => { const r = reg.mapa[etqChave(pt)]; if (!r || out.some(o => o.codigo === r.codigo)) return; out.push({ codigo: r.codigo, pt: r.pt, heb: r.heb || '', nota: nota || r.nota || '', porque: porque || '', fase, pedido: !!pedido }); };
         const fases = primeira
           ? TRIAGEM_PROTOCOLO_COMPLETO.map(f => ({ ...f, itens: f.itens.filter(i => i.base) }))
           : triagemFasesDaSessao((numeros || []).map(n => ({ n })), [], null);
-        fases.forEach(f => f.itens.forEach(i => add(i.pt, f.fase, false)));
-        (sugeridas || []).forEach(cod => { const r = reg.lista.find(x => x.codigo === cod); if (r) add(r.pt, 'Pedido do caso', true); });
+        fases.forEach(f => f.itens.forEach(i => add(i.pt, f.fase, false, f.porque, i.nota)));
+        (sugeridas || []).forEach(cod => { const r = reg.lista.find(x => x.codigo === cod); if (r) add(r.pt, 'Pedido do caso', true, 'etiquetas pedidas pelo que escreveste no caso'); });
         return out;
       }
     });

@@ -82,6 +82,49 @@ export function renderCasos(main, ctx) {
   const ultimaLeitura = c => { const ss = lista(c.sessoes).filter(x => x.leitura); return ss.length ? leituraObj(ss[ss.length - 1].leitura) : null; };
   const sortear = () => { const [m, p, t] = ctx.tirarCartas(); return { momento: m, porTras: p, tendencia: t }; };
 
+
+  /* ── Protocolo de cura da sessão (igual ao do Pêndulo: fases, hebraico, nome em português, porquê) ── */
+  function protocoloCura(codigos, auto) {
+    const info = {}; lista(auto).forEach(x => { info[x.codigo] = x; });
+    const fases = [];
+    lista(codigos).forEach(cod => {
+      const e = ctx.etiquetas.find(x => x.codigo === cod); if (!e) return;
+      const a = info[cod] || {}, nome = a.fase || 'Acrescentadas à mão';
+      let f = fases.find(y => y.fase === nome);
+      if (!f) { f = { fase: nome, porque: a.porque || '', itens: [] }; fases.push(f); }
+      f.itens.push({ codigo: e.codigo, pt: e.pt, heb: a.heb || e.heb || '', nota: a.nota || '' });
+    });
+    return fases;
+  }
+  const protocoloCuraHtml = (fases, aberto) => lista(fases).length ? `<details class="card" ${aberto ? 'open' : ''} style="border:2px solid var(--primary);"><summary style="cursor:pointer;font-weight:700;">📋 Protocolo de cura desta sessão</summary>
+    <p class="muted" style="margin:6px 0;">Por ordem de uso. Cada fase diz porquê, com a etiqueta em hebraico e o nome em português.</p>
+    ${fases.map(f => `<div style="margin-top:10px;padding:10px;border-radius:10px;background:#eef7ee;"><strong>${esc(f.fase)}</strong>${f.porque ? `<div class="muted" style="font-size:.82rem;">${esc(f.porque)}</div>` : ''}
+      ${f.itens.map(i => `<div style="margin-top:6px;">${i.heb ? `<span style="font-size:1.15rem;" dir="rtl">${esc(i.heb)}</span> — ` : ''}<strong>${esc(i.codigo)}</strong> ${esc(i.pt)}${i.nota ? `<div class="muted" style="font-size:.8rem;">${esc(i.nota)}</div>` : ''}</div>`).join('')}</div>`).join('')}</details>` : '';
+
+  /* ── Relatório ilustrado para o paciente (para link do portal / PDF), como no Pêndulo ── */
+  function relatorioSessao(c, s) {
+    if (!ctx.relatorio) return '';
+    const t = TIPOS[c.tipo] || TIPOS.casa, nome = String(c.pacienteNome || '').split(/\s+/)[0];
+    const verif = s.modo === 'verificacao', blocos = [];
+    blocos.push({ tipo: 'texto', icone: '👋', titulo: nome ? `Olá, ${nome}` : 'Olá', paras: [verif ? `Fiz a verificação do trabalho sobre “${c.objetivo || c.titulo}”, para ver como está tudo.` : `Aqui está o resumo do trabalho energético sobre “${c.objetivo || c.titulo}”.`] });
+    const det = lista(s.causas);
+    if (det.length) blocos.push({ tipo: 'lista', icone: '🔎', titulo: verif ? 'O que foi verificado' : 'O que foi encontrado', marca: '•', itens: det });
+    const cura = lista(s.protocoloCura);
+    if (cura.length) blocos.push({ tipo: 'linha', icone: '🧹', titulo: 'O que foi limpo', passos: cura.map(f => ({ rotulo: f.fase.replace(/^\d+\.\s*/, ''), texto: f.itens.map(i => i.pt).join(' · ') })) });
+    else if (lista(s.etiquetas).length) blocos.push({ tipo: 'lista', icone: '🏷️', titulo: 'Etiquetas trabalhadas', marca: '•', itens: s.etiquetas.map(x => x.pt) });
+    const lc = leituraObj(s.leitura);
+    if (lc && ctx.sintetizarLeitura) blocos.push({ tipo: 'texto', icone: '🌙', titulo: 'Leitura do momento', paras: [ctx.sintetizarLeitura(nome || c.titulo, lc, false)] });
+    const res = { limpo: 'Neste momento o pêndulo não deteta nada por limpar. 🌿', parcial: 'Ficou limpo grande parte do que foi encontrado; há ainda pontos a acompanhar.', por_limpar: 'Ainda há pontos por limpar; vamos continuar nas próximas sessões.' }[s.resultado] || '';
+    const seg = [res];
+    if (lista(s.persistem).length) seg.push('Ainda a acompanhar: ' + s.persistem.join('; ') + '.');
+    if (s.proxima) seg.push('Próxima verificação: ' + dataPT(s.proxima) + '.');
+    blocos.push({ tipo: 'resumo', icone: '✅', titulo: 'Nos dias seguintes', paras: seg.filter(Boolean) });
+    const d = c.protocolo ? dicasPaciente(c.protocolo) : [];
+    if (d.length) blocos.push({ tipo: 'lista', icone: '🌿', titulo: 'Em casa, sugere-se', marca: '•', itens: d });
+    if (c.protocolo && lista(c.protocolo.medico).length) blocos.push({ tipo: 'lista', icone: '⚕️', titulo: 'Cuidados com a saúde', marca: '•', itens: c.protocolo.medico });
+    return ctx.relatorio.fragmento({ tema: 'triagem', emoji: t.e, titulo: verif ? 'Verificação do trabalho' : 'Relatório do trabalho', subtitulo: c.titulo, nome: c.pacienteNome || '', data: dataPT(s.data), assinatura: 'Ricardo Correia, Hikari Fafe', blocos, aviso: 'Este é um trabalho energético e não substitui o acompanhamento médico.' });
+  }
+
   /* ── Plano para o paciente (linguagem simples, assinado em nome do terapeuta) ── */
   const dicasPaciente = p => lista(p.dicas).filter(d => !/^(Trabalho energético de apoio|Pedir sempre)/.test(d));
   function planoPacienteLinhas(c) {
@@ -221,7 +264,9 @@ export function renderCasos(main, ctx) {
         ${lista(s.novas).length ? `<div style="margin-top:4px;"><span class="muted">Novas:</span><br>${chips(s.novas, '#8a5a12', '#fdf1de')}</div>` : ''}
         ${lista(s.etiquetas).length ? `<div class="muted" style="margin-top:4px;">🏷️ ${s.etiquetas.map(x => esc(x.codigo)).join(' · ')} (${s.via === 'fisica' ? 'físicas' : s.via === 'ambas' ? 'físicas e etéricas' : 'etéricas'}${s.aplicacao ? ', ' + (s.aplicacao === 'todas' ? 'todas ao mesmo tempo' : 'uma a uma') : ''})</div>` : ''}
         ${leituraObj(s.leitura) ? `<div class="muted" style="margin-top:4px;font-size:.88rem;">🎴 ${esc(ctx.sintetizarLeitura(nomeLeitura(c), leituraObj(s.leitura), true))}</div>` : ''}
+        ${lista(s.protocoloCura).length ? protocoloCuraHtml(s.protocoloCura, false).replace('class="card"', 'class="card" style="margin-top:6px;"') : ''}
         ${s.notas ? `<div style="margin-top:4px;font-size:.9rem;">📝 ${esc(s.notas)}</div>` : ''}
+        ${ctx.relatorio ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px;"><button class="ghost" data-a="verRel" data-v="${esc(s.id)}">👁️ Ver relatório</button><button class="ghost" data-a="pdfRel" data-v="${esc(s.id)}">📄 PDF ilustrado</button>${c.pacienteId && ctx.enviarPortal ? '<button class="primary" data-a="enviarPac">📲 Enviar link ao paciente</button>' : ''}</div>` : ''}
         ${s.proxima ? `<div class="muted" style="margin-top:4px;">Próxima verificação: ${dataPT(s.proxima)}</div>` : ''}</div>`).join('') : '<div class="card"><p class="muted">Ainda não há sessões. Faz a preparação e toca em “Nova sessão”.</p></div>'}
       <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px;">${c.estado !== 'fechado' ? '<button class="ghost" data-a="fechar">🔒 Fechar caso</button>' : ''}<button class="ghost" data-a="apagar" style="color:#b94a48;">🗑️ Apagar caso</button></div>`;
   }
@@ -310,6 +355,7 @@ export function renderCasos(main, ctx) {
         ${lista(c.protocolo && c.protocolo.sugeridas).length ? `<div style="margin:6px 0;"><span class="muted" style="font-size:.82rem;">✨ Sugeridas (toca para escolher):</span><br>${c.protocolo.sugeridas.map(cod => ctx.etiquetas.find(x => x.codigo === cod)).filter(Boolean).map(x => `<span data-a="etq" data-v="${esc(x.codigo)}" style="display:inline-block;margin:3px 4px 0 0;padding:4px 10px;border-radius:99px;background:${W.etiquetas.indexOf(x.codigo) >= 0 ? '#5b2a86;color:#fff' : '#f3ecfa'};font-size:.82rem;cursor:pointer;" title="${esc(x.pt)}">${esc(x.codigo)}</span>`).join('')}</div>` : ''}
         <input data-i="w.q" value="${esc(W.q)}" placeholder="Número (24, A7) ou palavra (inveja, perdoar)…" style="width:100%;margin:6px 0;">
         <div id="casos-etq" style="max-height:44vh;overflow:auto;">${listaEtqHTML()}</div></details>
+        ${protocoloCuraHtml(protocoloCura(W.etiquetas, W.auto), true)}
         <div class="card"><h3 style="margin:0 0 4px;">🧹 Aplicar a limpeza</h3>
         <p class="muted" style="margin:0 0 8px;">Abre o ecrã de limpeza com as ${W.etiquetas.length} etiqueta(s) escolhidas: todas ao mesmo tempo ou uma a uma, com o pêndulo.</p>
         ${W.aplicacao ? `<p style="margin:0 0 8px;color:#2f7d32;">✅ Aplicadas (${W.aplicacao === 'todas' ? 'todas ao mesmo tempo' : 'uma a uma'})</p>` : (lista(W.feitas).length ? `<p style="margin:0 0 8px;color:#d9822b;">🕓 ${W.feitas.filter(x => W.etiquetas.indexOf(x) >= 0).length} de ${W.etiquetas.length} já aplicadas. Toca para continuar.</p>` : '')}
@@ -333,10 +379,11 @@ export function renderCasos(main, ctx) {
     return `<div class="card"><label>Resultado</label><div class="row" style="gap:6px;margin-top:6px;">${R('limpo', '✅ Limpo')}${R('parcial', '🟡 Parcial')}${R('por_limpar', '🔴 Por limpar')}</div>
       <label style="margin-top:10px;display:block;">Próxima verificação (recomendado ${DIAS_VERIF} dias ou mais)</label><input type="date" data-i="w.proxima" value="${esc(W.proxima)}">
       <label style="margin-top:10px;display:block;">Notas</label><textarea data-i="w.notas" rows="3">${esc(W.notas)}</textarea></div>
-      <div class="row" style="gap:8px;">${W.modo === 'completa' ? '<button class="ghost" data-a="anterior">← Voltar</button>' : ''}<button class="primary" data-a="guardar" style="flex:1;padding:14px;">💾 Guardar sessão</button></div>`;
+      <div class="row" style="gap:8px;">${W.modo === 'completa' ? '<button class="ghost" data-a="anterior">← Voltar</button>' : ''}<button class="primary" data-a="guardar" style="flex:1;padding:14px;">💾 Guardar sessão</button></div>
+      ${ctx.relatorio ? '<button class="ghost" data-a="verRelWiz" style="width:100%;margin-top:8px;">👁️ Pré-visualizar o relatório do paciente</button><p class="muted" style="font-size:.82rem;">Ao guardar, o relatório fica na ficha do paciente (se o caso estiver ligado a um) e podes enviá-lo por link do portal.</p>' : ''}`;
   }
 
-  async function guardarSessao() {
+  function montarSessao() {
     const W = S.wiz, c = S.caso;
     const verif = W.modo === 'verificacao';
     const novas = verif ? W.novasTxt.split(',').map(x => x.trim()).filter(Boolean) : [];
@@ -349,6 +396,12 @@ export function renderCasos(main, ctx) {
       etiquetas: verif ? [] : W.etiquetas.map(cod => ctx.etiquetas.find(x => x.codigo === cod)).filter(Boolean).map(x => ({ codigo: x.codigo, pt: x.pt })),
       via: verif ? '' : W.via, aplicacao: verif ? '' : (W.aplicacao || ''), leitura: verif ? null : leituraCompacta(W.leitura), resultado, proxima: W.proxima || '', notas: String(W.notas || '').trim()
     };
+    s.protocoloCura = verif ? [] : protocoloCura(W.etiquetas, W.auto);
+    return s;
+  }
+  async function guardarSessao() {
+    const W = S.wiz, c = S.caso;
+    const s = montarSessao(), resultado = s.resultado;
     clearTimeout(tRasc); const rascAnt = c.rascunho; c.rascunho = null;
     c.sessoes = lista(c.sessoes).concat([s]);
     c.estado = resultado === 'limpo' ? 'limpo' : 'em-curso';
@@ -361,8 +414,8 @@ export function renderCasos(main, ctx) {
     }
     if (c.pacienteId) {
       const t = TIPOS[c.tipo] || TIPOS.casa;
-      const ok = await ctx.guardarNaFicha(c.pacienteId, { tipo: 'caso-energetico', titulo: `${t.n}: ${c.titulo}`, texto: textoSessao(c, s), dados: { casoId: c.id, tipoCaso: c.tipo, sessao: s } });
-      ctx.toast(ok ? 'Sessão guardada ✓ (também na ficha do paciente)' : 'Sessão guardada ✓ (mas não consegui pôr na ficha do paciente)', !ok);
+      const ok = await ctx.guardarNaFicha(c.pacienteId, { tipo: 'caso-energetico', titulo: `${t.n}: ${c.titulo}`, texto: textoSessao(c, s), reportHtml: relatorioSessao(c, s) || undefined, dados: { casoId: c.id, tipoCaso: c.tipo, sessao: s } });
+      ctx.toast(ok ? 'Sessão guardada ✓ Relatório na ficha — já podes enviar o link' : 'Sessão guardada ✓ (mas não consegui pôr na ficha do paciente)', !ok);
     } else ctx.toast('Sessão guardada ✓');
     S.wiz = null; S.view = 'caso'; ver();
   }
@@ -449,6 +502,9 @@ export function renderCasos(main, ctx) {
     recalcular: () => { calcularAuto(true); repintarSessao(); },
     anterior: () => { S.wiz.passo--; ver(); },
     guardar: () => guardarSessao(),
+    verRelWiz: () => { const c = S.caso, h = relatorioSessao(c, montarSessao()); if (h) ctx.relatorio.ver(h, 'Relatório do trabalho'); },
+    verRel: b => { const c = S.caso, x = lista(c.sessoes).find(y => y.id === b.dataset.v); const h = x && relatorioSessao(c, x); if (h) ctx.relatorio.ver(h, 'Relatório do trabalho'); },
+    pdfRel: b => { const c = S.caso, x = lista(c.sessoes).find(y => y.id === b.dataset.v); const h = x && relatorioSessao(c, x); if (h) ctx.relatorio.pdf(h, 'Relatório do trabalho'); },
     fechar: async () => { const c = S.caso; if (!(await ctx.confirmar('Fechar o caso?', 'Deixa de aparecer nas verificações. Podes reabri-lo quando quiseres.', 'Fechar'))) return; c.estado = 'fechado'; c.proxima = ''; try { await gravarCaso(c); } catch (e) { ctx.toast('⚠️ Não consegui guardar.', true); return; } verCaso(); },
     reabrir: async () => { const c = S.caso; c.estado = 'em-curso'; try { await gravarCaso(c); } catch (e) { ctx.toast('⚠️ Não consegui guardar.', true); return; } verCaso(); },
     apagar: async () => {
