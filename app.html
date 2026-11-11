@@ -395,7 +395,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-11-5';
+const APP_VERSION = '2026-11-11-6';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12546,9 +12546,10 @@ window.triEterAbrir = async function(modo, opts){
   ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column;height:100dvh;padding:8px 8px calc(8px + env(safe-area-inset-bottom));box-sizing:border-box;';
   document.body.appendChild(ov);
   let m = modo || 'todas', idx = 0, legenda = '', ajuda = false;
-  const feitasSet = new Set(emTriagem ? __triagem.aplicadas : []);
+  const feitasSet = new Set(emTriagem ? __triagem.aplicadas : (opts.jaFeitas || []));
+  if (!emTriagem && m === 'uma'){ const prox = itens.findIndex(it => !feitasSet.has(it.key)); idx = prox < 0 ? Math.max(0, itens.length - 1) : prox; }
   const nFeitas = () => itens.filter(it => feitasSet.has(it.key)).length;
-  const marcar = it => { feitasSet.add(it.key); if (emTriagem){ if (__triagem.aplicadas.indexOf(it.key) < 0) __triagem.aplicadas.push(it.key); if (window.__triagemPintarEtq) window.__triagemPintarEtq(); } };
+  const marcar = it => { feitasSet.add(it.key); if (!emTriagem && opts.onProgresso) opts.onProgresso(Array.from(feitasSet)); if (emTriagem){ if (__triagem.aplicadas.indexOf(it.key) < 0) __triagem.aplicadas.push(it.key); if (window.__triagemPintarEtq) window.__triagemPintarEtq(); } };
   const cor = q => ETQ_COR[q.grupo] || '#5b2a86';
   const centro = (tam) => `<div style="width:${tam}px;height:${tam}px;border-radius:50%;background:#f6f0fb;border:3px solid #5b2a86;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;padding:4px;box-sizing:border-box;">
       ${foto ? `<img src="${escapeHtml(foto)}" alt="" style="width:${Math.round(tam * .46)}px;height:${Math.round(tam * .46)}px;border-radius:50%;object-fit:cover;margin-bottom:2px;">` : ''}
@@ -20618,11 +20619,16 @@ async function renderCasosApp(main){
       // Escolha automática das etiquetas, igual à do Pêndulo Hebraico: 1.ª sessão = protocolo base;
       // depois, as fases pedidas pelas causas detetadas (máx. 8, com o fecho). Mais as do pedido do caso.
       // Limpeza etérica (o mesmo ecrã das Etiquetas Etéricas): todas ao mesmo tempo ou uma a uma.
-      limpezaEterica: (modo, codigos, pacienteId, onConcluir) => {
+      limpezaEterica: (modo, codigos, pacienteId, extra) => {
+        extra = extra || {};
         const lista = etqRegisto().lista;
-        const itens = codigos.map(cod => lista.find(x => x.codigo === cod)).filter(Boolean).map(x => ({ pt: x.pt, heb: x.heb }));
+        const itens = codigos.map(cod => lista.find(x => x.codigo === cod)).filter(Boolean).map(x => ({ pt: x.pt, heb: x.heb, codigo: x.codigo }));
         if (!itens.length) return;
-        triEterAbrir(modo, { itens, pacienteId: pacienteId || '', onConcluir });
+        const chave = it => triKeyEtq(it), porChave = {}; itens.forEach(it => { porChave[chave(it)] = it.codigo; });
+        const jaFeitas = (extra.jaFeitas || []).map(cod => { const it = itens.find(i => i.codigo === cod); return it ? chave(it) : null; }).filter(Boolean);
+        triEterAbrir(modo, { itens, pacienteId: pacienteId || '', jaFeitas,
+          onProgresso: keys => { if (extra.onProgresso) extra.onProgresso(keys.map(k => porChave[k]).filter(Boolean)); },
+          onConcluir: () => { if (extra.onConcluir) extra.onConcluir(); } });
       },
       etiquetasAuto: ({ primeira, numeros, sugeridas }) => {
         const reg = etqRegisto(), out = [];

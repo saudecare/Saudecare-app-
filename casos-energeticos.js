@@ -108,7 +108,7 @@ export function renderCasos(main, ctx) {
     S.casos.sort((a, b) => (aVerificar(b) - aVerificar(a)) || ((b._t || 0) - (a._t || 0)));
   }
   async function gravarCaso(caso) {
-    const dados = { titulo: caso.titulo, tipo: caso.tipo, referencia: caso.referencia || '', objetivo: caso.objetivo || '', pacienteId: caso.pacienteId || '', pacienteNome: caso.pacienteNome || '', prep: caso.prep || {}, sessoes: lista(caso.sessoes), estado: caso.estado || 'em-curso', proxima: caso.proxima || '', pesquisa: lista(caso.pesquisa), protocolo: caso.protocolo || null };
+    const dados = { titulo: caso.titulo, tipo: caso.tipo, referencia: caso.referencia || '', objetivo: caso.objetivo || '', pacienteId: caso.pacienteId || '', pacienteNome: caso.pacienteNome || '', prep: caso.prep || {}, sessoes: lista(caso.sessoes), estado: caso.estado || 'em-curso', proxima: caso.proxima || '', pesquisa: lista(caso.pesquisa), protocolo: caso.protocolo || null, rascunho: caso.rascunho || null };
     const id = await ctx.gravar(caso.id || null, dados);
     caso.id = id; caso._t = Date.now();
     if (!S.casos.some(c => c.id === id)) S.casos.unshift(caso);
@@ -137,7 +137,7 @@ export function renderCasos(main, ctx) {
         return `<div class="card" data-a="abrir" data-id="${esc(c.id)}" style="cursor:pointer;margin-bottom:8px;">
           <div style="display:flex;gap:10px;align-items:center;"><div style="font-size:1.8rem;">${t.e}</div><div style="flex:1;min-width:0;"><strong>${esc(c.titulo)}</strong>
           <div class="muted" style="font-size:.82rem;">${esc(t.n)}${c.pacienteNome ? ' · ' + esc(c.pacienteNome) : ''} · ${n} sessão(ões)</div>
-          <div style="font-size:.88rem;margin-top:2px;">${badge(c)}</div></div></div></div>`; }).join('') : '<div class="card"><p class="muted">Ainda não há casos aqui. Toca em “Novo caso” para começar.</p></div>'}`;
+          <div style="font-size:.88rem;margin-top:2px;">${badge(c)}${c.rascunho ? ' · <span style="color:#d9822b;font-weight:700;">📝 sessão em curso</span>' : ''}</div></div></div></div>`; }).join('') : '<div class="card"><p class="muted">Ainda não há casos aqui. Toca em “Novo caso” para começar.</p></div>'}`;
   }
 
   function verAssistente() {
@@ -207,6 +207,7 @@ export function renderCasos(main, ctx) {
         ${c.pacienteId ? `<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="ghost" data-a="planoPac">📲 Guardar plano na ficha do paciente</button>${ctx.enviarPortal ? '<button class="ghost" data-a="enviarPac">📤 Enviar link do portal</button>' : ''}</div>` : '<p class="muted">Liga o caso a um paciente para lhe poderes enviar o plano.</p>'}</div></details>` : ''}
       <div class="card"><h3 style="margin:0 0 4px;">🧭 1. Preparação</h3>
         ${P('permissao', 'Perguntei ao pêndulo se posso trabalhar neste caso')}${P('objetivo', 'O objetivo está definido e a identificação do alvo está à mão')}${P('elevado', 'Pedi o que for mais elevado e justo, sem interferir na vontade de terceiros')}</div>
+      ${c.rascunho ? `<div class="card" style="border:2px solid #d9822b;"><h3 style="margin:0 0 4px;">📝 Sessão em curso</h3><p class="muted" style="margin:0 0 8px;">${c.rascunho.modo === 'verificacao' ? 'Verificação' : 'Sessão completa'} · ${c.rascunho.modo === 'verificacao' ? '' : 'passo ' + c.rascunho.passo + ' de 3 · '}${lista(c.rascunho.causas).length} ponto(s) detetado(s) · ${lista(c.rascunho.etiquetas).length} etiqueta(s). Está tudo guardado.</p><div class="row" style="gap:8px;"><button class="primary" data-a="continuar" style="flex:1;padding:12px;">▶️ Continuar</button><button class="ghost" data-a="descartar">🗑️ Descartar</button></div></div>` : ''}
       ${c.estado === 'fechado' ? `<button class="ghost" data-a="reabrir" style="width:100%;margin-bottom:8px;">↩️ Reabrir caso</button>` : `
       <button class="primary" data-a="sessao" data-v="completa" style="width:100%;padding:14px;">➕ Nova sessão<br><small>Triagem → Limpeza → Verificação</small></button>
       ${ss.length ? `<button class="ghost" data-a="sessao" data-v="verificacao" style="width:100%;margin-top:8px;padding:12px;">🔎 Só verificação<br><small>Repetir a pesquisa e medir o Bovis</small></button>` : ''}`}
@@ -232,6 +233,17 @@ export function renderCasos(main, ctx) {
     if (modo === 'verificacao' && ult) W.base = lista(ult.persistem).length ? ult.persistem.slice() : lista(ult.causas).slice();
     return W;
   }
+  /* ── Sessão em curso: guarda-se sozinha e retoma-se onde ficou ── */
+  const serializarWiz = W => ({ modo: W.modo, passo: W.passo, data: W.data, bovisIni: W.bovisIni, bovisFin: W.bovisFin, causas: W.causas, outras: W.outras, etiquetas: W.etiquetas, via: W.via, persistem: W.persistem, novasTxt: W.novasTxt, resultado: W.resultado, manual: !!W.manual, leitura: leituraCompacta(W.leitura), modoCartas: W.modoCartas, aplicacao: W.aplicacao || '', feitas: lista(W.feitas), cm: W.cm, cp: W.cp, ct: W.ct, notas: W.notas, proxima: W.proxima, base: lista(W.base), auto: lista(W.auto).map(x => ({ codigo: x.codigo, pt: x.pt, fase: x.fase || '', pedido: !!x.pedido })), autoChave: W.autoChave || '', em: Date.now() });
+  const desserializarWiz = R => { const W = novaWiz(R.modo); Object.assign(W, R, { leitura: leituraObj(R.leitura), q: '' }); return W; };
+  let tRasc = null;
+  async function guardarRascunho() {
+    clearTimeout(tRasc);
+    const c = S.caso, W = S.wiz; if (!c || !W) return;
+    c.rascunho = serializarWiz(W);
+    try { await gravarCaso(c); } catch (e) { console.warn('Rascunho:', e); }
+  }
+  function agendarRascunho() { if (S.view !== 'sessao' || !S.wiz) return; clearTimeout(tRasc); tRasc = setTimeout(guardarRascunho, 600); }
   const primeiraSessao = () => !lista(S.caso.sessoes).some(s => s.modo === 'completa');
   const causasWiz = () => { const W = S.wiz; return W.causas.concat(W.outras.split(',').map(x => x.trim()).filter(Boolean)); };
   // Escolha automática das etiquetas, pelo mesmo caminho do Pêndulo Hebraico:
@@ -256,7 +268,7 @@ export function renderCasos(main, ctx) {
     const W = S.wiz, c = S.caso, t = TIPOS[c.tipo] || TIPOS.casa;
     const total = W.modo === 'verificacao' ? 1 : 3;
     const barra = `<div class="row" style="gap:4px;margin-bottom:12px;">${Array.from({ length: total }).map((_, i) => `<div style="flex:1;height:5px;border-radius:3px;background:${i < W.passo ? 'var(--primary)' : '#e5e5e5'};"></div>`).join('')}</div>`;
-    const cab = `<button class="ghost" data-a="sair" style="margin-bottom:8px;">← ${esc(c.titulo)}</button>${barra}`;
+    const cab = `<button class="ghost" data-a="sair" style="margin-bottom:4px;">← ${esc(c.titulo)}</button><div class="muted" style="font-size:.78rem;margin:0 0 8px;">💾 Guarda automaticamente. Podes sair e continuar depois.</div>${barra}`;
     const data = `<label>Data</label><input type="date" data-i="w.data" value="${esc(W.data)}" max="${hoje()}">`;
     const toggles = (arr, marcados, acao) => arr.map((nome, i) => { const on = marcados.indexOf(nome) >= 0;
       return `<div data-a="${acao}" data-v="${esc(nome)}" style="display:flex;gap:10px;align-items:center;padding:9px;margin-top:4px;border-radius:10px;cursor:pointer;background:${on ? (acao === 'persiste' ? '#fbe9e8' : '#eef7ee') : '#f7f7f5'};"><span style="font-size:1.2rem;">${on ? '☑' : '⬜'}</span><span style="min-width:24px;font-weight:700;color:#777;">${i + 1}</span><span style="flex:1;font-size:.92rem;">${esc(nome)}</span></div>`; }).join('');
@@ -300,7 +312,7 @@ export function renderCasos(main, ctx) {
         <div id="casos-etq" style="max-height:44vh;overflow:auto;">${listaEtqHTML()}</div></details>
         <div class="card"><h3 style="margin:0 0 4px;">🧹 Aplicar a limpeza</h3>
         <p class="muted" style="margin:0 0 8px;">Abre o ecrã de limpeza com as ${W.etiquetas.length} etiqueta(s) escolhidas: todas ao mesmo tempo ou uma a uma, com o pêndulo.</p>
-        ${W.aplicacao ? `<p style="margin:0 0 8px;color:#2f7d32;">✅ Aplicadas (${W.aplicacao === 'todas' ? 'todas ao mesmo tempo' : 'uma a uma'})</p>` : ''}
+        ${W.aplicacao ? `<p style="margin:0 0 8px;color:#2f7d32;">✅ Aplicadas (${W.aplicacao === 'todas' ? 'todas ao mesmo tempo' : 'uma a uma'})</p>` : (lista(W.feitas).length ? `<p style="margin:0 0 8px;color:#d9822b;">🕓 ${W.feitas.filter(x => W.etiquetas.indexOf(x) >= 0).length} de ${W.etiquetas.length} já aplicadas. Toca para continuar.</p>` : '')}
         ${ctx.limpezaEterica ? `<div class="row" style="gap:8px;"><button class="primary" data-a="limpar" data-v="todas" ${W.etiquetas.length ? '' : 'disabled'} style="flex:1;padding:12px;">⚡ Todas juntas</button><button class="ghost" data-a="limpar" data-v="uma" ${W.etiquetas.length ? '' : 'disabled'} style="flex:1;padding:12px;">1️⃣ Uma a uma</button></div>` : ''}</div>
         <div class="card"><label>Como aplicaste?</label>
         <select data-i="w.via"><option value="eterica" ${W.via === 'eterica' ? 'selected' : ''}>Por via etérica (com o pêndulo)</option><option value="fisica" ${W.via === 'fisica' ? 'selected' : ''}>Etiquetas físicas</option><option value="ambas" ${W.via === 'ambas' ? 'selected' : ''}>Físicas e etéricas</option></select></div>
@@ -337,13 +349,14 @@ export function renderCasos(main, ctx) {
       etiquetas: verif ? [] : W.etiquetas.map(cod => ctx.etiquetas.find(x => x.codigo === cod)).filter(Boolean).map(x => ({ codigo: x.codigo, pt: x.pt })),
       via: verif ? '' : W.via, aplicacao: verif ? '' : (W.aplicacao || ''), leitura: verif ? null : leituraCompacta(W.leitura), resultado, proxima: W.proxima || '', notas: String(W.notas || '').trim()
     };
+    clearTimeout(tRasc); const rascAnt = c.rascunho; c.rascunho = null;
     c.sessoes = lista(c.sessoes).concat([s]);
     c.estado = resultado === 'limpo' ? 'limpo' : 'em-curso';
     c.proxima = s.proxima;
     try {
       await gravarCaso(c);
     } catch (e) {
-      c.sessoes = c.sessoes.slice(0, -1);
+      c.sessoes = c.sessoes.slice(0, -1); c.rascunho = rascAnt;
       console.error(e); ctx.toast('⚠️ Não consegui guardar. Tenta outra vez.', true); return;
     }
     if (c.pacienteId) {
@@ -362,12 +375,14 @@ export function renderCasos(main, ctx) {
     else if (S.view === 'caso') verCaso();
     else verSessao();
     window.scrollTo(0, 0);
+    if (S.view === 'sessao') guardarRascunho();
   }
   function repintarSessao() {
     const el = main.querySelector('#casos-etq'), y = el ? el.scrollTop : 0, sy = window.scrollY;
     verSessao();
     const n = main.querySelector('#casos-etq'); if (n) n.scrollTop = y;
     window.scrollTo(0, sy);
+    agendarRascunho();
   }
   const alternar = (arr, v) => { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); };
 
@@ -414,8 +429,10 @@ export function renderCasos(main, ctx) {
     },
     abrir: b => { S.caso = S.casos.find(c => c.id === b.dataset.id); if (!S.caso) return; S.view = 'caso'; ver(); },
     prep: async b => { const c = S.caso; c.prep = c.prep || {}; c.prep[b.dataset.v] = !c.prep[b.dataset.v]; verCaso(); try { await gravarCaso(c); } catch (e) { ctx.toast('⚠️ Não consegui guardar.', true); } },
-    sessao: b => { S.wiz = novaWiz(b.dataset.v); S.view = 'sessao'; ver(); },
-    sair: async () => { if (await ctx.confirmar('Sair da sessão?', 'O que preencheste nesta sessão ainda não foi guardado.', 'Sair')) { S.wiz = null; S.view = 'caso'; ver(); } },
+    sessao: async b => { if (S.caso.rascunho && !(await ctx.confirmar('Já tens uma sessão em curso', 'Começar outra descarta a que está em curso. Preferes continuar a anterior?', 'Começar nova'))) return; S.wiz = novaWiz(b.dataset.v); S.view = 'sessao'; ver(); },
+    sair: async () => { await guardarRascunho(); S.wiz = null; S.view = 'caso'; ctx.toast('Sessão guardada. Podes continuar quando quiseres ✓'); ver(); },
+    continuar: () => { const c = S.caso; if (!c.rascunho) return; S.wiz = desserializarWiz(c.rascunho); S.view = 'sessao'; ver(); },
+    descartar: async () => { const c = S.caso; if (!(await ctx.confirmar('Descartar a sessão em curso?', 'O que já pesquisaste e limpaste nesta sessão deixa de existir.', 'Descartar'))) return; clearTimeout(tRasc); c.rascunho = null; S.wiz = null; try { await gravarCaso(c); } catch (e) { ctx.toast('⚠️ Não consegui guardar.', true); } verCaso(); },
     causa: b => { alternar(S.wiz.causas, b.dataset.v); repintarSessao(); },
     persiste: b => { alternar(S.wiz.persistem, b.dataset.v); repintarSessao(); },
     etq: b => { alternar(S.wiz.etiquetas, b.dataset.v); repintarSessao(); },
@@ -423,7 +440,11 @@ export function renderCasos(main, ctx) {
     seguinte: () => { if (S.wiz.modo === 'completa' && S.wiz.passo === 1) calcularAuto(false); S.wiz.passo++; ver(); },
     limpar: b => {
       const W = S.wiz, modo = b.dataset.v; if (!W.etiquetas.length) return;
-      ctx.limpezaEterica(modo, W.etiquetas.slice(), S.caso.pacienteId || '', () => { W.aplicacao = modo; W.via = 'eterica'; repintarSessao(); });
+      ctx.limpezaEterica(modo, W.etiquetas.slice(), S.caso.pacienteId || '', {
+        jaFeitas: lista(W.feitas),
+        onProgresso: cods => { W.feitas = cods; agendarRascunho(); },
+        onConcluir: () => { W.aplicacao = modo; W.via = 'eterica'; W.feitas = W.etiquetas.slice(); repintarSessao(); }
+      });
     },
     recalcular: () => { calcularAuto(true); repintarSessao(); },
     anterior: () => { S.wiz.passo--; ver(); },
@@ -452,7 +473,7 @@ export function renderCasos(main, ctx) {
     if (obj === 'n') S.novo[campo] = t.value;
     else if (obj === 'a') { S.ass[campo] = t.value; if (campo === 'texto') S.ass.res = S.ass.res; }
     else if (obj === 'w') {
-      S.wiz[campo] = t.value;
+      S.wiz[campo] = t.value; agendarRascunho();
       if (campo === 'cm' || campo === 'cp' || campo === 'ct') { const W = S.wiz, m = arc(Number(W.cm)), p = arc(Number(W.cp)), q = arc(Number(W.ct)); if (W.cm !== '' && W.cp !== '' && W.ct !== '' && m && p && q) { W.leitura = { momento: m, porTras: p, tendencia: q }; repintarSessao(); } return; }
       if (campo === 'q') { const el = main.querySelector('#casos-etq'); if (el) el.innerHTML = listaEtqHTML(); }
     }
