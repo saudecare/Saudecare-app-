@@ -85,7 +85,7 @@ export function renderCasos(main, ctx) {
   const sortear = () => { const [m, p, t] = ctx.tirarCartas(); return { momento: m, porTras: p, tendencia: t }; };
 
 
-  const testemunhoCaso = c => ({ nome: c.referencia || c.titulo, sub: (TIPOS[c.tipo] || TIPOS.casa).n, foto: '' });
+  const testemunhoCaso = c => (['saude', 'pessoa'].indexOf(c.tipo) >= 0 && c.pacienteId) ? null : ({ nome: c.referencia || c.titulo, sub: (TIPOS[c.tipo] || TIPOS.casa).n, foto: '' });
   const pendente = c => lista(c.sessoes).find(x => x.limpeza === 'pendente');
   /* ── Protocolo de cura da sessão (igual ao do Pêndulo: fases, hebraico, nome em português, porquê) ── */
   function protocoloCura(codigos, auto) {
@@ -105,24 +105,91 @@ export function renderCasos(main, ctx) {
     ${fases.map(f => `<div style="margin-top:10px;padding:10px;border-radius:10px;background:#eef7ee;"><strong>${esc(f.fase)}</strong>${f.porque ? `<div class="muted" style="font-size:.82rem;">${esc(f.porque)}</div>` : ''}
       ${f.itens.map(i => `<div style="margin-top:6px;">${i.heb ? `<span style="font-size:1.15rem;" dir="rtl">${esc(i.heb)}</span> — ` : ''}<strong>${esc(i.codigo)}</strong> ${esc(i.pt)}${i.nota ? `<div class="muted" style="font-size:.8rem;">${esc(i.nota)}</div>` : ''}</div>`).join('')}</div>`).join('')}</details>` : '';
 
+  /* ── Explicações em linguagem simples, adaptadas ao tipo de caso ── */
+  const ALVO = { casa: 'a sua casa', terreno: 'o terreno', dinheiro: 'a sua situação financeira', negocio: 'o negócio', tribunal: 'o processo', mota: 'o veículo', objeto: 'o objeto', amor: 'a relação', saude: 'a sua saúde', pessoa: 'si' };
+  const EFEITO = {
+    casa: 'sensação de peso ou cansaço ao estar em casa, sono agitado, discussões sem razão e aparelhos ou coisas que avariam',
+    terreno: 'dificuldade em vender, usar ou construir, e uma sensação pesada no local',
+    dinheiro: 'dinheiro que não rende, gastos inesperados e dificuldade em avançar',
+    negocio: 'poucos clientes, vendas paradas e a sensação de esforço sem resultado',
+    tribunal: 'atrasos, confusão e muito desgaste emocional durante o processo',
+    mota: 'mau pressentimento, avarias repetidas ou menos proteção ao conduzir',
+    objeto: 'uma sensação pesada em quem o usa ou o guarda',
+    amor: 'desentendimentos, distância e dificuldade em abrir o coração',
+    saude: 'cansaço, sono mau e menos vitalidade',
+    pessoa: 'cansaço, peso emocional e menos vitalidade'
+  };
+  const RAZOES = [
+    [/miasma/, A => `Uma espécie de “poeira” energética que se vai acumulando com o tempo, por doenças, discussões ou ambientes pesados. Estava presente em ${A} e tira leveza e vitalidade.`],
+    [/olho gordo|inveja/, A => `Energia de inveja ou de olhar mal-intencionado, muitas vezes sem que a pessoa o faça de propósito, dirigida a ${A}. Funciona como um peso que atrapalha o que antes corria bem.`],
+    [/magia|trabalho|amarra|trabalhado ou carregado/, A => `Foi detetada uma intervenção energética feita de propósito (um “trabalho”) ligada a ${A}. Foi identificada e incluída na limpeza para ser desfeita.`],
+    [/cordo|ligacao a uma pessoa/, A => `Ligações energéticas invisíveis que continuam a prender ${A} a pessoas, situações ou lugares do passado. Prendem energia e dificultam seguir em frente.`],
+    [/cargas|memorias|conflito|raiva/, A => `Emoções e memórias antigas (acontecimentos, discussões, perdas, quem lá esteve antes) que ficaram “gravadas” em ${A}. Mantêm o peso do passado no presente.`],
+    [/geopatia/, A => `Alterações naturais do solo, como correntes de água subterrâneas, falhas ou cruzamentos de linhas de energia, que com o tempo cansam e desequilibram quem está em contacto com ${A}.`],
+    [/eletromagn/, A => `Excesso de campos criados por aparelhos elétricos, wi-fi e quadro elétrico, que perturbam o descanso e a concentração junto de ${A}.`],
+    [/presenca|entidade|obsessor|guardia/, A => `Presenças de energia que não pertencem a ${A} e que ficam “agarradas”, pesando no ambiente ou nos pensamentos. Foram identificadas para serem encaminhadas para a luz.`],
+    [/larva/, A => `Uma “larva astral” é uma forma de energia densa que se alimenta da vitalidade e se pode fixar ao campo de energia de ${A}, causando cansaço e sensação de peso. Foi identificada para ser retirada.`],
+    [/chakra/, A => `Os chakras são centros de energia do corpo. Quando estão bloqueados ou em desarmonia podem sentir-se cansaço, ansiedade ou desequilíbrio ligados a essa zona. Foi indicado o que precisa de ser reequilibrado em ${A}.`],
+    [/crenca|padro|autossabot|escassez|medo|ansiedade|culpa/, A => `Medos, culpas e crenças antigas (como “não vai ser possível”) que funcionam por dentro e repetem os mesmos resultados em ${A}. Não são uma falha sua: são memórias que se podem libertar.`],
+    [/divida|pressao/, A => `Pesos ligados a dívidas, por vezes herdadas, que prendem energia e deixam ${A} sempre “a recuperar”.`],
+    [/fugas|perdas e gastos/, A => `Pontos por onde a energia “escapa” sem motivo, em perdas e gastos repetidos, deixando ${A} sem folga para crescer.`],
+    [/ferida|ciume|magoa|rancor|coracao/, A => `Dores e mágoas emocionais que ficaram guardadas e fecham o coração, fazendo repetir as mesmas situações em ${A}.`],
+    [/vitalidade|cansaco/, A => `Baixa da energia vital: o corpo e a mente ficam com menos “combustível” para ${A === 'si' ? 'o dia a dia' : 'enfrentar o que a situação pede'}.`],
+    [/protecao/, A => `A proteção energética, que funciona como um escudo, estava enfraquecida em ${A}, deixando passar mais influências do exterior.`],
+    [/acidente/, A => `Energia de acidentes ou perdas do passado que deixou marcas em ${A}.`],
+    [/origem desconhecida/, A => `Não se sabe de onde vem ${A}, por isso fez-se uma limpeza geral para o deixar “a zero”.`],
+    [/negatividade/, A => `Energia negativa absorvida do ambiente ou de quem esteve perto de ${A}.`],
+    [/confusao|clareza/, A => `Confusão e falta de clareza que dificultam perceber os passos certos em ${A}.`],
+    [/bloqueio|parados|atraso|entrada de energia|clientes|vendas/, A => `Um bloqueio energético que impede que as coisas fluam em ${A}: avançam devagar, ficam paradas ou não chegam ao fim.`]
+  ];
+  const gram = t => t.replace(/\bem a /g, 'na ').replace(/\bem o /g, 'no ').replace(/\ba a /g, 'à ').replace(/\ba o /g, 'ao ').replace(/\bde a /g, 'da ').replace(/\bde o /g, 'do ');
+  const nomeAlvo = c => c.referencia || (['saude', 'pessoa', 'amor'].indexOf(c.tipo) >= 0 && c.pacienteNome ? c.pacienteNome : c.titulo);
+  function explicarCausa(causa, c) {
+    const tipo = c.tipo in ALVO ? c.tipo : 'casa', A = ALVO[tipo], t = norm(causa);
+    const r = RAZOES.find(x => x[0].test(t));
+    const base = gram(r ? r[1](A) : `Foi detetado um bloqueio ligado a “${causa}” em ${A}, e foi incluído no trabalho de limpeza.`);
+    const ref = c.referencia || (tipo === 'saude' || tipo === 'pessoa' ? '' : c.titulo);
+    return `${base}\n${ref ? `Neste caso (${ref})` : 'No seu caso'}, pode notar-se sobretudo: ${EFEITO[tipo]}.`;
+  }
+  const limparNota = n => String(n || '').replace(/^Nome\s*\d+\s*[,:–-]?\s*/i, '').replace(/^./, m => m.toUpperCase());
+
   /* ── Relatório ilustrado para o paciente (para link do portal / PDF), como no Pêndulo ── */
   function relatorioSessao(c, s) {
     if (!ctx.relatorio) return '';
-    const t = TIPOS[c.tipo] || TIPOS.casa, nome = String(c.pacienteNome || '').split(/\s+/)[0];
-    const verif = s.modo === 'verificacao', blocos = [];
-    blocos.push({ tipo: 'texto', icone: '👋', titulo: nome ? `Olá, ${nome}` : 'Olá', paras: [verif ? `Fiz a verificação do trabalho sobre “${c.objetivo || c.titulo}”, para ver como está tudo.` : `Aqui está o resumo do trabalho energético sobre “${c.objetivo || c.titulo}”.`] });
-    const det = lista(s.causas);
-    if (det.length) blocos.push({ tipo: 'lista', icone: '🔎', titulo: verif ? 'O que foi verificado' : 'O que foi encontrado', marca: '•', itens: det });
-    const cura = lista(s.protocoloCura);
-    if (cura.length) blocos.push({ tipo: 'linha', icone: '🧹', titulo: s.limpeza === 'pendente' ? 'Limpeza prevista' : 'O que foi limpo', passos: cura.map(f => ({ rotulo: f.fase.replace(/^\d+\.\s*/, ''), texto: f.itens.map(i => i.pt).join(' · ') })) });
-    else if (lista(s.etiquetas).length) blocos.push({ tipo: 'lista', icone: '🏷️', titulo: 'Etiquetas trabalhadas', marca: '•', itens: s.etiquetas.map(x => x.pt) });
+    const tipo = c.tipo in ALVO ? c.tipo : 'casa', t = TIPOS[tipo], nome = String(c.pacienteNome || '').split(/\s+/)[0];
+    const verif = s.modo === 'verificacao', pend = s.limpeza === 'pendente', blocos = [];
+    const alvo = nomeAlvo(c);
+    const persist = lista(s.persistem), det = lista(s.causas);
+    const intro = verif
+      ? [`Passados alguns dias, voltei a verificar com o pêndulo ${ALVO[tipo]}${c.referencia ? ' (' + alvo + ')' : ''}, para confirmar se o que tinha sido encontrado e limpo continua resolvido.`]
+      : [`Fiz a pesquisa com o pêndulo sobre ${ALVO[tipo]}${c.referencia ? ' (' + alvo + ')' : ''}, a partir do que me pediu: “${c.objetivo || c.titulo}”.`,
+         'A pesquisa serve para descobrir, uma a uma, as influências que estão a pesar e que muitas vezes não se veem. Abaixo explico cada uma, o que costuma causar e o que foi feito para a limpar.'];
+    blocos.push({ tipo: 'texto', icone: '👋', titulo: nome ? `Olá, ${nome}` : 'Olá', paras: intro });
+    if (s.bovisIni && s.bovisFin) blocos.push({ tipo: 'texto', icone: '📈', titulo: 'Como estava a energia', paras: [`Medi o nível de energia (escala Bovis) antes e depois do trabalho: passou de ${s.bovisIni} para ${s.bovisFin}. Quanto mais alto, mais vitalidade e leveza.`] });
+    else if (s.bovisIni) blocos.push({ tipo: 'texto', icone: '📈', titulo: 'Nível de energia', paras: [`O nível de energia medido (escala Bovis) foi ${s.bovisIni}. Quanto mais alto, mais vitalidade e leveza.`] });
+    if (verif) {
+      const resolv = det.filter(x => persist.indexOf(x) < 0);
+      if (resolv.length) blocos.push({ tipo: 'lista', icone: '✅', titulo: 'O que já ficou resolvido', marca: '', itens: resolv.map(x => `✅ ${x}\nJá não se deteta. O trabalho de limpeza resultou neste ponto.`) });
+      if (persist.length) blocos.push({ tipo: 'lista', icone: '🟡', titulo: 'O que ainda precisa de atenção', marca: '', itens: persist.map(x => `🟡 ${x}\n${explicarCausa(x, c)}\nEste ponto ainda aparece, por isso será trabalhado de novo.`) });
+      if (lista(s.novas).length) blocos.push({ tipo: 'lista', icone: '🆕', titulo: 'Surgiu de novo', marca: '', itens: s.novas.map(x => `🆕 ${x}\n${explicarCausa(x, c)}`) });
+    } else {
+      if (det.length) blocos.push({ tipo: 'lista', icone: '🔎', titulo: 'O que foi encontrado, explicado', marca: '', itens: det.map(x => `🔎 ${x}\n${explicarCausa(x, c)}`) });
+      else blocos.push({ tipo: 'texto', icone: '🔎', titulo: 'O que foi encontrado', paras: ['Não foi detetada nenhuma influência relevante nesta pesquisa.'] });
+      const cura = lista(s.protocoloCura);
+      if (cura.length) {
+        const how = s.aplicacao === 'todas' ? 'todas ao mesmo tempo, com o seu nome/morada/identificação ao centro' : s.aplicacao === 'uma' ? 'uma de cada vez, com a identificação sempre presente' : 'com o pêndulo';
+        blocos.push({ tipo: 'texto', icone: '🧹', titulo: pend ? 'Como vai ser feita a limpeza' : 'Como foi feita a limpeza', paras: [pend ? `Já está preparado o protocolo de limpeza para ${alvo}. Cada etiqueta é como uma “chave” dirigida a um tema concreto; será aplicada com o pêndulo, tendo “${alvo}” como ponto de ligação (testemunho).` : `Cada etiqueta é como uma “chave” de limpeza dirigida a um tema concreto. Foram aplicadas ${how}, tendo “${alvo}” como ponto de ligação (testemunho), para que a energia trabalhe exatamente em ${ALVO[tipo]}.`] });
+        cura.forEach(f => blocos.push({ tipo: 'lista', icone: '🌿', titulo: f.fase.replace(/^\d+\.\s*/, ''), marca: '', itens: [f.porque ? `Para quê: ${f.porque.charAt(0).toUpperCase() + f.porque.slice(1)}.` : null].concat(f.itens.map(i => `• ${i.pt}${i.nota ? ' — ' + limparNota(i.nota) : ''}`)).filter(Boolean) }));
+      } else if (lista(s.etiquetas).length) blocos.push({ tipo: 'lista', icone: '🏷️', titulo: 'Etiquetas trabalhadas', marca: '•', itens: s.etiquetas.map(x => x.pt) });
+    }
     const lc = leituraObj(s.leitura);
     if (lc && ctx.sintetizarLeitura) blocos.push({ tipo: 'texto', icone: '🌙', titulo: 'Leitura do momento', paras: [ctx.sintetizarLeitura(nome || c.titulo, lc, false)] });
-    const res = { limpo: 'Neste momento o pêndulo não deteta nada por limpar. 🌿', parcial: 'Ficou limpo grande parte do que foi encontrado; há ainda pontos a acompanhar.', por_limpar: 'Ainda há pontos por limpar; vamos continuar nas próximas sessões.' }[s.resultado] || '';
+    const efetivo = persist.length && s.resultado === 'limpo' ? 'parcial' : s.resultado;
+    const res = { limpo: `Neste momento nada ficou por limpar em ${ALVO[tipo]}. 🌿`, parcial: 'Ficou limpo grande parte do que foi encontrado; há ainda pontos a acompanhar.', por_limpar: pend ? 'A pesquisa está concluída. A limpeza será aplicada na próxima sessão.' : 'Ainda há pontos por limpar; vamos continuar nas próximas sessões.' }[efetivo] || '';
     const seg = [res];
-    if (lista(s.persistem).length) seg.push('Ainda a acompanhar: ' + s.persistem.join('; ') + '.');
-    if (s.proxima) seg.push('Próxima verificação: ' + dataPT(s.proxima) + '.');
-    blocos.push({ tipo: 'resumo', icone: '✅', titulo: 'Nos dias seguintes', paras: seg.filter(Boolean) });
+    if (!verif && !pend) seg.push('Nos próximos dias é normal sentir mais sono, emoção ou cansaço leve, e também mais leveza. É o campo a assentar. Beba água e descanse.');
+    if (s.proxima) seg.push(`Próxima verificação: ${dataPT(s.proxima)}, para confirmar que tudo se mantém limpo.`);
+    blocos.push({ tipo: 'resumo', icone: '✅', titulo: 'Em resumo', paras: seg.filter(Boolean) });
     const d = c.protocolo ? dicasPaciente(c.protocolo) : [];
     if (d.length) blocos.push({ tipo: 'lista', icone: '🌿', titulo: 'Em casa, sugere-se', marca: '•', itens: d });
     if (c.protocolo && lista(c.protocolo.medico).length) blocos.push({ tipo: 'lista', icone: '⚕️', titulo: 'Cuidados com a saúde', marca: '•', itens: c.protocolo.medico });
@@ -254,7 +321,7 @@ export function renderCasos(main, ctx) {
         ${c.pacienteId ? `<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="ghost" data-a="planoPac">📲 Guardar plano na ficha do paciente</button>${ctx.enviarPortal ? '<button class="ghost" data-a="enviarPac">📤 Enviar link do portal</button>' : ''}</div>` : '<p class="muted">Liga o caso a um paciente para lhe poderes enviar o plano.</p>'}</div></details>` : ''}
       <div class="card"><h3 style="margin:0 0 4px;">🧭 1. Preparação</h3>
         ${P('permissao', 'Perguntei ao pêndulo se posso trabalhar neste caso')}${P('objetivo', 'O objetivo está definido e a identificação do alvo está à mão')}${P('elevado', 'Pedi o que for mais elevado e justo, sem interferir na vontade de terceiros')}</div>
-      ${(() => { const p = pendente(c); if (!p || c.estado === 'fechado') return ''; const f = lista(p.feitas).length; return `<div class="card" style="border:2px solid #8a5a12;"><h3 style="margin:0 0 4px;">🧹 Limpeza por aplicar</h3><p class="muted" style="margin:0 0 6px;">Pesquisa de ${dataPT(p.data)} · ${lista(p.etiquetas).length} etiqueta(s) escolhidas automaticamente${f ? ' · ' + f + ' já aplicadas' : ''}. O protocolo está pronto.</p>${protocoloCuraHtml(p.protocoloCura, false)}${ctx.limpezaEterica ? `<div class="row" style="gap:8px;margin-top:8px;"><button class="primary" data-a="limparPend" data-v="todas" style="flex:1;padding:12px;">⚡ Todas juntas</button><button class="ghost" data-a="limparPend" data-v="uma" style="flex:1;padding:12px;">1️⃣ Uma a uma</button></div><p class="muted" style="font-size:.82rem;margin:6px 0 0;">O testemunho (${esc(testemunhoCaso(c).nome)}) fica sempre à vista.</p>` : ''}<button class="ghost" data-a="limpezaFeita" style="width:100%;margin-top:8px;">✔ Já apliquei por outra via (físicas)</button></div>`; })()}
+      ${(() => { const p = pendente(c); if (!p || c.estado === 'fechado') return ''; const f = lista(p.feitas).length; return `<div class="card" style="border:2px solid #8a5a12;"><h3 style="margin:0 0 4px;">🧹 Limpeza por aplicar</h3><p class="muted" style="margin:0 0 6px;">Pesquisa de ${dataPT(p.data)} · ${lista(p.etiquetas).length} etiqueta(s) escolhidas automaticamente${f ? ' · ' + f + ' já aplicadas' : ''}. O protocolo está pronto.</p>${protocoloCuraHtml(p.protocoloCura, false)}${ctx.limpezaEterica ? `<div class="row" style="gap:8px;margin-top:8px;"><button class="primary" data-a="limparPend" data-v="todas" style="flex:1;padding:12px;">⚡ Todas juntas</button><button class="ghost" data-a="limparPend" data-v="uma" style="flex:1;padding:12px;">1️⃣ Uma a uma</button></div><p class="muted" style="font-size:.82rem;margin:6px 0 0;">O testemunho (${esc((testemunhoCaso(c) || { nome: c.pacienteNome || 'a pessoa' }).nome)}) fica sempre à vista.</p>` : ''}<button class="ghost" data-a="limpezaFeita" style="width:100%;margin-top:8px;">✔ Já apliquei por outra via (físicas)</button></div>`; })()}
       ${c.rascunho ? `<div class="card" style="border:2px solid #d9822b;"><h3 style="margin:0 0 4px;">📝 Sessão em curso</h3><p class="muted" style="margin:0 0 8px;">${c.rascunho.modo === 'verificacao' ? 'Verificação' : 'Sessão completa'} · ${c.rascunho.modo === 'verificacao' ? '' : 'passo ' + c.rascunho.passo + ' de 3 · '}${lista(c.rascunho.causas).length} ponto(s) detetado(s) · ${lista(c.rascunho.etiquetas).length} etiqueta(s). Está tudo guardado.</p><div class="row" style="gap:8px;"><button class="primary" data-a="continuar" style="flex:1;padding:12px;">▶️ Continuar</button><button class="ghost" data-a="descartar">🗑️ Descartar</button></div></div>` : ''}
       ${c.estado === 'fechado' ? `<button class="ghost" data-a="reabrir" style="width:100%;margin-bottom:8px;">↩️ Reabrir caso</button>` : `
       <button class="primary" data-a="sessao" data-v="completa" style="width:100%;padding:14px;">➕ Nova sessão<br><small>Triagem → Limpeza → Verificação</small></button>
