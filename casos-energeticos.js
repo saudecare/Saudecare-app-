@@ -68,10 +68,19 @@ export function renderCasos(main, ctx) {
     if (resolvidas(s).length) L.push('Resolvidas: ' + resolvidas(s).join('; '));
     if (lista(s.novas).length) L.push('Novas: ' + s.novas.join('; '));
     if (lista(s.etiquetas).length) L.push('Etiquetas (' + (s.via === 'fisica' ? 'físicas' : s.via === 'ambas' ? 'físicas e etéricas' : 'etéricas') + '): ' + s.etiquetas.map(x => x.codigo + ' ' + x.pt).join('; '));
+    { const lc = leituraObj(s.leitura); if (lc && ctx.sintetizarLeitura) L.push('Leitura complementar: ' + ctx.sintetizarLeitura(nomeLeitura(caso), lc, true)); }
     L.push('Resultado: ' + ({ limpo: 'limpo', parcial: 'parcial', por_limpar: 'por limpar' }[s.resultado] || '—') + (s.proxima ? ' · próxima verificação ' + dataPT(s.proxima) : ''));
     if (s.notas) L.push('Notas: ' + s.notas);
     return L.join('\n');
   };
+
+  /* ── Leitura complementar (3 cartas: momento, o que está por trás, tendência) ── */
+  const arc = n => lista(ctx.arcanos).find(x => x.n === n);
+  const leituraObj = l => { if (!l) return null; const m = arc(l.m), p = arc(l.p), t = arc(l.t); return m && p && t ? { momento: m, porTras: p, tendencia: t } : null; };
+  const leituraCompacta = lc => lc ? { m: lc.momento.n, p: lc.porTras.n, t: lc.tendencia.n } : null;
+  const nomeLeitura = c => String(c.pacienteNome || '').split(/\s+/)[0] || c.titulo;
+  const ultimaLeitura = c => { const ss = lista(c.sessoes).filter(x => x.leitura); return ss.length ? leituraObj(ss[ss.length - 1].leitura) : null; };
+  const sortear = () => { const [m, p, t] = ctx.tirarCartas(); return { momento: m, porTras: p, tendencia: t }; };
 
   /* ── Plano para o paciente (linguagem simples, assinado em nome do terapeuta) ── */
   const dicasPaciente = p => lista(p.dicas).filter(d => !/^(Trabalho energético de apoio|Pedir sempre)/.test(d));
@@ -82,6 +91,7 @@ export function renderCasos(main, ctx) {
     if (lista(p.temas).length) L.push('Áreas trabalhadas: ' + p.temas.join(', ') + '.');
     const d = dicasPaciente(p); if (d.length) L.push('Em casa, sugere-se:\n' + d.map(x => '• ' + x).join('\n'));
     if (lista(p.medico).length) L.push('Cuidados com a saúde:\n' + p.medico.map(x => '• ' + x).join('\n'));
+    const lc = ultimaLeitura(c); if (lc && ctx.sintetizarLeitura) L.push('Leitura do momento: ' + ctx.sintetizarLeitura(nome || c.titulo, lc, false));
     L.push('Próximos passos: uma primeira sessão de limpeza, uma verificação passados cerca de 7 dias e, depois, as sessões que forem necessárias.');
     L.push('Este é um trabalho energético e não substitui o acompanhamento médico.');
     L.push('Ricardo Correia, Hikari Fafe');
@@ -138,6 +148,7 @@ export function renderCasos(main, ctx) {
       <div style="margin:8px 0;">${EXEMPLOS.map((x, i) => `<span data-a="exemplo" data-v="${i}" style="display:inline-block;margin:3px 4px 3px 0;padding:5px 10px;border-radius:99px;background:#eef0f7;font-size:.8rem;cursor:pointer;">${esc(x)}</span>`).join('')}</div>
       <label style="display:block;margin-top:6px;">Para qual paciente? (opcional)</label>
       <select data-i="a.pacienteId"><option value="">— sem paciente —</option>${(S.pacs || []).map(p => `<option value="${esc(p.id)}" ${A.pacienteId === p.id ? 'selected' : ''}>${esc(p.fullName)}</option>`).join('')}</select>
+      <div data-a="cartasAss" style="display:flex;gap:10px;align-items:center;padding:8px;margin-top:8px;border-radius:10px;cursor:pointer;background:${A.cartas ? '#eef7ee' : '#f7f7f5'};"><span style="font-size:1.3rem;">${A.cartas ? '☑' : '⬜'}</span><span style="flex:1;font-size:.9rem;">🎴 Incluir uma leitura complementar automática (3 cartas)</span></div>
       <button class="primary" data-a="gerar" style="width:100%;padding:14px;margin-top:10px;">✨ Gerar protocolo</button></div>`;
     if (R && R.vazio) h += '<div class="card"><p class="muted">Escreve um pouco mais para eu perceber o que se pretende.</p></div>';
     else if (R) {
@@ -208,6 +219,7 @@ export function renderCasos(main, ctx) {
         ${resolvidas(s).length ? `<div style="margin-top:4px;"><span class="muted">Resolvidas:</span><br>${chips(resolvidas(s), '#256428', '#e6f4e7')}</div>` : ''}
         ${lista(s.novas).length ? `<div style="margin-top:4px;"><span class="muted">Novas:</span><br>${chips(s.novas, '#8a5a12', '#fdf1de')}</div>` : ''}
         ${lista(s.etiquetas).length ? `<div class="muted" style="margin-top:4px;">🏷️ ${s.etiquetas.map(x => esc(x.codigo)).join(' · ')} (${s.via === 'fisica' ? 'físicas' : s.via === 'ambas' ? 'físicas e etéricas' : 'etéricas'})</div>` : ''}
+        ${leituraObj(s.leitura) ? `<div class="muted" style="margin-top:4px;font-size:.88rem;">🎴 ${esc(ctx.sintetizarLeitura(nomeLeitura(c), leituraObj(s.leitura), true))}</div>` : ''}
         ${s.notas ? `<div style="margin-top:4px;font-size:.9rem;">📝 ${esc(s.notas)}</div>` : ''}
         ${s.proxima ? `<div class="muted" style="margin-top:4px;">Próxima verificação: ${dataPT(s.proxima)}</div>` : ''}</div>`).join('') : '<div class="card"><p class="muted">Ainda não há sessões. Faz a preparação e toca em “Nova sessão”.</p></div>'}
       <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px;">${c.estado !== 'fechado' ? '<button class="ghost" data-a="fechar">🔒 Fechar caso</button>' : ''}<button class="ghost" data-a="apagar" style="color:#b94a48;">🗑️ Apagar caso</button></div>`;
@@ -216,7 +228,7 @@ export function renderCasos(main, ctx) {
   /* ── Sessão ── */
   function novaWiz(modo) {
     const c = S.caso, ss = lista(c.sessoes), ult = ss[ss.length - 1];
-    const W = { modo, passo: 1, data: hoje(), bovisIni: '', bovisFin: '', causas: [], outras: '', etiquetas: [], via: 'eterica', q: '', persistem: [], novasTxt: '', resultado: '', manual: false, notas: '', proxima: somaDias(hoje(), DIAS_VERIF) };
+    const W = { modo, passo: 1, data: hoje(), bovisIni: '', bovisFin: '', causas: [], outras: '', etiquetas: [], via: 'eterica', q: '', persistem: [], novasTxt: '', resultado: '', manual: false, leitura: null, modoCartas: 'auto', cm: '', cp: '', ct: '', notas: '', proxima: somaDias(hoje(), DIAS_VERIF) };
     if (modo === 'verificacao' && ult) W.base = lista(ult.persistem).length ? ult.persistem.slice() : lista(ult.causas).slice();
     return W;
   }
@@ -255,6 +267,11 @@ export function renderCasos(main, ctx) {
         <div class="card">${data}<label style="margin-top:10px;display:block;">Bovis inicial</label><input data-i="w.bovisIni" value="${esc(W.bovisIni)}" inputmode="decimal" placeholder="Ex.: 6500"></div>
         <div class="card"><h3 style="margin:0 0 4px;">Pesquisa numerada · ${lista(c.pesquisa).length ? '✨ protocolo do caso' : t.e + ' ' + esc(t.n)}</h3><p class="muted" style="margin:0 0 6px;">Mentaliza cada número e marca o que o pêndulo deteta.</p>${toggles(todas, W.causas, 'causa')}
         <label style="margin-top:10px;display:block;">Outras causas detetadas (separa por vírgulas)</label><input data-i="w.outras" value="${esc(W.outras)}"></div>
+        <div class="card"><h3 style="margin:0 0 4px;">🎴 Leitura complementar (opcional)</h3><p class="muted" style="margin:0 0 8px;">Um complemento sobre o momento. Não faz parte do diagnóstico do pêndulo.</p>
+        <div class="row" style="gap:6px;"><button data-a="modoCartas" data-v="auto" class="${W.modoCartas === 'auto' ? 'primary' : 'ghost'}" style="flex:1;">🎴 Automática</button><button data-a="modoCartas" data-v="manual" class="${W.modoCartas === 'manual' ? 'primary' : 'ghost'}" style="flex:1;">✋ Baralho físico</button></div>
+        ${W.leitura ? `<p style="margin:10px 0 2px;"><strong>Momento atual:</strong> ${W.leitura.momento.n} — ${esc(W.leitura.momento.nome)}</p><p style="margin:2px 0;"><strong>Por trás disto:</strong> ${W.leitura.porTras.n} — ${esc(W.leitura.porTras.nome)}</p><p style="margin:2px 0;"><strong>Tendência:</strong> ${W.leitura.tendencia.n} — ${esc(W.leitura.tendencia.nome)}</p><p class="muted" style="margin:6px 0 0;font-size:.88rem;">${esc(ctx.sintetizarLeitura(nomeLeitura(c), W.leitura, true))}</p>` : '<p class="muted" style="margin:10px 0 0;">— por preencher —</p>'}
+        ${W.modoCartas === 'auto' ? `<button class="ghost" data-a="tirar3" style="width:100%;margin-top:10px;">🎴 ${W.leitura ? 'Tirar outra vez' : 'Tirar as 3 cartas'}</button>` : ['cm|Momento atual', 'cp|Por trás disto', 'ct|Tendência'].map(x => { const [k, tt] = x.split('|'); return `<label style="display:block;margin-top:8px;">${tt}</label><select data-i="w.${k}"><option value="">—</option>${lista(ctx.arcanos).map(a => `<option value="${a.n}" ${String(W[k]) === String(a.n) ? 'selected' : ''}>${a.n} — ${esc(a.nome)}</option>`).join('')}</select>`; }).join('')}
+        ${W.leitura ? '<button class="ghost" data-a="limparCartas" style="margin-top:8px;">Limpar leitura</button>' : ''}</div>
         <button class="primary" data-a="seguinte" style="width:100%;padding:14px;">Seguinte → Limpeza</button>`;
     } else if (W.passo === 2) {
       const sel = W.etiquetas.map(cod => ctx.etiquetas.find(x => x.codigo === cod)).filter(Boolean);
@@ -299,7 +316,7 @@ export function renderCasos(main, ctx) {
       bovisFin: verif ? '' : String(W.bovisFin || '').trim(),
       causas: verif ? lista(W.base) : causasWiz(), persistem: W.persistem.slice(), novas,
       etiquetas: verif ? [] : W.etiquetas.map(cod => ctx.etiquetas.find(x => x.codigo === cod)).filter(Boolean).map(x => ({ codigo: x.codigo, pt: x.pt })),
-      via: verif ? '' : W.via, resultado, proxima: W.proxima || '', notas: String(W.notas || '').trim()
+      via: verif ? '' : W.via, leitura: verif ? null : leituraCompacta(W.leitura), resultado, proxima: W.proxima || '', notas: String(W.notas || '').trim()
     };
     c.sessoes = lista(c.sessoes).concat([s]);
     c.estado = resultado === 'limpo' ? 'limpo' : 'em-curso';
@@ -338,7 +355,11 @@ export function renderCasos(main, ctx) {
   const acoes = {
     lista: () => { S.view = 'lista'; S.caso = null; ver(); },
     fEstado: b => { S.fEstado = b.dataset.v; verLista(); },
-    assistente: async () => { if (!S.pacs) { try { S.pacs = await ctx.pacientes(); } catch (e) { S.pacs = []; } } S.ass = S.ass || { texto: '', pacienteId: '', res: null, tipo: 'pessoa', titulo: '' }; S.view = 'assistente'; ver(); },
+    assistente: async () => { if (!S.pacs) { try { S.pacs = await ctx.pacientes(); } catch (e) { S.pacs = []; } } S.ass = S.ass || { texto: '', pacienteId: '', res: null, tipo: 'pessoa', titulo: '', cartas: true }; S.view = 'assistente'; ver(); },
+    cartasAss: () => { S.ass.cartas = !S.ass.cartas; verAssistente(); },
+    modoCartas: b => { S.wiz.modoCartas = b.dataset.v; repintarSessao(); },
+    tirar3: () => { S.wiz.leitura = sortear(); repintarSessao(); },
+    limparCartas: () => { const W = S.wiz; W.leitura = null; W.cm = W.cp = W.ct = ''; repintarSessao(); },
     exemplo: b => { S.ass.texto = EXEMPLOS[Number(b.dataset.v)] || ''; S.ass.res = null; verAssistente(); },
     gerar: () => {
       const A = S.ass; A.res = analisar(A.texto, ctx.etiquetas);
@@ -352,7 +373,8 @@ export function renderCasos(main, ctx) {
         pesquisa: R.pesquisa.slice(), protocolo: { temas: R.temas.map(x => x.nome), chakras: R.chakras.slice(), sugeridas: R.sugeridas.slice(), medico: R.medico.slice(), dicas: R.dicas.slice(), plano: R.plano } };
       try { await gravarCaso(caso); } catch (e) { console.error(e); ctx.toast('⚠️ Não consegui criar o caso.', true); return; }
       S.caso = caso; S.ass = null; ctx.toast('Caso criado ✓');
-      if (b.dataset.v === 'sessao') { S.wiz = novaWiz('completa'); S.view = 'sessao'; } else S.view = 'caso';
+      const querCartas = A.cartas;
+      if (b.dataset.v === 'sessao') { S.wiz = novaWiz('completa'); if (querCartas && ctx.tirarCartas) S.wiz.leitura = sortear(); S.view = 'sessao'; } else S.view = 'caso';
       ver();
     },
     planoPac: async () => {
@@ -407,6 +429,7 @@ export function renderCasos(main, ctx) {
     else if (obj === 'a') { S.ass[campo] = t.value; if (campo === 'texto') S.ass.res = S.ass.res; }
     else if (obj === 'w') {
       S.wiz[campo] = t.value;
+      if (campo === 'cm' || campo === 'cp' || campo === 'ct') { const W = S.wiz, m = arc(Number(W.cm)), p = arc(Number(W.cp)), q = arc(Number(W.ct)); if (W.cm !== '' && W.cp !== '' && W.ct !== '' && m && p && q) { W.leitura = { momento: m, porTras: p, tendencia: q }; repintarSessao(); } return; }
       if (campo === 'q') { const el = main.querySelector('#casos-etq'); if (el) el.innerHTML = listaEtqHTML(); }
     }
   };
