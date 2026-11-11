@@ -692,7 +692,14 @@ export function renderCasos(main, ctx) {
   };
 
   main.innerHTML = '<p class="muted">A carregar…</p>';
-  carregar().then(() => ver()).catch(e => {
+  carregar().then(async () => {
+    if (typeof window !== 'undefined' && window.__casosAbrirAssistente) {
+      window.__casosAbrirAssistente = false;
+      if (!S.pacs) { try { S.pacs = await ctx.pacientes(); } catch (e) { S.pacs = []; } }
+      S.ass = { texto: '', pacienteId: '', res: null, tipo: 'pessoa', titulo: '', cartas: true }; S.view = 'assistente';
+    }
+    ver();
+  }).catch(e => {
     console.error(e);
     main.innerHTML = '<div class="card"><h2>🏠 Casos e Alvos</h2><p class="muted">Não consegui abrir: ' + esc(e && e.message ? e.message : String(e)) + '</p></div>';
   });

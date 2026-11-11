@@ -395,7 +395,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-11-11';
+const APP_VERSION = '2026-11-11-12';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12321,7 +12321,17 @@ function triagemCartaoContinuar(){
       <button class="ghost" onclick="window.__triagemSetLimpeza('cancelada')">❌ Cancelar limpeza</button>
     </div></div>`;
 }
+/* ✨ Protocolo por texto: abre o assistente de Casos e Alvos (escreve o que pretendes e sai a pesquisa, as etiquetas e a limpeza) a partir de qualquer ferramenta do método */
+window.abrirProtocoloPorTexto = function(){ window.__casosAbrirAssistente = true; renderView('casosEnergeticos'); };
+const BTN_PROTOCOLO_TEXTO = '<button id="btn-prot-texto" class="ghost" onclick="abrirProtocoloPorTexto()" style="margin:0 0 8px 6px;">✨ Criar protocolo por texto</button>';
 function renderTriagemPasso(main){
+  const m = main || document.getElementById('mainView');
+  const r = renderTriagemPasso0(main);
+  const poe = () => { if (tenantId === 'hikari-terapias' && m && !m.querySelector('#btn-prot-texto')) m.insertAdjacentHTML('afterbegin', BTN_PROTOCOLO_TEXTO); };
+  poe(); Promise.resolve(r).then(poe).catch(() => {});
+  return r;
+}
+function renderTriagemPasso0(main){
   const m = main || document.getElementById('mainView');
   if (__triagem.passo === 1 && triagemPodePularData()){ __triagem.passo = (__triagem._ultimo > 1) ? 0 : 2; }
   __triagem._ultimo = __triagem.passo;
@@ -20561,6 +20571,7 @@ function renderMetodoHikari(main){
   const cartao = (v, emoji, titulo, texto, botao) => `<div class="card" style="margin-bottom:10px;"><div style="display:flex;gap:12px;align-items:flex-start;"><div style="font-size:2rem;line-height:1;">${emoji}</div><div style="flex:1;"><strong style="font-size:1.05rem;">${titulo}</strong><div class="muted" style="margin:4px 0 10px;font-size:.9rem;">${texto}</div><button class="primary" onclick="renderView('${v}')">${botao}</button></div></div></div>`;
   main.innerHTML = `<h2 style="margin:0 0 4px;">🔮 Pêndulo + Apometria</h2>
     <p class="muted" style="margin:0 0 12px;">O teu método completo, num só sítio: a pesquisa com o pêndulo, o procedimento da apometria e o atendimento guiado, em sintonia (com os 🎯 barómetros auxiliares). Para atender (presencial ou à distância), começa pelo <b>Atendimento Guiado</b>.</p>
+    <div class="card" style="margin-bottom:10px;border:2px solid #8a5a12;"><div style="display:flex;gap:12px;align-items:flex-start;"><div style="font-size:2rem;line-height:1;">✨</div><div style="flex:1;"><strong style="font-size:1.05rem;">Criar protocolo por texto</strong><div class="muted" style="font-size:.88rem;margin:4px 0 8px;">Escreve o que pretendes (ex.: “a minha aura está a enegrecer”, “quero emagrecer”, “casa pesada”) e a app cria a pesquisa, escolhe as etiquetas e prepara a limpeza ou cura, todas juntas ou uma a uma, com o testemunho.</div><button class="primary" onclick="abrirProtocoloPorTexto()">✨ Escrever e criar</button></div></div></div>
     ${cartao('pesqIntegrada', '🧭', 'Atendimento Guiado', 'O guia passo a passo: pesquisa (energias 1 a 40, chakras 1 a 9 em %, abertura de caminhos, Bovis), plano à medida e modo de sessão com os teus comandos. Presencial e à distância.', 'Começar um atendimento')}
     ${cartao('apometria', '🌀', 'Apometria', 'Procedimento em 12 fases, lições, técnicas, contador de impulsos e os teus comandos da formação.', 'Abrir a Apometria')}
     <div class="card" style="margin-bottom:10px;"><div style="display:flex;gap:12px;align-items:flex-start;"><div style="font-size:2rem;line-height:1;">🎯</div><div style="flex:1;"><strong style="font-size:1.05rem;">Barómetros auxiliares</strong><div class="muted" style="font-size:.88rem;margin:4px 0 8px;">74 listas numeradas para a pesquisa com o pêndulo (obsessão, implantes, emoções, saúde, ervas, arcanjos…). Dizes os números e marcas o que ressoa. Também aparecem no Atendimento Guiado.</div><button class="primary" onclick="window.__apoAba='barometros';renderView('apometria')">Abrir os Barómetros</button></div></div></div>
@@ -20574,7 +20585,7 @@ async function renderApometriaApp(main){
     main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>';
     return;
   }
-  main.innerHTML = '<button class="ghost" style="margin-bottom:8px;" onclick="renderView(\'metodoHikari\')">← Pêndulo + Apometria</button><div id="hub-corpo"></div>';
+  main.innerHTML = '<button class="ghost" style="margin-bottom:8px;" onclick="renderView(\'metodoHikari\')">← Pêndulo + Apometria</button>' + BTN_PROTOCOLO_TEXTO + '<div id="hub-corpo"></div>';
   main = main.querySelector('#hub-corpo');
   try {
     const mod = await import('./apometria-escola.js?v=' + APP_VERSION);
@@ -20660,7 +20671,7 @@ async function renderPesqIntegradaApp(main){
     main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>';
     return;
   }
-  main.innerHTML = '<button class="ghost" style="margin-bottom:8px;" onclick="renderView(\'metodoHikari\')">← Pêndulo + Apometria</button><div id="hub-corpo"></div>';
+  main.innerHTML = '<button class="ghost" style="margin-bottom:8px;" onclick="renderView(\'metodoHikari\')">← Pêndulo + Apometria</button>' + BTN_PROTOCOLO_TEXTO + '<div id="hub-corpo"></div>';
   main = main.querySelector('#hub-corpo');
   try {
     const mod = await import('./apometria.js?v=' + APP_VERSION);
