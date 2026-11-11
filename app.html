@@ -395,7 +395,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-11-7';
+const APP_VERSION = '2026-11-11-8';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12541,7 +12541,10 @@ window.triEterAbrir = async function(modo, opts){
   let nascIso = emTriagem ? (__triagem.dataNascimento || '') : (pc.birthDate || '');
   let foto = pc.photoUrl || '';
   if (!foto && pid){ try { const ps = await getDoc(doc(db, 'tenants', tenantId, 'patients', pid)); if (ps.exists()){ const d = ps.data(); foto = d.photoUrl || ''; nome = nome || d.fullName || ''; nascIso = nascIso || d.birthDate || ''; } } catch(e){} }
-  const nasc = nascIso ? new Date(nascIso + 'T12:00:00').toLocaleDateString('pt-PT') : '';
+  let nasc = nascIso ? new Date(nascIso + 'T12:00:00').toLocaleDateString('pt-PT') : '';
+  // Casos e Alvos: o testemunho pode ser uma casa, empresa, carro… (nome e legenda próprios, sem foto de paciente)
+  const nascTxt = nasc;
+  if (opts.testemunho && opts.testemunho.nome){ nome = opts.testemunho.nome; foto = opts.testemunho.foto || ''; nasc = opts.testemunho.sub || ''; }
   const ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column;height:100dvh;padding:8px 8px calc(8px + env(safe-area-inset-bottom));box-sizing:border-box;';
   document.body.appendChild(ov);
@@ -20627,7 +20630,7 @@ async function renderCasosApp(main){
         if (!itens.length) return;
         const chave = it => triKeyEtq(it), porChave = {}; itens.forEach(it => { porChave[chave(it)] = it.codigo; });
         const jaFeitas = (extra.jaFeitas || []).map(cod => { const it = itens.find(i => i.codigo === cod); return it ? chave(it) : null; }).filter(Boolean);
-        triEterAbrir(modo, { itens, pacienteId: pacienteId || '', jaFeitas,
+        triEterAbrir(modo, { itens, pacienteId: pacienteId || '', jaFeitas, testemunho: extra.testemunho || null,
           onProgresso: keys => { if (extra.onProgresso) extra.onProgresso(keys.map(k => porChave[k]).filter(Boolean)); },
           onConcluir: () => { if (extra.onConcluir) extra.onConcluir(); } });
       },

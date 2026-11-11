@@ -54,6 +54,7 @@ export function renderCasos(main, ctx) {
     if (c.estado === 'fechado') return '<span style="color:#666;">🔒 Fechado</span>';
     if (aVerificar(c)) return `<span style="color:#b94a48;font-weight:700;">🔔 Verificar (${dataPT(c.proxima)})</span>`;
     if (c.estado === 'limpo') return `<span style="color:#2f7d32;">✅ Limpo${c.proxima ? ' · reconfirmar ' + dataPT(c.proxima) : ''}</span>`;
+    if (lista(c.sessoes).some(x => x.limpeza === 'pendente')) return '<span style="color:#8a5a12;font-weight:700;">🧹 Limpeza por aplicar</span>';
     return `<span style="color:#d9822b;">🕓 Em curso${c.proxima ? ' · verificar ' + dataPT(c.proxima) : ''}</span>`;
   };
   const chips = (arr, cor, fundo) => lista(arr).map(x => `<span style="display:inline-block;margin:2px 4px 2px 0;padding:3px 9px;border-radius:99px;font-size:.8rem;background:${fundo};color:${cor};">${esc(x)}</span>`).join('');
@@ -69,7 +70,8 @@ export function renderCasos(main, ctx) {
     if (lista(s.novas).length) L.push('Novas: ' + s.novas.join('; '));
     if (lista(s.etiquetas).length) L.push('Etiquetas (' + (s.via === 'fisica' ? 'físicas' : s.via === 'ambas' ? 'físicas e etéricas' : 'etéricas') + (s.aplicacao ? ', ' + (s.aplicacao === 'todas' ? 'todas ao mesmo tempo' : 'uma a uma') : '') + '): ' + s.etiquetas.map(x => x.codigo + ' ' + x.pt).join('; '));
     { const lc = leituraObj(s.leitura); if (lc && ctx.sintetizarLeitura) L.push('Leitura complementar: ' + ctx.sintetizarLeitura(nomeLeitura(caso), lc, true)); }
-    L.push('Resultado: ' + ({ limpo: 'limpo', parcial: 'parcial', por_limpar: 'por limpar' }[s.resultado] || '—') + (s.proxima ? ' · próxima verificação ' + dataPT(s.proxima) : ''));
+    if (s.limpeza === 'pendente') L.push('Pesquisa concluída. Limpeza por aplicar mais tarde (protocolo gerado automaticamente).');
+        L.push('Resultado: ' + ({ limpo: 'limpo', parcial: 'parcial', por_limpar: 'por limpar' }[s.resultado] || '—') + (s.proxima ? ' · próxima verificação ' + dataPT(s.proxima) : ''));
     if (s.notas) L.push('Notas: ' + s.notas);
     return L.join('\n');
   };
@@ -83,6 +85,8 @@ export function renderCasos(main, ctx) {
   const sortear = () => { const [m, p, t] = ctx.tirarCartas(); return { momento: m, porTras: p, tendencia: t }; };
 
 
+  const testemunhoCaso = c => ({ nome: c.referencia || c.titulo, sub: (TIPOS[c.tipo] || TIPOS.casa).n, foto: '' });
+  const pendente = c => lista(c.sessoes).find(x => x.limpeza === 'pendente');
   /* ── Protocolo de cura da sessão (igual ao do Pêndulo: fases, hebraico, nome em português, porquê) ── */
   function protocoloCura(codigos, auto) {
     const info = {}; lista(auto).forEach(x => { info[x.codigo] = x; });
@@ -110,7 +114,7 @@ export function renderCasos(main, ctx) {
     const det = lista(s.causas);
     if (det.length) blocos.push({ tipo: 'lista', icone: '🔎', titulo: verif ? 'O que foi verificado' : 'O que foi encontrado', marca: '•', itens: det });
     const cura = lista(s.protocoloCura);
-    if (cura.length) blocos.push({ tipo: 'linha', icone: '🧹', titulo: 'O que foi limpo', passos: cura.map(f => ({ rotulo: f.fase.replace(/^\d+\.\s*/, ''), texto: f.itens.map(i => i.pt).join(' · ') })) });
+    if (cura.length) blocos.push({ tipo: 'linha', icone: '🧹', titulo: s.limpeza === 'pendente' ? 'Limpeza prevista' : 'O que foi limpo', passos: cura.map(f => ({ rotulo: f.fase.replace(/^\d+\.\s*/, ''), texto: f.itens.map(i => i.pt).join(' · ') })) });
     else if (lista(s.etiquetas).length) blocos.push({ tipo: 'lista', icone: '🏷️', titulo: 'Etiquetas trabalhadas', marca: '•', itens: s.etiquetas.map(x => x.pt) });
     const lc = leituraObj(s.leitura);
     if (lc && ctx.sintetizarLeitura) blocos.push({ tipo: 'texto', icone: '🌙', titulo: 'Leitura do momento', paras: [ctx.sintetizarLeitura(nome || c.titulo, lc, false)] });
@@ -250,6 +254,7 @@ export function renderCasos(main, ctx) {
         ${c.pacienteId ? `<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="ghost" data-a="planoPac">📲 Guardar plano na ficha do paciente</button>${ctx.enviarPortal ? '<button class="ghost" data-a="enviarPac">📤 Enviar link do portal</button>' : ''}</div>` : '<p class="muted">Liga o caso a um paciente para lhe poderes enviar o plano.</p>'}</div></details>` : ''}
       <div class="card"><h3 style="margin:0 0 4px;">🧭 1. Preparação</h3>
         ${P('permissao', 'Perguntei ao pêndulo se posso trabalhar neste caso')}${P('objetivo', 'O objetivo está definido e a identificação do alvo está à mão')}${P('elevado', 'Pedi o que for mais elevado e justo, sem interferir na vontade de terceiros')}</div>
+      ${(() => { const p = pendente(c); if (!p || c.estado === 'fechado') return ''; const f = lista(p.feitas).length; return `<div class="card" style="border:2px solid #8a5a12;"><h3 style="margin:0 0 4px;">🧹 Limpeza por aplicar</h3><p class="muted" style="margin:0 0 6px;">Pesquisa de ${dataPT(p.data)} · ${lista(p.etiquetas).length} etiqueta(s) escolhidas automaticamente${f ? ' · ' + f + ' já aplicadas' : ''}. O protocolo está pronto.</p>${protocoloCuraHtml(p.protocoloCura, false)}${ctx.limpezaEterica ? `<div class="row" style="gap:8px;margin-top:8px;"><button class="primary" data-a="limparPend" data-v="todas" style="flex:1;padding:12px;">⚡ Todas juntas</button><button class="ghost" data-a="limparPend" data-v="uma" style="flex:1;padding:12px;">1️⃣ Uma a uma</button></div><p class="muted" style="font-size:.82rem;margin:6px 0 0;">O testemunho (${esc(testemunhoCaso(c).nome)}) fica sempre à vista.</p>` : ''}<button class="ghost" data-a="limpezaFeita" style="width:100%;margin-top:8px;">✔ Já apliquei por outra via (físicas)</button></div>`; })()}
       ${c.rascunho ? `<div class="card" style="border:2px solid #d9822b;"><h3 style="margin:0 0 4px;">📝 Sessão em curso</h3><p class="muted" style="margin:0 0 8px;">${c.rascunho.modo === 'verificacao' ? 'Verificação' : 'Sessão completa'} · ${c.rascunho.modo === 'verificacao' ? '' : 'passo ' + c.rascunho.passo + ' de 3 · '}${lista(c.rascunho.causas).length} ponto(s) detetado(s) · ${lista(c.rascunho.etiquetas).length} etiqueta(s). Está tudo guardado.</p><div class="row" style="gap:8px;"><button class="primary" data-a="continuar" style="flex:1;padding:12px;">▶️ Continuar</button><button class="ghost" data-a="descartar">🗑️ Descartar</button></div></div>` : ''}
       ${c.estado === 'fechado' ? `<button class="ghost" data-a="reabrir" style="width:100%;margin-bottom:8px;">↩️ Reabrir caso</button>` : `
       <button class="primary" data-a="sessao" data-v="completa" style="width:100%;padding:14px;">➕ Nova sessão<br><small>Triagem → Limpeza → Verificação</small></button>
@@ -338,7 +343,8 @@ export function renderCasos(main, ctx) {
         ${W.leitura ? `<p style="margin:10px 0 2px;"><strong>Momento atual:</strong> ${W.leitura.momento.n} — ${esc(W.leitura.momento.nome)}</p><p style="margin:2px 0;"><strong>Por trás disto:</strong> ${W.leitura.porTras.n} — ${esc(W.leitura.porTras.nome)}</p><p style="margin:2px 0;"><strong>Tendência:</strong> ${W.leitura.tendencia.n} — ${esc(W.leitura.tendencia.nome)}</p><p class="muted" style="margin:6px 0 0;font-size:.88rem;">${esc(ctx.sintetizarLeitura(nomeLeitura(c), W.leitura, true))}</p>` : '<p class="muted" style="margin:10px 0 0;">— por preencher —</p>'}
         ${W.modoCartas === 'auto' ? `<button class="ghost" data-a="tirar3" style="width:100%;margin-top:10px;">🎴 ${W.leitura ? 'Tirar outra vez' : 'Tirar as 3 cartas'}</button>` : ['cm|Momento atual', 'cp|Por trás disto', 'ct|Tendência'].map(x => { const [k, tt] = x.split('|'); return `<label style="display:block;margin-top:8px;">${tt}</label><select data-i="w.${k}"><option value="">—</option>${lista(ctx.arcanos).map(a => `<option value="${a.n}" ${String(W[k]) === String(a.n) ? 'selected' : ''}>${a.n} — ${esc(a.nome)}</option>`).join('')}</select>`; }).join('')}
         ${W.leitura ? '<button class="ghost" data-a="limparCartas" style="margin-top:8px;">Limpar leitura</button>' : ''}</div>
-        <button class="primary" data-a="seguinte" style="width:100%;padding:14px;">Seguinte → Limpeza</button>`;
+        <button class="primary" data-a="seguinte" style="width:100%;padding:14px;">Seguinte → Limpeza</button>
+        <button class="ghost" data-a="soPesquisa" style="width:100%;margin-top:8px;padding:12px;">📥 Terminar só a pesquisa<br><small>Guarda tudo e o protocolo de cura fica pronto para aplicares mais tarde</small></button>`;
     } else if (W.passo === 2) {
       const sel = W.etiquetas.map(cod => ctx.etiquetas.find(x => x.codigo === cod)).filter(Boolean);
       const excesso = primeiraSessao() && W.etiquetas.length > MAX_ETQ_PRIMEIRA;
@@ -387,7 +393,8 @@ export function renderCasos(main, ctx) {
     const W = S.wiz, c = S.caso;
     const verif = W.modo === 'verificacao';
     const novas = verif ? W.novasTxt.split(',').map(x => x.trim()).filter(Boolean) : [];
-    const resultado = W.manual ? W.resultado : resultadoAuto();
+    const pend = !verif && !!W.soPesquisa;
+    const resultado = pend ? 'por_limpar' : (W.manual ? W.resultado : resultadoAuto());
     const s = {
       id: 's' + Date.now(), modo: W.modo, data: W.data || hoje(),
       bovisIni: verif ? String(W.bovisFin || '').trim() : String(W.bovisIni || '').trim(),
@@ -397,7 +404,22 @@ export function renderCasos(main, ctx) {
       via: verif ? '' : W.via, aplicacao: verif ? '' : (W.aplicacao || ''), leitura: verif ? null : leituraCompacta(W.leitura), resultado, proxima: W.proxima || '', notas: String(W.notas || '').trim()
     };
     s.protocoloCura = verif ? [] : protocoloCura(W.etiquetas, W.auto);
+    s.limpeza = pend ? 'pendente' : '';
+    s.feitas = pend ? lista(W.feitas) : [];
     return s;
+  }
+  async function concluirLimpeza(modo, via) {
+    const c = S.caso, p = pendente(c); if (!p) return;
+    p.limpeza = 'feita'; p.aplicacao = modo || ''; p.via = via || 'eterica'; p.feitas = lista(p.etiquetas).map(x => x.codigo); p.dataLimpeza = hoje();
+    if (!p.proxima) p.proxima = somaDias(hoje(), DIAS_VERIF);
+    c.proxima = p.proxima;
+    try { await gravarCaso(c); } catch (e) { console.error(e); ctx.toast('⚠️ Não consegui guardar.', true); return; }
+    if (c.pacienteId) {
+      const t = TIPOS[c.tipo] || TIPOS.casa;
+      await ctx.guardarNaFicha(c.pacienteId, { tipo: 'caso-energetico', titulo: `${t.n}: ${c.titulo} (limpeza aplicada)`, texto: `${t.e} ${t.n}: ${c.titulo}\nLimpeza aplicada em ${dataPT(hoje())}: ` + lista(p.etiquetas).map(x => x.codigo + ' ' + x.pt).join(', ') + '. Próxima verificação: ' + dataPT(p.proxima) + '.', reportHtml: relatorioSessao(c, p) || undefined, dados: { casoId: c.id, tipoCaso: c.tipo, sessao: p } });
+    }
+    ctx.toast('Limpeza registada ✓ Faz a verificação passados uns dias');
+    ver();
   }
   async function guardarSessao() {
     const W = S.wiz, c = S.caso;
@@ -405,6 +427,7 @@ export function renderCasos(main, ctx) {
     clearTimeout(tRasc); const rascAnt = c.rascunho; c.rascunho = null;
     c.sessoes = lista(c.sessoes).concat([s]);
     c.estado = resultado === 'limpo' ? 'limpo' : 'em-curso';
+    if (s.limpeza === 'pendente') s.proxima = '';
     c.proxima = s.proxima;
     try {
       await gravarCaso(c);
@@ -494,11 +517,25 @@ export function renderCasos(main, ctx) {
     limpar: b => {
       const W = S.wiz, modo = b.dataset.v; if (!W.etiquetas.length) return;
       ctx.limpezaEterica(modo, W.etiquetas.slice(), S.caso.pacienteId || '', {
+        testemunho: testemunhoCaso(S.caso),
         jaFeitas: lista(W.feitas),
         onProgresso: cods => { W.feitas = cods; agendarRascunho(); },
         onConcluir: () => { W.aplicacao = modo; W.via = 'eterica'; W.feitas = W.etiquetas.slice(); repintarSessao(); }
       });
     },
+    soPesquisa: async () => {
+      const W = S.wiz; calcularAuto(false); W.soPesquisa = true; await guardarSessao();
+    },
+    limparPend: b => {
+      const c = S.caso, p = pendente(c); if (!p) return;
+      const cods = lista(p.etiquetas).map(x => x.codigo), modo = b.dataset.v;
+      ctx.limpezaEterica(modo, cods, c.pacienteId || '', {
+        testemunho: testemunhoCaso(c), jaFeitas: lista(p.feitas),
+        onProgresso: async f => { p.feitas = f; try { await gravarCaso(c); } catch (e) { console.error(e); } },
+        onConcluir: () => concluirLimpeza(modo)
+      });
+    },
+    limpezaFeita: async () => { if (await ctx.confirmar('Limpeza já aplicada?', 'Marca a limpeza pendente como feita (por exemplo, com etiquetas físicas).', 'Marcar como feita')) concluirLimpeza('', 'fisica'); },
     recalcular: () => { calcularAuto(true); repintarSessao(); },
     anterior: () => { S.wiz.passo--; ver(); },
     guardar: () => guardarSessao(),
