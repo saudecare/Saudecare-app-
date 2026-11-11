@@ -395,7 +395,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-10-11';
+const APP_VERSION = '2026-11-11-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1959,7 +1959,8 @@ const NAV_GROUPS = {
     { view: 'frequencias', icon: '🎶', label: 'Frequências', tenantOnly: 'hikari-terapias' },
     { view: 'oracoes', icon: '🙏', label: 'Orações e Salmos', tenantOnly: 'hikari-terapias' },
     { view: 'metodoHikari', icon: '🔮', label: 'Pêndulo + Apometria', tenantOnly: 'hikari-terapias' },
-    { view: 'etiquetasEtericas', icon: '🏷️', label: 'Etiquetas Etéricas', tenantOnly: 'hikari-terapias' }
+    { view: 'etiquetasEtericas', icon: '🏷️', label: 'Etiquetas Etéricas', tenantOnly: 'hikari-terapias' },
+    { view: 'casosEnergeticos', icon: '🏠', label: 'Casos e Alvos', tenantOnly: 'hikari-terapias' }
   ]},
   business: { title: '🏥 A Minha Clínica', items: [
     { view: 'team', icon: '👥', label: 'Equipa', hideForRestricted: true },
@@ -2072,6 +2073,7 @@ function renderView(view, opts){
   else if (view === 'cartomancia') renderCartomancia(main);
   else if (view === 'triagemBaixaVibracao') renderTriagemBaixaVibracao(main, opts);
   else if (view === 'etiquetasEtericas') renderEtiquetasEtericas(main);
+  else if (view === 'casosEnergeticos') renderCasosApp(main);
   else if (view === 'reikiAlunos') renderReikiAlunos(main);
   else if (view === 'mesinhas') renderMesinhas(main);
   else if (view === 'estudioVoz') renderEstudioVoz(main);
@@ -20554,7 +20556,8 @@ function renderMetodoHikari(main){
     ${cartao('apometria', '🌀', 'Apometria', 'Procedimento em 12 fases, lições, técnicas, contador de impulsos e os teus comandos da formação.', 'Abrir a Apometria')}
     <div class="card" style="margin-bottom:10px;"><div style="display:flex;gap:12px;align-items:flex-start;"><div style="font-size:2rem;line-height:1;">🎯</div><div style="flex:1;"><strong style="font-size:1.05rem;">Barómetros auxiliares</strong><div class="muted" style="font-size:.88rem;margin:4px 0 8px;">74 listas numeradas para a pesquisa com o pêndulo (obsessão, implantes, emoções, saúde, ervas, arcanjos…). Dizes os números e marcas o que ressoa. Também aparecem no Atendimento Guiado.</div><button class="primary" onclick="window.__apoAba='barometros';renderView('apometria')">Abrir os Barómetros</button></div></div></div>
     ${cartao('etiquetasEtericas', '🏷️', 'Etiquetas Etéricas', 'Aplica a energia das etiquetas sem as teres contigo: invocas todas ao mesmo tempo com o pêndulo, ou uma a uma. Mesmo método que com as etiquetas físicas.', 'Abrir')}
-    ${cartao('triagemBaixaVibracao', '🎴', 'Triagem — Pêndulo Hebraico', 'A triagem completa com as 40 energias, etiquetas hebraicas, Bovis e tratamento por sessões, ligada à ficha do paciente.', 'Abrir a Triagem')}`;
+    ${cartao('triagemBaixaVibracao', '🎴', 'Triagem — Pêndulo Hebraico', 'A triagem completa com as 40 energias, etiquetas hebraicas, Bovis e tratamento por sessões, ligada à ficha do paciente.', 'Abrir a Triagem')}
+    ${cartao('casosEnergeticos', '🏠', 'Casos e Alvos', 'Triagem, Limpeza e Verificação de casas, terrenos, dinheiro, negócios e empresas, tribunal, motas, objetos, amor, saúde e pessoas. Uma ficha por caso, com sessões, Bovis e verificação.', 'Abrir os Casos')}`;
 }
 
 async function renderApometriaApp(main){
@@ -20576,6 +20579,41 @@ async function renderApometriaApp(main){
     });
   } catch(e){
     main.innerHTML = '<div class="card"><h2>🌀 Apometria</h2><p class="muted">Não consegui abrir: ' + escapeHtml(e.message || String(e)) + '</p><button class="primary" onclick="renderView(\'apometria\')">Tentar outra vez</button></div>';
+  }
+}
+
+async function renderCasosApp(main){
+  if (tenantId !== 'hikari-terapias'){
+    main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica e não está disponível na sua subscrição.</p></div>';
+    return;
+  }
+  main.innerHTML = '<button class="ghost" style="margin-bottom:8px;" onclick="renderView(\'metodoHikari\')">← Pêndulo + Apometria</button><div id="casos-corpo"></div>';
+  main = main.querySelector('#casos-corpo');
+  try {
+    const mod = await import('./casos-energeticos.js?v=' + APP_VERSION);
+    const col = () => collection(db, 'tenants', tenantId, 'casosEnergeticos');
+    mod.renderCasos(main, {
+      tenantId, escapeHtml, toast, confirmar: reikiConfirmar,
+      etiquetas: eeItens().map(x => ({ codigo: x.codigo, pt: x.pt })),
+      listar: async () => {
+        const snap = await getDocs(col());
+        const l = []; snap.forEach(d => { const r = d.data(); l.push({ ...r, id: d.id, _t: r.atualizadoEm && r.atualizadoEm.toMillis ? r.atualizadoEm.toMillis() : 0 }); });
+        return l;
+      },
+      gravar: async (id, dados) => {
+        if (id){ await setDoc(doc(db, 'tenants', tenantId, 'casosEnergeticos', id), { ...dados, atualizadoEm: serverTimestamp() }, { merge: true }); return id; }
+        const r = await addDoc(col(), { ...dados, criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp() });
+        return r.id;
+      },
+      apagar: async (id) => { await deleteDoc(doc(db, 'tenants', tenantId, 'casosEnergeticos', id)); },
+      pacientes: async () => {
+        const l = (await carregarPacientes()).filter(p => p.active !== false).map(p => ({ id: p.id, fullName: p.fullName || '' }));
+        return l.sort((x, y) => x.fullName.localeCompare(y.fullName, 'pt'));
+      },
+      guardarNaFicha
+    });
+  } catch(e){
+    main.innerHTML = '<div class="card"><h2>🏠 Casos e Alvos</h2><p class="muted">Não consegui abrir: ' + escapeHtml(e.message || String(e)) + '</p><button class="primary" onclick="renderView(\'casosEnergeticos\')">Tentar outra vez</button></div>';
   }
 }
 
