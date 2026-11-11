@@ -395,7 +395,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-11-3';
+const APP_VERSION = '2026-11-11-5';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -20614,7 +20614,26 @@ async function renderCasosApp(main){
       enviarPortal: (pid) => window.enviarRelatorioPortal(pid),
       arcanos: TRIAGEM_ARCANOS,
       tirarCartas: () => triagemTirarVarias(3),
-      sintetizarLeitura: triagemSintetizarLeitura
+      sintetizarLeitura: triagemSintetizarLeitura,
+      // Escolha automática das etiquetas, igual à do Pêndulo Hebraico: 1.ª sessão = protocolo base;
+      // depois, as fases pedidas pelas causas detetadas (máx. 8, com o fecho). Mais as do pedido do caso.
+      // Limpeza etérica (o mesmo ecrã das Etiquetas Etéricas): todas ao mesmo tempo ou uma a uma.
+      limpezaEterica: (modo, codigos, pacienteId, onConcluir) => {
+        const lista = etqRegisto().lista;
+        const itens = codigos.map(cod => lista.find(x => x.codigo === cod)).filter(Boolean).map(x => ({ pt: x.pt, heb: x.heb }));
+        if (!itens.length) return;
+        triEterAbrir(modo, { itens, pacienteId: pacienteId || '', onConcluir });
+      },
+      etiquetasAuto: ({ primeira, numeros, sugeridas }) => {
+        const reg = etqRegisto(), out = [];
+        const add = (pt, fase, pedido) => { const r = reg.mapa[etqChave(pt)]; if (!r || out.some(o => o.codigo === r.codigo)) return; out.push({ codigo: r.codigo, pt: r.pt, fase, pedido: !!pedido }); };
+        const fases = primeira
+          ? TRIAGEM_PROTOCOLO_COMPLETO.map(f => ({ ...f, itens: f.itens.filter(i => i.base) }))
+          : triagemFasesDaSessao((numeros || []).map(n => ({ n })), [], null);
+        fases.forEach(f => f.itens.forEach(i => add(i.pt, f.fase, false)));
+        (sugeridas || []).forEach(cod => { const r = reg.lista.find(x => x.codigo === cod); if (r) add(r.pt, 'Pedido do caso', true); });
+        return out;
+      }
     });
   } catch(e){
     main.innerHTML = '<div class="card"><h2>🏠 Casos e Alvos</h2><p class="muted">Não consegui abrir: ' + escapeHtml(e.message || String(e)) + '</p><button class="primary" onclick="renderView(\'casosEnergeticos\')">Tentar outra vez</button></div>';

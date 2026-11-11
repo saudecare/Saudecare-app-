@@ -186,3 +186,25 @@ export function analisar(texto, etiquetas) {
   }
   return { vazio: false, semTema: false, temas: temas.map(x => ({ id: x.id, e: x.e, nome: x.nome })), tipo, pesquisa, chakras, sugeridas: sug, medico, dicas, plano: SESSOES };
 }
+
+/* Liga cada causa pesquisada num caso aos números da lista de 40 pontos do Pêndulo Hebraico,
+   para a app escolher as etiquetas pelo mesmo caminho (fases do protocolo). */
+const MAPA_40 = [
+  [/miasma/, [1]], [/olho gordo|inveja/, [2]], [/magia consciente/, [3]], [/magia/, [3, 4]],
+  [/trabalho (feito|colocado|enterrado|enviado)|objeto ou trabalho|objeto trabalhado|carregado/, [5]], [/amarracao/, [16, 5]],
+  [/obsessor|entidade|presenc|guardi|possess/, [7]], [/larva/, [9]], [/ataque psiquico/, [10]], [/implante/, [11]],
+  [/eletromagnetic/, [13]], [/geopatia/, [14]], [/cordo|cordao|ligacao|ligacoes/, [15, 17]],
+  [/heranc|herdad|familia|geracion/, [18, 20]], [/cargas|memorias antigas|donos anteriores|moradores|memorias do/, [1, 18]],
+  [/karma|karmic|vidas passadas/, [21]], [/trauma|memoria dolorosa|memorias que voltam|passado/, [27]],
+  [/padro|crenca|autossabot|sabotagem/, [28]], [/culpa/, [29]], [/medo|inseguranca|fobia/, [30]], [/ansiedade|stress|preocupac|mente em alerta|pressao/, [31]],
+  [/cansaco|vitalidade|perda de energia|fugas de energia|drena|vampir/, [37]], [/corpo|dor\b|tensao|metabolismo|chakra|tiroide|zona afetada|ritmo/, [37]],
+  [/abundancia|escassez|pobreza|dividas|clientes|vendas|parados|bloqueio (na|do|de|a)/, [38]], [/sucesso|medo do sucesso/, [39]],
+  [/fertilidade|criatividade|maternidade|paternidade|ventre/, [40]], [/vicio|compuls|dependenc/, [9, 25]],
+  [/ciume|magoa|rancor|ferida|emocional|emocoes|luto|perdas|tristeza|coracao|raiva|injustica|retencao/, [26]],
+  [/sonhos|pesadelo/, [35]], [/empatia/, [36]], [/egregora|coletivo/, [33]]
+];
+export function causasParaNumeros(causas) {
+  const out = [];
+  (causas || []).forEach(c => { const t = norm(c); MAPA_40.forEach(([re, ns]) => { if (re.test(t)) ns.forEach(n => { if (out.indexOf(n) < 0) out.push(n); }); }); });
+  return out.sort((a, b) => a - b);
+}

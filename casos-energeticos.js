@@ -3,7 +3,7 @@
    Radiestesia Cabalística. Exclusivo da Hikari Fafe. Textos escritos de raiz.
    Cada caso é uma ficha com várias sessões (completa ou só de verificação). */
 
-import { analisar, EXEMPLOS } from './casos-motor.js';
+import { analisar, EXEMPLOS, causasParaNumeros } from './casos-motor.js';
 
 export const TIPOS = {
   casa: { e: '🏠', n: 'Casa', ref: 'Morada ou nome da casa', aviso: '',
@@ -30,7 +30,7 @@ export const TIPOS = {
 
 const COMUNS = ['Miasma (resíduo energético denso)', 'Olho gordo ou inveja', 'Magia consciente ou inconsciente', 'Cordões e ligações energéticas', 'Cargas e memórias antigas'];
 const DIAS_VERIF = 7;
-const MAX_ETQ_PRIMEIRA = 10;
+const MAX_ETQ_PRIMEIRA = 13; // protocolo base (10) + até 3 do pedido
 
 const pad = n => String(n).padStart(2, '0');
 const hoje = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
@@ -67,7 +67,7 @@ export function renderCasos(main, ctx) {
     if (lista(s.persistem).length) L.push('Ainda presentes: ' + s.persistem.join('; '));
     if (resolvidas(s).length) L.push('Resolvidas: ' + resolvidas(s).join('; '));
     if (lista(s.novas).length) L.push('Novas: ' + s.novas.join('; '));
-    if (lista(s.etiquetas).length) L.push('Etiquetas (' + (s.via === 'fisica' ? 'físicas' : s.via === 'ambas' ? 'físicas e etéricas' : 'etéricas') + '): ' + s.etiquetas.map(x => x.codigo + ' ' + x.pt).join('; '));
+    if (lista(s.etiquetas).length) L.push('Etiquetas (' + (s.via === 'fisica' ? 'físicas' : s.via === 'ambas' ? 'físicas e etéricas' : 'etéricas') + (s.aplicacao ? ', ' + (s.aplicacao === 'todas' ? 'todas ao mesmo tempo' : 'uma a uma') : '') + '): ' + s.etiquetas.map(x => x.codigo + ' ' + x.pt).join('; '));
     { const lc = leituraObj(s.leitura); if (lc && ctx.sintetizarLeitura) L.push('Leitura complementar: ' + ctx.sintetizarLeitura(nomeLeitura(caso), lc, true)); }
     L.push('Resultado: ' + ({ limpo: 'limpo', parcial: 'parcial', por_limpar: 'por limpar' }[s.resultado] || '—') + (s.proxima ? ' · próxima verificação ' + dataPT(s.proxima) : ''));
     if (s.notas) L.push('Notas: ' + s.notas);
@@ -218,7 +218,7 @@ export function renderCasos(main, ctx) {
         ${lista(s.persistem).length ? `<div style="margin-top:4px;"><span class="muted">Ainda presentes:</span><br>${chips(s.persistem, '#8a2b27', '#fbe9e8')}</div>` : ''}
         ${resolvidas(s).length ? `<div style="margin-top:4px;"><span class="muted">Resolvidas:</span><br>${chips(resolvidas(s), '#256428', '#e6f4e7')}</div>` : ''}
         ${lista(s.novas).length ? `<div style="margin-top:4px;"><span class="muted">Novas:</span><br>${chips(s.novas, '#8a5a12', '#fdf1de')}</div>` : ''}
-        ${lista(s.etiquetas).length ? `<div class="muted" style="margin-top:4px;">🏷️ ${s.etiquetas.map(x => esc(x.codigo)).join(' · ')} (${s.via === 'fisica' ? 'físicas' : s.via === 'ambas' ? 'físicas e etéricas' : 'etéricas'})</div>` : ''}
+        ${lista(s.etiquetas).length ? `<div class="muted" style="margin-top:4px;">🏷️ ${s.etiquetas.map(x => esc(x.codigo)).join(' · ')} (${s.via === 'fisica' ? 'físicas' : s.via === 'ambas' ? 'físicas e etéricas' : 'etéricas'}${s.aplicacao ? ', ' + (s.aplicacao === 'todas' ? 'todas ao mesmo tempo' : 'uma a uma') : ''})</div>` : ''}
         ${leituraObj(s.leitura) ? `<div class="muted" style="margin-top:4px;font-size:.88rem;">🎴 ${esc(ctx.sintetizarLeitura(nomeLeitura(c), leituraObj(s.leitura), true))}</div>` : ''}
         ${s.notas ? `<div style="margin-top:4px;font-size:.9rem;">📝 ${esc(s.notas)}</div>` : ''}
         ${s.proxima ? `<div class="muted" style="margin-top:4px;">Próxima verificação: ${dataPT(s.proxima)}</div>` : ''}</div>`).join('') : '<div class="card"><p class="muted">Ainda não há sessões. Faz a preparação e toca em “Nova sessão”.</p></div>'}
@@ -228,12 +228,21 @@ export function renderCasos(main, ctx) {
   /* ── Sessão ── */
   function novaWiz(modo) {
     const c = S.caso, ss = lista(c.sessoes), ult = ss[ss.length - 1];
-    const W = { modo, passo: 1, data: hoje(), bovisIni: '', bovisFin: '', causas: [], outras: '', etiquetas: [], via: 'eterica', q: '', persistem: [], novasTxt: '', resultado: '', manual: false, leitura: null, modoCartas: 'auto', cm: '', cp: '', ct: '', notas: '', proxima: somaDias(hoje(), DIAS_VERIF) };
+    const W = { modo, passo: 1, data: hoje(), bovisIni: '', bovisFin: '', causas: [], outras: '', etiquetas: [], via: 'eterica', q: '', persistem: [], novasTxt: '', resultado: '', manual: false, leitura: null, modoCartas: 'auto', aplicacao: '', cm: '', cp: '', ct: '', notas: '', proxima: somaDias(hoje(), DIAS_VERIF) };
     if (modo === 'verificacao' && ult) W.base = lista(ult.persistem).length ? ult.persistem.slice() : lista(ult.causas).slice();
     return W;
   }
   const primeiraSessao = () => !lista(S.caso.sessoes).some(s => s.modo === 'completa');
   const causasWiz = () => { const W = S.wiz; return W.causas.concat(W.outras.split(',').map(x => x.trim()).filter(Boolean)); };
+  // Escolha automática das etiquetas, pelo mesmo caminho do Pêndulo Hebraico:
+  // 1.ª sessão = protocolo base; depois, as fases pedidas pelo que foi detetado (+ fecho).
+  const chaveAuto = () => JSON.stringify([primeiraSessao(), causasWiz()]);
+  function calcularAuto(forcar) {
+    const W = S.wiz, c = S.caso;
+    if (!ctx.etiquetasAuto || (!forcar && W.autoChave === chaveAuto())) return;
+    W.auto = ctx.etiquetasAuto({ primeira: primeiraSessao(), numeros: causasParaNumeros(causasWiz()), sugeridas: lista(c.protocolo && c.protocolo.sugeridas).slice(0, 3) });
+    W.etiquetas = W.auto.map(x => x.codigo); W.autoChave = chaveAuto();
+  }
   const resultadoAuto = () => { const W = S.wiz; return W.persistem.length ? 'parcial' : 'limpo'; };
 
   function listaEtqHTML() {
@@ -277,12 +286,22 @@ export function renderCasos(main, ctx) {
       const sel = W.etiquetas.map(cod => ctx.etiquetas.find(x => x.codigo === cod)).filter(Boolean);
       const excesso = primeiraSessao() && W.etiquetas.length > MAX_ETQ_PRIMEIRA;
       main.innerHTML = `${cab}<h2 style="margin:0 0 8px;">🧹 2. Limpeza</h2>
-        <div class="card"><p class="muted" style="margin:0;">Usa só as etiquetas dos 72 Nomes e as restantes que o pêndulo indicar para o que foi detetado.${primeiraSessao() ? ` Na 1.ª sessão, no máximo ${MAX_ETQ_PRIMEIRA}.` : ''}</p>
+        ${lista(W.auto).length ? `<div class="card" style="border:2px solid var(--primary);"><h3 style="margin:0 0 4px;">✨ Escolhidas automaticamente</h3>
+        <p class="muted" style="margin:0 0 6px;">${primeiraSessao() ? 'Protocolo base da 1.ª sessão' : 'Fases pedidas pelo que foi detetado, mais o fecho'}${lista(W.auto).some(x => x.pedido) ? ', e as do pedido do caso' : ''}. Toca para tirar ou pôr.</p>
+        ${W.auto.map((x, i) => { const on = W.etiquetas.indexOf(x.codigo) >= 0, nova = i === 0 || W.auto[i - 1].fase !== x.fase;
+          return (nova ? `<div style="margin-top:8px;font-size:.8rem;font-weight:700;color:#5b2a86;">${esc(x.fase)}</div>` : '') + `<div data-a="etq" data-v="${esc(x.codigo)}" style="display:flex;gap:10px;align-items:center;padding:8px;margin-top:3px;border-radius:10px;cursor:pointer;background:${on ? '#eef7ee' : '#f7f7f5'};"><span style="font-size:1.2rem;">${on ? '☑' : '⬜'}</span><strong style="min-width:62px;">${esc(x.codigo)}</strong><span style="flex:1;font-size:.88rem;">${esc(x.pt)}</span></div>`; }).join('')}
+        <button class="ghost" data-a="recalcular" style="margin-top:8px;">🔄 Recalcular automaticamente</button></div>` : ''}
+        <details class="card"><summary style="cursor:pointer;font-weight:700;">➕ Acrescentar ou tirar etiquetas à mão</summary>
+        <p class="muted" style="margin:6px 0 0;">${primeiraSessao() ? `Na 1.ª sessão, o protocolo base e no máximo 3 do pedido (${MAX_ETQ_PRIMEIRA}).` : 'Usa só as que o pêndulo indicar para o que foi detetado.'}</p>
         <div style="margin:8px 0;"><strong>${W.etiquetas.length} escolhida(s)</strong>${excesso ? `<div style="color:#b94a48;font-size:.88rem;margin-top:4px;">⚠️ Muitas etiquetas numa só sessão desgastam o campo. Reduz para ${MAX_ETQ_PRIMEIRA} ou menos.</div>` : ''}
         <div style="margin-top:4px;">${sel.map(x => `<span data-a="etq" data-v="${esc(x.codigo)}" style="display:inline-block;margin:2px 4px 2px 0;padding:4px 10px;border-radius:99px;background:#5b2a86;color:#fff;font-size:.82rem;cursor:pointer;">${esc(x.codigo)} ✕</span>`).join('')}</div></div>
         ${lista(c.protocolo && c.protocolo.sugeridas).length ? `<div style="margin:6px 0;"><span class="muted" style="font-size:.82rem;">✨ Sugeridas (toca para escolher):</span><br>${c.protocolo.sugeridas.map(cod => ctx.etiquetas.find(x => x.codigo === cod)).filter(Boolean).map(x => `<span data-a="etq" data-v="${esc(x.codigo)}" style="display:inline-block;margin:3px 4px 0 0;padding:4px 10px;border-radius:99px;background:${W.etiquetas.indexOf(x.codigo) >= 0 ? '#5b2a86;color:#fff' : '#f3ecfa'};font-size:.82rem;cursor:pointer;" title="${esc(x.pt)}">${esc(x.codigo)}</span>`).join('')}</div>` : ''}
         <input data-i="w.q" value="${esc(W.q)}" placeholder="Número (24, A7) ou palavra (inveja, perdoar)…" style="width:100%;margin:6px 0;">
-        <div id="casos-etq" style="max-height:44vh;overflow:auto;">${listaEtqHTML()}</div></div>
+        <div id="casos-etq" style="max-height:44vh;overflow:auto;">${listaEtqHTML()}</div></details>
+        <div class="card"><h3 style="margin:0 0 4px;">🧹 Aplicar a limpeza</h3>
+        <p class="muted" style="margin:0 0 8px;">Abre o ecrã de limpeza com as ${W.etiquetas.length} etiqueta(s) escolhidas: todas ao mesmo tempo ou uma a uma, com o pêndulo.</p>
+        ${W.aplicacao ? `<p style="margin:0 0 8px;color:#2f7d32;">✅ Aplicadas (${W.aplicacao === 'todas' ? 'todas ao mesmo tempo' : 'uma a uma'})</p>` : ''}
+        ${ctx.limpezaEterica ? `<div class="row" style="gap:8px;"><button class="primary" data-a="limpar" data-v="todas" ${W.etiquetas.length ? '' : 'disabled'} style="flex:1;padding:12px;">⚡ Todas juntas</button><button class="ghost" data-a="limpar" data-v="uma" ${W.etiquetas.length ? '' : 'disabled'} style="flex:1;padding:12px;">1️⃣ Uma a uma</button></div>` : ''}</div>
         <div class="card"><label>Como aplicaste?</label>
         <select data-i="w.via"><option value="eterica" ${W.via === 'eterica' ? 'selected' : ''}>Por via etérica (com o pêndulo)</option><option value="fisica" ${W.via === 'fisica' ? 'selected' : ''}>Etiquetas físicas</option><option value="ambas" ${W.via === 'ambas' ? 'selected' : ''}>Físicas e etéricas</option></select></div>
         <div class="row" style="gap:8px;"><button class="ghost" data-a="anterior">← Voltar</button><button class="primary" data-a="seguinte" style="flex:1;">Seguinte → Verificação</button></div>`;
@@ -316,7 +335,7 @@ export function renderCasos(main, ctx) {
       bovisFin: verif ? '' : String(W.bovisFin || '').trim(),
       causas: verif ? lista(W.base) : causasWiz(), persistem: W.persistem.slice(), novas,
       etiquetas: verif ? [] : W.etiquetas.map(cod => ctx.etiquetas.find(x => x.codigo === cod)).filter(Boolean).map(x => ({ codigo: x.codigo, pt: x.pt })),
-      via: verif ? '' : W.via, leitura: verif ? null : leituraCompacta(W.leitura), resultado, proxima: W.proxima || '', notas: String(W.notas || '').trim()
+      via: verif ? '' : W.via, aplicacao: verif ? '' : (W.aplicacao || ''), leitura: verif ? null : leituraCompacta(W.leitura), resultado, proxima: W.proxima || '', notas: String(W.notas || '').trim()
     };
     c.sessoes = lista(c.sessoes).concat([s]);
     c.estado = resultado === 'limpo' ? 'limpo' : 'em-curso';
@@ -401,7 +420,12 @@ export function renderCasos(main, ctx) {
     persiste: b => { alternar(S.wiz.persistem, b.dataset.v); repintarSessao(); },
     etq: b => { alternar(S.wiz.etiquetas, b.dataset.v); repintarSessao(); },
     res: b => { S.wiz.resultado = b.dataset.v; S.wiz.manual = true; repintarSessao(); },
-    seguinte: () => { S.wiz.passo++; ver(); },
+    seguinte: () => { if (S.wiz.modo === 'completa' && S.wiz.passo === 1) calcularAuto(false); S.wiz.passo++; ver(); },
+    limpar: b => {
+      const W = S.wiz, modo = b.dataset.v; if (!W.etiquetas.length) return;
+      ctx.limpezaEterica(modo, W.etiquetas.slice(), S.caso.pacienteId || '', () => { W.aplicacao = modo; W.via = 'eterica'; repintarSessao(); });
+    },
+    recalcular: () => { calcularAuto(true); repintarSessao(); },
     anterior: () => { S.wiz.passo--; ver(); },
     guardar: () => guardarSessao(),
     fechar: async () => { const c = S.caso; if (!(await ctx.confirmar('Fechar o caso?', 'Deixa de aparecer nas verificações. Podes reabri-lo quando quiseres.', 'Fechar'))) return; c.estado = 'fechado'; c.proxima = ''; try { await gravarCaso(c); } catch (e) { ctx.toast('⚠️ Não consegui guardar.', true); return; } verCaso(); },
