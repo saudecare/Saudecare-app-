@@ -395,7 +395,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-11-10';
+const APP_VERSION = '2026-11-11-11';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12085,6 +12085,11 @@ function __triagemReset(){
    mesmo género, e os `dados` em bruto, para no futuro se poder medir
    a evolução sem depender do texto.
    Serve qualquer subscritor: é a ficha dele, com as ferramentas dele. */
+/* Os registos da ficha são imutáveis (RGPD): uma edição do relatório entra como nova versão, a anterior mantém-se */
+async function atualizarRelatorioFicha(patientId, sessaoId, reportHtml, titulo){
+  if (!patientId || !reportHtml) return false;
+  return guardarNaFicha(patientId, { tipo: 'caso-energetico', titulo: (titulo || 'Relatório') + ' (versão editada)', texto: 'Versão editada do relatório, a partir do original.', reportHtml, dados: { editado: true, sessaoId: sessaoId || null } });
+}
 async function guardarNaFicha(patientId, { tipo, titulo, texto, dados, reportHtml }){
   if (!patientId) return false;
   try {
@@ -20599,7 +20604,7 @@ async function renderCasosApp(main){
     mod.renderCasos(main, {
       tenantId, escapeHtml, toast, confirmar: reikiConfirmar,
       etiquetas: eeItens().map(x => ({ codigo: x.codigo, pt: x.pt, heb: x.heb || '' })),
-      relatorio: { fragmento: rbFragmento, ver: (frag, t) => rbPreVisualizarHtml(rbDocumentoDeFragmento(frag, t), t), pdf: (frag, t) => window.pdfRelatorioIlustrado(frag, t) },
+      relatorio: { fragmento: rbFragmento, ver: (frag, t, o) => rbPreVisualizarHtml(rbDocumentoDeFragmento(frag, t), t, o), pdf: (frag, t) => window.pdfRelatorioIlustrado(frag, t) },
       listar: async () => {
         const snap = await getDocs(col());
         const l = []; snap.forEach(d => { const r = d.data(); l.push({ ...r, id: d.id, _t: r.atualizadoEm && r.atualizadoEm.toMillis ? r.atualizadoEm.toMillis() : 0 }); });
@@ -20615,7 +20620,7 @@ async function renderCasosApp(main){
         const l = (await carregarPacientes()).filter(p => p.active !== false).map(p => ({ id: p.id, fullName: p.fullName || '' }));
         return l.sort((x, y) => x.fullName.localeCompare(y.fullName, 'pt'));
       },
-      guardarNaFicha,
+      guardarNaFicha, atualizarNaFicha: atualizarRelatorioFicha,
       enviarPortal: (pid) => window.enviarRelatorioPortal(pid),
       arcanos: TRIAGEM_ARCANOS,
       tirarCartas: () => triagemTirarVarias(3),

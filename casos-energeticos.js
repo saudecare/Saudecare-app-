@@ -35,6 +35,7 @@ const MAX_ETQ_PRIMEIRA = 13; // protocolo base (10) + até 3 do pedido
 const pad = n => String(n).padStart(2, '0');
 const hoje = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 const somaDias = (iso, n) => { const [a, m, d] = iso.split('-').map(Number); const x = new Date(a, m - 1, d + n); return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`; };
+const diasEntre = (a, b) => { const f = i => { const [y, m, d] = String(i).split('-').map(Number); return Date.UTC(y, m - 1, d); }; return Math.round((f(b) - f(a)) / 864e5); };
 const dataPT = iso => { if (!iso) return '—'; const [a, m, d] = String(iso).split('-'); return d && m && a ? `${d}/${m}/${a}` : '—'; };
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const causasDe = tipo => COMUNS.concat((TIPOS[tipo] || TIPOS.casa).esp);
@@ -178,12 +179,16 @@ export function renderCasos(main, ctx) {
   /* ── Relatório ilustrado para o paciente (para link do portal / PDF), como no Pêndulo ── */
   function relatorioSessao(c, s) {
     if (!ctx.relatorio) return '';
+    if (s.relEditado) return s.relEditado;
     const tipo = c.tipo in ALVO ? c.tipo : 'casa', t = TIPOS[tipo], nome = String(c.pacienteNome || '').split(/\s+/)[0];
     const verif = s.modo === 'verificacao', pend = s.limpeza === 'pendente', blocos = [];
     const alvo = nomeAlvo(c);
     const persist = lista(s.persistem), det = lista(s.causas);
+    const antLimp = verif ? lista(c.sessoes).filter(x => x.modo !== 'verificacao' && x.limpeza !== 'pendente' && lista(x.protocoloCura).length && x.data <= s.data).pop() : null;
+    const nDias = antLimp ? diasEntre(antLimp.dataLimpeza || antLimp.data, s.data) : null;
+    const quando = nDias === null ? 'Voltei' : nDias <= 0 ? 'Logo depois da limpeza, voltei' : nDias === 1 ? 'Um dia depois da limpeza, voltei' : `Passados ${nDias} dias desde a limpeza, voltei`;
     const intro = verif
-      ? [`Passados alguns dias, voltei a verificar com o pêndulo ${ALVO[tipo]}${c.referencia ? ' (' + alvo + ')' : ''}, para confirmar se o que tinha sido encontrado e limpo continua resolvido.`]
+      ? [`${quando} a verificar com o pêndulo ${ALVO[tipo]}${c.referencia ? ' (' + alvo + ')' : ''}, para confirmar se o que tinha sido encontrado e limpo continua resolvido.`]
       : [`Fiz a pesquisa com o pêndulo sobre ${ALVO[tipo]}${c.referencia ? ' (' + alvo + ')' : ''}, a partir do que me pediu: “${c.objetivo || c.titulo}”.`,
          'A pesquisa serve para descobrir, uma a uma, as influências que estão a pesar e que muitas vezes não se veem. Abaixo explico cada uma, o que costuma causar e o que foi feito para a limpar.'];
     blocos.push({ tipo: 'texto', icone: '👋', titulo: nome ? `Olá, ${nome}` : 'Olá', paras: intro });
@@ -205,7 +210,7 @@ export function renderCasos(main, ctx) {
       } else if (lista(s.etiquetas).length) blocos.push({ tipo: 'lista', icone: '🏷️', titulo: 'Etiquetas trabalhadas', marca: '•', itens: s.etiquetas.map(x => x.pt) });
     }
     if (verif) {
-      const ant = lista(c.sessoes).filter(x => x.modo !== 'verificacao' && x.limpeza !== 'pendente' && lista(x.protocoloCura).length && x.data <= s.data).pop();
+      const ant = antLimp;
       if (ant) {
         blocos.push({ tipo: 'texto', icone: '🧹', titulo: 'Trabalho de limpeza realizado', paras: [`Em ${dataPT(ant.dataLimpeza || ant.data)} foi feita a limpeza de ${alvo}. Cada etiqueta é uma “chave” dirigida a um tema concreto e foi aplicada ${ant.aplicacao === 'uma' ? 'uma de cada vez' : ant.aplicacao === 'todas' ? 'todas ao mesmo tempo' : 'com o pêndulo'}, tendo “${alvo}” como ponto de ligação (testemunho).`] });
         lista(ant.protocoloCura).forEach(f => blocos.push({ tipo: 'lista', icone: '🌿', titulo: f.fase.replace(/^\d+\.\s*/, ''), marca: '', itens: [f.porque ? `Para quê: ${f.porque.charAt(0).toUpperCase() + f.porque.slice(1)}.` : null].concat(f.itens.map(i => `• ${i.pt}${i.nota ? ' — ' + limparNota(i.nota) : ''}`)).filter(Boolean) }));
@@ -217,7 +222,7 @@ export function renderCasos(main, ctx) {
     const res = { limpo: `Neste momento nada ficou por limpar em ${ALVO[tipo]}. 🌿`, parcial: 'Ficou limpo grande parte do que foi encontrado; há ainda pontos a acompanhar.', por_limpar: pend ? 'A pesquisa está concluída. A limpeza será aplicada na próxima sessão.' : 'Ainda há pontos por limpar; vamos continuar nas próximas sessões.' }[efetivo] || '';
     const seg = [res];
     if (!verif && !pend) seg.push('Nos próximos dias é normal sentir mais sono, emoção ou cansaço leve, e também mais leveza. É o campo a assentar. Beba água e descanse.');
-    if (s.proxima) seg.push(`Próxima verificação: ${dataPT(s.proxima)}, para confirmar que tudo se mantém limpo.`);
+    if (s.proxima) seg.push('A próxima verificação será feita passados 7 a 10 dias, para confirmar que tudo se mantém limpo.');
     blocos.push({ tipo: 'resumo', icone: '✅', titulo: 'Em resumo', paras: seg.filter(Boolean) });
     const d = c.protocolo ? dicasPaciente(c.protocolo) : [];
     if (d.length) blocos.push({ tipo: 'lista', icone: '🌿', titulo: 'Em casa, sugere-se', marca: '•', itens: d });
@@ -235,7 +240,7 @@ export function renderCasos(main, ctx) {
     const d = dicasPaciente(p); if (d.length) L.push('Em casa, sugere-se:\n' + d.map(x => '• ' + x).join('\n'));
     if (lista(p.medico).length) L.push('Cuidados com a saúde:\n' + p.medico.map(x => '• ' + x).join('\n'));
     const lc = ultimaLeitura(c); if (lc && ctx.sintetizarLeitura) L.push('Leitura do momento: ' + ctx.sintetizarLeitura(nome || c.titulo, lc, false));
-    L.push('Próximos passos: uma primeira sessão de limpeza, uma verificação passados cerca de 7 dias e, depois, as sessões que forem necessárias.');
+    L.push('Próximos passos: uma primeira sessão de limpeza, uma verificação passados 7 a 10 dias e, depois, as sessões que forem necessárias.');
     L.push('Este é um trabalho energético e não substitui o acompanhamento médico.');
     L.push('Ricardo Correia, Hikari Fafe');
     return L;
@@ -506,7 +511,7 @@ export function renderCasos(main, ctx) {
   }
   async function concluirLimpeza(modo, via) {
     const c = S.caso, p = pendente(c); if (!p) return;
-    p.limpeza = 'feita'; p.aplicacao = modo || ''; p.via = via || 'eterica'; p.feitas = lista(p.etiquetas).map(x => x.codigo); p.dataLimpeza = hoje();
+    p.limpeza = 'feita'; p.aplicacao = modo || ''; p.via = via || 'eterica'; p.feitas = lista(p.etiquetas).map(x => x.codigo); p.dataLimpeza = hoje(); delete p.relEditado;
     if (!p.proxima) p.proxima = somaDias(hoje(), DIAS_VERIF);
     c.proxima = p.proxima;
     try { await gravarCaso(c); } catch (e) { console.error(e); ctx.toast('⚠️ Não consegui guardar.', true); return; }
@@ -636,7 +641,25 @@ export function renderCasos(main, ctx) {
     anterior: () => { S.wiz.passo--; ver(); },
     guardar: () => guardarSessao(),
     verRelWiz: () => { const c = S.caso, h = relatorioSessao(c, montarSessao()); if (h) ctx.relatorio.ver(h, 'Relatório do trabalho'); },
-    verRel: b => { const c = S.caso, x = lista(c.sessoes).find(y => y.id === b.dataset.v); const h = x && relatorioSessao(c, x); if (h) ctx.relatorio.ver(h, 'Relatório do trabalho'); },
+    verRel: b => {
+      const c = S.caso, x = lista(c.sessoes).find(y => y.id === b.dataset.v); const h = x && relatorioSessao(c, x); if (!h) return;
+      const opc = {
+        aoEditar: async frag => {
+          x.relEditado = frag;
+          try { await gravarCaso(c); } catch (e) { console.error(e); ctx.toast('⚠️ Não consegui guardar a edição.', true); return; }
+          const naFicha = c.pacienteId && ctx.atualizarNaFicha ? await ctx.atualizarNaFicha(c.pacienteId, x.id, frag, ((TIPOS[c.tipo] || TIPOS.casa).n) + ': ' + c.titulo) : false;
+          ctx.toast(naFicha ? 'Edição guardada ✓ Nova versão na ficha — o original mantém-se' : 'Edição guardada ✓');
+        }
+      };
+      if (x.relEditado) opc.aoRepor = async () => {
+        delete x.relEditado;
+        try { await gravarCaso(c); } catch (e) { console.error(e); ctx.toast('⚠️ Não consegui repor.', true); return; }
+        const orig = relatorioSessao(c, x);
+        if (c.pacienteId && ctx.atualizarNaFicha && orig) await ctx.atualizarNaFicha(c.pacienteId, x.id, orig, ((TIPOS[c.tipo] || TIPOS.casa).n) + ': ' + c.titulo + ' (original reposto)');
+        ctx.toast('Relatório original reposto ✓');
+      };
+      ctx.relatorio.ver(h, 'Relatório do trabalho', opc);
+    },
     pdfRel: b => { const c = S.caso, x = lista(c.sessoes).find(y => y.id === b.dataset.v); const h = x && relatorioSessao(c, x); if (h) ctx.relatorio.pdf(h, 'Relatório do trabalho'); },
     fechar: async () => { const c = S.caso; if (!(await ctx.confirmar('Fechar o caso?', 'Deixa de aparecer nas verificações. Podes reabri-lo quando quiseres.', 'Fechar'))) return; c.estado = 'fechado'; c.proxima = ''; try { await gravarCaso(c); } catch (e) { ctx.toast('⚠️ Não consegui guardar.', true); return; } verCaso(); },
     reabrir: async () => { const c = S.caso; c.estado = 'em-curso'; try { await gravarCaso(c); } catch (e) { ctx.toast('⚠️ Não consegui guardar.', true); return; } verCaso(); },

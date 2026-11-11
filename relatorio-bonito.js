@@ -275,23 +275,57 @@ export function rbPreVisualizarHtml(html, titulo, opcoes) {
   const m = { titulo };
   const ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(20,10,30,.78);display:flex;flex-direction:column';
+  const BT = 'padding:9px 14px;border:0;border-radius:10px;';
   ov.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;padding:10px;background:#2b1a3d;justify-content:center">
-    <button data-a="pdf" style="padding:9px 14px;border:0;border-radius:10px;background:#f6c453;font-weight:700">🖨️ Imprimir / guardar PDF</button>
-    <button data-a="html" style="padding:9px 14px;border:0;border-radius:10px;background:#fff">⬇️ Descarregar página</button>
-    ${opcoes && opcoes.aoGuardar ? '<button data-a="guardar" style="padding:9px 14px;border:0;border-radius:10px;background:#7bd389;font-weight:700">💾 Guardar na ficha</button>' : ''}
-    <button data-a="x" style="padding:9px 14px;border:0;border-radius:10px;background:#ddd">✖ Fechar</button></div>
+    <button data-a="pdf" style="${BT}background:#f6c453;font-weight:700">🖨️ Imprimir / guardar PDF</button>
+    <button data-a="editar" style="${BT}background:#cfe8ff;font-weight:700">✏️ Editar texto</button>
+    <button data-a="html" style="${BT}background:#fff">⬇️ Descarregar página</button>
+    ${opcoes && opcoes.aoGuardar ? `<button data-a="guardar" style="${BT}background:#7bd389;font-weight:700">💾 Guardar na ficha</button>` : ''}
+    ${opcoes && opcoes.aoRepor ? `<button data-a="repor" style="${BT}background:#ffe0b2">↩️ Repor original</button>` : ''}
+    <button data-a="x" style="${BT}background:#ddd">✖ Fechar</button></div>
+    <div data-i="aviso" style="display:none;padding:7px 12px;background:#cfe8ff;color:#1c3550;font-size:14px;text-align:center">✏️ Toque no texto para o alterar. Quando acabar, toque em “Concluir edição”.</div>
     <iframe style="flex:1;border:0;background:#e9e2f0;width:100%"></iframe>`;
   document.body.appendChild(ov);
   const fr = ov.querySelector('iframe'); fr.srcdoc = html;
+  const btE = ov.querySelector('[data-a="editar"]'), aviso = ov.querySelector('[data-i="aviso"]');
+  let editando = false, atual = html;
   if (opcoes && opcoes.autoImprimir) fr.onload = () => setTimeout(() => { try { fr.contentDocument.querySelectorAll('details').forEach(d => { d.open = true; }); fr.contentWindow.focus(); fr.contentWindow.print(); } catch (_) {} }, 600);
-  ov.addEventListener('click', e => {
+  // Liga/desliga a edição do texto dentro do relatório
+  const alvoEdicao = () => { const d = fr.contentDocument; return d && (d.querySelector('.rbx') || d.body); };
+  function ligarEdicao() {
+    const d = fr.contentDocument, el = alvoEdicao(); if (!el) return;
+    d.querySelectorAll('details').forEach(x => { x.open = true; });
+    if (!d.getElementById('rb-edit-style')) { const st = d.createElement('style'); st.id = 'rb-edit-style'; st.textContent = '@media screen{[contenteditable="true"]{outline:2px dashed #4a90d9;outline-offset:4px}[contenteditable="true"] :focus{outline:2px solid #4a90d9}}'; d.head.appendChild(st); }
+    el.setAttribute('contenteditable', 'true'); el.setAttribute('spellcheck', 'true');
+    editando = true; btE.textContent = '✅ Concluir edição'; btE.style.background = '#7bd389'; aviso.style.display = 'block';
+  }
+  // Devolve o documento e o fragmento já com as alterações (sem marcas de edição)
+  function recolher() {
+    try {
+      const d = fr.contentDocument, el = alvoEdicao();
+      if (el) { el.removeAttribute('contenteditable'); el.removeAttribute('spellcheck'); }
+      const st = d.getElementById('rb-edit-style'); if (st) st.remove();
+      const copia = d.documentElement.cloneNode(true);
+      const frag = d.body.cloneNode(true); frag.querySelectorAll('script').forEach(x => x.remove());
+      return { doc: '<!doctype html>' + copia.outerHTML, frag: frag.innerHTML };
+    } catch (_) { return { doc: atual, frag: '' }; }
+  }
+  async function desligarEdicao() {
+    const r = recolher(); editando = false;
+    btE.textContent = '✏️ Editar texto'; btE.style.background = '#cfe8ff'; aviso.style.display = 'none';
+    if (r.frag) { atual = r.doc; if (opcoes && opcoes.aoEditar) { try { await opcoes.aoEditar(r.frag); } catch (_) {} } }
+  }
+  ov.addEventListener('click', async e => {
     const a = e.target && e.target.getAttribute && e.target.getAttribute('data-a'); if (!a) return;
     if (a === 'x') ov.remove();
-    else if (a === 'pdf') { try { fr.contentDocument.querySelectorAll('details').forEach(d => { d.open = true; }); fr.contentWindow.focus(); fr.contentWindow.print(); } catch (_) {} }
+    else if (a === 'editar') { if (editando) await desligarEdicao(); else ligarEdicao(); }
+    else if (a === 'pdf') { if (editando) await desligarEdicao(); try { fr.contentDocument.querySelectorAll('details').forEach(d => { d.open = true; }); fr.contentWindow.focus(); fr.contentWindow.print(); } catch (_) {} }
     else if (a === 'html') {
-      const url = URL.createObjectURL(new Blob([html], { type: 'text/html' })), l = document.createElement('a');
+      if (editando) await desligarEdicao();
+      const url = URL.createObjectURL(new Blob([atual], { type: 'text/html' })), l = document.createElement('a');
       l.href = url; l.download = (String(m.titulo || 'relatorio').replace(/[^\w\-]+/g, '_')) + '.html'; l.click(); setTimeout(() => URL.revokeObjectURL(url), 4000);
-    } else if (a === 'guardar') { opcoes.aoGuardar(html); }
+    } else if (a === 'guardar') { if (editando) await desligarEdicao(); opcoes.aoGuardar(atual); }
+    else if (a === 'repor') { if (opcoes.aoRepor) { await opcoes.aoRepor(); ov.remove(); } }
   });
   return ov;
 }
