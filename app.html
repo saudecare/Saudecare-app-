@@ -395,7 +395,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-11-1';
+const APP_VERSION = '2026-11-11-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -20610,7 +20610,8 @@ async function renderCasosApp(main){
         const l = (await carregarPacientes()).filter(p => p.active !== false).map(p => ({ id: p.id, fullName: p.fullName || '' }));
         return l.sort((x, y) => x.fullName.localeCompare(y.fullName, 'pt'));
       },
-      guardarNaFicha
+      guardarNaFicha,
+      enviarPortal: (pid) => window.enviarRelatorioPortal(pid)
     });
   } catch(e){
     main.innerHTML = '<div class="card"><h2>🏠 Casos e Alvos</h2><p class="muted">Não consegui abrir: ' + escapeHtml(e.message || String(e)) + '</p><button class="primary" onclick="renderView(\'casosEnergeticos\')">Tentar outra vez</button></div>';

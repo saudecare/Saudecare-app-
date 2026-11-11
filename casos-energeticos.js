@@ -3,6 +3,8 @@
    Radiestesia Cabalística. Exclusivo da Hikari Fafe. Textos escritos de raiz.
    Cada caso é uma ficha com várias sessões (completa ou só de verificação). */
 
+import { analisar, EXEMPLOS } from './casos-motor.js';
+
 export const TIPOS = {
   casa: { e: '🏠', n: 'Casa', ref: 'Morada ou nome da casa', aviso: '',
     esp: ['Geopatia (correntes de água, falhas, cruzamentos)', 'Campo eletromagnético (quadro elétrico, wi-fi, aparelhos)', 'Cargas de antigos moradores', 'Presenças ou entidades no local', 'Bloqueio na entrada de energia e prosperidade', 'Objeto ou trabalho colocado na casa'] },
@@ -44,7 +46,7 @@ export function renderCasos(main, ctx) {
     return;
   }
   const esc = ctx.escapeHtml;
-  const S = { view: 'lista', casos: null, pacs: null, fEstado: '*', fTipo: '*', caso: null, novo: null, wiz: null };
+  const S = { view: 'lista', casos: null, pacs: null, fEstado: '*', fTipo: '*', caso: null, novo: null, wiz: null, ass: null };
 
   /* ── Estado de um caso e de uma sessão ── */
   const aVerificar = c => c.estado !== 'fechado' && !!c.proxima && c.proxima <= hoje();
@@ -71,6 +73,22 @@ export function renderCasos(main, ctx) {
     return L.join('\n');
   };
 
+  /* ── Plano para o paciente (linguagem simples, assinado em nome do terapeuta) ── */
+  const dicasPaciente = p => lista(p.dicas).filter(d => !/^(Trabalho energético de apoio|Pedir sempre)/.test(d));
+  function planoPacienteLinhas(c) {
+    const p = c.protocolo; if (!p) return null;
+    const nome = String(c.pacienteNome || '').split(/\s+/)[0];
+    const L = [`Olá${nome ? ', ' + nome : ''},`, `Aqui fica o resumo do trabalho feito a partir do que pediu: “${c.objetivo || c.titulo}”.`];
+    if (lista(p.temas).length) L.push('Áreas trabalhadas: ' + p.temas.join(', ') + '.');
+    const d = dicasPaciente(p); if (d.length) L.push('Em casa, sugere-se:\n' + d.map(x => '• ' + x).join('\n'));
+    if (lista(p.medico).length) L.push('Cuidados com a saúde:\n' + p.medico.map(x => '• ' + x).join('\n'));
+    L.push('Próximos passos: uma primeira sessão de limpeza, uma verificação passados cerca de 7 dias e, depois, as sessões que forem necessárias.');
+    L.push('Este é um trabalho energético e não substitui o acompanhamento médico.');
+    L.push('Ricardo Correia, Hikari Fafe');
+    return L;
+  }
+  const planoPacienteHtml = L => '<div style="font-family:sans-serif;line-height:1.55;color:#2b2b2b;">' + L.map(x => '<p style="margin:0 0 .9em;">' + esc(x).replace(/\n/g, '<br>') + '</p>').join('') + '</div>';
+
   /* ── Dados ── */
   async function carregar() {
     if (S.casos) return;
@@ -80,7 +98,7 @@ export function renderCasos(main, ctx) {
     S.casos.sort((a, b) => (aVerificar(b) - aVerificar(a)) || ((b._t || 0) - (a._t || 0)));
   }
   async function gravarCaso(caso) {
-    const dados = { titulo: caso.titulo, tipo: caso.tipo, referencia: caso.referencia || '', objetivo: caso.objetivo || '', pacienteId: caso.pacienteId || '', pacienteNome: caso.pacienteNome || '', prep: caso.prep || {}, sessoes: lista(caso.sessoes), estado: caso.estado || 'em-curso', proxima: caso.proxima || '' };
+    const dados = { titulo: caso.titulo, tipo: caso.tipo, referencia: caso.referencia || '', objetivo: caso.objetivo || '', pacienteId: caso.pacienteId || '', pacienteNome: caso.pacienteNome || '', prep: caso.prep || {}, sessoes: lista(caso.sessoes), estado: caso.estado || 'em-curso', proxima: caso.proxima || '', pesquisa: lista(caso.pesquisa), protocolo: caso.protocolo || null };
     const id = await ctx.gravar(caso.id || null, dados);
     caso.id = id; caso._t = Date.now();
     if (!S.casos.some(c => c.id === id)) S.casos.unshift(caso);
@@ -101,7 +119,8 @@ export function renderCasos(main, ctx) {
     const ch = (k, t) => `<button data-a="fEstado" data-v="${k}" class="${S.fEstado === k ? 'primary' : 'ghost'}" style="white-space:nowrap;">${t}</button>`;
     main.innerHTML = `<h2 style="margin:0 0 4px;">🏠 Casos e Alvos</h2>
       <p class="muted" style="margin:0 0 10px;">Triagem, Limpeza e Verificação de casas, terrenos, dinheiro, negócios e empresas, tribunal, motas, objetos, amor, saúde e pessoas. Cada caso fica numa ficha, com as sessões e a evolução.</p>
-      <button class="primary" data-a="novo" style="width:100%;padding:14px;margin-bottom:10px;">➕ Novo caso</button>
+      <button class="primary" data-a="assistente" style="width:100%;padding:14px;margin-bottom:8px;">✨ Descrever a situação<br><small>Escreves o que queres e a app cria a pesquisa e o protocolo</small></button>
+      <button class="ghost" data-a="novo" style="width:100%;padding:12px;margin-bottom:10px;">➕ Novo caso (escolher o tipo)</button>
       <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;">${ch('*', 'Todos')}${ch('verificar', '🔔 A verificar' + (nVer ? ' (' + nVer + ')' : ''))}${ch('curso', 'Em curso')}${ch('fechado', 'Fechados')}</div>
       <select data-i="fTipo" style="margin-bottom:10px;"><option value="*">Todos os tipos</option>${tipos.map(([k, t]) => `<option value="${k}" ${S.fTipo === k ? 'selected' : ''}>${t.e} ${esc(t.n)}</option>`).join('')}</select>
       ${vis.length ? vis.map(c => { const t = TIPOS[c.tipo] || TIPOS.casa; const n = lista(c.sessoes).length;
@@ -109,6 +128,38 @@ export function renderCasos(main, ctx) {
           <div style="display:flex;gap:10px;align-items:center;"><div style="font-size:1.8rem;">${t.e}</div><div style="flex:1;min-width:0;"><strong>${esc(c.titulo)}</strong>
           <div class="muted" style="font-size:.82rem;">${esc(t.n)}${c.pacienteNome ? ' · ' + esc(c.pacienteNome) : ''} · ${n} sessão(ões)</div>
           <div style="font-size:.88rem;margin-top:2px;">${badge(c)}</div></div></div></div>`; }).join('') : '<div class="card"><p class="muted">Ainda não há casos aqui. Toca em “Novo caso” para começar.</p></div>'}`;
+  }
+
+  function verAssistente() {
+    const A = S.ass, R = A.res;
+    let h = `${voltarLista}<h2 style="margin:0 0 4px;">✨ Protocolo automático</h2>
+      <p class="muted" style="margin:0 0 10px;">Escreve o que se pretende ou o que a pessoa sente, com as tuas palavras. A app reconhece os temas e monta a pesquisa, as interferências externas a verificar, as etiquetas sugeridas e o plano para o paciente.</p>
+      <div class="card"><textarea data-i="a.texto" rows="4" placeholder="Ex.: durmo mal, acordo muitas vezes de noite para urinar e quero perder peso. Ver se há interferência externa.">${esc(A.texto)}</textarea>
+      <div style="margin:8px 0;">${EXEMPLOS.map((x, i) => `<span data-a="exemplo" data-v="${i}" style="display:inline-block;margin:3px 4px 3px 0;padding:5px 10px;border-radius:99px;background:#eef0f7;font-size:.8rem;cursor:pointer;">${esc(x)}</span>`).join('')}</div>
+      <label style="display:block;margin-top:6px;">Para qual paciente? (opcional)</label>
+      <select data-i="a.pacienteId"><option value="">— sem paciente —</option>${(S.pacs || []).map(p => `<option value="${esc(p.id)}" ${A.pacienteId === p.id ? 'selected' : ''}>${esc(p.fullName)}</option>`).join('')}</select>
+      <button class="primary" data-a="gerar" style="width:100%;padding:14px;margin-top:10px;">✨ Gerar protocolo</button></div>`;
+    if (R && R.vazio) h += '<div class="card"><p class="muted">Escreve um pouco mais para eu perceber o que se pretende.</p></div>';
+    else if (R) {
+      const eq = ctx.etiquetas;
+      const sug = lista(R.sugeridas).map(cod => eq.find(x => x.codigo === cod)).filter(Boolean);
+      const L = planoPacienteLinhas({ pacienteNome: (S.pacs || []).find(p => p.id === A.pacienteId)?.fullName || '', objetivo: A.texto, titulo: A.titulo, protocolo: { temas: R.temas.map(x => x.nome), dicas: R.dicas, medico: R.medico } });
+      h += `<div class="card" style="border:2px solid var(--primary);"><h3 style="margin:0 0 6px;">O que percebi</h3>
+        ${R.semTema ? '<p class="muted">Não reconheci um tema concreto. Usei a pesquisa geral, com as interferências externas. Podes escolher o tipo à mão.</p>' : `<div>${R.temas.map(x => `<span style="display:inline-block;margin:2px 4px 2px 0;padding:4px 10px;border-radius:99px;background:#eef7ee;">${x.e} ${esc(x.nome)}</span>`).join('')}</div>`}
+        <label style="display:block;margin-top:10px;">Tipo de caso</label><select data-i="a.tipo">${Object.entries(TIPOS).map(([k, t]) => `<option value="${k}" ${A.tipo === k ? 'selected' : ''}>${t.e} ${esc(t.n)}</option>`).join('')}</select>
+        <label style="display:block;margin-top:10px;">Nome do caso</label><input data-i="a.titulo" value="${esc(A.titulo)}"></div>
+        <div class="card"><h3 style="margin:0 0 4px;">🔍 Pesquisa com o pêndulo (${R.pesquisa.length} pontos)</h3><p class="muted" style="margin:0 0 6px;">Mentaliza cada número e verifica a deteção. Os 🌐 são as interferências externas.</p>
+        ${R.pesquisa.map((x, i) => `<div style="padding:5px 0;border-bottom:1px solid #eee;font-size:.9rem;"><strong style="color:#777;">${i + 1}.</strong> ${esc(x)}</div>`).join('')}</div>
+        ${R.chakras.length ? `<div class="card"><h3 style="margin:0 0 4px;">🌀 Chakras a verificar</h3>${R.chakras.map(x => `<span style="display:inline-block;margin:2px 4px 2px 0;padding:4px 10px;border-radius:99px;background:#f3ecfa;">${esc(x)}</span>`).join('')}</div>` : ''}
+        ${sug.length ? `<div class="card"><h3 style="margin:0 0 4px;">🏷️ Etiquetas sugeridas (${sug.length})</h3><p class="muted" style="margin:0 0 6px;">Confirma com o pêndulo quais aplicar.</p>${sug.map(x => `<div style="font-size:.88rem;padding:3px 0;"><strong>${esc(x.codigo)}</strong> · ${esc(x.pt)}</div>`).join('')}</div>` : ''}
+        ${R.medico.length ? `<div class="card" style="background:#fff6e8;border:1px solid #e8c48a;"><h3 style="margin:0 0 4px;">⚕️ Sinais para levar ao médico</h3>${R.medico.map(x => `<p style="margin:4px 0;font-size:.9rem;">• ${esc(x)}</p>`).join('')}</div>` : ''}
+        ${R.dicas.length ? `<div class="card"><h3 style="margin:0 0 4px;">🌿 Passos práticos</h3>${R.dicas.map(x => `<p style="margin:4px 0;font-size:.9rem;">• ${esc(x)}</p>`).join('')}</div>` : ''}
+        <div class="card"><h3 style="margin:0 0 4px;">🗓️ Plano</h3><p style="margin:0;font-size:.9rem;">${esc(R.plano)}</p></div>
+        <details class="card"><summary style="cursor:pointer;font-weight:700;">📲 Plano para o paciente (pré-visualização)</summary><div style="margin-top:8px;">${planoPacienteHtml(L)}</div></details>
+        <button class="primary" data-a="criarAss" data-v="sessao" style="width:100%;padding:14px;margin-top:6px;">▶️ Criar o caso e começar a sessão</button>
+        <button class="ghost" data-a="criarAss" data-v="so" style="width:100%;padding:12px;margin-top:8px;">💾 Só criar o caso</button>`;
+    }
+    main.innerHTML = h;
   }
 
   function verNovo() {
@@ -137,6 +188,12 @@ export function renderCasos(main, ctx) {
         ${c.pacienteNome ? `<p class="muted" style="margin:4px 0 0;">👤 ${esc(c.pacienteNome)}</p>` : ''}
         <p style="margin:8px 0 0;">${badge(c)}</p>
         ${t.aviso ? `<p class="muted" style="margin:8px 0 0;">ℹ️ ${esc(t.aviso)}</p>` : ''}</div>
+      ${c.protocolo ? `<details class="card"><summary style="cursor:pointer;font-weight:700;">✨ Protocolo deste caso</summary><div style="margin-top:8px;font-size:.9rem;">
+        ${lista(c.protocolo.temas).length ? `<p><strong>Temas:</strong> ${c.protocolo.temas.map(esc).join(', ')}</p>` : ''}
+        ${lista(c.protocolo.chakras).length ? `<p><strong>Chakras:</strong> ${c.protocolo.chakras.map(esc).join(', ')}</p>` : ''}
+        ${lista(c.protocolo.medico).length ? `<p><strong>⚕️ Para o médico:</strong></p>${c.protocolo.medico.map(x => `<p style="margin:2px 0;">• ${esc(x)}</p>`).join('')}` : ''}
+        ${lista(c.protocolo.dicas).length ? `<p><strong>🌿 Passos práticos:</strong></p>${c.protocolo.dicas.map(x => `<p style="margin:2px 0;">• ${esc(x)}</p>`).join('')}` : ''}
+        ${c.pacienteId ? `<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="ghost" data-a="planoPac">📲 Guardar plano na ficha do paciente</button>${ctx.enviarPortal ? '<button class="ghost" data-a="enviarPac">📤 Enviar link do portal</button>' : ''}</div>` : '<p class="muted">Liga o caso a um paciente para lhe poderes enviar o plano.</p>'}</div></details>` : ''}
       <div class="card"><h3 style="margin:0 0 4px;">🧭 1. Preparação</h3>
         ${P('permissao', 'Perguntei ao pêndulo se posso trabalhar neste caso')}${P('objetivo', 'O objetivo está definido e a identificação do alvo está à mão')}${P('elevado', 'Pedi o que for mais elevado e justo, sem interferir na vontade de terceiros')}</div>
       ${c.estado === 'fechado' ? `<button class="ghost" data-a="reabrir" style="width:100%;margin-bottom:8px;">↩️ Reabrir caso</button>` : `
@@ -193,10 +250,10 @@ export function renderCasos(main, ctx) {
       return;
     }
     if (W.passo === 1) {
-      const todas = causasDe(c.tipo);
+      const todas = lista(c.pesquisa).length ? c.pesquisa : causasDe(c.tipo);
       main.innerHTML = `${cab}<h2 style="margin:0 0 8px;">🔍 1. Triagem</h2>
         <div class="card">${data}<label style="margin-top:10px;display:block;">Bovis inicial</label><input data-i="w.bovisIni" value="${esc(W.bovisIni)}" inputmode="decimal" placeholder="Ex.: 6500"></div>
-        <div class="card"><h3 style="margin:0 0 4px;">Pesquisa numerada · ${t.e} ${esc(t.n)}</h3><p class="muted" style="margin:0 0 6px;">Mentaliza cada número e marca o que o pêndulo deteta.</p>${toggles(todas, W.causas, 'causa')}
+        <div class="card"><h3 style="margin:0 0 4px;">Pesquisa numerada · ${lista(c.pesquisa).length ? '✨ protocolo do caso' : t.e + ' ' + esc(t.n)}</h3><p class="muted" style="margin:0 0 6px;">Mentaliza cada número e marca o que o pêndulo deteta.</p>${toggles(todas, W.causas, 'causa')}
         <label style="margin-top:10px;display:block;">Outras causas detetadas (separa por vírgulas)</label><input data-i="w.outras" value="${esc(W.outras)}"></div>
         <button class="primary" data-a="seguinte" style="width:100%;padding:14px;">Seguinte → Limpeza</button>`;
     } else if (W.passo === 2) {
@@ -206,6 +263,7 @@ export function renderCasos(main, ctx) {
         <div class="card"><p class="muted" style="margin:0;">Usa só as etiquetas dos 72 Nomes e as restantes que o pêndulo indicar para o que foi detetado.${primeiraSessao() ? ` Na 1.ª sessão, no máximo ${MAX_ETQ_PRIMEIRA}.` : ''}</p>
         <div style="margin:8px 0;"><strong>${W.etiquetas.length} escolhida(s)</strong>${excesso ? `<div style="color:#b94a48;font-size:.88rem;margin-top:4px;">⚠️ Muitas etiquetas numa só sessão desgastam o campo. Reduz para ${MAX_ETQ_PRIMEIRA} ou menos.</div>` : ''}
         <div style="margin-top:4px;">${sel.map(x => `<span data-a="etq" data-v="${esc(x.codigo)}" style="display:inline-block;margin:2px 4px 2px 0;padding:4px 10px;border-radius:99px;background:#5b2a86;color:#fff;font-size:.82rem;cursor:pointer;">${esc(x.codigo)} ✕</span>`).join('')}</div></div>
+        ${lista(c.protocolo && c.protocolo.sugeridas).length ? `<div style="margin:6px 0;"><span class="muted" style="font-size:.82rem;">✨ Sugeridas (toca para escolher):</span><br>${c.protocolo.sugeridas.map(cod => ctx.etiquetas.find(x => x.codigo === cod)).filter(Boolean).map(x => `<span data-a="etq" data-v="${esc(x.codigo)}" style="display:inline-block;margin:3px 4px 0 0;padding:4px 10px;border-radius:99px;background:${W.etiquetas.indexOf(x.codigo) >= 0 ? '#5b2a86;color:#fff' : '#f3ecfa'};font-size:.82rem;cursor:pointer;" title="${esc(x.pt)}">${esc(x.codigo)}</span>`).join('')}</div>` : ''}
         <input data-i="w.q" value="${esc(W.q)}" placeholder="Número (24, A7) ou palavra (inveja, perdoar)…" style="width:100%;margin:6px 0;">
         <div id="casos-etq" style="max-height:44vh;overflow:auto;">${listaEtqHTML()}</div></div>
         <div class="card"><label>Como aplicaste?</label>
@@ -264,6 +322,7 @@ export function renderCasos(main, ctx) {
   function ver() {
     if (S.view === 'lista') verLista();
     else if (S.view === 'novo') verNovo();
+    else if (S.view === 'assistente') verAssistente();
     else if (S.view === 'caso') verCaso();
     else verSessao();
     window.scrollTo(0, 0);
@@ -279,6 +338,29 @@ export function renderCasos(main, ctx) {
   const acoes = {
     lista: () => { S.view = 'lista'; S.caso = null; ver(); },
     fEstado: b => { S.fEstado = b.dataset.v; verLista(); },
+    assistente: async () => { if (!S.pacs) { try { S.pacs = await ctx.pacientes(); } catch (e) { S.pacs = []; } } S.ass = S.ass || { texto: '', pacienteId: '', res: null, tipo: 'pessoa', titulo: '' }; S.view = 'assistente'; ver(); },
+    exemplo: b => { S.ass.texto = EXEMPLOS[Number(b.dataset.v)] || ''; S.ass.res = null; verAssistente(); },
+    gerar: () => {
+      const A = S.ass; A.res = analisar(A.texto, ctx.etiquetas);
+      if (!A.res.vazio) { A.tipo = A.res.tipo; if (!A.titulo.trim()) { const t = A.texto.trim().replace(/\s+/g, ' '); A.titulo = (t.charAt(0).toUpperCase() + t.slice(1)).slice(0, 50); } }
+      verAssistente();
+    },
+    criarAss: async b => {
+      const A = S.ass, R = A.res; if (!R || R.vazio) return;
+      const pac = (S.pacs || []).find(p => p.id === A.pacienteId);
+      const caso = { titulo: (A.titulo || 'Caso').trim().slice(0, 80), tipo: A.tipo || R.tipo, referencia: '', objetivo: A.texto.trim(), pacienteId: pac ? pac.id : '', pacienteNome: pac ? pac.fullName : '', prep: {}, sessoes: [], estado: 'em-curso', proxima: '',
+        pesquisa: R.pesquisa.slice(), protocolo: { temas: R.temas.map(x => x.nome), chakras: R.chakras.slice(), sugeridas: R.sugeridas.slice(), medico: R.medico.slice(), dicas: R.dicas.slice(), plano: R.plano } };
+      try { await gravarCaso(caso); } catch (e) { console.error(e); ctx.toast('⚠️ Não consegui criar o caso.', true); return; }
+      S.caso = caso; S.ass = null; ctx.toast('Caso criado ✓');
+      if (b.dataset.v === 'sessao') { S.wiz = novaWiz('completa'); S.view = 'sessao'; } else S.view = 'caso';
+      ver();
+    },
+    planoPac: async () => {
+      const c = S.caso, L = planoPacienteLinhas(c); if (!L || !c.pacienteId) return;
+      const ok = await ctx.guardarNaFicha(c.pacienteId, { tipo: 'plano-paciente', titulo: 'Plano: ' + c.titulo, texto: L.join('\n\n'), reportHtml: planoPacienteHtml(L), dados: { casoId: c.id } });
+      ctx.toast(ok ? 'Plano guardado na ficha do paciente ✓' : 'Não consegui guardar na ficha.', !ok);
+    },
+    enviarPac: () => { if (S.caso.pacienteId && ctx.enviarPortal) ctx.enviarPortal(S.caso.pacienteId); },
     novo: async () => { if (!S.pacs) { try { S.pacs = await ctx.pacientes(); } catch (e) { S.pacs = []; } } S.novo = { tipo: 'casa', titulo: '', referencia: '', objetivo: '', pacienteId: '' }; S.view = 'novo'; ver(); },
     tipo: b => { S.novo.tipo = b.dataset.v; verNovo(); },
     criar: async () => {
@@ -322,6 +404,7 @@ export function renderCasos(main, ctx) {
     if (k === 'fTipo') { S.fTipo = t.value; verLista(); return; }
     const [obj, campo] = k.split('.');
     if (obj === 'n') S.novo[campo] = t.value;
+    else if (obj === 'a') { S.ass[campo] = t.value; if (campo === 'texto') S.ass.res = S.ass.res; }
     else if (obj === 'w') {
       S.wiz[campo] = t.value;
       if (campo === 'q') { const el = main.querySelector('#casos-etq'); if (el) el.innerHTML = listaEtqHTML(); }
