@@ -33,14 +33,21 @@ exports.hotmartWebhook = onRequest({ cors: false }, async (req, res) => {
     const ref = db.collection('hotmart_eventos').doc();
     const registo = { evento, email, transacao, recebidoEm: FieldValue.serverTimestamp(), resultado: 'ignorado' };
 
-    if (!email || (!ATIVAR.has(evento) && !SUSPENDER.has(evento))) {
+    if (!ATIVAR.has(evento) && !SUSPENDER.has(evento)) {
       await ref.set(registo);
       return res.status(200).send('ok');
     }
 
-    const q = await db.collection('tenants').where('ownerEmail', '==', email).limit(2).get();
-    if (q.size !== 1) {
-      registo.resultado = q.empty ? 'sem_conta_com_este_email' : 'varias_contas_com_este_email';
+    // 1.º pelo identificador que o botão da app junta ao link (sck); 2.º pelo email do comprador.
+    const sck = String(dados?.purchase?.origin?.sck || dados?.purchase?.sck || '').trim();
+    let q = null;
+    if (sck && /^[A-Za-z0-9_-]{6,128}$/.test(sck)) {
+      const porId = await db.doc(`tenants/${sck}`).get();
+      if (porId.exists) q = { size: 1, empty: false, docs: [porId] };
+    }
+    if (!q && email) q = await db.collection('tenants').where('ownerEmail', '==', email).limit(2).get();
+    if (!q || q.size !== 1) {
+      registo.resultado = (!q || q.empty) ? 'sem_conta_com_este_email' : 'varias_contas_com_este_email';
       await ref.set(registo);
       return res.status(200).send('ok');
     }
