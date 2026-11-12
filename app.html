@@ -353,13 +353,12 @@
     <button onclick="startNewConsultationFlow()" style="background:var(--primary);color:#fff;font-weight:600;">🩺 Nova Consulta</button>
     <button data-view="agenda">📅 Agenda</button>
     <button data-view="patients" style="background:#e3f0ea;color:#1a2b26;font-weight:600;">🧑 Pacientes</button>
-    <button data-view="finances">💶 Pagamentos</button>
-    <button data-view="services">🩺 Serviços & Preços</button>
     <button data-view="group_agenda">📩 Pedidos & Espera</button>
-    <button data-view="group_tools">🧰 Ferramentas</button>
+    <button data-view="group_finance">💶 Financeiro</button>
+    <button data-view="group_tools">🗂️ Consultas & Fichas</button>
+    <button data-view="group_business">🌐 O Meu Site & Negócio</button>
     <button id="navMisticaBtn" data-view="group_mistica" style="display:none;">🔮 Módulos Exclusivos</button>
-    <button data-view="group_business">🏥 A Minha Clínica</button>
-    <button data-view="group_account">⚙️ Conta</button>
+    <button data-view="group_account">⚙️ Conta & Ajuda</button>
     <button onclick="installApp()" style="margin-top:20px;">📲 Instalar app no dispositivo</button>
     <button data-view="logout" style="color:#f2b8b8;">Sair</button>
   </nav>
@@ -395,7 +394,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-11-12';
+const APP_VERSION = '2026-11-12-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1936,18 +1935,21 @@ let __profileSection = null;
 // uma abre uma grelha simples com as funcionalidades lá dentro.
 const NAV_GROUPS = {
   agenda: { title: '📩 Pedidos & Lista de espera', items: [
-    { view: 'agenda', icon: '📅', label: 'Agenda' },
     { view: 'waitlist', icon: '⏳', label: 'Lista de Espera' },
     { view: 'gestorPedidos', icon: '📩', label: 'Pedidos de marcação', gestorOnly: true }
   ]},
-  tools: { title: '🧰 Ferramentas', items: [
+  finance: { title: '💶 Financeiro', items: [
+    { view: 'finances', icon: '💶', label: 'Pagamentos' },
+    { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
+    { view: 'plano_link', icon: '📊', label: 'O meu plano Vindora', ownerOnly: true, onclick: "openSettingsSection('plano')" }
+  ]},
+  tools: { title: '🗂️ Consultas & Fichas', items: [
     { view: 'protocols', icon: '📋', label: 'Fichas & Métodos' },
-    { view: 'knowledge', icon: '🧠', label: 'Fonte de Conhecimento' },
-    { view: 'farmacia', icon: '💊', label: 'Farmácia & Interações' },
     { view: 'respostas', icon: '📥', label: 'Respostas de Fichas' },
-    { view: 'trainings', icon: '🎓', label: 'Formações' },
-    { view: 'versoes', icon: '🕘', label: 'Versões anteriores' },
-    { view: 'pesquisaEmocional', icon: '🔬', label: 'Pesquisa Emocional Clínica', peAccess: true }
+    { view: 'pesquisaEmocional', icon: '🔬', label: 'Pesquisa Emocional Clínica', peAccess: true },
+    { view: 'farmacia', icon: '💊', label: 'Farmácia & Interações' },
+    { view: 'knowledge', icon: '🧠', label: 'Fonte de Conhecimento' },
+    { view: 'versoes', icon: '🕘', label: 'Versões anteriores' }
   ]},
   mistica: { title: '🔮 Módulos Exclusivos', items: [
     { view: 'mapaAlma', icon: '🔮', label: 'Mapa da Alma', modulo: 'mapaAlma' },
@@ -1962,13 +1964,14 @@ const NAV_GROUPS = {
     { view: 'etiquetasEtericas', icon: '🏷️', label: 'Etiquetas Etéricas', tenantOnly: 'hikari-terapias' },
     { view: 'casosEnergeticos', icon: '🏠', label: 'Casos e Alvos', tenantOnly: 'hikari-terapias' }
   ]},
-  business: { title: '🏥 A Minha Clínica', items: [
+  business: { title: '🌐 O Meu Site & Negócio', items: [
+    { view: 'myprofile', icon: '🙋', label: 'O Meu Perfil Público' },
+    { view: 'profile', icon: '🏥', label: 'Perfil do Negócio', ownerOnly: true },
     { view: 'team', icon: '👥', label: 'Equipa', hideForRestricted: true },
-    { view: 'profile', icon: '🏥', label: 'Perfil do Negócio', ownerOnly: true }
+    { view: 'trainings', icon: '🎓', label: 'Formações & Cursos' }
   ]},
-  account: { title: '⚙️ Conta', items: [
+  account: { title: '⚙️ Conta & Ajuda', items: [
     { view: 'ajuda', icon: '❓', label: 'Ajuda: como faço…?' },
-    { view: 'myprofile', icon: '🙋', label: 'O Meu Perfil' },
     { view: 'settings', icon: '⚙️', label: 'Definições' },
     { view: 'supportContact', icon: '🆘', label: 'Reportar / Pedir Apoio' }
   ]}
@@ -1980,7 +1983,7 @@ Object.entries(NAV_GROUPS).forEach(([groupKey, group]) => {
   group.items.forEach(it => { NAV_VIEW_TO_GROUP[it.view] = 'group_' + groupKey; });
 });
 
-delete NAV_VIEW_TO_GROUP['agenda']; // Agenda tem botão directo na barra
+delete NAV_VIEW_TO_GROUP['agenda']; // Agenda tem botão directo na barra (já não está em nenhum grupo)
 // Módulos exclusivos: ligados pela plataforma (painel de admin) em tenants/{id}.modulos.{chave}.
 // A conta da Hikari Fafe tem sempre tudo.
 function temModulo(chave){
@@ -2011,7 +2014,7 @@ function renderGroupMenu(main, groupKey){
   main.innerHTML = `
     <h2>${group.title}</h2>
     <div class="profile-grid">
-      ${items.map(it => `<button class="profile-tile" onclick="${it.openExternal ? `openExternalLink('${it.openExternal}')` : (it.view === 'profile' ? 'closeProfileSection()' : (it.view === 'settings' ? 'closeSettingsSection()' : `renderView('${it.view}')`))}"><span class="ptile-icon">${it.icon}</span><span>${it.label}</span></button>`).join('')}
+      ${items.map(it => `<button class="profile-tile" onclick="${it.onclick ? it.onclick : it.openExternal ? `openExternalLink('${it.openExternal}')` : (it.view === 'profile' ? 'closeProfileSection()' : (it.view === 'settings' ? 'closeSettingsSection()' : `renderView('${it.view}')`))}"><span class="ptile-icon">${it.icon}</span><span>${it.label}</span></button>`).join('')}
     </div>`;
 }
 
@@ -2630,15 +2633,24 @@ window.dismissHomeAlert = function(id, text){
 async function renderHome(main){
   main.innerHTML = '<p class="muted">A carregar…</p>';
 
-  const [apptsSnap, waitlistSnap, patientsSnap, staffSnap, bookingReqSnap, pendingFormsSnap] = await Promise.all([
-    getDocs(collection(db, 'tenants', tenantId, 'appointments')),
-    getDocs(collection(db, 'tenants', tenantId, 'waitlist')),
-    getDocs(collection(db, 'tenants', tenantId, 'patients')),
-    tenantRole === 'owner' ? getDocs(collection(db, 'tenants', tenantId, 'staff')) : Promise.resolve(null),
+  // Cada leitura é independente: se uma falhar (permissões, rede), o resto do
+  // Início abre na mesma. E só se lêem as marcações dos próximos dias, não o
+  // histórico todo.
+  const VAZIO = { docs: [], size: 0, empty: true };
+  const seguro = async (fn) => { try { return await fn(); } catch(e){ console.warn('Início: leitura indisponível', e); return VAZIO; } };
+  const _agora0 = Date.now();
+  const [apptsSnap, waitlistSnap, patientsSnap, staffSnap, bookingReqSnap, pendingFormsSnap, anyApptSnap] = await Promise.all([
+    seguro(() => getDocs(query(collection(db, 'tenants', tenantId, 'appointments'),
+      where('startsAt', '>=', Timestamp.fromDate(new Date(_agora0 - 86400000))),
+      where('startsAt', '<=', Timestamp.fromDate(new Date(_agora0 + 8 * 86400000)))))),
+    seguro(() => getDocs(collection(db, 'tenants', tenantId, 'waitlist'))),
+    seguro(() => getDocs(collection(db, 'tenants', tenantId, 'patients'))),
+    tenantRole === 'owner' ? seguro(() => getDocs(collection(db, 'tenants', tenantId, 'staff'))) : Promise.resolve(null),
     tenantRole !== 'staff_restricted'
-      ? getDocs(query(collection(db, 'public_booking_requests'), where('tenantId','==',tenantId), where('status','==','pending_review')))
+      ? seguro(() => getDocs(query(collection(db, 'public_booking_requests'), where('tenantId','==',tenantId), where('status','==','pending_review'))))
       : Promise.resolve(null),
-    getDocs(query(collection(db, 'public_form_responses'), where('tenantId','==',tenantId), where('status','==','pending_review')))
+    seguro(() => getDocs(query(collection(db, 'public_form_responses'), where('tenantId','==',tenantId), where('status','==','pending_review')))),
+    tenantRole === 'owner' ? seguro(() => getDocs(query(collection(db, 'tenants', tenantId, 'appointments'), limit(1)))) : Promise.resolve(VAZIO)
   ]);
 
   const alerts = [];
@@ -2683,24 +2695,8 @@ async function renderHome(main){
     }
   }catch(e){ /* falha silenciosa — nunca deve travar o Início do consultório */ }
 
-  const unreadByPatient = await Promise.all(patientsSnap.docs
-    .filter(d => (!d.data().preferredChannel || d.data().preferredChannel === 'portal') && isPatientVisibleToCurrentStaff(d.data()))
-    .map(async d => {
-    const msgsSnap = await getDocs(query(
-      collection(db, 'tenants', tenantId, 'patients', d.id, 'messages'),
-      where('sender', '==', 'patient'), where('readByProfessional', '==', false)
-    ));
-    return { patientId: d.id, patientName: d.data().fullName, count: msgsSnap.size };
-  }));
-  const withUnread = unreadByPatient.filter(p => p.count > 0);
-  const totalUnread = withUnread.reduce((sum, p) => sum + p.count, 0);
-  let unreadHtml = '';
-  if (totalUnread){
-    unreadHtml = `<div class="appt-item">
-      <div>💬 ${totalUnread} mensagem(ns) por ler</div>
-      ${withUnread.map(p => `<div class="muted" style="cursor:pointer;margin-top:2px;" onclick="abrirConversaPaciente('${p.patientId}')">↳ ${escapeHtml(p.patientName)} (${p.count}) ›</div>`).join('')}
-    </div>`;
-  }
+  // As mensagens por ler carregam DEPOIS do Início aparecer (ver carregarNaoLidasInicio)
+  // — antes, o ecrã esperava por uma consulta por cada paciente.
 
   if (tenantRole === 'owner' && areasDoSubscritor().length === 0){
     alerts.push({ id: 'area', icon: '✨', text: 'Diga-nos o que faz (massagem, psicologia, reiki…) e mostramos modelos prontos de fichas e métodos feitos para si', action: "renderView('protocols')" });
@@ -2731,12 +2727,12 @@ async function renderHome(main){
   // se a situação realmente mudar.
   const visibleAlerts = alerts.filter(a => localStorage.getItem('homeAlertDismissed:' + a.id) !== a.text);
 
-  const alertsHtml = (visibleAlerts.length || unreadHtml)
+  const alertsHtml = visibleAlerts.length
     ? visibleAlerts.map(a => `<div class="appt-item row">
         <div style="cursor:pointer;flex:1;" onclick="${a.action}">${a.icon} ${escapeHtml(a.text)} ›</div>
         <button class="ghost" style="padding:4px 10px;" data-id="${escapeHtml(a.id)}" data-text="${escapeHtml(a.text)}" onclick="event.stopPropagation();dismissHomeAlert(this.dataset.id, this.dataset.text)" title="Dispensar">✕</button>
-      </div>`).join('') + unreadHtml
-    : '<p class="muted">Sem alertas — está tudo em dia. ✅</p>';
+      </div>`).join('')
+    : '';
 
   const now = new Date();
   const weekEnd = new Date(now.getTime() + 7*86400000);
@@ -2765,8 +2761,8 @@ async function renderHome(main){
   }
 
   let chkHtml = '';
-  if (tenantRole === 'owner'){
-    try { chkHtml = checklistHtml(await checklistCalcular(apptsSnap, patientsSnap)); }
+  if (tenantRole === 'owner' && chkLs('ocultar') !== '1'){
+    try { chkHtml = checklistHtml(await checklistCalcular(anyApptSnap, patientsSnap)); }
     catch(e){ console.warn('lista de primeiros passos indisponível', e); }
   }
 
@@ -2808,6 +2804,8 @@ async function renderHome(main){
     <div class="card">
       <h2 style="margin-bottom:8px;">🔔 Alertas</h2>
       ${alertsHtml}
+      <div id="homeUnreadBox"></div>
+      <p id="homeNoAlerts" class="muted"${visibleAlerts.length ? ' style="display:none;"' : ''}>Sem alertas — está tudo em dia. ✅</p>
     </div>
     <div class="card">
       <div class="row"><h2>📅 Esta semana</h2>
@@ -2823,6 +2821,43 @@ async function renderHome(main){
   maybeShowDpaGate();
   maybeShowPlatformAnnouncement();
   maybeShowTrialEndingBanner();
+  carregarNaoLidasInicio(patientsSnap);
+}
+
+// Mensagens de pacientes por ler: carregam depois de o Início já estar no ecrã,
+// com cada paciente protegido por try e um pequeno cache (60 s) para não repetir
+// as consultas sempre que se volta ao Início.
+async function carregarNaoLidasInicio(patientsSnap){
+  try{
+    const cache = window.__homeUnreadCache;
+    let lista;
+    if (cache && cache.tenantId === tenantId && Date.now() - cache.t < 60000){
+      lista = cache.lista;
+    } else {
+      const alvo = patientsSnap.docs.filter(d => (!d.data().preferredChannel || d.data().preferredChannel === 'portal') && isPatientVisibleToCurrentStaff(d.data()));
+      const todos = await Promise.all(alvo.map(async d => {
+        try{
+          const s = await getDocs(query(
+            collection(db, 'tenants', tenantId, 'patients', d.id, 'messages'),
+            where('sender', '==', 'patient'), where('readByProfessional', '==', false)
+          ));
+          return { patientId: d.id, patientName: d.data().fullName || 'Paciente', count: s.size };
+        }catch(e){ return { patientId: d.id, patientName: d.data().fullName || 'Paciente', count: 0 }; }
+      }));
+      lista = todos.filter(p => p.count > 0);
+      window.__homeUnreadCache = { tenantId, t: Date.now(), lista };
+    }
+    const box = document.getElementById('homeUnreadBox');
+    if (!box) return; // já saiu do Início
+    const total = lista.reduce((s, p) => s + p.count, 0);
+    if (!total){ box.innerHTML = ''; return; }
+    box.innerHTML = `<div class="appt-item">
+      <div>💬 ${total} mensagem(ns) por ler</div>
+      ${lista.map(p => `<div class="muted" style="cursor:pointer;margin-top:2px;" onclick="abrirConversaPaciente('${p.patientId}')">↳ ${escapeHtml(p.patientName)} (${p.count}) ›</div>`).join('')}
+    </div>`;
+    const nenhum = document.getElementById('homeNoAlerts');
+    if (nenhum) nenhum.style.display = 'none';
+  }catch(e){ console.warn('mensagens por ler indisponíveis', e); }
 }
 
 // ── Primeiros passos (lista com progresso) ───────────────────────────────
@@ -5452,6 +5487,7 @@ async function renderPatientMessages(patientId, isPoll, suffix){
     }
   }
   unreadDocs.forEach(ref => updateDoc(ref, { readByProfessional: true }).catch(()=>{}));
+  if (unreadDocs.length) window.__homeUnreadCache = null;
 
   // Verifica mensagens novas a cada 5 segundos enquanto a ficha estiver
   // aberta — sem nunca tocar na caixa de escrita, para não perturbar.
