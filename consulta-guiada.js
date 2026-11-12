@@ -143,7 +143,7 @@ function mapaHtml(s, modo, sel, destaque) {
 function editorMapa(s) {
   const f = (v, n) => `<option value="${v}" ${s.fundo === v ? 'selected' : ''}>${n}</option>`;
   const sel = (s.points || []).find(p => p.id === CG.ponto);
-  return campo('Imagem de fundo', `<select onchange="cgSet('${s.id}','fundo',this.value,true)">${f('corpoFrente', 'Corpo humano — frente')}${f('corpoCostas', 'Corpo humano — costas')}${f('chakras', 'Corpo com os 7 chakras e as suas cores')}${f('custom', 'A minha imagem')}</select>`) +
+  return campo('Imagem de fundo', `<select onchange="cgSet('${s.id}','fundo',this.value,true)">${f('corpoFrente', 'Corpo humano — frente')}${f('corpoCostas', 'Corpo humano — costas')}${f('chakras', 'Corpo com os 7 chakras e as suas cores')}${f('esqueletoFrente', 'Esqueleto (ossos) — frente')}${f('esqueletoCostas', 'Esqueleto (ossos) — costas')}${f('musculosFrente', 'Músculos — frente')}${f('musculosCostas', 'Músculos — costas')}${f('custom', 'A minha imagem')}</select>`) +
     (s.fundo === 'custom' ? campo('Endereço da imagem', `<input id="cgImg_${s.id}" value="${esc(s.imagem)}" onchange="cgSet('${s.id}','imagem',this.value,true)" placeholder="https://...">`) + (window.imageUploadFieldHTML ? window.imageUploadFieldHTML(`cgImg_${s.id}`, `tenants/${window.tenantId ? window.tenantId() : 'x'}/protocols`) : '') : '') +
     `<label style="display:flex;gap:8px;align-items:center;margin-top:8px;"><input type="checkbox" style="width:auto;margin:0;" ${s.multi ? 'checked' : ''} onchange="cgSet('${s.id}','multi',this.checked)"> Pode marcar vários pontos</label>` +
     `<div class="muted" style="margin-top:8px;">👆 Toque na imagem para <b>adicionar um ponto</b>. Arraste um ponto para o mover.</div>` +
