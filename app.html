@@ -415,7 +415,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-12-2';
+const APP_VERSION = '2026-11-12-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -6531,7 +6531,7 @@ function modelosEmDestaque(tipo){
   const nomeDe = t => tipo === 'forms' ? t.title : t.name;
   const infoDe = t => tipo === 'forms'
     ? `${t.questions.length} perguntas`
-    : (t.type === 'mapping' ? '🗺️ Mapeamento no corpo' : '📋 Lista de pontos');
+    : (t.type === 'mapping' ? '🗺️ Pesquisa no corpo' : '📋 Lista de pontos');
   const minhas = areasDoSubscritor();
   const todos = !!window.__verTodosModelos;
   // Mantém o índice original: useXTemplate(i) refere-se sempre ao array completo.
@@ -6595,9 +6595,10 @@ async function renderForms(main){
       <button class="primary" onclick="openNewForm()">+ Nova ficha</button>
     </div>
     ${cartaoRespostasHtml(respProntas, respAguardam)}
-    ${hintBox('Crie questionários avulsos para os seus clientes preencherem antes ou depois de um atendimento — avaliação inicial, satisfação, o que for útil à sua prática. Enviados por link próprio, sem precisar de estar dentro de uma consulta. Diferente de "Os Meus Métodos" (o que usa durante a própria consulta, com pontos/mapeamento).')}
+    ${hintBox('Crie questionários avulsos para os seus clientes preencherem antes ou depois de um atendimento — avaliação inicial, satisfação, o que for útil à sua prática. Enviados por link próprio, sem precisar de estar dentro de uma consulta. Diferente de "Os Meus Métodos" (o que usa durante a própria consulta, com pontos/pesquisa no corpo).')}
     ${passosHtml('Como funciona (3 passos)', ['<strong>Crie</strong> a ficha (ou escolha um modelo pronto).','Toque em <strong>📤 Enviar Online</strong> e envie o link por WhatsApp ou email.','As respostas chegam a <strong>📥 Respostas recebidas</strong>, sem o cliente precisar de conta.'])}
     ${modelosEmDestaque('forms')}
+    ${avisoRepetidosHtml('forms', planoRepetidos(snap.docs, 'title').length)}
     <div class="card"><h3 style="margin-top:0;">As minhas fichas</h3>${rows}</div>
     <div id="formBuilderContainer"></div>
   `;
@@ -7347,7 +7348,7 @@ function renderProtocolTemplatesSection(){
   const cards = TEMPLATE_PROTOCOLS.map((t, idx) => {
     const isMapping = t.type === 'mapping';
     const pointCount = isMapping ? (t.groups||[]).reduce((n,g)=>n+(g.points||[]).length,0) : (t.points||[]).length;
-    const typeLabel = isMapping ? '🗺️ Mapeamento no corpo' : '📋 Lista de pontos';
+    const typeLabel = isMapping ? '🗺️ Pesquisa no corpo' : '📋 Lista de pontos';
     return `
     <div class="appt-item row">
       <div><strong>${escapeHtml(t.name)}</strong>
@@ -7357,13 +7358,72 @@ function renderProtocolTemplatesSection(){
     </div>`;
   }).join('');
   return `
-    ${hintBox('Estes modelos ficam disponíveis para todos, mas são apenas um ponto de partida — pode usar tal e qual, editar à sua maneira depois de os copiar, ou simplesmente ignorá-los se preferir criar tudo do zero. Nos modelos com mapeamento, os pontos já vêm posicionados no boneco genérico — pode arrastar/reposicionar depois de copiar, como qualquer ponto seu.')}
+    ${hintBox('Estes modelos ficam disponíveis para todos, mas são apenas um ponto de partida — pode usar tal e qual, editar à sua maneira depois de os copiar, ou simplesmente ignorá-los se preferir criar tudo do zero. Nos modelos com pesquisa no corpo, os pontos já vêm posicionados no boneco genérico — pode arrastar/reposicionar depois de copiar, como qualquer ponto seu.')}
     <div class="card">${cards}</div>`;
 }
+
+
+// ── Repetidos: evitar criar e limpar ─────────────────────────────────────
+const __nomeNorm = x => (x || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+async function jaTemModelo(colecao, campo, nome){
+  try{
+    const snap = await getDocs(collection(db, 'tenants', tenantId, colecao));
+    const n = __nomeNorm(nome);
+    return snap.docs.some(d => __nomeNorm(d.data()[campo]) === n);
+  }catch(e){ return false; }
+}
+// Agrupa por nome e escolhe, em cada grupo, a cópia a manter: a que tem imagem própria,
+// depois a mais completa, depois a mais recente.
+function planoRepetidos(docs, campo){
+  const grupos = {};
+  docs.forEach(d => { const k = __nomeNorm(d.data()[campo]); if (k) (grupos[k] = grupos[k] || []).push(d); });
+  const tam = d => { try{ return JSON.stringify(d.data(), (k, v) => (v && typeof v.toMillis === 'function') ? 0 : v).length; }catch(_){ return 0; } };
+  const img = d => (d.data().bodyFrontImageUrl || d.data().bodyBackImageUrl) ? 1 : 0;
+  const rec = d => { const u = d.data().updatedAt; return (u && u.toMillis) ? u.toMillis() : 0; };
+  const remover = [];
+  Object.values(grupos).forEach(lista => {
+    if (lista.length < 2) return;
+    lista.sort((a, b) => (img(b) - img(a)) || (tam(b) - tam(a)) || (rec(b) - rec(a)));
+    remover.push(...lista.slice(1));
+  });
+  return remover;
+}
+function avisoRepetidosHtml(tipo, n){
+  if (!n) return '';
+  const o = tipo === 'forms' ? 'fichas' : 'métodos';
+  return `<div class="card" style="border:2px solid #e0a43a;background:#fff8ea;">
+    <strong>🧹 Tem ${n} ${o} repetid${tipo === 'forms' ? 'as' : 'os'}</strong>
+    <p class="muted" style="margin:6px 0 10px;">Fica uma de cada (a mais completa). As outras ficam guardadas em "Versões anteriores" e pode recuperá-las.</p>
+    <button class="primary" onclick="limparRepetidos('${tipo}')">🧹 Limpar repetidos</button>
+  </div>`;
+}
+window.limparRepetidos = async function(tipo){
+  const col = tipo === 'forms' ? 'forms' : 'protocols';
+  const kind = tipo === 'forms' ? 'form' : 'protocol';
+  const campo = tipo === 'forms' ? 'title' : 'name';
+  let snap;
+  try{ snap = await getDocs(collection(db, 'tenants', tenantId, col)); }
+  catch(e){ toast('Não foi possível ler a lista: ' + (e.message || e), true); return; }
+  const remover = planoRepetidos(snap.docs, campo);
+  if (!remover.length){ toast('Não há repetidos. 👍'); return; }
+  const aviso = tipo === 'forms' ? ' O link das fichas removidas deixa de funcionar (a que fica mantém o seu).' : '';
+  if (!await confirmar(`Vou remover ${remover.length} cópia(s) repetida(s) e manter uma de cada.${aviso} As removidas ficam em "Versões anteriores" para as poderes restaurar. Continuar?`)) return;
+  let feitos = 0;
+  for (const d of remover){
+    try{
+      await guardarVersaoDe(kind, d.id, 'delete');
+      await deleteDoc(doc(db, 'tenants', tenantId, col, d.id));
+      feitos++;
+    }catch(e){ console.warn('Não removi', d.id, e); }
+  }
+  toast(`${feitos} repetido(s) removido(s). Ficou uma de cada.`);
+  renderView(tipo === 'forms' ? 'forms' : 'protocols');
+};
 
 window.useProtocolTemplate = async function(idx){
   const t = TEMPLATE_PROTOCOLS[idx];
   if (!t) return;
+  if (await jaTemModelo('protocols', 'name', t.name)){ toast('Já tem este modelo nos seus métodos. Pode editá-lo ou duplicá-lo.'); return; }
   const data = {
     name: t.name,
     type: t.type,
@@ -7399,6 +7459,7 @@ function renderFormTemplatesSection(){
 window.useFormTemplate = async function(idx){
   const t = TEMPLATE_FORMS[idx];
   if (!t) return;
+  if (await jaTemModelo('forms', 'title', t.title)){ toast('Já tem este modelo nas suas fichas. Pode editá-lo ou duplicá-lo.'); return; }
   const questions = t.questions.map(q => ({ id: 'q'+Date.now()+Math.random().toString(36).slice(2,7), ...q }));
   await addDoc(collection(db, 'tenants', tenantId, 'forms'), {
     title: t.title,
@@ -7631,6 +7692,7 @@ function renderDemoProtocolsSection(){
 
 window.createDemoProtocols = async function(){
   for (const t of DEMO_PROTOCOLS_HIKARI){
+    if (await jaTemModelo('protocols', 'name', t.name)) continue;
     const data = {
       name: t.name, type: t.type,
       finalClassifications: (t.finalClassifications||[]).map(c => ({...c})),
@@ -7661,7 +7723,7 @@ async function renderProtocols(main){
       : `${(p.points||[]).length} pontos definidos${(p.images||[]).length ? ` · ${p.images.length} imagem(ns)` : ''}`;
     rows += `<div class="appt-item row">
       <div><strong>${escapeHtml(p.name)}</strong>
-        <div class="muted">${isGuided ? '🧩 Consulta guiada por passos' : isMapping ? '🗺️ Mapeamento por zonas' : '📋 Lista livre'} · ${countInfo}</div>
+        <div class="muted">${isGuided ? '🧩 Consulta guiada por passos' : isMapping ? '🗺️ Pesquisa por zonas' : '📋 Lista livre'} · ${countInfo}</div>
       </div>
       <div>
         <button class="ghost" onclick="previewProtocol('${d.id}')">👁️ Pré-visualizar</button>
@@ -7680,9 +7742,10 @@ async function renderProtocols(main){
     </div>
     ${hintBox(`Como conduz uma consulta, passo a passo — usa isto durante o atendimento, com o paciente à sua frente.
       <strong>Lista livre</strong>: uma checklist de pontos a observar, com ou sem imagens — sem lógica fixa a seguir; coloque o que quiser, onde quiser (ex: sintomas, temas de sessão, ou pontos marcados numa foto sua, sem restrição de frente/costas/lados).
-      <strong>Mapeamento por zonas</strong>: pontos organizados em grupos sobre uma imagem do corpo, com zonas frente/costas e esquerdo/direito escolhidas antes de cada consulta — útil quando o seu método segue mesmo essa lógica (terapias manuais, corporais ou energéticas).
+      <strong>Pesquisa por zonas</strong>: pontos organizados em grupos sobre uma imagem do corpo, com zonas frente/costas e esquerdo/direito escolhidas antes de cada consulta — útil quando o seu método segue mesmo essa lógica (terapias manuais, corporais ou energéticas).
       Em ambos, pode acrescentar perguntas antes, durante ou depois do atendimento, e a app gera um relatório automático no fim. Diferente de "Fichas" (questionário enviado à parte, sem estar numa consulta) e "Serviços" (o que vende, com preço e duração).`)}
     ${passosHtml('Consulta guiada → relatório automático', ['<strong>Crie o método</strong> (ou escolha um modelo pronto).','Na <strong>consulta</strong>, abra o paciente e escolha o método: vai respondendo passo a passo.','No fim a app gera o <strong>relatório automático</strong>, que fica na ficha do paciente e o paciente pode ver no <strong>Portal do Paciente</strong> (link na ficha dele).'])}
+    ${avisoRepetidosHtml('protocols', planoRepetidos(snap.docs, 'name').length)}
     ${modelosEmDestaque('protocols')}
     <div class="card"><h3 style="margin-top:0;">Os meus métodos</h3>${rows}</div>
     <div id="protocolFormContainer"></div>
@@ -7751,7 +7814,7 @@ function renderProtocolForm(editId, data){
       <select id="protoType" onchange="changeProtocolType(this.value)">
         <option value="guided" ${type==='guided'?'selected':''}>🧩 Consulta guiada por passos (novo — o mais flexível)</option>
         <option value="simple" ${type==='simple'?'selected':''}>Lista de pontos (livre — com ou sem imagens)</option>
-        <option value="mapping" ${type==='mapping'?'selected':''}>Mapeamento por zonas do corpo (frente/costas × esquerda/direita)</option>
+        <option value="mapping" ${type==='mapping'?'selected':''}>Pesquisa por zonas do corpo (frente/costas × esquerda/direita)</option>
       </select>
       <div id="protoTypeBody">${bodyHtml}</div>
       <div style="margin-top:14px;">
@@ -8791,15 +8854,15 @@ window.renderMappingZoneSelection = function(patientId, patientName, area){
   window.__zoneSelection = { frente:false, costas:false, esquerdo:false, direito:false };
   area.innerHTML = `
     <div class="card">
-      <h3>O que vamos mapear?</h3>
-      <p class="muted" style="margin-bottom:10px;">Escolha um ou mais lados. Pode mapear um lado de cada vez (em consultas separadas) ou vários juntos — o relatório indica sempre a que lado pertence cada ponto.</p>
+      <h3>O que vamos pesquisar?</h3>
+      <p class="muted" style="margin-bottom:10px;">Escolha um ou mais lados. Pode pesquisar um lado de cada vez (em consultas separadas) ou vários juntos — o relatório indica sempre a que lado pertence cada ponto.</p>
       <div id="zoneButtonsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
       <div class="row" style="margin-top:10px;">
         <button class="ghost" onclick="quickSelectZone('frenteCompleta')">Frente completa</button>
         <button class="ghost" onclick="quickSelectZone('costasCompleta')">Costas completa</button>
-        <button class="ghost" onclick="quickSelectZone('tudo')">Mapeamento completo</button>
+        <button class="ghost" onclick="quickSelectZone('tudo')">Pesquisa completa</button>
       </div>
-      <button class="primary" style="margin-top:14px;" onclick="startMappingPoints('${patientId}','${escapeHtml(patientName)}')">Continuar para o mapeamento</button>
+      <button class="primary" style="margin-top:14px;" onclick="startMappingPoints('${patientId}','${escapeHtml(patientName)}')">Continuar para a pesquisa</button>
     </div>`;
   renderZoneButtons();
 };
@@ -8840,7 +8903,7 @@ window.startMappingPoints = function(patientId, patientName){
     .map(def => ({ zona: def.zona, lado: def.lado }));
 
   if (!combos.length){
-    toast('Escolha pelo menos um lado para mapear.', true); return;
+    toast('Escolha pelo menos um lado para pesquisar.', true); return;
   }
   window.__mappingCombos = combos;
   window.__freePoints = {};
@@ -9083,7 +9146,7 @@ window.generateMappingReport = async function(patientId, patientName){
     return;
   }
 
-  let reportText = `Relatório de Mapeamento — ${proto.name}\n`;
+  let reportText = `Relatório de Pesquisa — ${proto.name}\n`;
   reportText += `Paciente: ${patientName}\n`;
   reportText += `Data: ${new Date().toLocaleDateString('pt-PT')}\n\n`;
 
@@ -9125,7 +9188,7 @@ window.generateMappingReport = async function(patientId, patientName){
   if (classificationAnswers.length){
     const zonasMapeadas = [...new Set(combos.map(c => zonaLabel[c.zona]))].join(' + ');
     reportText += `\n== Classificação final ==\n`;
-    reportText += `(Mapeamento realizado em: ${zonasMapeadas})\n`;
+    reportText += `(Pesquisa realizada em: ${zonasMapeadas})\n`;
     classificationAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
   }
 
@@ -19631,8 +19694,8 @@ const CHATBOT_KB = [
     answer: 'Pode ligar a sua conta Google em Perfil → "Ligar ao Google Calendar". Depois disso, criar, editar ou apagar marcações na app atualiza automaticamente o Google Calendar. Atenção: só funciona neste sentido — mudanças feitas diretamente no Google Calendar não voltam para a app. Faça sempre as alterações às marcações aqui.' },
   { keywords: ['paciente','cliente','ficha do paciente','anamnese'],
     answer: 'Em "Pacientes" pode criar a ficha de cada pessoa, ver o histórico de marcações, protocolos aplicados, pacotes de sessões e relatórios anteriores.' },
-  { keywords: ['protocolo','ponto','mapeamento','zonas'],
-    answer: 'Em "Os Meus Métodos" define o seu método de trabalho: uma checklist de pontos a observar, ou um mapeamento sobre uma imagem do corpo. Há modelos prontos (Reiki, Radiestesia, Psicologia) que pode usar tal e qual ou editar.' },
+  { keywords: ['protocolo','ponto','mapeamento','pesquisa','zonas'],
+    answer: 'Em "Os Meus Métodos" define o seu método de trabalho: uma checklist de pontos a observar, ou uma pesquisa sobre uma imagem do corpo. Há modelos prontos (Reiki, Radiestesia, Psicologia) que pode usar tal e qual ou editar.' },
   { keywords: ['ficha','questionario','formulario'],
     answer: 'Em "Fichas" pode criar questionários para os seus pacientes preencherem (anamnese, check-ins, satisfação). Há 3 modelos universais prontos a usar.' },
   { keywords: ['servico','preco','tabela de precos'],
