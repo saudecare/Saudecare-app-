@@ -118,13 +118,33 @@
   .mapFullscreenBody .mapDiagramWrap img,
   .mapFullscreenBody .mapDiagramWrap svg{max-height:calc(100vh - 90px);width:auto;margin:0 auto;display:block;}
   @media(max-width:640px){
+    /* Telemóvel: barra de 5 botões fixa em baixo; o resto está em "Mais". */
     #app{flex-direction:column;}
-    nav{width:100%;display:flex;flex-wrap:wrap;overflow-x:visible;padding:8px;gap:6px;}
-    nav .navBrand{display:none;}
-    nav .navGroupLabel{display:none;}
-    nav button{flex:1 1 30%;min-width:0;margin:0;padding:10px 4px;font-size:11.5px;white-space:normal;text-align:center;line-height:1.25;}
-    main{padding:14px;}
+    nav{position:fixed;left:0;right:0;bottom:0;z-index:900;width:100%;display:flex;flex-wrap:nowrap;align-items:stretch;
+      padding:6px 6px calc(6px + env(safe-area-inset-bottom));gap:3px;box-shadow:0 -2px 12px rgba(0,0,0,.22);}
+    nav .navBrand, nav .navGroupLabel{display:none;}
+    nav button{display:none;}
+    nav button.navBar{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:1 1 0;min-width:0;
+      margin:0;padding:6px 2px;font-size:10.5px;line-height:1.1;text-align:center;border-radius:12px;white-space:normal;}
+    nav button.navBar .ni{font-size:21px;line-height:1;display:block;}
+    nav button.navBar .nt{display:block;}
+    nav button[data-view="home"]{order:1;} nav button[data-view="agenda"]{order:2;} nav button.navCta{order:3;}
+    nav button.navPac{order:4;} nav button.navMais{order:5;}
+    nav button.navBar:not(.navCta):not(.active){background:none !important;color:#e4ede9 !important;font-weight:400 !important;}
+    nav button.navBar.active{background:var(--primary) !important;color:#fff !important;}
+    nav button.navCta{background:#d4a24c !important;color:#1a2b26 !important;font-weight:700;}
+    main{padding:14px 14px 100px;}
+    #chatbotToggle{bottom:84px !important;right:12px !important;width:46px !important;height:46px !important;font-size:22px !important;}
+    #chatbotWindow{bottom:138px !important;}
+    #toast{bottom:92px;}
   }
+  @media(min-width:641px){
+    nav button[data-view="mais"]{display:none;}
+    nav button .ni{margin-right:2px;}
+  }
+  .maisTitulo{font-size:14px;margin:18px 0 8px;color:var(--muted,#5b6e67);letter-spacing:.02em;}
+  .homeAcoes{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;}
+  .homeAcoes button{flex:1 1 30%;min-width:0;padding:12px 6px;font-size:14px;}
   /* Ecrãs largos (computador/desktop) — o menu lateral já ficava bem à
      esquerda, mas o conteúdo ficava sempre limitado a 900px, deixando
      muito espaço vazio à direita em monitores maiores. Isto só alarga
@@ -349,16 +369,17 @@
       </svg>
       <h1>Vindora</h1>
     </div>
-    <button data-view="home" class="active">🏠 Início</button>
-    <button onclick="startNewConsultationFlow()" style="background:var(--primary);color:#fff;font-weight:600;">🩺 Nova Consulta</button>
-    <button data-view="agenda">📅 Agenda</button>
-    <button data-view="patients" style="background:#e3f0ea;color:#1a2b26;font-weight:600;">🧑 Pacientes</button>
+    <button data-view="home" class="navBar active"><span class="ni">🏠</span> <span class="nt">Início</span></button>
+    <button onclick="startNewConsultationFlow()" class="navBar navCta" style="background:var(--primary);color:#fff;font-weight:600;"><span class="ni">🩺</span> <span class="nt">Nova Consulta</span></button>
+    <button data-view="agenda" class="navBar"><span class="ni">📅</span> <span class="nt">Agenda</span></button>
+    <button data-view="patients" class="navBar navPac" style="background:#e3f0ea;color:#1a2b26;font-weight:600;"><span class="ni">🧑</span> <span class="nt">Pacientes</span></button>
     <button data-view="group_agenda">📩 Pedidos & Espera</button>
     <button data-view="group_finance">💶 Financeiro</button>
     <button data-view="group_tools">🗂️ Consultas & Fichas</button>
     <button data-view="group_business">🌐 O Meu Site & Negócio</button>
     <button id="navMisticaBtn" data-view="group_mistica" style="display:none;">🔮 Módulos Exclusivos</button>
     <button data-view="group_account">⚙️ Conta & Ajuda</button>
+    <button data-view="mais" class="navBar navMais"><span class="ni">☰</span> <span class="nt">Mais</span></button>
     <button onclick="installApp()" style="margin-top:20px;">📲 Instalar app no dispositivo</button>
     <button data-view="logout" style="color:#f2b8b8;">Sair</button>
   </nav>
@@ -394,7 +415,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-12-1';
+const APP_VERSION = '2026-11-12-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -800,7 +821,7 @@ function renderTopNavBadges(){
     }
   });
   document.querySelectorAll('nav button[data-view]').forEach(btn => {
-    if (!btn.dataset.baseLabel) btn.dataset.baseLabel = btn.textContent.trim();
+    if (!btn.dataset.baseLabel) btn.dataset.baseLabel = btn.innerHTML.trim();
     const total = (groupTotals[btn.dataset.view] || 0) + (directTotals[btn.dataset.view] || 0);
     btn.innerHTML = total > 0
       ? `${btn.dataset.baseLabel} <span class="badge" style="background:#f6e2e0;color:var(--danger);margin-left:4px;">${total}</span>`
@@ -899,7 +920,7 @@ const PERMISSOES_GESTOR = [
 function ehGestor(){ return tenantRole === 'staff_bookings'; }
 function gestorPode(p){ return !ehGestor() || !!__permissoesGestor[p]; }
 function vistasDoGestor(){
-  const v = ['agenda', 'settings', 'supportContact', 'ajuda', 'logout', 'group_agenda', 'group_account'];
+  const v = ['agenda', 'settings', 'supportContact', 'ajuda', 'logout', 'group_agenda', 'group_account', 'mais'];
   if (__permissoesGestor.listaEspera) v.push('waitlist');
   if (__permissoesGestor.pedidos) v.push('gestorPedidos');
   return v;
@@ -1995,10 +2016,10 @@ function atualizarMenuModulos(){
   if (b) b.style.display = (temModulo('mapaAlma') || temModulo('cartomancia') || temModulo('triagemPendulo')) ? '' : 'none';
 }
 
-function renderGroupMenu(main, groupKey){
+function itensDoGrupo(groupKey){
   const group = NAV_GROUPS[groupKey];
-  if (!group) return;
-  const items = group.items.filter(it => {
+  if (!group) return [];
+  return group.items.filter(it => {
     if (it.hideForRestricted && tenantRole === 'staff_restricted') return false;
     if (it.ownerOnly && tenantRole !== 'owner') return false;
     if (it.hideForOwner && tenantRole === 'owner') return false;
@@ -2011,16 +2032,48 @@ function renderGroupMenu(main, groupKey){
     if (ehGestor() && !vistasDoGestor().includes(it.view)) return false;
     return true;
   });
-  main.innerHTML = `
-    <h2>${group.title}</h2>
-    <div class="profile-grid">
-      ${items.map(it => `<button class="profile-tile" onclick="${it.onclick ? it.onclick : it.openExternal ? `openExternalLink('${it.openExternal}')` : (it.view === 'profile' ? 'closeProfileSection()' : (it.view === 'settings' ? 'closeSettingsSection()' : `renderView('${it.view}')`))}"><span class="ptile-icon">${it.icon}</span><span>${it.label}</span></button>`).join('')}
-    </div>`;
 }
+function acaoItemMenu(it){
+  if (it.onclick) return it.onclick;
+  if (it.openExternal) return `openExternalLink('${it.openExternal}')`;
+  if (it.view === 'profile') return 'closeProfileSection()';
+  if (it.view === 'settings') return 'closeSettingsSection()';
+  return `renderView('${it.view}')`;
+}
+function tilesHtml(items){
+  return `<div class="profile-grid">${items.map(it => `<button class="profile-tile" onclick="${acaoItemMenu(it)}"><span class="ptile-icon">${it.icon}</span><span>${it.label}</span></button>`).join('')}</div>`;
+}
+function renderGroupMenu(main, groupKey){
+  const group = NAV_GROUPS[groupKey];
+  if (!group) return;
+  main.innerHTML = `<h2>${group.title}</h2>${tilesHtml(itensDoGrupo(groupKey))}`;
+}
+// Ecrã "Mais": tudo o que não está na barra de baixo, arrumado por assunto.
+function renderMais(main){
+  const ordem = ['finance', 'tools', 'business', 'mistica', 'agenda', 'account'];
+  let html = '<h2>☰ Mais</h2>';
+  ordem.forEach(k => {
+    const items = itensDoGrupo(k);
+    if (!items.length) return;
+    html += `<h3 class="maisTitulo">${NAV_GROUPS[k].title}</h3>${tilesHtml(items)}`;
+  });
+  html += `<div class="profile-grid" style="margin-top:20px;">
+    <button class="profile-tile" onclick="installApp()"><span class="ptile-icon">📲</span><span>Instalar app</span></button>
+    <button class="profile-tile" onclick="document.querySelector('nav button[data-view=logout]').click()"><span class="ptile-icon">🚪</span><span>Sair</span></button>
+  </div>`;
+  main.innerHTML = html;
+}
+window.novaMarcacaoRapida = async function(){
+  renderView('agenda');
+  for (let i = 0; i < 25 && !document.getElementById('apptFormContainer'); i++) await new Promise(r => setTimeout(r, 150));
+  openNewAppointment();
+};
 
 function highlightActiveNavGroup(view){
   const direto = document.querySelector('nav button[data-view="' + view + '"]');
-  const activeTarget = direto ? view : (view.startsWith('group_') ? view : (NAV_VIEW_TO_GROUP[view] || view));
+  let activeTarget = direto ? view : (view.startsWith('group_') ? view : (NAV_VIEW_TO_GROUP[view] || view));
+  // No telemóvel só há 5 botões em baixo: tudo o que não é Início/Agenda/Pacientes acende "Mais".
+  if (window.matchMedia && window.matchMedia('(max-width:640px)').matches && !['home', 'agenda', 'patients'].includes(view)) activeTarget = 'mais';
   document.querySelectorAll('nav button[data-view]').forEach(b => {
     b.classList.toggle('active', b.dataset.view === activeTarget);
   });
@@ -2029,7 +2082,7 @@ function highlightActiveNavGroup(view){
 /* O gestor só vê os botões da barra que lhe dizem respeito. */
 function aplicarMenuGestor(){
   if (!ehGestor()) return;
-  const permitidos = ['group_agenda', 'group_account', 'logout'];
+  const permitidos = ['group_agenda', 'group_account', 'logout', 'mais'];
   const _ag = document.querySelector('nav button[data-view="agenda"]'); if (_ag) _ag.style.display = 'none';
   document.querySelectorAll('nav button').forEach(b => {
     const v = b.dataset.view;
@@ -2088,6 +2141,7 @@ function renderView(view, opts){
   else if (view === 'pedidoMetodo') { import('./pe-pedido.js').then(() => window.renderPedidoMetodo(main)).catch(e => { main.innerHTML = '<div class="card"><p class="muted">' + ((e && e.message) || 'Indisponível') + '</p></div>'; }); }
   else if (view === 'pesquisaEmocional') { (window.carregarPE ? window.carregarPE() : Promise.resolve()).then(() => window.renderPesquisaEmocional?.(main)).catch(e => { main.innerHTML = '<div class="card"><h2>🔒 Método indisponível</h2><p class="muted">' + ((e && e.message) || 'Sem acesso.') + '</p></div>'; }); }
   else if (view === 'portalPaciente') renderPatientPortalOverview(main);
+  else if (view === 'mais') renderMais(main);
   else if (view.startsWith('group_')) renderGroupMenu(main, view.replace('group_',''));
   highlightActiveNavGroup(view);
   renderOnboardingBanner(view);
@@ -2131,7 +2185,7 @@ async function renderOnboardingBanner(view){
   if (ob?.dismissed) return;
   const step = ob?.step || 0;
   if (step >= ONBOARDING_STEPS.length) return;
-  if (view.startsWith('group_') || view === 'home') return; // não sobrepõe o ecrã inicial
+  if (view.startsWith('group_') || view === 'home' || view === 'mais') return; // não sobrepõe o ecrã inicial
 
   const s = ONBOARDING_STEPS[step];
   const main = document.getElementById('mainView');
@@ -2668,7 +2722,7 @@ async function renderHome(main){
   // Respostas de fichas: já não é um alerta pequeno — tem cartão em destaque no topo do Início
   const respProntas = pendingFormsSnap.docs.filter(d => d.data().completadoEm).length;
   const respAguardam = pendingFormsSnap.size - respProntas;
-  const respostasCartao = ehGestor() ? '' : cartaoRespostasHtml(respProntas, respAguardam);
+  const respostasCartao = (ehGestor() || (respProntas + respAguardam) === 0) ? '' : cartaoRespostasHtml(respProntas, respAguardam);
 
   // A conta da Hikari Fafe é, ao mesmo tempo, subscritora normal E
   // administradora da plataforma Vindora — por isso, quando está a usar
@@ -2770,37 +2824,16 @@ async function renderHome(main){
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Bom dia' : hour < 20 ? 'Boa tarde' : 'Boa noite';
 
-  const SHORTCUTS = [
-    { icon: '🩺', label: 'Nova Consulta', action: 'startNewConsultationFlow()' },
-    ...(ehGestor() ? [] : [{ icon: '📥', label: 'Respostas de Fichas', action: "renderView('respostas')", badge: respProntas }]),
-    { icon: '📅', label: 'Agenda', action: "renderView('agenda')" },
-    { icon: '🗓️', label: 'Disponibilidade e Marcações', action: "openProfileSection('disponibilidade')" },
-    { icon: '🧑', label: 'Pacientes', action: "renderView('patients')" },
-    { icon: '💶', label: 'Pagamentos', action: "renderView('finances')" },
-    { icon: '📋', label: 'Os Meus Métodos', action: "renderView('protocols')" },
-    { icon: '🧠', label: 'Conhecimento', action: "renderView('knowledge')" },
-    { icon: '⏳', label: 'Lista de espera', action: "renderView('waitlist')" },
-    { icon: '👥', label: 'Equipa', action: "renderView('team')" },
-    { icon: '⚙️', label: 'Definições', action: "closeSettingsSection()" }
-  ];
-  const shortcutsHtml = SHORTCUTS.map(s => `
-    <button class="profile-tile" onclick="${s.action}">
-      <span class="ptile-icon">${s.icon}</span><span>${s.label}</span>${s.badge ? `<span style="position:absolute;top:6px;right:8px;background:#ef4444;color:#fff;border-radius:999px;min-width:22px;height:22px;padding:0 6px;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;">${s.badge}</span>` : ''}
-    </button>`).join('');
-
   main.innerHTML = `
     <h2 style="margin-bottom:2px;">${greeting}${firstName ? ', ' + escapeHtml(firstName) : ''} 👋</h2>
     <p class="muted" style="margin-bottom:14px;">${now.toLocaleDateString('pt-PT', { weekday:'long', day:'2-digit', month:'long' })}</p>
 
+    ${ehGestor() ? '' : `<div class="homeAcoes">
+      <button class="primary" onclick="startNewConsultationFlow()">🩺 Nova consulta</button>
+      <button class="ghost" onclick="novaMarcacaoRapida()">📅 Nova marcação</button>
+      <button class="ghost" onclick="openNewPatient()">🧑 Novo paciente</button>
+    </div>`}
     ${respostasCartao}
-    ${chkHtml}
-    <div class="card">
-      <label for="homeAjuda" style="font-weight:600;">❓ Não sabes como fazer alguma coisa?</label>
-      <div class="row" style="gap:8px;margin-top:6px;">
-        <input id="homeAjuda" placeholder="ex: criar secretária, mudar horário, formação…" onkeydown="if(event.key==='Enter')abrirAjuda(this.value)">
-        <button class="primary" onclick="abrirAjuda(document.getElementById('homeAjuda').value)">Procurar</button>
-      </div>
-    </div>
     <div class="card">
       <h2 style="margin-bottom:8px;">🔔 Alertas</h2>
       ${alertsHtml}
@@ -2813,9 +2846,13 @@ async function renderHome(main){
       </div>
       ${weekHtml}
     </div>
-
-    <div class="profile-grid">
-      ${shortcutsHtml}
+    ${chkHtml}
+    <div class="card">
+      <label for="homeAjuda" style="font-weight:600;">❓ Não sabes como fazer alguma coisa?</label>
+      <div class="row" style="gap:8px;margin-top:6px;">
+        <input id="homeAjuda" placeholder="ex: criar secretária, mudar horário…" onkeydown="if(event.key==='Enter')abrirAjuda(this.value)">
+        <button class="primary" onclick="abrirAjuda(document.getElementById('homeAjuda').value)">Procurar</button>
+      </div>
     </div>`;
   maybeShowInstallPrompt();
   maybeShowDpaGate();
