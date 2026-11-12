@@ -3,6 +3,11 @@
 name: Publicar funções do Firebase
 
 on:
+  # Publica sozinho quando a função da Hotmart muda (para quem não tem o botão Run workflow no telemóvel).
+  push:
+    branches: [main]
+    paths:
+      - 'functions/hotmart.js'
   workflow_dispatch:
     inputs:
       acao:
@@ -56,7 +61,7 @@ jobs:
           exit 0
 
       - name: Publicar funções
-        if: github.event.inputs.acao == 'publicar'
+        if: github.event.inputs.acao == 'publicar' || github.event_name == 'push'
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
