@@ -63,7 +63,12 @@ service cloud.firestore {
       allow create: if isPlatformAdmin() ||
         (isSignedIn() &&
         request.resource.data.ownerUid == request.auth.uid &&
-        request.resource.data.status == "pending_activation");
+        request.resource.data.status == "pending_activation" &&
+        // Quem se regista sozinho não pode já trazer módulos exclusivos, acessos totais, limites nem datas.
+        !request.resource.data.keys().hasAny([
+          'modulos', 'fullAccessOverride', 'limitOverrides', 'trialEndsAt',
+          'nextPaymentDue', 'adminNotes', 'statusChangedAt'
+        ]));
 
       // O dono pode editar os seus dados, mas NÃO os campos controlados pela
       // plataforma (estado, plano, módulos exclusivos, acessos e limites extra,
@@ -155,7 +160,9 @@ service cloud.firestore {
 
       match /mapaAlmaLeads/{leadId} {
         allow create: if request.resource.data.nome is string &&
+          request.resource.data.nome.size() <= 200 &&
           request.resource.data.dataNascimento is string &&
+          request.resource.data.dataNascimento.size() <= 40 &&
           request.resource.data.paymentStatus == 'unpaid';
         allow read: if isEquipaClinica(tenantId) || isPlatformAdmin();
         allow update: if isTenantOwner(tenantId) &&
@@ -183,7 +190,9 @@ service cloud.firestore {
 
       match /cartomanciaLeads/{leituraId} {
         allow create: if request.resource.data.nome is string &&
-                        request.resource.data.contacto is string;
+                        request.resource.data.contacto is string &&
+                        request.resource.data.nome.size() <= 200 &&
+                        request.resource.data.contacto.size() <= 200;
         allow read, delete: if isEquipaClinica(tenantId) || isPlatformAdmin();
       }
 
@@ -298,6 +307,12 @@ service cloud.firestore {
         allow read, update, delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
+      // Poemas do Imperador Meiji: a página poemas-meiji.html lê sem login; só a equipa escreve.
+      match /reikiPoems/{poemaId} {
+        allow read: if true;
+        allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+      }
+
       match /reikiQuizzes/{testeId} {
         allow read: if true;
         allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
@@ -305,7 +320,9 @@ service cloud.firestore {
 
       match /reikiQuizResults/{resultadoId} {
         allow create: if request.resource.data.codigo is string &&
-                        request.resource.data.testeId is string;
+                        request.resource.data.codigo.size() <= 80 &&
+                        request.resource.data.testeId is string &&
+                        request.resource.data.testeId.size() <= 80;
         allow read: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
         allow update, delete: if false;
       }
