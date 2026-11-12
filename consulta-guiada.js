@@ -14,6 +14,7 @@ const CG_TIPOS = {
   pergunta:  { icone: '❓', nome: 'Pergunta',                    desc: 'Resposta em texto, escolha, escala 0–10 ou sim/não.' },
   mapa:      { icone: '🧍', nome: 'Mapa do corpo ou imagem com pontos', desc: 'Corpo (frente/costas), os 7 chakras ou a sua imagem: toque para pôr pontos e dê-lhes nomes e conhecimento.' },
   escolha:   { icone: '🔘', nome: 'Escolha com conhecimento',    desc: 'Botões com o nome que quiser; cada um com tema, pergunta, exemplos e texto extra.' },
+  tratpontos:{ icone: '🎯', nome: 'Tratamento dos pontos encontrados', desc: 'Junta sozinho o "o que fazer" e as afirmações de cada ponto ou opção marcados nos passos anteriores — para a sessão, o relatório e o plano.' },
   instrucao: { icone: '📌', nome: 'Instrução ou imagem',         desc: 'Texto e imagem para o terapeuta (ou para o plano do paciente).' },
   tratamento:{ icone: '🌿', nome: 'Tratamento passo a passo',    desc: 'Lista de passos para fazer na sessão ou em casa, com temporizador opcional.' },
   notas:     { icone: '📝', nome: 'Notas do terapeuta',          desc: 'Espaço livre para observações.' }
@@ -27,6 +28,7 @@ function passoNovo(tipo) {
   if (tipo === 'pergunta') return { ...b, title: 'Nova pergunta', qtype: 'text', options: [], noRelatorio: true };
   if (tipo === 'escolha') return { ...b, title: 'Nova escolha', multi: true, options: [{ id: uid(), label: 'Opção 1', tema: '', pergunta: '', exemplos: [], extra: '' }], noRelatorio: true };
   if (tipo === 'mapa') return { ...b, title: 'Mapa do corpo', fundo: 'corpoFrente', imagem: '', points: [], multi: true, noRelatorio: true, noPlano: true };
+  if (tipo === 'tratpontos') return { ...b, title: 'Tratamento dos pontos encontrados', segundos: 60, noRelatorio: false, noPlano: true };
   if (tipo === 'instrucao') return { ...b, title: 'Instrução', texto: '', imagem: '', noPlano: false };
   if (tipo === 'tratamento') return { ...b, title: 'Tratamento', passos: [], segundos: 0, noPlano: true };
   return { ...b, title: 'Notas', noRelatorio: false };
@@ -56,14 +58,53 @@ const MODELO_SIMPLES = () => ([
   { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: true }
 ]);
 
+// Modelo base: pesquisa por pontos no corpo → tratamento dos pontos encontrados → plano em casa.
+// É só um ponto de partida: nomes, textos, pontos, imagens e passos mudam-se à vontade.
+const MODELO_PESQUISA_CORPO = () => {
+  const pt = (label, x, y, tema, pergunta, exemplos, tratamento, afirmacao) => ({ id: uid(), label, x, y, cor: '#dc2626', tema, pergunta, exemplos, extra: '', tratamento, afirmacao });
+  const maos = ['Coloque as mãos suavemente sobre a zona.', 'Respire fundo e devagar durante cerca de 1 minuto.'];
+  return [
+    { ...passoNovo('pergunta'), title: 'Motivo da consulta', qtype: 'text', help: 'O que traz a pessoa hoje, nas palavras dela.' },
+    { ...passoNovo('pergunta'), title: 'Como se sente hoje? (0 a 10)', qtype: 'scale' },
+    { ...passoNovo('mapa'), title: 'Pesquisa — frente do corpo', fundo: 'corpoFrente', help: 'Toque nos pontos que encontrou. Pode mudar, apagar ou acrescentar pontos no editor.', points: [
+      pt('Cabeça', 50, 8, 'Pensamentos, preocupações e tensão mental.', 'O que lhe tem ocupado a cabeça?', ['Preocupações com o trabalho', 'Dificuldade em desligar à noite'], maos, 'Estou calmo/a e em segurança.'),
+      pt('Garganta e pescoço', 50, 16, 'Expressão e comunicação.', 'O que ficou por dizer?', ['Calar-se para evitar conflitos'], maos, 'Posso exprimir o que sinto.'),
+      pt('Peito', 50, 28, 'Emoções e relações próximas.', 'O que lhe pesa no coração?', ['Uma perda ou despedida recente'], maos, 'Estou aberto/a a receber e a dar carinho.'),
+      pt('Barriga', 50, 42, 'Segurança, controlo e esforço.', 'Onde sente que carrega demasiado?', ['Responsabilidades que não são suas'], maos, 'Confio em mim e na minha capacidade.')
+    ] },
+    { ...passoNovo('mapa'), title: 'Pesquisa — costas', fundo: 'corpoCostas', points: [
+      pt('Zona cervical', 50, 16, 'Tensão acumulada e sobrecarga.', 'Que peso sente nos ombros?', ['Excesso de trabalho'], maos, 'Largo o que não é meu.'),
+      pt('Meio das costas', 50, 30, 'Apoio e suporte.', 'Sente-se apoiado/a?', ['Falta de apoio em casa ou no trabalho'], maos, 'Tenho apoio à minha volta.'),
+      pt('Zona lombar', 50, 44, 'Estabilidade e segurança.', 'O que lhe tira a segurança?', ['Instabilidade financeira ou de casa'], maos, 'Estou firme e seguro/a.')
+    ] },
+    { ...passoNovo('tratpontos'), title: 'Tratamento dos pontos encontrados', segundos: 60, help: 'Mostra, ponto a ponto, o que fazer. Edite "O que fazer" e "Afirmação" em cada ponto, nos passos acima.' },
+    { ...passoNovo('instrucao'), title: 'Exercício para fazer em casa', texto: 'Uma vez por dia, sente-se com conforto, respire fundo 3 vezes e repita em voz baixa as afirmações dos pontos trabalhados.', noPlano: true },
+    { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: false }
+  ];
+};
+
+// Itens (pontos ou opções) marcados nos passos anteriores ao passo número `ate`.
+function itensEncontrados(proto, resp, ate) {
+  const lista = [];
+  (proto.steps || []).forEach((st, i) => {
+    if (ate != null && i >= ate) return;
+    if (st.type !== 'mapa' && st.type !== 'escolha') return;
+    selecionados(st, (resp || {})[st.id] || {}).forEach(o => lista.push({ ...o, _passo: st.title }));
+  });
+  return lista;
+}
+const temTrat = (o) => (o.tratamento || []).length || o.afirmacao;
+const textoTrat = (o, seg) => `• ${o.label}` + ((o.tratamento || []).length ? '\n' + o.tratamento.map((x, i) => `   ${i + 1}. ${x}`).join('\n') : '') + (o.afirmacao ? `\n   Afirmação: "${o.afirmacao}"` : '') + (seg > 0 ? `\n   (cerca de ${fmtT(seg)})` : '');
+
 // ─── Rascunho (usado pelos ganchos da app) ───
 window.cgNovoRascunho = () => { CG = { steps: [], aberto: null }; };
 window.cgCarregarRascunho = (p) => { CG = { steps: JSON.parse(JSON.stringify((p && p.steps) || [])), aberto: null }; };
 window.cgLerRascunho = () => JSON.parse(JSON.stringify(CG.steps));
 window.cgValidar = () => {
   if (!CG.steps.length) return 'Adicione pelo menos um passo.';
-  for (const s of CG.steps) {
+  for (const [ix, s] of CG.steps.entries()) {
     if (!String(s.title || '').trim()) return 'Há um passo sem título.';
+    if (s.type === 'tratpontos' && !CG.steps.slice(0, ix).some(x => x.type === 'mapa' || x.type === 'escolha')) return `O passo "${s.title}" precisa de um mapa ou de uma escolha antes dele (é daí que vêm os pontos).`;
     if (s.type === 'escolha' && !(s.options || []).some(o => String(o.label || '').trim())) return `O passo "${s.title}" precisa de pelo menos uma opção com nome.`;
     if (s.type === 'mapa' && !(s.points || []).length) return `O passo "${s.title}" precisa de pelo menos um ponto no mapa.`;
     if (s.type === 'mapa' && s.fundo === 'custom' && !s.imagem) return `O passo "${s.title}" precisa da sua imagem.`;
@@ -117,6 +158,8 @@ function editorMapa(s) {
       ${campo('Pergunta para questionar', `<textarea rows="2" onchange="cgPt('${s.id}','${sel.id}','pergunta',this.value)">${esc(sel.pergunta)}</textarea>`)}
       ${campo('Exemplos de situações (um por linha)', `<textarea rows="3" onchange="cgPtLinhas('${s.id}','${sel.id}',this.value)">${esc((sel.exemplos || []).join('\n'))}</textarea>`)}
       ${campo('Conhecimento adicional (aparece no relatório)', `<textarea rows="3" onchange="cgPt('${s.id}','${sel.id}','extra',this.value)">${esc(sel.extra)}</textarea>`)}
+      ${campo('O que fazer neste ponto (um passo por linha) — vai para o passo "Tratamento dos pontos encontrados"', `<textarea rows="3" onchange="cgPtL('${s.id}','${sel.id}','tratamento',this.value)">${esc((sel.tratamento || []).join('\n'))}</textarea>`)}
+      ${campo('Afirmação (frase a dizer ou escrever)', `<textarea rows="2" onchange="cgPt('${s.id}','${sel.id}','afirmacao',this.value)">${esc(sel.afirmacao)}</textarea>`)}
       <button class="danger" style="margin-top:8px;" onclick="cgRemPt('${s.id}','${sel.id}')">Remover este ponto</button></div>` : '') +
     `<label style="display:flex;gap:8px;align-items:center;margin-top:10px;"><input type="checkbox" style="width:auto;margin:0;" ${s.noPlano ? 'checked' : ''} onchange="cgSet('${s.id}','noPlano',this.checked)"> Mostrar o mapa com os pontos marcados no plano do paciente</label>`;
 }
@@ -138,6 +181,8 @@ function editorPasso(s, i) {
       ${campo('Pergunta para questionar', `<textarea rows="2" onchange="cgOpt('${s.id}',${j},'pergunta',this.value)">${esc(o.pergunta)}</textarea>`)}
       ${campo('Exemplos de situações (um por linha)', `<textarea rows="3" onchange="cgOptLinhas('${s.id}',${j},this.value)">${esc((o.exemplos || []).join('\n'))}</textarea>`)}
       ${campo('Conhecimento adicional (aparece no relatório)', `<textarea rows="3" onchange="cgOpt('${s.id}',${j},'extra',this.value)">${esc(o.extra)}</textarea>`)}
+      ${campo('O que fazer nesta opção (um passo por linha) — vai para o passo "Tratamento dos pontos encontrados"', `<textarea rows="3" onchange="cgOptL('${s.id}',${j},'tratamento',this.value)">${esc((o.tratamento || []).join('\n'))}</textarea>`)}
+      ${campo('Afirmação (frase a dizer ou escrever)', `<textarea rows="2" onchange="cgOpt('${s.id}',${j},'afirmacao',this.value)">${esc(o.afirmacao)}</textarea>`)}
       <button class="danger" style="margin-top:8px;" onclick="cgRemOpt('${s.id}',${j})">Remover esta opção</button></details>`).join('');
     corpo += `<button class="ghost" style="margin-top:8px;width:100%;" onclick="cgAddOpt('${s.id}')">+ Adicionar opção</button>`;
   }
@@ -153,7 +198,12 @@ function editorPasso(s, i) {
       campo('Temporizador em segundos (0 = sem temporizador)', `<input type="number" min="0" value="${Number(s.segundos) || 0}" onchange="cgSet('${s.id}','segundos',parseInt(this.value,10)||0)">`) +
       `<label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" style="width:auto;margin:0;" ${s.noPlano ? 'checked' : ''} onchange="cgSet('${s.id}','noPlano',this.checked)"> Incluir no plano do paciente</label>`;
   }
-  if (s.type === 'pergunta' || s.type === 'escolha' || s.type === 'notas' || s.type === 'mapa') {
+  if (s.type === 'tratpontos') {
+    corpo += `<p class="muted" style="margin-top:8px;">🎯 Este passo usa o que escreveu em <b>"O que fazer"</b> e <b>"Afirmação"</b> de cada ponto ou opção dos passos anteriores — só aparecem os que foram marcados na consulta.</p>` +
+      campo('Temporizador por ponto, em segundos (0 = sem temporizador)', `<input type="number" min="0" value="${Number(s.segundos) || 0}" onchange="cgSet('${s.id}','segundos',parseInt(this.value,10)||0)">`) +
+      `<label style="display:flex;gap:8px;align-items:center;margin-top:8px;"><input type="checkbox" style="width:auto;margin:0;" ${s.noPlano !== false ? 'checked' : ''} onchange="cgSet('${s.id}','noPlano',this.checked)"> Incluir no plano do paciente</label>`;
+  }
+  if (s.type === 'pergunta' || s.type === 'escolha' || s.type === 'notas' || s.type === 'mapa' || s.type === 'tratpontos') {
     corpo += `<label style="display:flex;gap:8px;align-items:center;margin-top:8px;"><input type="checkbox" style="width:auto;margin:0;" ${s.noRelatorio ? 'checked' : ''} onchange="cgSet('${s.id}','noRelatorio',this.checked)"> Mostrar no relatório do paciente</label>`;
   }
   return `<div class="card" style="margin-bottom:8px;border-left:3px solid #6a4fb3;">
@@ -171,7 +221,7 @@ window.cgRenderConstrutor = function () {
 function cgHtmlConstrutor() {
   const botoes = Object.entries(CG_TIPOS).map(([k, t]) => `<button class="ghost" style="text-align:left;" onclick="cgAdd('${k}')"><strong>${t.icone} ${t.nome}</strong><br><span class="muted">${t.desc}</span></button>`).join('');
   return `<p class="muted" style="margin:8px 0;">Monte a consulta passo a passo. A ordem que definir aqui é a ordem em que aparece durante o atendimento.</p>
-    ${CG.steps.length ? CG.steps.map(editorPasso).join('') : `<div class="card" style="background:#f6f8f7;"><p class="muted">Ainda não há passos.</p><button class="ghost" style="width:100%;" onclick="cgModelo()">✨ Começar com um modelo simples (editável)</button></div>`}
+    ${CG.steps.length ? CG.steps.map(editorPasso).join('') : `<div class="card" style="background:#f6f8f7;"><p class="muted">Ainda não há passos. Comece por um modelo e mude o que quiser, ou monte tudo de raiz.</p><button class="ghost" style="width:100%;margin-bottom:8px;" onclick="cgModelo2()">✨ Modelo base: pesquisa por pontos no corpo (editável)</button><button class="ghost" style="width:100%;" onclick="cgModelo()">✨ Modelo simples (perguntas + tratamento)</button></div>`}
     <details style="margin-top:10px;" ${CG.steps.length ? '' : 'open'}><summary style="cursor:pointer;font-weight:700;color:var(--primary);">🤖 Montar com o assistente</summary>
     <div class="card" style="margin-top:8px;background:#f6f4fb;">
       <p class="muted" style="margin:0 0 8px;">Conte como é a sua consulta e o assistente propõe os passos. É só um rascunho: reveja, mude e acrescente o que quiser antes de guardar. ${CG.steps.length ? '<strong>Atenção:</strong> substitui os passos que já tem aqui.' : ''}</p>
@@ -179,6 +229,7 @@ function cgHtmlConstrutor() {
       <label>Como é a consulta?</label><textarea id="cgAsDesc" rows="4" placeholder="ex: Primeira consulta de massagem terapêutica: pergunto o motivo, zonas de dor, contraindicações, faço a massagem e dou 2 exercícios para casa."></textarea>
       <button class="primary" id="cgAsBtn" style="margin-top:8px;" onclick="cgAssistente()">✨ Montar rascunho</button>
     </div></details>
+    ${CG.steps.length ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;color:var(--primary);">📚 Modelos prontos (substituem os passos atuais)</summary><div style="display:grid;gap:8px;margin-top:8px;"><button class="ghost" style="text-align:left;" onclick="cgModelo2()">✨ Pesquisa por pontos no corpo</button><button class="ghost" style="text-align:left;" onclick="cgModelo()">✨ Modelo simples</button></div></details>` : ''}
     <details style="margin-top:10px;" ${CG.steps.length ? '' : 'open'}><summary style="cursor:pointer;font-weight:700;color:var(--primary);">➕ Adicionar um passo</summary>
     <div style="display:grid;gap:8px;margin-top:8px;">${botoes}</div></details>`;
 }
@@ -224,13 +275,24 @@ window.cgAssistente = async function () {
     const b = document.getElementById('cgAsBtn'); if (b) { b.disabled = false; b.textContent = '✨ Montar rascunho'; }
   }
 };
-window.cgModelo = () => { CG.steps = MODELO_SIMPLES(); CG.aberto = null; cgRefresh(); };
+window.cgModelo = async () => {
+  if (CG.steps.length && !(window.confirmar ? await window.confirmar('Isto substitui os passos que já tem nesta consulta. Continuar?') : false)) return;
+  CG.steps = MODELO_SIMPLES(); CG.aberto = null; cgRefresh();
+};
+window.cgModelo2 = async () => {
+  if (CG.steps.length && !(window.confirmar ? await window.confirmar('Isto substitui os passos que já tem nesta consulta. Continuar?') : false)) return;
+  CG.steps = MODELO_PESQUISA_CORPO(); CG.aberto = null;
+  const nome = document.getElementById('protoName'); if (nome && !nome.value.trim()) nome.value = 'Pesquisa por pontos no corpo';
+  cgRefresh();
+};
 window.cgAbrir = (id) => { CG.aberto = CG.aberto === id ? null : id; cgRefresh(); };
 window.cgApagar = (id) => { CG.steps = CG.steps.filter(s => s.id !== id); CG.aberto = null; cgRefresh(); };
 window.cgMover = (i, d) => { const j = i + d; if (j < 0 || j >= CG.steps.length) return; [CG.steps[i], CG.steps[j]] = [CG.steps[j], CG.steps[i]]; cgRefresh(); };
 window.cgSet = (id, k, v, rerender) => { const s = achar(id); if (!s) return; s[k] = v; if (k === 'title' || rerender) cgRefresh(); };
 window.cgSetLinhas = (id, k, v) => { const s = achar(id); if (s) s[k] = linhas(v); };
 window.cgOpt = (id, j, k, v, rerender) => { const s = achar(id); if (!s || !s.options[j]) return; s.options[j][k] = v; if (rerender) cgRefresh(); };
+window.cgOptL = (id, j, k, v) => { const s = achar(id); if (s && s.options[j]) s.options[j][k] = linhas(v); };
+window.cgPtL = (sid, pid, k, v) => { const p = achaPt(sid, pid); if (p) p[k] = linhas(v); };
 window.cgOptLinhas = (id, j, v) => { const s = achar(id); if (s && s.options[j]) s.options[j].exemplos = linhas(v); };
 window.cgAddOpt = (id) => { const s = achar(id); if (!s) return; s.options.push({ id: uid(), label: 'Opção ' + (s.options.length + 1), tema: '', pergunta: '', exemplos: [], extra: '' }); cgRefresh(); };
 window.cgRemOpt = (id, j) => { const s = achar(id); if (!s) return; s.options.splice(j, 1); cgRefresh(); };
@@ -307,6 +369,14 @@ function cgPasso() {
     const sel = r.sel || [];
     corpo = mapaHtml(s, 'run', sel) + `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${(s.points || []).map((p, n) => `<button class="${sel.includes(p.id) ? 'primary' : 'ghost'}" style="padding:6px 10px;" onclick="cgEscolher('${s.id}','${p.id}')"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.cor || '#dc2626'};margin-right:6px;"></span>${n + 1}. ${esc(p.label)}</button>`).join('')}</div>` +
       (s.points || []).filter(p => sel.includes(p.id)).map(cartaoConhecimento).join('');
+  } else if (s.type === 'tratpontos') {
+    const its = itensEncontrados(EX.proto, EX.resp, EX.i);
+    corpo = its.length ? its.map(o => `<div style="background:#f6f8f7;border-left:3px solid ${esc(o.cor || '#6a4fb3')};border-radius:8px;padding:10px;margin-top:8px;">
+        <strong>${esc(o.label)}</strong>
+        ${(o.tratamento || []).length ? `<ol style="margin:6px 0 0 18px;">${o.tratamento.map(x => `<li style="margin-bottom:4px;">${esc(x)}</li>`).join('')}</ol>` : '<div class="muted" style="margin-top:4px;">Sem "o que fazer" definido para este ponto — pode acrescentá-lo ao editar o método.</div>'}
+        ${o.afirmacao ? `<div style="margin-top:6px;font-style:italic;">💬 “${esc(o.afirmacao)}”</div>` : ''}</div>`).join('')
+      : '<p class="muted">Ainda não marcou nenhum ponto nos passos anteriores. Volte atrás e marque os que encontrou.</p>';
+    if (its.length && s.segundos > 0) corpo += `<div style="text-align:center;margin-top:12px;"><div id="cgTimer" style="font-size:2rem;font-weight:700;">${fmt(s.segundos)}</div><button class="ghost" onclick="cgTimer(${s.segundos})">⏱ Temporizador (por ponto)</button></div>`;
   } else if (s.type === 'instrucao') {
     corpo = `${s.texto ? `<div style="white-space:pre-wrap;">${esc(s.texto)}</div>` : ''}${s.imagem ? `<img src="${esc(s.imagem)}" style="max-width:100%;border-radius:8px;margin-top:8px;" alt="">` : ''}
       <label style="display:flex;gap:8px;align-items:center;margin-top:10px;"><input id="cgFeito" type="checkbox" style="width:auto;margin:0;" ${r.feito ? 'checked' : ''}> Feito</label>`;
@@ -378,6 +448,14 @@ export function cgConstruir(proto, resp, nomePaciente, data) {
         });
       }
     }
+    if (s.type === 'tratpontos') {
+      const its = itensEncontrados(proto, resp, (proto.steps || []).indexOf(s)).filter(temTrat);
+      if (its.length) {
+        const tt = its.map(o => textoTrat(o, s.segundos));
+        if (s.noRelatorio) R.push(`\n${s.title.toUpperCase()}`, ...tt);
+        if (s.noPlano !== false) P.push(`${s.title}\n` + tt.join('\n'));
+      }
+    }
     if (s.type === 'notas' && s.noRelatorio && r.valor) R.push(`\n${s.title}: ${r.valor}`);
     if (s.type === 'mapa' && s.noPlano) { const sel = selecionados(s, r); if (sel.length) P.push(`${s.title} — pontos a trabalhar:\n` + sel.map(o => `• ${o.label}`).join('\n')); }
     if (s.type === 'instrucao' && s.noPlano && (s.texto || s.imagem)) P.push(`${s.title}\n${s.texto || ''}`.trim());
@@ -407,10 +485,25 @@ function cartaoDoc(o) {
     ${o.pergunta ? `<div style="font-size:0.88rem;margin-top:3px;color:#1e3a8a;">❓ <b>Pergunta para te questionares:</b> ${esc(o.pergunta)}</div>` : ''}
     ${o.extra ? `<div style="font-size:0.86rem;margin-top:3px;color:#334155;">📚 <b>Para saberes mais:</b> ${esc(o.extra)}</div>` : ''}</div>`;
 }
+function cartaoTratDoc(o, m, seg) {
+  return `<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;break-inside:avoid;page-break-inside:avoid;">
+    <div style="font-weight:700;color:#0f172a;">${esc(o.label)}</div>
+    ${(o.tratamento || []).length ? `<ol style="font-size:0.9rem;line-height:1.55;color:#334155;margin:4px 0 0 20px;">${o.tratamento.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}
+    ${o.afirmacao ? `<div style="font-size:0.9rem;margin-top:4px;color:${m.cor};font-style:italic;">“${esc(o.afirmacao)}”</div>` : ''}
+    ${seg > 0 ? `<div style="font-size:0.8rem;color:#64748b;margin-top:3px;">⏱ cerca de ${fmtT(seg)}</div>` : ''}</div>`;
+}
 export function cgDocumentos(proto, resp, nomePaciente, data, marca) {
   const m = marca || marcaAtual(); let rel = '', plano = '';
   for (const s of proto.steps || []) {
     const r = resp[s.id] || {};
+    if (s.type === 'tratpontos') {
+      const its = itensEncontrados(proto, resp, (proto.steps || []).indexOf(s)).filter(temTrat);
+      if (its.length) {
+        const bloco = `<h3 style="color:${m.cor};margin:16px 0 8px;font-size:1.02rem;break-after:avoid;">${esc(s.title)}</h3>` + its.map(o => cartaoTratDoc(o, m, s.segundos)).join('');
+        if (s.noRelatorio) rel += bloco;
+        if (s.noPlano !== false) plano += bloco;
+      }
+    }
     if (s.type === 'pergunta' && s.noRelatorio !== false) {
       const v = r.lista ? r.lista.join(', ') : (r.valor || '');
       if (v) rel += `<div style="font-size:0.92rem;margin:6px 0;"><b>${esc(s.title)}</b><br><span style="color:#334155;">${esc(v)}</span></div>`;
@@ -510,6 +603,14 @@ export function cgModeloBonito(proto, resp, nomePaciente, data, marca) {
   const blocos = [], resumo = [], plano = [];
   for (const s of proto.steps || []) {
     const r = resp[s.id] || {};
+    if (s.type === 'tratpontos') {
+      const its = itensEncontrados(proto, resp, (proto.steps || []).indexOf(s)).filter(temTrat);
+      if (its.length) {
+        const desc = (o) => [(o.tratamento || []).length ? o.tratamento.map((x, i) => `${i + 1}. ${x}`).join('\n') : '', o.afirmacao ? `Afirmação: “${o.afirmacao}”` : ''].filter(Boolean).join('\n');
+        if (s.noRelatorio) blocos.push({ tipo: 'detalhe', icone: '🌿', titulo: s.title, intro: 'Toca em cada item para ver o que fazer.', itens: its.map(o => ({ nome: o.label, descricao: desc(o), exemplo: '' })) });
+        if (s.noPlano !== false) plano.push({ rotulo: s.title, texto: its.map(o => `${o.label}: ${desc(o).replace(/\n/g, ' ')}`).join('  ') });
+      }
+    }
     if (s.type === 'pergunta' && s.noRelatorio !== false) {
       const v = r.lista ? r.lista.join(', ') : (r.valor || '');
       if (v) resumo.push(`${s.title}: ${v}`);
