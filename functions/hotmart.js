@@ -3,7 +3,7 @@
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { onRequest } = require('firebase-functions/v2/https');
 
-// Publicada automaticamente pelo GitHub quando este ficheiro muda.
+// Publicada automaticamente pelo GitHub quando este ficheiro muda (Node 22).
 const db = getFirestore();
 
 const ATIVAR = new Set(['PURCHASE_APPROVED', 'PURCHASE_COMPLETE']);

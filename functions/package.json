@@ -2,7 +2,7 @@
   "name": "functions",
   "description": "Cloud Functions do SaúdeCare — automatiza o que hoje é feito manualmente no painel",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {
