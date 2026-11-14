@@ -415,7 +415,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-12-8';
+const APP_VERSION = '2026-11-14-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -7740,10 +7740,7 @@ async function renderProtocols(main){
     <div class="row"><h2>Os Meus Métodos de Consulta</h2>
       <button class="primary" onclick="openNewProtocol()">+ Novo método</button>
     </div>
-    ${hintBox(`Como conduz uma consulta, passo a passo — usa isto durante o atendimento, com o paciente à sua frente.
-      <strong>Lista livre</strong>: uma checklist de pontos a observar, com ou sem imagens — sem lógica fixa a seguir; coloque o que quiser, onde quiser (ex: sintomas, temas de sessão, ou pontos marcados numa foto sua, sem restrição de frente/costas/lados).
-      <strong>Pesquisa por zonas</strong>: pontos organizados em grupos sobre uma imagem do corpo, com zonas frente/costas e esquerdo/direito escolhidas antes de cada consulta — útil quando o seu método segue mesmo essa lógica (terapias manuais, corporais ou energéticas).
-      Em ambos, pode acrescentar perguntas antes, durante ou depois do atendimento, e a app gera um relatório automático no fim. Diferente de "Fichas" (questionário enviado à parte, sem estar numa consulta) e "Serviços" (o que vende, com preço e duração).`)}
+    ${hintBox(`Os seus métodos de trabalho, passo a passo, para usar durante o atendimento. No fim, a app gera o relatório sozinha. Pode criar um do zero ou partir de um modelo pronto — e alterar tudo.`)}
     ${passosHtml('Consulta guiada → relatório automático', ['<strong>Crie o método</strong> (ou escolha um modelo pronto).','Na <strong>consulta</strong>, abra o paciente e escolha o método: vai respondendo passo a passo.','No fim a app gera o <strong>relatório automático</strong>, que fica na ficha do paciente e o paciente pode ver no <strong>Portal do Paciente</strong> (link na ficha dele).'])}
     ${avisoRepetidosHtml('protocols', planoRepetidos(snap.docs, 'name').length)}
     ${modelosEmDestaque('protocols')}
@@ -19587,9 +19584,9 @@ async function renderSettings(main){
     inner = `
       <h2>📊 Plano & Estado</h2>
       <p class="muted">Plano atual: <strong>${currentTenantDoc?.plan === 'vindora' ? 'Vindora — ' + (window.__platformCfg?.precoMensal ?? 15) + ' € por mês (preço de lançamento)' : escapeHtml(currentTenantDoc?.plan||'—')}</strong></p>
-      <p class="muted">Estado: <strong>${escapeHtml(currentTenantDoc?.status||'—')}</strong></p>
+      <p class="muted">Estado: <strong>${escapeHtml(({trial:'Teste gratuito',active:'Ativo',suspended:'Suspenso',cancelled:'Cancelado',expired:'Teste terminado'})[currentTenantDoc?.status] || currentTenantDoc?.status || '—')}</strong></p>
       ${nextDue ? `<p class="muted" style="${isOverdue?'color:var(--danger);font-weight:600;':''}">Próximo pagamento: ${new Date(nextDue).toLocaleDateString('pt-PT')}${isOverdue?' — em atraso':''}</p>` : ''}
-      ${currentTenantDoc?.status === 'trial' ? '<p class="muted">Está em período de teste gratuito — sem nada a pagar por agora.</p>' : `
+      ${currentTenantDoc?.status === 'trial' ? `<p class="muted">Está em período de teste gratuito${(()=>{try{const t=currentTenantDoc.trialEndsAt; const d=t&&t.toDate?t.toDate():(t?new Date(t):null); return d?' até '+d.toLocaleDateString('pt-PT'):'';}catch(_){return '';}})()} — sem nada a pagar por agora.</p>` : `
       <div class="card" style="margin-top:10px;background:#f6f8f7;">
         <h3 style="margin-bottom:6px;">💳 Como pagar</h3>
         ${payInfo.iban ? `<p class="muted">Transferência bancária: IBAN <strong>${escapeHtml(payInfo.iban)}</strong></p>` : ''}
