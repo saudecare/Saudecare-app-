@@ -95,10 +95,11 @@
 
 <header class="hero">
   <img id="heroLogo" class="logo hidden" alt="">
-  <h1 id="heroTitulo">Terapias, Mapa da Alma e Tarot, com Hikari Fafe</h1>
-  <p id="heroTexto">Marca a tua consulta, descobre o teu Mapa da Alma, tira o teu Tarot ou inscreve-te numa formação de Reiki.</p>
+  <h1 id="heroTitulo">Vindora — a plataforma para terapeutas e clínicas</h1>
+  <p id="heroTexto">Agenda, fichas de pacientes, consultas guiadas com relatório automático e a tua página própria. 7 dias grátis, depois 15 € por mês.</p>
   <div class="botoes">
-    <a class="btn ouro" data-funil href="marcar.html">📅 Marcar consulta</a>
+    <a class="btn ouro" href="app.html">Começar teste grátis</a>
+    <a class="btn contorno" data-funil href="marcar.html">📅 Marcar consulta com Hikari Fafe</a>
   </div>
 </header>
 
@@ -307,9 +308,7 @@ async function arrancar(){
   document.querySelectorAll('[data-poemas]').forEach(a => a.href = 'poemas-meiji.html?t=' + TENANT);
 
   if (perfil){
-    if (perfil.branding?.logoUrl && urlSegura(perfil.branding.logoUrl)){ $('heroLogo').src = perfil.branding.logoUrl; $('heroLogo').classList.remove('hidden'); }
-    if (perfil.businessName) $('heroTitulo').textContent = perfil.businessName;
-    if (perfil.tagline) $('heroTexto').textContent = perfil.tagline;
+    
     desenharContactos(perfil);
     desenharHorarios(perfil);
     desenharLoja(perfil);

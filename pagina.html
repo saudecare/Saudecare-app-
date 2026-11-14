@@ -12,7 +12,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Vindora">
-<title>Vindora</title>
+<title>Página do consultório</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -380,7 +380,7 @@ function renderQuickNav(){
 // "instalar" a página. No iPhone/Safari o ícone depende também da tag
 // apple-touch-icon, que também é atualizada aqui.
 function applyDynamicManifest(profile){
-  document.title = profile.businessName || 'Vindora';
+  document.title = profile.businessName || 'Página do consultório';
   const logoUrl = profile.branding?.logoUrl || '';
 
   if (logoUrl){
@@ -392,8 +392,8 @@ function applyDynamicManifest(profile){
   }
 
   const manifestObj = {
-    name: profile.businessName || 'Vindora',
-    short_name: (profile.businessName || 'Vindora').slice(0, 12),
+    name: profile.businessName || 'Página do consultório',
+    short_name: (profile.businessName || 'Página do consultório').slice(0, 12),
     start_url: window.location.href,
     display: 'standalone',
     background_color: '#f6f8f7',

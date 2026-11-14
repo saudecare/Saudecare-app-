@@ -392,7 +392,7 @@
 
 <script type="module" src="pe-carregador.js"></script>
 <script type="module" src="cg-imagens.js?v=2026-11-12-8"></script>
-<script type="module" src="consulta-guiada.js?v=2026-11-12-8"></script>
+<script type="module" src="consulta-guiada.js?v=2026-11-14-2"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
@@ -417,7 +417,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-14-1';
+const APP_VERSION = '2026-11-14-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4827,6 +4827,7 @@ window.viewPatient = async function(patientId){
         <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeHtml(p.fullName)}')">🧭 Iniciar consulta guiada</button>
         <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeHtml(p.fullName)}')">📝 Enviar ficha a este paciente</button>
         <button class="ghost" onclick="viewPatientEvolution('${patientId}','${escapeHtml(p.fullName)}')">📈 Ver evolução</button>
+        <button class="ghost" onclick="abrirComparacao('${patientId}','${escapeHtml(p.fullName)}')">🔍 Comparar consultas</button>
       </div>
 
       <div class="pacTabs" id="pacTabs">
@@ -5567,9 +5568,10 @@ window.viewPatientEvolution = async function(patientId, patientName){
     const r = rd.data();
     const pointNames = [
       ...(r.mappingDetected || []).map(d => d.name),
-      ...(r.points || []).map(p => p.name)
+      ...(r.points || []).map(p => p.name),
+      ...(((r.dados && r.dados.resumo) || []).filter(x => x.k === 'itens').flatMap(x => x.l || []))
     ];
-    reports.push({ id: rd.id, protocolName: r.protocolName, date: r.generatedAt, pointNames });
+    reports.push({ id: rd.id, protocolName: r.protocolName, date: r.generatedAt, pointNames, resumo: (r.dados && r.dados.resumo) || [] });
   });
 
   if (!reports.length){
@@ -5593,6 +5595,13 @@ window.viewPatientEvolution = async function(patientId, patientName){
     ? recurring.map(([name,count]) => `<div class="appt-item row"><span>${escapeHtml(name)}</span><span class="badge trial">apareceu em ${count} sessões</span></div>`).join('')
     : '<p class="muted">Ainda sem pontos repetidos entre sessões.</p>';
 
+  // Evolução das escalas (0–10) entre sessões do mesmo método
+  const escalas = {};
+  reports.forEach((r, idx) => (r.resumo || []).filter(x => x.k === 'escala').forEach(x => { const k = (r.protocolName||'') + ' · ' + x.t; (escalas[k] = escalas[k] || []).push(Number(x.v)); }));
+  const escalasHtml = Object.entries(escalas).filter(([,v]) => v.length >= 2).map(([nome, v]) => {
+    const d = v[v.length-1] - v[0]; const seta = d === 0 ? '＝ igual' : (d < 0 ? '↓ ' + Math.abs(d) : '↑ ' + d);
+    return `<div class="appt-item row"><span>${escapeHtml(nome)}</span><span><strong>${v.join(' → ')}</strong> <span class="badge ${d<0?'active':'trial'}">${seta}</span></span></div>`;
+  }).join('');
   const timelineHtml = reports.map((r, idx) => {
     const dateStr = r.date?.toDate ? r.date.toDate().toLocaleDateString('pt-PT') : '';
     const pointsHtml = r.pointNames.length
@@ -5613,6 +5622,7 @@ window.viewPatientEvolution = async function(patientId, patientName){
       <h2>Pontos que mais se repetem</h2>
       ${recurringHtml}
     </div>
+    ${escalasHtml ? `<div class="card"><h2>Evolução das escalas</h2><p class="muted">Primeira → última sessão do mesmo método.</p>${escalasHtml}</div>` : ''}
     <h2 style="margin:16px 0 8px;">Sessões, por ordem</h2>
     ${timelineHtml}
   `);
@@ -19386,6 +19396,21 @@ async function guardarConsultaCartomancia(r){
 
 /* Comparar duas consultas do mesmo género, lado a lado: o que mudou
    entre uma e outra, sem ter de andar a abrir uma a uma. */
+
+// Comparar duas consultas — abre num ecrã próprio, a partir da ficha
+window.abrirComparacao = async function(patientId, patientName){
+  try{
+    const snap = await getDocs(query(collection(db,'tenants',tenantId,'patients',patientId,'reports'), orderBy('generatedAt','desc')));
+    const rows = []; snap.forEach(d => rows.push({ id:d.id, ...d.data() }));
+    window.__registosPaciente = rows;
+    showPatientOverlay('Comparar consultas — ' + patientName, `
+      <div class="card"><button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button>
+      <p class="muted" style="margin-top:8px;">Escolha duas consultas do mesmo método para ver o que mudou: escalas, pontos que se mantêm, que desapareceram e que são novos.</p></div>
+      <div id="compararRegistos"></div>`);
+    window.compararRegistosPaciente(patientId);
+  }catch(e){ toast('⚠️ Não foi possível abrir a comparação: ' + (e.message||e), true); }
+};
+
 window.compararRegistosPaciente = function(patientId){
   const rows = window.__registosPaciente || [];
   const alvo = document.getElementById('compararRegistos');
@@ -19424,7 +19449,17 @@ window.desenharComparacao = function(){
       <div class="muted" style="font-size:.85rem;">${data(r)}</div>
       <div style="margin-top:6px;white-space:pre-wrap;font-size:13px;background:#f6f8f7;border-radius:8px;padding:10px;">${escapeHtml(r.reportText||'')}</div>
     </div>`;
-  alvo.innerHTML = `
+  let estrut = '';
+  const ra = (a.dados && a.dados.resumo) || [], rb = (b.dados && b.dados.resumo) || [];
+  if (ra.length && rb.length && a.protocolName === b.protocolName) {
+    const linhasE = [];
+    ra.forEach(x => { const y = rb.find(z => z.t === x.t && z.k === x.k); if (!y) return;
+      if (x.k === 'escala') { const d = Number(x.v) - Number(y.v); linhasE.push(`<div class="appt-item row"><span>${escapeHtml(x.t)}</span><span>${escapeHtml(y.v)} → <strong>${escapeHtml(x.v)}</strong> <span class="badge ${d<0?'active':'trial'}">${d===0?'＝':(d<0?'↓ melhorou':'↑ subiu')}</span></span></div>`); }
+      else if (x.k === 'itens') { const ant = y.l||[], atu = x.l||[]; const fica = atu.filter(i=>ant.includes(i)), novo = atu.filter(i=>!ant.includes(i)), resolvido = ant.filter(i=>!atu.includes(i));
+        linhasE.push(`<div style="margin:8px 0;"><strong>${escapeHtml(x.t)}</strong><div style="margin-top:4px;">${resolvido.map(i=>`<span class="badge active" style="margin:2px;">✔ já não aparece: ${escapeHtml(i)}</span>`).join('')}${fica.map(i=>`<span class="badge trial" style="margin:2px;">🔁 mantém-se: ${escapeHtml(i)}</span>`).join('')}${novo.map(i=>`<span class="badge" style="margin:2px;">✨ novo: ${escapeHtml(i)}</span>`).join('')}</div></div>`); } });
+    if (linhasE.length) estrut = `<div class="card" style="margin-bottom:10px;"><strong>📊 O que mudou (da mais antiga para a mais recente)</strong>${linhasE.join('')}</div>`;
+  }
+  alvo.innerHTML = estrut + `
     <p class="muted" style="margin-bottom:8px;">
       ${dias != null ? dias + ' dia(s) de intervalo. ' : ''}
       ${mesmoTipo ? 'São do mesmo género, dá para ler a evolução.' : 'São de géneros diferentes — leia-as como contexto, não como evolução.'}

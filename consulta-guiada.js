@@ -645,6 +645,25 @@ function mostrarResultado(preview) {
     <div style="margin-top:14px;">${preview ? `<button class="ghost" onclick="renderView('protocols')">✕ Fechar</button>` : (EX.patientId ? `<button class="ghost" onclick="viewPatient('${EX.patientId}')">👤 Voltar à ficha do paciente</button>` : '')}</div></div>`;
 }
 
+
+// Resumo estruturado de uma consulta guiada (para comparar sessões e ver evolução sem depender do texto)
+function cgResumo(proto, resp) {
+  const out = [];
+  (proto.steps || []).forEach(s => {
+    const r = (resp || {})[s.id] || {};
+    if (s.type === 'pergunta') {
+      const esc = s.qtype === 'scale';
+      const v = s.qtype === 'multi' ? (r.lista || []).join(', ') : (r.valor == null ? '' : String(r.valor));
+      if (v !== '') out.push({ t: s.title, k: esc ? 'escala' : 'texto', v });
+    } else if (s.type === 'escolha' || s.type === 'mapa') {
+      const lista = (s.type === 'mapa' ? (s.points || []) : (s.options || [])).filter(o => (r.sel || []).includes(o.id)).map(o => o.label).filter(Boolean);
+      if (lista.length) out.push({ t: s.title, k: 'itens', l: lista });
+    } else if (s.type === 'notas' && r.valor) out.push({ t: s.title, k: 'texto', v: String(r.valor).slice(0, 400) });
+  });
+  return out;
+}
+window.cgResumo = cgResumo;
+
 async function cgConcluir() {
   const data = new Date().toLocaleDateString('pt-PT');
   const t = cgConstruir(EX.proto, EX.resp, EX.patientName, data);
@@ -656,7 +675,7 @@ async function cgConcluir() {
     if (window.guardarNaFicha) {
       let bonito = ''; try { bonito = rbFragmento(cgModeloBonito(EX.proto, EX.resp, EX.patientName, data)); } catch (_) {}
       const ok = await window.guardarNaFicha(EX.patientId, { tipo: 'consulta_guiada', titulo: EX.proto.name, texto: t.texto, reportHtml: bonito,
-        dados: JSON.parse(JSON.stringify({ protocoloId: EX.protoId || '', respostas: EX.resp, relatorio: t.relatorio, plano: t.plano, htmlRelatorio: docs.htmlRel, htmlPlano: docs.htmlPlano, data })) });
+        dados: JSON.parse(JSON.stringify({ protocoloId: EX.protoId || '', resumo: cgResumo(EX.proto, EX.resp), respostas: EX.resp, relatorio: t.relatorio, plano: t.plano, htmlRelatorio: docs.htmlRel, htmlPlano: docs.htmlPlano, data })) });
       if (!ok) aviso('⚠️ Não consegui gravar na ficha. Copie o relatório antes de sair.', true);
     }
   }
