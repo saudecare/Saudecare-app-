@@ -392,14 +392,14 @@
 
 <script type="module" src="pe-carregador.js"></script>
 <script type="module" src="cg-imagens.js?v=2026-11-12-8"></script>
-<script type="module" src="consulta-guiada.js?v=2026-11-14-9"></script>
+<script type="module" src="consulta-guiada.js?v=2026-11-15-2"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
 import { aplicarCorMarca } from './marca.js';
 import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
-import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js';
+import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-2';
 import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
 import { corpoMensagem as reikiCorpoMsg, escolherFoto as reikiEscolherFoto } from './reiki-midia-chat.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -417,7 +417,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-15-1';
+const APP_VERSION = '2026-11-15-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -7741,6 +7741,7 @@ async function renderProtocols(main){
         <button class="ghost" onclick="previewProtocol('${d.id}')">👁️ Pré-visualizar</button>
         <button class="ghost" onclick="editProtocol('${d.id}')">Editar</button>
         <button class="ghost" onclick="duplicateProtocol('${d.id}')">Duplicar</button>
+        <button class="ghost" onclick="exportProtocol('${d.id}')" title="Guardar uma cópia deste método em ficheiro, para partilhar ou como cópia de segurança">⬇️ Exportar</button>
         <button class="danger" onclick="deleteProtocol('${d.id}')">Remover</button>
       </div>
     </div>`;
@@ -7756,7 +7757,12 @@ async function renderProtocols(main){
     ${passosHtml('Consulta guiada → relatório automático', ['<strong>Crie o método</strong> (ou escolha um modelo pronto).','Na <strong>consulta</strong>, abra o paciente e escolha o método: vai respondendo passo a passo.','No fim a app gera o <strong>relatório automático</strong>, que fica na ficha do paciente e o paciente pode ver no <strong>Portal do Paciente</strong> (link na ficha dele).'])}
     ${avisoRepetidosHtml('protocols', planoRepetidos(snap.docs, 'name').length)}
     ${modelosEmDestaque('protocols')}
-    <div class="card"><h3 style="margin-top:0;">Os meus métodos</h3>${rows}</div>
+    <div class="card"><h3 style="margin-top:0;">Os meus métodos</h3>${rows}
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #e5ece8;">
+        <button class="ghost" onclick="document.getElementById('protoImportFile').click()">⬆️ Importar método (ficheiro)</button>
+        <input type="file" id="protoImportFile" accept=".json,application/json" style="display:none" onchange="importProtocol(this.files[0]); this.value='';">
+        <p class="muted" style="margin:6px 0 0;">Recebeu um método de um colega ou guardou uma cópia? Importe-o aqui: fica como cópia sua, para editar à vontade.</p>
+      </div></div>
     <div id="protocolFormContainer"></div>
     ${tenantId === 'hikari-terapias' ? `<details style="margin-top:18px;"><summary style="cursor:pointer;color:var(--primary);font-weight:600;padding:10px 0;">💡 Exemplos de demonstração</summary>${renderDemoProtocolsSection()}</details>` : ''}
   `;
@@ -8556,6 +8562,42 @@ window.deleteProtocol = async function(id){
 // Duplica um protocolo já existente — útil para partir de um método já
 // escrito em vez de começar do zero, ou para adaptar um protocolo para
 // um paciente/situação diferente sem perder o original.
+
+// ── Exportar / importar métodos (cópia de segurança e partilha entre profissionais) ──
+window.exportProtocol = async function(id){
+  try {
+    const snap = await getDoc(doc(db, 'tenants', tenantId, 'protocols', id));
+    if (!snap.exists()){ toast('Método não encontrado.', true); return; }
+    const p = { ...snap.data() }; delete p.createdAt; delete p.updatedAt; delete p.ownerUid; delete p.createdBy;
+    const pacote = { vindora: 'metodo', versao: 1, exportadoEm: new Date().toISOString().slice(0,10), dados: JSON.parse(JSON.stringify(p)) };
+    const nome = 'metodo-' + (p.name || 'sem-nome').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') + '.json';
+    const blob = new Blob([JSON.stringify(pacote, null, 1)], { type: 'application/json' });
+    const file = new File([blob], nome, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: p.name || 'Método' }); return; } catch(e){ if (e && e.name === 'AbortError') return; } }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('✅ Método guardado em ficheiro.');
+  } catch(e){ toast('Não consegui exportar: ' + (e.message || e), true); }
+};
+
+window.importProtocol = async function(file){
+  if (!file) return;
+  try {
+    if (file.size > 900000) { toast('Este ficheiro é demasiado grande para ser um método.', true); return; }
+    const pacote = JSON.parse(await file.text());
+    if (!pacote || pacote.vindora !== 'metodo' || !pacote.dados || typeof pacote.dados !== 'object') { toast('Este ficheiro não é um método da Vindora.', true); return; }
+    const urlOk = (u) => /^(https?:\/\/|data:image\/)/i.test(String(u || '').trim());
+    const limpa = (o) => { if (Array.isArray(o)) return o.map(limpa); if (o && typeof o === 'object') { const r = {}; for (const [k, v] of Object.entries(o)) { if (['imagem','link','bodyFrontImageUrl','bodyBackImageUrl'].includes(k)) r[k] = urlOk(v) ? v : ''; else r[k] = limpa(v); } return r; } return o; };
+    const d = limpa(pacote.dados);
+    if (!['guided','simple','mapping'].includes(d.type) && d.type !== undefined) { toast('Tipo de método desconhecido.', true); return; }
+    if (d.type === 'guided' && !Array.isArray(d.steps)) { toast('O ficheiro não tem passos.', true); return; }
+    delete d.id; delete d.createdAt; delete d.updatedAt; delete d.ownerUid; delete d.createdBy; delete d.exclusive; delete d.exclusivo; delete d.locked;
+    await addDoc(collection(db, 'tenants', tenantId, 'protocols'), { ...d, name: (d.name || 'Método') + ' (importado)', createdAt: serverTimestamp() });
+    toast('✅ Método importado — já pode editar a cópia.');
+    renderView('protocols');
+  } catch(e){ toast('Não consegui importar: o ficheiro não é válido.', true); }
+};
+
 window.duplicateProtocol = async function(id){
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'protocols', id));
   if (!snap.exists()){ toast('Protocolo não encontrado.', true); return; }

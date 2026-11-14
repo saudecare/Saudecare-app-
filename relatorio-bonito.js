@@ -232,6 +232,8 @@ function bloco(b, T) {
         <p style="margin-top:14px;font-weight:700;color:var(--a);font-size:14px">Quantos centros em cada estado</p>${cols.map((c, i) => `<div style="font-size:12px;color:var(--mut)">${esc(c)}</div><div class="pilha">${['ok', 'de', 'bl'].map(k => cont[i][k] ? `<span class="${k}" style="flex:${cont[i][k]}">${cont[i][k]}</span>` : '').join('')}</div>`).join('')}
         <div class="leg2"><span><i style="background:#2e9d57"></i>Equilibrado</span><span><i style="background:#e8a317"></i>Em desarmonia</span><span><i style="background:#d0453b"></i>Bloqueado</span></div>${b.nota ? `<p class="mut" style="font-size:12px">${nl(b.nota)}</p>` : ''}</section>`;
     }
+    case 'mapa':
+      return b.html ? `<section class="bloco">${tit}<div style="text-align:center">${b.html}</div><p class="mut" style="font-size:12px;text-align:center">Os pontos encontrados estão em destaque.</p></section>` : '';
     case 'imagens':
       return (b.urls && b.urls.length) ? `<section class="bloco">${tit}<div class="galeria">${b.urls.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join('')}</div></section>` : '';
     default: return '';

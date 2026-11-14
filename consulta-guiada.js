@@ -4,7 +4,7 @@
 //  (pergunta, escolha com conhecimento, instrução, tratamento, notas).
 //  Não toca nos métodos antigos (lista livre / mapeamento por zonas).
 // ═══════════════════════════════════════════════════════════════════
-import { rbFragmento, rbPreVisualizar } from './relatorio-bonito.js';
+import { rbFragmento, rbPreVisualizar } from './relatorio-bonito.js?v=2026-11-15-2';
 
 const iconeUri = (o) => (typeof o.icone === 'number' && window.CG_IMG && window.CG_IMG.icones[o.icone]) ? window.CG_IMG.uri(window.CG_IMG.icones[o.icone]) : '';
 const esc = (t) => (window.escapeHtml ? window.escapeHtml(String(t == null ? '' : t)) : String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
@@ -114,7 +114,8 @@ function itensEncontrados(proto, resp, ate) {
   });
   return lista;
 }
-const temTrat = (o) => (o.tratamento || []).length || o.afirmacao;
+const linkSeguro = (u) => /^https?:\/\//i.test(String(u || '').trim());
+const temTrat = (o) => (o.tratamento || []).length || o.afirmacao || linkSeguro(o.link);
 const textoTrat = (o, seg) => `• ${o.label}` + ((o.tratamento || []).length ? '\n' + o.tratamento.map((x, i) => `   ${i + 1}. ${x}`).join('\n') : '') + (o.afirmacao ? `\n   Afirmação: "${o.afirmacao}"` : '') + (seg > 0 ? `\n   (cerca de ${fmtT(seg)})` : '');
 
 // ─── Rascunho (usado pelos ganchos da app) ───
@@ -181,6 +182,7 @@ function editorMapa(s) {
       ${campo('Conhecimento adicional (aparece no relatório)', `<textarea rows="3" onchange="cgPt('${s.id}','${sel.id}','extra',this.value)">${esc(sel.extra)}</textarea>`)}
       ${campo('O que fazer neste ponto (um passo por linha) — vai para o passo "Tratamento dos pontos encontrados"', `<textarea rows="3" onchange="cgPtL('${s.id}','${sel.id}','tratamento',this.value)">${esc((sel.tratamento || []).join('\n'))}</textarea>`)}
       ${campo('Afirmação (frase a dizer ou escrever)', `<textarea rows="2" onchange="cgPt('${s.id}','${sel.id}','afirmacao',this.value)">${esc(sel.afirmacao)}</textarea>`)}
+      ${campo('Ligação de apoio (áudio, vídeo ou documento) — opcional', `<input value="${esc(sel.link || '')}" onchange="cgPt('${s.id}','${sel.id}','link',this.value)" placeholder="https://… (o paciente abre pelo relatório e pelo plano)">`)}
       <button class="${CG.colocar === sel.id ? 'primary' : 'ghost'}" style="margin-top:8px;" onclick="cgColocar('${sel.id}')">${CG.colocar === sel.id ? '👆 Toque agora no mapa, no sítio certo…' : '📍 Colocar no mapa (toque depois no sítio certo)'}</button>
       <button class="danger" style="margin-top:8px;" onclick="cgRemPt('${s.id}','${sel.id}')">Remover este ponto</button></div>` : '') +
     `<label style="display:flex;gap:8px;align-items:center;margin-top:10px;"><input type="checkbox" style="width:auto;margin:0;" ${s.noPlano ? 'checked' : ''} onchange="cgSet('${s.id}','noPlano',this.checked)"> Mostrar o mapa com os pontos marcados no plano do paciente</label>`;
@@ -193,6 +195,7 @@ function editorPasso(s, i) {
     campo('Ajuda para o terapeuta (opcional)', `<textarea rows="2" onchange="cgSet('${s.id}','help',this.value)" placeholder="ex: Peça ao paciente para fechar os olhos antes de responder.">${esc(s.help)}</textarea>`);
   if (s.type === 'pergunta') {
     corpo += campo('Tipo de resposta', `<select onchange="cgSet('${s.id}','qtype',this.value,true)">${[['text', 'Texto livre'], ['choice', 'Escolher uma opção'], ['multi', 'Escolher várias'], ['scale', 'Escala de 0 a 10'], ['yesno', 'Sim / Não'], ['number', 'Número (medição, minutos, graus…)']].map(([v, n]) => `<option value="${v}" ${s.qtype === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`);
+    if (s.qtype === 'text') corpo += campo('Preencher sozinho com dado da ficha (opcional)', `<select onchange="cgSet('${s.id}','ficha',this.value)">${[['', '— não —'], ['nome', 'Nome do paciente'], ['nascimento', 'Data de nascimento'], ['idade', 'Idade'], ['telefone', 'Telefone'], ['email', 'Email']].map(([v, n]) => `<option value="${v}" ${(s.ficha || '') === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`);
     if (s.qtype === 'number') corpo += campo('Unidade (opcional)', `<input value="${esc(s.unidade || '')}" onchange="cgSet('${s.id}','unidade',this.value)" placeholder="ex: Hz, min, kg, mmHg, graus">`);
     if (s.qtype === 'choice' || s.qtype === 'multi') corpo += campo('Opções (uma por linha)', `<textarea rows="4" onchange="cgSetLinhas('${s.id}','options',this.value)">${esc((s.options || []).join('\n'))}</textarea>`);
   }
@@ -206,6 +209,7 @@ function editorPasso(s, i) {
       ${campo('Conhecimento adicional (aparece no relatório)', `<textarea rows="3" onchange="cgOpt('${s.id}',${j},'extra',this.value)">${esc(o.extra)}</textarea>`)}
       ${campo('O que fazer nesta opção (um passo por linha) — vai para o passo "Tratamento dos pontos encontrados"', `<textarea rows="3" onchange="cgOptL('${s.id}',${j},'tratamento',this.value)">${esc((o.tratamento || []).join('\n'))}</textarea>`)}
       ${campo('Afirmação (frase a dizer ou escrever)', `<textarea rows="2" onchange="cgOpt('${s.id}',${j},'afirmacao',this.value)">${esc(o.afirmacao)}</textarea>`)}
+      ${campo('Ligação de apoio (áudio, vídeo ou documento) — opcional', `<input value="${esc(o.link || '')}" onchange="cgOpt('${s.id}',${j},'link',this.value)" placeholder="https://… (o paciente abre pelo relatório e pelo plano)">`)}
       <button class="danger" style="margin-top:8px;" onclick="cgRemOpt('${s.id}',${j})">Remover esta opção</button></details>`).join('');
     corpo += `<button class="ghost" style="margin-top:8px;width:100%;" onclick="cgAddOpt('${s.id}')">+ Adicionar opção</button>` + colarHtml(s);
   }
@@ -274,7 +278,7 @@ function colarHtml(s) {
   const mapa = s.type === 'mapa';
   return `<details style="margin-top:12px;background:#eef6f2;border-radius:10px;padding:10px;"><summary style="cursor:pointer;font-weight:700;color:var(--primary);">📋 Preencher muitos de uma vez (colar lista)</summary>
     <p class="muted" style="margin:8px 0;">Uma linha por ${mapa ? 'ponto' : 'opção'}, com as colunas separadas por <b>|</b> (ou copiadas de uma folha de cálculo). Só o nome é obrigatório; as restantes colunas podem ficar vazias.</p>
-    <p class="muted" style="margin:4px 0;"><b>Nome | O que significa | Pergunta | O que fazer (passos separados por ;) | Afirmação | Conhecimento para o relatório | Exemplos (separados por ;)</b></p>
+    <p class="muted" style="margin:4px 0;"><b>Nome | O que significa | Pergunta | O que fazer (passos separados por ;) | Afirmação | Conhecimento para o relatório | Exemplos (separados por ;) | Ligação de apoio</b></p>
     <textarea id="cgColar_${s.id}" rows="6" style="width:100%;font-size:13px;" placeholder="${esc(COL_EX)}"></textarea>
     <label style="display:flex;gap:8px;align-items:center;margin-top:6px;"><input type="checkbox" id="cgColarSub_${s.id}" style="width:auto;margin:0;"> Substituir os que já existem (em vez de acrescentar)</label>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="primary" onclick="cgColar('${s.id}')">➕ Criar a partir da lista</button><button class="ghost" onclick="cgListaTexto('${s.id}')">📄 Trazer a lista atual para aqui</button><button class="ghost" onclick="cgColarExemplo('${s.id}')">Ver um exemplo</button></div>
@@ -285,14 +289,14 @@ const aLinhas = (v) => String(v || '').split(/\s*;\s*|\n/).map(x => x.trim()).fi
 window.cgColarExemplo = (id) => { const t = document.getElementById('cgColar_' + id); if (t) t.value = COL_EX + '\nRim | Filtragem e equilíbrio | | Aplicar 5 minutos | Confio no meu corpo'; };
 window.cgListaTexto = (id) => {
   const s = achar(id); const t = document.getElementById('cgColar_' + id); if (!s || !t) return;
-  t.value = itensDe(s).map(o => [o.label, o.tema, o.pergunta, (o.tratamento || []).join('; '), o.afirmacao, o.extra, (o.exemplos || []).join('; ')].map(x => String(x || '').replace(/[|\n]/g, ' ')).join(' | ').replace(/( \| )+$/, '')).join('\n');
+  t.value = itensDe(s).map(o => [o.label, o.tema, o.pergunta, (o.tratamento || []).join('; '), o.afirmacao, o.extra, (o.exemplos || []).join('; '), o.link].map(x => String(x || '').replace(/[|\n]/g, ' ')).join(' | ').replace(/( \| )+$/, '')).join('\n');
   const c = document.getElementById('cgColarSub_' + id); if (c) c.checked = true;
 };
 window.cgColar = (id) => {
   const s = achar(id); const t = document.getElementById('cgColar_' + id); if (!s || !t) return;
   const linhas = t.value.split('\n').map(l => l.trim()).filter(Boolean);
   if (!linhas.length) { window.toast && window.toast('Escreva ou cole primeiro a lista.', true); return; }
-  const novos = linhas.map(l => { const c = l.split(/\s*\|\s*|\t/).map(x => x.trim()); return { label: c[0], tema: c[1] || '', pergunta: c[2] || '', tratamento: aLinhas(c[3]), afirmacao: c[4] || '', extra: c[5] || '', exemplos: aLinhas(c[6]) }; }).filter(o => o.label);
+  const novos = linhas.map(l => { const c = l.split(/\s*\|\s*|\t/).map(x => x.trim()); return { label: c[0], tema: c[1] || '', pergunta: c[2] || '', tratamento: aLinhas(c[3]), afirmacao: c[4] || '', extra: c[5] || '', exemplos: aLinhas(c[6]), link: linkSeguro(c[7]) ? c[7] : '' }; }).filter(o => o.label);
   const sub = document.getElementById('cgColarSub_' + id)?.checked;
   const antigos = sub ? [] : itensDe(s);
   const lista = antigos.concat(novos.map(o => ({ id: uid(), ...o })));
@@ -437,7 +441,16 @@ let EX = null;
 
 window.cgExecutar = function (patientId, patientName, area, proto, protoId) {
   EX = { patientId, patientName, area, proto, protoId, i: 0, resp: {}, preview: !!window.__previewMode };
-  cgPasso();
+  const pre = (proto.steps || []).filter(x => x.type === 'pergunta' && x.ficha);
+  if (!pre.length || !patientId) { cgPasso(); return; }
+  const meu = EX;
+  window.db().doc(`tenants/${window.tenantId()}/patients/${patientId}`).get().then(sn => {
+    const p = sn.data() || {}; if (EX !== meu) return;
+    const nasc = p.birthDate ? new Date(p.birthDate) : null;
+    const idade = nasc && !isNaN(nasc) ? String(Math.floor((Date.now() - nasc) / 31557600000)) : '';
+    const val = { nome: p.fullName || patientName || '', nascimento: nasc && !isNaN(nasc) ? nasc.toLocaleDateString('pt-PT') : '', idade, telefone: p.phone || '', email: p.email || '' };
+    pre.forEach(x => { if (val[x.ficha]) EX.resp[x.id] = { valor: val[x.ficha] }; });
+  }).catch(() => {}).finally(() => { if (EX === meu) cgPasso(); });
 };
 
 function lerAtual() {
@@ -479,11 +492,12 @@ function cgPasso() {
     corpo = mapaHtml(s, 'run', sel) + `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${(s.points || []).map((p, n) => `<button class="${sel.includes(p.id) ? 'primary' : 'ghost'}" style="padding:6px 10px;" onclick="cgEscolher('${s.id}','${p.id}')"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.cor || '#dc2626'};margin-right:6px;"></span>${n + 1}. ${esc(p.label)}</button>`).join('')}</div>` +
       (s.points || []).filter(p => sel.includes(p.id)).map(cartaoConhecimento).join('');
   } else if (s.type === 'tratpontos') {
-    const its = itensEncontrados(EX.proto, EX.resp, EX.i);
+    const todos = itensEncontrados(EX.proto, EX.resp, EX.i);
+    const its = todos.some(temTrat) ? todos.filter(temTrat) : todos;
     corpo = its.length ? its.map(o => `<div style="background:#f6f8f7;border-left:3px solid ${esc(o.cor || '#6a4fb3')};border-radius:8px;padding:10px;margin-top:8px;">
         <strong>${esc(o.label)}</strong>
         ${(o.tratamento || []).length ? `<ol style="margin:6px 0 0 18px;">${o.tratamento.map(x => `<li style="margin-bottom:4px;">${esc(x)}</li>`).join('')}</ol>` : '<div class="muted" style="margin-top:4px;">Sem "o que fazer" definido para este ponto — pode acrescentá-lo ao editar o método.</div>'}
-        ${o.afirmacao ? `<div style="margin-top:6px;font-style:italic;">💬 “${esc(o.afirmacao)}”</div>` : ''}</div>`).join('')
+        ${o.afirmacao ? `<div style="margin-top:6px;font-style:italic;">💬 “${esc(o.afirmacao)}”</div>` : ''}${linkSeguro(o.link) ? `<div style="margin-top:6px;"><a href="${esc(o.link)}" target="_blank" rel="noopener">🔗 Abrir material de apoio</a></div>` : ''}</div>`).join('')
       : '<p class="muted">Ainda não marcou nenhum ponto nos passos anteriores. Volte atrás e marque os que encontrou.</p>';
     if (its.length && s.segundos > 0) corpo += `<div style="text-align:center;margin-top:12px;"><div id="cgTimer" style="font-size:2rem;font-weight:700;">${fmt(s.segundos)}</div><button class="ghost" onclick="cgTimer(${s.segundos})">⏱ Temporizador (por ponto)</button></div>`;
   } else if (s.type === 'instrucao') {
@@ -602,7 +616,7 @@ function cartaoTratDoc(o, m, seg) {
   return `<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;break-inside:avoid;page-break-inside:avoid;">
     <div style="font-weight:700;color:#0f172a;">${esc(o.label)}</div>
     ${(o.tratamento || []).length ? `<ol style="font-size:0.9rem;line-height:1.55;color:#334155;margin:4px 0 0 20px;">${o.tratamento.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}
-    ${o.afirmacao ? `<div style="font-size:0.9rem;margin-top:4px;color:${m.cor};font-style:italic;">“${esc(o.afirmacao)}”</div>` : ''}
+    ${o.afirmacao ? `<div style="font-size:0.9rem;margin-top:4px;color:${m.cor};font-style:italic;">“${esc(o.afirmacao)}”</div>` : ''}${linkSeguro(o.link) ? `<div style="font-size:0.9rem;margin-top:4px;"><a href="${esc(o.link)}" style="color:${m.cor};">🔗 Material de apoio</a></div>` : ''}
     ${seg > 0 ? `<div style="font-size:0.8rem;color:#64748b;margin-top:3px;">⏱ cerca de ${fmtT(seg)}</div>` : ''}</div>`;
 }
 export function cgDocumentos(proto, resp, nomePaciente, data, marca) {
@@ -732,6 +746,7 @@ export function cgModeloBonito(proto, resp, nomePaciente, data, marca) {
     }
     if ((s.type === 'escolha' || s.type === 'mapa') && s.noRelatorio !== false) {
       const sel = selecionados(s, r);
+      if (sel.length && s.type === 'mapa') blocos.push({ tipo: 'mapa', icone: '🗺️', titulo: s.title + ' — mapa', html: mapaHtml(s, 'doc', sel.map(o => o.id)) });
       if (sel.length) blocos.push({ tipo: 'detalhe', icone: '🔎', titulo: s.title, intro: 'Toca em cada item para ver mais.', itens: sel.map(o => ({ nome: o.label, descricao: [o.tema ? 'Tema: ' + o.tema : '', o.pergunta ? 'Pergunta para te questionares: ' + o.pergunta : '', o.extra ? 'Para saberes mais: ' + o.extra : ''].filter(Boolean).join('\n'), exemplo: (o.exemplos || []).join(' · ') })) });
     }
     if (s.type === 'notas' && s.noRelatorio && r.valor) blocos.push({ tipo: 'texto', icone: '📝', titulo: s.title, paras: [r.valor] });
