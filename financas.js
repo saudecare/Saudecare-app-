@@ -6,6 +6,17 @@
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const METODOS = { dinheiro: 'Dinheiro', mbway: 'MB WAY', transferencia: 'Transferência', cartao: 'Cartão / TPA', link: 'Link online', pacote: 'Venda de pacotes', '': 'Sem método' };
+// Cada subscritor escolhe o seu programa de faturação; a Vindora só abre o programa e ajuda a não esquecer faturas.
+export const PROGRAMAS_FATURACAO = [
+  ['portal', 'Portal das Finanças (recibo verde)', 'https://faturas.portaldasfinancas.gov.pt/'],
+  ['moloni', 'Moloni', 'https://www.moloni.pt/'],
+  ['invoicexpress', 'InvoiceXpress', 'https://www.invoicexpress.com/'],
+  ['vendus', 'Vendus', 'https://www.vendus.pt/'],
+  ['billin', 'Billin', 'https://www.billin.net/'],
+  ['kbmanager', 'KeyInvoice', 'https://www.keyinvoice.com/'],
+  ['outro', 'Outro (indico o endereço)', ''],
+  ['nenhum', 'Ainda não uso / não emito', '']
+];
 export const CATEGORIAS_DESPESA = ['Renda / espaço', 'Material', 'Formação', 'Publicidade', 'Software / subscrições', 'Deslocações', 'Contabilidade / impostos', 'Segurança Social', 'Outras'];
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -72,7 +83,7 @@ function barras(obj, cor, total) {
 // ctx: { db, tenantId, fns:{collection,getDocs,query,where,orderBy,Timestamp,addDoc,deleteDoc,doc,serverTimestamp}, toast, confirmar, hintBox, owner }
 export function iniciarFinancas(ctx) {
   const { db, tenantId, fns, toast, confirmar } = ctx;
-  const { collection, getDocs, query, where, Timestamp, addDoc, deleteDoc, doc, serverTimestamp } = fns;
+  const { collection, getDocs, query, where, Timestamp, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } = fns;
   const estado = { modo: 'mes', ref: new Date(), ultimo: null };
 
   const intervalo = () => {
@@ -93,15 +104,20 @@ export function iniciarFinancas(ctx) {
       if (sd) sd.forEach(d => { const x = d.data(); const dt = x.date && x.date.toDate ? x.date.toDate() : (x.date ? new Date(x.date) : null); if (dt && dt >= ini && dt <= fim) despesas.push({ id: d.id, ...x, data: dt, amount: num(x.amount) }); });
     }
     // pacotes e dívidas: vêm das fichas dos pacientes
-    const pacotes = [], devedores = [];
+    const pacotes = [], devedores = [], nifs = {};
     const sp = await tentar(() => getDocs(collection(db, 'tenants', tenantId, 'patients')));
-    if (sp) sp.forEach(d => { const p = d.data(); (p.packages || []).forEach(k => { const dt = k.purchasedAt ? new Date(k.purchasedAt) : null; if (dt && dt >= ini && dt <= fim) pacotes.push({ name: k.name, price: num(k.price), data: dt, patientName: p.fullName }); }); });
+    if (sp) sp.forEach(d => { const p = d.data(); nifs[d.id] = { nif: p.nif || '', nome: p.fullName || '' }; (p.packages || []).forEach(k => { const dt = k.purchasedAt ? new Date(k.purchasedAt) : null; if (dt && dt >= ini && dt <= fim) pacotes.push({ name: k.name, price: num(k.price), data: dt, patientName: p.fullName }); }); });
     // dívida total (todas as marcações já passadas, qualquer data)
     const sdv = await tentar(() => getDocs(query(collection(db, 'tenants', tenantId, 'appointments'), where('startsAt', '<=', Timestamp.fromDate(new Date())))));
     const por = {};
     if (sdv) sdv.forEach(d => { const a = d.data(); if (a.status === 'cancelled' || !a.price || a.paymentMethod === 'pacote') return; const f = emFalta(a); if (f > 0.004) { const k = a.patientId || a.patientName || '?'; (por[k] = por[k] || { nome: a.patientName || 'Sem nome', id: a.patientId || '', total: 0, n: 0 }); por[k].total += f; por[k].n++; } });
     Object.values(por).sort((a, b) => b.total - a.total).forEach(x => devedores.push(x));
-    return { marcacoes, pacotes, despesas, devedores, ini, fim };
+    // por faturar: sessões pagas (ou parcialmente) já realizadas, pagas por outro meio que não pacote, sem marca de faturadas
+    const porFaturar = [];
+    const sf = await tentar(() => getDocs(query(collection(db, 'tenants', tenantId, 'appointments'), where('startsAt', '<=', Timestamp.fromDate(new Date())))));
+    if (sf) sf.forEach(d => { const a = d.data(); if (a.status === 'cancelled' || !a.price || a.invoiced || a.paymentMethod === 'pacote') return; const v = recebido(a); if (v <= 0 || !a.startsAt || !a.startsAt.toDate) return; porFaturar.push({ id: d.id, data: a.startsAt.toDate(), nome: a.patientName || '', patientId: a.patientId || '', servico: a.serviceName || '', valor: v, nif: (nifs[a.patientId] || {}).nif || '' }); });
+    porFaturar.sort((a, b) => a.data - b.data);
+    return { marcacoes, pacotes, despesas, devedores, porFaturar, ini, fim };
   }
 
   async function desenhar(main) {
@@ -118,6 +134,22 @@ export function iniciarFinancas(ctx) {
       <div class="card"><div class="row"><h3 style="margin:0;">🧾 Despesas</h3><button class="primary" style="padding:6px 12px;" onclick="finNovaDespesa()">+ Despesa</button></div>
         <div id="finFormDespesa"></div>
         ${dados.despesas.length ? dados.despesas.sort((a, b) => b.data - a.data).map(d => `<div class="appt-item row"><div><strong>${esc(d.description || d.category || '')}</strong><div class="muted">${dia(d.data)} · ${esc(d.category || '')}</div></div><div style="text-align:right;"><strong>${eur(d.amount)}</strong><div><button class="ghost" style="padding:2px 8px;font-size:12px;" onclick="finApagarDespesa('${d.id}')">Remover</button></div></div></div>`).join('') : '<p class="muted" style="margin-top:8px;">Sem despesas neste período. Regista renda, material, formações, software…</p>'}
+      </div>` : '';
+    const cfg = (ctx.getConfig && ctx.getConfig()) || {};
+    const prog = PROGRAMAS_FATURACAO.find(x => x[0] === cfg.software);
+    const urlProg = cfg.url || (prog ? prog[2] : '');
+    estado.urlProg = urlProg;
+    estado.porFaturar = dados.porFaturar;
+    const fatHtml = ctx.owner ? `<div class="card"><h3 style="margin:0 0 6px;">🧾 Faturação</h3>
+        <p class="muted" style="margin-bottom:8px;">A Vindora não emite faturas. Escolhe o programa que já usas e ela abre-o, mostra o que falta faturar e copia os dados do cliente.</p>
+        <label>O meu programa de faturação</label>
+        <select onchange="finGuardarPrograma(this.value)">
+          <option value="">Escolher…</option>${PROGRAMAS_FATURACAO.map(([k, n]) => `<option value="${k}" ${cfg.software === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+        ${cfg.software === 'outro' ? `<label>Endereço do programa</label><input id="finUrlOutro" placeholder="https://…" value="${esc(cfg.url || '')}" onchange="finGuardarUrl(this.value)">` : ''}
+        ${urlProg ? `<button class="ghost" style="width:100%;margin-top:8px;" onclick="finAbrirPrograma()">Abrir ${esc(prog ? prog[1].split(' (')[0] : 'o meu programa')} ↗</button>` : ''}
+        ${cfg.software && cfg.software !== 'nenhum' ? `<h4 style="margin:14px 0 4px;">Por faturar <span class="muted" style="font-weight:400;">· ${dados.porFaturar.length}</span></h4>
+          ${dados.porFaturar.length ? dados.porFaturar.slice(-30).reverse().map(x => `<div class="appt-item"><div class="row"><div><strong>${esc(x.nome)}</strong><div class="muted">${dia(x.data)} · ${esc(x.servico)}${x.nif ? ' · NIF ' + esc(x.nif) : ''}</div></div><strong>${eur(x.valor)}</strong></div>
+            <div class="row" style="margin-top:6px;gap:6px;"><button class="ghost" style="flex:1;" onclick="finCopiar('${x.id}')">📋 Copiar dados</button><button class="primary" style="flex:1;" onclick="finMarcarFaturada('${x.id}')">✔ Já faturei</button></div></div>`).join('') : '<p class="muted">Tudo faturado. 🎉</p>'}` : ''}
       </div>` : '';
     main.innerHTML = `
       <h2>💶 Finanças</h2>
@@ -139,6 +171,7 @@ export function iniciarFinancas(ctx) {
       <div class="card"><h3 style="margin:0 0 6px;">⏳ Quem me deve ${totalDev ? `<span class="muted" style="font-weight:400;">· ${eur(totalDev)}</span>` : ''}</h3>
         ${dados.devedores.length ? dados.devedores.map(x => `<div class="appt-item row" ${x.id ? `style="cursor:pointer;" onclick="viewPatient('${esc(x.id)}')"` : ''}><div>${esc(x.nome)}<div class="muted">${x.n} sessão(ões) por pagar</div></div><strong style="color:#b45309;">${eur(x.total)}</strong></div>`).join('') : '<p class="muted">Ninguém em dívida. 🎉</p>'}
       </div>
+      ${fatHtml}
       <div class="card"><h3 style="margin:0 0 6px;">📤 Para o contabilista</h3>
         <p class="muted" style="margin-bottom:8px;">Folha com todos os movimentos de ${titulo} (abre no Excel).</p>
         <button class="primary" style="width:100%;" onclick="finExportar()">⬇️ Descarregar ${titulo} (CSV)</button></div>`;
@@ -164,6 +197,29 @@ export function iniciarFinancas(ctx) {
   window.finApagarDespesa = async (id) => {
     if (!await confirmar('Remover esta despesa?')) return;
     await deleteDoc(doc(db, 'tenants', tenantId, 'expenses', id)); desenhar(window.__finMain);
+  };
+  const guardarCfg = async (extra) => {
+    const atual = (ctx.getConfig && ctx.getConfig()) || {};
+    const nova = { ...atual, ...extra };
+    await updateDoc(doc(db, 'tenants', tenantId), { invoicing: nova });
+    ctx.setConfig && ctx.setConfig(nova);
+  };
+  window.finGuardarPrograma = async (k) => { await guardarCfg({ software: k, url: k === 'outro' ? ((ctx.getConfig() || {}).url || '') : '' }); desenhar(window.__finMain); };
+  window.finGuardarUrl = async (u) => {
+    u = String(u || '').trim();
+    if (u && !/^https?:\/\//i.test(u)) u = 'https://' + u;
+    if (u && !/^https:\/\/[^\s]+\.[^\s]+$/i.test(u)) { toast('Endereço inválido.', true); return; }
+    await guardarCfg({ url: u }); toast('Guardado.'); desenhar(window.__finMain);
+  };
+  window.finAbrirPrograma = () => { if (estado.urlProg && /^https:\/\//i.test(estado.urlProg)) window.open(estado.urlProg, '_blank', 'noopener'); };
+  window.finCopiar = async (id) => {
+    const x = (estado.porFaturar || []).find(y => y.id === id); if (!x) return;
+    const txt = `Cliente: ${x.nome}\n${x.nif ? 'NIF: ' + x.nif + '\n' : ''}Descrição: ${x.servico} (${dia(x.data)})\nValor: ${x.valor.toFixed(2).replace('.', ',')} €`;
+    try { await navigator.clipboard.writeText(txt); toast('Dados copiados. Cole no seu programa de faturação.'); } catch (e) { toast('Não consegui copiar.', true); }
+  };
+  window.finMarcarFaturada = async (id) => {
+    await updateDoc(doc(db, 'tenants', tenantId, 'appointments', id), { invoiced: true, invoicedAt: serverTimestamp() });
+    toast('Marcada como faturada.'); desenhar(window.__finMain);
   };
   window.finExportar = () => {
     if (!estado.ultimo) return;
