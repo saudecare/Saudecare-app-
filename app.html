@@ -398,15 +398,16 @@
 
 <script type="module" src="pe-carregador.js"></script>
 <script type="module" src="cg-imagens.js?v=2026-11-12-8"></script>
-<script type="module" src="consulta-guiada.js?v=2026-11-15-3"></script>
+<script type="module" src="consulta-guiada.js?v=2026-11-15-4"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
 import { aplicarCorMarca } from './marca.js';
 import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
-import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-3';
-import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-3';
+import { iniciarFinancas } from './financas.js?v=2026-11-15-4';
+import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-4';
+import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-4';
 import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
 import { corpoMensagem as reikiCorpoMsg, escolherFoto as reikiEscolherFoto } from './reiki-midia-chat.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -424,7 +425,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-15-3';
+const APP_VERSION = '2026-11-15-4';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1969,7 +1970,7 @@ const NAV_GROUPS = {
     { view: 'gestorPedidos', icon: '📩', label: 'Pedidos de marcação', gestorOnly: true }
   ]},
   finance: { title: '💶 Financeiro', items: [
-    { view: 'finances', icon: '💶', label: 'Pagamentos' },
+    { view: 'finances', icon: '💶', label: 'Finanças' },
     { view: 'services', icon: '🩺', label: 'Serviços & Preços' },
     { view: 'plano_link', icon: '📊', label: 'O meu plano Vindora', ownerOnly: true, onclick: "openSettingsSection('plano')" }
   ]},
@@ -2608,77 +2609,14 @@ window.removeStaffMember = async function(staffUid, name){
 };
 
 // ── Finanças — resumo mensal de pagamentos das marcações ────────────────
+let __financasDesenhar = null;
 async function renderFinances(main){
-  if (!window.__financesMonth) window.__financesMonth = new Date();
-  const monthDate = window.__financesMonth;
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-
-  const firstOfMonth = new Date(year, month, 1);
-  const lastOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
-
-  const q = query(
-    collection(db, 'tenants', tenantId, 'appointments'),
-    where('startsAt', '>=', Timestamp.fromDate(firstOfMonth)),
-    where('startsAt', '<=', Timestamp.fromDate(lastOfMonth)),
-    orderBy('startsAt')
-  );
-  const snap = await getDocs(q);
-
-  let totalPaid = 0, totalPending = 0, totalPartial = 0, countPaid = 0, countPending = 0;
-  let rows = '';
-  snap.forEach(d => {
-    const a = d.data();
-    if (a.status === 'cancelled' || !a.price) return;
-    if (a.paymentStatus === 'paid'){ totalPaid += a.price; countPaid++; }
-    else if (a.paymentStatus === 'partial' && typeof a.amountPaid === 'number'){ totalPaid += a.amountPaid; totalPartial += a.amountPaid; totalPending += (a.price - a.amountPaid); countPending++; }
-    else if (a.paymentStatus === 'partial'){ totalPartial += a.price; countPending++; }
-    else { totalPending += a.price; countPending++; }
-
-    const time = a.startsAt.toDate().toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
-    const statusLabel = a.paymentStatus==='paid'?'Pago':(a.paymentStatus==='partial'?'Parcial':'Pendente');
-    const statusClass = a.paymentStatus==='paid'?'active':(a.paymentStatus==='partial'?'trial':'suspended');
-    rows += `<div class="appt-item row">
-      <div><strong>${time}</strong> — ${escapeHtml(a.patientName||'')}
-        <div class="muted">${escapeHtml(a.serviceName||'')} ${a.paymentMethod ? '· '+escapeHtml(a.paymentMethod) : ''}</div>
-      </div>
-      <div style="text-align:right;">
-        <span class="badge ${statusClass}">${statusLabel}</span>
-        <div class="muted" style="margin-top:2px;">${a.paymentStatus==='partial' && typeof a.amountPaid === 'number' ? `${a.amountPaid}€ de ${a.price}€` : a.price + '€'}</div>
-      </div>
-    </div>`;
-  });
-  if (!rows) rows = '<p class="muted">Sem marcações com preço este mês.</p>';
-
-  main.innerHTML = `
-    <h2>💶 Pagamentos</h2>
-    <div class="card" style="background:#fff8ed;border:1px solid #f0d9a8;">
-      <strong style="color:#8a5a00;">⚠️ Isto não é um documento fiscal.</strong>
-      <p class="muted" style="margin-top:4px;">Estes valores são só um registo interno de controlo de pagamentos — <strong>não substituem a fatura/recibo</strong>. Por lei, em Portugal precisa de emitir os seus documentos através de um software de faturação certificado pela Autoridade Tributária (ex: Portal das Finanças, Vendus, InvoiceXpress, Moloni). Confirme com o seu contabilista qual se aplica ao seu caso.</p>
-    </div>
-    ${hintBox('Resumo de pagamentos das suas marcações. Os valores vêm do preço definido em cada marcação — atualize o estado do pagamento na Agenda ou aqui mesmo.')}
-    <div class="row" style="margin-bottom:10px;">
-      <button class="ghost" onclick="changeFinancesMonth(-1)">‹</button>
-      <strong style="text-transform:capitalize;">${monthNames[month]} ${year}</strong>
-      <button class="ghost" onclick="changeFinancesMonth(1)">›</button>
-    </div>
-    <div class="stat-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
-      <div class="stat-card" style="background:#fff;border-radius:12px;padding:14px;text-align:center;">
-        <div style="font-size:22px;font-weight:700;color:var(--primary);">${totalPaid.toFixed(2)}€</div>
-        <div class="muted">Recebido (${countPaid})</div>
-      </div>
-      <div class="stat-card" style="background:#fff;border-radius:12px;padding:14px;text-align:center;">
-        <div style="font-size:22px;font-weight:700;color:#8a5a00;">${totalPartial.toFixed(2)}€</div>
-        <div class="muted">Recebido em parciais</div>
-      </div>
-      <div class="stat-card" style="background:#fff;border-radius:12px;padding:14px;text-align:center;">
-        <div style="font-size:22px;font-weight:700;color:var(--danger);">${totalPending.toFixed(2)}€</div>
-        <div class="muted">Pendente (${countPending})</div>
-      </div>
-    </div>
-    <div class="card">${rows}</div>
-  `;
+  if (!__financasDesenhar){
+    __financasDesenhar = iniciarFinancas({ db, tenantId, owner: tenantRole === 'owner', toast, confirmar,
+      fns: { collection, getDocs, query, where, Timestamp, addDoc, deleteDoc, doc, serverTimestamp } });
+  }
+  try { await __financasDesenhar(main); }
+  catch(e){ console.error(e); main.innerHTML = '<p class="muted">Não consegui carregar as finanças. Tente de novo.</p>'; }
 }
 
 window.changeFinancesMonth = function(delta){

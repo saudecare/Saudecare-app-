@@ -421,6 +421,11 @@ service cloud.firestore {
         allow delete: if gestorPode(tenantId, 'cancelar') && tenantIsActive(tenantId);
       }
 
+      // Despesas do consultório (financeiro): só o titular da conta
+      match /expenses/{expenseId} {
+        allow read, write: if isTenantOwner(tenantId) && tenantIsActive(tenantId);
+      }
+
       match /waitlist/{waitlistId} {
         allow read, write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
         allow read: if isGestor(tenantId) && tenantIsActive(tenantId);
