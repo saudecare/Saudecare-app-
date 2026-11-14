@@ -205,6 +205,12 @@
   .pacTabs{display:flex;gap:6px;overflow-x:auto;position:sticky;top:0;z-index:5;background:#fff;padding:8px 0;margin-top:12px;border-bottom:1px solid #eef1ef;}
   .pacTabs button{flex:1;white-space:nowrap;width:auto;padding:9px 10px;font-size:13.5px;}
   .pacHide{display:none !important;}
+
+  .fcq .choice{display:block;border:1px solid #d8e0dc;border-radius:8px;padding:10px;margin-bottom:8px;cursor:pointer;background:#fff;}
+  .fcq .choice.selected{border-color:var(--primary);background:#eef6f2;font-weight:600;}
+  .fcq .scale{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+  .fcq .scale button{width:36px;height:36px;border-radius:8px;border:1px solid #d8e0dc;background:#fff;cursor:pointer;}
+  .fcq .scale button.selected{background:var(--primary);color:#fff;border-color:var(--primary);}
 </style>
 </head>
 <body>
@@ -392,14 +398,15 @@
 
 <script type="module" src="pe-carregador.js"></script>
 <script type="module" src="cg-imagens.js?v=2026-11-12-8"></script>
-<script type="module" src="consulta-guiada.js?v=2026-11-15-2"></script>
+<script type="module" src="consulta-guiada.js?v=2026-11-15-3"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
 import { aplicarCorMarca } from './marca.js';
 import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
-import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-2';
+import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-3';
+import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-3';
 import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
 import { corpoMensagem as reikiCorpoMsg, escolherFoto as reikiEscolherFoto } from './reiki-midia-chat.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -417,7 +424,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-15-2';
+const APP_VERSION = '2026-11-15-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -5812,27 +5819,8 @@ window.openFillFormNow = async function(patientId, formId){
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'forms', formId));
   if (!snap.exists()){ toast('Ficha não encontrada.', true); return; }
   const f = snap.data();
-  const questionsHtml = (f.questions||[]).map(q => {
-    if (q.type === 'scale'){
-      return `<div class="card" style="margin-bottom:8px;">
-        <label>${escapeHtml(q.label)}</label>
-        <input type="number" min="0" max="10" data-qid="${q.id}" class="fillNowAnswer" placeholder="0 a 10">
-      </div>`;
-    }
-    if (q.type === 'multiple_choice'){
-      return `<div class="card" style="margin-bottom:8px;">
-        <label>${escapeHtml(q.label)}</label>
-        <select data-qid="${q.id}" class="fillNowAnswer">
-          <option value="">Escolher…</option>
-          ${(q.options||[]).map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}
-        </select>
-      </div>`;
-    }
-    return `<div class="card" style="margin-bottom:8px;">
-      <label>${escapeHtml(q.label)}</label>
-      <textarea rows="2" data-qid="${q.id}" class="fillNowAnswer"></textarea>
-    </div>`;
-  }).join('');
+  const perguntasFN = (f.questions||[]); window.__fillNowPerg = perguntasFN; window.__fillNowEst = {};
+  const questionsHtml = `<div id="fillNowBox">${fcHtmlTodas(perguntasFN, window.__fillNowEst)}</div>`;
 
   showPatientOverlay(`Preencher agora — ${escapeHtml(f.title)}`, `
     <div class="card">
@@ -5851,6 +5839,7 @@ window.openFillFormNow = async function(patientId, formId){
     ${questionsHtml}
     <button class="primary" style="width:100%;" onclick="saveFilledFormNow('${patientId}', '${formId}', '${escapeAttrJs(f.title)}', ${f.includesConsent ? 'true' : 'false'})">Guardar na ficha do paciente</button>
   `);
+  fcLigar(perguntasFN, window.__fillNowEst, document.getElementById('fillNowBox'));
 };
 
 window.saveFilledFormNow = async function(patientId, formId, formTitle, includesConsent){
@@ -5858,10 +5847,10 @@ window.saveFilledFormNow = async function(patientId, formId, formTitle, includes
     toast('Confirme que o paciente aceitou o termo de consentimento antes de guardar.', true);
     return;
   }
-  const answers = [];
-  document.querySelectorAll('.fillNowAnswer').forEach(el => {
-    answers.push({ questionId: el.dataset.qid, label: el.previousElementSibling?.textContent || '', value: el.value.trim() });
-  });
+  const falta = (window.__fillNowPerg || []).filter(q => q.required && q.type !== 'title');
+  const answers = fcRespostas(window.__fillNowPerg || [], window.__fillNowEst || {});
+  const emFalta = falta.filter(q => { const r = answers.find(x => x.questionId === q.id); return q.cond ? (r === undefined ? false : !r.value) : (!r || !r.value); });
+  if (emFalta.length){ toast('Falta responder (obrigatória): ' + emFalta.slice(0,3).map(q => q.label).join(' · '), true); return; }
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'formResponses'), {
     formId, formTitle, answers,
     filledBy: 'professional',
@@ -6347,6 +6336,7 @@ async function syncPublicServices(){
 // entram numa fila de "pendentes" e o subscritor associa manualmente a
 // um paciente — evita escrita direta e não autenticada nos dados internos.
 let formQuestionsDraft = [];
+window.__fq = () => formQuestionsDraft;
 
 // ── Cartão em destaque das respostas de fichas (Início e página de Fichas) ──
 // prontas = preenchidas pelo cliente; aguardam = enviadas e ainda sem resposta.
@@ -6733,23 +6723,42 @@ async function renderFormBuilder(editId, title, category, description, questions
   const catSnap = await getDocs(collection(db, 'tenants', tenantId, 'serviceCategories'));
   const categoryNames = []; catSnap.forEach(d => categoryNames.push(d.data().name));
 
-  let qHtml = formQuestionsDraft.map((q, idx) => `
-    <div class="card" style="margin-bottom:8px;">
-      <label>Pergunta</label>
+  const optTipos = (t) => FC_TIPOS.map(([v, n]) => `<option value="${v}" ${t===v?'selected':''}>${n}</option>`).join('');
+  const comOpcoes = (t) => t === 'multiple_choice' || t === 'multi' || t === 'yesno';
+  let qHtml = formQuestionsDraft.map((q, idx) => {
+    const antes = formQuestionsDraft.slice(0, idx).filter(x => x.label && x.type !== 'title');
+    const de = q.cond && q.cond.de ? formQuestionsDraft.find(x => x.id === q.cond.de) : null;
+    const valoresDe = de ? (de.type === 'yesno' ? ['Sim', 'Não'] : (de.options || [])) : [];
+    return `
+    <div class="card" style="margin-bottom:8px;${q.type==='title'?'background:#f1f5f9;':''}">
+      <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:4px;">
+        <button class="ghost" style="padding:4px 10px;" ${idx===0?'disabled':''} onclick="moveFormQuestion(${idx},-1)">↑</button>
+        <button class="ghost" style="padding:4px 10px;" ${idx===formQuestionsDraft.length-1?'disabled':''} onclick="moveFormQuestion(${idx},1)">↓</button>
+        <button class="ghost" style="padding:4px 10px;" onclick="dupFormQuestion(${idx})">Duplicar</button>
+      </div>
+      <label>${q.type==='title' ? 'Título da secção' : 'Pergunta'}</label>
       <input value="${escapeHtml(q.label||'')}" onchange="updateFormQuestion(${idx},'label',this.value)">
       <label>Tipo de resposta</label>
-      <select onchange="changeQuestionType(${idx}, this.value)">
-        <option value="text" ${q.type==='text'?'selected':''}>Texto livre</option>
-        <option value="multiple_choice" ${q.type==='multiple_choice'?'selected':''}>Escolha múltipla</option>
-        <option value="scale" ${q.type==='scale'?'selected':''}>Escala (0-10)</option>
-      </select>
-      ${q.type==='multiple_choice' ? `
+      <select onchange="changeQuestionType(${idx}, this.value)">${optTipos(q.type)}</select>
+      ${comOpcoes(q.type) && q.type !== 'yesno' ? `
         <label>Opções (uma por linha)</label>
-        <textarea rows="3" onchange="updateFormQuestion(${idx},'optionsRaw',this.value)">${escapeHtml((q.options||[]).join('\n'))}</textarea>
-      ` : ''}
-      <button class="danger" onclick="removeFormQuestion(${idx})">Remover pergunta</button>
-    </div>
-  `).join('');
+        <textarea rows="3" onchange="updateFormQuestion(${idx},'optionsRaw',this.value)">${escapeHtml((q.options||[]).join('\n'))}</textarea>` : ''}
+      ${q.type==='number' ? `<label>Unidade (ex: kg, cm, mmHg)</label><input value="${escapeHtml(q.unidade||'')}" onchange="updateFormQuestion(${idx},'unidade',this.value)">` : ''}
+      ${q.type==='yesno' ? `<label style="display:flex;align-items:center;gap:8px;font-weight:400;"><input type="checkbox" style="width:auto;" ${q.detalhe?'checked':''} onchange="updateFormQuestion(${idx},'detalhe',this.checked);renderFormBuilderAgora()"> Pedir pormenor se responder "Sim"</label>
+        ${q.detalhe ? `<input value="${escapeHtml(q.detalheRotulo||'')}" placeholder="Se sim, indique qual:" onchange="updateFormQuestion(${idx},'detalheRotulo',this.value)">` : ''}` : ''}
+      <label>Nota de ajuda para o paciente (opcional)</label>
+      <input value="${escapeHtml(q.help||'')}" onchange="updateFormQuestion(${idx},'help',this.value)">
+      ${q.type !== 'title' ? `<label style="display:flex;align-items:center;gap:8px;font-weight:400;"><input type="checkbox" style="width:auto;" ${q.required?'checked':''} onchange="updateFormQuestion(${idx},'required',this.checked)"> Resposta obrigatória</label>` : ''}
+      ${antes.some(x => x.type==='yesno'||x.type==='multiple_choice') ? `
+        <label>Mostrar só se… (opcional)</label>
+        <select onchange="setFormCond(${idx}, this.value, '')">
+          <option value="">Mostrar sempre</option>
+          ${antes.filter(x => x.type==='yesno'||x.type==='multiple_choice').map(x => `<option value="${escapeHtml(x.id)}" ${q.cond&&q.cond.de===x.id?'selected':''}>Depende de: ${escapeHtml(x.label)}</option>`).join('')}
+        </select>
+        ${de ? `<select onchange="setFormCond(${idx}, '${escapeHtml(de.id)}', this.value)"><option value="">Qualquer resposta</option>${valoresDe.map(v => `<option value="${escapeHtml(v)}" ${q.cond.valor===v?'selected':''}>Quando responder: ${escapeHtml(v)}</option>`).join('')}</select>` : ''}` : ''}
+      <button class="danger" onclick="removeFormQuestion(${idx})">Remover</button>
+    </div>`;
+  }).join('');
 
   document.getElementById('formBuilderContainer').innerHTML = `
     <div class="card">
@@ -6762,7 +6771,11 @@ async function renderFormBuilder(editId, title, category, description, questions
       <label>Descrição (opcional, o paciente vê isto)</label>
       <textarea id="formDescription" rows="2">${escapeHtml(description)}</textarea>
       <div id="formQuestionsList">${qHtml || '<p class="muted">Ainda sem perguntas.</p>'}</div>
-      <button class="ghost" onclick="addFormQuestion()">+ Adicionar pergunta</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="ghost" onclick="addFormQuestion()">+ Pergunta</button>
+        <button class="ghost" onclick="addFormQuestion('title')">+ Título de secção</button>
+        <button class="ghost" onclick="previewForm()">👁️ Ver como o paciente vê</button>
+      </div>
       <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
       <label style="display:flex;align-items:center;gap:8px;font-weight:400;">
         <input type="checkbox" id="formIncludesConsent" style="width:auto;" ${includesConsent ? 'checked' : ''}>
@@ -6784,7 +6797,7 @@ window.updateFormQuestion = function(idx, field, value){
 
 window.changeQuestionType = function(idx, type){
   formQuestionsDraft[idx].type = type;
-  if (type === 'multiple_choice' && !formQuestionsDraft[idx].options) formQuestionsDraft[idx].options = [];
+  if ((type === 'multiple_choice' || type === 'multi') && !formQuestionsDraft[idx].options) formQuestionsDraft[idx].options = [];
   renderFormBuilder(window.__editingFormId,
     document.getElementById('formTitle')?.value || '',
     document.getElementById('formCategory')?.value || '',
@@ -6792,8 +6805,37 @@ window.changeQuestionType = function(idx, type){
     document.getElementById('formIncludesConsent')?.checked || false);
 };
 
-window.addFormQuestion = function(){
-  formQuestionsDraft.push({ id: 'q'+Date.now(), type: 'text', label: '' });
+window.renderFormBuilderAgora = function(){
+  renderFormBuilder(window.__editingFormId,
+    document.getElementById('formTitle')?.value || '',
+    document.getElementById('formCategory')?.value || '',
+    document.getElementById('formDescription')?.value || '', formQuestionsDraft,
+    document.getElementById('formIncludesConsent')?.checked || false);
+};
+window.moveFormQuestion = function(i, d){
+  const j = i + d; if (j < 0 || j >= formQuestionsDraft.length) return;
+  const [q] = formQuestionsDraft.splice(i, 1); formQuestionsDraft.splice(j, 0, q);
+  // condições que passariam a depender de uma pergunta posterior são removidas
+  formQuestionsDraft.forEach((x, k) => { if (x.cond && formQuestionsDraft.findIndex(y => y.id === x.cond.de) >= k) delete x.cond; });
+  renderFormBuilderAgora();
+};
+window.dupFormQuestion = function(i){
+  const c = JSON.parse(JSON.stringify(formQuestionsDraft[i])); c.id = 'q' + Date.now() + Math.random().toString(36).slice(2,5);
+  formQuestionsDraft.splice(i + 1, 0, c); renderFormBuilderAgora();
+};
+window.setFormCond = function(i, de, valor){
+  if (!de) delete formQuestionsDraft[i].cond; else formQuestionsDraft[i].cond = { de, valor: valor || '' };
+  renderFormBuilderAgora();
+};
+window.previewForm = function(){
+  const perg = formQuestionsDraft.filter(q => q.label && q.label.trim());
+  if (!perg.length){ toast('Adicione perguntas primeiro.', true); return; }
+  const est = {};
+  showPatientOverlay('Pré-visualização da ficha', `<div class="card"><button class="ghost" onclick="closePatientOverlay && closePatientOverlay()">← Voltar a editar</button><p class="muted" style="margin-top:8px;">É assim que o paciente vê a ficha. Pode experimentar (nada é guardado).</p></div><div id="fcPrev">${fcHtmlTodas(perg, est)}</div>`);
+  fcLigar(perg, est, document.getElementById('fcPrev'));
+};
+window.addFormQuestion = function(tipo){
+  formQuestionsDraft.push({ id: 'q'+Date.now()+Math.random().toString(36).slice(2,5), type: (typeof tipo === 'string' ? tipo : 'text'), label: '' });
   renderFormBuilder(window.__editingFormId,
     document.getElementById('formTitle')?.value || '',
     document.getElementById('formCategory')?.value || '',
@@ -6802,7 +6844,9 @@ window.addFormQuestion = function(){
 };
 
 window.removeFormQuestion = function(idx){
+  const idRem = formQuestionsDraft[idx] && formQuestionsDraft[idx].id;
   formQuestionsDraft.splice(idx, 1);
+  formQuestionsDraft.forEach(x => { if (x.cond && x.cond.de === idRem) delete x.cond; });
   renderFormBuilder(window.__editingFormId,
     document.getElementById('formTitle')?.value || '',
     document.getElementById('formCategory')?.value || '',

@@ -47,6 +47,7 @@
 
 <script type="module">
 import { aplicarCorMarca } from "./marca.js";
+import { fcHtmlTodas, fcLigar, fcEmFalta, fcRespostas } from "./ficha-campos.js?v=2026-11-15-3";
 import { registar, t as _t, iniciarIdioma, definirIdioma, IDIOMAS, idioma } from "./i18n.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -115,31 +116,7 @@ async function loadForm(){
 
 function renderForm(){
   const content = document.getElementById('content');
-  let questionsHtml = formData.questions.map(q => {
-    if (q.type === 'text'){
-      return `<div class="card">
-        <label>${escapeHtml(q.label)}</label>
-        <textarea rows="3" oninput="window.__setAnswer('${q.id}', this.value)"></textarea>
-      </div>`;
-    }
-    if (q.type === 'scale'){
-      let btns = '';
-      for (let i=0; i<=10; i++){
-        btns += `<button type="button" id="scale-${q.id}-${i}" onclick="window.__setScale('${q.id}', ${i})">${i}</button>`;
-      }
-      return `<div class="card">
-        <label>${escapeHtml(q.label)}</label>
-        <div class="scale">${btns}</div>
-      </div>`;
-    }
-    if (q.type === 'multiple_choice'){
-      let opts = (q.options||[]).map((o, idx) => `
-        <div class="choice" id="choice-${q.id}-${idx}" onclick="window.__setChoice('${q.id}', ${idx}, '${escapeHtml(o).replace(/'/g,"\\'")}')">${escapeHtml(o)}</div>
-      `).join('');
-      return `<div class="card"><label>${escapeHtml(q.label)}</label>${opts}</div>`;
-    }
-    return '';
-  }).join('');
+  const questionsHtml = fcHtmlTodas(formData.questions, answersState);
 
   content.innerHTML = `
     <div class="card">
@@ -166,6 +143,7 @@ function renderForm(){
     </div>
     <button class="primary" onclick="window.__submitForm()">${t('enviar')}</button>
   `;
+  fcLigar(formData.questions, answersState, content);
 }
 
 window.__setAnswer = function(qId, value){ answersState[qId] = value; };
@@ -195,11 +173,14 @@ window.__submitForm = async function(){
     return;
   }
 
-  const answers = formData.questions.map(q => ({
-    questionId: q.id,
-    label: q.label,
-    value: answersState[q.id] ?? ''
-  }));
+  const emFalta = fcEmFalta(formData.questions, answersState);
+  if (emFalta.length){
+    const el = document.querySelector('[data-fcq="' + emFalta[0].id + '"]');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Responda às perguntas obrigatórias (*): ' + emFalta.map(q => q.label).slice(0, 3).join(' · ') + (emFalta.length > 3 ? '…' : ''), true);
+    return;
+  }
+  const answers = fcRespostas(formData.questions, answersState);
 
   try{
     await addDoc(collection(db, 'public_form_responses'), {
