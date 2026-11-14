@@ -392,7 +392,7 @@
 
 <script type="module" src="pe-carregador.js"></script>
 <script type="module" src="cg-imagens.js?v=2026-11-12-8"></script>
-<script type="module" src="consulta-guiada.js?v=2026-11-14-2"></script>
+<script type="module" src="consulta-guiada.js?v=2026-11-14-4"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
@@ -417,7 +417,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-14-3';
+const APP_VERSION = '2026-11-14-4';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -5599,8 +5599,8 @@ window.viewPatientEvolution = async function(patientId, patientName){
   const escalas = {};
   reports.forEach((r, idx) => (r.resumo || []).filter(x => x.k === 'escala').forEach(x => { const k = (r.protocolName||'') + ' · ' + x.t; (escalas[k] = escalas[k] || []).push(Number(x.v)); }));
   const escalasHtml = Object.entries(escalas).filter(([,v]) => v.length >= 2).map(([nome, v]) => {
-    const d = v[v.length-1] - v[0]; const seta = d === 0 ? '＝ igual' : (d < 0 ? '↓ ' + Math.abs(d) : '↑ ' + d);
-    return `<div class="appt-item row"><span>${escapeHtml(nome)}</span><span><strong>${v.join(' → ')}</strong> <span class="badge ${d<0?'active':'trial'}">${seta}</span></span></div>`;
+    const d = v[v.length-1] - v[0]; const seta = d === 0 ? '＝ igual' : (d < 0 ? '↓ desceu ' + Math.abs(d) : '↑ subiu ' + d);
+    return `<div class="appt-item row"><span>${escapeHtml(nome)}</span><span><strong>${v.join(' → ')}</strong> <span class="badge">${seta}</span></span></div>`;
   }).join('');
   const timelineHtml = reports.map((r, idx) => {
     const dateStr = r.date?.toDate ? r.date.toDate().toLocaleDateString('pt-PT') : '';
@@ -7777,7 +7777,7 @@ window.openNewProtocol = function(){
   window.__editingProtocolId = null;
   window.__expandedMapPoints = new Set();
   window.cgNovoRascunho?.();
-  renderProtocolForm(null, { type: 'simple' });
+  renderProtocolForm(null, { type: 'guided' });
 };
 
 window.editProtocol = async function(id){
@@ -19454,7 +19454,7 @@ window.desenharComparacao = function(){
   if (ra.length && rb.length && a.protocolName === b.protocolName) {
     const linhasE = [];
     ra.forEach(x => { const y = rb.find(z => z.t === x.t && z.k === x.k); if (!y) return;
-      if (x.k === 'escala') { const d = Number(x.v) - Number(y.v); linhasE.push(`<div class="appt-item row"><span>${escapeHtml(x.t)}</span><span>${escapeHtml(y.v)} → <strong>${escapeHtml(x.v)}</strong> <span class="badge ${d<0?'active':'trial'}">${d===0?'＝':(d<0?'↓ melhorou':'↑ subiu')}</span></span></div>`); }
+      if (x.k === 'escala') { const d = Number(x.v) - Number(y.v); linhasE.push(`<div class="appt-item row"><span>${escapeHtml(x.t)}</span><span>${escapeHtml(y.v)} → <strong>${escapeHtml(x.v)}</strong> ${escapeHtml(x.u||'')} <span class="badge">${d===0?'＝ igual':(d<0?'↓ desceu '+Math.abs(d):'↑ subiu '+d)}</span></span></div>`); }
       else if (x.k === 'itens') { const ant = y.l||[], atu = x.l||[]; const fica = atu.filter(i=>ant.includes(i)), novo = atu.filter(i=>!ant.includes(i)), resolvido = ant.filter(i=>!atu.includes(i));
         linhasE.push(`<div style="margin:8px 0;"><strong>${escapeHtml(x.t)}</strong><div style="margin-top:4px;">${resolvido.map(i=>`<span class="badge active" style="margin:2px;">✔ já não aparece: ${escapeHtml(i)}</span>`).join('')}${fica.map(i=>`<span class="badge trial" style="margin:2px;">🔁 mantém-se: ${escapeHtml(i)}</span>`).join('')}${novo.map(i=>`<span class="badge" style="margin:2px;">✨ novo: ${escapeHtml(i)}</span>`).join('')}</div></div>`); } });
     if (linhasE.length) estrut = `<div class="card" style="margin-bottom:10px;"><strong>📊 O que mudou (da mais antiga para a mais recente)</strong>${linhasE.join('')}</div>`;
