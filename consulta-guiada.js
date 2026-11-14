@@ -84,20 +84,20 @@ const MODELO_PESQUISA_CORPO = () => {
 };
 
 
-// Modelo base: terapias de frequência / biorressonância (BioMicrohertz e outras). Estrutura em branco para o terapeuta
-// preencher com o seu próprio conhecimento: o que cada zona significa, programas/frequências e o que fazer.
+// Modelo base completo e em branco, para qualquer terapia ou profissão: o profissional preenche com o seu próprio
+// conhecimento (o que cada zona significa, técnicas/programas a aplicar e o que fazer).
 const MODELO_FREQUENCIA = () => {
   const ph = 'Escreva aqui o que este ponto significa no seu método.';
   const ptz = (label, x, y) => ({ id: uid(), label, x, y, cor: '#2563eb', tema: ph, pergunta: 'Que pergunta faz ao cliente sobre esta zona?', exemplos: [], extra: '', tratamento: [], afirmacao: '' });
-  const prog = (label) => ({ id: uid(), label, tema: 'Para que serve este programa.', pergunta: '', exemplos: [], extra: '', tratamento: ['Programa / frequência: ___', 'Duração: ___ minutos', 'Posição dos elétrodos ou aplicador: ___'], afirmacao: '' });
+  const prog = (label) => ({ id: uid(), label, tema: 'Para que serve e o que significa.', pergunta: '', exemplos: [], extra: '', tratamento: ['Técnica ou programa: ___', 'Duração: ___ minutos', 'Onde ou como aplicar: ___'], afirmacao: '' });
   return [
     { ...passoNovo('pergunta'), title: 'Motivo da consulta', qtype: 'text', help: 'O que traz a pessoa hoje, nas palavras dela.' },
     { ...passoNovo('pergunta'), title: 'Como se sente hoje? (0 a 10)', qtype: 'scale' },
     { ...passoNovo('pergunta'), title: 'Contraindicações a confirmar antes de começar', qtype: 'multi', options: ['Pacemaker ou dispositivo eletrónico implantado', 'Gravidez', 'Epilepsia', 'Nenhuma das anteriores'], help: 'Edite a lista conforme o seu protocolo de segurança.', noRelatorio: false },
-    { ...passoNovo('pergunta'), title: 'Medição inicial (opcional)', qtype: 'number', unidade: '', help: 'Escolha a unidade ao editar (Hz, mmHg, kg, min…). Qualquer valor que queira acompanhar de sessão para sessão.', noRelatorio: false },
+    { ...passoNovo('pergunta'), title: 'Medição inicial (opcional)', qtype: 'number', unidade: '', help: 'Escolha a unidade ao editar (kg, min, graus, mmHg…). Qualquer valor que queira acompanhar de sessão para sessão.', noRelatorio: false },
     { ...passoNovo('mapa'), title: 'Zonas e sistemas avaliados', fundo: 'corpoFrente', help: 'Toque nas zonas com alteração. Acrescente, mude de nome ou apague pontos; escolha outra imagem de fundo (órgãos, glândulas, esqueleto…).', points: [ptz('Cabeça', 50, 8), ptz('Garganta', 50, 17), ptz('Tórax', 50, 28), ptz('Abdómen superior', 50, 38), ptz('Abdómen inferior', 50, 48)] },
-    { ...passoNovo('escolha'), title: 'Programas / frequências a aplicar', multi: true, help: 'Cada opção leva o seu texto: o que significa e como aplicar.', options: [prog('Programa 1 (mude o nome)'), prog('Programa 2 (mude o nome)')] },
-    { ...passoNovo('tratpontos'), title: 'Aplicação dos programas e zonas', segundos: 300, help: 'Mostra, passo a passo, o que aplicar em cada zona e programa marcados.' },
+    { ...passoNovo('escolha'), title: 'Técnicas ou programas a aplicar', multi: true, help: 'Cada opção leva o seu texto: o que significa e como aplicar.', options: [prog('Técnica 1 (mude o nome)'), prog('Técnica 2 (mude o nome)')] },
+    { ...passoNovo('tratpontos'), title: 'Aplicação das técnicas e zonas', segundos: 300, help: 'Mostra, passo a passo, o que aplicar em cada zona e técnica marcadas.' },
     { ...passoNovo('pergunta'), title: 'Medição final (opcional)', qtype: 'number', unidade: '', noRelatorio: false },
     { ...passoNovo('instrucao'), title: 'Recomendações para casa', texto: 'Beber água ao longo do dia.\nDescansar e evitar esforços intensos nas próximas horas.\nRegistar como se sente nos próximos dias.', imagem: '', noPlano: false },
     { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: false }
@@ -191,7 +191,7 @@ function editorPasso(s, i) {
   let corpo = campo('Título do passo (o que o terapeuta vê)', `<input value="${esc(s.title)}" onchange="cgSet('${s.id}','title',this.value)">`) +
     campo('Ajuda para o terapeuta (opcional)', `<textarea rows="2" onchange="cgSet('${s.id}','help',this.value)" placeholder="ex: Peça ao paciente para fechar os olhos antes de responder.">${esc(s.help)}</textarea>`);
   if (s.type === 'pergunta') {
-    corpo += campo('Tipo de resposta', `<select onchange="cgSet('${s.id}','qtype',this.value,true)">${[['text', 'Texto livre'], ['choice', 'Escolher uma opção'], ['multi', 'Escolher várias'], ['scale', 'Escala de 0 a 10'], ['yesno', 'Sim / Não'], ['number', 'Número (medição, minutos, Hz…)']].map(([v, n]) => `<option value="${v}" ${s.qtype === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`);
+    corpo += campo('Tipo de resposta', `<select onchange="cgSet('${s.id}','qtype',this.value,true)">${[['text', 'Texto livre'], ['choice', 'Escolher uma opção'], ['multi', 'Escolher várias'], ['scale', 'Escala de 0 a 10'], ['yesno', 'Sim / Não'], ['number', 'Número (medição, minutos, graus…)']].map(([v, n]) => `<option value="${v}" ${s.qtype === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`);
     if (s.qtype === 'number') corpo += campo('Unidade (opcional)', `<input value="${esc(s.unidade || '')}" onchange="cgSet('${s.id}','unidade',this.value)" placeholder="ex: Hz, min, kg, mmHg, graus">`);
     if (s.qtype === 'choice' || s.qtype === 'multi') corpo += campo('Opções (uma por linha)', `<textarea rows="4" onchange="cgSetLinhas('${s.id}','options',this.value)">${esc((s.options || []).join('\n'))}</textarea>`);
   }
@@ -244,7 +244,7 @@ function cgHtmlConstrutor() {
   const botoes = Object.entries(CG_TIPOS).map(([k, t]) => `<button class="ghost" style="text-align:left;" onclick="cgAdd('${k}')"><strong>${t.icone} ${t.nome}</strong><br><span class="muted">${t.desc}</span></button>`).join('');
   return `<p class="muted" style="margin:8px 0;">Monte a consulta passo a passo. A ordem que definir aqui é a ordem em que aparece durante o atendimento.</p>
     ${CG.steps.length ? CG.steps.map(editorPasso).join('') : `<div class="card" style="background:#f6f8f7;"><p class="muted">Ainda não há passos. Comece por um modelo e mude o que quiser, ou monte tudo de raiz.</p><button class="ghost" style="width:100%;margin-bottom:8px;" onclick="cgModelo2()">✨ Modelo base: pesquisa por pontos no corpo (editável)</button>
-      <button class="ghost" style="width:100%;margin-top:8px;" onclick="cgModelo3()">✨ Modelo: terapias de frequência (BioMicrohertz, biorressonância…)</button><button class="ghost" style="width:100%;" onclick="cgModelo()">✨ Modelo simples (perguntas + tratamento)</button></div>`}
+      <button class="ghost" style="width:100%;margin-top:8px;" onclick="cgModelo3()">✨ Modelo completo em branco (qualquer terapia ou profissão)</button><button class="ghost" style="width:100%;" onclick="cgModelo()">✨ Modelo simples (perguntas + tratamento)</button></div>`}
     <details style="margin-top:10px;" ${CG.steps.length ? '' : 'open'}><summary style="cursor:pointer;font-weight:700;color:var(--primary);">🪄 Montar com o assistente</summary>
     <div class="card" style="margin-top:8px;background:#f6f4fb;">
       <p class="muted" style="margin:0 0 8px;">Conte como é a sua consulta e o assistente propõe os passos. É só um rascunho: reveja, mude e acrescente o que quiser antes de guardar. ${CG.steps.length ? '<strong>Atenção:</strong> substitui os passos que já tem aqui.' : ''}</p>
@@ -252,7 +252,7 @@ function cgHtmlConstrutor() {
       <label>Como é a consulta?</label><textarea id="cgAsDesc" rows="4" placeholder="ex: Primeira consulta de massagem terapêutica: pergunto o motivo, zonas de dor, contraindicações, faço a massagem e dou 2 exercícios para casa."></textarea>
       <button class="primary" id="cgAsBtn" style="margin-top:8px;" onclick="cgAssistente()">✨ Montar rascunho</button>
     </div></details>
-    ${CG.steps.length ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;color:var(--primary);">📚 Modelos prontos (substituem os passos atuais)</summary><div style="display:grid;gap:8px;margin-top:8px;"><button class="ghost" style="text-align:left;" onclick="cgModelo2()">✨ Pesquisa por pontos no corpo</button> <button class="ghost" onclick="cgModelo3()">✨ Terapias de frequência</button><button class="ghost" style="text-align:left;" onclick="cgModelo()">✨ Modelo simples</button></div></details>` : ''}
+    ${CG.steps.length ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;color:var(--primary);">📚 Modelos prontos (substituem os passos atuais)</summary><div style="display:grid;gap:8px;margin-top:8px;"><button class="ghost" style="text-align:left;" onclick="cgModelo2()">✨ Pesquisa por pontos no corpo</button> <button class="ghost" onclick="cgModelo3()">✨ Modelo completo em branco</button><button class="ghost" style="text-align:left;" onclick="cgModelo()">✨ Modelo simples</button></div></details>` : ''}
     <details style="margin-top:10px;" ${CG.steps.length ? '' : 'open'}><summary style="cursor:pointer;font-weight:700;color:var(--primary);">➕ Adicionar um passo</summary>
     <div style="display:grid;gap:8px;margin-top:8px;">${botoes}</div></details>`;
 }
@@ -305,7 +305,7 @@ window.cgModelo = async () => {
 window.cgModelo3 = async () => {
   if (CG.steps.length && !(window.confirmar ? await window.confirmar('Isto substitui os passos que já tem nesta consulta. Continuar?') : false)) return;
   CG.steps = MODELO_FREQUENCIA(); CG.aberto = null;
-  const nome = document.getElementById('protoName'); if (nome && !nome.value.trim()) nome.value = 'Terapia de frequência — avaliação e aplicação';
+  const nome = document.getElementById('protoName'); if (nome && !nome.value.trim()) nome.value = 'O meu método de atendimento';
   cgRefresh();
 };
 window.cgModelo2 = async () => {
