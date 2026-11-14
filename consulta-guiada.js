@@ -170,7 +170,7 @@ function editorMapa(s) {
     `<div class="muted" style="margin-top:8px;">👆 Toque na imagem para <b>adicionar um ponto</b>. Arraste um ponto para o mover.</div>` +
     `<div id="cgMapaEd_${s.id}">${mapaHtml(s, 'edit', [], CG.ponto)}</div>` +
     `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">${s.fundo === 'chakras' ? `<button class="ghost" onclick="cgChakras('${s.id}')">🌈 Pôr os 7 chakras (substitui os pontos)</button>` : ''}<button class="ghost" onclick="cgLimparPontos('${s.id}')">Limpar pontos</button></div>` +
-    `<div style="margin-top:8px;">${(s.points || []).map((p, j) => `<button class="${p.id === CG.ponto ? 'primary' : 'ghost'}" style="margin:2px;padding:6px 10px;" onclick="cgPonto('${p.id}')"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.cor || '#dc2626'};margin-right:6px;"></span>${j + 1}. ${esc((p.label || '').slice(0, 22))}</button>`).join('')}</div>` +
+    colarHtml(s) + `<div style="margin-top:8px;">${(s.points || []).map((p, j) => `<button class="${p.id === CG.ponto ? 'primary' : 'ghost'}" style="margin:2px;padding:6px 10px;" onclick="cgPonto('${p.id}')"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.cor || '#dc2626'};margin-right:6px;"></span>${j + 1}. ${esc((p.label || '').slice(0, 22))}</button>`).join('')}</div>` +
     (sel ? `<div style="background:#f6f8f7;border-radius:8px;padding:10px;margin-top:8px;"><strong>✏️ Ponto ${(s.points.indexOf(sel)) + 1}</strong>
       ${campo('Nome do ponto', `<input value="${esc(sel.label)}" onchange="cgPt('${s.id}','${sel.id}','label',this.value,true)">`)}
       ${campo('Cor', `<input type="color" value="${esc(sel.cor || '#dc2626')}" style="height:42px;padding:2px;" onchange="cgPt('${s.id}','${sel.id}','cor',this.value,true)">`)}
@@ -181,6 +181,7 @@ function editorMapa(s) {
       ${campo('Conhecimento adicional (aparece no relatório)', `<textarea rows="3" onchange="cgPt('${s.id}','${sel.id}','extra',this.value)">${esc(sel.extra)}</textarea>`)}
       ${campo('O que fazer neste ponto (um passo por linha) — vai para o passo "Tratamento dos pontos encontrados"', `<textarea rows="3" onchange="cgPtL('${s.id}','${sel.id}','tratamento',this.value)">${esc((sel.tratamento || []).join('\n'))}</textarea>`)}
       ${campo('Afirmação (frase a dizer ou escrever)', `<textarea rows="2" onchange="cgPt('${s.id}','${sel.id}','afirmacao',this.value)">${esc(sel.afirmacao)}</textarea>`)}
+      <button class="${CG.colocar === sel.id ? 'primary' : 'ghost'}" style="margin-top:8px;" onclick="cgColocar('${sel.id}')">${CG.colocar === sel.id ? '👆 Toque agora no mapa, no sítio certo…' : '📍 Colocar no mapa (toque depois no sítio certo)'}</button>
       <button class="danger" style="margin-top:8px;" onclick="cgRemPt('${s.id}','${sel.id}')">Remover este ponto</button></div>` : '') +
     `<label style="display:flex;gap:8px;align-items:center;margin-top:10px;"><input type="checkbox" style="width:auto;margin:0;" ${s.noPlano ? 'checked' : ''} onchange="cgSet('${s.id}','noPlano',this.checked)"> Mostrar o mapa com os pontos marcados no plano do paciente</label>`;
 }
@@ -206,7 +207,7 @@ function editorPasso(s, i) {
       ${campo('O que fazer nesta opção (um passo por linha) — vai para o passo "Tratamento dos pontos encontrados"', `<textarea rows="3" onchange="cgOptL('${s.id}',${j},'tratamento',this.value)">${esc((o.tratamento || []).join('\n'))}</textarea>`)}
       ${campo('Afirmação (frase a dizer ou escrever)', `<textarea rows="2" onchange="cgOpt('${s.id}',${j},'afirmacao',this.value)">${esc(o.afirmacao)}</textarea>`)}
       <button class="danger" style="margin-top:8px;" onclick="cgRemOpt('${s.id}',${j})">Remover esta opção</button></details>`).join('');
-    corpo += `<button class="ghost" style="margin-top:8px;width:100%;" onclick="cgAddOpt('${s.id}')">+ Adicionar opção</button>`;
+    corpo += `<button class="ghost" style="margin-top:8px;width:100%;" onclick="cgAddOpt('${s.id}')">+ Adicionar opção</button>` + colarHtml(s);
   }
   if (s.type === 'mapa') corpo += editorMapa(s);
   if (s.type === 'instrucao') {
@@ -233,8 +234,8 @@ function editorPasso(s, i) {
       <div><button class="ghost" ${i === 0 ? 'disabled' : ''} onclick="cgMover(${i},-1)" style="padding:4px 10px;">↑</button>
       <button class="ghost" ${i === CG.steps.length - 1 ? 'disabled' : ''} onclick="cgMover(${i},1)" style="padding:4px 10px;">↓</button>
       <button class="ghost" onclick="cgAbrir('${s.id}')" style="padding:4px 10px;">${abrir ? 'Fechar' : 'Editar'}</button></div></div>
-    <div class="muted">${t.nome}</div>
-    ${abrir ? `<div>${corpo}<button class="danger" style="margin-top:10px;" onclick="cgApagar('${s.id}')">Remover este passo</button></div>` : ''}</div>`;
+    <div class="muted">${t.nome}${s.cond && s.cond.de ? ' · 🔀 condicional' : ''}</div>
+    ${abrir ? `<div>${corpo}${condHtml(s, i)}<button class="ghost" style="margin-top:10px;" onclick="cgDuplicar('${s.id}')">⧉ Duplicar este passo</button> <button class="danger" style="margin-top:10px;" onclick="cgApagar('${s.id}')">Remover este passo</button></div>` : ''}</div>`;
 }
 
 window.cgRenderConstrutor = function () {
@@ -243,6 +244,15 @@ window.cgRenderConstrutor = function () {
 function cgHtmlConstrutor() {
   const botoes = Object.entries(CG_TIPOS).map(([k, t]) => `<button class="ghost" style="text-align:left;" onclick="cgAdd('${k}')"><strong>${t.icone} ${t.nome}</strong><br><span class="muted">${t.desc}</span></button>`).join('');
   return `<p class="muted" style="margin:8px 0;">Monte a consulta passo a passo. A ordem que definir aqui é a ordem em que aparece durante o atendimento.</p>
+    <details style="margin:8px 0;background:#eef6f2;border-radius:10px;padding:10px;"><summary style="cursor:pointer;font-weight:700;color:var(--primary);">💡 Como montar o seu método depressa</summary>
+      <ol style="margin:8px 0 0 18px;padding:0;line-height:1.5;">
+        <li><b>Comece por um modelo</b> (em baixo) ou adicione passos um a um.</li>
+        <li><b>Muitos itens de uma vez:</b> em cada mapa ou escolha, abra "Preencher muitos de uma vez" e cole a sua lista (nome | significado | pergunta | o que fazer | afirmação…). Pode escrevê-la no bloco de notas ou numa folha de cálculo.</li>
+        <li><b>Mapa:</b> toque num ponto da lista e em "Colocar no mapa", depois toque no sítio certo da imagem. Escolha a imagem de fundo (corpo, órgãos, chakras…) ou use a sua.</li>
+        <li><b>Passos que só aparecem se…</b> abra um passo e use "Mostrar este passo só se…" (ex.: só pergunta pela digestão se o fígado foi marcado).</li>
+        <li><b>Duplicar</b> um passo poupa trabalho quando vários são parecidos.</li>
+        <li>No fim, a app junta tudo e gera sozinha o <b>relatório</b>, o <b>plano em casa</b> e a <b>comparação</b> entre consultas.</li>
+      </ol></details>
     ${CG.steps.length ? CG.steps.map(editorPasso).join('') : `<div class="card" style="background:#f6f8f7;"><p class="muted">Ainda não há passos. Comece por um modelo e mude o que quiser, ou monte tudo de raiz.</p><button class="ghost" style="width:100%;margin-bottom:8px;" onclick="cgModelo2()">✨ Modelo base: pesquisa por pontos no corpo (editável)</button>
       <button class="ghost" style="width:100%;margin-top:8px;" onclick="cgModelo3()">✨ Modelo completo em branco (qualquer terapia ou profissão)</button><button class="ghost" style="width:100%;" onclick="cgModelo()">✨ Modelo simples (perguntas + tratamento)</button></div>`}
     <details style="margin-top:10px;" ${CG.steps.length ? '' : 'open'}><summary style="cursor:pointer;font-weight:700;color:var(--primary);">🪄 Montar com o assistente</summary>
@@ -257,6 +267,73 @@ function cgHtmlConstrutor() {
     <div style="display:grid;gap:8px;margin-top:8px;">${botoes}</div></details>`;
 }
 function cgRefresh() { const el = document.getElementById('cgBuilder'); if (el) el.innerHTML = cgHtmlConstrutor(); }
+
+// ── Preencher muitos itens de uma vez (colar lista) ────────────────────────────────
+const COL_EX = 'Fígado | Digestão, energia e capacidade de renovação | O que tem sido difícil digerir? | Aplicar 5 minutos; Beber água a seguir | Eu liberto o que já não preciso | Conhecimento que quer que apareça no relatório | Cansaço; Irritação';
+function colarHtml(s) {
+  const mapa = s.type === 'mapa';
+  return `<details style="margin-top:12px;background:#eef6f2;border-radius:10px;padding:10px;"><summary style="cursor:pointer;font-weight:700;color:var(--primary);">📋 Preencher muitos de uma vez (colar lista)</summary>
+    <p class="muted" style="margin:8px 0;">Uma linha por ${mapa ? 'ponto' : 'opção'}, com as colunas separadas por <b>|</b> (ou copiadas de uma folha de cálculo). Só o nome é obrigatório; as restantes colunas podem ficar vazias.</p>
+    <p class="muted" style="margin:4px 0;"><b>Nome | O que significa | Pergunta | O que fazer (passos separados por ;) | Afirmação | Conhecimento para o relatório | Exemplos (separados por ;)</b></p>
+    <textarea id="cgColar_${s.id}" rows="6" style="width:100%;font-size:13px;" placeholder="${esc(COL_EX)}"></textarea>
+    <label style="display:flex;gap:8px;align-items:center;margin-top:6px;"><input type="checkbox" id="cgColarSub_${s.id}" style="width:auto;margin:0;"> Substituir os que já existem (em vez de acrescentar)</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="primary" onclick="cgColar('${s.id}')">➕ Criar a partir da lista</button><button class="ghost" onclick="cgListaTexto('${s.id}')">📄 Trazer a lista atual para aqui</button><button class="ghost" onclick="cgColarExemplo('${s.id}')">Ver um exemplo</button></div>
+  </details>`;
+}
+const itensDe = (s) => s.type === 'mapa' ? (s.points || []) : (s.options || []);
+const aLinhas = (v) => String(v || '').split(/\s*;\s*|\n/).map(x => x.trim()).filter(Boolean);
+window.cgColarExemplo = (id) => { const t = document.getElementById('cgColar_' + id); if (t) t.value = COL_EX + '\nRim | Filtragem e equilíbrio | | Aplicar 5 minutos | Confio no meu corpo'; };
+window.cgListaTexto = (id) => {
+  const s = achar(id); const t = document.getElementById('cgColar_' + id); if (!s || !t) return;
+  t.value = itensDe(s).map(o => [o.label, o.tema, o.pergunta, (o.tratamento || []).join('; '), o.afirmacao, o.extra, (o.exemplos || []).join('; ')].map(x => String(x || '').replace(/[|\n]/g, ' ')).join(' | ').replace(/( \| )+$/, '')).join('\n');
+  const c = document.getElementById('cgColarSub_' + id); if (c) c.checked = true;
+};
+window.cgColar = (id) => {
+  const s = achar(id); const t = document.getElementById('cgColar_' + id); if (!s || !t) return;
+  const linhas = t.value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!linhas.length) { window.toast && window.toast('Escreva ou cole primeiro a lista.', true); return; }
+  const novos = linhas.map(l => { const c = l.split(/\s*\|\s*|\t/).map(x => x.trim()); return { label: c[0], tema: c[1] || '', pergunta: c[2] || '', tratamento: aLinhas(c[3]), afirmacao: c[4] || '', extra: c[5] || '', exemplos: aLinhas(c[6]) }; }).filter(o => o.label);
+  const sub = document.getElementById('cgColarSub_' + id)?.checked;
+  const antigos = sub ? [] : itensDe(s);
+  const lista = antigos.concat(novos.map(o => ({ id: uid(), ...o })));
+  if (s.type === 'mapa') {
+    lista.forEach((p, i) => { if (p.x == null) { const n = lista.length; p.x = i % 2 ? 62 : 38; p.y = Math.round(8 + (i * 84) / Math.max(n, 1)); p.cor = p.cor || '#dc2626'; } else if (sub) { const o = (s.points || []).find(q => q.label === p.label); if (o) { p.x = o.x; p.y = o.y; p.cor = o.cor; } } });
+    if (sub) lista.forEach((p, i) => { const o = (s.points || []).find(q => q.label === p.label); if (o) { p.x = o.x; p.y = o.y; p.cor = o.cor || '#dc2626'; p.id = o.id; } });
+    s.points = lista;
+  } else { if (sub) lista.forEach(p => { const o = (s.options || []).find(q => q.label === p.label); if (o) p.id = o.id; }); s.options = lista; }
+  CG.aberto = id; cgRefresh();
+  window.toast && window.toast('✅ ' + novos.length + (s.type === 'mapa' ? ' pontos' : ' opções') + ' criados. Pode afinar cada um abaixo' + (s.type === 'mapa' ? ' e arrastar os pontos no mapa.' : '.'));
+};
+
+
+// ── Passos condicionais: "mostrar este passo só se…" ─────────────────────────────
+function cgVisivel(s, resp) {
+  const c = s && s.cond; if (!c || !c.de) return true;
+  const r = (resp || {})[c.de] || {};
+  const tem = (r.sel && r.sel.length) || r.valor || (r.lista && r.lista.length);
+  if (c.modo === 'vazio') return !tem;
+  if (!c.item) return !!tem;                    // "qualquer coisa marcada/respondida"
+  return (r.sel || []).includes(c.item) || r.valor === c.item || (r.lista || []).includes(c.item);
+}
+const passosVisiveis = (proto, resp) => (proto.steps || []).filter(s => cgVisivel(s, resp));
+const comVisiveis = (proto, resp) => ({ ...proto, steps: passosVisiveis(proto, resp) });
+window.cgVisivel = cgVisivel;
+
+
+function condHtml(s, i) {
+  const ant = CG.steps.slice(0, i).filter(x => ['mapa', 'escolha', 'pergunta'].includes(x.type) && (x.type !== 'pergunta' || ['choice', 'multi', 'yesno'].includes(x.qtype)));
+  if (!ant.length) return '';
+  const c = s.cond || {};
+  const de = ant.find(x => x.id === c.de);
+  const itens = de ? (de.type === 'mapa' ? (de.points || []).map(p => [p.id, p.label]) : de.type === 'escolha' ? (de.options || []).map(o => [o.id, o.label]) : de.qtype === 'yesno' ? [['Sim', 'Sim'], ['Não', 'Não']] : (de.options || []).map(o => [o, o])) : [];
+  return `<details style="margin-top:10px;background:#fff7e6;border-radius:8px;padding:8px;" ${c.de ? 'open' : ''}><summary style="cursor:pointer;font-weight:600;">🔀 Mostrar este passo só se… ${c.de ? '(ativo)' : '(opcional)'}</summary>
+    <p class="muted" style="margin:6px 0;">Útil para métodos complexos: este passo só aparece durante a consulta se, num passo anterior, tiver sido marcado ou respondido o que indicar.</p>
+    ${campo('Num passo anterior', `<select onchange="cgCond('${s.id}','de',this.value)"><option value="">— sempre mostrar —</option>${ant.map(x => `<option value="${x.id}" ${x.id === c.de ? 'selected' : ''}>${esc(x.title || x.type)}</option>`).join('')}</select>`)}
+    ${c.de ? campo('Foi marcado / respondido', `<select onchange="cgCond('${s.id}','item',this.value)"><option value="">qualquer coisa</option>${itens.map(([v, n]) => `<option value="${esc(v)}" ${v === c.item ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`) : ''}</details>`;
+}
+window.cgCond = (id, k, v) => { const s = achar(id); if (!s) return; if (k === 'de') { s.cond = v ? { de: v, item: '' } : null; } else if (s.cond) s.cond.item = v; cgRefresh(); };
+window.cgDuplicar = (id) => { const i = CG.steps.findIndex(s => s.id === id); if (i < 0) return; const c = JSON.parse(JSON.stringify(CG.steps[i])); c.id = uid(); c.title = (c.title || '') + ' (cópia)'; (c.points || []).forEach(p => p.id = uid()); (c.options || []).forEach(o => { if (typeof o === 'object') o.id = uid(); }); CG.steps.splice(i + 1, 0, c); CG.aberto = c.id; cgRefresh(); };
+
 const achar = (id) => CG.steps.find(s => s.id === id);
 window.cgAdd = (t) => { const s = passoNovo(t); CG.steps.push(s); CG.aberto = s.id; cgRefresh(); };
 
@@ -315,8 +392,8 @@ window.cgModelo2 = async () => {
   cgRefresh();
 };
 window.cgAbrir = (id) => { CG.aberto = CG.aberto === id ? null : id; cgRefresh(); };
-window.cgApagar = (id) => { CG.steps = CG.steps.filter(s => s.id !== id); CG.aberto = null; cgRefresh(); };
-window.cgMover = (i, d) => { const j = i + d; if (j < 0 || j >= CG.steps.length) return; [CG.steps[i], CG.steps[j]] = [CG.steps[j], CG.steps[i]]; cgRefresh(); };
+window.cgApagar = (id) => { CG.steps = CG.steps.filter(s => s.id !== id); CG.steps.forEach(x => { if (x.cond && x.cond.de === id) x.cond = null; }); CG.aberto = null; cgRefresh(); };
+window.cgMover = (i, d) => { const j = i + d; if (j < 0 || j >= CG.steps.length) return; [CG.steps[i], CG.steps[j]] = [CG.steps[j], CG.steps[i]]; CG.steps.forEach((x, k) => { if (x.cond && x.cond.de && CG.steps.findIndex(y => y.id === x.cond.de) >= k) x.cond = null; }); cgRefresh(); };
 window.cgSet = (id, k, v, rerender) => { const s = achar(id); if (!s) return; s[k] = v; if (k === 'title' || rerender) cgRefresh(); };
 window.cgSetLinhas = (id, k, v) => { const s = achar(id); if (s) s[k] = linhas(v); };
 window.cgOpt = (id, j, k, v, rerender) => { const s = achar(id); if (!s || !s.options[j]) return; s.options[j][k] = v; if (rerender) cgRefresh(); };
@@ -326,6 +403,7 @@ window.cgOptLinhas = (id, j, v) => { const s = achar(id); if (s && s.options[j])
 window.cgAddOpt = (id) => { const s = achar(id); if (!s) return; s.options.push({ id: uid(), label: 'Opção ' + (s.options.length + 1), tema: '', pergunta: '', exemplos: [], extra: '' }); cgRefresh(); };
 window.cgRemOpt = (id, j) => { const s = achar(id); if (!s) return; s.options.splice(j, 1); cgRefresh(); };
 
+window.cgColocar = (id) => { CG.colocar = CG.colocar === id ? null : id; cgRefresh(); if (CG.colocar && window.toast) window.toast('📍 Agora toque no mapa, no sítio onde este ponto fica.'); };
 window.cgPonto = (id) => { CG.ponto = CG.ponto === id ? null : id; cgRefresh(); };
 const achaPt = (sid, pid) => { const s = achar(sid); return s ? (s.points || []).find(p => p.id === pid) : null; };
 window.cgPt = (sid, pid, k, v, rerender) => { const p = achaPt(sid, pid); if (!p) return; p[k] = v; if (rerender) cgRefresh(); };
@@ -349,6 +427,7 @@ document.addEventListener('click', (ev) => {
   const m = ev.target.closest && ev.target.closest('.cgMapa'); if (!m || ev.target.closest('[data-pid]')) return;
   if (!m.parentElement || !String(m.parentElement.id).startsWith('cgMapaEd_')) return;
   const s = achar(m.dataset.sid); if (!s) return; const r = m.getBoundingClientRect();
+  if (CG.colocar) { const q = (s.points || []).find(z => z.id === CG.colocar); if (q) { q.x = Math.round(((ev.clientX - r.left) / r.width) * 1000) / 10; q.y = Math.round(((ev.clientY - r.top) / r.height) * 1000) / 10; CG.colocar = null; cgRefresh(); return; } CG.colocar = null; }
   const p = { id: uid(), label: 'Ponto ' + ((s.points || []).length + 1), x: Math.round(((ev.clientX - r.left) / r.width) * 1000) / 10, y: Math.round(((ev.clientY - r.top) / r.height) * 1000) / 10, cor: '#dc2626', tema: '', pergunta: '', exemplos: [], extra: '' };
   s.points = s.points || []; s.points.push(p); CG.ponto = p.id; cgRefresh();
 });
@@ -418,7 +497,7 @@ function cgPasso() {
   }
   const ultimo = EX.i === steps.length - 1;
   EX.area.innerHTML = `<div class="card">
-    <div class="muted">Passo ${EX.i + 1} de ${steps.length}</div>
+    <div class="muted">Passo ${steps.slice(0, EX.i + 1).filter(x => cgVisivel(x, EX.resp)).length} de ${Math.max(steps.filter(x => cgVisivel(x, EX.resp)).length, 1)}</div>
     <div style="height:6px;background:#e2e8f0;border-radius:4px;margin:6px 0 12px;"><div style="height:6px;width:${Math.round(((EX.i + 1) / steps.length) * 100)}%;background:var(--primary);border-radius:4px;"></div></div>
     <h3 style="margin:0 0 6px;">${(CG_TIPOS[s.type] || {}).icone || ''} ${esc(s.title)}</h3>
     ${s.help ? `<p class="muted" style="margin-bottom:10px;">${esc(s.help)}</p>` : ''}
@@ -446,8 +525,11 @@ window.cgEscolher = (id, oid) => {
 };
 window.cgNav = function (d) {
   clearInterval(_t); lerAtual();
-  if (d > 0 && EX.i === EX.proto.steps.length - 1) { cgConcluir(); return; }
-  EX.i = Math.max(0, Math.min(EX.proto.steps.length - 1, EX.i + d)); cgPasso();
+  const n = EX.proto.steps.length; let j = EX.i + d;
+  while (j >= 0 && j < n && !cgVisivel(EX.proto.steps[j], EX.resp)) j += d;
+  if (d > 0 && j >= n) { cgConcluir(); return; }
+  if (j < 0) j = EX.i;
+  EX.i = Math.max(0, Math.min(n - 1, j)); cgPasso();
 };
 
 // ─── Relatório e plano (texto + documentos com a marca do subscritor) ───
@@ -457,6 +539,7 @@ const AVISO = 'Este documento é uma ferramenta de apoio no âmbito de uma terap
 function selecionados(s, r) { return (s.type === 'mapa' ? (s.points || []) : (s.options || [])).filter(o => (r.sel || []).includes(o.id)); }
 
 export function cgConstruir(proto, resp, nomePaciente, data) {
+  proto = comVisiveis(proto, resp);
   const R = [], P = [];
   const titulo = proto.name || 'Consulta';
   for (const s of proto.steps || []) {
@@ -523,6 +606,7 @@ function cartaoTratDoc(o, m, seg) {
     ${seg > 0 ? `<div style="font-size:0.8rem;color:#64748b;margin-top:3px;">⏱ cerca de ${fmtT(seg)}</div>` : ''}</div>`;
 }
 export function cgDocumentos(proto, resp, nomePaciente, data, marca) {
+  proto = comVisiveis(proto, resp);
   const m = marca || marcaAtual(); let rel = '', plano = '';
   for (const s of proto.steps || []) {
     const r = resp[s.id] || {};
@@ -629,6 +713,7 @@ function blocoDoc(qual, titulo, html) {
 }
 // Relatório ilustrado (cores e nome do subscritor), com os mesmos dados do relatório normal.
 export function cgModeloBonito(proto, resp, nomePaciente, data, marca) {
+  proto = comVisiveis(proto, resp);
   const m = marca || marcaAtual();
   const blocos = [], resumo = [], plano = [];
   for (const s of proto.steps || []) {
@@ -679,7 +764,7 @@ function mostrarResultado(preview) {
 // Resumo estruturado de uma consulta guiada (para comparar sessões e ver evolução sem depender do texto)
 function cgResumo(proto, resp) {
   const out = [];
-  (proto.steps || []).forEach(s => {
+  passosVisiveis(proto, resp).forEach(s => {
     const r = (resp || {})[s.id] || {};
     if (s.type === 'pergunta') {
       const esc = s.qtype === 'scale' || s.qtype === 'number'; const un = s.qtype === 'number' ? (s.unidade || '') : '';
