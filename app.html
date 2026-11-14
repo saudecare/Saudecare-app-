@@ -417,7 +417,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-14-9';
+const APP_VERSION = '2026-11-15-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -8069,6 +8069,41 @@ window.removeQuestionOption = function(idx, oIdx){
 };
 
 // ── Tipo "mapeamento" — grupos de pontos com variações por zona/lado ───
+
+window.__mapPrevSide = window.__mapPrevSide || 'frente';
+window.setMapPrevSide = function(s){ window.__mapPrevSide = s; refreshProtoTypeBody(); };
+window.usarImagemPronta = function(side, chave){
+  const svg = chave && window.CG_IMG && window.CG_IMG[chave];
+  protocolBodyImages[side] = svg ? 'data:image/svg+xml;utf8,' + encodeURIComponent(svg) : '';
+  refreshProtoTypeBody();
+};
+function mappingPreviewHtml(){
+  const side = window.__mapPrevSide || 'frente';
+  let n = 0, semPos = 0; const dots = [], legenda = [];
+  protocolGroupsDraft.forEach(g => (g.points || []).forEach(pt => {
+    n++;
+    const lado = pt.mapSide || 'frente';
+    if (pt.mapX == null) { semPos++; legenda.push(`<span style="display:inline-block;margin:2px 6px 2px 0;"><b>${n}</b> ${escapeHtml(pt.name || '(sem nome)')} <span style="color:#b45309;">⚠ sem posição</span></span>`); return; }
+    legenda.push(`<span style="display:inline-block;margin:2px 6px 2px 0;"><b>${n}</b> ${escapeHtml(pt.name || '(sem nome)')} <span class="muted">· ${lado === 'costas' ? 'costas' : 'frente'}</span></span>`);
+    if (lado === side) dots.push(`<div title="${escapeHtml(pt.name || '')}" style="position:absolute;left:${pt.mapX}%;top:${pt.mapY}%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:${pt.color || '#2f6f5e'};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;">${n}</div>`);
+  }));
+  const imgs = window.CG_IMG ? Object.keys(window.CG_IMG).filter(k => /Frente|Costas/.test(k)) : [];
+  const nomes = { corpoFrente:'Corpo (frente)', corpoCostas:'Corpo (costas)', esqueletoFrente:'Esqueleto (frente)', esqueletoCostas:'Esqueleto (costas)', musculosFrente:'Músculos (frente)', musculosCostas:'Músculos (costas)', musculosTendoesFrente:'Músculos e tendões (frente)', musculosTendoesCostas:'Músculos e tendões (costas)', orgaosFrente:'Órgãos (frente)', glandulasFrente:'Glândulas (frente)' };
+  const opt = imgs.filter(k => nomes[k] && (side === 'costas' ? /Costas/.test(k) : /Frente/.test(k))).map(k => `<option value="${k}">${nomes[k]}</option>`).join('');
+  return `<div class="card" style="background:#f6f8f7;margin:10px 0;">
+    <strong>🗺️ O seu mapa</strong>
+    <p class="muted" style="margin:4px 0 8px;">É assim que o mapa aparece durante a consulta. Cada ponto tem um número e uma cor; a legenda diz qual é qual.</p>
+    <div style="display:flex;margin-bottom:8px;">
+      <button onclick="setMapPrevSide('frente')" style="flex:1;background:${side==='frente'?'var(--primary)':'none'};color:${side==='frente'?'#fff':'var(--text)'};border:1px solid #d8e0dc;border-radius:8px 0 0 8px;">Frente</button>
+      <button onclick="setMapPrevSide('costas')" style="flex:1;background:${side==='costas'?'var(--primary)':'none'};color:${side==='costas'?'#fff':'var(--text)'};border:1px solid #d8e0dc;border-radius:0 8px 8px 0;">Costas</button>
+    </div>
+    ${bodyDiagramHTML(protocolBodyImages, side, dots.join(''))}
+    <div style="margin-top:8px;font-size:13px;line-height:1.5;">${legenda.join('') || '<span class="muted">Ainda não tem pontos. Adicione-os em baixo.</span>'}</div>
+    ${semPos ? `<p style="margin-top:6px;color:#b45309;font-size:13px;">⚠ ${semPos} ponto(s) ainda sem posição: toque no botão "📍" do ponto para o colocar no mapa.</p>` : ''}
+    ${opt ? `<label style="margin-top:10px;">Trocar a imagem de fundo (${side === 'costas' ? 'costas' : 'frente'})</label><select onchange="usarImagemPronta('${side === 'costas' ? 'back' : 'front'}', this.value)"><option value="">— escolher imagem pronta —</option>${opt}</select>` : ''}
+  </div>`;
+}
+
 function renderMappingGroupsBuilder(){
   let groupsHtml = protocolGroupsDraft.map((g, gIdx) => {
     let pointsHtml = (g.points||[]).map((pt, pIdx) => {
@@ -8131,11 +8166,12 @@ function renderMappingGroupsBuilder(){
     <h3 style="margin:14px 0 8px;">Imagem do corpo para o mapa (opcional)</h3>
     <p class="muted" style="margin-bottom:8px;">Cole o link de uma imagem sua (frente e/ou costas). Se deixar em branco, é usado um boneco genérico.</p>
     <label>Imagem — Frente</label>
-    <input id="protoImgFront" value="${escapeHtml(protocolBodyImages.front||'')}" onchange="updateProtocolBodyImage('front', this.value)" placeholder="https://... (ou escolha uma foto abaixo)">
+    <input id="protoImgFront" value="${(protocolBodyImages.front||'').startsWith('data:') ? '' : escapeHtml(protocolBodyImages.front||'')}" onchange="updateProtocolBodyImage('front', this.value)" placeholder="${(protocolBodyImages.front||'').startsWith('data:') ? '✔ Imagem pronta escolhida (pode trocar no mapa abaixo)' : 'https://... (ou escolha uma foto abaixo)'}">
     ${imageUploadFieldHTML('protoImgFront', `tenants/${tenantId}/protocols`)}
     <label>Imagem — Costas</label>
-    <input id="protoImgBack" value="${escapeHtml(protocolBodyImages.back||'')}" onchange="updateProtocolBodyImage('back', this.value)" placeholder="https://... (ou escolha uma foto abaixo)">
+    <input id="protoImgBack" value="${(protocolBodyImages.back||'').startsWith('data:') ? '' : escapeHtml(protocolBodyImages.back||'')}" onchange="updateProtocolBodyImage('back', this.value)" placeholder="${(protocolBodyImages.back||'').startsWith('data:') ? '✔ Imagem pronta escolhida (pode trocar no mapa abaixo)' : 'https://... (ou escolha uma foto abaixo)'}">
     ${imageUploadFieldHTML('protoImgBack', `tenants/${tenantId}/protocols`)}
+    ${mappingPreviewHtml()}
     <h3 style="margin:14px 0 8px;">Grupos de pontos</h3>
     ${hintBox('Cada linha compacta mostra a cor, o nome (pode editar aqui mesmo) e se já tem posição no boneco. Toque em "✏️" para abrir a descrição completa e as variações por lado, se precisar delas.')}
     <div id="mapPickerContainer"></div>
@@ -8441,8 +8477,8 @@ function renderClassificationsBuilder(){
     </div>
   `).join('');
   return `
-    <h3 style="margin:14px 0 8px;">Perguntas do protocolo (opcional)</h3>
-    <p class="muted" style="margin-bottom:8px;">Dados ou perguntas feitas antes de começar (ex: nome, medicação, as 6 perguntas do poder) ou no fim (ex: qual padrão emocional está mais ativo, em que momento/idade).</p>
+    <h3 style="margin:14px 0 8px;">Perguntas antes ou depois (opcional)</h3>
+    <p class="muted" style="margin-bottom:8px;">Perguntas que quer fazer antes de começar (ex.: motivo da consulta, medicação habitual, alergias) ou no fim (ex.: o que mais lhe chamou a atenção, desde quando se sente assim).</p>
     <div id="protoClassificationsList">${html}</div>
     <button class="ghost" onclick="addClassification()">+ Adicionar pergunta</button>`;
 }
