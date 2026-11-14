@@ -93,12 +93,12 @@ const MODELO_FREQUENCIA = () => {
   return [
     { ...passoNovo('pergunta'), title: 'Motivo da consulta', qtype: 'text', help: 'O que traz a pessoa hoje, nas palavras dela.' },
     { ...passoNovo('pergunta'), title: 'Como se sente hoje? (0 a 10)', qtype: 'scale' },
-    { ...passoNovo('pergunta'), title: 'Contraindicações a confirmar antes de começar', qtype: 'multi', options: ['Pacemaker ou dispositivo eletrónico implantado', 'Gravidez', 'Epilepsia', 'Nenhuma das anteriores'], help: 'Edite a lista conforme o seu protocolo de segurança.', noRelatorio: false },
-    { ...passoNovo('pergunta'), title: 'Medição inicial (opcional)', qtype: 'number', unidade: '', help: 'Escolha a unidade ao editar (kg, min, graus, mmHg…). Qualquer valor que queira acompanhar de sessão para sessão.', noRelatorio: false },
+    { ...passoNovo('pergunta'), title: 'Contraindicações a confirmar antes de começar', qtype: 'multi', options: ['Pacemaker ou dispositivo eletrónico implantado', 'Gravidez', 'Epilepsia', 'Nenhuma das anteriores'], help: 'Edite a lista conforme o seu protocolo de segurança.', noRelatorio: true },
+    { ...passoNovo('pergunta'), title: 'Medição inicial (opcional)', qtype: 'number', unidade: '', help: 'Escolha a unidade ao editar (kg, min, graus, mmHg…). Qualquer valor que queira acompanhar de sessão para sessão.', noRelatorio: true },
     { ...passoNovo('mapa'), title: 'Zonas e sistemas avaliados', fundo: 'corpoFrente', help: 'Toque nas zonas com alteração. Acrescente, mude de nome ou apague pontos; escolha outra imagem de fundo (órgãos, glândulas, esqueleto…).', points: [ptz('Cabeça', 50, 8), ptz('Garganta', 50, 17), ptz('Tórax', 50, 28), ptz('Abdómen superior', 50, 38), ptz('Abdómen inferior', 50, 48)] },
     { ...passoNovo('escolha'), title: 'Técnicas ou programas a aplicar', multi: true, help: 'Cada opção leva o seu texto: o que significa e como aplicar.', options: [prog('Técnica 1 (mude o nome)'), prog('Técnica 2 (mude o nome)')] },
     { ...passoNovo('tratpontos'), title: 'Aplicação das técnicas e zonas', segundos: 300, help: 'Mostra, passo a passo, o que aplicar em cada zona e técnica marcadas.' },
-    { ...passoNovo('pergunta'), title: 'Medição final (opcional)', qtype: 'number', unidade: '', noRelatorio: false },
+    { ...passoNovo('pergunta'), title: 'Medição final (opcional)', qtype: 'number', unidade: '', noRelatorio: true },
     { ...passoNovo('instrucao'), title: 'Recomendações para casa', texto: 'Beber água ao longo do dia.\nDescansar e evitar esforços intensos nas próximas horas.\nRegistar como se sente nos próximos dias.', imagem: '', noPlano: false },
     { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: false }
   ];
