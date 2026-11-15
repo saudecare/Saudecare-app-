@@ -401,17 +401,17 @@
 <div id="toast"></div>
 
 <script type="module" src="pe-carregador.js"></script>
-<script type="module" src="cg-imagens.js?v=2026-11-15-6"></script>
-<script type="module" src="consulta-guiada.js?v=2026-11-15-6"></script>
+<script type="module" src="cg-imagens.js?v=2026-11-15-7"></script>
+<script type="module" src="consulta-guiada.js?v=2026-11-15-7"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
 import { aplicarCorMarca } from './marca.js';
 import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
-import { iniciarFinancas } from './financas.js?v=2026-11-15-6';
-import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-6';
-import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-6';
+import { iniciarFinancas } from './financas.js?v=2026-11-15-7';
+import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-7';
+import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-7';
 import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
 import { corpoMensagem as reikiCorpoMsg, escolherFoto as reikiEscolherFoto } from './reiki-midia-chat.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -429,7 +429,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-15-6';
+const APP_VERSION = '2026-11-15-7';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3736,8 +3736,8 @@ window.saveAppointment = async function(){
   if (!patientSel.value || !serviceSel.value || !startInput){
     toast('Preencha todos os campos.', true); return;
   }
-  const duration = parseInt(serviceSel.selectedOptions[0].dataset.duration || '50', 10);
-  const bufferMinutes = parseInt(serviceSel.selectedOptions[0].dataset.buffer || '0', 10);
+  const duration = parseInt(serviceSel.selectedOptions[0].dataset.duration || '50', 10) || 50;
+  const bufferMinutes = parseInt(serviceSel.selectedOptions[0].dataset.buffer || '0', 10) || 0;
   const start = noFixedTime ? new Date(startInput + 'T00:00:00') : new Date(startInput);
   const end = new Date(start.getTime() + duration*60000);
   const roomId = (localSel.value === 'presencial' && roomSel) ? roomSel.value : '';
@@ -3787,6 +3787,7 @@ window.saveAppointment = async function(){
     await consumePackageSession(patientSel.value, usePackageIdx);
   }
   const newRef = await addDoc(collection(db, 'tenants', tenantId, 'appointments'), data);
+  if (window.__pendingBookingRequestId){ const rid = window.__pendingBookingRequestId; window.__pendingBookingRequestId = null; updateDoc(doc(db, 'public_booking_requests', rid), { status: 'processed' }).catch(e => console.warn('Não consegui fechar o pedido', e)); }
   const syncResult = await syncAppointmentToGoogle('create', { ...data, startsAt: start, endsAt: end }, newRef.id);
   if (!syncResult.ok && !syncResult.skipped){
     toast('Marcação criada, mas falhou a sincronizar com o Google Calendar. Pode tentar novamente na própria marcação.', true);
@@ -3866,8 +3867,8 @@ window.updateAppointment = async function(appointmentId){
   if (!patientSel.value || !serviceSel.value || !startInput){
     toast('Preencha todos os campos.', true); return;
   }
-  const duration = parseInt(serviceSel.selectedOptions[0].dataset.duration || '50', 10);
-  const bufferMinutes = parseInt(serviceSel.selectedOptions[0].dataset.buffer || '0', 10);
+  const duration = parseInt(serviceSel.selectedOptions[0].dataset.duration || '50', 10) || 50;
+  const bufferMinutes = parseInt(serviceSel.selectedOptions[0].dataset.buffer || '0', 10) || 0;
   const start = noFixedTime ? new Date(startInput + 'T00:00:00') : new Date(startInput);
   const end = new Date(start.getTime() + duration*60000);
   const roomId = (localSel.value === 'presencial' && roomSel) ? roomSel.value : '';
@@ -10202,7 +10203,8 @@ window.acceptBookingRequest = async function(requestId){
   const snap = await getDoc(doc(db, 'public_booking_requests', requestId));
   if (!snap.exists()){ toast('Pedido não encontrado.', true); return; }
   const r = snap.data();
-  await updateDoc(doc(db, 'public_booking_requests', requestId), { status: 'processed' });
+  // O pedido só sai da lista de pendentes quando a marcação for mesmo criada (assim, se desistir a meio, não se perde o cliente).
+  window.__pendingBookingRequestId = requestId;
 
   // Tenta encontrar automaticamente um paciente já existente pelo
   // telefone/email do pedido, para não ser preciso procurar à mão.
