@@ -211,6 +211,12 @@
   .fcq .scale{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
   .fcq .scale button{width:36px;height:36px;border-radius:8px;border:1px solid #d8e0dc;background:#fff;cursor:pointer;}
   .fcq .scale button.selected{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+#chatbotToggle{ opacity:.9; touch-action:none; user-select:none; -webkit-user-select:none; }
+#chatbotAba{ position:fixed; right:0; bottom:150px; z-index:9998; width:22px; height:46px; border:none; border-radius:10px 0 0 10px; background:var(--primary,#1a2b26); color:#fff; font-size:13px; opacity:.55; cursor:pointer; display:none; padding:0; }
+#chatbotGuiaRow{ display:flex; gap:6px; padding:8px 10px; border-bottom:1px solid #e5e5e5; background:#fff; }
+#chatbotGuiaRow input{ flex:1; padding:7px 10px; border:1px solid #ccc; border-radius:8px; font-size:13px; min-width:0; }
+#chatbotGuiaRow button{ background:#fff; color:var(--primary,#1a2b26); border:1px solid var(--primary,#1a2b26); border-radius:8px; padding:0 10px; font-size:13px; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -225,15 +231,21 @@
 </div>
 
 <!-- Assistente virtual — visível sempre, antes e depois do login -->
-<button id="chatbotToggle" onclick="toggleChatbot()" title="Assistente Vindora">💬</button>
+<button id="chatbotToggle" onclick="toggleChatbot()" title="Assistente Vindora (arraste para mudar de sítio)">💬</button>
+<button id="chatbotAba" onclick="mostrarChatbot()" title="Mostrar o assistente">💬</button>
 <div id="chatbotWindow" class="hidden">
   <div id="chatbotHeader">
     <span>🤖 Assistente Vindora</span>
     <span>
       <button id="chatbotVoiceOutBtn" onclick="toggleChatbotVoiceOut()" title="Ler respostas em voz alta">🔇</button>
       <button onclick="openTeachBotForm()" title="Ensinar o assistente">🎓</button>
+      <button onclick="esconderChatbot()" title="Esconder o ícone (fica uma pequena aba no canto)">🙈</button>
       <button onclick="toggleChatbot()">✕</button>
     </span>
+  </div>
+  <div id="chatbotGuiaRow">
+    <input id="chatbotGuiaInput" placeholder="❓ Como faço…? ex: mudar horário" onkeydown="if(event.key==='Enter')chatbotAbrirGuia()">
+    <button onclick="chatbotAbrirGuia()">Ver guia</button>
   </div>
   <div id="chatbotMessages"></div>
   <div id="chatbotSuggestions"></div>
@@ -401,17 +413,17 @@
 <div id="toast"></div>
 
 <script type="module" src="pe-carregador.js"></script>
-<script type="module" src="cg-imagens.js?v=2026-11-15-7"></script>
-<script type="module" src="consulta-guiada.js?v=2026-11-15-7"></script>
+<script type="module" src="cg-imagens.js?v=2026-11-15-8"></script>
+<script type="module" src="consulta-guiada.js?v=2026-11-15-8"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
 import { aplicarCorMarca } from './marca.js';
 import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
-import { iniciarFinancas } from './financas.js?v=2026-11-15-7';
-import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-7';
-import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-7';
+import { iniciarFinancas } from './financas.js?v=2026-11-15-8';
+import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-8';
+import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-8';
 import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
 import { corpoMensagem as reikiCorpoMsg, escolherFoto as reikiEscolherFoto } from './reiki-midia-chat.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -429,7 +441,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-15-7';
+const APP_VERSION = '2026-11-15-8';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2804,14 +2816,7 @@ async function renderHome(main){
       </div>
       ${weekHtml}
     </div>
-    ${chkHtml}
-    <div class="card">
-      <label for="homeAjuda" style="font-weight:600;">❓ Não sabes como fazer alguma coisa?</label>
-      <div class="row" style="gap:8px;margin-top:6px;">
-        <input id="homeAjuda" placeholder="ex: criar secretária, mudar horário…" onkeydown="if(event.key==='Enter')abrirAjuda(this.value)">
-        <button class="primary" onclick="abrirAjuda(document.getElementById('homeAjuda').value)">Procurar</button>
-      </div>
-    </div>`;
+    ${chkHtml}`;
   maybeShowInstallPrompt();
   maybeShowDpaGate();
   maybeShowPlatformAnnouncement();
@@ -19916,7 +19921,53 @@ function chatbotAppendMessage(text, who){
   box.scrollTop = box.scrollHeight;
 }
 
+
+// ── Assistente: arrastar, esconder, guia "Como faço…?" ──────────────────
+window.chatbotAbrirGuia = function(){
+  const t = (document.getElementById('chatbotGuiaInput') || {}).value || '';
+  const win = document.getElementById('chatbotWindow'); if (win) win.classList.add('hidden');
+  abrirAjuda(t);
+};
+(function chatbotMovel(){
+  const btn = document.getElementById('chatbotToggle'), aba = document.getElementById('chatbotAba');
+  if (!btn) return;
+  const KP = 'vindora_chat_pos', KH = 'vindora_chat_hidden';
+  const ler = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } };
+  const gravar = (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (_) {} };
+  const imp = (el, prop, val) => el.style.setProperty(prop, val, 'important');
+  function posJanela(x, y, w, h){
+    const win = document.getElementById('chatbotWindow'); if (!win) return;
+    const ww = Math.min(340, innerWidth - 32);
+    imp(win, 'left', Math.max(8, Math.min(innerWidth - ww - 8, x + w - ww)) + 'px'); imp(win, 'right', 'auto');
+    if (y < innerHeight / 2){ imp(win, 'top', (y + h + 8) + 'px'); imp(win, 'bottom', 'auto'); imp(win, 'height', Math.max(220, Math.min(460, innerHeight - (y + h + 8) - 12)) + 'px'); }
+    else { imp(win, 'bottom', (innerHeight - y + 8) + 'px'); imp(win, 'top', 'auto'); imp(win, 'height', Math.max(220, Math.min(460, y - 20)) + 'px'); }
+  }
+  function aplicar(x, y){
+    const w = btn.offsetWidth || 46, h = btn.offsetHeight || 46;
+    x = Math.max(4, Math.min(innerWidth - w - 4, x)); y = Math.max(4, Math.min(innerHeight - h - 4, y));
+    imp(btn, 'left', x + 'px'); imp(btn, 'top', y + 'px'); imp(btn, 'right', 'auto'); imp(btn, 'bottom', 'auto');
+    posJanela(x, y, w, h);
+  }
+  let d = null, mexeu = false;
+  btn.addEventListener('pointerdown', (e) => { const r = btn.getBoundingClientRect(); d = { sx: e.clientX, sy: e.clientY, bx: r.left, by: r.top }; mexeu = false; try { btn.setPointerCapture(e.pointerId); } catch (_) {} });
+  btn.addEventListener('pointermove', (e) => {
+    if (!d) return; const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+    if (!mexeu && Math.hypot(dx, dy) < 8) return;
+    mexeu = true; aplicar(d.bx + dx, d.by + dy);
+  });
+  const fim = () => { if (d && mexeu){ gravar(KP, JSON.stringify({ x: parseFloat(btn.style.left), y: parseFloat(btn.style.top) })); window.__chatArrastou = Date.now(); } d = null; };
+  btn.addEventListener('pointerup', fim); btn.addEventListener('pointercancel', fim);
+  const guardada = () => { try { return JSON.parse(ler(KP) || 'null'); } catch (_) { return null; } };
+  window.esconderChatbot = function(){ gravar(KH, '1'); const w = document.getElementById('chatbotWindow'); if (w) w.classList.add('hidden'); btn.style.setProperty('display', 'none', 'important'); if (aba) aba.style.display = 'block'; };
+  window.mostrarChatbot = function(){ gravar(KH, null); btn.style.removeProperty('display'); if (aba) aba.style.display = 'none'; };
+  window.reporChatbot = function(){ gravar(KP, null); ['left','top','right','bottom'].forEach(p => btn.style.removeProperty(p)); const w = document.getElementById('chatbotWindow'); if (w) ['left','top','right','bottom','height'].forEach(p => w.style.removeProperty(p)); };
+  const p0 = guardada(); if (p0) aplicar(p0.x, p0.y);
+  if (ler(KH) === '1') window.esconderChatbot();
+  window.addEventListener('resize', () => { const p = guardada(); if (p) aplicar(p.x, p.y); });
+})();
+
 window.toggleChatbot = function(){
+  if (window.__chatArrastou && Date.now() - window.__chatArrastou < 400) return;
   const win = document.getElementById('chatbotWindow');
   const opening = win.classList.contains('hidden');
   win.classList.toggle('hidden');
