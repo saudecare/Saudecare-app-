@@ -91,6 +91,7 @@
 <nav class="tabs hidden" id="nav">
   <button data-t="geral" class="on"><span class="i">📊</span>Visão geral</button>
   <button data-t="subs"><span class="i">👥</span>Subscritores</button>
+  <button data-t="receitas"><span class="i">💶</span>Receitas</button>
   <button data-t="planos"><span class="i">💳</span>Planos</button>
   <button data-t="apoio"><span class="i">🆘</span>Apoio <b id="nApoio"></b></button>
 </nav>
@@ -100,7 +101,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteField, Timestamp, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc, deleteField, Timestamp, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
 const app = initializeApp({
@@ -126,7 +127,7 @@ const ESTADOS = { pending_activation:'Por ativar', trial:'Em teste', active:'Ati
 const PLANOS = ['vindora','start','grow','pro','enterprise','lifetime'];
 const PLANO_PADRAO = { vindora:{staff:10,kbBytes:200*MB,portalPatients:1000,price:15}, start:{staff:1,kbBytes:5*MB,portalPatients:10}, grow:{staff:3,kbBytes:25*MB,portalPatients:50}, pro:{staff:8,kbBytes:100*MB,portalPatients:200}, enterprise:{staff:20,kbBytes:500*MB,portalPatients:1000} };
 
-let T = [], P = [], PLANS = {}, CFG = {}, aba = 'geral', filtro = 'todos', busca = '', ordem = 'recentes';
+let R = [], rAno = new Date().getFullYear(), rTri = 0, T = [], P = [], PLANS = {}, CFG = {}, aba = 'geral', filtro = 'todos', busca = '', ordem = 'recentes';
 
 // ── Entrada ────────────────────────────────────────────────────────────
 $('btnEntrar').onclick = async () => { $('lgErro').textContent = ''; try{ await signInWithEmailAndPassword(auth, $('lgEmail').value.trim(), $('lgPass').value); }catch(e){ $('lgErro').textContent = 'Email ou palavra-passe incorretos.'; } };
@@ -151,6 +152,7 @@ async function carregar(){
       getDoc(doc(db, 'settings', 'plans')), getDoc(doc(db, 'settings', 'platformConfig'))
     ]);
     T = ts.docs.map(d => ({ id: d.id, ...d.data() }));
+    try{ R = (await getDocs(collection(db, 'platform_receitas'))).docs.map(d => ({ id: d.id, ...d.data() })); }catch(e){ console.warn('receitas', e); R = []; }
     P = ps.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (ms(b.createdAt)||0) - (ms(a.createdAt)||0));
     PLANS = pl.exists() ? pl.data() : {}; CFG = cf.exists() ? cf.data() : {};
   }catch(e){ console.error(e); toast('Não foi possível carregar: ' + (e.message||''), true); }
@@ -167,6 +169,7 @@ function desenhar(){
   const c = $('conteudo');
   if (aba === 'geral') c.innerHTML = vGeral();
   else if (aba === 'subs') c.innerHTML = vSubs();
+  else if (aba === 'receitas') c.innerHTML = vReceitas();
   else if (aba === 'planos') c.innerHTML = vPlanos();
   else c.innerHTML = vApoio();
   window.scrollTo(0, 0);
@@ -418,6 +421,73 @@ function vApoio(){
     </div>`; }).join('') || '<div class="card muted">Nada nesta vista.</div>'}`;
 }
 
+
+// ── Receitas (para declarar às Finanças) ───────────────────────────────
+const METODOS = { hotmart:'Hotmart', mbway:'MB WAY', transferencia:'Transferência', outro:'Outro' };
+const eur = n => (Number(n)||0).toLocaleString('pt-PT', { style:'currency', currency:'EUR' });
+const trimDe = d => Math.floor((+String(d).slice(5,7) - 1) / 3) + 1;
+function receitasFiltradas(){
+  return R.filter(x => String(x.data||'').slice(0,4) === String(rAno) && (!rTri || trimDe(x.data) === rTri))
+          .sort((a,b) => String(b.data).localeCompare(String(a.data)));
+}
+function vReceitas(){
+  const anos = [...new Set([new Date().getFullYear(), ...R.map(x => +String(x.data||'').slice(0,4)).filter(Boolean)])].sort((a,b) => b-a);
+  const L = receitasFiltradas(), validas = L.filter(x => !x.reembolsado);
+  const tot = validas.reduce((s,x) => s + (Number(x.valor)||0), 0);
+  const porFat = validas.filter(x => !x.faturado), totPor = porFat.reduce((s,x) => s + (Number(x.valor)||0), 0);
+  const trims = [1,2,3,4].map(q => ({ q, v: R.filter(x => String(x.data||'').slice(0,4) === String(rAno) && trimDe(x.data) === q && !x.reembolsado).reduce((s,x) => s + (Number(x.valor)||0), 0) }));
+  const maxT = Math.max(1, ...trims.map(t => t.v));
+  const linhas = L.map(x => `<tr${x.reembolsado ? ' style="opacity:.5;text-decoration:line-through"' : ''}>
+    <td>${esc(x.data||'')}</td><td>${esc(x.nome || x.email || '—')}</td><td>${METODOS[x.metodo]||esc(x.metodo||'')}</td><td style="text-align:right">${eur(x.valor)}</td>
+    <td>${x.reembolsado ? '↩ reembolsada' : `<label><input type="checkbox" data-rfat="${esc(x.id)}" ${x.faturado ? 'checked' : ''}> faturada</label><br><input data-rnum="${esc(x.id)}" value="${esc(x.numeroFatura||'')}" placeholder="N.º fatura" style="width:110px"><button class="small ghost" data-act="rguardarnum" data-id="${esc(x.id)}">OK</button>`}</td>
+    <td>${x.origem === 'hotmart' ? '' : `<button class="small danger" data-act="rapagar" data-id="${esc(x.id)}">🗑</button>`}</td></tr>`).join('');
+  return `
+    <h2>Receitas da Vindora</h2>
+    <div class="card">
+      <div class="row"><select id="rAno">${anos.map(a => `<option ${a===rAno?'selected':''}>${a}</option>`).join('')}</select>
+      <select id="rTri"><option value="0">Ano todo</option>${[1,2,3,4].map(q => `<option value="${q}" ${q===rTri?'selected':''}>${q}.º trimestre</option>`).join('')}</select>
+      <button class="small" data-act="rcsv">⬇ CSV para o contabilista</button></div>
+      <div class="grid" style="margin-top:10px;">
+        <div class="kpi"><b>${eur(tot)}</b><span>Recebido ${rTri ? rTri + '.º trim.' : rAno}</span></div>
+        <div class="kpi"><b>${eur(totPor)}</b><span>Por faturar (${porFat.length})</span></div>
+        <div class="kpi"><b>${validas.length}</b><span>Pagamentos</span></div>
+      </div>
+      <div style="margin-top:12px">${trims.map(t => `<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin:3px 0"><span style="width:34px">${t.q}.º T</span><div style="flex:1;background:#eee;border-radius:6px;height:14px"><div style="width:${Math.round(t.v/maxT*100)}%;background:#6c5ce7;height:14px;border-radius:6px"></div></div><span style="width:80px;text-align:right">${eur(t.v)}</span></div>`).join('')}</div>
+    </div>
+    <div class="card"><h3>Registar recebimento (MB WAY / transferência)</h3>
+      <label>Subscritor</label><select id="rSub"><option value="">— escolher —</option>${T.map(t => `<option value="${esc(t.id)}">${esc(nomeDe(t))}</option>`).join('')}</select>
+      <label>Data</label><input id="rData" type="date" value="${hoje()}">
+      <label>Valor (€)</label><input id="rValor" type="number" step="0.01" min="0" value="${CFG.precoMensal ?? 15}">
+      <label>Método</label><select id="rMet"><option value="mbway">MB WAY</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select>
+      <div class="row" style="margin-top:10px"><button data-act="radd">➕ Registar</button></div>
+    </div>
+    <div class="card"><h3>Pagamentos</h3>
+      ${L.length ? `<div style="overflow-x:auto"><table><tr><th>Data</th><th>Subscritor</th><th>Método</th><th>Valor</th><th>Fatura</th><th></th></tr>${linhas}</table></div>` : '<p class="muted">Ainda sem pagamentos neste período. Os da Hotmart entram sozinhos; os de MB WAY/transferência registas acima (ou com o botão "Recebi" na ficha do subscritor).</p>'}
+    </div>
+    <div class="card"><h3>ℹ️ Para as Finanças</h3>
+      <p class="muted" style="margin:0">Isto é um registo de apoio, não é documento fiscal. Cada pagamento deve ter a sua fatura/recibo emitida no Portal das Finanças; marca aqui como "faturada" e escreve o número. No IRS (Modelo 3, abril–junho) entra no Anexo B. Confirma o enquadramento com um contabilista.</p>
+    </div>`;
+}
+async function receitaAdd(r){
+  const ref = await addDoc(collection(db, 'platform_receitas'), { faturado:false, reembolsado:false, criadoEm: serverTimestamp(), ...r });
+  R.push({ id: ref.id, ...r, faturado:false, reembolsado:false });
+}
+function receitasCsv(){
+  const cab = ['Data','Subscritor','Email','Método','Valor','Moeda','Líquido recebido','Faturada','N.º fatura','Reembolsada','Transação'];
+  const lin = receitasFiltradas().slice().reverse().map(x => [x.data, x.nome||'', x.email||'', METODOS[x.metodo]||x.metodo||'', String(x.valor ?? '').replace('.',','), x.moeda||'EUR', x.liquido != null ? String(x.liquido).replace('.',',') : '', x.faturado ? 'Sim' : 'Não', x.numeroFatura||'', x.reembolsado ? 'Sim' : 'Não', x.transacao||'']);
+  const txt = [cab, ...lin].map(r => r.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(';')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + txt], { type:'text/csv;charset=utf-8' })); a.download = `receitas-vindora-${rAno}${rTri ? '-T' + rTri : ''}.csv`; a.click();
+}
+document.addEventListener('change', async ev => {
+  const t = ev.target;
+  if (t.id === 'rAno'){ rAno = +t.value; desenhar(); }
+  else if (t.id === 'rTri'){ rTri = +t.value; desenhar(); }
+  else if (t.dataset?.rfat){
+    try{ await updateDoc(doc(db, 'platform_receitas', t.dataset.rfat), { faturado: t.checked }); const x = R.find(y => y.id === t.dataset.rfat); if (x) x.faturado = t.checked; desenhar(); }
+    catch(e){ toast('Não foi possível guardar: ' + (e.message||''), true); t.checked = !t.checked; }
+  }
+});
+
 // ── CSV ────────────────────────────────────────────────────────────────
 function csv(){
   const cab = ['Nome','Email','Estado','Plano','Criado','Fim do teste','Próximo pagamento','Último acesso','Endereço','ID'];
@@ -437,8 +507,23 @@ document.addEventListener('click', ev => {
   const a = b.dataset.act, t = tAtual();
   if (a === 'fechar') fechar();
   else if (a === 'csv') csv();
+  else if (a === 'rcsv') receitasCsv();
+  else if (a === 'radd') correr(async () => {
+    const sid = $('rSub').value, v = Number($('rValor').value), d = $('rData').value;
+    if (!sid) return toast('Escolhe o subscritor.', true);
+    if (!(v > 0) || !d) return toast('Indica a data e o valor.', true);
+    const s = T.find(x => x.id === sid);
+    await receitaAdd({ origem:'manual', metodo:$('rMet').value, tenantId:sid, nome:nomeDe(s), email:s.ownerEmail||'', valor:v, moeda:'EUR', data:d });
+    toast('Registado.'); desenhar();
+  });
+  else if (a === 'rguardarnum') correr(async () => {
+    const id = b.dataset.id, n = document.querySelector(`[data-rnum="${id}"]`).value.trim();
+    await updateDoc(doc(db, 'platform_receitas', id), { numeroFatura: n }); const x = R.find(y => y.id === id); if (x) x.numeroFatura = n; toast('Guardado.');
+  });
+  else if (a === 'rapagar') correr(async () => { if (!confirm('Apagar este registo?')) return; await deleteDoc(doc(db, 'platform_receitas', b.dataset.id)); R = R.filter(y => y.id !== b.dataset.id); desenhar(); });
   else if (a === 'copiar') navigator.clipboard?.writeText(b.dataset.v).then(() => toast('Copiado.')).catch(() => toast(b.dataset.v));
-  else if (a === 'recebi'){ const d = new Date(Math.max(Date.now(), new Date(($('dPag').value || hoje()) + 'T12:00:00').getTime())); d.setMonth(d.getMonth()+1); $('dPag').value = d.toISOString().slice(0,10); toast('Próximo pagamento: ' + $('dPag').value + ' — carregue em "Guardar alterações" (e em Ativar, se ainda não está ativo).'); }
+  else if (a === 'recebi'){ const d = new Date(Math.max(Date.now(), new Date(($('dPag').value || hoje()) + 'T12:00:00').getTime())); d.setMonth(d.getMonth()+1); $('dPag').value = d.toISOString().slice(0,10); toast('Próximo pagamento: ' + $('dPag').value + ' — carregue em "Guardar alterações" (e em Ativar, se ainda não está ativo). Receita registada em 💶 Receitas.');
+    if (t && !b.dataset.feito){ b.dataset.feito = '1'; correr(() => receitaAdd({ origem:'manual', metodo:'mbway', tenantId:t.id, nome:nomeDe(t), email:t.ownerEmail||'', valor:Number(CFG.precoMensal ?? precoDe(t.plan)) || 15, moeda:'EUR', data:hoje() })); } }
   else if (a === 'mais'){ const base = Math.max(Date.now(), new Date(($('dTeste').value || hoje()) + 'T12:00:00').getTime()); $('dTeste').value = new Date(base + (+b.dataset.d)*DIA).toISOString().slice(0,10); toast('Data alterada — carregue em "Guardar alterações".'); }
   else if (a === 'guardar') correr(guardar);
   else if (a === 'estado') correr(() => mudarEstado(b.dataset.v));

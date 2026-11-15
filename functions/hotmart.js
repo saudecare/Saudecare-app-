@@ -39,6 +39,25 @@ exports.hotmartWebhook = onRequest({ cors: false }, async (req, res) => {
       return res.status(200).send('ok');
     }
 
+    // Registo da receita (para declarar às Finanças): uma por transação, mesmo que a conta não seja encontrada.
+    const rec = db.doc(`platform_receitas/hotmart_${transacao || ref.id}`);
+    if (ATIVAR.has(evento)) {
+      const preco = dados?.purchase?.price || {};
+      const comissao = (Array.isArray(dados?.commissions) ? dados.commissions : []).find(c => String(c?.source || '').toUpperCase() === 'PRODUCER');
+      if (!(await rec.get()).exists) {
+        await rec.set({
+          origem: 'hotmart', metodo: 'hotmart', email, transacao,
+          valor: Number(preco.value) || 0, moeda: String(preco.currency_value || preco.currency_code || 'EUR'),
+          liquido: comissao ? Number(comissao.value) || 0 : null,
+          data: new Date().toISOString().slice(0, 10), faturado: false, reembolsado: false,
+          criadoEm: FieldValue.serverTimestamp()
+        });
+      }
+    } else if (evento === 'PURCHASE_REFUNDED' || evento === 'PURCHASE_CHARGEBACK') {
+      const s = await rec.get();
+      if (s.exists) await rec.update({ reembolsado: true });
+    }
+
     // 1.º pelo identificador que o botão da app junta ao link (sck); 2.º pelo email do comprador.
     const sck = String(dados?.purchase?.origin?.sck || dados?.purchase?.sck || '').trim();
     let q = null;
@@ -55,6 +74,7 @@ exports.hotmartWebhook = onRequest({ cors: false }, async (req, res) => {
 
     const t = q.docs[0];
     registo.tenantId = t.id;
+    if (ATIVAR.has(evento)) { try { await rec.update({ tenantId: t.id, nome: t.data().businessName || t.data().ownerEmail || '' }); } catch (e) { console.warn('receita sem conta ligada', e); } }
     if (ATIVAR.has(evento)) {
       await t.ref.update({
         status: 'active',

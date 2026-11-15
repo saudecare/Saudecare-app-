@@ -50,6 +50,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Receitas da Vindora (pagamentos das subscrições) — só o administrador da plataforma.
+    match /platform_receitas/{id} {
+      allow read, write: if isPlatformAdmin();
+    }
+
     match /settings/{settingId} {
       // Só os documentos que a app realmente lê. Qualquer outro (segredos incluídos) fica fechado.
       allow read: if settingId == 'platformConfig' ||
