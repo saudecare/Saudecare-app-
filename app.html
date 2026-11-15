@@ -307,7 +307,11 @@
         <option value="osteopatia">Osteopatia / Quiropraxia</option>
         <option value="enfermagem">Enfermagem</option>
         <option value="massagem">Massagem</option>
-        <option value="terapias">Terapias holísticas (Reiki, radiestesia…)</option>
+        <option value="reiki">Reiki</option>
+        <option value="reflexologia">Reflexologia</option>
+        <option value="aromaterapia">Aromaterapia</option>
+        <option value="radiestesia">Radiestesia / radiónica / pêndulo</option>
+        <option value="terapias">Outras terapias holísticas</option>
         <option value="naturopatia">Naturopatia</option>
         <option value="outra">Outra área</option>
       </select>
@@ -397,17 +401,17 @@
 <div id="toast"></div>
 
 <script type="module" src="pe-carregador.js"></script>
-<script type="module" src="cg-imagens.js?v=2026-11-12-8"></script>
-<script type="module" src="consulta-guiada.js?v=2026-11-15-5"></script>
+<script type="module" src="cg-imagens.js?v=2026-11-15-6"></script>
+<script type="module" src="consulta-guiada.js?v=2026-11-15-6"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
 import { aplicarCorMarca } from './marca.js';
 import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
-import { iniciarFinancas } from './financas.js?v=2026-11-15-5';
-import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-5';
-import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-5';
+import { iniciarFinancas } from './financas.js?v=2026-11-15-6';
+import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-6';
+import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-6';
 import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
 import { corpoMensagem as reikiCorpoMsg, escolherFoto as reikiEscolherFoto } from './reiki-midia-chat.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -425,7 +429,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-15-5';
+const APP_VERSION = '2026-11-15-6';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1394,6 +1398,10 @@ const AREAS_VINDORA = {
   osteopatia:   { nome:'Osteopatia', icon:'🙌', tag:'Osteopatia e bem-estar do corpo', cat:'Osteopatia', serv:[['Primeira consulta',60,50],['Sessão de osteopatia',45,40]] },
   enfermagem:   { nome:'Enfermagem', icon:'💉', tag:'Cuidados de enfermagem', cat:'Enfermagem', serv:[['Consulta de enfermagem',30,25],['Tratamento / penso',30,20]] },
   massagem:     { nome:'Massagem', icon:'💆', tag:'Massagem e relaxamento', cat:'Massagem', serv:[['Massagem de relaxamento',60,40],['Massagem terapêutica',45,35],['Pack 3 massagens',60,105,3]] },
+  reiki:        { nome:'Reiki', icon:'🌿', tag:'Reiki e equilíbrio energético', cat:'Reiki', serv:[['Sessão de Reiki',60,40],['Sessão de acompanhamento',45,35],['Pack 3 sessões',60,105,3]] },
+  reflexologia: { nome:'Reflexologia', icon:'🦶', tag:'Reflexologia podal e bem-estar', cat:'Reflexologia', serv:[['Sessão de reflexologia podal',60,40],['Sessão de acompanhamento',45,35],['Pack 4 sessões',60,140,4]] },
+  aromaterapia: { nome:'Aromaterapia', icon:'🌸', tag:'Aromaterapia e óleos essenciais', cat:'Aromaterapia', serv:[['Consulta de aromaterapia',60,40],['Massagem aromática',60,45],['Mistura personalizada',30,20]] },
+  radiestesia:  { nome:'Radiestesia e radiónica', icon:'🎯', tag:'Radiestesia, radiónica e pêndulo', cat:'Radiestesia', serv:[['Sessão de radiestesia',60,40],['Sessão à distância',45,35]] },
   terapias:     { nome:'Terapias holísticas', icon:'✨', tag:'Bem-estar e equilíbrio', cat:'Terapias', serv:[['Primeira sessão',60,40],['Sessão de acompanhamento',50,35],['Pack 3 sessões',50,90,3]] },
   naturopatia:  { nome:'Naturopatia', icon:'🌿', tag:'Naturopatia e saúde natural', cat:'Naturopatia', serv:[['Consulta de naturopatia',60,45],['Consulta de seguimento',40,30]] },
   outra:        { nome:'Consultório', icon:'🩺', tag:'Saúde e bem-estar', cat:'Consultas', serv:[['Primeira consulta',60,40],['Consulta de acompanhamento',45,35]] }
@@ -1437,9 +1445,11 @@ async function autoSetupSubscritor(){
     const profile = { ...(t.profile || {}) };
     if (!profile.tagline) profile.tagline = A.tag + (cidade ? ' em ' + cidade : '');
     if (!profile.about) profile.about = `${nome ? 'Sou ' + nome + '. ' : ''}Bem-vindo(a) a ${t.businessName}. Aqui encontra ${A.nome.toLowerCase()} com acompanhamento próximo e atenção a cada pessoa. Marque a sua consulta online em poucos passos.`;
-    await updateDoc(doc(db, 'tenants', tenantId), { availability, profile, autoSetupDone: true });
+    const AREA_MODELOS_DE = { fisioterapia:['fisio'], osteopatia:['fisio'], massagem:['massagem'], psicologia:['psicologia'], nutricao:['nutricao'], naturopatia:['nutricao'], reiki:['reiki'], terapias:['reiki'], reflexologia:['reflexologia'], aromaterapia:['aromaterapia'], radiestesia:['radiestesia'] };
+    const areaTrabalho = (Array.isArray(t.areaTrabalho) && t.areaTrabalho.length) ? t.areaTrabalho : (AREA_MODELOS_DE[t.area] || []);
+    await updateDoc(doc(db, 'tenants', tenantId), { availability, profile, areaTrabalho, autoSetupDone: true });
     try{ await setDoc(doc(db, 'public_tenant_profiles', t.slug), { availability }, { merge: true }); }catch(e){}
-    currentTenantDoc = { ...t, availability, profile, autoSetupDone: true };
+    currentTenantDoc = { ...t, availability, profile, areaTrabalho, autoSetupDone: true };
     toast('Tudo pronto! Criámos a tua página, os teus serviços e o teu horário. Podes editar tudo.');
   }catch(e){ console.warn('Criação automática incompleta', e); }
 }
@@ -7210,7 +7220,10 @@ const AREAS_MODELOS = [
   ['fisio', '🦴 Fisioterapia & osteopatia'],
   ['reiki', '🌿 Reiki & terapias energéticas'],
   ['nutricao', '🥗 Nutrição & bem-estar alimentar'],
-  ['estetica', '✨ Estética & cuidados do corpo']
+  ['estetica', '✨ Estética & cuidados do corpo'],
+  ['reflexologia', '🦶 Reflexologia'],
+  ['aromaterapia', '🌸 Aromaterapia & óleos essenciais'],
+  ['radiestesia', '🎯 Radiestesia & radiónica']
 ];
 (function(){
   const mk = (title, description, qs) => ({ title, description, areas: [], questions: qs });
@@ -7235,6 +7248,33 @@ const AREAS_MODELOS = [
     { type: 'text', label: 'Tem pessoas de confiança a quem recorre quando precisa?' },
     { type: 'text', label: 'Toma alguma medicação ou tem acompanhamento médico? (qual)' }
   ]); t.areas = ['psicologia']; f.push(t);
+  t = mk('Reflexologia — avaliação inicial', 'Para preencher antes da primeira sessão de reflexologia podal.', [
+    { type: 'text', label: 'Nome completo' },
+    { type: 'text', label: 'O que o/a traz à sessão?' },
+    { type: 'multiple_choice', label: 'Está grávida?', options: ['Não', 'Sim', 'Não se aplica'] },
+    { type: 'multiple_choice', label: 'Tem diabetes, trombose ou problemas de circulação nas pernas?', options: ['Não', 'Sim'] },
+    { type: 'text', label: 'Tem feridas, micoses, verrugas ou lesões nos pés? (onde)' },
+    { type: 'multiple_choice', label: 'Que pressão prefere?', options: ['Suave', 'Média', 'Firme'] },
+    { type: 'text', label: 'Toma medicação? (qual)' },
+    { type: 'text', label: 'Algo mais que devamos saber?' }
+  ]); t.areas = ['reflexologia']; f.push(t);
+  t = mk('Aromaterapia — avaliação e segurança', 'Para preencher antes da primeira consulta de aromaterapia.', [
+    { type: 'text', label: 'Nome completo' },
+    { type: 'text', label: 'O que procura com a aromaterapia?' },
+    { type: 'text', label: 'Alergias (óleos, perfumes, frutos secos, plantas…)' },
+    { type: 'multiple_choice', label: 'Está grávida ou a amamentar?', options: ['Não', 'Sim'] },
+    { type: 'multiple_choice', label: 'Tem asma, epilepsia ou hipertensão?', options: ['Não', 'Sim'] },
+    { type: 'multiple_choice', label: 'Tem crianças pequenas ou animais em casa?', options: ['Não', 'Sim'] },
+    { type: 'text', label: 'Aromas de que gosta e de que não gosta' },
+    { type: 'text', label: 'Já usa óleos essenciais? (quais e como)' }
+  ]); t.areas = ['aromaterapia']; f.push(t);
+  t = mk('Radiestesia / radiónica — pedido da pesquisa', 'Para a pessoa indicar o que pretende pesquisar.', [
+    { type: 'text', label: 'Nome completo' },
+    { type: 'text', label: 'Qual é o tema ou a questão que gostaria de ver?' },
+    { type: 'text', label: 'Há quanto tempo se passa e o que já tentou?' },
+    { type: 'multiple_choice', label: 'Compreende que este é um trabalho complementar e que não substitui acompanhamento médico?', options: ['Sim, compreendo'] },
+    { type: 'text', label: 'Algo mais que devamos saber?' }
+  ]); t.areas = ['radiestesia']; f.push(t);
   t = mk('Fisioterapia/Osteopatia — dor e mobilidade', 'Avaliação inicial de queixas e limitações.', [
     { type: 'text', label: 'Nome completo' },
     { type: 'text', label: 'Onde sente dor ou limitação?' },
@@ -7301,6 +7341,27 @@ const AREAS_MODELOS = [
       ['Áreas trabalhadas e perceções', 'Posições usadas e o que foi sentido ou observado.'],
       ['Estado depois da sessão', 'Como a pessoa se sente no fim.'],
       ['Recomendações', 'Repouso, hidratação, periodicidade sugerida.']
+    ]),
+    mp('Reflexologia podal — registo da sessão', 'reflexologia', [
+      ['Motivo e estado ao chegar', 'Como a pessoa chega e o que procura.'],
+      ['Zonas sensíveis nos pés (E / D)', 'Onde encontrou sensibilidade, tensão ou textura diferente.'],
+      ['Zonas trabalhadas', 'Quais e durante quanto tempo.'],
+      ['Reação durante a sessão', 'Conforto, relaxamento, sensações.'],
+      ['Cuidados e próxima sessão', 'Hidratação, repouso e periodicidade.']
+    ]),
+    mp('Aromaterapia — consulta e mistura', 'aromaterapia', [
+      ['Objetivo da pessoa', 'O que procura (relaxar, dormir, energia…).'],
+      ['Segurança confirmada', 'Gravidez, alergias, asma, crianças e animais em casa.'],
+      ['Óleos escolhidos e diluição', 'Quais, em que quantidade e para que serve cada um.'],
+      ['Modo de uso combinado', 'Difusão, massagem, inalação; quando e quantas vezes.'],
+      ['Reavaliação', 'O que acompanhar e quando voltar.']
+    ]),
+    mp('Radiestesia / radiónica — registo da pesquisa', 'radiestesia', [
+      ['Questão ou tema', 'O que se pesquisou, nas palavras da pessoa.'],
+      ['Resultado no gráfico', 'Valores ou setores indicados.'],
+      ['Trabalho feito', 'O que foi aplicado e durante quanto tempo.'],
+      ['Observações', 'Notas do terapeuta.'],
+      ['Recomendações', 'O que a pessoa deve fazer a seguir.']
     ]),
     mp('Nutrição — estrutura da consulta', 'nutricao', [
       ['Objetivo e motivação', 'O que a pessoa quer alcançar e porquê agora.'],

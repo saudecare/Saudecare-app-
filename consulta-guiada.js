@@ -104,6 +104,95 @@ const MODELO_FREQUENCIA = () => {
   ];
 };
 
+
+// ─── Modelos por área (pontos de partida editáveis; o conteúdo é genérico e o profissional ajusta ao seu método) ───
+const _pt = (label, x, y, tema, pergunta, tratamento, cor) => ({ id: uid(), label, x, y, cor: cor || '#dc2626', tema, pergunta, exemplos: [], extra: '', tratamento: tratamento || [], afirmacao: '' });
+const _op = (label, tema, tratamento) => ({ id: uid(), label, tema: tema || '', pergunta: '', exemplos: [], extra: '', tratamento: tratamento || [], afirmacao: '' });
+
+const MODELO_REFLEXOLOGIA = () => {
+  const zonas = [
+    ['Cabeça e cérebro', 108, 100, 'Zona do dedo grande.', 'Dores de cabeça, tensão mental?'],
+    ['Seios nasais', 70, 100, 'Pontas dos outros dedos.', 'Congestão ou pressão na face?'],
+    ['Olhos e ouvidos', 80, 135, 'Base dos dedos.', 'Cansaço visual ou zumbidos?'],
+    ['Pescoço e garganta', 106, 138, 'Base do dedo grande.', 'Tensão no pescoço?'],
+    ['Ombros', 62, 172, 'Zona externa, junto aos dedos.', 'Sobrecarga nos ombros?'],
+    ['Pulmões e peito', 88, 178, 'Almofada do pé.', 'Respiração curta ou aperto?'],
+    ['Estômago', 100, 215, 'Zona interna, a meio.', 'Digestão pesada?'],
+    ['Rins', 90, 248, 'Centro do pé.', 'Retenção de líquidos?'],
+    ['Intestinos', 85, 292, 'Parte baixa do arco.', 'Trânsito intestinal regular?'],
+    ['Bexiga', 108, 312, 'Borda interna, junto ao calcanhar.', 'Desconforto urinário?'],
+    ['Coluna', 114, 235, 'Borda interna do pé.', 'Dor ou rigidez nas costas?'],
+    ['Nervo ciático', 78, 352, 'Centro do calcanhar.', 'Dor que desce pela perna?']
+  ];
+  const pts = [];
+  zonas.forEach(z => { pts.push(_pt(z[0] + ' (E)', z[1], z[2], z[3], z[4], ['Pressão suave e circular durante 30 a 60 segundos.', 'Observe a sensibilidade.'], '#dc2626')); });
+  zonas.forEach(z => { pts.push(_pt(z[0] + ' (D)', 300 - z[1], z[2], z[3], z[4], ['Pressão suave e circular durante 30 a 60 segundos.', 'Observe a sensibilidade.'], '#2563eb')); });
+  pts.forEach(p => { p.x = Math.round(p.x / 3 * 10) / 10; p.y = Math.round(p.y / 4 * 10) / 10; });
+  pts.push(_pt('Coração (E)', 24, 50, 'Só no pé esquerdo.', '', ['Pressão muito suave.'], '#dc2626'));
+  pts.push(_pt('Fígado (D)', 76, 51, 'Só no pé direito.', '', ['Pressão suave e sustentada.'], '#2563eb'));
+  return [
+    { ...passoNovo('pergunta'), title: 'Motivo da sessão', qtype: 'text' },
+    { ...passoNovo('pergunta'), title: 'Como se sente hoje? (0 a 10)', qtype: 'scale' },
+    { ...passoNovo('pergunta'), title: 'Contraindicações a confirmar', qtype: 'multi', options: ['Gravidez', 'Trombose ou má circulação nos pés', 'Feridas, infeções ou micoses nos pés', 'Diabetes com perda de sensibilidade', 'Nenhuma das anteriores'], help: 'Edite a lista conforme a sua formação.' },
+    { ...passoNovo('mapa'), title: 'Zonas sensíveis nas plantas dos pés', fundo: 'plantaPes', multi: true, help: 'Toque nas zonas em que encontrou sensibilidade, tensão ou textura diferente. Pode mudar os nomes e mover os pontos.', points: pts },
+    { ...passoNovo('tratpontos'), title: 'Trabalho nas zonas encontradas', segundos: 60 },
+    { ...passoNovo('instrucao'), title: 'Cuidados depois da sessão', texto: 'Beber água ao longo do dia.\nDescansar e evitar esforços intensos nas próximas horas.\nRegistar como se sente nos próximos dias.', noPlano: false },
+    { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: true }
+  ];
+};
+
+const MODELO_AROMATERAPIA = () => ([
+  { ...passoNovo('pergunta'), title: 'O que procura com a aromaterapia?', qtype: 'text' },
+  { ...passoNovo('pergunta'), title: 'Como se sente hoje? (0 a 10)', qtype: 'scale' },
+  { ...passoNovo('pergunta'), title: 'Contraindicações e alergias a confirmar', qtype: 'multi', options: ['Gravidez ou amamentação', 'Epilepsia', 'Asma ou alergias respiratórias', 'Pele muito sensível ou alergias a óleos/perfumes', 'Hipertensão', 'Crianças pequenas ou animais em casa', 'Nenhuma das anteriores'], help: 'Edite conforme a sua formação. Alguns óleos exigem cuidados especiais nestes casos.' },
+  { ...passoNovo('escolha'), title: 'Intenção da sessão', multi: true, help: 'Escolha o que a pessoa procura. Cada opção pode ter o seu texto.', options: [
+    _op('Relaxar e reduzir o stress', 'Ambiente calmo e respiração lenta.', ['Difusão ou massagem suave', 'Sessão em ambiente tranquilo']),
+    _op('Dormir e descansar melhor', 'Rotina de preparação para o sono.', ['Difusão 30 minutos antes de deitar', 'Evitar ecrãs na última hora']),
+    _op('Energia e concentração', 'Estimular de manhã ou antes de tarefas.', ['Difusão durante o trabalho']),
+    _op('Tensão muscular', 'Massagem localizada.', ['Massagem suave na zona', 'Compressa morna depois']),
+    _op('Conforto respiratório', 'Inalação suave.', ['Inalação ou difusão curta'])
+  ] },
+  { ...passoNovo('escolha'), title: 'Óleos essenciais escolhidos', multi: true, help: 'Escreva em cada óleo a diluição e o modo de uso que usa. Confirme sempre as contraindicações de cada óleo.', options: [
+    _op('Lavanda', 'Calmante e equilibrante.', ['Diluição: ___ %', 'Modo de uso: ___']),
+    _op('Laranja-doce', 'Aroma fresco e acolhedor.', ['Diluição: ___ %', 'Modo de uso: ___']),
+    _op('Camomila-romana', 'Suave e reconfortante.', ['Diluição: ___ %', 'Modo de uso: ___']),
+    _op('Hortelã-pimenta', 'Fresco e estimulante.', ['Diluição: ___ %', 'Modo de uso: ___']),
+    _op('Eucalipto', 'Fresco e desobstruente.', ['Diluição: ___ %', 'Modo de uso: ___']),
+    _op('Outro óleo (mude o nome)', '', ['Diluição: ___ %', 'Modo de uso: ___'])
+  ] },
+  { ...passoNovo('tratpontos'), title: 'Receita da mistura', segundos: 0, help: 'Mostra cada óleo escolhido com a diluição e o modo de uso.' },
+  { ...passoNovo('instrucao'), title: 'Cuidados de segurança', texto: 'Não aplicar óleos essenciais puros na pele.\nEvitar contacto com olhos e mucosas.\nGuardar longe do alcance de crianças e animais.\nSuspender o uso se aparecer irritação e falar com o terapeuta.', noPlano: false },
+  { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: true }
+]);
+
+const MODELO_RADIESTESIA = () => {
+  const ptsSemi = [];
+  for (let i = 0; i <= 10; i++) { const th = Math.PI * (1 - i / 10); const x = 160 + 115 * Math.cos(th), y = 170 - 115 * Math.sin(th); ptsSemi.push(_pt((i * 10) + '%', Math.round(x / 3.2 * 10) / 10, Math.round(y / 1.9 * 10) / 10, '', '', [], '#2563eb')); }
+  const ptsRoda = [];
+  for (let k = 0; k < 12; k++) { const a = (-75 + 30 * k) * Math.PI / 180; ptsRoda.push(_pt('Setor ' + (k + 1) + ' (mude o nome)', Math.round((150 + 85 * Math.cos(a)) / 3 * 10) / 10, Math.round((150 + 85 * Math.sin(a)) / 3 * 10) / 10, 'Escreva o que este setor significa no seu método.', 'Que pergunta faz?', ['Como trabalhar este setor: ___'], '#7c3aed')); }
+  return [
+    { ...passoNovo('pergunta'), title: 'Qual é a questão ou o tema da pesquisa?', qtype: 'text' },
+    { ...passoNovo('mapa'), title: 'Gráfico de percentagem', fundo: 'semicirculo', multi: false, help: 'Toque no valor indicado pelo pêndulo. Pode renomear os pontos (ex.: níveis, intensidades) ou usar a sua própria imagem de gráfico.', points: ptsSemi },
+    { ...passoNovo('mapa'), title: 'Roda de setores', fundo: 'rodaRadiestesia', multi: true, help: 'Toque nos setores assinalados. Mude os nomes para os que usa (áreas da vida, órgãos, causas…).', points: ptsRoda },
+    { ...passoNovo('tratpontos'), title: 'Trabalho nos setores encontrados', segundos: 120 },
+    { ...passoNovo('instrucao'), title: 'Recomendações para casa', texto: 'Beber água ao longo do dia.\nDescansar.\nRegistar como se sente nos próximos dias.', noPlano: false },
+    { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: true }
+  ];
+};
+const MODELOS_AREA = {
+  reflexologia: ['Reflexologia podal', MODELO_REFLEXOLOGIA],
+  aromaterapia: ['Aromaterapia', MODELO_AROMATERAPIA],
+  radiestesia: ['Radiestesia / radiónica (gráficos)', MODELO_RADIESTESIA]
+};
+window.cgModeloArea = async (chave) => {
+  const m = MODELOS_AREA[chave]; if (!m) return;
+  if (CG.steps.length && !(window.confirmar ? await window.confirmar('Isto substitui os passos que já tem nesta consulta. Continuar?') : false)) return;
+  CG.steps = m[1](); CG.aberto = null;
+  const nome = document.getElementById('protoName'); if (nome && !nome.value.trim()) nome.value = m[0];
+  cgRefresh();
+};
+const botoesModelosArea = () => Object.entries(MODELOS_AREA).map(([k, m]) => `<button class="ghost" style="text-align:left;" onclick="cgModeloArea('${k}')">✨ ${m[0]}</button>`).join('');
+
 // Itens (pontos ou opções) marcados nos passos anteriores ao passo número `ate`.
 function itensEncontrados(proto, resp, ate) {
   const lista = [];
@@ -158,14 +247,14 @@ function mapaHtml(s, modo, sel, destaque) {
     return `<div ${ev} style="${estilo}">${n + 1}</div>`;
   }).join('');
   const uri = fundoUri(s);
-  return `<div class="cgMapa" data-sid="${s.id}" style="position:relative;display:block;width:100%;max-width:${s.fundo === 'custom' ? (modo === 'doc' ? 230 : 300) : (modo === 'doc' ? 150 : 220)}px;margin:8px auto;line-height:0;${modo === 'edit' ? 'touch-action:none;' : ''}">
+  return `<div class="cgMapa" data-sid="${s.id}" style="position:relative;display:block;width:100%;max-width:${s.fundo === 'custom' ? (modo === 'doc' ? 230 : 300) : (['plantaPes', 'maos', 'rodaRadiestesia', 'semicirculo', 'quadroBranco'].includes(s.fundo) ? (modo === 'doc' ? 260 : 340) : (modo === 'doc' ? 150 : 220))}px;margin:8px auto;line-height:0;${modo === 'edit' ? 'touch-action:none;' : ''}">
     ${uri ? `<img src="${esc(uri)}" alt="" style="width:100%;display:block;border-radius:10px;background:#fff;border:1px solid #e2e8f0;" draggable="false">` : '<div style="padding:30px;text-align:center;line-height:1.4;" class="muted">Escolha uma imagem.</div>'}${dots}</div>`;
 }
 
 function editorMapa(s) {
   const f = (v, n) => `<option value="${v}" ${s.fundo === v ? 'selected' : ''}>${n}</option>`;
   const sel = (s.points || []).find(p => p.id === CG.ponto);
-  return campo('Imagem de fundo', `<select onchange="cgSet('${s.id}','fundo',this.value,true)">${f('corpoFrente', 'Corpo humano — frente')}${f('corpoCostas', 'Corpo humano — costas')}${f('chakras', 'Corpo com os 7 chakras e as suas cores')}${f('esqueletoFrente', 'Esqueleto (ossos) — frente')}${f('esqueletoCostas', 'Esqueleto (ossos) — costas')}${f('musculosFrente', 'Músculos — frente')}${f('musculosCostas', 'Músculos — costas')}${f('musculosTendoesFrente', 'Músculos e tendões — frente')}${f('musculosTendoesCostas', 'Músculos e tendões — costas')}${f('orgaosFrente', 'Órgãos internos — frente')}${f('glandulasFrente', 'Glândulas endócrinas — frente')}${f('custom', 'A minha imagem')}</select>`) +
+  return campo('Imagem de fundo', `<select onchange="cgSet('${s.id}','fundo',this.value,true)">${f('corpoFrente', 'Corpo humano — frente')}${f('corpoCostas', 'Corpo humano — costas')}${f('chakras', 'Corpo com os 7 chakras e as suas cores')}${f('esqueletoFrente', 'Esqueleto (ossos) — frente')}${f('esqueletoCostas', 'Esqueleto (ossos) — costas')}${f('musculosFrente', 'Músculos — frente')}${f('musculosCostas', 'Músculos — costas')}${f('musculosTendoesFrente', 'Músculos e tendões — frente')}${f('musculosTendoesCostas', 'Músculos e tendões — costas')}${f('orgaosFrente', 'Órgãos internos — frente')}${f('glandulasFrente', 'Glândulas endócrinas — frente')}${f('plantaPes', 'Plantas dos pés (esquerdo e direito)')}${f('maos', 'Mãos (palmas)')}${f('orelha', 'Orelha')}${f('rosto', 'Rosto')}${f('rodaRadiestesia', 'Roda com 12 setores (radiestesia / radiónica)')}${f('semicirculo', 'Semicírculo 0–100 (radiestesia)')}${f('quadroBranco', 'Quadro em branco com grelha')}${f('custom', 'A minha imagem')}</select>`) +
     (s.fundo === 'custom' ? campo('Endereço da imagem', `<input id="cgImg_${s.id}" value="${esc(s.imagem)}" onchange="cgSet('${s.id}','imagem',this.value,true)" placeholder="https://...">`) + (window.imageUploadFieldHTML ? window.imageUploadFieldHTML(`cgImg_${s.id}`, `tenants/${window.tenantId ? window.tenantId() : 'x'}/protocols`) : '') : '') +
     `<label style="display:flex;gap:8px;align-items:center;margin-top:8px;"><input type="checkbox" style="width:auto;margin:0;" ${s.multi ? 'checked' : ''} onchange="cgSet('${s.id}','multi',this.checked)"> Pode marcar vários pontos</label>` +
     `<div class="muted" style="margin-top:8px;">👆 Toque na imagem para <b>adicionar um ponto</b>. Arraste um ponto para o mover.</div>` +
@@ -258,7 +347,7 @@ function cgHtmlConstrutor() {
         <li>No fim, a app junta tudo e gera sozinha o <b>relatório</b>, o <b>plano em casa</b> e a <b>comparação</b> entre consultas.</li>
       </ol></details>
     ${CG.steps.length ? CG.steps.map(editorPasso).join('') : `<div class="card" style="background:#f6f8f7;"><p class="muted">Ainda não há passos. Comece por um modelo e mude o que quiser, ou monte tudo de raiz.</p><button class="ghost" style="width:100%;margin-bottom:8px;" onclick="cgModelo2()">✨ Modelo base: pesquisa por pontos no corpo (editável)</button>
-      <button class="ghost" style="width:100%;margin-top:8px;" onclick="cgModelo3()">✨ Modelo completo em branco (qualquer terapia ou profissão)</button><button class="ghost" style="width:100%;" onclick="cgModelo()">✨ Modelo simples (perguntas + tratamento)</button></div>`}
+      <button class="ghost" style="width:100%;margin-top:8px;" onclick="cgModelo3()">✨ Modelo completo em branco (qualquer terapia ou profissão)</button><div style="display:grid;gap:8px;margin:8px 0;">${botoesModelosArea()}</div><button class="ghost" style="width:100%;" onclick="cgModelo()">✨ Modelo simples (perguntas + tratamento)</button></div>`}
     <details style="margin-top:10px;" ${CG.steps.length ? '' : 'open'}><summary style="cursor:pointer;font-weight:700;color:var(--primary);">🪄 Montar com o assistente</summary>
     <div class="card" style="margin-top:8px;background:#f6f4fb;">
       <p class="muted" style="margin:0 0 8px;">Conte como é a sua consulta e o assistente propõe os passos. É só um rascunho: reveja, mude e acrescente o que quiser antes de guardar. ${CG.steps.length ? '<strong>Atenção:</strong> substitui os passos que já tem aqui.' : ''}</p>
@@ -266,7 +355,7 @@ function cgHtmlConstrutor() {
       <label>Como é a consulta?</label><textarea id="cgAsDesc" rows="4" placeholder="ex: Primeira consulta de massagem terapêutica: pergunto o motivo, zonas de dor, contraindicações, faço a massagem e dou 2 exercícios para casa."></textarea>
       <button class="primary" id="cgAsBtn" style="margin-top:8px;" onclick="cgAssistente()">✨ Montar rascunho</button>
     </div></details>
-    ${CG.steps.length ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;color:var(--primary);">📚 Modelos prontos (substituem os passos atuais)</summary><div style="display:grid;gap:8px;margin-top:8px;"><button class="ghost" style="text-align:left;" onclick="cgModelo2()">✨ Pesquisa por pontos no corpo</button> <button class="ghost" onclick="cgModelo3()">✨ Modelo completo em branco</button><button class="ghost" style="text-align:left;" onclick="cgModelo()">✨ Modelo simples</button></div></details>` : ''}
+    ${CG.steps.length ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;color:var(--primary);">📚 Modelos prontos (substituem os passos atuais)</summary><div style="display:grid;gap:8px;margin-top:8px;"><button class="ghost" style="text-align:left;" onclick="cgModelo2()">✨ Pesquisa por pontos no corpo</button> <button class="ghost" onclick="cgModelo3()">✨ Modelo completo em branco</button>${botoesModelosArea()}<button class="ghost" style="text-align:left;" onclick="cgModelo()">✨ Modelo simples</button></div></details>` : ''}
     <details style="margin-top:10px;" ${CG.steps.length ? '' : 'open'}><summary style="cursor:pointer;font-weight:700;color:var(--primary);">➕ Adicionar um passo</summary>
     <div style="display:grid;gap:8px;margin-top:8px;">${botoes}</div></details>`;
 }
