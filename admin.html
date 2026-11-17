@@ -127,7 +127,7 @@ const ESTADOS = { pending_activation:'Por ativar', trial:'Em teste', active:'Ati
 const PLANOS = ['vindora','start','grow','pro','enterprise','lifetime'];
 const PLANO_PADRAO = { vindora:{staff:10,kbBytes:200*MB,portalPatients:1000,price:15}, start:{staff:1,kbBytes:5*MB,portalPatients:10}, grow:{staff:3,kbBytes:25*MB,portalPatients:50}, pro:{staff:8,kbBytes:100*MB,portalPatients:200}, enterprise:{staff:20,kbBytes:500*MB,portalPatients:1000} };
 
-let R = [], rAno = new Date().getFullYear(), rTri = 0, T = [], P = [], PLANS = {}, CFG = {}, aba = 'geral', filtro = 'todos', busca = '', ordem = 'recentes';
+let PAYM = {}, BILL = {}, R = [], rAno = new Date().getFullYear(), rTri = 0, T = [], P = [], PLANS = {}, CFG = {}, aba = 'geral', filtro = 'todos', busca = '', ordem = 'recentes';
 
 // ── Entrada ────────────────────────────────────────────────────────────
 $('btnEntrar').onclick = async () => { $('lgErro').textContent = ''; try{ await signInWithEmailAndPassword(auth, $('lgEmail').value.trim(), $('lgPass').value); }catch(e){ $('lgErro').textContent = 'Email ou palavra-passe incorretos.'; } };
@@ -155,6 +155,9 @@ async function carregar(){
     try{ R = (await getDocs(collection(db, 'platform_receitas'))).docs.map(d => ({ id: d.id, ...d.data() })); }catch(e){ console.warn('receitas', e); R = []; }
     P = ps.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (ms(b.createdAt)||0) - (ms(a.createdAt)||0));
     PLANS = pl.exists() ? pl.data() : {}; CFG = cf.exists() ? cf.data() : {};
+    try{ const pm = await getDoc(doc(db, 'settings', 'paymentManual')); PAYM = pm.exists() ? pm.data() : {}; }catch(e){ PAYM = {}; }
+    if (CFG.iban || CFG.mbway){ PAYM = { iban: PAYM.iban || CFG.iban || '', mbway: PAYM.mbway || CFG.mbway || '', ...PAYM }; }
+    try{ BILL = {}; await Promise.all(T.map(async t => { try{ const b = await getDoc(doc(db, 'tenants', t.id, 'billing', 'manual')); if (b.exists()) BILL[t.id] = b.data(); }catch(e){} })); }catch(e){}
   }catch(e){ console.error(e); toast('Não foi possível carregar: ' + (e.message||''), true); }
   desenhar();
 }
@@ -291,6 +294,7 @@ function abrirDetalhe(id){
     </div>
 
     <div class="card"><h3>Permissões extra</h3>
+      <div class="sw"><input type="checkbox" id="dManual" ${BILL[t.id]?.enabled ? 'checked' : ''}><label for="dManual" style="margin:0;color:var(--ink);">Mostrar MB WAY / transferência a este subscritor (pagamento manual, fora da Hotmart)</label></div>
       <div class="sw"><input type="checkbox" id="dFao" ${fao.active?'checked':''}><label for="dFao" style="margin:0;color:var(--ink);">Acesso total manual (todas as funcionalidades, sem limites do plano)</label></div>
       <label>Acesso total válido até (vazio = para sempre)</label><input id="dFaoAte" type="date" value="${iso(fao.expiresAt)}">
       <div class="two" style="margin-top:4px;">
@@ -341,6 +345,12 @@ async function guardar(){
   document.querySelectorAll('[data-mod]').forEach(c => { if (c.checked !== (mods[c.dataset.mod] === true)){ mods[c.dataset.mod] = c.checked; modMudou = true; } });
   if (modMudou) upd.modulos = mods;
   const notas = $('dNotas').value.trim(); if (notas !== (t.adminNotes||'')) upd.adminNotes = notas || deleteField();
+  const man = $('dManual').checked, manAntes = !!BILL[t.id]?.enabled;
+  if (man !== manAntes){
+    if (man){ const d = { enabled: true, iban: PAYM.iban || '', mbway: PAYM.mbway || '', contactEmail: CFG.contactEmail || 'vindoraportugal@gmail.com' }; await setDoc(doc(db, 'tenants', t.id, 'billing', 'manual'), d); BILL[t.id] = d; }
+    else { await deleteDoc(doc(db, 'tenants', t.id, 'billing', 'manual')); delete BILL[t.id]; }
+    if (!Object.keys(upd).length){ toast(man ? 'Pagamento manual ativado para este subscritor.' : 'Pagamento manual desativado.'); return; }
+  }
   if (!Object.keys(upd).length){ toast('Nada para guardar.'); return; }
   await updateDoc(doc(db, 'tenants', t.id), upd);
   toast('Guardado.'); await carregar(); abrirDetalhe(t.id);
@@ -376,8 +386,9 @@ function vPlanos(){
       <p class="muted" style="margin-top:0;">Isto é o que os subscritores veem em "Plano & Estado" e no registo.</p>
       <label>Dias de teste gratuito</label><input id="cTrial" type="number" min="0" value="${CFG.trialDays ?? ''}" placeholder="7">
       <label>Preço mensal do plano Vindora (€)</label><input id="cPreco" type="number" min="0" step="0.01" value="${CFG.precoMensal ?? 15}" placeholder="15">
-      <label>IBAN</label><input id="cIban" value="${esc(CFG.iban||'')}">
-      <label>MB Way</label><input id="cMbway" value="${esc(CFG.mbway||'')}">
+      <p class="muted" style="margin:8px 0 0;">🔒 IBAN e MB Way são <b>privados</b>: o público só vê a Hotmart. Só aparecem a subscritores a quem ativares o pagamento manual na ficha deles.</p>
+      <label>IBAN (privado)</label><input id="cIban" value="${esc(PAYM.iban||'')}">
+      <label>MB Way (privado)</label><input id="cMbway" value="${esc(PAYM.mbway||'')}">
       <label>Link de pagamento automático (Hotmart)</label><input id="cHot" value="${esc(CFG.hotmartLink||'')}">
       <label>Email de contacto para comprovativos</label><input id="cMail" value="${esc(CFG.contactEmail||'')}" placeholder="vindoraportugal@gmail.com">
       <div class="row" style="margin-top:10px;"><button data-act="gcfg">💾 Guardar</button></div>
@@ -398,7 +409,8 @@ async function gPlanos(){
 }
 async function gCfg(){
   const d = $('cTrial').value.trim();
-  const out = { iban: $('cIban').value.trim(), mbway: $('cMbway').value.trim(), hotmartLink: $('cHot').value.trim(), contactEmail: $('cMail').value.trim() };
+  await setDoc(doc(db, 'settings', 'paymentManual'), { iban: $('cIban').value.trim(), mbway: $('cMbway').value.trim() }, { merge: true });
+  const out = { hotmartLink: $('cHot').value.trim(), contactEmail: $('cMail').value.trim(), iban: deleteField(), mbway: deleteField() };
   if (d !== '') out.trialDays = Number(d);
   const pm = $('cPreco').value.trim(); if (pm !== '') out.precoMensal = Number(pm);
   await setDoc(doc(db, 'settings', 'platformConfig'), out, { merge: true });

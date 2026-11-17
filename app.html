@@ -276,7 +276,7 @@
         <li>✅ Link curto com o teu nome e o teu logótipo</li>
         <li>✅ Tudo editável: és tu quem manda na tua app</li>
       </ul>
-      <p class="apPay" id="apPayNote">Pagamento por MB WAY ou transferência bancária.</p>
+      <p class="apPay" id="apPayNote">Pagamento seguro pela Hotmart. 15 dias de reembolso. Sem fidelização.</p>
       <button class="primary" style="width:100%;margin-top:8px;" onclick="switchAuthTab('register');document.getElementById('regBusinessName')?.focus();">Começar teste grátis</button>
     </div>
     <p class="authTrust">🔒 Isolamento total entre consultórios — os seus dados nunca se misturam com os de outra conta. 🇪🇺 Dados alojados na União Europeia. 🔐 Ligação encriptada (HTTPS).</p>
@@ -441,7 +441,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-17-1';
+const APP_VERSION = '2026-11-17-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1879,9 +1879,9 @@ function maybeShowTrialEndingBanner(){
     : 'background:#fff8ed;border:1px solid #f0d9a8;color:#5a4a1a;padding:14px;border-radius:10px;margin:0 0 14px;';
   banner.innerHTML = `
     <strong>${daysLeft <= 0 ? '⏰ O seu período de teste terminou' : `⏳ O seu período de teste termina em ${daysLeft} dia(s)`}</strong>
-    <p style="margin-top:6px;">Quer continuar a usar a Vindora? A subscrição custa <strong>${window.__platformCfg?.precoMensal ?? 15} € por mês</strong> (preço de lançamento). Pagamento por <strong>MB WAY${window.__platformCfg?.mbway ? ' ' + escapeHtml(String(window.__platformCfg.mbway)) : ''}</strong> ou <strong>transferência${window.__platformCfg?.iban ? ' (IBAN ' + escapeHtml(String(window.__platformCfg.iban)) + ')' : ''}</strong>. Depois de pagar, carregue em "Quero subscrever" e a conta é ativada.</p>
+    <p style="margin-top:6px;">Quer continuar a usar a Vindora? A subscrição custa <strong>${window.__platformCfg?.precoMensal ?? 15} € por mês</strong> (preço de lançamento). Pagamento seguro pela <strong>Hotmart</strong>, com 15 dias de reembolso. Depois de pagar, a conta é ativada automaticamente.</p>
     <div class="row" style="margin-top:8px;flex-wrap:wrap;">
-      <button class="primary" onclick="requestSubscription()" ${alreadyRequestedSub ? 'disabled' : ''}>${alreadyRequestedSub ? '✅ Já pediu para subscrever' : '💳 Quero subscrever'}</button>
+      <button class="primary" onclick="pagarHotmart()">💳 Subscrever (Hotmart)</button>
       <button class="ghost" onclick="requestTrialExtension()" ${alreadyRequestedTime ? 'disabled' : ''}>${alreadyRequestedTime ? '✅ Já pediu mais tempo' : '🕐 Preciso de mais tempo'}</button>
     </div>
   `;
@@ -1889,6 +1889,12 @@ function maybeShowTrialEndingBanner(){
   main?.prepend(banner);
 }
 
+window.pagarHotmart = function(){
+  const lk0 = window.__platformCfg?.hotmartLink;
+  if (!lk0){ window.requestSubscription(); return; }
+  let lk = lk0; try { const u = new URL(lk0); u.searchParams.set('sck', tenantId || ''); if (currentTenantDoc?.ownerEmail) u.searchParams.set('email', currentTenantDoc.ownerEmail); lk = u.toString(); } catch (_) {}
+  window.open(lk, '_blank', 'noopener');
+};
 window.requestSubscription = async function(){
   await updateDoc(doc(db, 'tenants', tenantId), { subscriptionRequestedAt: serverTimestamp() });
   const snap = await getDoc(doc(db, 'tenants', tenantId));
@@ -7672,7 +7678,7 @@ let CURRENT_TRIAL_DAYS = 7;
     const c = window.__platformCfg;
     const pr = document.getElementById('apPreco'); if (pr && Number.isFinite(c.precoMensal)) pr.textContent = c.precoMensal + ' €';
     const pn = document.getElementById('apPayNote');
-    if (pn) pn.textContent = 'Pagamento por MB WAY' + (c.mbway ? ' (' + c.mbway + ')' : '') + ' ou transferência bancária. Sem fidelização.';
+    if (pn) pn.textContent = 'Pagamento seguro pela Hotmart. 15 dias de reembolso. Sem fidelização.';
   }catch(e){}
   const el = document.getElementById('trialDaysNote');
   if (el) el.textContent = CURRENT_TRIAL_DAYS > 0 ? `✨ ${CURRENT_TRIAL_DAYS} dias grátis, sem cartão de crédito. Sem compromisso.` : '✨ Sem cartão de crédito. Sem compromisso.';
@@ -19747,6 +19753,8 @@ async function renderSettings(main){
     const isOverdue = nextDue && nextDue < new Date().toISOString().slice(0,10);
     const platformSnap = await getDoc(doc(db, 'settings', 'platformConfig'));
     const payInfo = platformSnap.exists() ? platformSnap.data() : {};
+    let manualPay = null;
+    try { const ms = await getDoc(doc(db, 'tenants', tenantId, 'billing', 'manual')); if (ms.exists() && ms.data().enabled) manualPay = ms.data(); } catch (_) {}
     inner = `
       <h2>📊 Plano & Estado</h2>
       <p class="muted">Plano atual: <strong>${currentTenantDoc?.plan === 'vindora' ? 'Vindora — ' + (window.__platformCfg?.precoMensal ?? 15) + ' € por mês (preço de lançamento)' : escapeHtml(currentTenantDoc?.plan||'—')}</strong></p>
@@ -19755,10 +19763,10 @@ async function renderSettings(main){
       ${currentTenantDoc?.status === 'trial' ? `<p class="muted">Está em período de teste gratuito${(()=>{try{const t=currentTenantDoc.trialEndsAt; const d=t&&t.toDate?t.toDate():(t?new Date(t):null); return d?' até '+d.toLocaleDateString('pt-PT'):'';}catch(_){return '';}})()} — sem nada a pagar por agora.</p>` : `
       <div class="card" style="margin-top:10px;background:#f6f8f7;">
         <h3 style="margin-bottom:6px;">💳 Como pagar</h3>
-        ${payInfo.iban ? `<p class="muted">Transferência bancária: IBAN <strong>${escapeHtml(payInfo.iban)}</strong></p>` : ''}
-        ${payInfo.mbway ? `<p class="muted">MB Way: <strong>${escapeHtml(payInfo.mbway)}</strong></p>` : ''}
+        ${manualPay?.iban ? `<p class="muted">Transferência bancária: IBAN <strong>${escapeHtml(manualPay.iban)}</strong></p>` : ''}
+        ${manualPay?.mbway ? `<p class="muted">MB Way: <strong>${escapeHtml(manualPay.mbway)}</strong></p>` : ''}
         ${payInfo.hotmartLink ? (() => { let lk = payInfo.hotmartLink; try { const u = new URL(lk); u.searchParams.set('sck', tenantId || ''); if (currentTenantDoc?.ownerEmail) u.searchParams.set('email', currentTenantDoc.ownerEmail); lk = u.toString(); } catch (_) {} return `<p style="margin-top:8px;"><a href="${escapeHtml(lk)}" target="_blank" rel="noopener" style="display:inline-block;background:var(--primary);color:#fff;text-decoration:none;font-weight:700;border-radius:10px;padding:10px 16px;">💳 Pagar agora (cartão ou Multibanco) — ativa sozinho</a></p><p class="muted" style="margin-top:4px;">A conta fica ativa automaticamente logo após o pagamento, sem teres de enviar comprovativo.</p>`; })() : ''}
-        <p class="muted" style="margin-top:6px;">Depois de pagar por transferência/MB Way, envie o comprovativo para <strong>${escapeHtml(payInfo.contactEmail || 'vindoraportugal@gmail.com')}</strong> — ativamos assim que confirmarmos.</p>
+        ${manualPay ? `<p class="muted" style="margin-top:6px;">Depois de pagar por transferência/MB Way, envie o comprovativo para <strong>${escapeHtml(manualPay.contactEmail || payInfo.contactEmail || 'vindoraportugal@gmail.com')}</strong> — ativamos assim que confirmarmos.</p>` : `<p class="muted" style="margin-top:6px;">Pagamento seguro pela Hotmart, com 15 dias de reembolso.</p>`}
       </div>`}
       <hr style="margin:14px 0;border:none;border-top:1px solid #e5e5e5;">
       <p class="muted">${dpaDate ? `📄 Acordo de Processamento de Dados aceite em ${dpaDate}.` : '📄 Acordo de Processamento de Dados ainda não aceite.'}</p>

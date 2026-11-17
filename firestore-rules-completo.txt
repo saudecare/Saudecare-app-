@@ -57,8 +57,10 @@ service cloud.firestore {
 
     match /settings/{settingId} {
       // Só os documentos que a app realmente lê. Qualquer outro (segredos incluídos) fica fechado.
+      // 'paymentManual' (IBAN/MB WAY) é privado: só o administrador da plataforma o lê.
       allow read: if settingId == 'platformConfig' ||
-        (isSignedIn() && settingId in ['plans', 'platformAnnouncement']);
+        (isSignedIn() && settingId in ['plans', 'platformAnnouncement']) ||
+        (settingId == 'paymentManual' && isPlatformAdmin());
       allow write: if isPlatformAdmin();
     }
 
@@ -88,6 +90,12 @@ service cloud.firestore {
         || isPlatformAdmin();
 
       allow delete: if isPlatformAdmin();
+
+      // Dados de pagamento manual (MB WAY/transferência): só existem para quem o administrador autorizar.
+      match /billing/{docId} {
+        allow read: if isTenantOwner(tenantId) || isPlatformAdmin();
+        allow write: if isPlatformAdmin();
+      }
 
       match /staff/{uid} {
         allow read: if isTenantMember(tenantId);
