@@ -441,7 +441,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-18-6';
+const APP_VERSION = '2026-11-18-7';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13659,7 +13659,7 @@ function reikiRenderEcra(main){
       <button class="${__reikiTab==='alunos'?'primary':'ghost'}" onclick="reikiMudarTab('alunos')">Alunos</button>
       <button class="${__reikiTab==='turmas'?'primary':'ghost'}" onclick="reikiMudarTab('turmas')">Turmas</button>
       <button class="${__reikiTab==='inscricoes'?'primary':'ghost'}" onclick="reikiMudarTab('inscricoes')">Inscrições</button>
-      <button class="${REIKI_GRUPO_CONTEUDO.includes(__reikiTab)?'primary':'ghost'}" onclick="reikiMudarTab(REIKI_GRUPO_CONTEUDO.includes(__reikiTab)?__reikiTab:'licoes')">Conteúdo</button>
+      <button class="${REIKI_GRUPO_CONTEUDO.includes(__reikiTab)?'primary':'ghost'}" onclick="reikiAbrirConteudo()">Conteúdo</button>
       <button class="${__reikiTab==='mensagens'?'primary':'ghost'}" onclick="reikiMudarTab('mensagens')">Mensagens</button>
     </div>
     ${REIKI_GRUPO_CONTEUDO.includes(__reikiTab) ? `<div class="row" style="gap:6px;margin:-4px 0 14px;flex-wrap:wrap;justify-content:flex-start;">
@@ -13680,6 +13680,7 @@ function reikiRenderEcra(main){
   else reikiRenderNiveis();
 }
 
+window.reikiAbrirConteudo = function(){ reikiMudarTab(REIKI_GRUPO_CONTEUDO.includes(__reikiTab) ? __reikiTab : 'licoes'); };
 window.reikiMudarTab = function(tab){ __reikiTab = tab; reikiRenderEcra(); };
 
 /* ─── Inscrições: workshop gratuito e reservas da formação ───────────────
