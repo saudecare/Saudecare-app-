@@ -47,7 +47,7 @@ const app = initializeApp({
 const auth = getAuth(app), db = getFirestore(app);
 const palco = document.getElementById('palco');
 const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const TOTAL_MOD = { '1': 13, '2': 0, '3A': 0, '3B': 0 };   // preenchido à medida que os níveis novos forem criados
+const TOTAL_MOD = { '1': 13, '2': 10, '3A': 0, '3B': 0 };   // preenchido à medida que os níveis novos forem criados
 
 let ALUNOS = [], EXAMES = {};
 
