@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Evolução dos alunos — Escola de Reiki</title>
+<style>
+:root{--bronze:#8a6420;--ouro:#b28632;--tinta:#2b2218;--suave:#7a6a55;--linha:#e3d5b2;--caixa:#fbf3df;--fundo:#faf6ee;--verde:#2f6b3a;--verm:#a23b2a}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--tinta);line-height:1.45}
+header{background:linear-gradient(160deg,#5a3e1b,#8a6420);color:#fff;padding:18px 16px}
+header h1{margin:0;font-size:1.25rem}header p{margin:4px 0 0;font-size:.85rem;opacity:.9}
+main{max-width:980px;margin:0 auto;padding:14px 14px 40px}
+.card{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:14px;margin-bottom:12px}
+.nota{color:var(--suave);font-size:.85rem}
+.aluno{display:flex;gap:12px;align-items:center;cursor:pointer}
+.aluno:hover{border-color:var(--ouro)}
+.av{flex:none;width:44px;height:44px;border-radius:50%;background:#efe6d6;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--bronze);overflow:hidden}
+.av img{width:100%;height:100%;object-fit:cover}
+.barra{height:8px;background:#eadfca;border-radius:6px;overflow:hidden;margin-top:6px}.barra i{display:block;height:100%;background:var(--bronze)}
+.chip{display:inline-block;font-size:.75rem;padding:2px 9px;border-radius:20px;background:var(--caixa);border:1px solid var(--linha);margin:2px 4px 0 0}
+.ok{color:var(--verde);font-weight:700}.mau{color:var(--verm);font-weight:700}
+button{font:inherit;cursor:pointer;border:1px solid var(--ouro);background:#fff;color:var(--bronze);border-radius:10px;padding:9px 14px}
+button.p{background:var(--bronze);color:#fff;border-color:var(--bronze)}
+details{border:1px solid var(--linha);border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff}
+summary{cursor:pointer;font-weight:600}
+.q{padding:8px 0;border-top:1px dashed var(--linha);font-size:.9rem}.q:first-of-type{border-top:0}
+.reg{background:var(--caixa);border-left:3px solid var(--ouro);padding:8px 10px;border-radius:0 8px 8px 0;margin-top:8px;font-size:.88rem;white-space:pre-line}
+input[type=search]{width:100%;padding:11px 12px;border:1px solid var(--linha);border-radius:10px;font:inherit;margin-bottom:12px}
+</style>
+</head>
+<body>
+<header><h1>📈 Evolução dos alunos</h1><p>Hikari Fafe · Escola de Reiki — módulos concluídos, respostas certas e erradas, exames e registos</p></header>
+<main id="palco"><div class="card"><p class="nota">A carregar…</p></div></main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg", authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app", storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728", appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+});
+const auth = getAuth(app), db = getFirestore(app);
+const palco = document.getElementById('palco');
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const TOTAL_MOD = { '1': 13, '2': 0, '3A': 0, '3B': 0 };   // preenchido à medida que os níveis novos forem criados
+
+let ALUNOS = [], EXAMES = {};
+
+function quando(iso){ if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleDateString('pt-PT') + ' ' + d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }); }
+const ordemDe = x => { const m = String(x.moduloId || '').match(/(\d+)$/); return m ? parseInt(m[1], 10) : 0; };
+const ehV2 = x => /^v2-/.test(String(x.moduloId || ''));
+
+function resumo(t){
+  const itens = Object.values(t.percurso || {}).filter(x => x && !/-pratica$/.test(String(x.moduloId || '')));
+  const v2 = itens.filter(ehV2);
+  const usados = v2.length ? v2 : itens;
+  const feitos = usados.filter(x => x.concluido);
+  const comNota = feitos.filter(x => x.totalPerguntas);
+  const ac = comNota.reduce((n, x) => n + (x.acertos || 0), 0), tp = comNota.reduce((n, x) => n + (x.totalPerguntas || 0), 0);
+  const nivel = (usados[0] && usados[0].nivel) || '';
+  const ult = usados.map(x => x.actualizadoEm || '').sort().pop() || '';
+  return { itens: usados, feitos: feitos.length, ac, tp, pct: tp ? Math.round(ac / tp * 100) : null, nivel, ult, v2: v2.length > 0 };
+}
+
+function lista(filtro){
+  const f = (filtro || '').toLowerCase();
+  const rows = ALUNOS.filter(a => !f || (a.t.alunoNome || a.id).toLowerCase().includes(f)).map(a => {
+    const r = a.r, tot = TOTAL_MOD[r.nivel] || Math.max(r.feitos, 1);
+    const ex = (EXAMES[a.id] || []).slice().sort((x, y) => (y.quando || '').localeCompare(x.quando || ''))[0];
+    return `<div class="card aluno" onclick="abrir('${esc(a.id)}')">
+      <div class="av">${a.t.foto ? `<img src="${esc(a.t.foto)}" alt="">` : esc((a.t.alunoNome || '?').slice(0, 1).toUpperCase())}</div>
+      <div style="flex:1;min-width:0;"><strong>${esc(a.t.alunoNome || a.id)}</strong>
+        <div class="nota">${r.nivel ? 'Nível ' + esc(r.nivel) + ' · ' : ''}${r.feitos} módulo(s) concluído(s)${r.pct != null ? ' · ' + r.pct + '% de respostas certas' : ''} · última actividade ${esc(quando(r.ult))}</div>
+        <div class="barra"><i style="width:${Math.min(100, Math.round(r.feitos / tot * 100))}%"></i></div>
+        <div>${r.v2 ? '<span class="chip">formação nova</span>' : '<span class="chip">percurso antigo</span>'}${ex ? `<span class="chip ${ex.aprovado ? 'ok' : 'mau'}">Exame: ${ex.percentagem}% ${ex.aprovado ? '✓ aprovado' : '✗ não passou'}</span>` : ''}</div>
+      </div></div>`;
+  }).join('');
+  document.getElementById('lista').innerHTML = rows || '<div class="card"><p class="nota">Nenhum aluno com actividade ainda.</p></div>';
+}
+
+window.filtrar = v => lista(v);
+window.voltar = () => { desenharTudo(); };
+
+window.abrir = id => {
+  const a = ALUNOS.find(x => x.id === id); if (!a) return;
+  const r = a.r;
+  const mods = r.itens.slice().sort((x, y) => ordemDe(x) - ordemDe(y)).map(x => {
+    const det = Array.isArray(x.detalhe) ? x.detalhe : null;
+    const cab = `<summary>${x.concluido ? '✓' : '◻️'} ${esc(x.moduloTitulo || x.moduloId)} ${x.totalPerguntas ? `<span class="${x.acertos >= x.totalPerguntas * 0.6 ? 'ok' : 'mau'}">— ${x.acertos}/${x.totalPerguntas}</span>` : ''}</summary>`;
+    const passos = `<p class="nota">${x.visto ? '🎬 vídeo visto · ' : ''}${x.lido ? '📖 lido · ' : ''}${x.praticaFeita ? '🤲 prática feita · ' : ''}${x.concluido ? 'concluído em ' + esc(quando(x.concluidoEm)) : 'em curso'}</p>`;
+    const qs = det ? det.map((d, i) => `<div class="q"><span class="${d.ok ? 'ok' : 'mau'}">${d.ok ? '✓' : '✗'}</span> ${i + 1}. ${esc(d.p)}<br><span class="nota">Respondeu: <b>${esc(d.r)}</b>${d.ok ? '' : ' · Certa: <b>' + esc(d.c) + '</b>'}</span></div>`).join('')
+      : (x.totalPerguntas ? '<p class="nota">Percurso antigo: só se guardou a pontuação, não as respostas.</p>' : '');
+    const reg = x.registo ? `<div class="reg"><b>Registo da prática:</b>\n${esc(x.registo)}</div>` : '';
+    const des = x.desafioRegisto ? `<div class="reg"><b>Desafio:</b>\n${esc(x.desafioRegisto)}</div>` : '';
+    return `<details>${cab}${passos}${qs}${reg}${des}</details>`;
+  }).join('') || '<p class="nota">Ainda não começou nenhum módulo.</p>';
+  const exs = (EXAMES[id] || []).slice().sort((x, y) => (y.quando || '').localeCompare(x.quando || '')).map(e => {
+    const qs = (e.detalhe || []).map((d, i) => `<div class="q"><span class="${d.ok ? 'ok' : 'mau'}">${d.ok ? '✓' : '✗'}</span> ${i + 1}. ${esc(d.p)}<br><span class="nota">Respondeu: <b>${esc(d.r)}</b>${d.ok ? '' : ' · Certa: <b>' + esc(d.c) + '</b>'}</span></div>`).join('');
+    return `<details><summary>${esc(quando(e.quando))} — <span class="${e.aprovado ? 'ok' : 'mau'}">${e.percentagem}% ${e.aprovado ? '✓ aprovado' : '✗ não passou'}</span></summary>${qs || '<p class="nota">Sem detalhe das respostas.</p>'}</details>`;
+  }).join('') || '<p class="nota">Ainda não fez nenhum exame.</p>';
+  palco.innerHTML = `<button onclick="voltar()">← Todos os alunos</button>
+    <div class="card" style="margin-top:12px;"><h2 style="margin:0;">${esc(a.t.alunoNome || id)}</h2>
+      <p class="nota">${r.nivel ? 'Nível ' + esc(r.nivel) + ' · ' : ''}${r.feitos} módulo(s) concluído(s)${r.pct != null ? ' · ' + r.ac + ' de ' + r.tp + ' respostas certas (' + r.pct + '%)' : ''}</p></div>
+    <div class="card"><h3 style="margin-top:0;">Módulos</h3>${mods}</div>
+    <div class="card"><h3 style="margin-top:0;">Exame final</h3>${exs}</div>`;
+  window.scrollTo(0, 0);
+};
+
+function desenharTudo(){
+  palco.innerHTML = `<input type="search" placeholder="Procurar aluno…" oninput="filtrar(this.value)"><div id="lista"></div>`;
+  lista('');
+}
+
+async function carregar(tenant){
+  try {
+    const [th, qz] = await Promise.all([
+      getDocs(collection(db, 'tenants', tenant, 'reikiThreads')),
+      getDocs(collection(db, 'tenants', tenant, 'reikiQuizResults')).catch(() => ({ forEach: () => {} }))
+    ]);
+    ALUNOS = []; EXAMES = {};
+    th.forEach(d => { const t = d.data() || {}; if (t.percurso && Object.keys(t.percurso).length) ALUNOS.push({ id: d.id, t, r: resumo(t) }); });
+    qz.forEach(d => {
+      const x = d.data() || {};
+      if (!/^v2-exame-/.test(String(x.testeId || ''))) return;
+      const q = (EXAMES[x.codigo] = EXAMES[x.codigo] || []);
+      const dt = x.entregueEm && x.entregueEm.toDate ? x.entregueEm.toDate().toISOString() : '';
+      q.push({ percentagem: x.percentagem, aprovado: x.aprovado, detalhe: x.detalhe, quando: dt });
+    });
+    ALUNOS.sort((a, b) => (b.r.ult || '').localeCompare(a.r.ult || ''));
+    desenharTudo();
+  } catch(e){
+    palco.innerHTML = `<div class="card"><h3>Não consegui ler os dados</h3><p class="nota">${esc(e.message)}</p></div>`;
+  }
+}
+
+onAuthStateChanged(auth, async user => {
+  if (!user){
+    palco.innerHTML = `<div class="card"><h3>Entra primeiro na Vindora</h3><p class="nota">Esta página é só para a escola. Entra na tua conta e volta a abrir esta página.</p><p><a href="app.html"><button class="p">Entrar na Vindora</button></a></p></div>`;
+    return;
+  }
+  const tk = await user.getIdTokenResult();
+  const tenant = new URLSearchParams(location.search).get('t') || tk.claims.tenantId;
+  if (!tenant){ palco.innerHTML = '<div class="card"><p class="nota">A tua conta não tem escola associada.</p></div>'; return; }
+  carregar(tenant);
+});
+</script>
+</body>
+</html>

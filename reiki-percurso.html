@@ -54,6 +54,7 @@
     border-radius:10px;padding:12px;margin-bottom:7px;font-size:14.5px;color:var(--tinta);}
   .opcao.certa{border-color:var(--verde);background:#f0f7f3;}
   .opcao.errada{border-color:#c98b8b;background:#fdf3f3;}
+  .opcao.sel{border-color:var(--bronze);background:#fbf3df;}
   .feedback{background:var(--caixa);border-left:3px solid var(--bronze2);border-radius:0 10px 10px 0;
     padding:12px 14px;margin:8px 0 4px;font-size:14px;}
   .nota{font-size:12.5px;color:var(--suave);margin-top:8px;}
@@ -665,7 +666,7 @@ function desenharLista(){
         ${estado}</div></div>`;
   }).join('');
 
-  const blocoTreino = MODULOS.some(m => (PROGRESSO[m.id]||{}).lido)
+  const blocoTreino = (!V2 && MODULOS.some(m => (PROGRESSO[m.id]||{}).lido))
     ? `<div class="card"><h4>🎯 Treino livre</h4><p class="nota">Perguntas à sorte dos módulos que já leste. Não conta para o percurso — serve para veres o que ficou.</p><button class="principal" onclick="abrirTreino()">Começar treino</button></div>`
     : '';
 
@@ -804,7 +805,8 @@ window.entregarTeste = async function(){
   try {
     await setDoc(doc(collection(db, 'tenants', TENANT, 'reikiQuizResults')), {
       testeId: t.id, codigo: CODIGO, alunoId: ALUNO.alunoId || '', alunoNome: ALUNO.nome || '',
-      percentagem: pct, aprovado, respostas, entregueEm: serverTimestamp()
+      percentagem: pct, aprovado, respostas, entregueEm: serverTimestamp(), nivel: String(t.nivel || ''),
+      detalhe: qs.map((q, i) => ({ p: q.texto, r: (q.opcoes || [])[respostas[i]] || '', c: (q.opcoes || [])[q.correta] || '', ok: respostas[i] === q.correta }))
     });
   } catch(e){ console.warn('não consegui entregar', e); }
   try {
@@ -1096,19 +1098,30 @@ function desenharModulo(){
   const perguntasHtml = qs.map((q, i) => {
     const dada = RESPOSTAS[i];
     const respondida = dada !== undefined;
+    const fechado = V2 && p.concluido;           /* v2: só se vê o resultado depois de entregar */
+    const revelar = V2 ? fechado : respondida;
     const opcoesHtml = (q.opcoes||[]).map((o, oi) => {
       let cls = '';
-      if (respondida){ if (oi === q.correta) cls = 'certa'; else if (oi === dada) cls = 'errada'; }
-      const attr = respondida ? 'disabled' : `onclick="responder(${i},${oi})"`;
-      return `<button class="opcao ${cls}" ${attr}>${respondida && oi === q.correta ? '✓ ' : ''}${esc(o)}</button>`;
+      if (revelar){ if (oi === q.correta) cls = 'certa'; else if (oi === dada) cls = 'errada'; }
+      else if (V2 && oi === dada) cls = 'sel';
+      const attr = (V2 ? fechado : respondida) ? 'disabled' : `onclick="responder(${i},${oi})"`;
+      const marca = revelar && oi === q.correta ? '✓ ' : (V2 && !revelar && oi === dada ? '● ' : '');
+      return `<button class="opcao ${cls}" ${attr}>${marca}${esc(o)}</button>`;
     }).join('');
-    return `<div style="margin-bottom:18px;"><h4>${i+1}. ${esc(q.pergunta)}</h4>${opcoesHtml}
-      ${respondida && q.feedback ? `<div class="feedback">💬 ${esc(q.feedback)}</div>` : ''}</div>`;
+    const estado = revelar && V2 ? `<p class="nota" style="margin:6px 0 0;font-weight:700;color:${dada === q.correta ? '#2f6b3a' : '#a23b2a'};">${dada === q.correta ? '✓ Certa' : '✗ Errada'}</p>` : '';
+    return `<div style="margin-bottom:18px;"><h4>${i+1}. ${esc(q.pergunta)}</h4>${opcoesHtml}${estado}
+      ${revelar && q.feedback ? `<div class="feedback">💬 ${esc(q.feedback)}</div>` : ''}</div>`;
   }).join('');
   const faltam = qs.length - Object.keys(RESPOSTAS).length;
-  palco().innerHTML = cab + `<div class="card">${perguntasHtml}
+  const nAc = qs.reduce((n, q, i) => n + (RESPOSTAS[i] === q.correta ? 1 : 0), 0);
+  if (V2 && p.concluido){
+    palco().innerHTML = cab + `<div class="card"><p class="nota" style="margin-top:0;">Resultado do módulo: <b>${nAc} de ${qs.length}</b> certas. As respostas já foram entregues e não se repetem — podes rever as explicações abaixo.</p>${perguntasHtml}
+      <button class="leve" style="width:100%;" onclick="desenharLista();window.scrollTo(0,0)">← Voltar ao percurso</button></div>`;
+    return;
+  }
+  palco().innerHTML = cab + `<div class="card">${V2 ? '<p class="nota" style="margin-top:0;">Responde a todas. Só vês quais acertaste depois de entregares, e não podes repetir as perguntas.</p>' : ''}${perguntasHtml}
     <button class="principal" onclick="concluirModulo()" ${faltam > 0 ? 'disabled' : ''}>
-      ${faltam > 0 ? `Faltam ${faltam} resposta(s)` : 'Concluir este módulo'}
+      ${faltam > 0 ? `Faltam ${faltam} resposta(s)` : (V2 ? 'Entregar e concluir o módulo' : 'Concluir este módulo')}
     </button></div>`;
 }
 
@@ -1159,7 +1172,8 @@ window.concluirModulo = async function(){
   const qs = ABERTO.responder || [];
   const acertos = qs.reduce((n, q, i) => n + (RESPOSTAS[i] === q.correta ? 1 : 0), 0);
   const feito = ABERTO;
-  await gravar({ respostas: RESPOSTAS, acertos, totalPerguntas: qs.length, concluido: true, concluidoEm: new Date().toISOString() });
+  const detalhe = V2 ? qs.map((q, i) => ({ p: q.pergunta, r: (q.opcoes || [])[RESPOSTAS[i]] || '', c: (q.opcoes || [])[q.correta] || '', ok: RESPOSTAS[i] === q.correta })) : null;
+  await gravar(Object.assign({ respostas: RESPOSTAS, acertos, totalPerguntas: qs.length, concluido: true, concluidoEm: new Date().toISOString() }, detalhe ? { detalhe } : {}));
   desenharConclusao(feito, acertos, qs.length); window.scrollTo({top:0,behavior:'smooth'});
 };
 
@@ -1174,6 +1188,8 @@ function desenharConclusao(m, acertos, total){
     <h3 style="color:var(--bronze);margin-top:6px;">${ultimo ? 'Concluíste o último módulo!' : 'Módulo concluído!'}</h3>
     <p class="nota" style="font-size:14px;">${esc(m.titulo)}</p>
     ${total ? `<p class="nota">Acertaste ${acertos} de ${total} perguntas.</p>` : ''}
+    ${V2 && total ? `<div style="text-align:left;margin:10px 0;">${(m.responder || []).map((q, i) => `<p class="nota" style="margin:4px 0;"><b style="color:${RESPOSTAS[i] === q.correta ? '#2f6b3a' : '#a23b2a'};">${RESPOSTAS[i] === q.correta ? '✓' : '✗'}</b> ${i + 1}. ${esc(q.pergunta)}</p>`).join('')}
+      <button class="leve" style="width:100%;margin-top:8px;" onclick="irPasso('responder')">Ver as respostas certas e as explicações</button></div>` : ''}
     ${prox ? `<button class="principal" onclick="abrirModulo('${prox.id}')">${ehPratica(prox) ? 'Começar a prática ▶' : 'Próximo módulo ▶'}<br><span style="font-size:13px;opacity:.9;">${rotProx(prox)}</span></button>` : ''}
     <button class="leve" style="width:100%;margin-top:10px;" onclick="desenharLista();window.scrollTo(0,0)">${ultimo ? 'Ver o meu percurso' : 'Ver todo o percurso'}</button>
   </div>`;
