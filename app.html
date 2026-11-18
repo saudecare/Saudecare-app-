@@ -441,7 +441,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-18-4';
+const APP_VERSION = '2026-11-18-5';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -10173,6 +10173,19 @@ async function renderProfileSection(main, section){
         </div>
       </div>`;
     });
+    let pend = '';
+    try {
+      const av = await getDocs(collection(db, 'tenants', tenantId, 'avaliacoes'));
+      av.forEach(d=>{
+        const t = d.data();
+        pend += `<div class="appt-item row" style="border-left:4px solid #e0a526;">
+          <div><strong>${escapeHtml(t.name)}</strong> <span class="muted">${'★'.repeat(t.rating||5)}</span>
+            <div class="muted">${escapeHtml(t.text)}</div></div>
+          <div><button class="primary" onclick="aprovarAvaliacao('${d.id}')">Publicar</button>
+          <button class="danger" onclick="descartarAvaliacao('${d.id}')">Descartar</button></div></div>`;
+      });
+    } catch(e){ console.warn('avaliações pendentes', e); }
+    if (pend) testimonialsHtml = '<h3 style="margin:6px 0;">🔔 Avaliações novas dos clientes (por rever)</h3>' + pend + '<h3 style="margin:14px 0 6px;">Publicadas na página</h3>' + testimonialsHtml;
     if (!testimonialsHtml) testimonialsHtml = '<p class="muted">Ainda sem testemunhos.</p>';
     inner = `
       <h2>⭐ Testemunhos / Feedback</h2>
@@ -10668,6 +10681,21 @@ window.saveTestimonial = async function(editId){
   window.__editingTestimonialId = null;
   window.__editingTestimonial = null;
   toast('Testemunho guardado.');
+  renderView('profile');
+};
+
+window.aprovarAvaliacao = async function(id){
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'avaliacoes', id));
+  if (!snap.exists()) return;
+  const t = snap.data();
+  await addDoc(collection(db, 'tenants', tenantId, 'testimonials'), { name: t.name, text: t.text, rating: t.rating || 5, createdAt: serverTimestamp() });
+  await deleteDoc(doc(db, 'tenants', tenantId, 'avaliacoes', id));
+  toast('Avaliação publicada na página.');
+  renderView('profile');
+};
+window.descartarAvaliacao = async function(id){
+  if (!await confirmar('Descartar esta avaliação? Não aparece na página.')) return;
+  await deleteDoc(doc(db, 'tenants', tenantId, 'avaliacoes', id));
   renderView('profile');
 };
 

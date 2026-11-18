@@ -136,7 +136,7 @@ import { registar, t as _t, iniciarIdioma, definirIdioma, IDIOMAS, idioma } from
 import { fusoDe, fusoDoDispositivo, chaveData, semanasDesde } from "./fuso.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, collection, getDocs
+  getFirestore, doc, getDoc, collection, getDocs, addDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 registar('pagina', {"invalido": {"pt": "Ligação inválida", "en": "Invalid link", "es": "Enlace no válido", "fr": "Lien invalide", "de": "Ungültiger Link", "it": "Link non valido"}, "naoEnc": {"pt": "Página não encontrada", "en": "Page not found", "es": "Página no encontrada", "fr": "Page introuvable", "de": "Seite nicht gefunden", "it": "Pagina non trovata"}, "navLoja": {"pt": "Loja", "en": "Shop", "es": "Tienda", "fr": "Boutique", "de": "Shop", "it": "Negozio"}, "navEsp": {"pt": "Espiritual", "en": "Spiritual", "es": "Espiritual", "fr": "Spirituel", "de": "Spirituell", "it": "Spirituale"}, "servicos": {"pt": "Serviços", "en": "Services", "es": "Servicios", "fr": "Services", "de": "Leistungen", "it": "Servizi"}, "equipa": {"pt": "Equipa", "en": "Team", "es": "Equipo", "fr": "Équipe", "de": "Team", "it": "Team"}, "formacoes": {"pt": "Formações", "en": "Training", "es": "Formaciones", "fr": "Formations", "de": "Weiterbildung", "it": "Formazioni"}, "testemunhos": {"pt": "Testemunhos", "en": "Testimonials", "es": "Testimonios", "fr": "Témoignages", "de": "Erfahrungen", "it": "Testimonianze"}, "horarios": {"pt": "Horários", "en": "Opening hours", "es": "Horarios", "fr": "Horaires", "de": "Zeiten", "it": "Orari"}, "contactos": {"pt": "Contactos", "en": "Contact", "es": "Contacto", "fr": "Contact", "de": "Kontakt", "it": "Contatti"}, "marcar": {"pt": "Marcar Consulta", "en": "Book an appointment", "es": "Reservar cita", "fr": "Prendre rendez-vous", "de": "Termin buchen", "it": "Prenota un appuntamento"}, "marcarCal": {"pt": "📅 Marcar Consulta", "en": "📅 Book an appointment", "es": "📅 Reservar cita", "fr": "📅 Prendre rendez-vous", "de": "📅 Termin buchen", "it": "📅 Prenota un appuntamento"}, "queroSaber": {"pt": "Quero saber mais", "en": "I want to know more", "es": "Quiero saber más", "fr": "Je veux en savoir plus", "de": "Mehr erfahren", "it": "Voglio saperne di più"}, "sobre": {"pt": "Sobre", "en": "About", "es": "Acerca de", "fr": "À propos", "de": "Über uns", "it": "Chi siamo"}, "pack": {"pt": "Pack · {n} sessões", "en": "Pack · {n} sessions", "es": "Pack · {n} sesiones", "fr": "Pack · {n} séances", "de": "Paket · {n} Sitzungen", "it": "Pacchetto · {n} sedute"}, "presencial": {"pt": "📍 Presencial", "en": "📍 In person", "es": "📍 Presencial", "fr": "📍 Sur place", "de": "📍 Vor Ort", "it": "📍 Di persona"}, "online": {"pt": "💻 Online", "en": "💻 Online", "es": "💻 En línea", "fr": "💻 En ligne", "de": "💻 Online", "it": "💻 Online"}, "ambos": {"pt": "📍 Presencial · 💻 Online", "en": "📍 In person · 💻 Online", "es": "📍 Presencial · 💻 En línea", "fr": "📍 Sur place · 💻 En ligne", "de": "📍 Vor Ort · 💻 Online", "it": "📍 Di persona · 💻 Online"}, "formEv": {"pt": "Formações e Eventos", "en": "Training and events", "es": "Formaciones y eventos", "fr": "Formations et événements", "de": "Weiterbildungen und Veranstaltungen", "it": "Formazioni ed eventi"}, "gratuito": {"pt": "Gratuito", "en": "Free", "es": "Gratuito", "fr": "Gratuit", "de": "Kostenlos", "it": "Gratuito"}, "inscrever": {"pt": "Inscrever-me", "en": "Sign me up", "es": "Inscribirme", "fr": "M’inscrire", "de": "Anmelden", "it": "Iscrivermi"}, "dizem": {"pt": "O que dizem os clientes", "en": "What clients say", "es": "Lo que dicen los clientes", "fr": "Ce que disent les clients", "de": "Das sagen unsere Kunden", "it": "Cosa dicono i clienti"}, "seg": {"pt": "Segunda", "en": "Monday", "es": "Lunes", "fr": "Lundi", "de": "Montag", "it": "Lunedì"}, "ter": {"pt": "Terça", "en": "Tuesday", "es": "Martes", "fr": "Mardi", "de": "Dienstag", "it": "Martedì"}, "qua": {"pt": "Quarta", "en": "Wednesday", "es": "Miércoles", "fr": "Mercredi", "de": "Mittwoch", "it": "Mercoledì"}, "qui": {"pt": "Quinta", "en": "Thursday", "es": "Jueves", "fr": "Jeudi", "de": "Donnerstag", "it": "Giovedì"}, "sex": {"pt": "Sexta", "en": "Friday", "es": "Viernes", "fr": "Vendredi", "de": "Freitag", "it": "Venerdì"}, "sab": {"pt": "Sábado", "en": "Saturday", "es": "Sábado", "fr": "Samedi", "de": "Samstag", "it": "Sabato"}, "dom": {"pt": "Domingo", "en": "Sunday", "es": "Domingo", "fr": "Dimanche", "de": "Sonntag", "it": "Domenica"}, "semFixo": {"pt": "Sem horário fixo — atendimento só por marcação combinada.", "en": "No fixed hours — by arranged appointment only.", "es": "Sin horario fijo: atención solo con cita acordada.", "fr": "Pas d’horaires fixes : uniquement sur rendez-vous convenu.", "de": "Keine festen Zeiten – nur nach Terminvereinbarung.", "it": "Nessun orario fisso: solo su appuntamento concordato."}, "semanaA": {"pt": "Semana A", "en": "Week A", "es": "Semana A", "fr": "Semaine A", "de": "Woche A", "it": "Settimana A"}, "semanaB": {"pt": "Semana B", "en": "Week B", "es": "Semana B", "fr": "Semaine B", "de": "Woche B", "it": "Settimana B"}, "semHorSem": {"pt": "Sem horário nesta semana.", "en": "No hours this week.", "es": "Sin horario esta semana.", "fr": "Pas d’horaires cette semaine.", "de": "Keine Zeiten in dieser Woche.", "it": "Nessun orario in questa settimana."}, "alterna": {"pt": "As semanas alternam quinzenalmente — confirme o dia certo ao pedir a marcação.", "en": "Weeks alternate every two weeks — confirm the right day when requesting a booking.", "es": "Las semanas se alternan cada quince días: confirme el día correcto al solicitar la cita.", "fr": "Les semaines alternent tous les quinze jours : confirmez le bon jour lors de votre demande.", "de": "Die Wochen wechseln alle zwei Wochen – bestätigen Sie den richtigen Tag bei der Anfrage.", "it": "Le settimane si alternano ogni due settimane: confermi il giorno giusto quando richiede la prenotazione."}, "fuso": {"pt": "Horas no fuso do profissional ({f}).", "en": "Times are in the professional’s time zone ({f}).", "es": "Horas en la zona horaria del profesional ({f}).", "fr": "Heures dans le fuseau du professionnel ({f}).", "de": "Zeiten in der Zeitzone der Fachperson ({f}).", "it": "Orari nel fuso del professionista ({f})."}});
@@ -179,6 +179,7 @@ async function load(){
   // é o mesmo valor, e evita que Serviços/Equipa/Formações/Testemunhos
   // desapareçam todos de uma vez só por faltar este campo.
   const tenantId = profile.tenantId || tenantSlug;
+  window.__tenantAval = tenantId;
 
   aplicarCorMarca(profile.branding?.primaryColor);
   try { const el = document.getElementById('musicaPublica'); if (el) el.innerHTML = cartaoMusicaHtml(tenantId, 'Músicas para ouvir', 'Canções de Reiki e espiritualidade — para relaxar e meditar.'); } catch(e){}
@@ -583,18 +584,54 @@ function renderTrainings(snap, slug){
 }
 
 function renderTestimonials(snap){
-  if (snap.empty) return;
-  let html = '';
+  let html = '', soma = 0, n = 0;
   snap.forEach(d=>{
-    const ts = d.data();
+    const ts = d.data(); const rt = Math.min(5, Math.max(1, ts.rating||5));
+    soma += rt; n++;
     html += `<div class="card">
-      <div class="stars">${'★'.repeat(ts.rating||5)}</div>
+      <div class="stars">${'★'.repeat(rt)}${'☆'.repeat(5-rt)}</div>
       <p>"${escapeHtml(ts.text)}"</p>
       <div class="muted" style="margin-top:6px;">— ${escapeHtml(ts.name)}</div>
     </div>`;
   });
-  document.getElementById('testimonialsSection').innerHTML = `<h2 class="section-title">${t('dizem')}</h2>${html}`;
+  const media = n ? `<p class="muted" style="margin:-6px 0 12px;"><b style="color:var(--accent);font-size:16px;">★ ${(soma/n).toFixed(1).replace('.', ',')}</b> · ${n} ${n===1?'avaliação':'avaliações'}</p>` : '';
+  document.getElementById('testimonialsSection').innerHTML = `<h2 class="section-title">${t('dizem')}</h2>${media}${html}
+    <div class="card" id="avalCard" style="text-align:center;">
+      <p style="margin:0 0 10px;font-weight:600;">Já foste atendido(a)? Deixa a tua opinião.</p>
+      <button type="button" class="btn-ava" id="avalAbrir" onclick="avalMostrar()" style="padding:11px 18px;border-radius:100px;border:1.5px solid var(--primary,#2e7d5b);background:#fff;color:var(--primary,#2e7d5b);font-weight:700;font-size:14px;cursor:pointer;">⭐ Deixar a minha avaliação</button>
+      <div id="avalForm" class="hidden" style="text-align:left;margin-top:12px;">
+        <label style="font-size:13px;color:#555;">Como avalias o atendimento?</label>
+        <div id="avalEstrelas" style="font-size:34px;cursor:pointer;letter-spacing:4px;margin:2px 0 8px;"></div>
+        <input id="avalNome" maxlength="60" placeholder="O teu nome (pode ser só o primeiro)" style="width:100%;padding:11px;border:1px solid #d6e0db;border-radius:10px;font:inherit;margin-bottom:8px;">
+        <textarea id="avalTexto" maxlength="600" rows="4" placeholder="Conta como correu, o que mais gostaste…" style="width:100%;padding:11px;border:1px solid #d6e0db;border-radius:10px;font:inherit;"></textarea>
+        <input id="avalSite" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;" aria-hidden="true">
+        <p class="muted" style="font-size:12px;margin:6px 0;">A tua opinião é revista pelo profissional antes de aparecer na página. Não escrevas dados de saúde.</p>
+        <button type="button" onclick="avalEnviar()" style="width:100%;padding:12px;border:0;border-radius:12px;background:var(--primary,#2e7d5b);color:#fff;font-weight:700;font-size:15px;cursor:pointer;">Enviar avaliação</button>
+        <p id="avalMsg" class="muted" style="text-align:center;margin:8px 0 0;"></p>
+      </div>
+    </div>`;
+  window.__aval = { nota: 0, tenantId: window.__tenantAval };
+  avalEstrelas();
 }
+function avalEstrelas(){
+  const el = document.getElementById('avalEstrelas'); if (!el) return;
+  el.innerHTML = [1,2,3,4,5].map(i => `<span onclick="avalNota(${i})" style="color:${i <= window.__aval.nota ? '#e0a526' : '#cfd8d3'};">★</span>`).join('');
+}
+window.avalNota = i => { window.__aval.nota = i; avalEstrelas(); };
+window.avalMostrar = () => { document.getElementById('avalForm').classList.remove('hidden'); document.getElementById('avalAbrir').classList.add('hidden'); };
+window.avalEnviar = async () => {
+  const msg = document.getElementById('avalMsg'), nome = document.getElementById('avalNome').value.trim(), texto = document.getElementById('avalTexto').value.trim();
+  if (document.getElementById('avalSite').value) return;               // armadilha para robôs
+  if (!window.__aval.nota){ msg.textContent = 'Escolhe de 1 a 5 estrelas.'; return; }
+  if (nome.length < 2 || texto.length < 5){ msg.textContent = 'Escreve o teu nome e uma frase sobre o atendimento.'; return; }
+  try { if (Date.now() - Number(localStorage.getItem('vd_aval_' + window.__aval.tenantId) || 0) < 600000){ msg.textContent = 'Já enviaste uma avaliação há pouco. Obrigado!'; return; } } catch(e){}
+  msg.textContent = 'A enviar…';
+  try {
+    await addDoc(collection(db, 'tenants', window.__aval.tenantId, 'avaliacoes'), { name: nome, text: texto, rating: window.__aval.nota, createdAt: serverTimestamp() });
+    try { localStorage.setItem('vd_aval_' + window.__aval.tenantId, String(Date.now())); } catch(e){}
+    document.getElementById('avalCard').innerHTML = '<p style="font-size:30px;margin:0;">💚</p><p style="margin:6px 0 0;font-weight:600;">Obrigado pela tua avaliação!</p><p class="muted" style="margin:4px 0 0;">Vai ser revista e aparece em breve na página.</p>';
+  } catch(e){ msg.textContent = 'Não foi possível enviar agora. Tenta mais tarde.'; }
+};
 
 function renderContact(profile){
   let rows = '';

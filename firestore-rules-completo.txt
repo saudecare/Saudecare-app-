@@ -409,6 +409,17 @@ service cloud.firestore {
         allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
       }
 
+      // Avaliações enviadas pelos clientes na página pública. Qualquer pessoa pode
+      // criar uma (com limites de tamanho); só a equipa lê, aprova ou apaga.
+      match /avaliacoes/{avalId} {
+        allow create: if request.resource.data.keys().hasOnly(['name', 'text', 'rating', 'createdAt']) &&
+                        request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 60 &&
+                        request.resource.data.text is string && request.resource.data.text.size() >= 5 && request.resource.data.text.size() <= 600 &&
+                        request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
+                        tenantIsActive(tenantId);
+        allow read, update, delete: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
+      }
+
       match /testimonials/{testimonialId} {
         allow read: if true;
         allow write: if isEquipaClinica(tenantId) && tenantIsActive(tenantId);
