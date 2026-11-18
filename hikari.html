@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hikari Fafe — Terapias, Reiki e serviços espirituais</title>
+<meta name="description" content="Página de Hikari Fafe: terapias, marcações, formações de Reiki e serviços espirituais.">
+<link rel="canonical" href="https://vindora.pt/hikari.html">
+<meta name="robots" content="noindex, follow">
+<meta property="og:site_name" content="Vindora">
+<meta property="og:url" content="https://vindora.pt/hikari.html">
+<meta property="og:title" content="Hikari Fafe — Terapias e serviços espirituais">
+<meta property="og:description" content="Terapias, formações e serviços espirituais de Hikari Fafe.">
+<script>try{var q=location.search||''; if(/[?&](t|slug|tenant|c|p)=/.test(q)||q.length>1){var m=document.createElement('meta');m.name='robots';m.content='noindex, follow';document.head.appendChild(m);}}catch(e){}</script>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root{
+    --verde:#2f6f5e; --verde-escuro:#1f4d40; --fundo:#f6f8f7; --texto:#1a2b26; --suave:#5e706a;
+    --roxo:#2d1b4e; --roxo2:#1a0f2e; --ouro:#d4af37; --ouro-claro:#f0d878; --linha:#e3eae6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--texto);line-height:1.55;}
+  a{color:inherit;}
+  .hidden,.oculto{display:none !important;}
+  .vista{display:none;}
+  .vista.ativa{display:block;}
+  .voltar{display:inline-block;margin:18px 0 4px;font-weight:600;font-size:15px;text-decoration:none;color:var(--verde-escuro);padding:8px 14px;border-radius:100px;background:#fff;border:1px solid var(--linha);}
+  .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding-top:26px;}
+  @media(min-width:700px){.tiles{grid-template-columns:repeat(3,1fr);}}
+  .tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;text-decoration:none;background:#fff;border:1px solid var(--linha);border-radius:18px;padding:22px 12px;min-height:128px;box-shadow:0 2px 8px rgba(0,0,0,.05);transition:transform .1s;}
+  .tile:active{transform:scale(.97);}
+  .tile .ic{font-size:34px;line-height:1;}
+  .tile .nome{font-weight:700;font-size:15px;color:var(--verde-escuro);}
+  .tile .peq{font-size:12px;color:var(--suave);}
+  .tile.roxo{background:linear-gradient(135deg,var(--roxo),var(--roxo2));border-color:rgba(212,175,55,.35);}
+  .tile.roxo .nome{color:var(--ouro-claro);}
+  .tile.roxo .peq{color:#cdbfe8;}
+  .tile.destaque{background:var(--verde);border-color:var(--verde);}
+  .tile.destaque .nome,.tile.destaque .peq{color:#fff;}
+  .hero{padding:34px 20px 36px;}
+  body.interior .hero{display:none;}
+
+  .topo{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;max-width:1040px;margin:0 auto;}
+  .marca{font-weight:700;font-size:18px;color:var(--verde-escuro);}
+  .entrar{font-size:14px;font-weight:600;text-decoration:none;color:var(--verde-escuro);border:1.5px solid var(--verde);padding:8px 16px;border-radius:100px;}
+  .hero{background:linear-gradient(160deg,var(--roxo2),var(--roxo) 60%,#3b2566);color:#fff;padding:46px 20px 52px;text-align:center;}
+  .hero img.logo{width:72px;height:72px;border-radius:18px;object-fit:cover;background:#fff;margin-bottom:14px;}
+  .hero h1{font-size:clamp(27px,6vw,42px);line-height:1.15;max-width:660px;margin:0 auto 12px;}
+  .hero p{max-width:540px;margin:0 auto 22px;color:#d8cdef;font-size:17px;}
+  .botoes{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  .btn{display:inline-block;text-decoration:none;font-weight:600;padding:13px 24px;border-radius:100px;font-size:15px;border:0;cursor:pointer;}
+  .btn.ouro{background:var(--ouro);color:#2b1d00;}
+  .btn.claro{background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.4);}
+  .btn.verde{background:var(--verde);color:#fff;}
+  .btn.contorno{border:1.5px solid var(--verde);color:var(--verde-escuro);background:#fff;}
+  .btn.pequeno{padding:9px 18px;font-size:14px;}
+  main{max-width:1040px;margin:0 auto;padding:0 18px;}
+  section{padding-top:8px;}
+  h2{font-size:24px;color:var(--verde-escuro);margin-bottom:4px;}
+  .sub{color:var(--suave);margin-bottom:16px;}
+  .grelha{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
+  .cartao{background:#fff;border:1px solid var(--linha);border-radius:16px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:6px;text-decoration:none;}
+  .cartao h3{font-size:17px;}
+  .cartao p,.suave{font-size:14px;color:var(--suave);}
+  .cartao .acao{margin-top:auto;padding-top:8px;}
+  .preco{font-weight:700;color:var(--verde-escuro);white-space:nowrap;}
+  .linha-servico{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--linha);font-size:14px;}
+  .linha-servico:first-of-type{border-top:0;}
+  .espiritual{background:linear-gradient(135deg,var(--roxo),var(--roxo2));border-color:rgba(212,175,55,.35);}
+  .espiritual h3{color:var(--ouro-claro);}
+  .espiritual p{color:#cdbfe8;}
+  .espiritual .ver{color:var(--ouro-claro);font-weight:600;font-size:14px;margin-top:auto;padding-top:8px;}
+  .pessoa{text-align:center;align-items:center;}
+  .pessoa img,.pessoa .foto{width:92px;height:92px;border-radius:50%;object-fit:cover;background:#e4ede9;}
+  .pessoa .papel{color:var(--verde);font-weight:600;font-size:14px;}
+  .estrelas{color:#b3893f;}
+  .horario{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;}
+  .horario div{background:#fff;border:1px solid var(--linha);border-radius:12px;padding:10px 12px;font-size:14px;}
+  .plataforma{background:#fff;border:1px solid var(--linha);border-radius:20px;padding:26px 20px;}
+  .lista{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px 18px;margin:16px 0 22px;list-style:none;}
+  .lista li{padding-left:26px;position:relative;font-size:15px;}
+  .lista li::before{content:"✓";position:absolute;left:0;color:var(--verde);font-weight:700;}
+  footer{max-width:1040px;margin:44px auto 30px;padding:0 18px;font-size:13px;color:var(--suave);text-align:center;}
+  footer a{margin:0 8px;}
+  .vazio{color:var(--suave);font-size:14px;}
+</style>
+</head>
+<body>
+
+<div class="topo">
+  <a class="marca" href="#" style="text-decoration:none;">Hikari Fafe</a>
+  <a class="entrar" href="index.html">Vindora</a>
+</div>
+
+<header class="hero">
+  <img id="heroLogo" class="logo hidden" alt="">
+  <h1 id="heroTitulo">Hikari Fafe</h1>
+  <p id="heroTexto">Terapias, formações e serviços espirituais.</p>
+  <div class="botoes">
+    <a class="btn contorno" data-funil href="marcar.html">📅 Marcar consulta com Hikari Fafe</a>
+  </div>
+</header>
+
+<main>
+  <div id="home" class="vista ativa">
+    <div class="tiles">
+      <a class="tile roxo" href="#espiritual"><span class="ic">✨</span><span class="nome">Espiritual</span><span class="peq">Mapa da Alma, Tarot, Poemas</span></a>
+      <a class="tile" href="#terapias"><span class="ic">🩺</span><span class="nome">Terapias e marcações</span><span class="peq">Serviços e preços</span></a>
+      <a class="tile" href="#formacoes"><span class="ic">🎓</span><span class="nome">Formações e turmas</span><span class="peq">Reiki e workshops</span></a>
+      <a class="tile hidden" id="mEquipa" href="#equipa"><span class="ic">🙋</span><span class="nome">Terapeutas</span><span class="peq">Quem cuida de ti</span></a>
+      <a class="tile hidden" id="mLoja" href="#loja"><span class="ic">🛍️</span><span class="nome">Loja</span><span class="peq">Livros e cursos</span></a>
+      <a class="tile hidden" id="mHorarios" href="#horarios"><span class="ic">🗓️</span><span class="nome">Horários</span><span class="peq">Disponibilidade</span></a>
+      <a class="tile hidden" id="mTestemunhos" href="#testemunhos"><span class="ic">⭐</span><span class="nome">Testemunhos</span><span class="peq">O que dizem</span></a>
+      <a class="tile hidden" id="mContactos" href="#contactos"><span class="ic">📍</span><span class="nome">Contactos</span><span class="peq">Fala connosco</span></a>
+      <a class="tile destaque" href="#terapeutas"><span class="ic">👩‍⚕️</span><span class="nome">Sou terapeuta</span><span class="peq">Plataforma Vindora</span></a>
+    </div>
+<div class="vd-partilha" style="margin:18px 0;padding:18px;border-radius:16px;background:#fff;border:1px solid #d9cbae;text-align:center;">
+  <strong style="font-size:17px;">💛 Partilha com quem gostas</strong>
+  <p style="margin:6px 0 12px;font-size:14px;color:#6b6252;">Envia a um amigo ou a alguém da família. Cada pessoa pode fazer a sua primeira leitura grátis.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+    <button type="button" onclick="vdPartilhar('mapa')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Mapa da Alma</button>
+    <button type="button" onclick="vdPartilhar('carta')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Tarot</button>
+    <button type="button" onclick="vdPartilhar('meiji')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Poemas Meiji</button>
+    <button type="button" onclick="vdPartilhar('ervas')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Ervas e Mesinhas</button>
+  </div>
+</div>
+  </div>
+<section id="espiritual" class="vista">
+    <a class="voltar" href="#">← Início</a>
+    <h2>✨ Serviços espirituais</h2>
+    <p class="sub">Começa grátis e vai mais fundo quando quiseres.</p>
+    <div class="grelha">
+      <a class="cartao espiritual" id="cartaoMapa" href="mapa-da-alma.html">
+        <h3>🔮 Mapa da Alma</h3>
+        <p>O teu mapa pessoal a partir da data de nascimento. Resumo gratuito, leitura completa para quem quiser mais.</p>
+        <span class="ver">Descobrir o meu mapa →</span>
+      </a>
+      <a class="cartao espiritual" id="cartaoTarot" href="cartomancia.html">
+        <h3>🃏 Tarot</h3>
+        <p>Uma leitura de cartas para a tua pergunta. Experimenta grátis.</p>
+        <span class="ver">Tirar as cartas →</span>
+      </a>
+      <a class="cartao espiritual" href="mesinhas.html?t=hikari-terapias">
+        <h3>🌿 Ervas e Mesinhas Antigas</h3>
+        <p>Mesinhas e receitas de casa, ao jeito antigo. Escreve o que procuras.</p>
+        <span class="ver">Consultar →</span>
+      </a>
+      <a class="cartao espiritual" data-poemas href="poemas-meiji.html">
+        <h3>🎴 Poemas do Imperador Meiji</h3>
+        <p>Tira um poema e lê a mensagem para o teu momento.</p>
+        <span class="ver">Tirar um poema →</span>
+      </a>
+    </div>
+<div class="vd-partilha" style="margin:18px 0;padding:18px;border-radius:16px;background:#fff;border:1px solid #d9cbae;text-align:center;">
+  <strong style="font-size:17px;">💛 Partilha com quem gostas</strong>
+  <p style="margin:6px 0 12px;font-size:14px;color:#6b6252;">Envia a um amigo ou a alguém da família. Cada pessoa pode fazer a sua primeira leitura grátis.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+    <button type="button" onclick="vdPartilhar('mapa')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Mapa da Alma</button>
+    <button type="button" onclick="vdPartilhar('carta')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Tarot</button>
+    <button type="button" onclick="vdPartilhar('meiji')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Poemas Meiji</button>
+    <button type="button" onclick="vdPartilhar('ervas')" style="padding:10px 14px;border-radius:100px;border:1px solid #d9cbae;background:#fffaf0;font-size:14px;cursor:pointer;">📲 Ervas e Mesinhas</button>
+  </div>
+</div>
+  </section>
+
+  <section id="terapias" class="vista">
+    <a class="voltar" href="#">← Início</a>
+    <h2>🩺 Terapias e marcações</h2>
+    <p class="sub">Escolhe a terapia, vê os preços e marca online. A terapeuta confirma contigo.</p>
+    <div id="servicos" class="grelha"><p class="vazio">A carregar…</p></div>
+    <div class="botoes" style="margin-top:18px;"><a class="btn verde" data-funil href="marcar.html">📅 Marcar consulta</a></div>
+  </section>
+
+  <section id="formacoes" class="vista">
+    <a class="voltar" href="#">← Início</a>
+    <h2>🎓 Formações e turmas</h2>
+    <p class="sub">Cursos, workshops e níveis de Reiki, com inscrição direta.</p>
+    <div id="listaFormacoes" class="grelha"><p class="vazio">A carregar…</p></div>
+  </section>
+
+  <section id="equipa" class="vista">
+    <a class="voltar" href="#">← Início</a>
+    <h2>🙋 Os terapeutas</h2>
+    <p class="sub">Quem vai cuidar de ti.</p>
+    <div id="listaEquipa" class="grelha"></div>
+  </section>
+
+  <section id="loja" class="vista">
+    <a class="voltar" href="#">← Início</a>
+    <h2>🛍️ Loja</h2>
+    <p class="sub">Livros, cursos e outras ofertas.</p>
+    <div id="listaLoja" class="grelha"></div>
+  </section>
+
+  <section id="horarios" class="vista">
+    <a class="voltar" href="#">← Início</a>
+    <h2>🗓️ Horários de atendimento</h2>
+    <p class="sub" id="subHorarios"></p>
+    <div id="listaHorarios" class="horario"></div>
+    <div class="botoes" style="margin-top:16px;justify-content:flex-start;"><a class="btn verde" data-funil href="marcar.html">📅 Pedir marcação</a></div>
+  </section>
+
+  <section id="testemunhos" class="vista">
+    <a class="voltar" href="#">← Início</a>
+    <h2>⭐ O que dizem os clientes</h2>
+    <div id="listaTestemunhos" class="grelha" style="margin-top:12px;"></div>
+  </section>
+
+  <section id="contactos" class="vista">
+    <a class="voltar" href="#">← Início</a>
+    <h2>📍 Contactos</h2>
+    <div id="listaContactos" class="cartao" style="margin-top:12px;gap:8px;"></div>
+  </section>
+
+  <section id="terapeutas" class="vista">
+    <a class="voltar" href="#">← Início</a>
+    <h2>👩‍⚕️ És terapeuta ou tens uma clínica?</h2>
+    <p class="sub">A Vindora é a plataforma onde geres o teu consultório e crias a tua própria página, com o teu nome, logótipo e cores.</p>
+    <div class="plataforma">
+      <ul class="lista">
+        <li>Agenda e marcações online</li>
+        <li>Fichas e métodos criados por ti</li>
+        <li>Pacientes e histórico clínico</li>
+        <li>Página pública com a tua marca</li>
+        <li>Equipa com vários terapeutas e salas</li>
+        <li>Loja com as tuas ofertas e formações</li>
+        <li>Portal para os teus pacientes</li>
+        <li>Versões anteriores para voltares atrás</li>
+      </ul>
+      <div class="botoes" style="justify-content:flex-start;">
+        <a class="btn verde" href="app.html">Criar conta e experimentar</a>
+        <a class="btn contorno" href="app.html">Já tenho conta</a>
+      </div>
+      <p class="suave" style="margin-top:10px;">Período de teste incluído.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div id="livroReclamacoes"></div>
+  <div style="margin-top:6px;"><a href="politica-privacidade.html">Política de privacidade</a><a href="termos-utilizacao.html">Termos de utilização</a></div>
+  <p style="margin-top:10px;">Hikari Fafe · criado com <a href="index.html">Vindora</a></p>
+</footer>
+
+<script>
+(function(){
+// Navegação por categorias: o endereço (#terapias, #formacoes…) escolhe o que se vê.
+function rota(){
+  const id = location.hash.replace('#', '');
+  let alvo = document.getElementById(id);
+  if (!alvo || !alvo.classList.contains('vista')) alvo = document.getElementById('home');
+  document.querySelectorAll('.vista').forEach(v => v.classList.toggle('ativa', v === alvo));
+  document.body.classList.toggle('interior', alvo !== document.getElementById('home'));
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', rota);
+rota();
+})();
+</script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+});
+const db = getFirestore(app);
+const TENANT = 'hikari-terapias';
+const $ = id => document.getElementById(id);
+const esc = s => s == null ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const urlSegura = u => /^https?:\/\/[^\s]+$/i.test(String(u||'').trim()) || /^(app|pagina|marcar|inscricao|ficha|portal|saudecare-[a-z-]+)\.html(\?[^\s]*)?$/.test(String(u||'').trim());
+const mostrar = (secao, tile) => { if (tile) $(tile).classList.remove('hidden'); };
+const DIAS = { mon:'Segunda', tue:'Terça', wed:'Quarta', thu:'Quinta', fri:'Sexta', sat:'Sábado', sun:'Domingo' };
+
+// Tarot e Mapa da Alma: respeita o que ficou visível nas definições.
+fetch('https://effortless-entremet-7de9ef.netlify.app/.netlify/functions/mapaAlma', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ action: 'getOverrides', tenantId: TENANT })
+}).then(r => r.json()).then(d => {
+  if (!d || !d.ok) return;
+  if (d.mapaAlmaVisivel === false) $('cartaoMapa').classList.add('oculto');
+  if (d.cartomanciaVisivel === false) $('cartaoTarot').classList.add('oculto');
+}).catch(() => {});
+
+async function ler(nome){
+  try { return (await getDocs(collection(db, 'tenants', TENANT, nome))).docs.map(d => ({ id: d.id, ...d.data() })); }
+  catch(e){ console.warn('indisponível:', nome, e); return null; }
+}
+
+async function arrancar(){
+  // O endereço da página pública pode não ser igual ao id da conta; procura-o.
+  let slug = TENANT, perfil = null;
+  try {
+    const q = await getDocs(query(collection(db, 'public_tenant_profiles'), where('tenantId', '==', TENANT)));
+    if (!q.empty){ slug = q.docs[0].id; perfil = q.docs[0].data(); }
+    else { const s = await getDoc(doc(db, 'public_tenant_profiles', TENANT)); if (s.exists()) perfil = s.data(); }
+  } catch(e){ console.warn('perfil indisponível', e); }
+
+  const funil = 'marcar.html?t=' + encodeURIComponent(slug);
+  document.querySelectorAll('[data-funil]').forEach(a => a.href = funil);
+  document.querySelectorAll('[data-poemas]').forEach(a => a.href = 'poemas-meiji.html?t=' + TENANT);
+
+  if (perfil){
+    
+    desenharContactos(perfil);
+    desenharHorarios(perfil);
+    desenharLoja(perfil);
+    if (perfil.legalTexts?.livroReclamacoesUrl && urlSegura(perfil.legalTexts.livroReclamacoesUrl)){
+      $('livroReclamacoes').innerHTML = `<a href="${esc(perfil.legalTexts.livroReclamacoesUrl)}" target="_blank" rel="noopener">📕 Livro de Reclamações</a>`;
+    }
+  }
+
+  const [cats, servicos, formacoes, equipa, testemunhos] = await Promise.all([
+    ler('serviceCategories'), ler('services'), ler('trainings'), ler('teamMembers'), ler('testimonials')
+  ]);
+  desenharServicos(cats || [], servicos, funil);
+  desenharFormacoes(formacoes, slug);
+  desenharEquipa(equipa);
+  desenharTestemunhos(testemunhos);
+}
+
+function desenharServicos(cats, servicos, funil){
+  const el = $('servicos');
+  if (!servicos || !servicos.length){ el.innerHTML = '<p class="vazio">Os serviços vão aparecer aqui.</p>'; return; }
+  const mod = { presencial:'📍 Presencial', online:'💻 Online', ambos:'📍 Presencial · 💻 Online' };
+  let grupos = cats.slice().sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  if (!grupos.length){
+    const nomes = {};
+    servicos.forEach(s => { const n = s.category || 'Serviços'; nomes[n] = nomes[n] || { id: n, name: n, icon: s.categoryIcon || '🩺' }; s.categoryId = n; });
+    grupos = Object.values(nomes);
+  }
+  el.innerHTML = grupos.map(g => {
+    const itens = servicos.filter(s => s.categoryId === g.id);
+    if (!itens.length) return '';
+    return `<div class="cartao">
+      <h3>${esc(g.icon || '🩺')} ${esc(g.name)}</h3>
+      ${g.modalidade && mod[g.modalidade] ? `<p>${mod[g.modalidade]}</p>` : ''}
+      ${g.description ? `<p>${esc(g.description)}</p>` : ''}
+      <div>${itens.map(s => `<div class="linha-servico"><div><strong>${esc(s.name)}</strong>${s.type === 'pack' ? `<div class="suave">Pack · ${esc(s.packSessions||'')} sessões</div>` : ''}${s.description ? `<div class="suave">${esc(s.description)}</div>` : ''}</div><span class="preco">${esc(s.price)}€</span></div>`).join('')}</div>
+      <div class="acao"><a class="btn verde pequeno" href="${esc(funil)}">Marcar</a></div>
+    </div>`;
+  }).join('') || '<p class="vazio">Os serviços vão aparecer aqui.</p>';
+}
+
+function desenharFormacoes(lista, slug){
+  const el = $('listaFormacoes');
+  if (!lista || !lista.length){ el.innerHTML = '<p class="vazio">Brevemente novas formações e turmas.</p>'; return; }
+  el.innerHTML = lista.map(t => `<div class="cartao">
+    <h3>${esc(t.title)}</h3>
+    <p>${esc(t.date || '')}</p>
+    ${t.description ? `<p>${esc(t.description)}</p>` : ''}
+    <p><span class="preco">${t.price > 0 ? esc(t.price) + ' €' : 'Gratuito'}</span>${t.capacity ? ' · ' + esc(t.capacity) + ' vagas' : ''}</p>
+    <div class="acao"><a class="btn verde pequeno" href="inscricao.html?t=${encodeURIComponent(slug)}&tr=${encodeURIComponent(t.id)}">Inscrever-me</a></div>
+  </div>`).join('');
+}
+
+function desenharEquipa(lista){
+  if (!lista || !lista.length) return;
+  mostrar('equipa', 'mEquipa');
+  $('listaEquipa').innerHTML = lista.map(m => `<div class="cartao pessoa">
+    ${m.photoUrl && urlSegura(m.photoUrl) ? `<img src="${esc(m.photoUrl)}" alt="${esc(m.name)}">` : '<div class="foto"></div>'}
+    <h3>${esc(m.name)}</h3>
+    ${m.role || m.category ? `<span class="papel">${esc(m.role || m.category)}</span>` : ''}
+    ${m.bio ? `<p>${esc(m.bio)}</p>` : ''}
+  </div>`).join('');
+}
+
+function desenharLoja(perfil){
+  const lista = Array.isArray(perfil.ofertas) ? perfil.ofertas.filter(o => o && o.titulo) : [];
+  if (!lista.length) return;
+  mostrar('loja', 'mLoja');
+  $('listaLoja').innerHTML = lista.map(o => `<div class="cartao">
+    <h3>${esc(o.titulo)}</h3>
+    ${o.descricao ? `<p>${esc(o.descricao)}</p>` : ''}
+    ${o.preco ? `<p><span class="preco">${esc(o.preco)}</span></p>` : ''}
+    ${urlSegura(o.url) ? `<div class="acao"><a class="btn verde pequeno" href="${esc(o.url)}" ${/^https?:/i.test(o.url) ? 'target="_blank" rel="noopener noreferrer"' : ''}>${esc(o.botao || 'Quero saber mais')}</a></div>` : ''}
+  </div>`).join('');
+}
+
+function desenharHorarios(perfil){
+  const a = perfil.availability || {};
+  if (a.noFixedHours || a.mode === 'none'){
+    mostrar('horarios', 'mHorarios');
+    $('subHorarios').textContent = 'Atendimento só por marcação combinada.';
+    return;
+  }
+  const linhas = src => Object.keys(DIAS).filter(k => src[k]?.enabled).map(k => `<div><strong>${DIAS[k]}</strong><br>${esc(src[k].start)} – ${esc(src[k].end)}</div>`).join('');
+  let html = '';
+  if (a.mode === 'biweekly'){
+    const A = linhas(a), B = linhas(a.biweekly?.weekB || {});
+    if (!A && !B) return;
+    html = (A ? '<div style="grid-column:1/-1;"><strong>Semana A</strong></div>' + A : '') + (B ? '<div style="grid-column:1/-1;"><strong>Semana B</strong></div>' + B : '');
+    $('subHorarios').textContent = 'As semanas alternam quinzenalmente. Confirma o dia certo ao pedir a marcação.';
+  } else {
+    html = linhas(a);
+    if (!html) return;
+  }
+  mostrar('horarios', 'mHorarios');
+  $('listaHorarios').innerHTML = html;
+}
+
+function desenharTestemunhos(lista){
+  if (!lista || !lista.length) return;
+  mostrar('testemunhos', 'mTestemunhos');
+  $('listaTestemunhos').innerHTML = lista.map(t => `<div class="cartao">
+    <div class="estrelas">${'★'.repeat(Math.max(1, Math.min(5, t.rating || 5)))}</div>
+    <p style="color:var(--texto);">"${esc(t.text)}"</p>
+    <p>— ${esc(t.name)}</p>
+  </div>`).join('');
+}
+
+function desenharContactos(p){
+  const linhas = [];
+  if (p.phone) linhas.push(`<div>📞 ${esc(p.phone)}</div>`);
+  if (p.email) linhas.push(`<div>✉️ ${esc(p.email)}</div>`);
+  if (p.address) linhas.push(`<div>📍 ${esc(p.address)}</div>`);
+  const s = p.social || {};
+  [['facebook','Facebook'],['instagram','Instagram'],['whatsapp','WhatsApp'],['website','Website']].forEach(([k, nome]) => {
+    if (s[k] && urlSegura(s[k])) linhas.push(`<div><a href="${esc(s[k])}" target="_blank" rel="noopener">${nome}</a></div>`);
+  });
+  if (!linhas.length) return;
+  mostrar('contactos', 'mContactos');
+  $('listaContactos').innerHTML = linhas.join('');
+}
+
+arrancar();
+
+  window.vdPartilhar = async function(k){
+    const base = new URL('.', location.href).href;
+    const P = {
+      mapa:  ['Mapa da Alma', 'Descobre o teu Mapa da Alma com a Hikari Fafe. A primeira leitura é grátis:', 'mapa-da-alma.html'],
+      carta: ['Tarot', 'Experimenta uma leitura de Tarot com a Hikari Fafe. A primeira leitura é grátis:', 'cartomancia.html'],
+      meiji: ['Poemas do Imperador Meiji', 'Tira um poema do Imperador Meiji e lê a mensagem para o teu momento:', 'poemas-meiji.html?t=hikari-terapias'],
+      ervas: ['Ervas e Mesinhas Antigas', 'Ervas e mesinhas antigas, com receitas de casa. Escreve o que procuras e aparece:', 'mesinhas.html?t=hikari-terapias']
+    }[k];
+    if (!P) return;
+    const url = base + P[2];
+    try { if (navigator.share){ await navigator.share({ title: P[0], text: P[1], url: url }); return; } }
+    catch(e){ if (e && e.name === 'AbortError') return; }
+    window.open('https://wa.me/?text=' + encodeURIComponent(P[1] + ' ' + url), '_blank');
+  };
+</script>
+</body>
+</html>
