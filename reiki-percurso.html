@@ -277,6 +277,7 @@ function garantirManuais(lista){
   });
   return lista;
 }
+let TEM_ANTIGO = false;
 let ALUNO = null, MODULOS = [], PROGRESSO = {}, RECURSOS = [], TESTES = [], PRATICA = null;
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
@@ -327,15 +328,30 @@ async function arrancar(){
     return;
   }
 
-  if (ALUNO.formacaoV2 !== false && params.get('v2') !== '0') V2 = true;   /* versão nova para todos; formacaoV2:false no cartão (ou ?v2=0) mantém a antiga */
+  /* Que versão vê o aluno? Ninguém perde o que já fez:
+     - quem já tem progresso no percurso antigo e ainda não passou, continua nele (com um convite para ver a versão nova);
+     - quem já começou a versão nova, ou nunca começou nada, vai para a nova;
+     - o aluno pode mudar quando quiser (o progresso de cada versão fica guardado);
+     - o Mestre pode forçar com formacaoV2 no cartão, ou com ?v2=1 / ?v2=0 no link. */
+  let TH = {};
+  if (!PREVIEW) { try { const t0 = await getDoc(doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO)); TH = t0.exists() ? t0.data() : {}; } catch(e){} }
+  const pAnt = TH.percurso || {};
+  const feito = o => !!(o && (o.lido || o.visto || o.concluido || o.iniciada || o.respostas));
+  TEM_ANTIGO = Object.keys(pAnt).some(k => !k.startsWith('v2-') && feito(pAnt[k]));
+  const temNovo = Object.keys(pAnt).some(k => k.startsWith('v2-'));
+  const forca = params.get('v2');
+  if (forca === '1') V2 = true;
+  else if (forca === '0') V2 = false;
+  else if (ALUNO.formacaoV2 === true || TH.percursoNovo === true || temNovo) V2 = true;
+  else if (ALUNO.formacaoV2 === false || TH.percursoNovo === false || TEM_ANTIGO) V2 = false;
+  else V2 = true;
   try { MODULOS = await carregarModulos(NIVEL); }
   catch(e){ console.warn('módulos indisponíveis', e); MODULOS = []; }
 
   /* O progresso fica na conversa privada do aluno — é onde a sala de
      estudo tem licença para escrever. */
-  if (!PREVIEW) try {
-    const t = await getDoc(doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO));
-    const p = (t.exists() && t.data().percurso) || {};
+  try {
+    const p = pAnt;
     PROGRESSO = {};
     MODULOS.forEach(m => { if (p[m.id]) PROGRESSO[m.id] = p[m.id]; });
     if (PRATICA && p[PRATICA.id]) PROGRESSO[PRATICA.id] = p[PRATICA.id];
@@ -585,6 +601,22 @@ function liberta(m){
 }
 function diasFeitos(p){ return Object.keys((p && p.dias) || {}).length; }
 
+window.mudarVersao = async function(nova){
+  if (!PREVIEW){
+    try { await setDoc(doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO), { codigo: CODIGO, alunoNome: ALUNO.nome || '', percursoNovo: !!nova }, { merge: true }); }
+    catch(e){ alert('Não consegui mudar de versão: ' + e.message); return; }
+  }
+  const u = new URL(location.href); u.searchParams.delete('v2'); location.href = u.toString();
+};
+function bannerVersao(){
+  if (PREVIEW || !TEM_ANTIGO) return '';
+  return V2
+    ? `<div class="card" style="margin-bottom:12px;"><p class="nota" style="margin:0;">Estás na formação nova. O que fizeste antes está guardado.
+        <a href="#" onclick="mudarVersao(false);return false;" style="color:var(--bronze);font-weight:700;">Voltar ao percurso anterior</a></p></div>`
+    : `<div class="card aviso" style="margin-bottom:12px;"><h4>✨ Há uma formação nova</h4>
+        <p class="nota" style="margin-top:0;">Manual completo do nível, vídeos narrados, material em PDF por módulo, perguntas e exame final. O que já fizeste neste percurso fica guardado, e podes voltar cá quando quiseres.</p>
+        <button class="principal" onclick="mudarVersao(true)">Ver a formação nova</button></div>`;
+}
 window.desenharLista = desenharLista;
 function desenharLista(){
   if (!MODULOS.length){
@@ -697,7 +729,7 @@ function desenharLista(){
     <p class="nota" style="margin-top:0;">Começa por aqui: o manual completo do nível. Lê-o na aplicação ou descarrega-o para imprimir.</p>
     <a class="leve" style="display:inline-block;margin:8px 8px 0 0;text-decoration:none;" href="${MANUAIS_URL}${esc(F2.manual.ficheiro)}" target="_blank" rel="noopener">📖 Ler o manual</a>
     <a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="${MANUAIS_URL}${esc(F2.manual.ficheiro)}" download>⬇ Descarregar PDF</a></div>` : '';
-  palco().innerHTML = `${hero}${cartaoManual}${cartaoOficina}${listaModulos}
+  palco().innerHTML = `${bannerVersao()}${hero}${cartaoManual}${cartaoOficina}${listaModulos}
     <p class="nota" style="text-align:center;margin:4px 0 14px;">Faz um passo de cada vez, sem pressa. O que escreveres fica guardado e a escola acompanha o teu percurso.</p>
     ${blocoTreino}${blocoFeito}${blocoTurma}`;
 }
