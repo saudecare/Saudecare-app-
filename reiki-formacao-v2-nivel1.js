@@ -494,8 +494,8 @@ const N1_MODULOS = [
     pdf: { titulo: 'Módulo 9 — Cho Ku Rei e técnicas', ficheiro: 'n1-m09-cho-ku-rei-e-tecnicas.pdf' },
     aula: { url: "", legendas: "" },
     ler: [
-      T('Começo por dizer-te aquilo que é verdade: no método clássico, o Cho Ku Rei não pertence ao Nível 1. Tal como o sistema foi organizado e como a maioria das escolas o ensina, os símbolos aparecem no Nível 2, e o primeiro nível faz-se só com as mãos e com a intenção. Digo-to desde já por honestidade — não apresento como tradição aquilo que é uma opção minha — e para que, ao falares com praticantes de outras escolas, não penses que te enganaram nem os acuses de estarem errados.'),
-      T('Nesta escola dá-se já no primeiro nível. A razão é esta: a energia do mundo em que vivemos está muito mais densa do que estava há cem anos. O Nível 1 continua a ser o nível do uso próprio — mas um uso próprio com uma chave na mão. Quem aprendeu sem símbolo no primeiro nível não aprendeu menos nem recebeu um Reiki mais fraco: aprendeu por outra ordem. Se um dia ensinares, decide tu, e di-lo aos teus alunos com a mesma clareza.'),
+      T('Nesta escola o Cho Ku Rei ensina-se já no Nível 1, juntamente com os seus usos. É uma decisão do Mestre, e tem uma razão: a energia do mundo em que vivemos hoje não é a mesma de quando o Reiki foi descoberto — está muito mais densa. O que um aluno enfrenta hoje, no trabalho, na rua, nos ambientes por onde passa, não é o que enfrentava no Japão de 1922. Faz sentido dar-te já uma ferramenta poderosa: que concentra energia onde falta, que limpa o espaço onde dormes, que te protege antes de entrares num ambiente pesado.'),
+      T('O Nível 1 continua a ser o nível do uso próprio — mas um uso próprio com uma chave na mão. Por honestidade, fica dito que muitas escolas ensinam os símbolos só no Nível 2, e que quem aprendeu assim não aprendeu menos: aprendeu por outra ordem. Quando falares com praticantes de outras escolas, di-lo com naturalidade, sem os corrigir. E se um dia ensinares, decide tu e explica a ordem aos teus alunos com a mesma clareza.'),
       T('O que é um símbolo? Não é um feitiço nem um amuleto. Pensa nele como o nome de uma frequência: ao desenhá-lo e ao dizer o seu mantra, sintonizas-te com uma qualidade específica da energia, tal como marcas um número para falar com determinada pessoa. A força não está no traço bem feito: está na tua intenção e na sintonização que recebeste. E ver um símbolo não é o mesmo que o receber — o que abre porta é a sintonização.'),
       T('Cho Ku Rei costuma traduzir-se por «coloca aqui toda a força do universo». É o mais directo dos símbolos do Reiki: não é subtil, é um interruptor. Aumenta, concentra, protege e limpa.'),
       L('Como se desenha — três traços', [
@@ -540,7 +540,7 @@ const N1_MODULOS = [
       registo: true, registoPergunta: 'Como saiu o primeiro traço? O que reparaste?'
     },
     responder: [
-      Q('No método clássico, em que nível se ensina o Cho Ku Rei?', ['Nível 1', 'Nível 2', 'Nível 3A'], 1, 'Nesta escola dá-se já no Nível 1, por opção assumida. As duas formas são válidas.'),
+      Q('Porque se ensina o Cho Ku Rei já no Nível 1 nesta escola?', ['Por ser o símbolo mais fácil', 'Porque as energias de hoje não são as de quando o Reiki foi descoberto, e é uma ferramenta poderosa para o uso próprio', 'Porque o Nível 2 não o ensina'], 1, 'É uma decisão do Mestre: o mundo de hoje está mais denso, e o símbolo concentra, limpa e protege.'),
       Q('O que significa Cho Ku Rei?', ['Cura à distância', '«Coloca aqui toda a força do universo»', 'O Buda em mim saúda o Buda em ti'], 1, 'É o símbolo da força: aumenta, concentra, protege e limpa.'),
       Q('Quantas vezes se repete o mantra para activar o símbolo?', ['Uma', 'Três', 'Sete'], 1, 'Cho Ku Rei, Cho Ku Rei, Cho Ku Rei.'),
       Q('Podes usar o Cho Ku Rei para tratar outra pessoa no Nível 1?', ['Sim', 'Não — neste nível quem recebe és tu, o teu espaço ou as tuas coisas', 'Só se for da família'], 1, 'O símbolo não altera a regra: aplicar Reiki a outras pessoas é do Nível 2.'),
@@ -692,7 +692,7 @@ const N1_MODULOS = [
       T('Cobrar pelo teu trabalho é legítimo e não tira pureza nenhuma ao Reiki. O que não é legítimo é aproveitar o desespero de alguém. Define o teu preço, mantém-no, e guarda espaço para quem realmente não pode pagar.'),
       L('Perguntas que me fazem sempre', [
         'Não sinto nada nas mãos. Estou a fazer mal? Não. A sensibilidade varia e afina-se com a prática; o Reiki não depende de sentires',
-        'No manual de um amigo o Cho Ku Rei é do Nível 2. Quem está certo? Os dois. Nesta escola damo-lo já no Nível 1, pelas razões explicadas. Diz isso com naturalidade',
+        'No manual de um amigo o Cho Ku Rei é do Nível 2. Quem está certo? Os dois: nesta escola damo-lo já no Nível 1, porque as energias de hoje não são as de antigamente e é uma ferramenta poderosa. Diz isso com naturalidade',
         'Já tenho um símbolo. Posso usá-lo nos outros? Usa-o em ti, no teu espaço e nas tuas coisas. Aplicar a outros continua a ser do Nível 2',
         'Preciso de acreditar para funcionar? Não, nem tu nem quem recebe',
         'Posso apanhar a doença ou as energias da pessoa? A energia atravessa-te, não fica. O que acontece é envolveres-te emocionalmente; fecha bem as sessões e lava as mãos',

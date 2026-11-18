@@ -165,7 +165,7 @@ const N2_MODULOS = [
     pdf: { titulo: 'Módulo 3 — Cho Ku Rei', ficheiro: 'n2-m03-cho-ku-rei.pdf' },
     aula: { url: '', legendas: '' },
     ler: [
-      T('Um chokurei é um édito imperial: uma ordem, um mandamento, um decreto, uma lei. Já o conheces do Nível 1 — aqui passas a trabalhá-lo a sério.'),
+      T('Um chokurei é um édito imperial: uma ordem, um mandamento, um decreto, uma lei. Já o conheces do Nível 1, onde é ensinado com os seus usos por ser uma ferramenta poderosa para os dias de hoje — aqui passas a trabalhá-lo a sério.'),
       L('As três sílabas', ['Cho — conecta, liga', 'Ku — poder, energia', 'Rei — espírito, universo']),
       L('Para que serve', [
         'Aumenta a potência e a intensidade da energia',
