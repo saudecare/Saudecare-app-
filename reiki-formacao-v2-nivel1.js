@@ -55,7 +55,8 @@ const N1_MODULOS = [
     responder: [
       Q('Quando abre o módulo seguinte?', ['Quando eu quiser', 'Quando concluo o módulo anterior', 'Passado um número fixo de dias'], 1, 'Os módulos abrem em sequência: só depois de concluíres o anterior. É assim que o conhecimento vai assentando.'),
       Q('Quanto é preciso acertar no exame final para passar?', ['50%', '60%', '80%'], 1, 'Mínimo de 60%, ou seja, 12 respostas certas em 20.'),
-      Q('Neste nível, o Reiki aprende-se a aplicar em quem?', ['Em qualquer pessoa', 'Em ti, no teu espaço e nas tuas coisas', 'Só em animais'], 1, 'O Nível 1 é o nível do uso próprio. Aplicar a outras pessoas faz parte do Nível 2.')
+      Q('Neste nível, o Reiki aprende-se a aplicar em quem?', ['Em qualquer pessoa', 'Em ti, no teu espaço e nas tuas coisas', 'Só em animais'], 1, 'O Nível 1 é o nível do uso próprio. Aplicar a outras pessoas faz parte do Nível 2.'),
+      Q('Se preferires não ouvir o vídeo, o que podes fazer?', ['Saltar o módulo', 'Estudar pela leitura e pelo PDF e responder às perguntas', 'Esperar que o Mestre abra o módulo'], 1, 'O conteúdo é o mesmo: podes estudar pelo material e depois responder às perguntas.')
     ]
   },
 
