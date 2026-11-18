@@ -111,8 +111,29 @@ window.abrir = id => {
   window.scrollTo(0, 0);
 };
 
+/* Resumo para o Mestre: quem está parado e que perguntas mais falham. */
+function painelResumo(){
+  const hoje = Date.now(), DIAS = 7;
+  const parados = ALUNOS.filter(a => {
+    const tot = TOTAL_MOD[a.r.nivel] || 0;
+    const aprovado = (EXAMES[a.id] || []).some(e => e.aprovado);
+    const dt = a.r.ult ? new Date(a.r.ult).getTime() : 0;
+    return a.r.v2 && !aprovado && tot && a.r.feitos < tot + 0 && dt && (hoje - dt) > DIAS * 864e5;
+  });
+  const mapa = {};
+  const conta = (p, ok, c) => { if (!p) return; const m = mapa[p] = mapa[p] || { p, n: 0, mal: 0, c }; m.n++; if (!ok) m.mal++; };
+  ALUNOS.forEach(a => {
+    a.r.itens.forEach(x => (Array.isArray(x.detalhe) ? x.detalhe : []).forEach(d => conta(d.p, d.ok, d.c)));
+    (EXAMES[a.id] || []).forEach(e => (e.detalhe || []).forEach(d => conta(d.p, d.ok, d.c)));
+  });
+  const falhadas = Object.values(mapa).filter(m => m.n >= 2 && m.mal > 0).sort((x, y) => (y.mal / y.n) - (x.mal / x.n) || y.n - x.n).slice(0, 8);
+  const pBlock = parados.length ? `<div class="card"><h3 style="margin-top:0;">⏸ Parados há mais de ${DIAS} dias</h3>${parados.map(a => `<p class="nota" style="margin:4px 0;cursor:pointer;" onclick="abrir('${esc(a.id)}')"><b>${esc(a.t.alunoNome || a.id)}</b> — Nível ${esc(a.r.nivel)}, ${a.r.feitos}/${TOTAL_MOD[a.r.nivel]} módulos, última actividade ${esc(quando(a.r.ult))}</p>`).join('')}</div>` : '';
+  const fBlock = falhadas.length ? `<div class="card"><h3 style="margin-top:0;">❓ Perguntas mais falhadas</h3><p class="nota" style="margin-top:0;">Onde o conteúdo pode estar a explicar pouco. Só perguntas respondidas por pelo menos 2 alunos.</p>${falhadas.map(m => `<p class="nota" style="margin:6px 0;"><span class="mau"><b>${Math.round(m.mal / m.n * 100)}%</b> erradas</span> (${m.mal}/${m.n}) — ${esc(m.p)}<br>Certa: <b>${esc(m.c)}</b></p>`).join('')}</div>` : '';
+  return pBlock + fBlock;
+}
+
 function desenharTudo(){
-  palco.innerHTML = `<input type="search" placeholder="Procurar aluno…" oninput="filtrar(this.value)"><div id="lista"></div>`;
+  palco.innerHTML = painelResumo() + `<input type="search" placeholder="Procurar aluno…" oninput="filtrar(this.value)"><div id="lista"></div>`;
   lista('');
 }
 

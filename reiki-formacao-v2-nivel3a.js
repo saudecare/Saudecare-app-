@@ -355,7 +355,7 @@ const N3A_MODULOS = [
         'A prática de Nentatsu pode ser importante para o desenvolvimento de um pensamento positivo e optimista',
         'As técnicas de desintoxicação — Tanden Chiryo Ho e Gedoku Chiryo Ho — ajudam a libertar emoções',
         'Trabalha sempre todo o corpo energético, para que o equilíbrio seja homogéneo nos vários corpos',
-        'Continua a praticar o Hatsurei Ho, que aprendeste no Nível 2, para avaliares o teu crescimento energético e de consciência'
+        'Continua a praticar o Hatsurei Ho, que já conheces dos níveis anteriores, para avaliares o teu crescimento energético e de consciência'
       ]),
       T('Jaki Kiri Joka Ho: jaki significa energia negativa do corpo, kiri cortar, joka limpeza e ho técnica. Usa-se para retirar energia negativa ou miasmas, cortar ondas negativas fixadas há muito tempo, purificar ou harmonizar alguma coisa.'),
       L('Como se faz o Jaki Kiri Joka Ho', [
