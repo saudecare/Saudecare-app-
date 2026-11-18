@@ -356,11 +356,11 @@ function renderQuickNav(){
     .map(s => `<a href="#${s.id}">${s.icon} ${s.label}</a>`)
     .join('');
   const nav = document.getElementById('quickNav');
-  if (links) nav.innerHTML = links; else nav.remove();
+  nav.remove(); // só ficam os botões grandes (tileNav)
   const presentes = secoes.filter(s => document.getElementById(s.id)?.innerHTML.trim());
   const tiles = document.getElementById('tileNav');
   if (tiles){
-    if (presentes.length >= 3) tiles.innerHTML = presentes.map(s => `<a href="#${s.id}"><span>${s.icon}</span>${s.label}</a>`).join('');
+    if (presentes.length >= 2) tiles.innerHTML = presentes.map(s => `<a href="#${s.id}"><span>${s.icon}</span>${s.label}</a>`).join('');
     else tiles.remove();
   }
   // Destaca na barra fixa a secção que se está a ver
