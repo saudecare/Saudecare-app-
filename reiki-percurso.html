@@ -153,7 +153,8 @@ const db = getFirestore(initializeApp(firebaseConfig));
 
 const params  = new URLSearchParams(location.search);
 const TENANT  = params.get('t') || 'hikari-terapias';
-const CODIGO  = (params.get('c') || '').trim();
+const CODIGO  = (params.get('c') || (params.get('preview') === '1' ? 'PREVIEW' : '')).trim();
+const PREVIEW = params.get('preview') === '1';   /* Mestre a ver como o aluno vê: tudo aberto, nada é gravado */
 
 const ORDEM_NIVEIS = ['1','2','3A','3B'];
 
@@ -288,7 +289,9 @@ async function arrancar(){
     return;
   }
   try {
-    const cartao = await getDoc(doc(db, 'tenants', TENANT, 'reikiAccess', CODIGO));
+    const cartao = PREVIEW
+      ? { exists: () => true, data: () => ({ nome: 'Pré-visualização do Mestre', nivel: (params.get('nivel') || '1').toUpperCase(), formacaoV2: true }) }
+      : await getDoc(doc(db, 'tenants', TENANT, 'reikiAccess', CODIGO));
     if (!cartao.exists()){
       palco().innerHTML = `<div class="card"><h3>Código não reconhecido</h3><p class="nota">Confirma o link com a escola.</p></div>`;
       return;
@@ -324,13 +327,13 @@ async function arrancar(){
     return;
   }
 
-  if (ALUNO.formacaoV2 === true) V2 = true;
+  if (ALUNO.formacaoV2 !== false && params.get('v2') !== '0') V2 = true;   /* versão nova para todos; formacaoV2:false no cartão (ou ?v2=0) mantém a antiga */
   try { MODULOS = await carregarModulos(NIVEL); }
   catch(e){ console.warn('módulos indisponíveis', e); MODULOS = []; }
 
   /* O progresso fica na conversa privada do aluno — é onde a sala de
      estudo tem licença para escrever. */
-  try {
+  if (!PREVIEW) try {
     const t = await getDoc(doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO));
     const p = (t.exists() && t.data().percurso) || {};
     PROGRESSO = {};
@@ -576,6 +579,7 @@ function sequencia(){
 /* Um módulo liberta o seguinte quando está concluído. A prática liberta-o
    logo que o aluno a começa (não o prende 21 dias). */
 function liberta(m){
+  if (PREVIEW) return true;
   const p = PROGRESSO[m.id] || {};
   return ehPratica(m) ? !!(p.iniciada || p.concluido) : !!p.concluido;
 }
@@ -802,14 +806,14 @@ window.entregarTeste = async function(){
   }
   const pct = Math.round(certas / qs.length * 100);
   const aprovado = pct >= (t.notaMinima || 70);
-  try {
+  if (!PREVIEW) try {
     await setDoc(doc(collection(db, 'tenants', TENANT, 'reikiQuizResults')), {
       testeId: t.id, codigo: CODIGO, alunoId: ALUNO.alunoId || '', alunoNome: ALUNO.nome || '',
       percentagem: pct, aprovado, respostas, entregueEm: serverTimestamp(), nivel: String(t.nivel || ''),
       detalhe: qs.map((q, i) => ({ p: q.texto, r: (q.opcoes || [])[respostas[i]] || '', c: (q.opcoes || [])[q.correta] || '', ok: respostas[i] === q.correta }))
     });
   } catch(e){ console.warn('não consegui entregar', e); }
-  try {
+  if (!PREVIEW) try {
     const ref = doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO);
     const sn = await getDoc(ref);
     const antigos = (sn.exists() && Array.isArray(sn.data().resultados)) ? sn.data().resultados : [];
@@ -1140,6 +1144,7 @@ async function gravar(dados, mod){
     alunoNome: ALUNO.nome || '', moduloTitulo: mod.titulo || '', actualizadoEm: new Date().toISOString() };
   const junto = Object.assign({}, PROGRESSO[mod.id] || {}, base, dados);
   PROGRESSO[mod.id] = junto;
+  if (PREVIEW) return;
   try { await setDoc(doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO),
     { codigo: CODIGO, alunoNome: ALUNO.nome || '', percurso: { [mod.id]: junto } }, { merge: true }); }
   catch(e){ console.warn('não consegui gravar', e); }

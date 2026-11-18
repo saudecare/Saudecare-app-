@@ -441,7 +441,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-18-2';
+const APP_VERSION = '2026-11-18-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -17243,6 +17243,13 @@ function reikiRenderListaAlunos(){
       }).join('')}
     </div>
     <a href="reiki-evolucao.html" target="_blank" rel="noopener" style="display:block;text-decoration:none;margin-bottom:12px;"><button class="ghost" style="width:100%;text-align:left;padding:11px 12px;">📈 <strong>Evolução dos alunos</strong><br><span class="muted" style="font-size:.82rem;">Módulos concluídos, respostas certas e erradas, exames e registos</span></button></a>
+    <div style="border:1px solid var(--line,#ddd);border-radius:10px;padding:10px 12px;margin-bottom:12px;"><strong>👁️ Ver como o aluno vê</strong><br><span class="muted" style="font-size:.82rem;">Abre a formação com tudo desbloqueado: vídeos, módulos, materiais, perguntas e exame. Não grava nada.</span>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+        <a href="reiki-percurso.html?preview=1&nivel=1" target="_blank" rel="noopener"><button class="ghost">Nível 1</button></a>
+        <a href="reiki-percurso.html?preview=1&nivel=2" target="_blank" rel="noopener"><button class="ghost">Nível 2</button></a>
+        <a href="reiki-percurso.html?preview=1&nivel=3A" target="_blank" rel="noopener"><button class="ghost">Nível 3A</button></a>
+        <a href="reiki-percurso.html?preview=1&nivel=3B" target="_blank" rel="noopener"><button class="ghost">Nível 3B</button></a>
+      </div></div>
     <input type="search" placeholder="🔍 Procurar aluno…" value="${escapeHtml(__reikiBusca)}" oninput="reikiBuscarAlunos(this.value)" style="width:100%;margin-bottom:10px;">
     <div class="row" style="gap:6px;margin-bottom:12px;flex-wrap:wrap;justify-content:flex-start;">
       ${chip('todos','Todos')}${chip('estudar','A estudar')}${chip('espera','À espera')}${chip('concluidos','Mestres')}${chip('semturma','Sem turma')}
