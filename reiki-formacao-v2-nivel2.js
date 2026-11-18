@@ -164,7 +164,9 @@ const N2_MODULOS = [
     manual: 'Capítulo 5', duracao: '25 min',
     pdf: { titulo: 'Módulo 3 — Cho Ku Rei', ficheiro: 'n2-m03-cho-ku-rei.pdf' },
     aula: { url: 'videos-reiki/n2-m03.mp4', legendas: 'videos-reiki/n2-m03.vtt' },
+    simbolos: ['cho-ku-rei'],
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/cho-ku-rei.png' },
       T('Um chokurei é um édito imperial: uma ordem, um mandamento, um decreto, uma lei. Já o conheces do Nível 1, onde é ensinado com os seus usos por ser uma ferramenta poderosa para os dias de hoje — aqui passas a trabalhá-lo a sério.'),
       L('As três sílabas', ['Cho — conecta, liga', 'Ku — poder, energia', 'Rei — espírito, universo']),
       L('Para que serve', [
@@ -206,7 +208,9 @@ const N2_MODULOS = [
     manual: 'Capítulo 6', duracao: '25 min',
     pdf: { titulo: 'Módulo 4 — Sei He Ki', ficheiro: 'n2-m04-sei-he-ki.pdf' },
     aula: { url: 'videos-reiki/n2-m04.mp4', legendas: 'videos-reiki/n2-m04.vtt' },
+    simbolos: ['sei-he-ki'],
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/sei-he-ki.png' },
       T('Seiheki significa os atributos emocionais e intelectuais que formam uma pessoa. Lembra-te do conceito japonês de kokoro: mente e coração estão unidos, e não dissociados como no ocidente. O Sei He Ki trabalha os aspectos mentais e emocionais, promovendo harmonia e purificação.'),
       T('Outras traduções que vais encontrar: «chave do universo», «homem e Deus fazem-se uno». Não sabemos de onde vêm — possivelmente do sistema de Reiki Essencial. Quando pensares no Sei He Ki, pensa em harmonia.'),
       T('A origem do símbolo: tem origem numa palavra-semente (bija) que representa um aspecto de Buda: Hrih, que em japonês se traduz para Kiriku. Representa Avalokiteshvara, o buda da compaixão, mais conhecido entre nós como Kuan Yin, a bodisatva da compaixão.'),
@@ -250,7 +254,9 @@ const N2_MODULOS = [
     manual: 'Capítulos 7 e 8', duracao: '25 min',
     pdf: { titulo: 'Módulo 5 — Hon Sha Ze Sho Nen e síntese', ficheiro: 'n2-m05-hon-sha-ze-sho-nen.pdf' },
     aula: { url: 'videos-reiki/n2-m05.mp4', legendas: 'videos-reiki/n2-m05.vtt' },
+    simbolos: ['hon-sha-ze-sho-nen'],
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/hon-sha-ze-sho-nen.png' },
       T('Tipicamente considera-se este o símbolo da distância, mas o seu uso vai muito além disso. Não sabemos porque é que o Mestre Usui escolheu esta combinação de kanji. Mas convém saberes que, ao contrário da caligrafia ocidental, a chinesa e a japonesa são uma escrita inspirada pelo Céu, pelos kami — logo, sagrada. Quando um mestre calígrafo trabalha, eleva primeiro o pincel ao céu, como que a trazer a energia de um kami para a sua arte. É uma lição interessante para um praticante de Reiki.'),
       T('O que quer dizer: ao longo do tempo foi tendo várias interpretações, desde «sem passado, sem presente, sem futuro» até à leitura mais correcta e contemporânea: «pensamento correcto é a essência do Ser». Ou ainda, kanji a kanji: «esta (Hon) pessoa (Sha) justamente (Ze) corrige (Sho) os pensamentos (Nen)».'),
       L('Os cinco kanji', [

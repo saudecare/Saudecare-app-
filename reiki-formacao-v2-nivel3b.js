@@ -69,7 +69,10 @@ const N3B_MODULOS = [
     manual: 'Capítulos 2 e 3', duracao: '25 min',
     pdf: { titulo: 'Módulo 1 — Dai Ko Myo tibetano e Raku', ficheiro: 'n3b-m01-dai-ko-myo-e-raku.pdf' },
     aula: { url: 'videos-reiki/n3b-m01.mp4', legendas: 'videos-reiki/n3b-m01.vtt' },
+    simbolos: ['dai-ko-myo-tibetano', 'raku'],
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/dai-ko-myo-tibetano.png' },
+      { tipo: 'imagem', url: 'reiki-img/raku.png' },
       T('Já conheces o Dai Ko Myo tradicional, dos três caracteres japoneses, que recebeste no 3A. Este é outro desenho, com o mesmo nome, que entrou no Reiki pela via ocidental e tibetana. São duas versões do mesmo símbolo e ambas funcionam, desde que tenhas sido sintonizado com elas. A tibetana é bastante mais simples de memorizar, e é a que se usa no momento da sintonização.'),
       L('Tradicional (3A)', [
         'Origem japonesa. Três kanji: Dai, Koo e Myo («grande luz brilhante»). Ligada a Fudo Myo e a Dainichi Nyorai',
@@ -115,7 +118,14 @@ const N3B_MODULOS = [
     manual: 'Capítulo 4', duracao: '20 min',
     pdf: { titulo: 'Módulo 2 — Os seis símbolos', ficheiro: 'n3b-m02-os-seis-simbolos.pdf' },
     aula: { url: 'videos-reiki/n3b-m02.mp4', legendas: 'videos-reiki/n3b-m02.vtt' },
+    simbolos: ['cho-ku-rei', 'sei-he-ki', 'hon-sha-ze-sho-nen', 'dai-ko-myo', 'dai-ko-myo-tibetano', 'raku'],
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/cho-ku-rei.png' },
+      { tipo: 'imagem', url: 'reiki-img/sei-he-ki.png' },
+      { tipo: 'imagem', url: 'reiki-img/hon-sha-ze-sho-nen.png' },
+      { tipo: 'imagem', url: 'reiki-img/dai-ko-myo.png' },
+      { tipo: 'imagem', url: 'reiki-img/dai-ko-myo-tibetano.png' },
+      { tipo: 'imagem', url: 'reiki-img/raku.png' },
       T('A partir de agora trabalhas com seis símbolos. Vale a pena teres o conjunto arrumado na cabeça.'),
       L('Os seis símbolos', [
         'Cho Ku Rei — Nível 2 — força, concentração, limpeza, selo',
@@ -232,6 +242,7 @@ const N3B_MODULOS = [
     manual: 'Capítulo 7', duracao: '40 min',
     pdf: { titulo: 'Módulo 5 — Sintonização presencial', ficheiro: 'n3b-m05-sintonizacao-presencial.pdf' },
     aula: { url: 'videos-reiki/n3b-m05.mp4', legendas: 'videos-reiki/n3b-m05.vtt' },
+    ensaios: { total: 10, titulo: 'Caderno de ensaios — presencial', nota: 'Faz o procedimento completo com uma almofada sentada numa cadeira (cinco vezes com o manual, cinco sem ele) e depois com um familiar que já tenha o nível, sem transmitir nada. Regista cada ensaio.', tipos: ['Com almofada, com o manual', 'Com almofada, sem o manual', 'Com um familiar (sem transmitir)'] },
     ler: [
       T('Este é o procedimento completo. Está escrito para o Nível 1; o módulo anterior diz o que muda nos outros níveis.'),
       L('Preparação', [
@@ -297,6 +308,7 @@ const N3B_MODULOS = [
     manual: 'Capítulo 9 (e adaptações dos capítulos 7 e 10)', duracao: '40 min',
     pdf: { titulo: 'Módulo 6 — Sintonização à distância', ficheiro: 'n3b-m06-sintonizacao-a-distancia.pdf' },
     aula: { url: 'videos-reiki/n3b-m06.mp4', legendas: 'videos-reiki/n3b-m06.vtt' },
+    ensaios: { total: 5, titulo: 'Caderno de ensaios — à distância', nota: 'Ensaia a sintonização à distância com um substituto (almofada ou boneco) e, quando puderes, a videochamada e a chamada de voz com alguém que já tenha o nível, sem transmitir nada. Regista cada ensaio.', tipos: ['À distância, individual', 'À distância, em grupo', 'Videochamada', 'Chamada de voz', 'À hora marcada'] },
     ler: [
       T('A energia não reconhece distância. Se aceitas que se envia Reiki a alguém do outro lado do país, não há razão para não aceitares o mesmo numa sintonização. Milhares de praticantes foram sintonizados assim.'),
       D('O que é preciso é apenas isto: a tua intenção de dar e a intenção do aluno de receber. Sem uma delas, não funciona — e é por isso que se combina hora e se pede confirmação.'),
@@ -583,13 +595,13 @@ const N3B_EXAME = {
   titulo: 'Exame final — Nível 3B (Mestrado)', nivel: '3B', modulo: 0, notaMinima: 60,
   perguntas: [
     { texto: 'O que quer dizer «Mestre» no Reiki?', opcoes: ['Quem sabe tudo', 'Quem está habilitado a transmitir', 'Quem nunca duvida'], correta: 1 },
-    { texto: 'Ter o 3B obriga a dar formação?', opcoes: ['Sim', 'Não', 'Só em Portugal'], correta: 1 },
+    { texto: 'Acabaste uma sintonização e o aluno fica ligado a ti e sai de lá estranho. Que passo esqueceste?', opcoes: ["Falar com ele", "Desenhar o Raku entre ti e o aluno, para separar os campos", "Entregar o certificado"], correta: 1 },
     { texto: 'Qual a versão do Dai Ko Myo usada na sintonização?', opcoes: ['Tradicional', 'Tibetana', 'Nenhuma'], correta: 1 },
     { texto: 'Qual é a função principal do Raku?', opcoes: ['Fixar a energia no aluno no fim da sintonização', 'Abrir o canal', 'Enviar à distância'], correta: 0 },
     { texto: 'Em que sentido se usa o Raku no Reiki?', opcoes: ['De baixo para cima', 'De cima para baixo', 'Da esquerda para a direita'], correta: 1 },
-    { texto: 'Quantos símbolos usa o Mestre?', opcoes: ['Três', 'Seis', 'Dez'], correta: 1 },
+    { texto: 'Um aluno que fez só o Nível 1 pede-te o 3B por ter pressa e pagar o curso. O que fazes?', opcoes: ["Sintonizo, ele pagou", "Não sintonizas quem não está preparado, mesmo que pague", "Sintonizo só no 3A"], correta: 1 },
     { texto: 'Qual o primeiro símbolo na ordem de elevação de um espaço?', opcoes: ['Raku', 'Cho Ku Rei', 'Sei He Ki'], correta: 0 },
-    { texto: 'Onde fica o Hui Yin?', opcoes: ['No períneo', 'No umbigo', 'No topo da cabeça'], correta: 0 },
+    { texto: 'Durante a sintonização sentes que a energia se dispersa. O que manténs do princípio ao fim?', opcoes: ["Hui Yin contraído e língua no palato", "Respiração só pela boca", "Falar sem parar"], correta: 0 },
     { texto: 'Onde se pousa a ponta da língua durante a sintonização?', opcoes: ['No céu da boca, atrás dos dentes de cima', 'Nos dentes de baixo', 'Para fora'], correta: 0 },
     { texto: 'Que cor tem a luz depois de chegar ao tanden na respiração violeta?', opcoes: ['Branca', 'Violeta', 'Verde'], correta: 1 },
     { texto: 'Quantos momentos tem uma sintonização?', opcoes: ['Dois', 'Quatro', 'Seis'], correta: 1 },
@@ -597,8 +609,8 @@ const N3B_EXAME = {
     { texto: 'O que muda entre níveis numa sintonização?', opcoes: ['Os símbolos colocados nas mãos do aluno', 'Todo o procedimento', 'A duração'], correta: 0 },
     { texto: 'Qual a sintonização que habilita o aluno a sintonizar outros?', opcoes: ['Nível 2', 'Nível 3A', 'Nível 3B'], correta: 2 },
     { texto: 'Qual o passo que não se salta no Fecho?', opcoes: ['Desenhar o Raku entre ti e o aluno', 'Pedir feedback', 'Entregar o certificado'], correta: 0 },
-    { texto: 'O que é preciso para a sintonização à distância funcionar?', opcoes: ['A intenção de dar e a intenção do aluno de receber', 'Estar no mesmo país', 'Pagamento'], correta: 0 },
-    { texto: 'Quantas pessoas se recomenda sintonizar de cada vez?', opcoes: ['Quatro a seis', 'Vinte', 'Cem'], correta: 0 },
+    { texto: 'Um aluno à distância nunca fez a formação e quer só o certificado. O que fazes?', opcoes: ["Sintonizo", "Só depois de haver formação a sério: manual lido, dúvidas esclarecidas, trabalho entregue", "Sintonizo mais barato"], correta: 1 },
+    { texto: 'Vinte pessoas pedem formação no mesmo dia. O que fazes?', opcoes: ["Dou a todas de uma vez", "Grupos pequenos, de quatro a seis, para dares atenção a cada uma", "Dou só a metade"], correta: 1 },
     { texto: 'Qual a diferença entre formação online e sintonização à distância?', opcoes: ['A sintonização é o momento energético; a formação é o ensino, acompanhamento e avaliação', 'São iguais', 'A formação é só a sintonização'], correta: 0 },
     { texto: 'Um aluno não está pronto. O que fazes?', opcoes: ['Dou o certificado na mesma', 'Digo-lho a sós, com respeito, explico o que falta e deixo a porta aberta', 'Ignoro'], correta: 1 },
     { texto: 'Um aluno teu diz a alguém para deixar a medicação. De quem é a falha?', opcoes: ['Do aluno', 'Tua, como Mestre', 'Da pessoa'], correta: 1 }

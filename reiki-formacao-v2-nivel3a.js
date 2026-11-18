@@ -163,7 +163,9 @@ const N3A_MODULOS = [
     manual: 'Capítulos 6 e 8', duracao: '25 min',
     pdf: { titulo: 'Módulo 3 — Dai Ko Myo', ficheiro: 'n3a-m03-dai-ko-myo.pdf' },
     aula: { url: 'videos-reiki/n3a-m03.mp4', legendas: 'videos-reiki/n3a-m03.vtt' },
+    simbolos: ['dai-ko-myo'],
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/dai-ko-myo.png' },
       T('Este é o símbolo do Mestre, e é o que recebes neste nível. O nome costuma traduzir-se por «grande luz brilhante». A Mestre Takata usava uma fórmula mais longa: «louvada seja a grande luz universal de sabedoria transcendental».'),
       L('Os três caracteres', [
         'Dai — divindade; sabedoria da cabeça; luz radiante de um iluminado',
@@ -215,7 +217,9 @@ const N3A_MODULOS = [
     manual: 'Capítulo 7 e meditação do capítulo 9', duracao: '30 min',
     pdf: { titulo: 'Módulo 4 — Desenhar e meditar', ficheiro: 'n3a-m04-desenhar-e-meditar.pdf' },
     aula: { url: 'videos-reiki/n3a-m04.mp4', legendas: 'videos-reiki/n3a-m04.vtt' },
+    simbolos: ['dai-ko-myo'],
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/dai-ko-myo.png' },
       T('O Dai Ko Myo tradicional são três caracteres japoneses escritos uns por baixo dos outros, numa coluna: dai, ko, myo. São dezassete traços ao todo.'),
       T('A regra é a mesma da escrita japonesa: de cima para baixo e, dentro de cada carácter, da esquerda para a direita. Horizontais antes de verticais, exterior antes de interior, e a base fecha-se no fim. Segue os números da imagem do manual: é essa a referência que manda.'),
       L('Os três caracteres', [
@@ -585,18 +589,18 @@ N3A_MODULOS.forEach(m => { m.treino = N3A_TREINO[m.ordem] || []; });
 const N3A_EXAME = {
   titulo: 'Exame final — Nível 3A (Shinpiden)', nivel: '3A', modulo: 0, notaMinima: 60,
   perguntas: [
-    { texto: 'O que significa Shinpiden?', opcoes: ['«Mistérios» e «realização»', 'Primeiros ensinamentos', 'Símbolo e mantra'], correta: 0 },
+    { texto: 'Uma pessoa pede-te para a sintonizares «só para experimentar», e tu tens o 3A. O que respondes?', opcoes: ["Faço", "Não sintonizas ninguém com o 3A: isso é do 3B", "Faço se for de graça"], correta: 1 },
     { texto: 'O que permite o 3A?', opcoes: ['Sintonizar alunos', 'Trabalhar como terapeuta de Reiki', 'Dar formação'], correta: 1 },
     { texto: 'Com o 3A já podes chamar-te Mestre de Reiki?', opcoes: ['Sim', 'Não: o título corresponde ao 3B', 'Só em Portugal'], correta: 1 },
     { texto: 'Que símbolo recebes no 3A?', opcoes: ['Raku', 'Dai Ko Myo (Usui, tradicional)', 'Dai Ko Myo tibetano'], correta: 1 },
-    { texto: 'O que significa Kensho?', opcoes: ['Ver a própria natureza', 'Cortar a energia negativa', 'Luz brilhante'], correta: 0 },
+    { texto: 'Uma cliente conta-te um trauma antigo durante a sessão e fica em sofrimento sério. O que fazes?', opcoes: ["Faço psicoterapia", "Acolhes e encaminhas para acompanhamento profissional", "Digo que o Reiki cura tudo"], correta: 1 },
     { texto: 'Que técnica se usa na rotina de meditação diária?', opcoes: ['Joshin Kokyu Ho', 'Jaki Kiri Joka Ho', 'Gedoku Chiryo Ho'], correta: 0 },
     { texto: 'Usar os quatro símbolos em tudo, por rotina, é…', opcoes: ['Aprofundar', 'Enfeitar', 'Obrigatório'], correta: 1 },
     { texto: 'Que símbolo corresponde ao corpo emocional?', opcoes: ['Sei He Ki', 'Cho Ku Rei', 'Dai Ko Myo'], correta: 0 },
     { texto: 'Com que divindade parece estar ligado o Dai Ko Myo?', opcoes: ['Fudo Myo', 'Zeus', 'Nenhuma'], correta: 0 },
     { texto: 'No Reiki, como se compreende o Dai Ko Myo?', opcoes: ['Como religião', 'Unicamente como energia', 'Como segredo'], correta: 1 },
-    { texto: 'Quantos traços tem o Dai Ko Myo tradicional?', opcoes: ['Nove', 'Dezassete', 'Trinta'], correta: 1 },
-    { texto: 'Na prática das quatro semanas, quantas se dedicam ao «myo»?', opcoes: ['Uma', 'Duas', 'Quatro'], correta: 1 },
+    { texto: 'Numa primeira sessão com um cliente novo, queres usar o Dai Ko Myo. O que tens em atenção?', opcoes: ["A capacidade de integração de quem recebe: nem sempre se recomenda na primeira ou segunda sessão", "Nada", "Uso sempre"], correta: 0 },
+    { texto: 'Vês algo durante uma sessão. Como o dizes à pessoa?', opcoes: ["Dou o diagnóstico", "Descreves o que sentiste e devolves-lhe a interpretação", "Nunca digo nada"], correta: 1 },
     { texto: 'Qual a ordem dos símbolos para problemas emocionais?', opcoes: ['Dai Ko Myo, Sei He Ki, Cho Ku Rei', 'Cho Ku Rei, Sei He Ki', 'Só Dai Ko Myo'], correta: 0 },
     { texto: 'Depois de um trabalho com o Dai Ko Myo, se a pessoa ficar tonta, o que se faz?', opcoes: ['Nada', 'Enraíza-se', 'Manda-se embora'], correta: 1 },
     { texto: 'A prática de reconciliação é…', opcoes: ['Psicoterapia', 'Uma prática de acolhimento, não psicoterapia', 'Diagnóstico'], correta: 1 },

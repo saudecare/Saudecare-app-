@@ -493,7 +493,9 @@ const N1_MODULOS = [
     manual: 'Capítulos 12B e 12C', duracao: '30 min',
     pdf: { titulo: 'Módulo 9 — Cho Ku Rei e técnicas', ficheiro: 'n1-m09-cho-ku-rei-e-tecnicas.pdf' },
     aula: { url: "videos-reiki/n1-m09.mp4", legendas: "videos-reiki/n1-m09.vtt" },
+    simbolos: ['cho-ku-rei'],
     ler: [
+      { tipo: 'imagem', url: 'reiki-img/cho-ku-rei.png' },
       T('Nesta escola o Cho Ku Rei ensina-se já no Nível 1, juntamente com os seus usos. É uma decisão do Mestre, e tem uma razão: a energia do mundo em que vivemos hoje não é a mesma de quando o Reiki foi descoberto — está muito mais densa. O que um aluno enfrenta hoje, no trabalho, na rua, nos ambientes por onde passa, não é o que enfrentava no Japão de 1922. Faz sentido dar-te já uma ferramenta poderosa: que concentra energia onde falta, que limpa o espaço onde dormes, que te protege antes de entrares num ambiente pesado.'),
       T('O Nível 1 continua a ser o nível do uso próprio — mas um uso próprio com uma chave na mão. Por honestidade, fica dito que muitas escolas ensinam os símbolos só no Nível 2, e que quem aprendeu assim não aprendeu menos: aprendeu por outra ordem. Quando falares com praticantes de outras escolas, di-lo com naturalidade, sem os corrigir. E se um dia ensinares, decide tu e explica a ordem aos teus alunos com a mesma clareza.'),
       T('O que é um símbolo? Não é um feitiço nem um amuleto. Pensa nele como o nome de uma frequência: ao desenhá-lo e ao dizer o seu mantra, sintonizas-te com uma qualidade específica da energia, tal como marcas um número para falar com determinada pessoa. A força não está no traço bem feito: está na tua intenção e na sintonização que recebeste. E ver um símbolo não é o mesmo que o receber — o que abre porta é a sintonização.'),

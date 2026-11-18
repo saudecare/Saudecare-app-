@@ -602,6 +602,20 @@ function liberta(m){
 }
 function diasFeitos(p){ return Object.keys((p && p.dias) || {}).length; }
 
+/* Módulos a rever depois de um exame falhado: o módulo cujo texto mais se parece com cada pergunta errada. */
+window.modulosARever = function modulosARever(qs, respostas){
+  const pal = t => new Set(String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/[a-z]{5,}/g) || []);
+  const mods = MODULOS.filter(m => m.ler).map(m => ({ m, w: pal(m.titulo + ' ' + JSON.stringify(m.ler)) }));
+  const cont = {};
+  qs.forEach((q, i) => {
+    if (respostas[i] === q.correta) return;
+    const qw = pal(q.texto + ' ' + (q.opcoes || [])[q.correta]);
+    let best = null, bs = 0;
+    mods.forEach(x => { let n = 0; qw.forEach(w => { if (x.w.has(w)) n++; }); if (n > bs){ bs = n; best = x.m; } });
+    if (best){ const c = cont[best.id] = cont[best.id] || { m: best, n: 0 }; c.n++; }
+  });
+  return Object.values(cont).sort((a, b) => b.n - a.n).slice(0, 4);
+}
 window.mudarVersao = async function(nova){
   if (!PREVIEW){
     try { await setDoc(doc(db, 'tenants', TENANT, 'reikiThreads', CODIGO), { codigo: CODIGO, alunoNome: ALUNO.nome || '', percursoNovo: !!nova }, { merge: true }); }
@@ -730,9 +744,10 @@ function desenharLista(){
     <p class="nota" style="margin-top:0;">Começa por aqui: o manual completo do nível. Lê-o na aplicação ou descarrega-o para imprimir.</p>
     <a class="leve" style="display:inline-block;margin:8px 8px 0 0;text-decoration:none;" href="${MANUAIS_URL}${esc(F2.manual.ficheiro)}" target="_blank" rel="noopener">📖 Ler o manual</a>
     <a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="${MANUAIS_URL}${esc(F2.manual.ficheiro)}" download>⬇ Descarregar PDF</a></div>` : '';
+  const cartaoMestre = V2 ? `<div class="card" style="margin-top:12px;"><h4>🤝 Aprende-se também em presença</h4><p class="nota" style="margin-top:0;">O Reiki aprende-se na prática. Quando tiveres uma dúvida, ou quiseres treinar com o teu Mestre (uma sessão, um ensaio ou uma sintonização), combina com ele.</p>${ALUNO.turmaWhatsapp ? `<a class="leve" style="display:inline-block;text-decoration:none;" href="${esc(ALUNO.turmaWhatsapp)}" target="_blank" rel="noopener">💬 Falar com o Mestre e a turma</a>` : ''}</div>` : '';
   palco().innerHTML = `${bannerVersao()}${hero}${cartaoManual}${cartaoOficina}${listaModulos}
     <p class="nota" style="text-align:center;margin:4px 0 14px;">Faz um passo de cada vez, sem pressa. O que escreveres fica guardado e a escola acompanha o teu percurso.</p>
-    ${blocoTreino}${blocoFeito}${blocoTurma}`;
+    ${cartaoMestre}${blocoTreino}${blocoFeito}${blocoTurma}`;
 }
 
 async function carregarModeloCert(){
@@ -860,6 +875,7 @@ window.entregarTeste = async function(){
         ? '🎉 Passaste! Parabéns pelo teu percurso até aqui.'
         : 'Ficaste abaixo do mínimo. Revê o manual e o Treino livre, e fala com o teu Mestre — podes repetir.'}</p>
     </div>
+    ${!aprovado && V2 ? (() => { const rv = modulosARever(qs, respostas); return rv.length ? `<div class="card"><h4>📚 Módulos a rever</h4><p class="nota" style="margin-top:0;">As perguntas que erraste têm a ver sobretudo com estes módulos:</p>${rv.map(x => `<button class="leve" style="width:100%;text-align:left;margin-top:6px;" onclick="mudarAba('percurso');abrirModulo('${esc(x.m.id)}')">${esc(x.m.titulo)} <span class="nota">(${x.n} pergunta${x.n > 1 ? 's' : ''})</span></button>`).join('')}</div>` : ''; })() : ''}
     ${aprovado && !(parseInt(t.modulo) > 0) ? `<div class="card" style="text-align:center;">
       <h4>🎓 O teu certificado está pronto</h4>
       <p class="nota" style="margin-top:6px;">Descarrega e guarda. Se precisares de outra via mais tarde, o teu Mestre também o pode emitir.</p>
@@ -968,7 +984,7 @@ function desenharSlides(m, seguinte, rotSeguinte){
   const L = SL.lista, s = L[SL.i], ultimo = SL.i === L.length - 1;
   const corpo = s.k === 'fim'
     ? `<div class="fim"><p style="font-size:1em;">🌿 Terminaste a apresentação.</p>
-        ${cartaoSimbolos(m)}
+        ${cartaoSimbolos(m)}${cartaoEnsaios(m)}
         <button class="principal" onclick="marcarLido()">${seguinte ? 'Seguir para ' + rotSeguinte(seguinte) : 'Concluir este módulo'}</button>
         <button class="leve" style="margin-top:10px;" onclick="slideIr(-9999)">↺ Ver do início</button></div>`
     : s.html;
@@ -1015,6 +1031,24 @@ document.addEventListener('touchend', ev => {
   if (Math.abs(dx) > 50) window.slideIr(dx < 0 ? 1 : -1);
 }, { passive: true });
 
+function cartaoEnsaios(m){
+  const e = m.ensaios; if (!e) return '';
+  const lista = ((PROGRESSO[m.id] || {}).ensaiosLista) || [];
+  return `<div class="card aviso" style="margin-top:12px;"><h4>🗒️ ${esc(e.titulo)}</h4>
+    <p class="nota" style="margin-top:0;">${esc(e.nota)}</p>
+    <p class="nota"><b>${lista.length}</b> ensaio(s) registado(s)${e.total ? ' · objectivo: ' + e.total : ''}</p>
+    <select id="ensTipo" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--linha);font:inherit;margin-bottom:8px;">${e.tipos.map(t => `<option>${esc(t)}</option>`).join('')}</select>
+    <input id="ensNota" placeholder="O que correu bem e o que mudavas (opcional)" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--linha);font:inherit;margin-bottom:8px;">
+    <button class="principal" onclick="registarEnsaio('${esc(m.id)}')">Registar ensaio</button>
+    ${lista.slice(-6).reverse().map(x => `<p class="nota" style="margin:6px 0 0;">✓ ${esc(new Date(x.quando).toLocaleDateString('pt-PT'))} — ${esc(x.tipo)}${x.nota ? ' · ' + esc(x.nota) : ''}</p>`).join('')}</div>`;
+}
+window.registarEnsaio = async function(id){
+  const m = MODULOS.find(x => x.id === id); if (!m) return;
+  const tipo = document.getElementById('ensTipo').value, nota = document.getElementById('ensNota').value.trim();
+  const lista = (((PROGRESSO[id] || {}).ensaiosLista) || []).concat([{ quando: new Date().toISOString(), tipo, nota }]);
+  await gravar({ ensaiosLista: lista }, m);
+  desenharModulo();
+};
 function cartaoSimbolos(m){
   const ids = simbolosDoModulo(m);
   if (!ids.length) return '';
@@ -1031,7 +1065,7 @@ const fmtT = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 6
 function desenharAula(m, p){
   const a = m.aula || {};
   const jaVisto = !!(p && (p.visto || p.lido));
-  const ler = `<button class="leve" style="margin-top:10px;width:100%;" onclick="PASSO='ler';desenharModulo();window.scrollTo(0,0)">📖 Prefiro estudar pela leitura e pelo PDF</button>`;
+  const ler = `<button class="leve" style="margin-top:10px;width:100%;" onclick="irLer()">📖 Prefiro estudar pela leitura e pelo PDF</button>`;
   if (!a.url){
     return `<div class="card"><h4>🎬 Vídeo do módulo</h4>
       <p class="nota">O vídeo narrado deste módulo está a ser preparado. Entretanto podes estudar tudo na leitura e no material em PDF — é o mesmo conteúdo.</p>
@@ -1095,7 +1129,7 @@ function desenharModulo(){
       ${vs.map(v => `<div style="margin:12px 0;">${vs.length > 1 || v.d ? `<p class="nota" style="margin:0 0 4px;"><b>${esc(v.t)}</b>${v.d ? ' · ' + esc(v.d) + ' min' : ''}</p>` : ''}${midiaHtml(v.u, 'video')}</div>`).join('')}
       <div style="background:#fff8e6;border:1px solid #f0d88a;border-radius:12px;padding:10px 12px;margin:10px 0;font-size:.9rem;">⚠️ <b>O vídeo não abre?</b> Não faz mal: podes aprender o mesmo na leitura. Se quiseres ver o vídeo, avisa o teu Mestre.</div>
       <button class="principal" onclick="marcarVisto()">Já vi — seguir para a leitura</button>
-      <button class="leve" style="margin-top:10px;width:100%;" onclick="PASSO='ler';desenharModulo();window.scrollTo(0,0)">📖 Ler em vez de ver</button></div>`;
+      <button class="leve" style="margin-top:10px;width:100%;" onclick="irLer()">📖 Ler em vez de ver</button></div>`;
     return;
   }
 
@@ -1108,7 +1142,7 @@ function desenharModulo(){
       <button class="leve" style="margin-bottom:12px;" onclick="slideModo('slides')">🖼️ Ver em slides</button>
       ${m.audio ? `<h4 style="margin-top:0;">🎧 Áudio do módulo</h4>${midiaHtml(m.audio, 'audio')}` : ''}
       <div style="margin-top:${m.audio ? '16px' : '0'};">${m.audio ? '<h4>📖 Introdução</h4>' : ''}${(m.ler||[]).map(blocoHtml).join('')}</div>
-      ${cartaoSimbolos(m)}
+      ${cartaoSimbolos(m)}${cartaoEnsaios(m)}
       <button class="principal" onclick="marcarLido()">${seguinte ? 'Li — seguir para ' + rotSeguinte(seguinte) : 'Concluir este módulo'}</button></div>`;
     return;
   }
@@ -1162,6 +1196,7 @@ function desenharModulo(){
     </button></div>`;
 }
 
+window.irLer = function(){ PASSO = 'ler'; desenharModulo(); window.scrollTo(0, 0); };
 window.irPasso = function(k){ if (!ABERTO || !passosDoModulo(ABERTO).includes(k)) return; PASSO = k; desenharModulo(); window.scrollTo(0, 0); };
 
 window.marcarVisto = async function(){

@@ -97,7 +97,8 @@ window.abrir = id => {
       : (x.totalPerguntas ? '<p class="nota">Percurso antigo: só se guardou a pontuação, não as respostas.</p>' : '');
     const reg = x.registo ? `<div class="reg"><b>Registo da prática:</b>\n${esc(x.registo)}</div>` : '';
     const des = x.desafioRegisto ? `<div class="reg"><b>Desafio:</b>\n${esc(x.desafioRegisto)}</div>` : '';
-    return `<details>${cab}${passos}${qs}${reg}${des}</details>`;
+    const ens = Array.isArray(x.ensaiosLista) && x.ensaiosLista.length ? `<div class="reg"><b>Ensaios de sintonização (${x.ensaiosLista.length}):</b>\n${x.ensaiosLista.map(e => esc(quando(e.quando)) + ' — ' + esc(e.tipo) + (e.nota ? ' · ' + esc(e.nota) : '')).join('\n')}</div>` : '';
+    return `<details>${cab}${passos}${qs}${reg}${des}${ens}</details>`;
   }).join('') || '<p class="nota">Ainda não começou nenhum módulo.</p>';
   const exs = (EXAMES[id] || []).slice().sort((x, y) => (y.quando || '').localeCompare(x.quando || '')).map(e => {
     const qs = (e.detalhe || []).map((d, i) => `<div class="q"><span class="${d.ok ? 'ok' : 'mau'}">${d.ok ? '✓' : '✗'}</span> ${i + 1}. ${esc(d.p)}<br><span class="nota">Respondeu: <b>${esc(d.r)}</b>${d.ok ? '' : ' · Certa: <b>' + esc(d.c) + '</b>'}</span></div>`).join('');
@@ -127,9 +128,16 @@ function painelResumo(){
     (EXAMES[a.id] || []).forEach(e => (e.detalhe || []).forEach(d => conta(d.p, d.ok, d.c)));
   });
   const falhadas = Object.values(mapa).filter(m => m.n >= 2 && m.mal > 0).sort((x, y) => (y.mal / y.n) - (x.mal / x.n) || y.n - x.n).slice(0, 8);
-  const pBlock = parados.length ? `<div class="card"><h3 style="margin-top:0;">⏸ Parados há mais de ${DIAS} dias</h3>${parados.map(a => `<p class="nota" style="margin:4px 0;cursor:pointer;" onclick="abrir('${esc(a.id)}')"><b>${esc(a.t.alunoNome || a.id)}</b> — Nível ${esc(a.r.nivel)}, ${a.r.feitos}/${TOTAL_MOD[a.r.nivel]} módulos, última actividade ${esc(quando(a.r.ult))}</p>`).join('')}</div>` : '';
+  const pBlock = parados.length ? `<div class="card"><h3 style="margin-top:0;">⏸ Parados há mais de ${DIAS} dias</h3>${parados.map(a => `<p class="nota" style="margin:6px 0;"><span style="cursor:pointer;" onclick="abrir('${esc(a.id)}')"><b>${esc(a.t.alunoNome || a.id)}</b> — Nível ${esc(a.r.nivel)}, ${a.r.feitos}/${TOTAL_MOD[a.r.nivel]} módulos, última actividade ${esc(quando(a.r.ult))}</span> <a href="https://wa.me/?text=${encodeURIComponent('Olá ' + String(a.t.alunoNome || '').split(' ')[0] + '! Reparei que não avanças na formação de Reiki há uns dias. Está tudo bem? Se precisares de ajuda com algum módulo, diz-me. Sem pressa, cada um tem o seu ritmo. 🌿')}" target="_blank" rel="noopener">💬 lembrete</a></p>`).join('')}</div>` : '';
   const fBlock = falhadas.length ? `<div class="card"><h3 style="margin-top:0;">❓ Perguntas mais falhadas</h3><p class="nota" style="margin-top:0;">Onde o conteúdo pode estar a explicar pouco. Só perguntas respondidas por pelo menos 2 alunos.</p>${falhadas.map(m => `<p class="nota" style="margin:6px 0;"><span class="mau"><b>${Math.round(m.mal / m.n * 100)}%</b> erradas</span> (${m.mal}/${m.n}) — ${esc(m.p)}<br>Certa: <b>${esc(m.c)}</b></p>`).join('')}</div>` : '';
-  return pBlock + fBlock;
+  const sete = hoje - 7 * 864e5, nov = [];
+  ALUNOS.forEach(a => {
+    a.r.itens.forEach(x => { const t = x.concluidoEm ? new Date(x.concluidoEm).getTime() : 0; if (x.concluido && t > sete) nov.push({ t, txt: `<b>${esc(a.t.alunoNome || a.id)}</b> concluiu ${esc(x.moduloTitulo || x.moduloId)}${x.totalPerguntas ? ` (${x.acertos}/${x.totalPerguntas})` : ''}` }); });
+    (EXAMES[a.id] || []).forEach(e => { const t = e.quando ? new Date(e.quando).getTime() : 0; if (t > sete) nov.push({ t, txt: `<b>${esc(a.t.alunoNome || a.id)}</b> fez o exame: <span class="${e.aprovado ? 'ok' : 'mau'}">${e.percentagem}% ${e.aprovado ? 'aprovado' : 'não passou'}</span>` }); });
+  });
+  nov.sort((x, y) => y.t - x.t);
+  const nBlock = nov.length ? `<div class="card"><h3 style="margin-top:0;">🔔 Últimos 7 dias</h3>${nov.slice(0, 12).map(n => `<p class="nota" style="margin:5px 0;">${esc(quando(new Date(n.t).toISOString()))} — ${n.txt}</p>`).join('')}</div>` : '';
+  return nBlock + pBlock + fBlock;
 }
 
 function desenharTudo(){
