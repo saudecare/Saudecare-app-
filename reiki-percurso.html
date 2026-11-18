@@ -318,6 +318,7 @@ async function arrancar(){
 
   NIVEL = nivelEmEstudo(ALUNO.nivel);
   if (ALUNO.nivel && ALUNO.proximoLiberto === false && NIVEL !== String(ALUNO.nivel)) NIVEL = String(ALUNO.nivel); // próximo nível fechado: revê o concluído
+  if (PREVIEW) NIVEL = String(params.get('nivel') || '1').toUpperCase();   /* pré-visualização: o nível pedido, não o seguinte */
   document.getElementById('subcab').innerHTML = NIVEL
     ? '<span class="selo-nivel">A estudar o Nível ' + esc(NIVEL) + '</span>'
     : '<span class="selo-nivel">Percurso a começar</span>';
@@ -724,7 +725,7 @@ function desenharLista(){
 
   const cartaoOficina = `<div class="card aviso" style="margin-top:12px;"><h4>✍️ Oficina dos símbolos</h4>
     <p class="nota" style="margin-top:0;">Aprende o traçado dos símbolos do teu nível: ver, traçar na tela, papel e de memória.</p>
-    <a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="reiki-simbolos.html?t=${encodeURIComponent(TENANT)}&c=${encodeURIComponent(CODIGO)}">Abrir a oficina</a></div>`;
+    <a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="reiki-simbolos.html?t=${encodeURIComponent(TENANT)}&c=${encodeURIComponent(CODIGO)}${PREVIEW ? '&preview=1&nivel=' + encodeURIComponent(NIVEL) : ''}">Abrir a oficina</a></div>`;
   const cartaoManual = (V2 && F2 && F2.manual) ? `<div class="card aviso" style="margin-top:12px;"><h4>📘 ${esc(F2.manual.titulo)}</h4>
     <p class="nota" style="margin-top:0;">Começa por aqui: o manual completo do nível. Lê-o na aplicação ou descarrega-o para imprimir.</p>
     <a class="leve" style="display:inline-block;margin:8px 8px 0 0;text-decoration:none;" href="${MANUAIS_URL}${esc(F2.manual.ficheiro)}" target="_blank" rel="noopener">📖 Ler o manual</a>
