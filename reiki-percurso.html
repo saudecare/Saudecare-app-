@@ -156,6 +156,28 @@ const CODIGO  = (params.get('c') || '').trim();
 
 const ORDEM_NIVEIS = ['1','2','3A','3B'];
 
+/* ─── Formação v2 (módulos em sequência, vídeo sem avançar, exame de 20) ───
+   Fica desligada por defeito. Liga-se por aluno (cartão reikiAccess com
+   formacaoV2 = true) ou, para o Mestre pré-visualizar, com ?v2=1 no link.
+   Os alunos que já estão a meio do percurso antigo não são afectados. */
+let V2 = params.get('v2') === '1';
+let F2 = null;
+function semente(str){ let h = 2166136261; for (let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function baralharFixo(opcoes, correta, chave){
+  let a = semente(chave) || 1;
+  const rnd = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const idx = opcoes.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+  return { opcoes: idx.map(i => opcoes[i]), correta: idx.indexOf(correta) };
+}
+function prepararV2(m, nivel){
+  const out = Object.assign({}, m);
+  out.responder = (m.responder || []).map((q, i) => Object.assign({}, q, baralharFixo(q.opcoes, q.correta, nivel + '|' + m.ordem + '|' + i)));
+  return out;
+}
+const MANUAIS_URL = 'manuais/';
+const MATERIAL_URL = 'material-reiki/';
+
 /* O mesmo modelo e as mesmas coordenadas do certificado que a escola
    emite manualmente — para o aluno receber exactamente a mesma peça. */
 const CERT_TEMPLATE = 'certificado-reiki.png';
@@ -184,6 +206,18 @@ function nivelEmEstudo(concluido){
    manuais da escola), com as edições do Mestre por cima (reikiModules). */
 async function carregarModulos(nivel){
   window.firebaseConfig = firebaseConfig;
+  F2 = null;
+  if (V2){
+    try {
+      await import('./reiki-formacao-v2-nivel' + nivel.toLowerCase() + '.js');
+      F2 = (window.FORMACAO_V2 || {})[nivel] || null;
+    } catch(e){ console.warn('formação v2 indisponível para o nível ' + nivel, e); }
+    if (F2){
+      PRATICA = null;
+      return F2.modulos.map(m => Object.assign(prepararV2(m, nivel), { id: 'v2-' + nivel + '-' + m.ordem, publicado: true }))
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    }
+  }
   const f = nivel === '1' ? './reiki-percurso-nivel1.js' : './reiki-percurso-niveis-2-3.js';
   await import(f);
   const lista = window['MODULOS_NIVEL_' + nivel] || [];
@@ -289,6 +323,7 @@ async function arrancar(){
     return;
   }
 
+  if (ALUNO.formacaoV2 === true) V2 = true;
   try { MODULOS = await carregarModulos(NIVEL); }
   catch(e){ console.warn('módulos indisponíveis', e); MODULOS = []; }
 
@@ -319,6 +354,12 @@ async function arrancar(){
       return nv === '0' || nv === String(NIVEL);
     });
   } catch(e){ console.warn('testes indisponíveis', e); }
+
+  if (V2 && F2 && F2.exame){
+    const ex = F2.exame;
+    TESTES = [Object.assign({}, ex, { id: 'v2-exame-' + NIVEL,
+      perguntas: ex.perguntas.map((q, i) => Object.assign({}, q, baralharFixo(q.opcoes, q.correta, 'exame|' + NIVEL + '|' + i))) })];
+  }
 
   const abrirM = params.get('m');
   const seqM = sequencia();
@@ -614,7 +655,7 @@ function desenharLista(){
       : trancado ? '<div class="estado">🔒 ' + (i > 0 && ehPratica(seq[i-1]) ? 'Começa a prática dos 21 dias para abrir' : 'Conclui o módulo anterior para abrir') + '</div>'
       : `<div class="estado">${fe ? 'A meio · ' + fe + ' de ' + tot + ' passos' : 'Por começar'}</div>`;
     const nq = (m.responder || []).length, at = temAtividade(m);
-    const meta = [m.duracao ? '⏱️ ' + esc(m.duracao) : '', apresentacoesDoModulo(NIVEL, m).length ? '▶️ apresentação' : '', m.audio ? '🎧 áudio' : '',
+    const meta = [m.duracao ? '⏱️ ' + esc(m.duracao) : '', m.aula ? '🎬 vídeo' : (apresentacoesDoModulo(NIVEL, m).length ? '▶️ apresentação' : ''), m.pdf ? '📄 PDF' : '', m.audio ? '🎧 áudio' : '',
       nq ? '✍️ teste' : '', (!nq && at.pratica) ? (m.praticar && m.praticar.instrucoes ? '🤲 prática' : '🎯 desafio') : ''].filter(Boolean).join(' · ');
     return `<div class="card mod ${p.concluido ? 'feito' : ''} ${trancado ? 'trancado' : ''}" ${onclickAttr}>
       <div class="thumb" style="${capaStyle(m)}">${m.capa ? '' : (p.concluido ? '✓' : (trancado ? '🔒' : m.ordem))}${(m.video || m.audio) && !trancado ? '<span class="play">' + (m.video ? '▶' : '🎧') + '</span>' : ''}</div>
@@ -632,7 +673,7 @@ function desenharLista(){
     ? `<div class="card aviso">
         <strong>${tudoFeito ? '🎉 Parabéns — concluíste o percurso do Nível ' + esc(NIVEL) + '.' : '🌿 Concluíste os módulos do Nível ' + esc(NIVEL) + '.'}</strong>
         ${praticaPendente ? `<p style="margin-top:6px;">Falta terminares a prática de autoaplicação (${diasFeitos(pp)} de ${totalDias} dias). O teste final abre quando a concluíres.</p>` : `<p style="margin-top:6px;">Antes do teste final, vale a pena rever com calma o que já leste — usa o Treino livre acima quantas vezes quiseres, até te sentires seguro.</p>
-        <p style="margin-top:6px;">Quando te sentires à vontade, o teste final já está aberto na tua sala de estudo. A subida de nível e o certificado são dados pelo teu Mestre.</p>`}
+        <p style="margin-top:6px;">${V2 ? 'O exame final de 20 perguntas já está aberto no separador Testes. Precisas de 60% (12 certas) para passar, e depois podes descarregar o teu certificado.' : 'Quando te sentires à vontade, o teste final já está aberto na tua sala de estudo. A subida de nível e o certificado são dados pelo teu Mestre.'}</p>`}
         <button class="principal" onclick="voltarSala()">Ir para a sala de estudo</button>
       </div>`
     : '';
@@ -647,7 +688,11 @@ function desenharLista(){
   const cartaoOficina = `<div class="card aviso" style="margin-top:12px;"><h4>✍️ Oficina dos símbolos</h4>
     <p class="nota" style="margin-top:0;">Aprende o traçado dos símbolos do teu nível: ver, traçar na tela, papel e de memória.</p>
     <a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="reiki-simbolos.html?t=${encodeURIComponent(TENANT)}&c=${encodeURIComponent(CODIGO)}">Abrir a oficina</a></div>`;
-  palco().innerHTML = `${hero}${cartaoOficina}${listaModulos}
+  const cartaoManual = (V2 && F2 && F2.manual) ? `<div class="card aviso" style="margin-top:12px;"><h4>📘 ${esc(F2.manual.titulo)}</h4>
+    <p class="nota" style="margin-top:0;">Começa por aqui: o manual completo do nível. Lê-o na aplicação ou descarrega-o para imprimir.</p>
+    <a class="leve" style="display:inline-block;margin:8px 8px 0 0;text-decoration:none;" href="${MANUAIS_URL}${esc(F2.manual.ficheiro)}" target="_blank" rel="noopener">📖 Ler o manual</a>
+    <a class="leve" style="display:inline-block;margin-top:8px;text-decoration:none;" href="${MANUAIS_URL}${esc(F2.manual.ficheiro)}" download>⬇ Descarregar PDF</a></div>` : '';
+  palco().innerHTML = `${hero}${cartaoManual}${cartaoOficina}${listaModulos}
     <p class="nota" style="text-align:center;margin:4px 0 14px;">Faz um passo de cada vez, sem pressa. O que escreveres fica guardado e a escola acompanha o teu percurso.</p>
     ${blocoTreino}${blocoFeito}${blocoTurma}`;
 }
@@ -799,7 +844,7 @@ let ABERTO = null, PASSO = 'ler', RESPOSTAS = {};
 /* Passos do módulo: aprender (vídeo/áudio + introdução em texto), depois
    a prática ou o desafio, e o teste — só os que o módulo tem. */
 function passosDoModulo(m){
-  const passos = apresentacoesDoModulo(NIVEL, m).length ? ['ver', 'ler'] : ['ler'];
+  const passos = (m.aula || apresentacoesDoModulo(NIVEL, m).length) ? ['ver', 'ler'] : ['ler'];
   const pr = m.praticar || {};
   if ((pr.instrucoes && String(pr.instrucoes).trim()) || (m.desafio && String(m.desafio).trim())) passos.push('praticar');
   if ((m.responder || []).length) passos.push('responder');
@@ -940,20 +985,68 @@ function cartaoSimbolos(m){
     ${ids.map(id => `<a class="leve" style="display:inline-block;margin:8px 8px 0 0;text-decoration:none;" href="${base}#${id}">${esc(SIMBOLOS[id].nome)}</a>`).join('')}</div>`;
 }
 
+/* ─── Leitor de vídeo da formação v2: não deixa avançar, só marca como
+   visto quando o vídeo chega ao fim. Sem URL (vídeo ainda por gravar), o
+   aluno estuda pela leitura e pelo PDF. ─── */
+const fmtT = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function desenharAula(m, p){
+  const a = m.aula || {};
+  const jaVisto = !!(p && (p.visto || p.lido));
+  const ler = `<button class="leve" style="margin-top:10px;width:100%;" onclick="PASSO='ler';desenharModulo();window.scrollTo(0,0)">📖 Prefiro estudar pela leitura e pelo PDF</button>`;
+  if (!a.url){
+    return `<div class="card"><h4>🎬 Vídeo do módulo</h4>
+      <p class="nota">O vídeo narrado deste módulo está a ser preparado. Entretanto podes estudar tudo na leitura e no material em PDF — é o mesmo conteúdo.</p>
+      <button class="principal" onclick="marcarVisto()">Seguir para a leitura</button></div>`;
+  }
+  return `<div class="card"><h4>🎬 Vê e ouve o módulo</h4>
+    <video id="vv" src="${esc(a.url)}" playsinline preload="metadata" controlslist="nodownload noplaybackrate" disablepictureinpicture
+      oncontextmenu="return false" style="width:100%;border-radius:10px;background:#000;margin-top:8px;">
+      ${a.legendas ? `<track kind="subtitles" srclang="pt" label="Português" src="${esc(a.legendas)}" default>` : ''}</video>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+      <button class="leve" id="vbtn" style="min-width:92px;">▶ Ver</button>
+      <div style="flex:1;height:8px;border-radius:6px;background:#eadfca;overflow:hidden;"><i id="vprog" style="display:block;height:100%;width:0;background:var(--bronze);"></i></div>
+      <span class="nota" id="vtempo" style="margin:0;min-width:84px;text-align:right;">0:00</span></div>
+    <p class="nota" style="margin-top:8px;">O vídeo tem de ser visto até ao fim — não é possível avançar. Podes voltar atrás e rever.</p>
+    <button class="principal" id="vseguir" ${jaVisto ? '' : 'disabled'} onclick="marcarVisto()">${jaVisto ? 'Já vi — seguir para a leitura' : 'Termina o vídeo para continuar'}</button>
+    ${ler}</div>`;
+}
+function iniciarAula(m, p){
+  const v = document.getElementById('vv'); if (!v) return;
+  const btn = document.getElementById('vbtn'), prog = document.getElementById('vprog'), tempo = document.getElementById('vtempo'), seg = document.getElementById('vseguir');
+  let max = 0;
+  const pinta = () => { prog.style.width = (v.duration ? Math.min(100, v.currentTime / v.duration * 100) : 0) + '%'; tempo.textContent = fmtT(v.currentTime) + ' / ' + fmtT(v.duration); };
+  btn.onclick = () => { v.paused ? v.play() : v.pause(); };
+  v.addEventListener('play', () => { btn.textContent = '⏸ Pausa'; });
+  v.addEventListener('pause', () => { btn.textContent = v.ended ? '↻ Rever' : '▶ Continuar'; });
+  v.addEventListener('timeupdate', () => { if (!v.seeking && v.currentTime > max) max = v.currentTime; pinta(); });
+  v.addEventListener('seeking', () => { if (v.currentTime > max + 0.6) v.currentTime = max; });
+  v.addEventListener('ratechange', () => { if (v.playbackRate !== 1) v.playbackRate = 1; });
+  v.addEventListener('loadedmetadata', pinta);
+  v.addEventListener('ended', () => { seg.disabled = false; seg.textContent = 'Já vi — seguir para a leitura'; btn.textContent = '↻ Rever'; });
+  v.addEventListener('error', () => { tempo.textContent = 'Não carregou'; });
+}
+
 function desenharModulo(){
   const m = ABERTO, p = PROGRESSO[m.id] || {};
   const ps = passosDoModulo(m);
   const pr = m.praticar || {};
-  const rotulo = k => k === 'ver' ? '▶️ Apresentação' : k === 'ler' ? '📖 Ler'
+  const rotulo = k => k === 'ver' ? (m.aula ? '🎬 Vídeo' : '▶️ Apresentação') : k === 'ler' ? '📖 Ler'
     : k === 'praticar' ? ((pr.instrucoes && String(pr.instrucoes).trim()) ? '🤲 Prática' : '🎯 Desafio')
     : '✍️ Teste';
   const feitoDe = k => k === 'ver' ? (p.visto || p.lido) : k === 'ler' ? p.lido : k === 'praticar' ? p.praticaFeita : p.concluido;
   const cab = `<button class="leve" onclick="desenharLista();window.scrollTo(0,0)">← Voltar</button>
     <div class="card" style="margin-top:12px;"><h3 style="color:var(--bronze);">${m.ordem}. ${esc(m.titulo)}</h3>
     ${m.subtitulo ? `<p class="nota">${esc(m.subtitulo)}</p>` : ''}
+    ${m.pdf && m.pdf.ficheiro ? `<a class="leve" style="display:inline-block;margin:6px 0 2px;text-decoration:none;" href="${MATERIAL_URL}${esc(m.pdf.ficheiro)}" target="_blank" rel="noopener" download>⬇ Material de estudo (PDF)</a>` : ''}
     <div class="passos">${ps.map(k => `<div class="${PASSO===k?'on':(feitoDe(k)?'ok':'')}" style="cursor:pointer;" onclick="irPasso('${k}')">${rotulo(k)}</div>`).join('')}</div></div>`;
   const seguinte = proximoPasso(m, PASSO);
   const rotSeguinte = k => k === 'ler' ? 'a leitura' : k === 'praticar' ? ((pr.instrucoes && String(pr.instrucoes).trim()) ? 'a prática' : 'o desafio') : 'o teste';
+
+  if (PASSO === 'ver' && m.aula){
+    palco().innerHTML = cab + desenharAula(m, p);
+    iniciarAula(m, p);
+    return;
+  }
 
   if (PASSO === 'ver'){
     const vs = apresentacoesDoModulo(NIVEL, m);
