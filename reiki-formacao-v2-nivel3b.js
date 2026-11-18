@@ -201,8 +201,9 @@ const N3B_MODULOS = [
       D('A intenção manda. Antes de começares, afirma mentalmente com clareza que nível vais transmitir. Se te enganares num gesto ou te esqueceres de um passo, não é grave: a intenção e os Guias do Reiki sustentam o processo. O que não pode faltar é a intenção.'),
       L('Os símbolos de cada nível, nas mãos do aluno', [
         'Nível 1 — Shoden: Cho Ku Rei',
-        'Nível 3A — Shinpiden: os três anteriores + Dai Ko Myo (Usui)',
-        'Nível 3B — Mestrado: os quatro anteriores + Dai Ko Myo tibetano + Raku'
+        'Nível 2 — Okuden: Cho Ku Rei, Sei He Ki e Hon Sha Ze Sho Nen',
+        'Nível 3A — Shinpiden: os três do Nível 2 + Dai Ko Myo (Usui)',
+        'Nível 3B — Mestrado: os quatro do 3A + Dai Ko Myo tibetano + Raku'
       ]),
       L('Outras diferenças menores', [
         'Nível 1: é o único em que também se tocam os pés, para ancorar quem está a abrir o canal pela primeira vez',
