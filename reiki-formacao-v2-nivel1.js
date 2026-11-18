@@ -31,7 +31,7 @@ const N1_MODULOS = [
     subtitulo: 'Como funciona esta formação e o que vais levar dela',
     manual: 'Introdução e "O que vais encontrar aqui"', duracao: '10 min',
     pdf: { titulo: 'Como funciona a formação', ficheiro: 'n1-m00-antes-de-comecares.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m00.mp4", legendas: "videos-reiki/n1-m00.vtt" },
     ler: [
       T('Esta formação segue o manual do Nível 1, capítulo a capítulo, em módulos curtos. Cada módulo tem: o vídeo narrado, o material de estudo em PDF, uma pequena prática e perguntas para fixares. O módulo seguinte só abre quando terminas o anterior.'),
       L('Como se avança em cada módulo', [
@@ -66,7 +66,7 @@ const N1_MODULOS = [
     subtitulo: 'Energia vital, o que o Reiki não é e a pessoa como um todo',
     manual: 'Capítulos 1, 2 e 3', duracao: '20 min',
     pdf: { titulo: 'Módulo 1 — O que é o Reiki', ficheiro: 'n1-m01-o-que-e-o-reiki.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m01.mp4", legendas: "videos-reiki/n1-m01.vtt" },
     desafio: 'Fala hoje com alguém sobre o que é realmente o Reiki, sem usares a palavra «energia». Repara nas palavras que encontras.',
     ler: [
       T('A palavra junta duas ideias japonesas: rei, aquilo que é universal e nos ultrapassa, e ki, a energia vital que anima tudo o que está vivo. Juntas, dizem algo como «energia vital universal».'),
@@ -116,7 +116,7 @@ const N1_MODULOS = [
     subtitulo: 'De Mikao Usui até às tuas mãos',
     manual: 'Capítulos 4 e 4B e «A nossa linhagem»', duracao: '25 min',
     pdf: { titulo: 'Módulo 2 — História e linhagem', ficheiro: 'n1-m02-historia-e-linhagem.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m02.mp4", legendas: "videos-reiki/n1-m02.vtt" },
     ler: [
       T('Mikao Usui nasceu no Japão, a 15 de Agosto de 1865, na aldeia de Taniai. Foi sempre um estudante acima da média, e a vontade de saber mais levou-o a viajar por vários países a estudar os métodos de cura que ia encontrando. Homem de estudo e de procura, terá passado por várias disciplinas espirituais antes de, já em adulto, se retirar para um período de jejum e meditação no monte Kurama.'),
       T('Em 1922 abre em Tóquio a sua escola. No ano seguinte, o grande terramoto de Kanto leva-o a tratar feridos em grande número, e o método ganha notoriedade. Usui morre em 1926, tendo formado alguns mestres.'),
@@ -162,7 +162,7 @@ const N1_MODULOS = [
     subtitulo: 'O chão sobre o qual assenta tudo o resto',
     manual: 'Capítulos 5 e 6', duracao: '25 min',
     pdf: { titulo: 'Módulo 3 — Princípios e pilares', ficheiro: 'n1-m03-principios-e-pilares.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m03.mp4", legendas: "videos-reiki/n1-m03.vtt" },
     desafio: 'Escolhe um dos cinco princípios e escreve-o num papel que vejas todos os dias esta semana.',
     ler: [
       T('Usui deixou cinco frases para repetir de manhã e à noite, de mãos juntas. São a base ética e espiritual de tudo o resto — e, com o tempo, percebes que são mais exigentes do que qualquer técnica.'),
@@ -221,7 +221,7 @@ const N1_MODULOS = [
     subtitulo: 'A prática diária japonesa e o caminho por degraus',
     manual: 'Capítulos 6B e 7', duracao: '25 min',
     pdf: { titulo: 'Módulo 4 — Hatsurei Ho e níveis', ficheiro: 'n1-m04-hatsurei-ho-e-niveis.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m04.mp4", legendas: "videos-reiki/n1-m04.vtt" },
     ler: [
       T('Hatsurei Ho quer dizer, à letra, algo como «método para gerar mais energia espiritual». É a prática que os alunos japoneses faziam todos os dias, e é a melhor forma de limpar o canal e afinar as mãos antes de qualquer trabalho. São quatro partes seguidas, e demora dez a quinze minutos. Faz de manhã, se puderes.'),
       L('1 · Kenyoku Ho — o banho seco (cortar e sacudir o que não é teu)', [
@@ -277,7 +277,7 @@ const N1_MODULOS = [
     subtitulo: 'O mapa que a tradição usa e como a energia circula',
     manual: 'Capítulos 8, 8B e 9', duracao: '30 min',
     pdf: { titulo: 'Módulo 5 — Chakras, cor e fluxo', ficheiro: 'n1-m05-chakras-cor-fluxo.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m05.mp4", legendas: "videos-reiki/n1-m05.vtt" },
     ler: [
       T('Além do corpo físico, a tradição descreve camadas mais subtis à sua volta — o que se costuma chamar aura. E ao longo do eixo do corpo, sete centros principais de energia, os chakras, que funcionam como pontos de troca entre esses planos. Não precisas de acreditar nisto como se fosse anatomia: usa como mapa.'),
       L('Os sete chakras — onde ficam e o que mostram', [
@@ -345,7 +345,7 @@ const N1_MODULOS = [
     subtitulo: 'O que as mãos te dizem',
     manual: 'Capítulo 10', duracao: '20 min',
     pdf: { titulo: 'Módulo 6 — Byosen', ficheiro: 'n1-m06-byosen.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m06.mp4", legendas: "videos-reiki/n1-m06.vtt" },
     ler: [
       T('Byosen é o nome que se dá às sensações que surgem nas mãos quando passam por uma zona que pede atenção. É a forma mais simples de o corpo te dizer onde te deves demorar. À letra, é uma acumulação de energia que cria bloqueios, e é de onde a doença pode vir a surgir. Depois da sintonização ganhas sensibilidade nas mãos, e passas a detectar essas zonas — em ti e nos outros.'),
       D('Não corras atrás disto. A sensibilidade afina-se com o tempo, e há praticantes excelentes que sentem muito pouco. Se não sentires nada, continua na mesma: o Reiki não depende de tu sentires.'),
@@ -389,7 +389,7 @@ const N1_MODULOS = [
     subtitulo: 'O que é estar sintonizado e como assentar',
     manual: 'Capítulo 11', duracao: '20 min',
     pdf: { titulo: 'Módulo 7 — Sintonização e 21 dias', ficheiro: 'n1-m07-sintonizacao-21-dias.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m07.mp4", legendas: "videos-reiki/n1-m07.vtt" },
     ler: [
       T('A sintonização é o momento em que o Mestre abre o teu canal. É um processo breve, tranquilo, e não exige nada de ti a não ser estares disponível. Não tens de sentir nada de espectacular — muita gente sente apenas calma.'),
       T('A sintonização é o processo que te liga à energia, e só pode ser transmitida por um Mestre que a tenha também recebido. A imagem que costumo usar é a do íman: é como se te fossem colocados ímanes nas mãos, para que a energia flua pelo teu corpo e saia por ali.'),
@@ -434,7 +434,7 @@ const N1_MODULOS = [
     subtitulo: 'A prática mais importante, e a primeira que se abandona',
     manual: 'Capítulo 12', duracao: '30 min',
     pdf: { titulo: 'Módulo 8 — Autotratamento', ficheiro: 'n1-m08-autotratamento.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m08.mp4", legendas: "videos-reiki/n1-m08.vtt" },
     ler: [
       T('É a prática mais importante que tens, e é a primeira que os alunos abandonam. Faz-se sentado ou deitado, de manhã ou à noite — a hora que conseguires manter é a hora certa. Vinte a trinta minutos na versão completa. São treze posições; fica três a cinco minutos em cada uma, ou até sentires a mão acalmar. Se numa delas o Byosen for forte, demora-te mais.'),
       L('Antes de pousar as mãos', [
@@ -492,7 +492,7 @@ const N1_MODULOS = [
     subtitulo: 'O teu primeiro símbolo e o vocabulário do Reiki',
     manual: 'Capítulos 12B e 12C', duracao: '30 min',
     pdf: { titulo: 'Módulo 9 — Cho Ku Rei e técnicas', ficheiro: 'n1-m09-cho-ku-rei-e-tecnicas.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m09.mp4", legendas: "videos-reiki/n1-m09.vtt" },
     ler: [
       T('Nesta escola o Cho Ku Rei ensina-se já no Nível 1, juntamente com os seus usos. É uma decisão do Mestre, e tem uma razão: a energia do mundo em que vivemos hoje não é a mesma de quando o Reiki foi descoberto — está muito mais densa. O que um aluno enfrenta hoje, no trabalho, na rua, nos ambientes por onde passa, não é o que enfrentava no Japão de 1922. Faz sentido dar-te já uma ferramenta poderosa: que concentra energia onde falta, que limpa o espaço onde dormes, que te protege antes de entrares num ambiente pesado.'),
       T('O Nível 1 continua a ser o nível do uso próprio — mas um uso próprio com uma chave na mão. Por honestidade, fica dito que muitas escolas ensinam os símbolos só no Nível 2, e que quem aprendeu assim não aprendeu menos: aprendeu por outra ordem. Quando falares com praticantes de outras escolas, di-lo com naturalidade, sem os corrigir. E se um dia ensinares, decide tu e explica a ordem aos teus alunos com a mesma clareza.'),
@@ -554,7 +554,7 @@ const N1_MODULOS = [
     subtitulo: 'Práticas curtas que vais usar mais do que julgas',
     manual: 'Capítulos 12D e 12E', duracao: '25 min',
     pdf: { titulo: 'Módulo 10 — Enraizamento e limpeza', ficheiro: 'n1-m10-enraizamento-e-limpeza.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m10.mp4", legendas: "videos-reiki/n1-m10.vtt" },
     ler: [
       T('Três práticas curtas. Nenhuma precisa de símbolo, de sala preparada, nem de ninguém à frente.'),
       L('Enraizamento', [
@@ -614,7 +614,7 @@ const N1_MODULOS = [
     subtitulo: 'O que já podes fazer, e as receitas do dia a dia',
     manual: 'Capítulos 13, 13B e 14', duracao: '30 min',
     pdf: { titulo: 'Módulo 11 — Uso próprio e práticas', ficheiro: 'n1-m11-uso-proprio-e-praticas.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m11.mp4", legendas: "videos-reiki/n1-m11.vtt" },
     ler: [
       T('É a pergunta que toda a gente faz: «e aplicar a outras pessoas?» A resposta da nossa escola é clara: o Nível 1 é para uso próprio. Aplicar Reiki a outras pessoas faz parte do Nível 2. Não é burocracia nem forma de obrigar a pagar mais formação: é uma questão de ordem. Quem ainda não se conhece a si próprio nas mãos dificilmente reconhece os limites dos outros.'),
       L('O que já podes fazer', [
@@ -675,7 +675,7 @@ const N1_MODULOS = [
     subtitulo: 'O que separa um praticante sério de alguém que faz mal sem querer',
     manual: 'Capítulos 15, 16 e 17 e Compromisso do Aluno', duracao: '30 min',
     pdf: { titulo: 'Módulo 12 — Ética e compromisso', ficheiro: 'n1-m12-etica-e-compromisso.pdf' },
-    aula: { url: "", legendas: "" },
+    aula: { url: "videos-reiki/n1-m12.mp4", legendas: "videos-reiki/n1-m12.vtt" },
     ler: [
       L('Ética, limites e bom senso', [
         'Reiki é complementar. Nunca substitui medicina. Di-lo com clareza',

@@ -21,7 +21,7 @@ const N3A_MODULOS = [
     subtitulo: 'O que é o 3A, o que o separa do 3B, e um aviso honesto',
     manual: 'Shinpiden · O que este nível me mexeu · A nossa linhagem · Capítulo 1', duracao: '15 min',
     pdf: { titulo: 'Módulo 0 — Shinpiden', ficheiro: 'n3a-m00-shinpiden.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3a-m00.mp4', legendas: 'videos-reiki/n3a-m00.vtt' },
     ler: [
       T('Parabéns pelo teu trabalho no despertar e na tua transformação interior. Se aqui chegaste é porque de alguma forma fizeste esse trabalho, e vais começar a trilhar a realização.'),
       T('Shinpiden significa «mistérios» e «realização». O mistério não é um segredo escondido: é o que só se conhece vivendo. Podes ler o manual do princípio ao fim numa tarde e não teres aprendido nada. O 3A aprende-se com o tempo, e o tempo aqui não se acelera.'),
@@ -68,7 +68,7 @@ const N3A_MODULOS = [
     subtitulo: 'Seis meses de trabalho, meditação diária e a transformação da consciência',
     manual: 'Capítulos 2 e 3', duracao: '25 min',
     pdf: { titulo: 'Módulo 1 — Rever, praticar e Kensho', ficheiro: 'n3a-m01-rever-e-kensho.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3a-m01.mp4', legendas: 'videos-reiki/n3a-m01.vtt' },
     ler: [
       T('No Nível 3 deves continuar a rever e a praticar o que aprendeste nos níveis 1 e 2. Relê os manuais: vais encontrar coisas que parece que não terás lido. É normal, quer dizer que tens outra consciência. Lembra-te da missão que o Mestre Usui indicou para o Usui Reiki Ryoho: guiar para uma vida pacífica e feliz.'),
       L('Incide sobretudo nestes temas', [
@@ -115,7 +115,7 @@ const N3A_MODULOS = [
     subtitulo: 'Elementos, corpos subtis e a prática dos símbolos',
     manual: 'Capítulos 4 e 5', duracao: '25 min',
     pdf: { titulo: 'Módulo 2 — Os símbolos mais além', ficheiro: 'n3a-m02-os-simbolos-mais-alem.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3a-m02.mp4', legendas: 'videos-reiki/n3a-m02.vtt' },
     ler: [
       T('Se observares, os símbolos têm uma correspondência com os elementos e com os corpos subtis. Representam também frequências na nossa consciência. Na tradição existe a stupa, um relicário cuja estrutura designa os cinco elementos: terra, água, fogo, vento e vazio. É um mapa útil para perceberes onde é que cada símbolo trabalha.'),
       L('Elementos, corpos e símbolos', [
@@ -162,7 +162,7 @@ const N3A_MODULOS = [
     subtitulo: 'Origem, significado, versões e para que serve',
     manual: 'Capítulos 6 e 8', duracao: '25 min',
     pdf: { titulo: 'Módulo 3 — Dai Ko Myo', ficheiro: 'n3a-m03-dai-ko-myo.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3a-m03.mp4', legendas: 'videos-reiki/n3a-m03.vtt' },
     ler: [
       T('Este é o símbolo do Mestre, e é o que recebes neste nível. O nome costuma traduzir-se por «grande luz brilhante». A Mestre Takata usava uma fórmula mais longa: «louvada seja a grande luz universal de sabedoria transcendental».'),
       L('Os três caracteres', [
@@ -214,7 +214,7 @@ const N3A_MODULOS = [
     subtitulo: 'As quatro semanas do desenho e a meditação de vinte minutos',
     manual: 'Capítulo 7 e meditação do capítulo 9', duracao: '30 min',
     pdf: { titulo: 'Módulo 4 — Desenhar e meditar', ficheiro: 'n3a-m04-desenhar-e-meditar.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3a-m04.mp4', legendas: 'videos-reiki/n3a-m04.vtt' },
     ler: [
       T('O Dai Ko Myo tradicional são três caracteres japoneses escritos uns por baixo dos outros, numa coluna: dai, ko, myo. São dezassete traços ao todo.'),
       T('A regra é a mesma da escrita japonesa: de cima para baixo e, dentro de cada carácter, da esquerda para a direita. Horizontais antes de verticais, exterior antes de interior, e a base fecha-se no fim. Segue os números da imagem do manual: é essa a referência que manda.'),
@@ -268,7 +268,7 @@ const N3A_MODULOS = [
     subtitulo: 'A ordem dos símbolos, os cuidados e a vida quotidiana',
     manual: 'Capítulos 9 e 10', duracao: '25 min',
     pdf: { titulo: 'Módulo 5 — Aplicar o Dai Ko Myo', ficheiro: 'n3a-m05-aplicar-o-dai-ko-myo.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3a-m05.mp4', legendas: 'videos-reiki/n3a-m05.vtt' },
     ler: [
       T('Este manual é um referencial, e os livros são complementos de outras perspectivas. O crescimento alcança-se quando praticamos, connosco e com os outros.'),
       L('A ordem dos símbolos, conforme o caso', [
@@ -322,7 +322,7 @@ const N3A_MODULOS = [
     subtitulo: 'Tratar o que surge, com os cinco princípios, e as técnicas deste nível',
     manual: 'Capítulos 11, 12 e 13', duracao: '40 min',
     pdf: { titulo: 'Módulo 6 — Traumas e técnicas', ficheiro: 'n3a-m06-traumas-e-tecnicas.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3a-m06.mp4', legendas: 'videos-reiki/n3a-m06.vtt' },
     ler: [
       T('A partir do terceiro nível podes encontrar-te com mais experiência e saber para te tornares um terapeuta. Compreendendo a viagem profunda deste nível, percebes que muitas situações começarão a surgir em ti: bloqueios, traumas, lembranças dolorosas. Isso não surge porque estejas a fazer algo errado, mas pela tua prática, que te leva a conhecer-te melhor.'),
       L('Os cinco princípios como ferramenta de cura', [
@@ -395,7 +395,7 @@ const N3A_MODULOS = [
     subtitulo: 'Um símbolo de fora da linha de Usui, e o silêncio na sessão',
     manual: 'Capítulos 14 e 15', duracao: '25 min',
     pdf: { titulo: 'Módulo 7 — Antahkarana e a sessão', ficheiro: 'n3a-m07-antahkarana-e-a-sessao.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3a-m07.mp4', legendas: 'videos-reiki/n3a-m07.vtt' },
     ler: [
       T('O Antahkarana é um símbolo muito antigo, de origem tibetana, que chegou ao Reiki por fora da linha do Mestre Usui. Convém dizê-lo com clareza logo de início: não faz parte dos ensinamentos originais do Usui Reiki Ryoho. O Mestre ensina-o porque é uma ferramenta útil e porque faz parte do seu percurso, mas não o confundas com os quatro símbolos do sistema.'),
       T('O nome vem do sânscrito e aponta para a ideia de instrumento de acesso ao interior: a ponte entre a mente do dia a dia e aquilo que em nós é mais vasto. Ao contrário dos símbolos do Reiki, que se desenham e se activam, este trabalha pela simples presença: basta estar no espaço para produzir efeito.'),
@@ -455,7 +455,7 @@ const N3A_MODULOS = [
     subtitulo: 'Criança interior, sombra, Reiki Tradicional e Essencial, Gokukaiden',
     manual: 'Capítulos 16 a 22 e Compromisso do Aluno', duracao: '40 min',
     pdf: { titulo: 'Módulo 8 — Trabalho interior e ética', ficheiro: 'n3a-m08-trabalho-interior-e-etica.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3a-m08.mp4', legendas: 'videos-reiki/n3a-m08.vtt' },
     ler: [
       T('O trabalho interior é a parte deste nível que não se ensina com técnicas. Vai acontecendo, e o que te compete é não fugir dela.'),
       T('Olhar para o que evitas: toda a gente tem zonas que não visita, como a mágoa antiga, a decisão adiada, a relação que se arrasta. No 3A, essas zonas costumam começar a fazer barulho. A prática é simples de descrever e difícil de fazer: em vez de arranjares explicação, ficas. Sentas-te, pões as mãos, e ficas com aquilo sem tentar resolver nada durante alguns minutos.'),

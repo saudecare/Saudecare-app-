@@ -26,7 +26,7 @@ const N3B_MODULOS = [
     subtitulo: 'Quem está habilitado a transmitir — e a responsabilidade que isso traz',
     manual: 'Antes de começares · A nossa linhagem · Capítulo 1', duracao: '15 min',
     pdf: { titulo: 'Módulo 0 — O que é ser Mestre', ficheiro: 'n3b-m00-o-que-e-ser-mestre.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3b-m00.mp4', legendas: 'videos-reiki/n3b-m00.vtt' },
     ler: [
       T('Este manual é diferente de todos os outros que recebeste. Os anteriores ensinavam-te a receber e a trabalhar. Este ensina-te a dar.'),
       T('A partir daqui não estás só a cuidar de quem te procura. Estás a abrir o canal de outra pessoa, e isso fica com ela para o resto da vida. É uma responsabilidade de outra ordem, e é por isso que o mestrado não se dá a quem apenas cumpriu os degraus anteriores: dá-se a quem está pronto.'),
@@ -68,7 +68,7 @@ const N3B_MODULOS = [
     subtitulo: 'Os dois símbolos próprios do mestrado',
     manual: 'Capítulos 2 e 3', duracao: '25 min',
     pdf: { titulo: 'Módulo 1 — Dai Ko Myo tibetano e Raku', ficheiro: 'n3b-m01-dai-ko-myo-e-raku.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3b-m01.mp4', legendas: 'videos-reiki/n3b-m01.vtt' },
     ler: [
       T('Já conheces o Dai Ko Myo tradicional, dos três caracteres japoneses, que recebeste no 3A. Este é outro desenho, com o mesmo nome, que entrou no Reiki pela via ocidental e tibetana. São duas versões do mesmo símbolo e ambas funcionam, desde que tenhas sido sintonizado com elas. A tibetana é bastante mais simples de memorizar, e é a que se usa no momento da sintonização.'),
       L('Tradicional (3A)', [
@@ -114,7 +114,7 @@ const N3B_MODULOS = [
     subtitulo: 'O conjunto arrumado e a ordem do mais subtil ao mais denso',
     manual: 'Capítulo 4', duracao: '20 min',
     pdf: { titulo: 'Módulo 2 — Os seis símbolos', ficheiro: 'n3b-m02-os-seis-simbolos.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3b-m02.mp4', legendas: 'videos-reiki/n3b-m02.vtt' },
     ler: [
       T('A partir de agora trabalhas com seis símbolos. Vale a pena teres o conjunto arrumado na cabeça.'),
       L('Os seis símbolos', [
@@ -148,7 +148,7 @@ const N3B_MODULOS = [
     subtitulo: 'Manter a energia em circuito fechado',
     manual: 'Capítulo 5', duracao: '20 min',
     pdf: { titulo: 'Módulo 3 — A postura do Mestre', ficheiro: 'n3b-m03-a-postura.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3b-m03.mp4', legendas: 'videos-reiki/n3b-m03.vtt' },
     ler: [
       T('Durante uma sintonização, a energia tem de circular em circuito fechado no teu corpo, sem se dispersar. Três gestos garantem isso, e mantêm-se do princípio ao fim do processo.'),
       L('A contracção do Hui Yin', [
@@ -188,7 +188,7 @@ const N3B_MODULOS = [
     subtitulo: 'Quatro momentos, e só uma coisa muda de nível para nível',
     manual: 'Capítulos 6 e 8', duracao: '25 min',
     pdf: { titulo: 'Módulo 4 — Anatomia da sintonização', ficheiro: 'n3b-m04-anatomia-da-sintonizacao.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3b-m04.mp4', legendas: 'videos-reiki/n3b-m04.vtt' },
     ler: [
       T('Antes do passo a passo, percebe a estrutura. Todas as sintonizações, de qualquer nível, têm quatro momentos. Se perceberes para que serve cada um, nunca ficas perdido, mesmo que te falhe um pormenor.'),
       L('Os quatro momentos', [
@@ -231,7 +231,7 @@ const N3B_MODULOS = [
     subtitulo: 'O procedimento completo, das quatro partes',
     manual: 'Capítulo 7', duracao: '40 min',
     pdf: { titulo: 'Módulo 5 — Sintonização presencial', ficheiro: 'n3b-m05-sintonizacao-presencial.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3b-m05.mp4', legendas: 'videos-reiki/n3b-m05.vtt' },
     ler: [
       T('Este é o procedimento completo. Está escrito para o Nível 1; o módulo anterior diz o que muda nos outros níveis.'),
       L('Preparação', [
@@ -296,7 +296,7 @@ const N3B_MODULOS = [
     subtitulo: 'Individual, em grupo, por videochamada, por chamada de voz e à hora marcada',
     manual: 'Capítulo 9 (e adaptações dos capítulos 7 e 10)', duracao: '40 min',
     pdf: { titulo: 'Módulo 6 — Sintonização à distância', ficheiro: 'n3b-m06-sintonizacao-a-distancia.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3b-m06.mp4', legendas: 'videos-reiki/n3b-m06.vtt' },
     ler: [
       T('A energia não reconhece distância. Se aceitas que se envia Reiki a alguém do outro lado do país, não há razão para não aceitares o mesmo numa sintonização. Milhares de praticantes foram sintonizados assim.'),
       D('O que é preciso é apenas isto: a tua intenção de dar e a intenção do aluno de receber. Sem uma delas, não funciona — e é por isso que se combina hora e se pede confirmação.'),
@@ -381,7 +381,7 @@ const N3B_MODULOS = [
     subtitulo: 'Antes, durante e depois — presencial e online',
     manual: 'Capítulos 10 e 11', duracao: '35 min',
     pdf: { titulo: 'Módulo 7 — Dar formação', ficheiro: 'n3b-m07-dar-formacao.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3b-m07.mp4', legendas: 'videos-reiki/n3b-m07.vtt' },
     ler: [
       T('A formação online não é a mesma coisa que a sintonização à distância, embora muita gente confunda. A sintonização é o momento energético. A formação é todo o resto: o ensino, o acompanhamento, a avaliação. Numa formação online tens videochamada, e isso muda tudo para melhor: vês o aluno, ele vê-te, tiram-se dúvidas no momento.'),
       L('Como organizar uma formação online', [
@@ -443,7 +443,7 @@ const N3B_MODULOS = [
     subtitulo: 'O que ensinar em cada nível, certificados, dados pessoais e compromisso',
     manual: 'Capítulos 12 a 17 e Compromisso do Mestre', duracao: '40 min',
     pdf: { titulo: 'Módulo 8 — Avaliar, registar e ética do Mestre', ficheiro: 'n3b-m08-avaliar-e-etica.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n3b-m08.mp4', legendas: 'videos-reiki/n3b-m08.vtt' },
     ler: [
       T('Cada mestre organiza o seu método à sua maneira, e é assim que deve ser. O que não pode faltar, em nenhum nível, é isto:'),
       L('O que não pode faltar em nenhum nível', [

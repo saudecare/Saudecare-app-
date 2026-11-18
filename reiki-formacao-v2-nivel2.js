@@ -21,7 +21,7 @@ const N2_MODULOS = [
     subtitulo: 'O que muda neste nível, e a vez em que eu quase desisti',
     manual: 'Bem-vindo ao Okuden · A vez em que eu quase desisti · Hikari (cap. 1) · A nossa linhagem', duracao: '15 min',
     pdf: { titulo: 'Módulo 0 — Bem-vindo ao Okuden', ficheiro: 'n2-m00-bem-vindo.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n2-m00.mp4', legendas: 'videos-reiki/n2-m00.vtt' },
     ler: [
       T('Okuden quer dizer «o ensinamento profundo», ou «os segundos ensinamentos». É a continuação do trabalho que começaste no Nível 1: a sensibilidade à energia, o autotratamento, a filosofia de vida através dos cinco princípios e dos poemas do imperador Meiji.'),
       L('O que muda agora', [
@@ -71,7 +71,7 @@ const N2_MODULOS = [
     subtitulo: 'O chão sobre o qual continua a assentar tudo',
     manual: 'Capítulos 2 e 3', duracao: '20 min',
     pdf: { titulo: 'Módulo 1 — Rever e os cinco princípios', ficheiro: 'n2-m01-rever-e-principios.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n2-m01.mp4', legendas: 'videos-reiki/n2-m01.vtt' },
     ler: [
       T('O Reiki é sempre um estudo contínuo, mesmo nas matérias que já julgas sabidas — porque vais ver com outros olhos tudo o que já fizeste. Relê o teu manual de Shoden e traz as dúvidas.'),
       L('Matérias a rever do Nível 1', [
@@ -119,7 +119,7 @@ const N2_MODULOS = [
     subtitulo: 'Desenho, mantra e sintonização',
     manual: 'Capítulo 4', duracao: '20 min',
     pdf: { titulo: 'Módulo 2 — Os símbolos', ficheiro: 'n2-m02-os-simbolos.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n2-m02.mp4', legendas: 'videos-reiki/n2-m02.vtt' },
     ler: [
       T('Neste nível recebes três símbolos, cada um com o seu significado e a sua utilidade. O uso inicial dos símbolos não era para a cura, mas para a iluminação interior. Os budistas acreditam que a única cura verdadeira é a que nos liberta da roda das reencarnações. Por isso a transmissão de energia não se deve limitar a tirar dores: contribui também para o crescimento espiritual de cada um.'),
       T('Nos 21 dias que se seguem à tua sintonização, os símbolos vão trabalhar sobretudo a parte emocional e mental.'),
@@ -163,7 +163,7 @@ const N2_MODULOS = [
     subtitulo: 'O interruptor: potenciar, enraizar, limpar',
     manual: 'Capítulo 5', duracao: '25 min',
     pdf: { titulo: 'Módulo 3 — Cho Ku Rei', ficheiro: 'n2-m03-cho-ku-rei.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n2-m03.mp4', legendas: 'videos-reiki/n2-m03.vtt' },
     ler: [
       T('Um chokurei é um édito imperial: uma ordem, um mandamento, um decreto, uma lei. Já o conheces do Nível 1, onde é ensinado com os seus usos por ser uma ferramenta poderosa para os dias de hoje — aqui passas a trabalhá-lo a sério.'),
       L('As três sílabas', ['Cho — conecta, liga', 'Ku — poder, energia', 'Rei — espírito, universo']),
@@ -205,7 +205,7 @@ const N2_MODULOS = [
     subtitulo: 'Emoções, subconsciente e hábitos',
     manual: 'Capítulo 6', duracao: '25 min',
     pdf: { titulo: 'Módulo 4 — Sei He Ki', ficheiro: 'n2-m04-sei-he-ki.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n2-m04.mp4', legendas: 'videos-reiki/n2-m04.vtt' },
     ler: [
       T('Seiheki significa os atributos emocionais e intelectuais que formam uma pessoa. Lembra-te do conceito japonês de kokoro: mente e coração estão unidos, e não dissociados como no ocidente. O Sei He Ki trabalha os aspectos mentais e emocionais, promovendo harmonia e purificação.'),
       T('Outras traduções que vais encontrar: «chave do universo», «homem e Deus fazem-se uno». Não sabemos de onde vêm — possivelmente do sistema de Reiki Essencial. Quando pensares no Sei He Ki, pensa em harmonia.'),
@@ -249,7 +249,7 @@ const N2_MODULOS = [
     subtitulo: 'A ponte, o pensamento correcto e quando usar cada um',
     manual: 'Capítulos 7 e 8', duracao: '25 min',
     pdf: { titulo: 'Módulo 5 — Hon Sha Ze Sho Nen e síntese', ficheiro: 'n2-m05-hon-sha-ze-sho-nen.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n2-m05.mp4', legendas: 'videos-reiki/n2-m05.vtt' },
     ler: [
       T('Tipicamente considera-se este o símbolo da distância, mas o seu uso vai muito além disso. Não sabemos porque é que o Mestre Usui escolheu esta combinação de kanji. Mas convém saberes que, ao contrário da caligrafia ocidental, a chinesa e a japonesa são uma escrita inspirada pelo Céu, pelos kami — logo, sagrada. Quando um mestre calígrafo trabalha, eleva primeiro o pincel ao céu, como que a trazer a energia de um kami para a sua arte. É uma lição interessante para um praticante de Reiki.'),
       T('O que quer dizer: ao longo do tempo foi tendo várias interpretações, desde «sem passado, sem presente, sem futuro» até à leitura mais correcta e contemporânea: «pensamento correcto é a essência do Ser». Ou ainda, kanji a kanji: «esta (Hon) pessoa (Sha) justamente (Ze) corrige (Sho) os pensamentos (Nen)».'),
@@ -299,7 +299,7 @@ const N2_MODULOS = [
     subtitulo: 'Fotografia, caderno, caixa e as perguntas mais comuns',
     manual: 'Capítulos 9, 10 e 11', duracao: '35 min',
     pdf: { titulo: 'Módulo 6 — Tratamento à distância', ficheiro: 'n2-m06-tratamento-a-distancia.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n2-m06.mp4', legendas: 'videos-reiki/n2-m06.vtt' },
     ler: [
       T('Enkaku quer dizer distância e chiryo tratamento. Também lhe chamam Sashin Chiryo, de sashin, fotografia. Consiste em enviar Reiki usando apenas o nome ou a fotografia de quem recebe, formando uma ponte de luz até um ponto previamente determinado. Possivelmente vais perceber que, de alguma forma, sempre enviaste energia às pessoas e às situações. Agora podes fazê-lo como técnica, de forma sistemática.'),
       L('A forma simples', [
@@ -380,7 +380,7 @@ const N2_MODULOS = [
     subtitulo: 'Hatsurei Ho, Koki Ho, Gyoshi Ho, Tanden, Hesso e Nentatsu',
     manual: 'Capítulo 12', duracao: '35 min',
     pdf: { titulo: 'Módulo 7 — Técnicas tradicionais', ficheiro: 'n2-m07-tecnicas-tradicionais.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n2-m07.mp4', legendas: 'videos-reiki/n2-m07.vtt' },
     ler: [
       T('Seis técnicas com nome japonês. Em cada uma o nome diz quase sempre o que a técnica faz.'),
       L('Os nomes e a tradução', [
@@ -461,7 +461,7 @@ const N2_MODULOS = [
     subtitulo: 'A sessão completa, passo a passo',
     manual: 'Capítulos 13 e 14', duracao: '40 min',
     pdf: { titulo: 'Módulo 8 — Autotratamento e tratamento a outros', ficheiro: 'n2-m08-autotratamento-e-tratamento.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n2-m08.mp4', legendas: 'videos-reiki/n2-m08.vtt' },
     ler: [
       T('O autotratamento implica sempre os três pilares: Gassho, a ligação à fonte; Reiji-Ho, a intenção e o agradecimento; Chiryo, o tratamento. O que muda agora é que passas a ter símbolos para colocar lá dentro. Continuas a usar as treze posições do Nível 1 — não as substituas, acrescenta.'),
       L('Três formas de o fazer', [
@@ -520,7 +520,7 @@ const N2_MODULOS = [
     subtitulo: 'Plano de estudo, glossário e exercícios deste nível',
     manual: 'Capítulos 15 a 20 e Compromisso do Aluno', duracao: '35 min',
     pdf: { titulo: 'Módulo 9 — 21 dias, ética e compromisso', ficheiro: 'n2-m09-21-dias-etica-compromisso.pdf' },
-    aula: { url: '', legendas: '' },
+    aula: { url: 'videos-reiki/n2-m09.mp4', legendas: 'videos-reiki/n2-m09.vtt' },
     ler: [
       T('Depois da sintonização de Nível 2 há outra vez um período de ajuste de vinte e um dias — e este costuma mexer mais do que o primeiro, porque agora o trabalho é emocional e mental. O compromisso é o mesmo: autotratamento todos os dias, agora com símbolos. Vinte minutos chegam. Se falhares um dia, retomas no seguinte, sem drama e sem recomeçar a contagem.'),
       L('O que podes sentir', [
