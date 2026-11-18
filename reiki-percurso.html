@@ -666,8 +666,8 @@ function desenharLista(){
         ${estado}</div></div>`;
   }).join('');
 
-  const blocoTreino = (!V2 && MODULOS.some(m => (PROGRESSO[m.id]||{}).lido))
-    ? `<div class="card"><h4>🎯 Treino livre</h4><p class="nota">Perguntas à sorte dos módulos que já leste. Não conta para o percurso — serve para veres o que ficou.</p><button class="principal" onclick="abrirTreino()">Começar treino</button></div>`
+  const blocoTreino = MODULOS.some(m => V2 ? (PROGRESSO[m.id]||{}).concluido : (PROGRESSO[m.id]||{}).lido)
+    ? `<div class="card"><h4>🎯 Treino livre</h4><p class="nota">Perguntas à sorte dos módulos que já concluíste${V2 ? ' (diferentes das do módulo)' : ''}. Podes repetir à vontade. Não conta para o percurso — serve para veres o que ficou.</p><button class="principal" onclick="abrirTreino()">Começar treino</button></div>`
     : '';
 
   const blocoFeito = modulosFeitos
@@ -1292,6 +1292,11 @@ window.abrirTreino = function(soFalhadas){
   let banco = [];
   if (soFalhadas === true && TFALHADAS.length){ banco = TFALHADAS.slice(); }
   else MODULOS.forEach(m => {
+    if (V2){
+      if (!(PROGRESSO[m.id]||{}).concluido) return;
+      (m.treino||[]).forEach(q => banco.push(Object.assign({}, q, { modulo: m.titulo })));
+      return;
+    }
     if (!(PROGRESSO[m.id]||{}).lido) return;
     (m.responder||[]).concat(m.treino||[]).forEach(q => banco.push(Object.assign({}, q, { modulo: m.titulo })));
   });

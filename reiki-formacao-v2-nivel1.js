@@ -755,6 +755,103 @@ const N1_EXAME = {
   ]
 };
 
+/* =========================================================================
+   TREINO LIVRE — perguntas DIFERENTES das do módulo (podem repetir-se à vontade)
+   ========================================================================= */
+const N1_TREINO = {
+  0: [
+    Q('O que contém cada módulo desta formação?', ['Só o vídeo', 'Vídeo, material em PDF, prática e perguntas', 'Só perguntas'], 1, 'Vídeo narrado, material de estudo em PDF, uma prática e perguntas para fixares.'),
+    Q('O manual completo do Nível 1 pode ser…', ['Só lido na app', 'Lido na app ou descarregado e impresso', 'Só pedido ao Mestre'], 1, 'Está no início do nível, em PDF.'),
+    Q('Para que serve o Nível 1?', ['Atender pessoas de fora', 'Uso próprio', 'Formar outros'], 1, 'Aprendes a usar o Reiki em ti, no teu espaço e nas tuas coisas.'),
+    Q('O que vale mais, segundo o manual?', ['Saber os nomes em japonês', 'A intenção com que te entregas: amor, gratidão e compaixão', 'Ter muitos níveis'], 1, 'Saber os nomes em japonês não faz de ninguém bom terapeuta.')
+  ],
+  1: [
+    Q('Como chamam os indianos ao ki?', ['Chi', 'Prana', 'Tanden'], 1, 'Os chineses chamam-lhe chi, os indianos prana.'),
+    Q('Quem produz a energia no Reiki?', ['O praticante, com a força do pensamento', 'Ninguém «produz»: o praticante disponibiliza-se e ela passa', 'A pessoa que recebe'], 1, 'Tu não a produzes nem a diriges com a força do pensamento.'),
+    Q('«Holístico» vem do grego holos, que quer dizer…', ['Energia', 'Inteiro', 'Cura'], 1, 'A pessoa é um todo, onde o que se passa num plano se reflecte nos outros.'),
+    Q('Qual destes NÃO é um dos quatro planos?', ['Emocional', 'Financeiro', 'Espiritual'], 1, 'Os quatro planos são físico, emocional, mental e espiritual.'),
+    Q('O que costuma o Reiki trazer, segundo o manual?', ['Cura garantida', 'Relaxamento, melhor sono e mais serenidade — sem promessa de cura', 'Diagnóstico'], 1, 'É o que as pessoas relatam, e é o que podes honestamente dizer.')
+  ],
+  2: [
+    Q('Em que ano abriu Usui a sua escola em Tóquio?', ['1865', '1922', '1926'], 1, 'Em 1922. O terramoto de Kanto foi no ano seguinte e Usui morreu em 1926.'),
+    Q('Quem era Chujiro Hayashi?', ['Discípulo de Usui, médico reformado da marinha imperial', 'O imperador', 'A primeira mestra no Havai'], 0, 'Organizou o ensino de forma mais sistemática e abriu uma clínica.'),
+    Q('O que é um waka?', ['Um símbolo', 'Um poema curto de cinco versos', 'Uma técnica de respiração'], 1, 'Em contexto imperial chamam-se gyosei.'),
+    Q('Quais os símbolos que vêm do mestrado em Reiki Essencial e só se ensinam no 3B?', ['Cho Ku Rei e Sei He Ki', 'Dai Ko Myo tibetano e Raku', 'Hon Sha Ze Sho Nen e Raku'], 1, 'Não fazem parte do núcleo original do Usui Reiki Ryoho.'),
+    Q('Como se deve contar a história de Usui?', ['Como documento de arquivo, com todos os pormenores', 'Como tradição respeitável, com honestidade sobre o que se sabe', 'Sem falar de dúvidas'], 1, 'Uma escola séria não precisa de inventar certezas.')
+  ],
+  3: [
+    Q('Qual é o primeiro dos cinco princípios?', ['Sou calmo', 'Só por hoje', 'Confio'], 1, 'O «só por hoje» é o que torna tudo possível.'),
+    Q('O que se faz com a raiva, no princípio «Sou calmo»?', ['Proíbe-se', 'Observa-se, reparando no que a acendeu', 'Esconde-se'], 1, 'Muitas vezes o que está por baixo é medo ou cansaço.'),
+    Q('Em que postura se recitam os princípios?', ['Deitado', 'De mãos juntas (Gassho)', 'De pé, de braços abertos'], 1, 'De manhã e à noite, de mãos juntas.'),
+    Q('O que é o Reiji-Ho?', ['O tratamento com as mãos', 'Pedir e escutar: deixar que a energia indique o caminho', 'A meditação final'], 1, '«Indicação do espírito». Fazem-se alguns segundos de silêncio, sem procurar resposta.'),
+    Q('Em que papel escreveu Usui os preceitos?', ['Papel de arroz', 'Papel de amoreira', 'Pergaminho'], 1, 'Comprado pela Monja Suzuki, uma das suas ajudantes.')
+  ],
+  4: [
+    Q('Quanto tempo demora o Hatsurei Ho completo?', ['Cinco minutos', 'Dez a quinze minutos', 'Uma hora'], 1, 'Faz-se de manhã, se puderes.'),
+    Q('Em que parte da prática a luz entra pelo topo da cabeça e desce ao tanden?', ['Kenyoku Ho', 'Joshin Kokyu Ho', 'Gassho Meiso'], 1, 'É a respiração que purifica o espírito, cinco minutos.'),
+    Q('Quando se faz o banho seco, além do início da prática?', ['Nunca', 'No fim de uma sessão ou ao sair de um ambiente pesado', 'Só aos domingos'], 1, 'Serve para cortar e sacudir o que não é teu.'),
+    Q('Que nível habilita a trabalhar como terapeuta de Reiki?', ['Nível 2', 'Nível 3A', 'Nível 3B'], 1, 'O 3B é o de Mestre, que forma e sintoniza.'),
+    Q('«Não colecciones níveis» quer dizer…', ['Que não se deve subir de nível', 'Que praticar um nível com dedicação vale mais do que subir quatro sem praticar', 'Que só há três níveis'], 1, 'O que conta é a prática.')
+  ],
+  5: [
+    Q('Qual a cor do chakra raiz?', ['Vermelho', 'Azul', 'Violeta'], 0, 'Raiz: vermelho, elemento Terra, mantra LAM.'),
+    Q('Onde fica o chakra do plexo solar?', ['Centro do peito', 'Boca do estômago', 'Garganta'], 1, 'Terceiro chakra: amarelo, elemento Fogo, mantra RAM.'),
+    Q('Que cor se associa à elevação e ligação espiritual?', ['Laranja', 'Violeta', 'Verde'], 1, 'O violeta serve a elevação, a transmutação e a serenidade.'),
+    Q('Por onde passa a energia antes de chegar às mãos?', ['Pelos pés', 'Pelo coração (chakra cardíaco)', 'Pelo plexo solar'], 1, 'Por isso o Reiki não funciona bem quando atendemos com a cabeça noutro sítio.'),
+    Q('Que imagem ajuda a perceber o papel do praticante?', ['Uma bomba', 'Uma mangueira: aberto e limpo, sem empurrar a água', 'Uma bateria'], 1, 'Quem se esforça por «mandar energia» costuma conseguir uma dor de cabeça.')
+  ],
+  6: [
+    Q('O que significa Byosen, à letra?', ['Calor nas mãos', 'Uma acumulação de energia que cria bloqueios', 'O símbolo da distância'], 1, 'É de onde a doença pode vir a surgir.'),
+    Q('Sentes formigueiro nas palmas e pontas dos dedos. Indica…', ['Zona perfeita', 'Tensão e rigidez mais sérias: há desarmonia', 'Que acabaste a sessão'], 1, 'Formigueiro = desarmonia.'),
+    Q('O calor ligeiramente acima da temperatura do corpo é…', ['O mais comum: zona rígida, a receber energia', 'Muito raro', 'Perigoso'], 0, 'É a leitura mais comum do Byosen.'),
+    Q('Quantas vezes se aproximam e afastam as mãos no exercício da bola de energia?', ['Três', 'Dez', 'Vinte e uma'], 1, 'Dez vezes, de olhos fechados, sem esperar nada em concreto.'),
+    Q('Quanto tempo se esfregam as palmas no início do exercício?', ['Vinte segundos', 'Cinco minutos', 'Dois segundos'], 0, 'Depois afastam-se cerca de trinta centímetros.')
+  ],
+  7: [
+    Q('Que imagem se usa para explicar a sintonização?', ['Uma chave', 'Ímanes colocados nas mãos', 'Uma lâmpada'], 1, 'Para que a energia flua pelo teu corpo e saia por ali.'),
+    Q('Cada nível tem a sua própria sintonização?', ['Não, é sempre a mesma', 'Sim, porque habilita a trabalhar com aspectos diferentes da energia', 'Só o 3B'], 1, 'E quem a recebeu está sintonizado para sempre.'),
+    Q('Quanto tempo de autotratamento diário se aconselha nos 21 dias?', ['Cinco minutos', 'Vinte minutos', 'Duas horas'], 1, 'Vinte minutos chegam.'),
+    Q('Qual destas é uma reacção normal nestes dias?', ['Sonhos mais vivos', 'Perder a sintonização', 'Ficar doente obrigatoriamente'], 0, 'Ou nada de especial — também é perfeitamente normal.'),
+    Q('O que fazer depois dos 21 dias?', ['Parar', 'Continuar a tratar-te', 'Repetir a sintonização'], 1, 'O autotratamento é o coração da prática.')
+  ],
+  8: [
+    Q('Quanto tempo se fica em cada posição?', ['Trinta segundos', 'Três a cinco minutos, ou até a mão acalmar', 'Uma hora'], 1, 'Se o Byosen for forte, demora-te mais.'),
+    Q('Qual é a posição que acalma o pensamento e ajuda nas dores de cabeça?', ['Nuca', 'Olhos', 'Joelhos'], 1, 'Palmas em concha a cobrir os olhos, sem carregar nas pálpebras.'),
+    Q('O que se faz antes de pousar as mãos?', ['Nada', 'Desligar o telemóvel, Gassho, Reiji-Ho e Cho Ku Rei nas palmas', 'Beber café'], 1, 'E banho seco, se vieres da rua ou de um dia pesado.'),
+    Q('Para que servem as mãos no baixo ventre no fim?', ['Para arrumar a energia em baixo e não ficar com a cabeça leve', 'Para despertar', 'Para fazer diagnóstico'], 0, 'Depois, Gassho, água e lavar as mãos.'),
+    Q('Em zonas sensíveis do corpo, como se trabalha?', ['Com muita pressão', 'Sem tocar', 'Com os dedos abertos'], 1, 'Podes tocar ou trabalhar a poucos centímetros do corpo.')
+  ],
+  9: [
+    Q('Quantas voltas dá, aproximadamente, a espiral do Cho Ku Rei?', ['Uma', 'Três e meia', 'Sete'], 1, 'Enrola para dentro, no sentido contrário ao dos ponteiros do relógio.'),
+    Q('Para que NÃO se usa o Cho Ku Rei no Nível 1?', ['Energizar a água', 'Tratar outras pessoas', 'Limpar o teu espaço'], 1, 'Quem recebe és tu, o teu espaço ou as tuas coisas.'),
+    Q('O Jakikiri Joka Ho serve para…', ['Limpar objectos, cristais e jóias', 'Sintonizar', 'Enviar à distância'], 0, 'Cortar a energia estagnada e purificar.'),
+    Q('Podes partilhar o símbolo nas redes sociais?', ['Sim', 'Não — por consideração por quem investiu tempo para o receber', 'Só em privado'], 1, 'Não é por medo, é por consideração.'),
+    Q('O que se faz na «Prática dos 30 dias»?', ['Repetir sem pensar', 'Desenhar o símbolo à mão diariamente até ele «aparecer»', 'Copiá-lo sempre do livro'], 1, 'A partir da segunda semana, sem copiar de lado nenhum.')
+  ],
+  10: [
+    Q('O que se imagina no Enraizamento?', ['Asas', 'Raízes a sair das plantas dos pés até encontrarem rocha', 'Uma esfera de luz'], 1, 'Sobe a terra pelas raízes e desce o que não precisas.'),
+    Q('Quanto tempo dura a Chuva de Reiki?', ['Dois a três minutos', 'Vinte minutos', 'Uma hora'], 0, 'O Banho de Reiki é que dura vinte minutos.'),
+    Q('No Banho de Reiki, o que se faz com as mãos?', ['Percorrem-se posições', 'Pousam-se no peito e fica-se', 'Fazem-se cortes no ar'], 1, 'Hoje não é um autotratamento, é um banho.'),
+    Q('Onde se manifesta a força interior, segundo o manual?', ['No plexo solar, com o reforço do chakra esplénico', 'Na testa', 'Nas mãos'], 0, 'Essa força vem de dentro.'),
+    Q('Para lavar as mãos depois da sessão…', ['Só com um pano', 'Em água corrente, até aos cotovelos se necessário', 'Não é preciso'], 1, 'Em alternativa, álcool dos cotovelos até às mãos.')
+  ],
+  11: [
+    Q('Quanto tempo dura o alinhamento rápido sentado?', ['Cinco minutos', 'Vinte minutos', 'Duas horas'], 1, 'Serve para a família de casa e é a base do Nível 2.'),
+    Q('Onde fica o praticante no início do alinhamento sentado?', ['À frente', 'Atrás, pousando as mãos nos ombros', 'Do lado'], 1, 'Passa à frente quando indicado.'),
+    Q('Quanto tempo dura uma sessão a um animal?', ['Uma hora', 'Cinco a quinze minutos', 'Um minuto'], 1, 'E um animal doente precisa de veterinário.'),
+    Q('Na experiência com plantas…', ['Dás Reiki às duas', 'Dás a uma e não à outra, e comparas ao fim de um mês', 'Só regas com água benta'], 1, 'Duas plantas iguais, só uma com Reiki.'),
+    Q('Na receita para dormir, como se respira?', ['Inspira em quatro, expira em seis', 'Inspira em dez, expira em dois', 'Prende o ar'], 0, 'Mãos no peito e depois no abdómen.')
+  ],
+  12: [
+    Q('O que dizer no fim de uma sessão?', ['O nome da doença', 'O que sentiste em linguagem simples, devolvendo a interpretação à pessoa', 'Nada de nada'], 1, 'Por exemplo: «na zona do peito senti mais calor — fez-te algum sentido?»'),
+    Q('Podes mandar alguém parar a medicação?', ['Sim, se for leve', 'Nunca, em circunstância nenhuma', 'Só se pedir'], 1, 'Reiki é complementar.'),
+    Q('Cobrar pelo Reiki…', ['É proibido', 'É legítimo; o que não é legítimo é aproveitar o desespero de alguém', 'Obriga a descontar'], 1, 'Guarda espaço para quem não pode pagar.'),
+    Q('«O que se diz na marquesa…»', ['Pode contar-se a amigos', 'Fica na marquesa', 'Publica-se com autorização'], 1, 'Guardas segredo.'),
+    Q('Perante uma situação que não é para ti, o que fazes?', ['Insistes', 'Sabes dizer que não: é maturidade, não incompetência', 'Escondes'], 1, 'Reconhecê-lo é maturidade.')
+  ]
+};
+N1_MODULOS.forEach(m => { m.treino = N1_TREINO[m.ordem] || []; });
+
 window.FORMACAO_V2 = window.FORMACAO_V2 || {};
 window.FORMACAO_V2['1'] = {
   nivel: '1',
