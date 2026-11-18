@@ -17242,6 +17242,7 @@ function reikiRenderListaAlunos(){
           <span class="muted" style="font-size:.82rem;">${r.estudar.length} a estudar${r.espera.length ? ' · 🙋 ' + r.espera.length : ''}</span></button>`;
       }).join('')}
     </div>
+    <a href="reiki-evolucao.html" target="_blank" rel="noopener" style="display:block;text-decoration:none;margin-bottom:12px;"><button class="ghost" style="width:100%;text-align:left;padding:11px 12px;">📈 <strong>Evolução dos alunos</strong><br><span class="muted" style="font-size:.82rem;">Módulos concluídos, respostas certas e erradas, exames e registos</span></button></a>
     <input type="search" placeholder="🔍 Procurar aluno…" value="${escapeHtml(__reikiBusca)}" oninput="reikiBuscarAlunos(this.value)" style="width:100%;margin-bottom:10px;">
     <div class="row" style="gap:6px;margin-bottom:12px;flex-wrap:wrap;justify-content:flex-start;">
       ${chip('todos','Todos')}${chip('estudar','A estudar')}${chip('espera','À espera')}${chip('concluidos','Mestres')}${chip('semturma','Sem turma')}
