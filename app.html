@@ -441,7 +441,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-17-2';
+const APP_VERSION = '2026-11-18-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -2031,6 +2031,7 @@ const NAV_GROUPS = {
   ]},
   account: { title: '⚙️ Conta & Ajuda', items: [
     { view: 'ajuda', icon: '❓', label: 'Ajuda: como faço…?' },
+    { view: 'tutoriais', icon: '🎬', label: 'Tutoriais em vídeo' },
     { view: 'settings', icon: '⚙️', label: 'Definições' },
     { view: 'supportContact', icon: '🆘', label: 'Reportar / Pedir Apoio' }
   ]}
@@ -2163,6 +2164,7 @@ function renderView(view, opts){
   else if (view === 'settings') renderSettings(main);
   else if (view === 'supportContact') renderSupportContact(main);
   else if (view === 'ajuda') renderAjuda(main);
+  else if (view === 'tutoriais') renderTutoriais(main);
   else if (view === 'mapaAlma') renderMapaAlma(main);
   else if (view === 'cartomancia') renderCartomancia(main);
   else if (view === 'triagemBaixaVibracao') renderTriagemBaixaVibracao(main, opts);
@@ -3011,6 +3013,14 @@ window.abrirAjuda = function(termo){
   window.__ajudaTermo = String(termo || '').trim();
   renderView('ajuda');
 };
+
+function renderTutoriais(main){
+  main.innerHTML = `
+    <h2>🎬 Tutoriais em vídeo</h2>
+    ${hintBox('Vídeos curtos, narrados e com legendas. Toque para ver; se preferir, escreva o que quer fazer em Ajuda.')}
+    <div class="card" style="margin-bottom:14px;padding:12px;"><video style="width:100%;max-width:340px;display:block;margin:0 auto;border-radius:12px;background:#0f2b25;" controls preload="none" playsinline poster="site/videos/apresentacao.jpg"><source src="site/videos/apresentacao.mp4" type="video/mp4"><track kind="subtitles" srclang="pt" label="Português" src="site/videos/apresentacao.vtt"></video><h3 style="margin:10px 0 4px;">Apresentação da Vindora</h3 style="margin:10px 0 4px;"><p>Veja a app inteira em menos de 6 minutos. · 5:48</p></div><div class="card" style="margin-bottom:14px;padding:12px;"><video style="width:100%;max-width:340px;display:block;margin:0 auto;border-radius:12px;background:#0f2b25;" controls preload="none" playsinline poster="site/videos/criar-protocolo.jpg"><source src="site/videos/criar-protocolo.mp4" type="video/mp4"><track kind="subtitles" srclang="pt" label="Português" src="site/videos/criar-protocolo.vtt"></video><h3 style="margin:10px 0 4px;">Como criar um protocolo de atendimento</h3 style="margin:10px 0 4px;"><p>Com mapa do corpo, cores e fonte de conhecimento. · 1:04</p></div><div class="card" style="margin-bottom:14px;padding:12px;"><video style="width:100%;max-width:340px;display:block;margin:0 auto;border-radius:12px;background:#0f2b25;" controls preload="none" playsinline poster="site/videos/protocolo-consulta-relatorio.jpg"><source src="site/videos/protocolo-consulta-relatorio.mp4" type="video/mp4"><track kind="subtitles" srclang="pt" label="Português" src="site/videos/protocolo-consulta-relatorio.vtt"></video><h3 style="margin:10px 0 4px;">Do protocolo ao relatório automático</h3 style="margin:10px 0 4px;"><p>Marcar na consulta e receber o relatório pronto. · 1:29</p></div><div class="card" style="margin-bottom:14px;padding:12px;"><video style="width:100%;max-width:340px;display:block;margin:0 auto;border-radius:12px;background:#0f2b25;" controls preload="none" playsinline poster="site/videos/ficha-anamnese.jpg"><source src="site/videos/ficha-anamnese.mp4" type="video/mp4"><track kind="subtitles" srclang="pt" label="Português" src="site/videos/ficha-anamnese.vtt"></video><h3 style="margin:10px 0 4px;">Como criar e enviar uma ficha de anamnese</h3 style="margin:10px 0 4px;"><p>O paciente preenche no telemóvel e fica guardado na ficha. · 1:12</p></div>
+    <button class="secondary" onclick="renderView('ajuda')">❓ Ajuda: como faço…?</button>`;
+}
 
 function renderAjuda(main){
   const termo = window.__ajudaTermo || '';
