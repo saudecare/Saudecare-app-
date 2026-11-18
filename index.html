@@ -9,6 +9,7 @@
 <meta property="og:site_name" content="Vindora">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://vindora.pt/">
+<meta property="og:image" content="https://vindora.pt/site/videos/apresentacao.jpg">
 <meta property="og:title" content="Vindora — Software para terapeutas e clínicas">
 <meta property="og:description" content="Agenda, fichas, consultas guiadas e página própria para terapeutas e clínicas. 7 dias grátis, sem cartão.">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"Vindora","url":"https://vindora.pt/","inLanguage":"pt-PT"},{"@type":"SoftwareApplication","name":"Vindora","applicationCategory":"BusinessApplication","operatingSystem":"Web, iOS, Android","inLanguage":"pt-PT","description":"Plataforma para terapeutas e clínicas: agenda, marcações online, fichas de pacientes, consultas guiadas e relatórios automáticos.","offers":{"@type":"Offer","price":"15","priceCurrency":"EUR","description":"Preço de lançamento por mês, com 7 dias grátis"}}]}</script>
@@ -153,6 +154,8 @@ footer{padding:26px 18px;text-align:center;font-size:13px;color:var(--s)}footer 
 (function(){var m=document.getElementById('vmod'),v=document.getElementById('vplay');
 function fechar(){try{v.pause()}catch(e){}m.hidden=true;v.removeAttribute('src');while(v.firstChild)v.removeChild(v.firstChild);v.load();document.body.style.overflow=''}
 document.querySelectorAll('.vt').forEach(function(b){b.addEventListener('click',function(){var s=b.dataset.v;v.src='site/videos/'+s+'.mp4';var t=document.createElement('track');t.kind='subtitles';t.srclang='pt';t.label='Português';t.src='site/videos/'+s+'.vtt';v.appendChild(t);m.hidden=false;document.body.style.overflow='hidden';var p=v.play();if(p&&p.catch)p.catch(function(){})})});
+function abrir(s){var b=document.querySelector('.vt[data-v="'+s+'"]');if(b)b.click()}
+var q=new URLSearchParams(location.search).get('v');if(q)setTimeout(function(){abrir(q)},300);
 m.querySelector('.vx').addEventListener('click',fechar);m.addEventListener('click',function(e){if(e.target===m)fechar()});document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden)fechar()})})();
 </script>
 </body></html>
