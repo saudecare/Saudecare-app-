@@ -441,7 +441,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-19-2';
+const APP_VERSION = '2026-11-19-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -6539,6 +6539,7 @@ function modelosEmDestaque(tipo){
   return `<div class="card" style="margin-bottom:12px;border:2px dashed var(--primary);">
     <div style="font-weight:700;font-size:1.05rem;">✨ Modelos prontos para a sua área</div>
     <div class="muted" style="margin:4px 0 8px;">O que faz? Toque para ver só os modelos que lhe interessam (pode escolher várias). Toque num modelo: fica logo na sua lista, pronto a usar, e pode mudar o que quiser em "Editar".</div>
+    <div style="font-size:.82rem;background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:8px 10px;margin-bottom:8px;">⚠️ Modelos de exemplo, só para profissionais com formação nesta área. Não substituem avaliação médica ou psicológica.</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${chips}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;">
       ${visiveis.map(({t,i})=>`<button class="ghost" style="text-align:left;padding:10px;" onclick="${fn}(${i})"><strong>${escapeHtml(nomeDe(t))}</strong><div class="muted" style="font-size:.8rem;">${infoDe(t)} · + Usar</div></button>`).join('')}
@@ -7524,7 +7525,38 @@ window.limparRepetidos = async function(tipo){
   renderView(tipo === 'forms' ? 'forms' : 'protocols');
 };
 
+/* Declaração de formação — obrigatória antes de copiar ou importar modelos/métodos.
+   Fica guardada no negócio (se for o dono) e neste aparelho. */
+async function garantirDeclaracaoFormacao(){
+  const chave = 'vd_decl_formacao_' + tenantId + '_' + (currentUser?.uid || '');
+  try { if (currentTenantDoc?.declaracaoFormacao?.aceite || localStorage.getItem(chave)) return true; } catch(e){}
+  const ok = await new Promise(resolve => {
+    const fundo = document.createElement('div');
+    fundo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+    fundo.innerHTML = `<div class="card" style="max-width:440px;width:100%;background:#fff;max-height:90vh;overflow:auto;">
+      <strong style="font-size:1.05rem;">⚠️ Antes de usar modelos e métodos</strong>
+      <p class="muted" style="margin-top:8px;">Os modelos e métodos prontos são <b>exemplos para profissionais com formação</b> na respetiva área. Não são formação e não substituem avaliação médica ou psicológica. Usá-los sem preparação pode prejudicar quem atende.</p>
+      <label style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;"><input type="checkbox" id="declChk" style="margin-top:4px;width:auto;"><span>Declaro que tenho <b>formação e habilitação</b> para as práticas que vou usar, que só aplico o que domino, e que sou o único responsável pelo que aplico aos meus clientes.</span></label>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
+        <button class="ghost" data-nao>Cancelar</button>
+        <button class="primary" data-sim disabled style="opacity:.5;">Aceito e continuar</button>
+      </div></div>`;
+    const sim = fundo.querySelector('[data-sim]'), chk = fundo.querySelector('#declChk');
+    chk.onchange = () => { sim.disabled = !chk.checked; sim.style.opacity = chk.checked ? 1 : .5; };
+    const fecha = v => { fundo.remove(); resolve(v); };
+    sim.onclick = () => fecha(true);
+    fundo.querySelector('[data-nao]').onclick = () => fecha(false);
+    document.body.appendChild(fundo);
+  });
+  if (!ok) return false;
+  try { localStorage.setItem(chave, '1'); } catch(e){}
+  const reg = { aceite: true, em: new Date().toISOString(), por: currentUser?.email || '' };
+  try { await updateDoc(doc(db, 'tenants', tenantId), { declaracaoFormacao: reg }); if (currentTenantDoc) currentTenantDoc.declaracaoFormacao = reg; } catch(e){}
+  return true;
+}
+
 window.useProtocolTemplate = async function(idx){
+  if (!(await garantirDeclaracaoFormacao())) return;
   const t = TEMPLATE_PROTOCOLS[idx];
   if (!t) return;
   if (await jaTemModelo('protocols', 'name', t.name)){ toast('Já tem este modelo nos seus métodos. Pode editá-lo ou duplicá-lo.'); return; }
@@ -7561,6 +7593,7 @@ function renderFormTemplatesSection(){
 }
 
 window.useFormTemplate = async function(idx){
+  if (!(await garantirDeclaracaoFormacao())) return;
   const t = TEMPLATE_FORMS[idx];
   if (!t) return;
   if (await jaTemModelo('forms', 'title', t.title)){ toast('Já tem este modelo nas suas fichas. Pode editá-lo ou duplicá-lo.'); return; }
@@ -8674,6 +8707,7 @@ window.exportProtocol = async function(id){
 
 window.importProtocol = async function(file){
   if (!file) return;
+  if (!(await garantirDeclaracaoFormacao())) return;
   try {
     if (file.size > 900000) { toast('Este ficheiro é demasiado grande para ser um método.', true); return; }
     const pacote = JSON.parse(await file.text());
