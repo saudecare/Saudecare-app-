@@ -159,13 +159,25 @@ function renderForm(){
       ${services.length ? `
       <label>${t('servico')}</label>
       <div id="serviceList">
-        ${services.map(s => {
-          const cat = categories.find(c => c.id === s.categoryId);
-          return `<div class="service-option" data-id="${s.id}">
+        ${(() => {
+          const ordem = [...categories.map(c => c.id), ''];
+          return ordem.map(cid => {
+            const lista = services.filter(s => (s.categoryId || '') === cid || (cid === '' && !categories.find(c => c.id === s.categoryId)));
+            if (!lista.length) return '';
+            const cat = categories.find(c => c.id === cid);
+            const titulo = cat ? `<div class="svc-cat" style="font-weight:700;margin:14px 0 6px;color:#1f5b45;">${cat.icon || '🩺'} ${escapeHtml(cat.name || '')}</div>` : '';
+            return titulo + lista.map(s => {
+              const tipo = s.type === 'pack' ? `Pack de ${s.packSessions || ''} sessões` : 'Sessão avulsa';
+              const preco = s.price ? s.price + '€' : t('gratis');
+              const porSessao = (s.type === 'pack' && s.packSessions && s.price) ? ` (${(s.price / s.packSessions).toFixed(0)}€ por sessão)` : '';
+              return `<div class="service-option" data-id="${s.id}">
             <strong>${cat?.icon || '🩺'} ${escapeHtml(s.name)}</strong>
-            <div class="muted">${s.durationMinutes ? s.durationMinutes + ' min · ' : ''}${s.price ? s.price + '€' : t('gratis')}</div>
+            <div class="muted">${tipo} · ${s.durationMinutes ? s.durationMinutes + ' min por sessão · ' : ''}<b>${preco}</b>${porSessao}</div>
+            ${s.description ? `<div class="muted" style="margin-top:4px;">${escapeHtml(s.description)}</div>` : ''}
           </div>`;
-        }).join('')}
+            }).join('');
+          }).join('');
+        })()}
       </div>` : ''}
 
       ${semHorarioFixo ? `
