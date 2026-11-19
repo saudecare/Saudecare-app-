@@ -441,7 +441,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-19-1';
+const APP_VERSION = '2026-11-19-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3370,6 +3370,37 @@ async function renderWaitlist(main){
   `;
 }
 
+/* Lista de serviços legível: agrupada por terapia, com tipo, duração e preço.
+   Serve para qualquer subscritor. A descrição aparece por baixo ao escolher. */
+async function opcoesServicos(servicesSnap, selId, textoVazio){
+  let cats = [];
+  try { (await getDocs(collection(db, 'tenants', tenantId, 'serviceCategories'))).forEach(d => cats.push({ id: d.id, ...d.data() })); } catch(e){}
+  const lista = [];
+  servicesSnap.forEach(d => { if (d.data().active !== false) lista.push({ id: d.id, ...d.data() }); });
+  window.__svcDescCache = {}; lista.forEach(sv => { window.__svcDescCache[sv.id] = sv.description || ''; });
+  const rot = (sv) => {
+    const tipo = sv.type === 'pack' ? `Pack ${sv.packSessions || ''} sessões` : 'Sessão';
+    const preco = sv.price ? sv.price + '€' : 'Grátis';
+    return `${sv.name} — ${tipo} · ${sv.durationMinutes ? sv.durationMinutes + ' min · ' : ''}${preco}`;
+  };
+  const op = sv => `<option value="${sv.id}" data-name="${escapeHtml(sv.name)}" data-duration="${sv.durationMinutes}" data-price="${sv.price||0}" data-buffer="${sv.bufferMinutes||0}" ${sv.id===selId?'selected':''}>${escapeHtml(rot(sv))}</option>`;
+  let html = textoVazio ? `<option value="">${textoVazio}</option>` : '';
+  const usados = new Set();
+  cats.forEach(c => {
+    const l = lista.filter(sv => sv.categoryId === c.id);
+    if (!l.length) return;
+    l.forEach(sv => usados.add(sv.id));
+    html += `<optgroup label="${escapeHtml((c.icon || '') + ' ' + (c.name || ''))}">${l.map(op).join('')}</optgroup>`;
+  });
+  html += lista.filter(sv => !usados.has(sv.id)).map(op).join('');
+  return html;
+}
+window.mostrarDescServico = function(sel){
+  const el = document.getElementById('apptServiceDesc'); if (!el) return;
+  const t = (window.__svcDescCache || {})[sel.value] || '';
+  el.textContent = t; el.style.display = t ? 'block' : 'none';
+};
+
 window.openNewWaitlistEntry = function(){
   let patientOpts = '<option value="">Selecionar paciente…</option>';
   Object.entries(window.__waitlistPatientsCache||{}).forEach(([id, p]) => {
@@ -3451,17 +3482,13 @@ window.openNewAppointment = async function(){
     patientOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().fullName)}">${escapeHtml(d.data().fullName)}</option>`;
   });
 
-  let serviceOpts = '<option value="">Selecionar serviço…</option>';
-  servicesSnap.forEach(d => {
-    if (d.data().active === false) return;
-    serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" data-price="${d.data().price||0}" data-buffer="${d.data().bufferMinutes||0}">${escapeHtml(d.data().name)}</option>`;
-  });
+  const serviceOpts = await opcoesServicos(servicesSnap, '', 'Selecionar serviço…');
 
   document.getElementById('apptFormContainer').innerHTML = `
     <div class="card">
       <h2>Nova marcação</h2>
       <label>Paciente</label><select id="apptPatient" onchange="updateApptPackageOptions()">${patientOpts}</select>
-      <label>Serviço</label><select id="apptService" onchange="document.getElementById('apptPrice').value = this.selectedOptions[0].dataset.price || 0">${serviceOpts}</select>
+      <label>Serviço</label><select id="apptService" onchange="document.getElementById('apptPrice').value = this.selectedOptions[0].dataset.price || 0; mostrarDescServico(this)">${serviceOpts}</select><div id="apptServiceDesc" class="muted" style="display:none;margin:4px 0 8px;"></div>
       <label>Profissional</label><select id="apptStaff">${staffOpts}</select>
       <label>Local</label>
       <select id="apptLocal" onchange="toggleApptRoomField()">
@@ -3841,8 +3868,7 @@ window.editAppointment = async function(appointmentId){
 
   let patientOpts = '';
   patientsSnap.forEach(d => patientOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().fullName)}" ${d.id===a.patientId?'selected':''}>${escapeHtml(d.data().fullName)}</option>`);
-  let serviceOpts = '';
-  servicesSnap.forEach(d => serviceOpts += `<option value="${d.id}" data-name="${escapeHtml(d.data().name)}" data-duration="${d.data().durationMinutes}" data-price="${d.data().price||0}" data-buffer="${d.data().bufferMinutes||0}" ${d.id===a.serviceId?'selected':''}>${escapeHtml(d.data().name)}</option>`);
+  const serviceOpts = await opcoesServicos(servicesSnap, a.serviceId, '');
 
   const startLocal = new Date(a.startsAt.toDate().getTime() - a.startsAt.toDate().getTimezoneOffset()*60000)
     .toISOString().slice(0,16);
@@ -3851,7 +3877,7 @@ window.editAppointment = async function(appointmentId){
     <div class="card">
       <h2>Editar marcação</h2>
       <label>Paciente</label><select id="apptPatient">${patientOpts}</select>
-      <label>Serviço</label><select id="apptService">${serviceOpts}</select>
+      <label>Serviço</label><select id="apptService" onchange="mostrarDescServico(this)">${serviceOpts}</select><div id="apptServiceDesc" class="muted" style="display:none;margin:4px 0 8px;"></div>
       <label>Profissional</label><select id="apptStaff">${staffOpts}</select>
       <label>Local</label>
       <select id="apptLocal" onchange="toggleApptRoomField()">
