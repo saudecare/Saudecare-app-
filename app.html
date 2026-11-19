@@ -441,7 +441,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-19-3';
+const APP_VERSION = '2026-11-19-4';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1238,6 +1238,14 @@ window.switchAuthTab = function(tab){
   document.getElementById('authPanelRegister').classList.toggle('hidden', !isRegister);
   document.getElementById('authPanelStaffCode').classList.toggle('hidden', !isStaffCode);
 };
+// Quem vem dos botões "Começar 7 dias grátis" chega logo ao separador "Criar conta".
+try {
+  if (/registo|registar|criar/i.test(location.hash || '')) {
+    switchAuthTab('register');
+    setTimeout(() => { const el = document.getElementById('authTabRegisterBtn'); if (el) el.scrollIntoView({ block: 'start' }); }, 300);
+  }
+} catch(e){}
+
 
 window.doStaffJoinByCode = async function(){
   const code = document.getElementById('staffJoinCode').value.trim();
