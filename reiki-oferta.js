@@ -56,11 +56,10 @@ export const NIVEIS = [
 
 /* Turmas da formação de Nível 1 */
 export const TURMAS = {
-  inicioOnline: '2 de novembro',
-  inicioPresencial: '7 de novembro',
-  online:     { rotulo: 'Online · segunda-feira, 20h30 às 22h00', vagas: 15 },
-  onlineQua:  { rotulo: 'Online · quarta-feira, 20h30 às 22h00 (abre quando a de segunda estiver cheia)', vagas: 15 },
-  presencial: { rotulo: 'Presencial · sábado, horário a combinar com a turma', vagas: 6 }
+  inicioOnline: 'a combinar',
+  inicioPresencial: 'a combinar',
+  online:     { rotulo: 'Online · dias e horários a combinar com os alunos', vagas: 15 },
+  presencial: { rotulo: 'Presencial · dias e horários a combinar com a turma', vagas: 6 }
 };
 
 export function nivelPorId(id){ return NIVEIS.find(n => n.id === id) || null; }
@@ -96,8 +95,8 @@ export function planoPagamento(preco, modo){
 
 /* Datas de início das aulas (AAAA-MM-DD). Servem para calcular quando vence
    cada prestação e quem está em atraso. Muda aqui se a data mudar.
-   Presencial: primeiro sábado, 7 de novembro. */
-export const INICIO = { online: { seg: '2026-11-02', qua: '2026-11-04' }, presencial: '2026-11-07' };
+   Agora os dias e horários são a combinar: sem data fixa, o restante vence na 1.ª aula, quando ficar marcada. */
+export const INICIO = { online: { seg: '', qua: '' }, presencial: '' };
 
 const somaDias = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 

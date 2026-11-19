@@ -441,7 +441,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-18-7';
+const APP_VERSION = '2026-11-19-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13796,7 +13796,7 @@ function reikiHtmlReserva(r){
   const partes = reikiPartes(r);
   const pago = partes.reduce((t, x) => t + (x.pago ? x.valor : 0), 0);
   const falta = Math.max(0, Math.round(((Number(r.preco) || 0) - pago) * 100) / 100);
-  const dia = { seg: 'segunda', qua: 'quarta', qualquer: 'tanto faz', sab: 'sábado' }[r.diaPref] || '';
+  const dia = { seg: 'segunda', qua: 'quarta', qualquer: 'a combinar', sab: 'sábado' }[r.diaPref] || '';
   const limite = Date.parse(O.PRAZO_LANCAMENTO);
   const pag = r.pag || {};
   const sinalATempo = !!(r.lancamento && pag.sinal && Date.parse(pag.sinal.em) <= limite);
@@ -13850,8 +13850,8 @@ function reikiAgendaItens(janela){
   });
   itens.push({ iso: O.PRAZO_LANCAMENTO.slice(0, 10), hora: '23:59', tipo: 'prazo', uid: 'prazo', icone: '⏰', titulo: 'Fim da promoção de lançamento',
     detalhe: semSinal.length ? semSinal.length + ' reserva(s) ainda sem sinal pago' : 'Todas as reservas têm o sinal pago' });
-  [['seg', 'Início da turma online (segunda)'], ['qua', 'Início da turma online (quarta, se abrir)']].forEach(([k, t]) => {
-    const iso = O.INICIO.online[k]; if (iso) itens.push({ iso, tipo: 'aula', uid: 'inicio' + k, icone: '🎓', titulo: t, detalhe: '20h30 às 22h00' });
+  [['seg', 'Início da turma online'], ['qua', 'Início da turma online (2.ª turma)']].forEach(([k, t]) => {
+    const iso = O.INICIO.online[k]; if (iso) itens.push({ iso, tipo: 'aula', uid: 'inicio' + k, icone: '🎓', titulo: t, detalhe: '' });
   });
   if (O.INICIO.presencial) itens.push({ iso: O.INICIO.presencial, tipo: 'aula', uid: 'inicioPres', icone: '🎓', titulo: 'Início da turma presencial', detalhe: '' });
   ativas.forEach(r => reikiPartes(r).forEach(p => {

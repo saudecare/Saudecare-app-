@@ -96,9 +96,9 @@ $('promo').innerHTML = promoAtiva
   : '<b>Reservas abertas.</b> O preço de lançamento já terminou. Os manuais são em PDF e ficam na app.';
 
 $('turmas').innerHTML =
-  '<li>' + esc(TURMAS.online.rotulo) + ' · até ' + TURMAS.online.vagas + ' lugares · início previsto a ' + esc(TURMAS.inicioOnline) + '</li>'
-  + '<li>' + esc(TURMAS.onlineQua.rotulo) + '</li>'
-  + '<li>' + esc(TURMAS.presencial.rotulo) + ' · <b>máximo ' + TURMAS.presencial.vagas + ' lugares</b> · início previsto a ' + esc(TURMAS.inicioPresencial) + '</li>';
+  '<li>' + esc(TURMAS.online.rotulo) + ' · até ' + TURMAS.online.vagas + ' lugares</li>'
+  + '<li>' + esc(TURMAS.presencial.rotulo) + ' · <b>máximo ' + TURMAS.presencial.vagas + ' lugares</b></li>'
+  + '<li>Os dias e horários combinam-se contigo por WhatsApp, para se ajustarem à tua disponibilidade e à do grupo. A formação começa quando a turma estiver formada.</li>';
 
 const alvo = $('reserva');
 const chave = 'reikiReserva-2026';
@@ -129,9 +129,9 @@ function mostrarForm(){
     + '<label for="mail">E-mail <span class="suave" style="font-weight:400;">(opcional)</span></label><input id="mail" type="email" autocomplete="email" maxlength="120">'
     + '<label for="nivel">Formação</label><select id="nivel">' + NIVEIS.map(n => '<option value="' + n.id + '">' + esc(n.nome) + '</option>').join('') + '</select>'
     + '<label>Como queres fazer</label>'
-    + '<label class="opcao"><input type="radio" name="mod" value="online" checked><span>Online<small>Segunda, 20h30 às 22h00 (ou quarta, se houver turma)</small></span></label>'
-    + '<label class="opcao"><input type="radio" name="mod" value="presencial"><span>Presencial<small>Sábado, horário a combinar com a turma, máximo ' + TURMAS.presencial.vagas + ' lugares</small></span></label>'
-    + '<div id="blocoDia"><label for="dia">Dia preferido (online)</label><select id="dia"><option value="seg">Segunda-feira</option><option value="qua">Quarta-feira</option><option value="qualquer">Tanto faz</option></select></div>'
+    + '<label class="opcao"><input type="radio" name="mod" value="online" checked><span>Online<small>Dias e horários a combinar</small></span></label>'
+    + '<label class="opcao"><input type="radio" name="mod" value="presencial"><span>Presencial<small>Dias e horários a combinar com a turma, máximo ' + TURMAS.presencial.vagas + ' lugares</small></span></label>'
+    + '<p class="suave" id="blocoDia">Os dias e horários combinamos por WhatsApp, conforme a tua disponibilidade.</p>'
     + '<label>Pagamento</label>'
     + '<label class="opcao"><input type="radio" name="pag" value="total" checked><span>Pagamento total<small>Sinal na reserva e o restante até à 1.ª aula</small></span></label>'
     + '<label class="opcao"><input type="radio" name="pag" value="faseado"><span>Faseado em 3 vezes<small>Sinal, 2.ª prestação na 1.ª aula, 3.ª na 3.ª aula</small></span></label>'
@@ -156,7 +156,7 @@ function mostrarForm(){
       + plano.map(p => '<div class="linha"><span class="suave">' + esc(p.rotulo) + '</span><span>' + euros(p.valor) + '</span></div>').join('')
       + (promo ? '<div class="linha"><span class="suave">Manual em papel' + (n.manuais > 1 ? ' (' + n.manuais + ')' : '') + '</span><span>oferta (portes por tua conta)</span></div>' : '');
     $('blocoMorada').classList.toggle('escondido', !promo);
-    $('blocoDia').classList.toggle('escondido', modalidade() !== 'online');
+    
   }
   form.addEventListener('change', atualizar);
   atualizar();
@@ -179,7 +179,7 @@ function mostrarForm(){
     const r = {
       nome, telefone: tel, email: mail,
       nivel: n.id, modalidade: modalidade(),
-      diaPref: modalidade() === 'online' ? $('dia').value : 'sab',
+      diaPref: 'qualquer',
       pagamento: modo(), preco: precoDe(n, new Date()), lancamento: promo,
       morada: promo ? $('morada').value.trim().slice(0, 300) : '',
       condicoes: true, estado: 'nova', criadoEm: serverTimestamp()
