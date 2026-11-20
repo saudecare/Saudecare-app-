@@ -443,7 +443,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-20-1';
+const APP_VERSION = '2026-11-20-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -9315,20 +9315,57 @@ window.syncMapDot = function(id){
   });
 };
 
+/* Acrescenta uma entrada datada às Notas clínicas da ficha (relato do paciente + notas do terapeuta).
+   Usado pelas consultas guiadas, pelo mapeamento e pela Pesquisa Emocional. */
+window.anexarNotasClinicas = async function(patientId, titulo, linhas){
+  try {
+    const ls = (linhas || []).filter(l => l && l.valor && String(l.valor).trim());
+    if (!patientId || !ls.length) return false;
+    const ref = doc(db, 'tenants', tenantId, 'patients', patientId);
+    const snap = await getDoc(ref);
+    const atual = (snap.exists() && snap.data().clinicalNotes) || '';
+    const entrada = `[${new Date().toLocaleDateString('pt-PT')} · ${titulo}]\n` + ls.map(l => `${l.rotulo}: ${String(l.valor).trim()}`).join('\n');
+    await updateDoc(ref, { clinicalNotes: (atual ? atual + '\n\n' : '') + entrada });
+    return true;
+  } catch(e){ console.warn('anexarNotasClinicas', e); return false; }
+};
+
 window.startMappingClassificationsPhase = function(patientId, patientName){
   const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
   const afterQuestions = (proto.finalClassifications || []).filter(c => !c.when || c.when === 'after');
+  const ecraNotas = () => window.mostrarNotasMapeamento(patientId, patientName);
   if (!afterQuestions.length){
     window.__mappingAfterAnswers = [];
-    generateMappingReport(patientId, patientName);
+    ecraNotas();
     return;
   }
   renderQuestionsScreen(
     document.getElementById('guidedPointsArea'),
     afterQuestions,
     'after',
-    () => generateMappingReport(patientId, patientName)
+    ecraNotas
   );
+};
+
+window.mostrarNotasMapeamento = function(patientId, patientName){
+  const area = document.getElementById('guidedPointsArea');
+  if (!area){ generateMappingReport(patientId, patientName); return; }
+  area.innerHTML = `<div class="card">
+    <h3>📝 Relato do paciente e notas clínicas</h3>
+    <p class="muted">Opcional. Ficam guardados nas <b>Notas clínicas</b> da ficha do paciente e <b>não aparecem no relatório</b>.</p>
+    <label>O que o paciente relatou</label>
+    <textarea id="mapRelato" rows="4" placeholder="ex: Sente o peito apertado desde o luto do pai; dorme mal há 2 meses…"></textarea>
+    <label>Notas clínicas (só para si)</label>
+    <textarea id="mapNotasClin" rows="4" placeholder="ex: Observações, hipóteses, o que trabalhar na próxima sessão…"></textarea>
+    <button class="primary" style="width:100%;margin-top:10px;" onclick="mapNotasContinuar('${patientId}','${escapeHtml(patientName).replace(/'/g,'&#39;')}')">Gerar relatório</button>
+  </div>`;
+};
+window.mapNotasContinuar = function(patientId, patientName){
+  window.__mappingSessionNotes = {
+    relato: (document.getElementById('mapRelato')?.value || '').trim(),
+    notas: (document.getElementById('mapNotasClin')?.value || '').trim()
+  };
+  generateMappingReport(patientId, patientName);
 };
 
 function computeMappingPointText(pt, zona, lado){
@@ -9432,6 +9469,8 @@ window.generateMappingReport = async function(patientId, patientName){
     reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
   });
   await logAudit('report_generated', patientId);
+  const nm = window.__mappingSessionNotes || {}; window.__mappingSessionNotes = null;
+  await window.anexarNotasClinicas(patientId, proto.name, [{ rotulo: 'O que o paciente relatou', valor: nm.relato }, { rotulo: 'Notas clínicas', valor: nm.notas }]);
   window.__lastMappingDetected = detected;
   window.__lastMappingPatientName = patientName;
   window.__lastMappingPatientId = patientId;

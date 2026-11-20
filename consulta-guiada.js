@@ -17,7 +17,7 @@ const CG_TIPOS = {
   tratpontos:{ icone: '🎯', nome: 'Tratamento dos pontos encontrados', desc: 'Junta sozinho o "o que fazer" e as afirmações de cada ponto ou opção marcados nos passos anteriores — para a sessão, o relatório e o plano.' },
   instrucao: { icone: '📌', nome: 'Instrução ou imagem',         desc: 'Texto e imagem para o terapeuta (ou para o plano do paciente).' },
   tratamento:{ icone: '🌿', nome: 'Tratamento passo a passo',    desc: 'Lista de passos para fazer na sessão ou em casa, com temporizador opcional.' },
-  notas:     { icone: '📝', nome: 'Notas do terapeuta',          desc: 'Espaço livre para observações.' }
+  notas:     { icone: '📝', nome: 'Notas e relato do paciente',  desc: 'Espaço livre para o que o paciente relata e para as suas notas clínicas. Por defeito ficam privadas e vão para as Notas clínicas da ficha.' }
 };
 
 let CG = { steps: [], aberto: null };
@@ -31,7 +31,7 @@ function passoNovo(tipo) {
   if (tipo === 'tratpontos') return { ...b, title: 'Tratamento dos pontos encontrados', segundos: 60, noRelatorio: false, noPlano: true };
   if (tipo === 'instrucao') return { ...b, title: 'Instrução', texto: '', imagem: '', noPlano: false };
   if (tipo === 'tratamento') return { ...b, title: 'Tratamento', passos: [], segundos: 0, noPlano: true };
-  return { ...b, title: 'Notas', noRelatorio: false };
+  return { ...b, title: 'Notas clínicas (privadas)', noRelatorio: false };
 }
 
 const CHAKRAS_TXT = [
@@ -55,7 +55,8 @@ const MODELO_SIMPLES = () => ([
       { id: uid(), label: 'Peito e coração', tema: 'Emoções e relações.', pergunta: 'O que te pesa no coração?', exemplos: ['Uma despedida ou perda recente'], extra: '' },
       { id: uid(), label: 'Barriga e costas', tema: 'Segurança, controlo e esforço.', pergunta: 'Onde sentes que carregas demasiado?', exemplos: ['Responsabilidades que não são tuas'], extra: '' } ] },
   { ...passoNovo('tratamento'), title: 'Exercício para fazer em casa', passos: ['Senta-te com conforto e respira fundo 3 vezes.', 'Coloca a mão na zona que trabalhámos e respira devagar durante 2 minutos.', 'Bebe um copo de água no fim.'], segundos: 120 },
-  { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: true }
+  { ...passoNovo('notas'), title: 'O que o paciente relatou', noRelatorio: false },
+  { ...passoNovo('notas'), title: 'Notas clínicas (privadas)', noRelatorio: false }
 ]);
 
 // Modelo base: pesquisa por pontos no corpo → tratamento dos pontos encontrados → plano em casa.
@@ -79,7 +80,8 @@ const MODELO_PESQUISA_CORPO = () => {
     ] },
     { ...passoNovo('tratpontos'), title: 'Tratamento dos pontos encontrados', segundos: 60, help: 'Mostra, ponto a ponto, o que fazer. Edite "O que fazer" e "Afirmação" em cada ponto, nos passos acima.' },
     { ...passoNovo('instrucao'), title: 'Exercício para fazer em casa', texto: 'Uma vez por dia, sente-se com conforto, respire fundo 3 vezes e repita em voz baixa as afirmações dos pontos trabalhados.', noPlano: true },
-    { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: false }
+    { ...passoNovo('notas'), title: 'O que o paciente relatou', noRelatorio: false },
+  { ...passoNovo('notas'), title: 'Notas clínicas (privadas)', noRelatorio: false }
   ];
 };
 
@@ -100,7 +102,8 @@ const MODELO_FREQUENCIA = () => {
     { ...passoNovo('tratpontos'), title: 'Aplicação das técnicas e zonas', segundos: 300, help: 'Mostra, passo a passo, o que aplicar em cada zona e técnica marcadas.' },
     { ...passoNovo('pergunta'), title: 'Medição final (opcional)', qtype: 'number', unidade: '', noRelatorio: true },
     { ...passoNovo('instrucao'), title: 'Recomendações para casa', texto: 'Beber água ao longo do dia.\nDescansar e evitar esforços intensos nas próximas horas.\nRegistar como se sente nos próximos dias.', imagem: '', noPlano: false },
-    { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: false }
+    { ...passoNovo('notas'), title: 'O que o paciente relatou', noRelatorio: false },
+  { ...passoNovo('notas'), title: 'Notas clínicas (privadas)', noRelatorio: false }
   ];
 };
 
@@ -137,7 +140,8 @@ const MODELO_REFLEXOLOGIA = () => {
     { ...passoNovo('mapa'), title: 'Zonas sensíveis nas plantas dos pés', fundo: 'plantaPes', multi: true, help: 'Toque nas zonas em que encontrou sensibilidade, tensão ou textura diferente. Pode mudar os nomes e mover os pontos.', points: pts },
     { ...passoNovo('tratpontos'), title: 'Trabalho nas zonas encontradas', segundos: 60 },
     { ...passoNovo('instrucao'), title: 'Cuidados depois da sessão', texto: 'Beber água ao longo do dia.\nDescansar e evitar esforços intensos nas próximas horas.\nRegistar como se sente nos próximos dias.', noPlano: false },
-    { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: true }
+    { ...passoNovo('notas'), title: 'O que o paciente relatou', noRelatorio: false },
+  { ...passoNovo('notas'), title: 'Notas clínicas (privadas)', noRelatorio: false }
   ];
 };
 
@@ -162,7 +166,8 @@ const MODELO_AROMATERAPIA = () => ([
   ] },
   { ...passoNovo('tratpontos'), title: 'Receita da mistura', segundos: 0, help: 'Mostra cada óleo escolhido com a diluição e o modo de uso.' },
   { ...passoNovo('instrucao'), title: 'Cuidados de segurança', texto: 'Não aplicar óleos essenciais puros na pele.\nEvitar contacto com olhos e mucosas.\nGuardar longe do alcance de crianças e animais.\nSuspender o uso se aparecer irritação e falar com o terapeuta.', noPlano: false },
-  { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: true }
+  { ...passoNovo('notas'), title: 'O que o paciente relatou', noRelatorio: false },
+  { ...passoNovo('notas'), title: 'Notas clínicas (privadas)', noRelatorio: false }
 ]);
 
 const MODELO_RADIESTESIA = () => {
@@ -176,7 +181,8 @@ const MODELO_RADIESTESIA = () => {
     { ...passoNovo('mapa'), title: 'Roda de setores', fundo: 'rodaRadiestesia', multi: true, help: 'Toque nos setores assinalados. Mude os nomes para os que usa (áreas da vida, órgãos, causas…).', points: ptsRoda },
     { ...passoNovo('tratpontos'), title: 'Trabalho nos setores encontrados', segundos: 120 },
     { ...passoNovo('instrucao'), title: 'Recomendações para casa', texto: 'Beber água ao longo do dia.\nDescansar.\nRegistar como se sente nos próximos dias.', noPlano: false },
-    { ...passoNovo('notas'), title: 'Notas do terapeuta', noRelatorio: true }
+    { ...passoNovo('notas'), title: 'O que o paciente relatou', noRelatorio: false },
+  { ...passoNovo('notas'), title: 'Notas clínicas (privadas)', noRelatorio: false }
   ];
 };
 const MODELOS_AREA = {
@@ -896,6 +902,13 @@ async function cgConcluir() {
       const ok = await window.guardarNaFicha(EX.patientId, { tipo: 'consulta_guiada', titulo: EX.proto.name, texto: t.texto, reportHtml: bonito,
         dados: JSON.parse(JSON.stringify({ protocoloId: EX.protoId || '', resumo: cgResumo(EX.proto, EX.resp), respostas: EX.resp, relatorio: t.relatorio, plano: t.plano, htmlRelatorio: docs.htmlRel, htmlPlano: docs.htmlPlano, data })) });
       if (!ok) aviso('⚠️ Não consegui gravar na ficha. Copie o relatório antes de sair.', true);
+      // Relato do paciente e notas clínicas (passos "notas" privados) → Notas clínicas da ficha.
+      try {
+        if (window.anexarNotasClinicas) {
+          const linhas = EX.proto.steps.filter(st => st.type === 'notas' && !st.noRelatorio).map(st => ({ rotulo: st.title, valor: (EX.resp[st.id] && EX.resp[st.id].valor) || '' })).filter(l => l.valor);
+          if (linhas.length) await window.anexarNotasClinicas(EX.patientId, EX.proto.name, linhas);
+        }
+      } catch (_) {}
     }
   }
   mostrarResultado(prev);

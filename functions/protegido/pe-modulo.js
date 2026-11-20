@@ -192,7 +192,7 @@ let peState = {};
 
 function peReset() {
   peState = {
-    patientId: null, patientName: '', step: '0', path: 2,
+    patientId: null, patientName: '', step: '0', path: 2, notasSessao: { relato: '', notas: '' },
     quadrants: [], qIdx: 0, mappingData: {}, catId: 'vital',
     shieldCalc: 'Indefinido', finalShield: 'Não Especificado',
     hasBack: false, editMode: false, editPonto: null, formEditMode: false,
@@ -785,6 +785,50 @@ function peAutoPreencher(formId) {
 }
 
 // ─── NAVEGAÇÃO ────────────────────────────────────────────────────
+
+// ─── NOTAS DA SESSÃO: relato do paciente + notas clínicas (privadas) ───
+// Botão flutuante disponível em todos os passos. Ficam nas Notas clínicas da ficha
+// (e no relatório clínico do terapeuta), nunca no relatório do paciente.
+function peNotasLer() {
+  const r = document.getElementById('pe-ns-relato'), n = document.getElementById('pe-ns-notas');
+  if (!peState.notasSessao) peState.notasSessao = { relato: '', notas: '' };
+  if (r) peState.notasSessao.relato = r.value;
+  if (n) peState.notasSessao.notas = n.value;
+}
+function peNotasAbrir() {
+  let m = document.getElementById('pe-ns-modal');
+  if (!m) {
+    m = document.createElement('div'); m.id = 'pe-ns-modal';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9990;display:flex;align-items:flex-end;justify-content:center;';
+    m.innerHTML = `<div style="background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:18px;max-height:85vh;overflow:auto;">
+      <div style="font-weight:700;color:#1e3a8a;font-size:1.05rem;margin-bottom:4px;">📝 Relato do paciente e notas clínicas</div>
+      <div style="font-size:.82rem;color:#64748b;margin-bottom:10px;">Ficam nas Notas clínicas da ficha e no relatório clínico. <b>Não aparecem no relatório do paciente.</b></div>
+      <label style="font-size:.85rem;font-weight:700;color:#334155;">O que o paciente relatou</label>
+      <textarea id="pe-ns-relato" rows="4" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;" placeholder="Palavras do paciente, situações, datas, sintomas…"></textarea>
+      <label style="font-size:.85rem;font-weight:700;color:#334155;">Notas clínicas (só para si)</label>
+      <textarea id="pe-ns-notas" rows="4" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;" placeholder="Observações, hipóteses, o que retomar na próxima sessão…"></textarea>
+      <button onclick="window.peNotasFechar()" style="width:100%;margin-top:12px;background:#1e3a8a;color:#fff;padding:12px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Guardar e continuar</button></div>`;
+    document.body.appendChild(m);
+  }
+  m.style.display = 'flex';
+  document.getElementById('pe-ns-relato').value = (peState.notasSessao || {}).relato || '';
+  document.getElementById('pe-ns-notas').value = (peState.notasSessao || {}).notas || '';
+}
+function peNotasFechar() { peNotasLer(); const m = document.getElementById('pe-ns-modal'); if (m) m.style.display = 'none'; peNotasFab(); }
+function peNotasFab() {
+  const emModulo = !!document.querySelector('[id^="pe-step-"]');
+  let f = document.getElementById('pe-ns-fab');
+  if (!emModulo) { if (f) f.remove(); const m = document.getElementById('pe-ns-modal'); if (m) m.remove(); return; }
+  const tem = peState.notasSessao && (peState.notasSessao.relato || peState.notasSessao.notas);
+  if (!f) {
+    f = document.createElement('button'); f.id = 'pe-ns-fab'; f.onclick = peNotasAbrir;
+    f.style.cssText = 'position:fixed;left:12px;bottom:84px;z-index:9980;background:#1e3a8a;color:#fff;border:none;border-radius:24px;padding:11px 16px;font-weight:700;box-shadow:0 3px 10px rgba(0,0,0,.3);cursor:pointer;';
+    document.body.appendChild(f);
+  }
+  f.textContent = tem ? '📝 Notas ✓' : '📝 Notas';
+}
+setInterval(() => { try { if (document.getElementById('pe-ns-fab') || document.querySelector('[id^="pe-step-"]')) peNotasFab(); } catch (_) {} }, 1500);
+window.peNotasAbrir = peNotasAbrir; window.peNotasFechar = peNotasFechar;
 
 function peIrPasso(s) {
   ['0','1','2','3a','3b','3c','4','hub','trat','relatorio'].forEach(id => {
@@ -2957,6 +3001,18 @@ async function peEmitirRelatorio() {
       relatorio+=`\nFECHO DESTE EIXO:\n  • Defesa: ${qData.shield}\n  • Gatilho Temporal: ${qData.epoch} (${qData.epochTime||'Sem data'})\n`;
     });
     relatorio+=`\nFECHO FINAL:\n  • Padrão Dominante: ${escudo}\n  • ${peLinhaEpoca().trim()}\n`;
+  }
+  peNotasLer();
+  const ns=peState.notasSessao||{};
+  if (ns.relato||ns.notas) {
+    relatorio+=`\n\nRELATO DO PACIENTE E NOTAS CLÍNICAS (privado)\n${'-'.repeat(40)}\n`;
+    if (ns.relato) relatorio+=`O que o paciente relatou:\n${ns.relato}\n`;
+    if (ns.notas) relatorio+=`\nNotas clínicas:\n${ns.notas}\n`;
+    const chave=(ns.relato||'')+'|'+(ns.notas||'');
+    if (peState.patientId && window.anexarNotasClinicas && peState._notasAnexadas!==chave) {
+      peState._notasAnexadas=chave;
+      window.anexarNotasClinicas(peState.patientId,'Pesquisa Emocional',[{rotulo:'O que o paciente relatou',valor:ns.relato},{rotulo:'Notas clínicas',valor:ns.notas}]);
+    }
   }
   relatorio+=`\n${'='.repeat(60)}`;
   const receita=document.getElementById('pe-receita')?.value||'';
