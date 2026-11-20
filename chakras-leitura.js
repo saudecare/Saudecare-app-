@@ -58,6 +58,31 @@
   const esc = s => String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
   const AVISO = 'Leitura energética orientativa, com base nas respostas dadas. Não é um diagnóstico e não substitui a avaliação médica. Perante sintomas, consulte o seu médico.';
 
+
+  // Ligação à Triagem do Pêndulo Hebraico: nomes usados na triagem -> chakra desta tabela.
+  const ALIAS = { 'Raiz':'Chakra Raiz', 'Sacro':'Chakra Sacral', 'Plexo Solar':'Chakra Plexo Solar', 'Coração':'Chakra Cardíaco', 'Garganta':'Chakra Laríngeo', 'Terceiro Olho':'Chakra Frontal', 'Coroa':'Chakra Coronário' };
+  function porNome(nome){ const k = ALIAS[nome]; return k ? CH.find(c => c.k === k) : null; }
+  function corpo(c){
+    return `<p><b>Área a observar:</b> glândula ${esc(c.glandula)}; ${esc(c.orgaos)}.</p>
+      <p><b>Como se pode refletir na pessoa:</b> ${esc(c.reflexo)}</p>
+      <p><b>Acontecimentos que costumam estar na origem:</b> ${esc(c.eventos)}</p>
+      <p style="margin-bottom:2px;"><b>Perguntas para a consulta:</b></p><ul style="margin:0 0 0 18px;">${c.perguntas.map(p => `<li>${esc(p)}</li>`).join('')}</ul>`;
+  }
+  // Bloco para o painel "i" de cada chakra na triagem.
+  window.chakraExtraTriagem = function(nome){
+    const c = porNome(nome); if (!c) return '';
+    return `<div style="margin-top:8px;border-top:1px dashed #b7d3c6;padding-top:6px;">${corpo(c)}</div>`;
+  };
+  // Secção do relatório da triagem, para os chakras afetados: lista [{nome, estadoRotulo, cor}]
+  window.chakraSeccaoTriagem = function(lista){
+    const itens = (lista || []).map(x => ({ x, c: porNome(x.nome) })).filter(y => y.c);
+    if (!itens.length) return '';
+    return `<div class="card"><h3>🔎 Leitura dos chakras afetados</h3>
+      <p class="muted" style="font-size:.85rem;">Para aprofundar na consulta: glândulas e órgãos a observar, como se pode refletir, acontecimentos habituais e perguntas.</p>
+      ${itens.map(({ x, c }) => `<details style="margin-top:8px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;"><summary style="cursor:pointer;font-weight:700;">${c.emoji} ${esc(c.nome)} — <span style="color:${x.cor};">${esc(x.estadoRotulo)}</span></summary><div style="font-size:.88rem;margin-top:8px;line-height:1.5;">${corpo(c)}</div></details>`).join('')}
+      <p class="muted" style="font-size:.78rem;margin-top:10px;">⚠️ ${AVISO}</p></div>`;
+  };
+
   window.chakraTemLeitura = respostas => calc(respostas).some(x => x.score !== null);
 
   window.chakraLeituraHtml = function(respostas){

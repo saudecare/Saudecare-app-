@@ -416,7 +416,7 @@
 
 <script type="module" src="pe-carregador.js"></script>
 <script type="module" src="cg-imagens.js?v=2026-11-15-8"></script>
-<script src="chakras-leitura.js?v=2026-11-20-1"></script>
+<script src="chakras-leitura.js?v=2026-11-20-2"></script>
 <script type="module" src="consulta-guiada.js?v=2026-11-20-11"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
@@ -444,7 +444,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-20-5';
+const APP_VERSION = '2026-11-20-6';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13361,7 +13361,7 @@ function triagemPassoChakras(main){
           <label style="font-weight:700;flex:1;">${c.n} — ${escapeHtml(c.nome)}${triagemChakraAntes(c.nome) != null ? ` <span class="muted" style="font-weight:400;font-size:12px;">(última vez: ${triRotuloEstado(triagemChakraAntes(c.nome)).toLowerCase()})</span>` : ''}</label>
         </div>
         <div id="chk-grupo-${i}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">${botoesEstado(i)}</div>
-        ${infoItemHTML('chk-info-' + c.n, c.descricao, c.exemplo).replace('margin:2px 0 8px 34px', 'margin:0 0 12px 0')}
+        ${infoItemHTML('chk-info-' + c.n, c.descricao, c.exemplo).replace('margin:2px 0 8px 34px', 'margin:0 0 12px 0').replace(/<\/div>$/, (window.chakraExtraTriagem ? window.chakraExtraTriagem(c.nome) : '') + '</div>')}
         <div style="margin-bottom:10px;"></div>`).join('')}
     </div>
     <div class="row" style="margin-top:12px;">
@@ -19255,6 +19255,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
         ? chakrasTodos.filter(triChakraAfetado).map(c => `<p class="muted">${escapeHtml(c.nome)}: <strong style="color:${(TRIAGEM_ESTADOS_CHAKRA.find(e => e.id === triEstadoChakra(c)) || {}).cor || '#c0392b'};">${triRotuloEstado(triEstadoChakra(c))}</strong> ⚠️</p>`).join('') + '<p class="muted">Os restantes chakras estão equilibrados.</p>'
         : '<p class="muted">Todos os chakras estão equilibrados.</p>'}
     </div>
+    ${window.chakraSeccaoTriagem ? window.chakraSeccaoTriagem(chakrasTodos.filter(triChakraAfetado).map(c => ({ nome: c.nome, estadoRotulo: triRotuloEstado(triEstadoChakra(c)), cor: (TRIAGEM_ESTADOS_CHAKRA.find(e => e.id === triEstadoChakra(c)) || {}).cor || '#c0392b' }))) : ''}
     <div class="card"><h3>🛤️ Abertura de Caminhos</h3><p><strong>${escapeHtml(aberturaNivel)}</strong></p></div>
     ${comparacao ? `<div class="card" style="border:2px solid #4a9d5f;">
       <h3>📈 Evolução desde a última consulta${comparacao.dataAnterior?.toDate ? ' ('+comparacao.dataAnterior.toDate().toLocaleDateString('pt-PT')+(comparacao.diasEntre != null ? ', há '+comparacao.diasEntre+' dias' : '')+')' : ''}</h3>
