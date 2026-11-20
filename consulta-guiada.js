@@ -569,6 +569,54 @@ function cartaoConhecimento(o) {
     ${o.extra ? `<div style="margin-top:4px;">📚 ${esc(o.extra)}</div>` : ''}</div>`;
 }
 
+// ─── Avaliação e tratamento em consultas separadas ───
+// A "fronteira" é o primeiro passo de tratamento. Tudo antes é avaliação.
+function cgFronteira(proto) {
+  const i = (proto.steps || []).findIndex(x => x.type === 'tratpontos' || x.type === 'tratamento');
+  return i;
+}
+window.cgSoAvaliacao = function () {
+  clearInterval(_t); lerAtual();
+  const f = cgFronteira(EX.proto); if (f < 1) return;
+  EX.fase = 'avaliacao';
+  EX.proto = { ...EX.proto, steps: EX.proto.steps.slice(0, f) };
+  cgConcluir();
+};
+const _cgExecutarBase = window.cgExecutar;
+window.cgExecutar = async function (patientId, patientName, area, proto, protoId) {
+  try {
+    const f = cgFronteira(proto);
+    if (f > 0 && patientId && !window.__previewMode) {
+      const sn = await window.db().collection(`tenants/${window.tenantId()}/patients/${patientId}/reports`).where('tipo', '==', 'consulta_guiada').get();
+      const ts = d => (d.generatedAt && d.generatedAt.toMillis ? d.generatedAt.toMillis() : 0);
+      const todos = []; sn.forEach(d => { const r = d.data() || {}; const dd = r.dados || {}; if (dd.protocoloId === protoId && dd.respostas) todos.push({ id: d.id, t: ts(r), dd }); });
+      const aval = todos.filter(x => x.dd.fase !== 'tratamento').sort((a, b) => b.t - a.t)[0];
+      if (aval) {
+        const dias = Math.max(0, Math.floor((Date.now() - aval.t) / 86400000));
+        const data = new Date(aval.t).toLocaleDateString('pt-PT');
+        const feitas = todos.filter(x => x.dd.fase === 'tratamento' && x.dd.origemId === aval.id).length;
+        const longe = dias > 60;
+        const area2 = area;
+        area2.innerHTML = `<div class="card">
+          <h3 style="margin:0 0 6px;">Já existe uma avaliação deste método</h3>
+          <p>Avaliação de <b>${data}</b> (há ${dias} dia${dias === 1 ? '' : 's'})${feitas ? ` · ${feitas} sessão(ões) de tratamento já feita(s) a partir dela` : ''}.</p>
+          ${longe ? `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:8px 10px;margin:8px 0;">⚠️ Já passaram mais de 60 dias. Pode ser melhor fazer uma nova avaliação antes de tratar.</div>` : ''}
+          <button class="primary" style="width:100%;margin-top:8px;" id="cgContinuar">▶ Começar o tratamento a partir desta avaliação</button>
+          <button class="ghost" style="width:100%;margin-top:8px;" id="cgNova">🆕 Fazer uma nova avaliação</button>
+        </div>`;
+        document.getElementById('cgNova').onclick = () => _cgExecutarBase(patientId, patientName, area, proto, protoId);
+        document.getElementById('cgContinuar').onclick = () => {
+          EX = { patientId, patientName, area, proto, protoId, i: f, resp: JSON.parse(JSON.stringify(aval.dd.respostas || {})), preview: false, fase: 'tratamento', origem: { id: aval.id, data } };
+          while (EX.i < proto.steps.length - 1 && !cgVisivel(proto.steps[EX.i], EX.resp)) EX.i++;
+          cgPasso();
+        };
+        return;
+      }
+    }
+  } catch (e) { console.warn('cgExecutar continuação', e); }
+  return _cgExecutarBase(patientId, patientName, area, proto, protoId);
+};
+
 function cgPasso() {
   const steps = EX.proto.steps || []; const s = steps[EX.i]; const r = EX.resp[s.id] || (EX.resp[s.id] = {});
   let corpo = '';
@@ -618,7 +666,9 @@ function cgPasso() {
     <div class="row" style="margin-top:16px;">
       <button class="ghost" ${EX.i === 0 ? 'disabled' : ''} onclick="cgNav(-1)">← Anterior</button>
       <button class="primary" onclick="cgNav(1)">${ultimo ? '✅ Concluir e gerar relatório' : 'Seguinte →'}</button>
-    </div></div>`;
+    </div>
+    ${(!EX.fase && !EX.preview && cgFronteira(EX.proto) > 0 && EX.i === cgFronteira(EX.proto) - 1) ? `<button class="ghost" style="width:100%;margin-top:10px;" onclick="cgSoAvaliacao()">📄 Só a avaliação: gerar o relatório e deixar o tratamento para depois</button><div class="muted" style="font-size:.82rem;margin-top:4px;">Fica guardado na ficha. Mais tarde, ao iniciar este método, podes começar o tratamento a partir desta avaliação.</div>` : ''}
+    </div>`;
 }
 const fmt = (n) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
 let _t = null;
@@ -903,8 +953,8 @@ async function cgConcluir() {
     try { const sn = await window.db().doc(`tenants/${window.tenantId()}/patients/${EX.patientId}`).get(); EX.contacto = sn.data() || {}; } catch (_) { EX.contacto = {}; }
     if (window.guardarNaFicha) {
       let bonito = ''; try { bonito = rbFragmento(cgModeloBonito(EX.proto, EX.resp, EX.patientName, data)); } catch (_) {}
-      const ok = await window.guardarNaFicha(EX.patientId, { tipo: 'consulta_guiada', titulo: EX.proto.name, texto: t.texto, reportHtml: bonito,
-        dados: JSON.parse(JSON.stringify({ protocoloId: EX.protoId || '', resumo: cgResumo(EX.proto, EX.resp), respostas: EX.resp, relatorio: t.relatorio, plano: t.plano, htmlRelatorio: docs.htmlRel, htmlPlano: docs.htmlPlano, data })) });
+      const ok = await window.guardarNaFicha(EX.patientId, { tipo: 'consulta_guiada', titulo: EX.proto.name + (EX.fase === 'avaliacao' ? ' — avaliação' : EX.fase === 'tratamento' ? ' — tratamento' : ''), texto: t.texto, reportHtml: bonito,
+        dados: JSON.parse(JSON.stringify({ protocoloId: EX.protoId || '', fase: EX.fase || 'completa', origemId: (EX.origem && EX.origem.id) || '', origemData: (EX.origem && EX.origem.data) || '', resumo: cgResumo(EX.proto, EX.resp), respostas: EX.resp, relatorio: t.relatorio, plano: t.plano, htmlRelatorio: docs.htmlRel, htmlPlano: docs.htmlPlano, data })) });
       if (!ok) aviso('⚠️ Não consegui gravar na ficha. Copie o relatório antes de sair.', true);
       // Relato do paciente e notas clínicas (passos "notas" privados) → Notas clínicas da ficha.
       try {
