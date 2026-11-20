@@ -309,7 +309,7 @@
       <input id="regBusinessName" placeholder="ex: Clínica Bem-Estar">
       <label>O teu nome</label>
       <input id="regOwnerName" placeholder="ex: Ana Silva" autocomplete="name">
-      <label>A tua área</label>
+      <label>A tua área principal</label>
       <select id="regArea">
         <option value="">Escolhe a tua área…</option>
         <option value="fisioterapia">Fisioterapia</option>
@@ -327,6 +327,8 @@
         <option value="naturopatia">Naturopatia</option>
         <option value="outra">Outra área</option>
       </select>
+      <label>Trabalhas também noutras áreas? <span class="muted" style="font-weight:400;">(opcional, podes marcar várias)</span></label>
+      <div id="regAreasExtra" style="background:#f6f8f7;border-radius:10px;padding:8px 12px;max-height:190px;overflow:auto;"><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="fisioterapia" style="width:auto;margin:0;"> Fisioterapia</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="dentista" style="width:auto;margin:0;"> Medicina dentária</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="psicologia" style="width:auto;margin:0;"> Psicologia</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="nutricao" style="width:auto;margin:0;"> Nutrição</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="osteopatia" style="width:auto;margin:0;"> Osteopatia / Quiropraxia</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="enfermagem" style="width:auto;margin:0;"> Enfermagem</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="massagem" style="width:auto;margin:0;"> Massagem / drenagem linfática</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="reiki" style="width:auto;margin:0;"> Reiki</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="reflexologia" style="width:auto;margin:0;"> Reflexologia</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="aromaterapia" style="width:auto;margin:0;"> Aromaterapia</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="radiestesia" style="width:auto;margin:0;"> Radiestesia / mesa radiónica / pêndulo</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="terapias" style="width:auto;margin:0;"> Outras terapias holísticas (ex: barras de Access)</label><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:4px 0;"><input type="checkbox" class="regAreaExtra" value="naturopatia" style="width:auto;margin:0;"> Naturopatia</label></div>
       <label>Telemóvel / WhatsApp</label>
       <input id="regPhone" type="tel" placeholder="ex: 912 345 678" autocomplete="tel">
       <label>Cidade</label>
@@ -441,7 +443,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-19-4';
+const APP_VERSION = '2026-11-20-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -1486,6 +1488,9 @@ window.doRegister = async function(){
   const area = document.getElementById('regArea')?.value || '';
   const regPhone = (document.getElementById('regPhone')?.value || '').trim();
   const regCity = (document.getElementById('regCity')?.value || '').trim();
+  const areasExtra = [...document.querySelectorAll('.regAreaExtra:checked')].map(x => x.value).filter(v => v !== area);
+  const MOD = { fisioterapia:['fisio'], osteopatia:['fisio'], massagem:['massagem'], psicologia:['psicologia'], nutricao:['nutricao'], naturopatia:['nutricao'], reiki:['reiki'], terapias:['reiki'], reflexologia:['reflexologia'], aromaterapia:['aromaterapia'], radiestesia:['radiestesia'] };
+  const areaTrabalho = [...new Set([area, ...areasExtra].flatMap(a => MOD[a] || []))];
   if (!businessName){ errEl.textContent = 'Indique o nome do consultório/prática.'; return; }
   if (!ownerName){ errEl.textContent = 'Indique o seu nome.'; return; }
   if (!area){ errEl.textContent = 'Escolha a sua área para a app preparar os serviços e a página.'; return; }
@@ -1547,6 +1552,8 @@ window.doRegister = async function(){
       status: 'pending_activation',
       plan: 'vindora',
       area,
+      areasExtra,
+      areaTrabalho,
       ownerName,
       autoSetupDone: false,
       ownerUid: uid,
