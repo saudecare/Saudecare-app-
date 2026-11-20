@@ -9063,6 +9063,10 @@ window.generateReport = async function(patientId, patientName){
     afterAnswers.forEach(a => { reportText += `${a.label}: ${a.value}\n`; });
   }
 
+  const nmr = window.__mappingSessionNotes || {};
+  if (nmr.relato && nmr.relatoInc) reportText += `\n\n== O que o paciente relatou ==\n${nmr.relato}\n`;
+  if (nmr.notas && nmr.notasInc) reportText += `\n\n== Notas ==\n${nmr.notas}\n`;
+
   if (window.__previewMode){
     renderGeneratedReportScreen(proto.name, reportText, null, null, true);
     return;
@@ -9352,18 +9356,22 @@ window.mostrarNotasMapeamento = function(patientId, patientName){
   if (!area){ generateMappingReport(patientId, patientName); return; }
   area.innerHTML = `<div class="card">
     <h3>📝 Relato do paciente e notas clínicas</h3>
-    <p class="muted">Opcional. Ficam guardados nas <b>Notas clínicas</b> da ficha do paciente e <b>não aparecem no relatório</b>.</p>
+    <p class="muted">Opcional. Ficam sempre guardados nas <b>Notas clínicas</b> da ficha. Escolhe tu o que também aparece no relatório do paciente.</p>
     <label>O que o paciente relatou</label>
     <textarea id="mapRelato" rows="4" placeholder="ex: Sente o peito apertado desde o luto do pai; dorme mal há 2 meses…"></textarea>
-    <label>Notas clínicas (só para si)</label>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" id="mapRelatoInc" style="width:auto;margin:0;"> Incluir no relatório do paciente</label>
+    <label>Notas clínicas</label>
     <textarea id="mapNotasClin" rows="4" placeholder="ex: Observações, hipóteses, o que trabalhar na próxima sessão…"></textarea>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" id="mapNotasInc" style="width:auto;margin:0;"> Incluir no relatório do paciente</label>
     <button class="primary" style="width:100%;margin-top:10px;" onclick="mapNotasContinuar('${patientId}','${escapeHtml(patientName).replace(/'/g,'&#39;')}')">Gerar relatório</button>
   </div>`;
 };
 window.mapNotasContinuar = function(patientId, patientName){
   window.__mappingSessionNotes = {
     relato: (document.getElementById('mapRelato')?.value || '').trim(),
-    notas: (document.getElementById('mapNotasClin')?.value || '').trim()
+    notas: (document.getElementById('mapNotasClin')?.value || '').trim(),
+    relatoInc: !!document.getElementById('mapRelatoInc')?.checked,
+    notasInc: !!document.getElementById('mapNotasInc')?.checked
   };
   generateMappingReport(patientId, patientName);
 };

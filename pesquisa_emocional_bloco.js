@@ -787,13 +787,16 @@ function peAutoPreencher(formId) {
 // ─── NAVEGAÇÃO ────────────────────────────────────────────────────
 
 // ─── NOTAS DA SESSÃO: relato do paciente + notas clínicas (privadas) ───
-// Botão flutuante disponível em todos os passos. Ficam nas Notas clínicas da ficha
-// (e no relatório clínico do terapeuta), nunca no relatório do paciente.
+// Botão flutuante disponível em todos os passos. Ficam sempre nas Notas clínicas da ficha
+// e no relatório clínico; só vão para o relatório do paciente se o terapeuta marcar.
 function peNotasLer() {
   const r = document.getElementById('pe-ns-relato'), n = document.getElementById('pe-ns-notas');
   if (!peState.notasSessao) peState.notasSessao = { relato: '', notas: '' };
   if (r) peState.notasSessao.relato = r.value;
   if (n) peState.notasSessao.notas = n.value;
+  const ri = document.getElementById('pe-ns-relato-inc'), ni = document.getElementById('pe-ns-notas-inc');
+  if (ri) peState.notasSessao.relatoInc = ri.checked;
+  if (ni) peState.notasSessao.notasInc = ni.checked;
 }
 function peNotasAbrir() {
   let m = document.getElementById('pe-ns-modal');
@@ -802,17 +805,21 @@ function peNotasAbrir() {
     m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9990;display:flex;align-items:flex-end;justify-content:center;';
     m.innerHTML = `<div style="background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:18px;max-height:85vh;overflow:auto;">
       <div style="font-weight:700;color:#1e3a8a;font-size:1.05rem;margin-bottom:4px;">📝 Relato do paciente e notas clínicas</div>
-      <div style="font-size:.82rem;color:#64748b;margin-bottom:10px;">Ficam nas Notas clínicas da ficha e no relatório clínico. <b>Não aparecem no relatório do paciente.</b></div>
+      <div style="font-size:.82rem;color:#64748b;margin-bottom:10px;">Ficam nas Notas clínicas da ficha e no relatório clínico. Só aparecem no relatório do paciente se marcares a caixa de cada campo.</div>
       <label style="font-size:.85rem;font-weight:700;color:#334155;">O que o paciente relatou</label>
       <textarea id="pe-ns-relato" rows="4" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;" placeholder="Palavras do paciente, situações, datas, sintomas…"></textarea>
+      <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;margin:-4px 0 10px;"><input type="checkbox" id="pe-ns-relato-inc" style="width:auto;margin:0;"> Incluir no relatório do paciente</label>
       <label style="font-size:.85rem;font-weight:700;color:#334155;">Notas clínicas (só para si)</label>
       <textarea id="pe-ns-notas" rows="4" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;" placeholder="Observações, hipóteses, o que retomar na próxima sessão…"></textarea>
+      <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;margin-top:6px;"><input type="checkbox" id="pe-ns-notas-inc" style="width:auto;margin:0;"> Incluir no relatório do paciente</label>
       <button onclick="window.peNotasFechar()" style="width:100%;margin-top:12px;background:#1e3a8a;color:#fff;padding:12px;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Guardar e continuar</button></div>`;
     document.body.appendChild(m);
   }
   m.style.display = 'flex';
   document.getElementById('pe-ns-relato').value = (peState.notasSessao || {}).relato || '';
   document.getElementById('pe-ns-notas').value = (peState.notasSessao || {}).notas || '';
+  document.getElementById('pe-ns-relato-inc').checked = !!(peState.notasSessao || {}).relatoInc;
+  document.getElementById('pe-ns-notas-inc').checked = !!(peState.notasSessao || {}).notasInc;
 }
 function peNotasFechar() { peNotasLer(); const m = document.getElementById('pe-ns-modal'); if (m) m.style.display = 'none'; peNotasFab(); }
 function peNotasFab() {
@@ -2584,9 +2591,16 @@ function peConstruirDocumentoPaciente() {
   const r = peConstruirRelatorioPaciente();
   const incl = peIncluirPlano();
   const p = incl ? peConstruirPlano() : { html:'', texto:'' };
+  peNotasLer();
+  const _ns = peState.notasSessao || {};
+  const _extra = [];
+  if (_ns.relato && _ns.relatoInc) _extra.push(['O que relataste na consulta', _ns.relato]);
+  if (_ns.notas && _ns.notasInc) _extra.push(['Notas da consulta', _ns.notas]);
+  const _extraHtml = _extra.map(([t, v]) => `<div style="font-weight:700;color:#1e3a8a;margin:14px 0 6px;">${t}</div><p style="font-size:0.9rem;line-height:1.55;white-space:pre-wrap;color:#334155;">${peEsc(v)}</p>`).join('');
+  const _extraTxt = _extra.map(([t, v]) => `\n${t.toUpperCase()}\n${v}\n`).join('');
   const notas = (document.getElementById('pe-receita')?.value || '').trim();
-  const htmlNotas = notas ? `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">Notas do terapeuta</div><p style="font-size:0.9rem;line-height:1.55;white-space:pre-wrap;color:#334155;">${peEsc(notas)}</p>` : '';
-  const txtNotas = notas ? `\nNOTAS DO TERAPEUTA\n${notas}\n` : '';
+  const htmlNotas = _extraHtml + (notas ? `<div style="font-weight:700;color:#b45309;margin:14px 0 6px;">Notas do terapeuta</div><p style="font-size:0.9rem;line-height:1.55;white-space:pre-wrap;color:#334155;">${peEsc(notas)}</p>` : '');
+  const txtNotas = _extraTxt + (notas ? `\nNOTAS DO TERAPEUTA\n${notas}\n` : '');
   const marca = [peMarca().nome.toUpperCase(), peMarca().lema].filter(Boolean).join(' — ');
   const htmlRel = `<div id="pe-doc-rel">${r.html}${incl ? '' : htmlNotas}</div>`;
   const htmlPlano = incl ? `<div id="pe-doc-plano">${peCabecalhoDoc('O Teu Plano de Tratamento em Casa')}${p.html}${htmlNotas}<div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:14px;font-size:0.78rem;color:#64748b;">${peMarcaLogo(26)} ${peEsc([peMarca().nome, peMarca().lema].filter(Boolean).join(' · '))}</div></div>` : '';

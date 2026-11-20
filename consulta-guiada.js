@@ -554,7 +554,7 @@ function lerAtual() {
   if (s.type === 'pergunta') {
     if (s.qtype === 'text' || s.qtype === 'number') r.valor = (document.getElementById('cgIn')?.value || '').trim();
   }
-  if (s.type === 'notas') r.valor = (document.getElementById('cgIn')?.value || '').trim();
+  if (s.type === 'notas') { r.valor = (document.getElementById('cgIn')?.value || '').trim(); const ci = document.getElementById('cgIncl'); if (ci) r.incluir = ci.checked; }
   if (s.type === 'instrucao') r.feito = !!document.getElementById('cgFeito')?.checked;
 }
 
@@ -603,6 +603,10 @@ function cgPasso() {
       (s.segundos > 0 ? `<div style="text-align:center;margin-top:8px;"><div id="cgTimer" style="font-size:2rem;font-weight:700;">${fmt(s.segundos)}</div><button class="ghost" onclick="cgTimer(${s.segundos})">⏱ Iniciar temporizador</button></div>` : '');
   } else {
     corpo = `<textarea id="cgIn" rows="4" style="width:100%;">${esc(r.valor || '')}</textarea>`;
+    if (s.type === 'notas') {
+      const inc = r.incluir !== undefined ? r.incluir : !!s.noRelatorio;
+      corpo += `<label style="display:flex;gap:8px;align-items:center;margin-top:8px;"><input type="checkbox" id="cgIncl" style="width:auto;margin:0;" ${inc ? 'checked' : ''}><span>Incluir no relatório do paciente</span></label><div class="muted" style="font-size:.82rem;margin-top:2px;">Desmarcado: fica só nas Notas clínicas da ficha, privado.</div>`;
+    }
   }
   const ultimo = EX.i === steps.length - 1;
   EX.area.innerHTML = `<div class="card">
@@ -678,7 +682,7 @@ export function cgConstruir(proto, resp, nomePaciente, data) {
         if (s.noPlano !== false) P.push(`${s.title}\n` + tt.join('\n'));
       }
     }
-    if (s.type === 'notas' && s.noRelatorio && r.valor) R.push(`\n${s.title}: ${r.valor}`);
+    if (s.type === 'notas' && (r.incluir !== undefined ? r.incluir : s.noRelatorio) && r.valor) R.push(`\n${s.title}: ${r.valor}`);
     if (s.type === 'mapa' && s.noPlano) { const sel = selecionados(s, r); if (sel.length) P.push(`${s.title} — pontos a trabalhar:\n` + sel.map(o => `• ${o.label}`).join('\n')); }
     if (s.type === 'instrucao' && s.noPlano && (s.texto || s.imagem)) P.push(`${s.title}\n${s.texto || ''}`.trim());
     if (s.type === 'tratamento' && s.noPlano && (s.passos || []).length) P.push(`${s.title}\n` + s.passos.map((p, i) => `${i + 1}. ${p}`).join('\n') + (s.segundos > 0 ? `\n(Temporizador sugerido: ${fmtT(s.segundos)})` : ''));
@@ -735,7 +739,7 @@ export function cgDocumentos(proto, resp, nomePaciente, data, marca) {
       const sel = selecionados(s, r);
       if (sel.length) rel += `<h3 style="color:${m.cor};margin:16px 0 8px;font-size:1.02rem;break-after:avoid;">${esc(s.title)}</h3>` + (s.type === 'mapa' ? mapaHtml(s, 'doc', sel.map(o => o.id)) : '') + sel.map(cartaoDoc).join('');
     }
-    if (s.type === 'notas' && s.noRelatorio && r.valor) rel += `<div style="margin-top:14px;"><b style="color:${m.cor};">${esc(s.title)}</b><p style="font-size:0.9rem;white-space:pre-wrap;color:#334155;margin-top:4px;">${esc(r.valor)}</p></div>`;
+    if (s.type === 'notas' && (r.incluir !== undefined ? r.incluir : s.noRelatorio) && r.valor) rel += `<div style="margin-top:14px;"><b style="color:${m.cor};">${esc(s.title)}</b><p style="font-size:0.9rem;white-space:pre-wrap;color:#334155;margin-top:4px;">${esc(r.valor)}</p></div>`;
     if (s.type === 'mapa' && s.noPlano) {
       const sel = selecionados(s, r);
       if (sel.length) plano += `<h3 style="color:${m.cor};margin:16px 0 6px;font-size:1.02rem;break-after:avoid;">${esc(s.title)} — pontos a trabalhar</h3>${mapaHtml(s, 'doc', sel.map(o => o.id))}<ol style="font-size:0.9rem;color:#334155;margin:6px 0 0 20px;">${sel.map(o => `<li>${esc(o.label)}</li>`).join('')}</ol>`;
@@ -844,7 +848,7 @@ export function cgModeloBonito(proto, resp, nomePaciente, data, marca) {
       if (sel.length && s.type === 'mapa') blocos.push({ tipo: 'mapa', icone: '🗺️', titulo: s.title + ' — mapa', html: mapaHtml(s, 'doc', sel.map(o => o.id)) });
       if (sel.length) blocos.push({ tipo: 'detalhe', icone: '🔎', titulo: s.title, intro: 'Toca em cada item para ver mais.', itens: sel.map(o => ({ nome: o.label, descricao: [o.tema ? 'Tema: ' + o.tema : '', o.pergunta ? 'Pergunta para te questionares: ' + o.pergunta : '', o.extra ? 'Para saberes mais: ' + o.extra : ''].filter(Boolean).join('\n'), exemplo: (o.exemplos || []).join(' · ') })) });
     }
-    if (s.type === 'notas' && s.noRelatorio && r.valor) blocos.push({ tipo: 'texto', icone: '📝', titulo: s.title, paras: [r.valor] });
+    if (s.type === 'notas' && (r.incluir !== undefined ? r.incluir : s.noRelatorio) && r.valor) blocos.push({ tipo: 'texto', icone: '📝', titulo: s.title, paras: [r.valor] });
     if (s.type === 'mapa' && s.noPlano) { const sel = selecionados(s, r); if (sel.length) plano.push({ rotulo: s.title + ' · pontos a trabalhar', texto: sel.map(o => o.label).join(', ') }); }
     if (s.type === 'instrucao' && s.noPlano && s.texto) plano.push({ rotulo: s.title, texto: s.texto });
     if (s.type === 'tratamento' && s.noPlano && (s.passos || []).length) plano.push({ rotulo: s.title, texto: s.passos.map((p, i) => `${i + 1}. ${p}`).join('  ') + (s.segundos > 0 ? ` (temporizador sugerido: ${fmtT(s.segundos)})` : '') });
@@ -905,7 +909,7 @@ async function cgConcluir() {
       // Relato do paciente e notas clínicas (passos "notas" privados) → Notas clínicas da ficha.
       try {
         if (window.anexarNotasClinicas) {
-          const linhas = EX.proto.steps.filter(st => st.type === 'notas' && !st.noRelatorio).map(st => ({ rotulo: st.title, valor: (EX.resp[st.id] && EX.resp[st.id].valor) || '' })).filter(l => l.valor);
+          const linhas = EX.proto.steps.filter(st => st.type === 'notas').map(st => ({ rotulo: st.title, valor: (EX.resp[st.id] && EX.resp[st.id].valor) || '' })).filter(l => l.valor);
           if (linhas.length) await window.anexarNotasClinicas(EX.patientId, EX.proto.name, linhas);
         }
       } catch (_) {}
