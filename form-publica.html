@@ -212,7 +212,7 @@ function renderJaRespondido(){
 function renderFormulario(){
   const d = _dados;
   const perguntas = d.perguntas || [];
-  const total = perguntas.length;
+  const total = perguntas.filter(p => (p.tipo||p.type) !== 'title').length;
   // Campo nome (se não vem identificado)
   const nomeHidden = d.patientName ? `<input type="hidden" id="fNome" value="${esc(d.patientName)}">` : '';
   const nomeCampo = !d.patientName ? `
@@ -221,7 +221,8 @@ function renderFormulario(){
       <input type="text" id="fNome" placeholder="${t('nomePh')}" autocomplete="name">
     </div>` : nomeHidden;
 
-  const pergsHtml = perguntas.map((p,i) => renderPergunta(p, i, total)).join('');
+  let _n = 0;
+  const pergsHtml = perguntas.map(p => renderPergunta(p, (p.tipo||p.type) === 'title' ? 0 : _n++, total)).join('');
 
   document.getElementById('app').innerHTML = `
     <div class="card">
@@ -242,6 +243,10 @@ function renderFormulario(){
 function renderPergunta(p, i, total){
   const num = t('perg', { i: i+1, n: total });
   const tipo = (p.tipo||p.type||'texto').toLowerCase();
+
+  if(tipo==='title'){
+    return `<div style="margin:22px 2px 6px;"><h3 style="margin:0;color:var(--primary,#2f6f5e);font-size:1.05rem;">${esc(p.label||'')}</h3>${p.help ? `<p style="font-size:.85rem;color:#64748b;margin:4px 0 0;line-height:1.45;">${esc(p.help)}</p>` : ''}</div>`;
+  }
 
   if(tipo==='escala'||tipo==='scale'){
     const btns = Array.from({length:11},(_,n)=>`<button type="button" class="scale-btn" data-qid="${esc(p.id)}" data-val="${n}" onclick="window._escala('${esc(p.id)}',${n},this)">${n}</button>`).join('');
@@ -332,7 +337,7 @@ function renderPergunta(p, i, total){
 
 // ── Handlers de interação ─────────────────────────────────────────────────
 function atualizarProgresso(){
-  const total = (_dados.perguntas||[]).length;
+  const total = (_dados.perguntas||[]).filter(p => (p.tipo||p.type) !== 'title').length;
   if(!total) return;
   const preenchidas = Object.keys(_respostas).filter(k=>String(_respostas[k]||'').trim()!=='').length;
   const pct = Math.round(preenchidas/total*100);
@@ -404,7 +409,7 @@ window._enviar = async function(){
 
   // Montar array de respostas
   const perguntas = _dados.perguntas || [];
-  const respostasArr = perguntas.map(p=>{
+  const respostasArr = perguntas.filter(p => (p.tipo||p.type) !== 'title').map(p=>{
     const v = _respostas[p.id];
     return {
       questionId: p.id,
