@@ -575,8 +575,12 @@ function cgFronteira(proto) {
   const i = (proto.steps || []).findIndex(x => x.type === 'tratpontos' || x.type === 'tratamento');
   return i;
 }
+function cgValidadeGuardada() { try { const v = localStorage.getItem('cg_validade_dias'); return v === null ? 60 : parseInt(v, 10); } catch (_) { return 60; } }
 window.cgSoAvaliacao = function () {
   clearInterval(_t); lerAtual();
+  const sel = document.getElementById('cgValidade');
+  EX.validade = sel ? parseInt(sel.value, 10) : 60;
+  try { localStorage.setItem('cg_validade_dias', String(EX.validade)); } catch (_) {}
   const f = cgFronteira(EX.proto); if (f < 1) return;
   EX.fase = 'avaliacao';
   EX.proto = { ...EX.proto, steps: EX.proto.steps.slice(0, f) };
@@ -595,14 +599,18 @@ window.cgExecutar = async function (patientId, patientName, area, proto, protoId
         const dias = Math.max(0, Math.floor((Date.now() - aval.t) / 86400000));
         const data = new Date(aval.t).toLocaleDateString('pt-PT');
         const feitas = todos.filter(x => x.dd.fase === 'tratamento' && x.dd.origemId === aval.id).length;
-        const longe = dias > 60;
+        const val = (aval.dd.validadeDias === undefined || aval.dd.validadeDias === null) ? 60 : aval.dd.validadeDias;
+        const expirou = val > 0 && dias > val;
+        const restam = val > 0 ? val - dias : null;
         const area2 = area;
+        const btnCont = `<button class="${expirou ? 'ghost' : 'primary'}" style="width:100%;margin-top:8px;" id="cgContinuar">${expirou ? '▶ Continuar mesmo assim, a partir da avaliação antiga' : '▶ Começar o tratamento a partir desta avaliação'}</button>`;
+        const btnNova = `<button class="${expirou ? 'primary' : 'ghost'}" style="width:100%;margin-top:8px;" id="cgNova">🆕 Fazer uma nova avaliação</button>`;
         area2.innerHTML = `<div class="card">
           <h3 style="margin:0 0 6px;">Já existe uma avaliação deste método</h3>
           <p>Avaliação de <b>${data}</b> (há ${dias} dia${dias === 1 ? '' : 's'})${feitas ? ` · ${feitas} sessão(ões) de tratamento já feita(s) a partir dela` : ''}.</p>
-          ${longe ? `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:8px 10px;margin:8px 0;">⚠️ Já passaram mais de 60 dias. Pode ser melhor fazer uma nova avaliação antes de tratar.</div>` : ''}
-          <button class="primary" style="width:100%;margin-top:8px;" id="cgContinuar">▶ Começar o tratamento a partir desta avaliação</button>
-          <button class="ghost" style="width:100%;margin-top:8px;" id="cgNova">🆕 Fazer uma nova avaliação</button>
+          <p class="muted">${val === 0 ? 'Validade: sem limite.' : (expirou ? '' : `Válida por mais ${restam} dia${restam === 1 ? '' : 's'} (definiste ${val} dias).`)}</p>
+          ${expirou ? `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:8px 10px;margin:8px 0;">⚠️ A validade de ${val} dias terminou há ${dias - val} dia${dias - val === 1 ? '' : 's'}. Sugerimos uma nova avaliação, mas a decisão é tua.</div>` : ''}
+          ${expirou ? btnNova + btnCont : btnCont + btnNova}
         </div>`;
         document.getElementById('cgNova').onclick = () => _cgExecutarBase(patientId, patientName, area, proto, protoId);
         document.getElementById('cgContinuar').onclick = () => {
@@ -667,7 +675,7 @@ function cgPasso() {
       <button class="ghost" ${EX.i === 0 ? 'disabled' : ''} onclick="cgNav(-1)">← Anterior</button>
       <button class="primary" onclick="cgNav(1)">${ultimo ? '✅ Concluir e gerar relatório' : 'Seguinte →'}</button>
     </div>
-    ${(!EX.fase && !EX.preview && cgFronteira(EX.proto) > 0 && EX.i === cgFronteira(EX.proto) - 1) ? `<button class="ghost" style="width:100%;margin-top:10px;" onclick="cgSoAvaliacao()">📄 Só a avaliação: gerar o relatório e deixar o tratamento para depois</button><div class="muted" style="font-size:.82rem;margin-top:4px;">Fica guardado na ficha. Mais tarde, ao iniciar este método, podes começar o tratamento a partir desta avaliação.</div>` : ''}
+    ${(!EX.fase && !EX.preview && cgFronteira(EX.proto) > 0 && EX.i === cgFronteira(EX.proto) - 1) ? `<label style="display:block;margin-top:10px;font-weight:600;">Esta avaliação vale para tratamento durante:</label><select id="cgValidade" style="width:100%;">${[[7,'7 dias'],[15,'15 dias'],[30,'30 dias'],[60,'60 dias'],[90,'90 dias'],[0,'Sem limite']].map(([v,t]) => `<option value="${v}" ${v === cgValidadeGuardada() ? 'selected' : ''}>${t}</option>`).join('')}</select><button class="ghost" style="width:100%;margin-top:10px;" onclick="cgSoAvaliacao()">📄 Só a avaliação: gerar o relatório e deixar o tratamento para depois</button><div class="muted" style="font-size:.82rem;margin-top:4px;">Fica guardado na ficha. Mais tarde, ao iniciar este método, podes começar o tratamento a partir desta avaliação.</div>` : ''}
     </div>`;
 }
 const fmt = (n) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
@@ -954,7 +962,7 @@ async function cgConcluir() {
     if (window.guardarNaFicha) {
       let bonito = ''; try { bonito = rbFragmento(cgModeloBonito(EX.proto, EX.resp, EX.patientName, data)); } catch (_) {}
       const ok = await window.guardarNaFicha(EX.patientId, { tipo: 'consulta_guiada', titulo: EX.proto.name + (EX.fase === 'avaliacao' ? ' — avaliação' : EX.fase === 'tratamento' ? ' — tratamento' : ''), texto: t.texto, reportHtml: bonito,
-        dados: JSON.parse(JSON.stringify({ protocoloId: EX.protoId || '', fase: EX.fase || 'completa', origemId: (EX.origem && EX.origem.id) || '', origemData: (EX.origem && EX.origem.data) || '', resumo: cgResumo(EX.proto, EX.resp), respostas: EX.resp, relatorio: t.relatorio, plano: t.plano, htmlRelatorio: docs.htmlRel, htmlPlano: docs.htmlPlano, data })) });
+        dados: JSON.parse(JSON.stringify({ protocoloId: EX.protoId || '', fase: EX.fase || 'completa', origemId: (EX.origem && EX.origem.id) || '', validadeDias: EX.validade === undefined ? null : EX.validade, origemData: (EX.origem && EX.origem.data) || '', resumo: cgResumo(EX.proto, EX.resp), respostas: EX.resp, relatorio: t.relatorio, plano: t.plano, htmlRelatorio: docs.htmlRel, htmlPlano: docs.htmlPlano, data })) });
       if (!ok) aviso('⚠️ Não consegui gravar na ficha. Copie o relatório antes de sair.', true);
       // Relato do paciente e notas clínicas (passos "notas" privados) → Notas clínicas da ficha.
       try {
