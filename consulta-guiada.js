@@ -579,7 +579,7 @@ function cgValidadeGuardada() { try { const v = localStorage.getItem('cg_validad
 window.cgSoAvaliacao = function () {
   clearInterval(_t); lerAtual();
   const sel = document.getElementById('cgValidade');
-  EX.validade = sel ? parseInt(sel.value, 10) : 60;
+  EX.validade = sel ? Math.max(0, parseInt(sel.value, 10) || 0) : 60;
   try { localStorage.setItem('cg_validade_dias', String(EX.validade)); } catch (_) {}
   const f = cgFronteira(EX.proto); if (f < 1) return;
   EX.fase = 'avaliacao';
@@ -609,6 +609,7 @@ window.cgExecutar = async function (patientId, patientName, area, proto, protoId
           <h3 style="margin:0 0 6px;">Já existe uma avaliação deste método</h3>
           <p>Avaliação de <b>${data}</b> (há ${dias} dia${dias === 1 ? '' : 's'})${feitas ? ` · ${feitas} sessão(ões) de tratamento já feita(s) a partir dela` : ''}.</p>
           <p class="muted">${val === 0 ? 'Validade: sem limite.' : (expirou ? '' : `Válida por mais ${restam} dia${restam === 1 ? '' : 's'} (definiste ${val} dias).`)}</p>
+          <p class="muted" style="font-size:.85em;">💡 Com o tempo a situação da pessoa muda; quanto mais antiga a avaliação, menos atual está.</p>
           ${expirou ? `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:8px 10px;margin:8px 0;">⚠️ A validade de ${val} dias terminou há ${dias - val} dia${dias - val === 1 ? '' : 's'}. Sugerimos uma nova avaliação, mas a decisão é tua.</div>` : ''}
           ${expirou ? btnNova + btnCont : btnCont + btnNova}
         </div>`;
@@ -675,7 +676,7 @@ function cgPasso() {
       <button class="ghost" ${EX.i === 0 ? 'disabled' : ''} onclick="cgNav(-1)">← Anterior</button>
       <button class="primary" onclick="cgNav(1)">${ultimo ? '✅ Concluir e gerar relatório' : 'Seguinte →'}</button>
     </div>
-    ${(!EX.fase && !EX.preview && cgFronteira(EX.proto) > 0 && EX.i === cgFronteira(EX.proto) - 1) ? `<label style="display:block;margin-top:10px;font-weight:600;">Esta avaliação vale para tratamento durante:</label><select id="cgValidade" style="width:100%;">${[[7,'7 dias'],[15,'15 dias'],[30,'30 dias'],[60,'60 dias'],[90,'90 dias'],[0,'Sem limite']].map(([v,t]) => `<option value="${v}" ${v === cgValidadeGuardada() ? 'selected' : ''}>${t}</option>`).join('')}</select><button class="ghost" style="width:100%;margin-top:10px;" onclick="cgSoAvaliacao()">📄 Só a avaliação: gerar o relatório e deixar o tratamento para depois</button><div class="muted" style="font-size:.82rem;margin-top:4px;">Fica guardado na ficha. Mais tarde, ao iniciar este método, podes começar o tratamento a partir desta avaliação.</div>` : ''}
+    ${(!EX.fase && !EX.preview && cgFronteira(EX.proto) > 0 && EX.i === cgFronteira(EX.proto) - 1) ? `<div style="margin-top:10px;background:#f4f8f6;border:1px solid #d5e4dc;border-radius:8px;padding:10px;"><label style="display:block;font-weight:600;">Esta avaliação vale para tratamento durante quantos dias?</label><div style="display:flex;gap:8px;align-items:center;margin-top:6px;"><input id="cgValidade" type="number" min="0" max="999" inputmode="numeric" value="${cgValidadeGuardada()}" style="width:90px;"> <span>dias</span> <span class="muted" style="font-size:.85em;">(0 = sem limite)</span></div><div class="muted" style="font-size:.85em;margin-top:6px;">💡 Com o passar dos dias, o estado emocional e energético da pessoa muda. Quanto mais tempo passa, menos esta avaliação reflete a situação atual. Escolhe o prazo que faz sentido para ti.</div></div><button class="ghost" style="width:100%;margin-top:10px;" onclick="cgSoAvaliacao()">📄 Só a avaliação: gerar o relatório e deixar o tratamento para depois</button><div class="muted" style="font-size:.82rem;margin-top:4px;">Fica guardado na ficha. Mais tarde, ao iniciar este método, podes começar o tratamento a partir desta avaliação.</div>` : ''}
     </div>`;
 }
 const fmt = (n) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
