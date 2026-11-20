@@ -443,7 +443,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-20-2';
+const APP_VERSION = '2026-11-20-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -3076,6 +3076,21 @@ window.goToAgendaDay = function(dayKey){
   renderView('agenda');
 };
 
+// ── Terapia / área: agrupa métodos e fichas por terapia ────────────────
+const AREAS_SUGERIDAS = ['Reiki','Mapeamento emocional','Apometria','Massagem','Fisioterapia','Psicologia','Nutrição','Reflexologia','Aromaterapia','Radiestesia','Cartomancia','Geral'];
+function areaDoItem(x, texto){
+  const a = (x && (x.area || x.category) || '').trim();
+  if (a) return a;
+  const t = String(texto || '').toLowerCase();
+  const m = [[/reiki/,'Reiki'],[/mapeamento|mapa da alma|mapa emocional/,'Mapeamento emocional'],[/apometria/,'Apometria'],[/massagem/,'Massagem'],[/fisio|osteo/,'Fisioterapia'],[/psico/,'Psicologia'],[/nutri|naturop/,'Nutrição'],[/reflexo/,'Reflexologia'],[/aroma/,'Aromaterapia'],[/radiest|pêndulo|pendulo/,'Radiestesia'],[/carta|tarot/,'Cartomancia']];
+  for (const [re, n] of m) if (re.test(t)) return n;
+  return 'Geral';
+}
+function datalistAreas(id, extras){
+  const todas = [...new Set([...(extras || []), ...AREAS_SUGERIDAS])];
+  return `<datalist id="${id}">${todas.map(n => `<option value="${escapeHtml(n)}">`).join('')}</datalist>`;
+}
+
 // Atalho "Nova Consulta" da home — leva a Pacientes, de onde a consulta
 // guiada (por protocolos, com mapeamento no corpo quando aplicável) já
 // existe em cada ficha. Não duplica esse fluxo, só encurta o caminho até lá.
@@ -4843,7 +4858,7 @@ window.viewPatient = async function(patientId){
       ${customFieldsHtml}
 
       <div class="row" style="margin-top:12px;">
-        <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeHtml(p.fullName)}')">🧭 Iniciar consulta guiada</button>
+        <button class="primary" onclick="startGuidedConsultation('${patientId}', '${escapeHtml(p.fullName)}')">🩺 Nova consulta</button>
         <button class="ghost" onclick="openSendFormToPatient('${patientId}', '${escapeHtml(p.fullName)}')">📝 Enviar ficha a este paciente</button>
         <button class="ghost" onclick="viewPatientEvolution('${patientId}','${escapeHtml(p.fullName)}')">📈 Ver evolução</button>
         <button class="ghost" onclick="abrirComparacao('${patientId}','${escapeHtml(p.fullName)}')">🔍 Comparar consultas</button>
@@ -5798,7 +5813,11 @@ window.openSendFormToPatient = async function(patientId, patientName){
     return;
   }
   let opts = '<option value="">Selecionar ficha...</option>';
-  snap.forEach(d => opts += `<option value="${d.id}">${escapeHtml(d.data().title)}</option>`);
+  const gruposF = {};
+  snap.forEach(d => { const a = areaDoItem(d.data(), d.data().title); (gruposF[a] = gruposF[a] || []).push(d); });
+  Object.keys(gruposF).sort((a, b) => a.localeCompare(b)).forEach(a => {
+    opts += `<optgroup label="${escapeHtml(a)}">` + gruposF[a].map(d => `<option value="${d.id}">${escapeHtml(d.data().title)}</option>`).join('') + '</optgroup>';
+  });
 
   document.getElementById('sendFormContainer').innerHTML = `
     <div class="card">
@@ -6573,7 +6592,7 @@ async function renderForms(main){
   // fichas sem categoria ficam juntas no fim, sob "Sem categoria".
   const groups = {};
   forms.forEach(f => {
-    const cat = f.category || 'Sem categoria';
+    const cat = areaDoItem(f, f.title);
     if (!groups[cat]) groups[cat] = [];
     groups[cat].push(f);
   });
@@ -6778,9 +6797,9 @@ async function renderFormBuilder(editId, title, category, description, questions
       <h2>${editId ? 'Editar ficha' : 'Nova ficha'}</h2>
       <label>Título da ficha</label>
       <input id="formTitle" value="${escapeHtml(title)}" placeholder="ex: Questionário Pré-Consulta">
-      <label>Categoria (opcional — ex: "Reiki", para agrupar com os serviços)</label>
+      <label>Terapia / área (ex: "Reiki") — as fichas ficam agrupadas por terapia</label>
       <input id="formCategory" list="formCategoryOptions" value="${escapeHtml(category)}" placeholder="Sem categoria">
-      <datalist id="formCategoryOptions">${categoryNames.map(n=>`<option value="${escapeHtml(n)}">`).join('')}</datalist>
+      ${datalistAreas('formCategoryOptions', categoryNames).replace(/^/, '')}
       <label>Descrição (opcional, o paciente vê isto)</label>
       <textarea id="formDescription" rows="2">${escapeHtml(description)}</textarea>
       <div id="formQuestionsList">${qHtml || '<p class="muted">Ainda sem perguntas.</p>'}</div>
@@ -7944,7 +7963,8 @@ window.editProtocol = async function(id){
 
 window.changeProtocolType = function(newType){
   const name = document.getElementById('protoName')?.value || '';
-  renderProtocolForm(window.__editingProtocolId, { name, type: newType });
+  const area = document.getElementById('protoArea')?.value || '';
+  renderProtocolForm(window.__editingProtocolId, { name, area, type: newType });
 };
 
 function renderProtocolForm(editId, data){
@@ -7965,6 +7985,9 @@ function renderProtocolForm(editId, data){
       <h2>${editId ? 'Editar método' : 'Novo método'}</h2>
       <label>Nome do protocolo</label>
       <input id="protoName" value="${escapeHtml(name)}" placeholder="ex: Avaliação de Ansiedade e Depressão">
+      <label>Terapia / área (ex: "Reiki") — aparece agrupado por terapia ao iniciar a consulta</label>
+      <input id="protoArea" list="protoAreaOptions" value="${escapeHtml(data.area || '')}" placeholder="Geral">
+      ${datalistAreas('protoAreaOptions')}
       <label>Tipo de protocolo</label>
       <select id="protoType" onchange="changeProtocolType(this.value)">
         <option value="guided" ${type==='guided'?'selected':''}>🧩 Consulta guiada por passos (novo — o mais flexível)</option>
@@ -8658,7 +8681,7 @@ window.saveProtocol = async function(editId){
   if (!name){ toast('Dê um nome ao protocolo.', true); return; }
   const type = document.getElementById('protoType').value;
 
-  let data = { name, type, updatedAt: serverTimestamp() };
+  let data = { name, type, area: (document.getElementById('protoArea')?.value || '').trim(), updatedAt: serverTimestamp() };
   data.finalClassifications = type === 'guided' ? [] : protocolClassificationsDraft.filter(c => c.label && c.label.trim());
   if (type === 'guided'){
     const erro = window.cgValidar ? window.cgValidar() : 'Construtor indisponível.';
@@ -8803,24 +8826,72 @@ window.startGuidedConsultation = async function(patientId, patientName){
     const snap = await getDocs(collection(db, 'tenants', tenantId, 'protocols'));
     let opts = '<option value="">Selecionar protocolo...</option>';
     const protocols = {};
-    snap.forEach(d => { protocols[d.id] = d.data(); opts += `<option value="${d.id}">${escapeHtml(d.data().name)}</option>`; });
+    const grupos = {};
+    snap.forEach(d => {
+      const p = d.data(); protocols[d.id] = p;
+      opts += `<option value="${d.id}">${escapeHtml(p.name)}</option>`;
+      const a = areaDoItem(p, p.name);
+      (grupos[a] = grupos[a] || []).push({ id: d.id, p });
+    });
 
-    if (snap.empty){
+    const exclusivos = [];
+    if (window.temPesquisaEmocional && window.temPesquisaEmocional()) exclusivos.push({ ic: '🔬', n: 'Pesquisa Emocional Clínica', fn: `iniciarExclusivo('pe','${patientId}')` });
+    if (temModulo('triagemPendulo') && tenantId !== 'hikari-terapias') exclusivos.push({ ic: '🎴', n: 'Triagem — Pêndulo Hebraico', fn: `iniciarExclusivo('triagem','${patientId}')` });
+    if (temModulo('cartomancia')) exclusivos.push({ ic: '🃏', n: 'Consultar as cartas', fn: `iniciarExclusivo('cartas','${patientId}')` });
+
+    if (snap.empty && !exclusivos.length){
       toast('Crie um método primeiro, em "Os Meus Métodos".', true);
       return;
     }
+    const cartao = (ic, n, sub, fn) => `<button class="ghost" style="width:100%;text-align:left;display:flex;gap:10px;align-items:center;margin-top:8px;padding:12px;" onclick="${fn}"><span style="font-size:1.4em;">${ic}</span><span style="flex:1;"><b>${escapeHtml(n)}</b>${sub ? `<br><span class="muted" style="font-size:.85em;">${sub}</span>` : ''}</span><span>›</span></button>`;
+    const tipoTxt = p => p.type === 'guided' ? 'Consulta guiada por passos' : p.type === 'mapping' ? 'Pesquisa por zonas' : 'Lista de pontos';
+    const secMetodos = Object.keys(grupos).sort((a, b) => a.localeCompare(b)).map(a => `
+      <h3 style="margin:16px 0 4px;">${escapeHtml(a)}</h3>
+      ${grupos[a].map(x => cartao('🧭', x.p.name, tipoTxt(x.p), `escolherMetodoHub('${x.id}','${patientId}','${escapeAttrJs(patientName)}')`)).join('')}`).join('');
+    const secExcl = exclusivos.length ? `
+      <h3 style="margin:16px 0 4px;">Métodos exclusivos ativos</h3>
+      ${exclusivos.map(x => cartao(x.ic, x.n, '', x.fn)).join('')}` : '';
 
-    showPatientOverlay(`Consulta guiada — ${patientName}`, `
+    showPatientOverlay(`Nova consulta — ${patientName}`, `
       <div class="card">
         <button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button>
-        <label style="margin-top:10px;">Método</label>
-        <select id="guidedProtocolSelect" onchange="onGuidedProtocolChange('${patientId}', '${escapeHtml(patientName)}')">${opts}</select>
+        <div id="guidedHub">
+          <p class="muted" style="margin-top:10px;">Escolhe o tipo de consulta que vais fazer com ${escapeHtml(patientName)}:</p>
+          ${secMetodos}${secExcl}
+        </div>
+        <button id="guidedHubVoltar" class="ghost" style="display:none;margin-top:10px;" onclick="document.getElementById('guidedPointsArea').innerHTML='';document.getElementById('guidedHub').style.display='';this.style.display='none';">← Escolher outra consulta</button>
+        <select id="guidedProtocolSelect" style="display:none;" onchange="onGuidedProtocolChange('${patientId}', '${escapeHtml(patientName)}')">${opts}</select>
         <div id="guidedPointsArea"></div>
       </div>`);
     window.__guidedProtocols = protocols;
   }catch(e){
     console.error(e);
-    toast('⚠️ Não foi possível abrir a consulta guiada: ' + e.message, true);
+    toast('⚠️ Não foi possível abrir a consulta: ' + e.message, true);
+  }
+};
+
+window.escolherMetodoHub = function(protoId, patientId, patientName){
+  const sel = document.getElementById('guidedProtocolSelect');
+  if (!sel) return;
+  sel.value = protoId;
+  document.getElementById('guidedHub').style.display = 'none';
+  const v = document.getElementById('guidedHubVoltar'); if (v) v.style.display = '';
+  window.onGuidedProtocolChange(patientId, patientName);
+};
+
+window.iniciarExclusivo = async function(qual, patientId){
+  let nome = '';
+  try{ const sn = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId)); nome = (sn.data() || {}).fullName || ''; }catch(_){}
+  closePatientOverlay();
+  if (qual === 'cartas'){ consultarCartas(patientId); return; }
+  if (qual === 'triagem'){ triagemRetomarPaciente(patientId, nome); return; }
+  if (qual === 'pe'){
+    renderView('pesquisaEmocional');
+    let n = 0;
+    const t = setInterval(() => {
+      if (window.peIniciarConsulta && document.getElementById('pe-badge-paciente') !== null){ clearInterval(t); window.peIniciarConsulta(patientId, nome); }
+      else if (++n > 80) clearInterval(t);
+    }, 150);
   }
 };
 
