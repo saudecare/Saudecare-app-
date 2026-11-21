@@ -83,6 +83,25 @@
     P('K1','Coroa','Endócrino','Epífise (glândula pineal)','Regula os ciclos de sono e vigília.','ritmo, sono e sentido de vida','O que dá sentido aos seus dias?'),
     P('K2','Coroa','Nervoso','Córtex cerebral e sistema nervoso central','Integra o pensamento e a perceção.','ligação, propósito e fé','Sente ligação a algo maior do que si?')
   ];
+  // Apometria: técnicas (da ferramenta de apometria) sugeridas por escudo. Sem as mais intensas por defeito.
+  const TEC = {
+    preparar:['🕯️ Preparar e proteger','5 min','Pede consentimento à pessoa, confirma com o pêndulo e protege-te a ti e ao espaço.'],
+    protecao:['🔵 Escudo de proteção','5 min','A pessoa imagina um escudo de luz à sua volta; reforça com a tua intenção e sela.'],
+    limpeza:['🧹 Varredura e limpeza do campo','10 min','Com as mãos em concha, desce da cabeça aos pés, transformando o que recolhes em luz violeta.'],
+    cordoes:['✂️ Corte de cordões e laços','10 min','Pergunta de que relação quer libertar-se e corta o laço com amor, devolvendo a cada um o que é seu.'],
+    vidas:['⏳ Libertar votos e memórias antigas','15 min','Com consentimento, pergunta ao pêndulo que voto ou memória pesa e pede que seja libertado com amor.'],
+    chakras:['🌈 Harmonização dos chakras','15 min','Começa pelos mais fechados e termina pelo coração e pela coroa.'],
+    reiki:['🤲 Reiki','20 min','Aplica nos pontos indicados pela pesquisa.'],
+    oracao:['🙏 Oração ou salmo','5 min','Escolhe na ferramenta «Orações e Salmos» e reza com a pessoa ou envia o link.'],
+    meditacao:['🎧 Meditação guiada','15 min','Escolhe a mais adequada ao tema; pode ser ouvida em casa.'],
+    espaco:['🏠 Limpeza do espaço','em casa','Arrumar um canto adiado, limpar com sal, som ou fumo e fechar com oração.'],
+    casa:['🏡 Plano em casa','em casa','2 ou 3 práticas simples para os dias seguintes.'],
+    selar:['🔒 Selar e agradecer','5 min','Sela o campo com luz, aterra a pessoa (pés no chão, água) e marca a próxima sessão.']
+  };
+  const APO_POR_ESCUDO = {
+    'Desproteção':['protecao','limpeza','chakras','oracao'], 'Desvalorização':['limpeza','chakras','reiki','meditacao'], 'Impotência':['limpeza','cordoes','chakras','meditacao'],
+    'Sobrevivência':['limpeza','chakras','espaco','casa'], 'Perda':['cordoes','vidas','chakras','oracao','meditacao']
+  };
   const NIVEIS = [['ok','Normal','#16a34a'],['alt','Alterado','#d97706'],['mui','Muito alterado','#dc2626']];
   const EPOCAS = ['Gestação','Infância','Adolescência','Idade adulta','Transgeracional (da família)'];
   const NOTA_RECAIDAS = 'Uma nota importante sobre o seu caminho\nSentir-se melhor não quer dizer que nunca mais vai sentir ansiedade, tristeza ou cansaço. É normal que, entre consultas ou depois da alta, alguns momentos voltem, sobretudo em dias de mais stress. Isso não significa que o trabalho falhou, nem que voltou ao início.\nAs emoções fazem parte da vida, e um escudo pode voltar a ativar-se perante situações parecidas com as que o criaram. A consulta abre o caminho e dá-lhe ferramentas. É no dia a dia que vai aprendendo a usá-las: reconhecer o que sente, respirar, dar nome à emoção, pedir ajuda e voltar ao que trabalhámos juntos. Cada recaída é uma oportunidade de se conhecer melhor, e cada vez recupera mais depressa.\nEste acompanhamento é complementar e não substitui o seu médico ou psicólogo.';
@@ -105,7 +124,7 @@
   window.psFechar = function(){ $('psOverlay')?.remove(); S = null; };
 
   window.psAbrir = function(patientId, nome){
-    S = { patientId, nome, passo:1, escudo:'', idade:'', epoca:'', vivencia:'', queixas:'', notas:'', notasNoRel:false, pontos:{}, chakras:[], formato:'unica', secoes:null, extraTrat:'' };
+    S = { patientId, nome, passo:1, escudo:'', idade:'', epoca:'', vivencia:'', queixas:'', notas:'', notasNoRel:false, pontos:{}, chakras:[], apo:{ on:false, seguro:false }, formato:'unica', secoes:null, extraTrat:'' };
     corpoOverlay(); render();
   };
   const barra = () => `<div style="display:flex;gap:4px;margin-bottom:12px;">${[1,2,3,4,5].map(i => `<div style="flex:1;height:5px;border-radius:3px;background:${i <= S.passo ? 'var(--primary,#2f6f5e)' : '#e5e5e5'};"></div>`).join('')}</div>`;
@@ -188,6 +207,20 @@
     return ordem;
   }
   function etiquetas(){ try { return window.psEtiquetas ? window.psEtiquetas(ESCUDOS[S.escudo].temas, 4) : []; } catch (_) { return []; } }
+  window.psApo = function(k, v){ lerP4(); S.apo[k] = v; render(); };
+  const corposApometria = () => { const ids = new Set(ESCUDOS[S.escudo].corpos); ordemTratamento().forEach(c => c.corpos.forEach(i => ids.add(i))); return Array.from(ids); };
+  const tecnicasApometria = () => ['preparar'].concat(APO_POR_ESCUDO[S.escudo], ['selar']);
+  function blocoApometria(){
+    const a = S.apo;
+    let h = `<h4 style="margin:14px 0 4px;">Apometria (opcional)</h4><label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" style="width:auto;" ${a.on ? 'checked' : ''} onchange="psApo('on',this.checked)"> Incluir técnicas de apometria no tratamento</label>`;
+    if (!a.on) return h + '<p class="muted" style="font-size:.8rem;margin:4px 0 0;">Junta ao pêndulo o trabalho nos corpos subtis ligados ao escudo e aos chakras encontrados.</p>';
+    h += `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:8px 10px;margin:8px 0;font-size:.85rem;">⚠️ Não usar com sinais de alerta (doença psiquiátrica, epilepsia, ideias de desistir de viver), menor sem autorização ou grande medo. Pede sempre o consentimento da pessoa.</div>
+      <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" style="width:auto;" ${a.seguro ? 'checked' : ''} onchange="psApo('seguro',this.checked)"> Confirmo que não há nenhum destes sinais de alerta</label>`;
+    if (!a.seguro) return h;
+    h += `<p style="margin:8px 0 2px;"><b>Corpos a trabalhar:</b></p><ul style="margin:0 0 0 18px;">${nomeCorpos(corposApometria()).map(c => `<li>${esc(c)}</li>`).join('')}</ul>
+      <p style="margin:8px 0 2px;"><b>Técnicas, por ordem:</b></p><ol style="margin:0 0 0 18px;">${tecnicasApometria().map(id => `<li><b>${esc(TEC[id][0])}</b> <span class="muted">(${TEC[id][1]})</span><div class="muted" style="font-size:.82rem;">${esc(TEC[id][2])}</div></li>`).join('')}</ol>`;
+    return h;
+  }
   function p4(){
     const e = ESCUDOS[S.escudo]; const ord = ordemTratamento(); const et = etiquetas();
     return `<div class="card"><h3 style="margin-top:0;">4. Tratamento com o pêndulo</h3>
@@ -200,6 +233,7 @@
       ${et.length ? `<ul style="margin:0 0 0 18px;">${et.map(r => `<li>${r.item.heb ? `<span dir="rtl" lang="he" style="font-size:1.1em;">${esc(r.item.heb)}</span> — ` : ''}${esc(r.item.pt)}${r.item.numero ? ' (nome ' + r.item.numero + ')' : ''}</li>`).join('')}</ul>` : '<p class="muted">Sem sugestões automáticas. Escreve abaixo as que vais usar.</p>'}
       <h4 style="margin:14px 0 4px;">Salmos e orações sugeridos</h4><p style="margin:0;">${esc(e.salmos)}</p>
       <h4 style="margin:14px 0 4px;">Afirmação</h4><p style="margin:0;font-style:italic;">«${esc(e.afi)}»</p>
+      ${blocoApometria()}
       <label style="margin-top:12px;">Outros (orações, etiquetas, indicações para casa…)</label><textarea id="psExtra" rows="3">${esc(S.extraTrat)}</textarea></div>${nav(true, true, 'Gerar relatório →')}`;
   }
 
@@ -213,7 +247,7 @@
     sec.push({ id:'perguntas', titulo:'Perguntas para refletir', texto: Array.from(new Set(al.map(p => p.pergunta).concat(e.perguntas))).slice(0, 8).map(q => '• ' + q).join('\n') });
     sec.push({ id:'agora', titulo:'O que pode estar a viver neste momento', texto: (S.queixas ? `O que nos contou: ${S.queixas}\n\n` : '') + `Num escudo da ${S.escudo}, é comum: ${e.exemplo}\nSe se reconhece nisto, não está sozinho(a): é uma forma de o corpo e a mente se protegerem, e pode ir sendo trabalhada.` });
     const ord = ordemTratamento(); const et = etiquetas();
-    sec.push({ id:'plano', titulo:'Plano de tratamento', texto: (S.formato === 'pack4' ? 'Formato: pack de 4 consultas (avaliação e três consultas de tratamento).\n' : 'Formato: consulta única / inicial.\n') + (ord.length ? 'Chakras a harmonizar, por ordem: ' + ord.map(c => c.nome).join(' → ') + '.\n' : '') + (et.length ? 'Etiquetas: ' + et.map(r => (r.item.heb ? r.item.heb + ' (' : '') + r.item.pt + (r.item.heb ? ')' : '')).join('; ') + '.\n' : '') + `Salmos e orações: ${e.salmos}.\nAfirmação: «${e.afi}»` + (S.extraTrat ? `\n${S.extraTrat}` : '') });
+    sec.push({ id:'plano', titulo:'Plano de tratamento', texto: (S.formato === 'pack4' ? 'Formato: pack de 4 consultas (avaliação e três consultas de tratamento).\n' : 'Formato: consulta única / inicial.\n') + (ord.length ? 'Chakras a harmonizar, por ordem: ' + ord.map(c => c.nome).join(' → ') + '.\n' : '') + (et.length ? 'Etiquetas: ' + et.map(r => (r.item.heb ? r.item.heb + ' (' : '') + r.item.pt + (r.item.heb ? ')' : '')).join('; ') + '.\n' : '') + (S.apo.on && S.apo.seguro ? `Trabalho nos corpos subtis (apometria): ${nomeCorpos(corposApometria()).join(', ')}.\nTécnicas: ${tecnicasApometria().map(id => TEC[id][0].replace(/^\S+\s/, '')).join(' → ')}.\n` : '') + `Salmos e orações: ${e.salmos}.\nAfirmação: «${e.afi}»` + (S.extraTrat ? `\n${S.extraTrat}` : '') });
     if (S.notasNoRel && S.notas.trim()) sec.push({ id:'notas', titulo:'Notas da consulta', texto: S.notas.trim() });
     sec.push({ id:'nota', titulo:'Uma nota importante sobre o seu caminho', texto: NOTA_RECAIDAS.split('\n').slice(1).join('\n') });
     return sec;
