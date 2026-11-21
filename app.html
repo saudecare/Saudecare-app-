@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-13';
+const APP_VERSION = '2026-11-21-14';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -8849,7 +8849,7 @@ window.startGuidedConsultation = async function(patientId, patientName){
 
     const exclusivos = [];
     if (window.temPesquisaEmocional && window.temPesquisaEmocional()) exclusivos.push({ ic: '🔬', n: 'Pesquisa Emocional Clínica', fn: `iniciarExclusivo('pe','${patientId}')` });
-    if (temModulo('triagemPendulo') && tenantId !== 'hikari-terapias') exclusivos.push({ ic: '🎴', n: 'Triagem — Pêndulo Hebraico', fn: `iniciarExclusivo('triagem','${patientId}')` });
+    if (temModulo('triagemPendulo')) exclusivos.push({ ic: '🎴', n: 'Triagem — Pêndulo Hebraico (40 energias, chakras, caminhos e etiquetas)', area: tenantId === 'hikari-terapias' ? 'Pêndulo hebraico' : '', fn: `iniciarExclusivo('triagem','${patientId}')` });
     if (tenantId === 'hikari-terapias' || temModulo('pesquisaSistemas')) exclusivos.push({ ic: '🛡️', n: 'Pesquisa por escudos e sistemas', fn: `iniciarExclusivo('sistemas','${patientId}')` });
     if (tenantId === 'hikari-terapias') exclusivos.push({ ic: '🦶', n: 'Reflexologia podal — registo da consulta', area: 'Reflexologia', fn: `iniciarExclusivo('reflexologia','${patientId}')` });
     if (temModulo('cartomancia')) exclusivos.push({ ic: '🃏', n: 'Consultar as cartas', fn: `iniciarExclusivo('cartas','${patientId}')` });
