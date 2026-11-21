@@ -419,6 +419,7 @@
 <script src="chakras-leitura.js?v=2026-11-20-2"></script>
 <script src="pesquisa-sistemas.js?v=2026-11-21-10"></script>
 <script src="causas-ficha.js?v=2026-11-21-7"></script>
+<script src="reflexologia-podal.js?v=2026-11-21-11"></script>
 <script type="module" src="consulta-guiada.js?v=2026-11-20-11"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
@@ -446,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-10';
+const APP_VERSION = '2026-11-21-11';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -8850,6 +8851,7 @@ window.startGuidedConsultation = async function(patientId, patientName){
     if (window.temPesquisaEmocional && window.temPesquisaEmocional()) exclusivos.push({ ic: '🔬', n: 'Pesquisa Emocional Clínica', fn: `iniciarExclusivo('pe','${patientId}')` });
     if (temModulo('triagemPendulo') && tenantId !== 'hikari-terapias') exclusivos.push({ ic: '🎴', n: 'Triagem — Pêndulo Hebraico', fn: `iniciarExclusivo('triagem','${patientId}')` });
     if (tenantId === 'hikari-terapias' || temModulo('pesquisaSistemas')) exclusivos.push({ ic: '🛡️', n: 'Pesquisa por escudos e sistemas', fn: `iniciarExclusivo('sistemas','${patientId}')` });
+    if (tenantId === 'hikari-terapias' || temModulo('reflexologiaPodal')) exclusivos.push({ ic: '🦶', n: 'Reflexologia podal — registo da consulta', fn: `iniciarExclusivo('reflexologia','${patientId}')` });
     if (temModulo('cartomancia')) exclusivos.push({ ic: '🃏', n: 'Consultar as cartas', fn: `iniciarExclusivo('cartas','${patientId}')` });
 
     if (snap.empty && !exclusivos.length){
@@ -8897,6 +8899,7 @@ window.iniciarExclusivo = async function(qual, patientId){
   try{ const sn = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId)); nome = (sn.data() || {}).fullName || ''; }catch(_){}
   closePatientOverlay();
   if (qual === 'sistemas'){ window.psAbrir(patientId, nome); return; }
+  if (qual === 'reflexologia'){ window.rpAbrir(patientId, nome); return; }
   if (qual === 'cartas'){ consultarCartas(patientId); return; }
   if (qual === 'triagem'){ triagemRetomarPaciente(patientId, nome); return; }
   if (qual === 'pe'){
