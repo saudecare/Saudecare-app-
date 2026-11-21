@@ -386,10 +386,10 @@ arrancar();
   }
   function blocoOfertas(aberto){
     if (!ofertas.length) return blocoEspelho();
-    return blocoEspelho() + `<div style="display:grid;gap:12px;margin:16px 0;text-align:left">${ofertas.map(k => {
+    return `<div style="display:grid;gap:12px;margin:16px 0;text-align:left">${ofertas.map(k => {
       const o = OF[k], rest = Math.max(0, o.total - ocup[k]);
       return `<div style="background:rgba(255,255,255,.12);border-radius:16px;padding:14px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:16px">${o.icone} ${o.nome}</b><span style="background:${rest ? 'var(--o)' : '#999'};color:#2b1d00;font-weight:800;font-size:12px;padding:4px 10px;border-radius:100px;white-space:nowrap">${S.estado === 'sorteado' ? 'Terminado' : (rest ? 'Restam ' + rest + ' de ' + o.total : 'Esgotado')}</span></div>
-        <div style="font-size:13px;opacity:.9;margin:4px 0">${o.preco} € · ${o.dur} · ${o.total} lugares</div><p style="font-size:14px;margin:6px 0 0;max-width:none">${esc(o.texto)}</p>${S.estado === 'sorteado' || minha ? '' : (rest ? `<button type="button" class="btn ouro pequeno" style="margin-top:10px" data-escolher="${k}">🎁 Participar</button>` : `<div style="margin-top:10px;font-size:13px;opacity:.9">Vagas esgotadas. Abrimos mais vagas em breve.</div>`)}</div>`; }).join('')}</div>`;
+        <div style="font-size:13px;opacity:.9;margin:4px 0">${o.preco} € · ${o.dur} · ${o.total} lugares</div><p style="font-size:14px;margin:6px 0 0;max-width:none">${esc(o.texto)}</p>${S.estado === 'sorteado' || minha ? '' : (rest ? `<button type="button" class="btn ouro pequeno" style="margin-top:10px" data-escolher="${k}">🎁 Participar</button>` : `<div style="margin-top:10px;font-size:13px;opacity:.9">Vagas esgotadas. Abrimos mais vagas em breve.</div>`)}</div>`; }).join('')}</div>` + blocoEspelho();
   }
   function msgWa(k, m){ return 'Olá ' + OF[k].quem + '! Sou ' + m.nome + ' e acabei de me inscrever no site para ' + (k === 'reflexologia' ? 'a reflexologia podal (20 min, 15 €)' : 'a triagem energética com pêndulo hebraico (15 €)') + ' da campanha Black Friday. O meu código é ' + m.codigo + ' e o meu contacto é ' + m.contacto + '. Quando posso marcar?'; }
   function sucesso(){
