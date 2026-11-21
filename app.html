@@ -445,7 +445,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-1';
+const APP_VERSION = '2026-11-21-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12686,6 +12686,7 @@ async function renderTriagemBaixaVibracao(main, opts){
     return;
   }
   opts = opts || {};
+  triApoCarregar();
   if (!opts.manterEstado || !__triagem) __triagemReset();
   if (!window.__allPatientsCache){
     const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients'), orderBy('fullName')));
@@ -13200,6 +13201,53 @@ function triagemSeletorModoHTML(so){
       <button class="${so ? 'ghost' : 'primary'}" onclick="window.__triagemSetModoTrat(false)">🧴 Aplicar já o tratamento</button>
     </div></div>`;
 }
+/* ─── Apometria integrada na Triagem: o que foi detetado pelo pêndulo sugere corpos e técnicas ─── */
+let __apoDados = null;
+async function triApoCarregar(){
+  if (__apoDados === null){ try{ __apoDados = await import('./apometria-dados.js?v=2'); }catch(e){ console.warn('apometria-dados indisponível', e); __apoDados = false; } }
+  return __apoDados;
+}
+const TRI_APO_CORPOS_CHAKRA = { 'Raiz':['fisico','etereo'], 'Sacro':['etereo','astral'], 'Plexo Solar':['astral','mental-inf'], 'Coração':['astral','budico'], 'Garganta':['mental-inf','astral'], 'Terceiro Olho':['mental-sup','mental-inf'], 'Coroa':['atmico','mental-sup'], 'Estrela da Alma':['atmico','mental-sup'], 'Portal Estelar':['atmico','budico'] };
+function triApoCalc(){
+  const D = __apoDados; if (!D || !__triagem) return null;
+  const achados = []; const corpos = new Set(); const tec = new Set();
+  TRIAGEM_BAIXA_VIBRACAO.forEach((x, i) => {
+    if (!__triagem.baixaVibracao[i]) return;
+    const c = D.CAUSAS_40.find(k => k.n === x.n); const a = c && D.ACHADOS.find(z => z.id === c.cat);
+    if (!a) return;
+    if (!achados.some(y => y.id === a.id)) achados.push(a);
+    (a.corpos || []).forEach(k => corpos.add(k)); (a.tecnicas || []).forEach(k => tec.add(k));
+  });
+  const chk = TRIAGEM_CHAKRAS_9.filter((c, i) => triChakraAfetado({ estado: __triagem.chakras[i] }));
+  chk.forEach(c => (TRI_APO_CORPOS_CHAKRA[c.nome] || []).forEach(k => corpos.add(k)));
+  if (chk.length) tec.add('chakras');
+  if (!achados.length && !chk.length) return null;
+  const todas = D.TECNICAS;
+  const lista = ids => ids.map(id => todas.find(t => t.id === id)).filter(Boolean);
+  const normais = lista(Array.from(tec)).filter(t => !t.forte && !t.fixa && t.id !== 'pesquisa');
+  const fortes = lista(Array.from(tec)).filter(t => t.forte);
+  return { achados, corpos: D.CORPOS.filter(c => corpos.has(c.id)), chakras: chk, normais, fortes, inicio: todas.find(t => t.id === 'preparar'), fim: todas.find(t => t.id === 'selar'), alertas: D.ALERTAS };
+}
+window.__triApoSeguro = function(v){ if (__triagem) __triagem.apoSeguro = !!v; renderTriagemPasso(document.getElementById('mainView')); };
+function triApoCard(paraRelatorio){
+  const r = triApoCalc();
+  if (!r) return '';
+  const li = t => `<li><b>${escapeHtml(t.nome)}</b> <span class="muted">(${escapeHtml(t.dur || '')})</span></li>`;
+  const seguro = !!__triagem.apoSeguro;
+  const fortes = r.fortes.length ? (seguro
+    ? `<p style="margin:8px 0 2px;"><b>Técnicas mais intensas (só com experiência):</b></p><ul style="margin:0 0 0 18px;">${r.fortes.map(li).join('')}</ul>`
+    : `<p class="muted" style="font-size:.82rem;margin-top:8px;">Há ${r.fortes.length} técnica(s) mais intensa(s) indicadas pelo que saiu. Confirma abaixo que não há sinais de alerta para as veres.</p>`) : '';
+  const confirmacao = paraRelatorio ? '' : `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:.84rem;">⚠️ Não usar técnicas intensas com: ${r.alertas.map(a => escapeHtml(a.texto.charAt(0).toLowerCase() + a.texto.slice(1))).join('; ')}.<label style="display:flex;gap:8px;align-items:center;font-weight:400;margin-top:6px;"><input type="checkbox" style="width:auto;" ${seguro ? 'checked' : ''} onchange="window.__triApoSeguro(this.checked)"> Confirmo que não há nenhum destes sinais de alerta</label></div>`;
+  return `<div class="card" style="border:2px solid #7c3aed;"><h3>🌀 Apometria — sugerida pelo que foi detetado</h3>
+    <p class="muted" style="font-size:.85rem;">Junta ao pêndulo o trabalho nos corpos subtis. Leitura orientativa, decide o terapeuta.</p>
+    ${r.achados.length ? `<p style="margin:6px 0 2px;"><b>Interferências detetadas:</b> ${r.achados.map(a => escapeHtml(a.nome)).join('; ')}.</p>` : ''}
+    ${r.chakras.length ? `<p style="margin:6px 0 2px;"><b>Chakras a harmonizar:</b> ${r.chakras.map(c => escapeHtml(c.nome)).join(', ')}.</p>` : ''}
+    <p style="margin:6px 0 2px;"><b>Corpos a trabalhar:</b> ${r.corpos.map(c => escapeHtml(c.nome)).join(' · ')}.</p>
+    <p style="margin:8px 0 2px;"><b>Técnicas, por ordem:</b></p>
+    <ol style="margin:0 0 0 18px;">${[r.inicio].concat(r.normais, [r.fim]).filter(Boolean).map(li).join('')}</ol>
+    ${fortes}${confirmacao}</div>`;
+}
+
 function triagemPassoTratamento(main){
   const itens = triagemItensAplicar();
   const n1 = (__triagem.numConsulta || 1) === 1;
@@ -13214,6 +13262,7 @@ function triagemPassoTratamento(main){
         <p class="muted">Faz-se só a triagem energética. Não se aplica nenhuma etiqueta, não se pede pagamento e não se marcam sessões. O relatório diz que ainda não foi feito nenhum tratamento.</p>
         <p class="muted" style="margin-top:8px;">Se a pessoa decidir avançar, abre a Triagem, escolhe o paciente e toca em <strong>Aplicar o tratamento agora</strong>: a primeira limpeza faz-se a partir desta mesma triagem, que fica guardada na ficha.</p>
       </div>
+      ${triApoCard(false)}
       <div class="row" style="margin-top:12px;">
         <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
         <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
@@ -13233,6 +13282,7 @@ function triagemPassoTratamento(main){
       <button class="primary" style="width:100%;padding:14px;" onclick="triEterAbrir('todas')">⚡ Todas em conjunto, testemunho ao centro</button>
       <button class="ghost" style="width:100%;padding:14px;margin-top:8px;" onclick="triEterAbrir('uma')">1️⃣ Uma a uma</button>
     </div>
+    ${triApoCard(false)}
     <div class="card">
       <h3>Lista das etiquetas <span class="muted" style="font-weight:400;font-size:.8rem;">(para marcar à mão, ou se usares as etiquetas físicas)</span></h3>
       <p class="muted">${n1 ? '1.ª consulta: protocolo completo.' : 'Etiquetas escolhidas pelo que saiu na triagem de hoje.'} São ${itens.length} etiquetas, por ordem. Toca em cada uma quando a aplicares.</p>
@@ -19260,6 +19310,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
         ? chakrasTodos.filter(triChakraAfetado).map(c => `<p class="muted">${escapeHtml(c.nome)}: <strong style="color:${(TRIAGEM_ESTADOS_CHAKRA.find(e => e.id === triEstadoChakra(c)) || {}).cor || '#c0392b'};">${triRotuloEstado(triEstadoChakra(c))}</strong> ⚠️</p>`).join('') + '<p class="muted">Os restantes chakras estão equilibrados.</p>'
         : '<p class="muted">Todos os chakras estão equilibrados.</p>'}
     </div>
+    ${triApoCard(true)}
     ${window.chakraSeccaoTriagem ? window.chakraSeccaoTriagem(chakrasTodos.filter(triChakraAfetado).map(c => ({ nome: c.nome, estadoRotulo: triRotuloEstado(triEstadoChakra(c)), cor: (TRIAGEM_ESTADOS_CHAKRA.find(e => e.id === triEstadoChakra(c)) || {}).cor || '#c0392b' }))) : ''}
     <div class="card"><h3>🛤️ Abertura de Caminhos</h3><p><strong>${escapeHtml(aberturaNivel)}</strong></p></div>
     ${comparacao ? `<div class="card" style="border:2px solid #4a9d5f;">
