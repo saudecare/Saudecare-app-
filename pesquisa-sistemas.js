@@ -112,7 +112,7 @@
     'Desproteção':['protecao','limpeza','chakras','oracao'], 'Desvalorização':['limpeza','chakras','reiki','meditacao'], 'Impotência':['limpeza','cordoes','chakras','meditacao'],
     'Sobrevivência':['limpeza','chakras','espaco','casa'], 'Perda':['cordoes','vidas','chakras','oracao','meditacao']
   };
-  const NIVEIS = [['ok','Equilibrado','#16a34a'],['alt','Atenção','#d97706'],['mui','Forte','#dc2626']];
+  const NIVEIS = [['ok','Equilibrado','#16a34a'],['alt','Em desarmonia','#d97706'],['mui','Bloqueado','#dc2626']];
   const EPOCAS = ['Gestação','Infância','Adolescência','Idade adulta','Transgeracional (da família)'];
   const NOTA_RECAIDAS = 'Uma nota importante sobre o seu caminho\nSentir-se melhor não quer dizer que nunca mais vai sentir ansiedade, tristeza ou cansaço. É normal que, entre consultas ou depois da alta, alguns momentos voltem, sobretudo em dias de mais stress. Isso não significa que o trabalho falhou, nem que voltou ao início.\nAs emoções fazem parte da vida, e um escudo pode voltar a ativar-se perante situações parecidas com as que o criaram. A consulta abre o caminho e dá-lhe ferramentas. É no dia a dia que vai aprendendo a usá-las: reconhecer o que sente, respirar, dar nome à emoção, pedir ajuda e voltar ao que trabalhámos juntos. Cada recaída é uma oportunidade de se conhecer melhor, e cada vez recupera mais depressa.\nEste acompanhamento é complementar e não substitui o seu médico ou psicólogo.';
   const AVISO = 'Leitura orientativa e complementar, com base na pesquisa feita. Não é um diagnóstico.';
@@ -236,7 +236,7 @@
   function lerP3(){ S.queixas = $('psQueixas')?.value ?? S.queixas; S.notas = $('psNotas')?.value ?? S.notas; S.notasNoRel = !!$('psNotasRel')?.checked; }
   function p3(){
     const al = alterados(); const e = ESCUDOS[S.escudo];
-    const lista = al.length ? al.map(p => `<div style="padding:8px 0;border-top:1px solid #eee;"><b>${esc(p.nome)}</b> <span style="color:${p_cor(p)};font-weight:700;">· ${S.pontos[p.id] === 'mui' ? 'forte' : 'atenção'}</span><div style="font-size:.85rem;">Representa: ${esc(p.tema)}. Com o escudo da ${S.escudo} ${esc(e.lente)}.</div><div style="font-size:.85rem;font-style:italic;">Pergunta: ${esc(p.pergunta)}</div></div>`).join('') : '<p class="muted">Não marcaste nenhum ponto como alterado. Volta atrás para pesquisar, ou segue só com o escudo.</p>';
+    const lista = al.length ? al.map(p => `<div style="padding:8px 0;border-top:1px solid #eee;"><b>${esc(p.nome)}</b> <span style="color:${p_cor(p)};font-weight:700;">· ${S.pontos[p.id] === 'mui' ? 'bloqueado' : 'em desarmonia'}</span><div style="font-size:.85rem;">Representa: ${esc(p.tema)}. Com o escudo da ${S.escudo} ${esc(e.lente)}.</div><div style="font-size:.85rem;font-style:italic;">Pergunta: ${esc(p.pergunta)}</div></div>`).join('') : '<p class="muted">Não marcaste nenhum ponto como alterado. Volta atrás para pesquisar, ou segue só com o escudo.</p>';
     return `<div class="card"><h3 style="margin-top:0;">3. Cruzar pontos com o escudo</h3>
       <p class="muted">Um ponto sozinho é uma pista. O escudo mostra o tom emocional; a história da pessoa confirma.</p>${lista}
       <label style="margin-top:12px;">Queixas (com as palavras da pessoa)</label><textarea id="psQueixas" rows="3" placeholder="ex: Não durmo bem, sinto o peito apertado…">${esc(S.queixas)}</textarea>
