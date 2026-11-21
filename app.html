@@ -417,7 +417,7 @@
 <script type="module" src="pe-carregador.js"></script>
 <script type="module" src="cg-imagens.js?v=2026-11-15-8"></script>
 <script src="chakras-leitura.js?v=2026-11-20-2"></script>
-<script src="pesquisa-sistemas.js?v=2026-11-21-7"></script>
+<script src="pesquisa-sistemas.js?v=2026-11-21-10"></script>
 <script src="causas-ficha.js?v=2026-11-21-7"></script>
 <script type="module" src="consulta-guiada.js?v=2026-11-20-11"></script>
 
@@ -446,7 +446,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-8';
+const APP_VERSION = '2026-11-21-10';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11933,8 +11933,8 @@ const TRIAGEM_NIVEIS_ABERTURA = ['Aberto','Parcialmente Aberto','Bloqueado','Mui
    Sessões antigas guardadas com percentagem continuam a abrir: <40% = bloqueado, 40-69% = desarmonia. */
 const TRIAGEM_ESTADOS_CHAKRA = [
   { id:'ok', rotulo:'Equilibrado', cor:'#2e7d32' },
-  { id:'desarmonia', rotulo:'Em desarmonia', cor:'#d68910' },
-  { id:'bloqueado', rotulo:'Bloqueado', cor:'#c0392b' }
+  { id:'desarmonia', rotulo:'Atenção', cor:'#d68910' },
+  { id:'bloqueado', rotulo:'Forte', cor:'#c0392b' }
 ];
 function triEstadoChakra(c){
   if (!c) return 'ok';
@@ -13453,8 +13453,8 @@ function triagemPassoChakras(main){
     <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
     ${triagemProgressoHTML()}
     <div class="card">
-      <h3>5. Chakras (1 a 9) — Quais estão em desarmonia ou bloqueados?</h3>
-      <p class="muted">Pesquise com o pêndulo só os chakras que estão <strong>em desarmonia</strong> ou <strong>bloqueados</strong>. Os que não estiverem, deixe em «Equilibrado». Não se usam percentagens.</p>
+      <h3>5. Chakras (1 a 9) — Quais precisam de atenção?</h3>
+      <p class="muted">Pesquise com o pêndulo só os chakras que precisam de <strong>atenção</strong> ou estão <strong>fortes</strong> (muito afetados). Os que não estiverem, deixe em «Equilibrado». Não se usam percentagens.</p>
       ${infoTodosBotaoHTML()}
       ${TRIAGEM_CHAKRAS_9.map((c,i) => `
         <div class="row" style="margin-bottom:6px;align-items:center;">
@@ -18247,7 +18247,7 @@ function triagemAreasVida(d, nome, idade){
   const sp = [];
   const fr = d.chakrasTodos.filter(triChakraAfetado);
   if (fr.length){
-    sp.push(`Os centros em desarmonia ou bloqueados costumam associar-se a: ${fr.map(c => { const k = Object.keys(TRI_CHAKRA_CORPO).find(x => String(c.nome).indexOf(x) === 0); return TRI_CHAKRA_CORPO[k] || c.nome; }).join('; ')}. É uma indicação do que pode estar mais sensível, e não um diagnóstico.`);
+    sp.push(`Os centros que precisam de atenção costumam associar-se a: ${fr.map(c => { const k = Object.keys(TRI_CHAKRA_CORPO).find(x => String(c.nome).indexOf(x) === 0); return TRI_CHAKRA_CORPO[k] || c.nome; }).join('; ')}. É uma indicação do que pode estar mais sensível, e não um diagnóstico.`);
   //fr.map(c => { const k = Object.keys(TRI_CHAKRA_CORPO).find(x => String(c.nome).indexOf(x) === 0); return TRI_CHAKRA_CORPO[k] || c.nome; }))}. É uma indicação do que pode estar mais sensível, e não um diagnóstico.`);
   } else sp.push(`Os centros de energia estão equilibrados, o que é um bom sinal para a vitalidade de ${nome}.`);
   const dorm = [tem(35)&&'sono agitado ou pesadelos', tem(37)&&'cansaço persistente sem causa física', tem(31,10)&&'tensão e dificuldade em relaxar', tem(13,14)&&'sono leve ou cansaço em certos locais'].filter(Boolean);
@@ -18878,7 +18878,7 @@ async function triagemGerarRelatorio(){
     if (cruzamentoVidasPassadas) reportText += `🔗 Ligação com o Mapa da Alma: ${cruzamentoVidasPassadas.motivo} pode estar ligado ao Nodo Sul em ${cruzamentoVidasPassadas.nodoSulSigno} — ${cruzamentoVidasPassadas.nodoSulTexto}\n\n`;
   } else reportText += 'Nenhuma — campo equilibrado.\n\n';
   { const afCk = chakrasTodos.filter(triChakraAfetado);
-    reportText += `== Chakras em desarmonia ou bloqueados ==\n${afCk.length ? afCk.map(c => `• ${c.nome}: ${triRotuloEstado(triEstadoChakra(c)).toLowerCase()} ⚠️`).join('\n') + '\nOs restantes chakras estão equilibrados.' : 'Nenhum — todos os chakras estão equilibrados.'}\n\n`; }
+    reportText += `== Chakras a trabalhar (atenção ou forte) ==\n${afCk.length ? afCk.map(c => `• ${c.nome}: ${triRotuloEstado(triEstadoChakra(c)).toLowerCase()} ⚠️`).join('\n') + '\nOs restantes chakras estão equilibrados.' : 'Nenhum — todos os chakras estão equilibrados.'}\n\n`; }
   reportText += `== Abertura de Caminhos ==\n${aberturaNivel}\n\n`;
   if (comparacao){
     reportText += `== Evolução desde a última sessão ==\n`;
@@ -19352,7 +19352,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
         <p class="muted" style="margin-top:4px;">${escapeHtml(cruzamentoVidasPassadas.motivo)} pode estar ligado ao Nodo Sul em <strong>${escapeHtml(cruzamentoVidasPassadas.nodoSulSigno)}</strong> — ${escapeHtml(cruzamentoVidasPassadas.nodoSulTexto)}</p>
       </div>` : ''}
     </div>` : ''}
-    <div class="card"><h3>🌀 Chakras em desarmonia ou bloqueados</h3>
+    <div class="card"><h3>🌀 Chakras a trabalhar (atenção ou forte)</h3>
       ${chakrasTodos.filter(triChakraAfetado).length
         ? chakrasTodos.filter(triChakraAfetado).map(c => `<p class="muted">${escapeHtml(c.nome)}: <strong style="color:${(TRIAGEM_ESTADOS_CHAKRA.find(e => e.id === triEstadoChakra(c)) || {}).cor || '#c0392b'};">${triRotuloEstado(triEstadoChakra(c))}</strong> ⚠️</p>`).join('') + '<p class="muted">Os restantes chakras estão equilibrados.</p>'
         : '<p class="muted">Todos os chakras estão equilibrados.</p>'}

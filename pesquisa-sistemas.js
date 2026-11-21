@@ -112,7 +112,7 @@
     'Desproteção':['protecao','limpeza','chakras','oracao'], 'Desvalorização':['limpeza','chakras','reiki','meditacao'], 'Impotência':['limpeza','cordoes','chakras','meditacao'],
     'Sobrevivência':['limpeza','chakras','espaco','casa'], 'Perda':['cordoes','vidas','chakras','oracao','meditacao']
   };
-  const NIVEIS = [['ok','Normal','#16a34a'],['alt','Alterado','#d97706'],['mui','Muito alterado','#dc2626']];
+  const NIVEIS = [['ok','Equilibrado','#16a34a'],['alt','Atenção','#d97706'],['mui','Forte','#dc2626']];
   const EPOCAS = ['Gestação','Infância','Adolescência','Idade adulta','Transgeracional (da família)'];
   const NOTA_RECAIDAS = 'Uma nota importante sobre o seu caminho\nSentir-se melhor não quer dizer que nunca mais vai sentir ansiedade, tristeza ou cansaço. É normal que, entre consultas ou depois da alta, alguns momentos voltem, sobretudo em dias de mais stress. Isso não significa que o trabalho falhou, nem que voltou ao início.\nAs emoções fazem parte da vida, e um escudo pode voltar a ativar-se perante situações parecidas com as que o criaram. A consulta abre o caminho e dá-lhe ferramentas. É no dia a dia que vai aprendendo a usá-las: reconhecer o que sente, respirar, dar nome à emoção, pedir ajuda e voltar ao que trabalhámos juntos. Cada recaída é uma oportunidade de se conhecer melhor, e cada vez recupera mais depressa.\nEste acompanhamento é complementar e não substitui o seu médico ou psicólogo.';
   const AVISO = 'Leitura orientativa e complementar, com base na pesquisa feita. Não é um diagnóstico.';
@@ -164,7 +164,8 @@
     const botoes = ESCUDO_NOMES.map(n => { const e = ESCUDOS[n]; const on = S.escudo === n; return `<button class="${on ? 'primary' : 'ghost'}" style="width:100%;text-align:left;margin-top:8px;padding:10px;" onclick="psEscudo('${n}')"><b>${e.emoji} Escudo da ${n === 'Perda' ? 'Perda' : n}</b><br><span style="font-size:.85em;opacity:.85;">${esc(e.sentido)}</span></button>`; }).join('');
     const e = S.escudo ? ESCUDOS[S.escudo] : null;
     return `<div class="card"><h3 style="margin-top:0;">1. Escudo emocional mais ativo</h3>
-      <p class="muted">Pesquisa com o pêndulo qual dos 5 escudos está mais ativo agora.</p>${botoes}
+      <p class="muted">Pesquisa com o pêndulo qual dos 5 escudos está mais ativo agora.</p>
+      <div style="background:#f1f7f4;border-radius:8px;padding:8px 10px;font-size:.85rem;margin-bottom:6px;">📋 <b>Antes da consulta:</b> se ainda não enviaste, manda ao paciente o questionário de pré-consulta (inclui o rastreio de segurança e o consentimento). <button type="button" class="ghost" style="width:auto;padding:4px 10px;margin-top:6px;" onclick="renderView('pesqIntegrada')">Abrir a Pesquisa Integrada</button></div>${botoes}
       ${e ? `<div style="margin-top:10px;background:#f1f7f4;border-left:3px solid var(--primary,#2f6f5e);padding:8px 10px;border-radius:6px;font-size:.88rem;"><b>Função do escudo:</b> ${esc(e.funcao)}<br><b>Frases típicas:</b> ${e.frases.map(esc).join(' · ')}<br><b>Chakras habitualmente ligados:</b> ${e.chakras.join(', ')}</div>` : ''}
       ${e ? `<div style="margin-top:10px;background:#faf5ff;border-left:3px solid #7c3aed;padding:8px 10px;border-radius:6px;font-size:.86rem;"><b>🔎 Energias a pesquisar primeiro (das 40)</b><br><span class="muted">Sugestão para poupar tempo. Confirma sempre com o pêndulo; na Triagem tens a lista completa.</span>${(ESCUDO_CAUSAS[S.escudo] || []).map(n => `<div style="margin-top:5px;"><b>${n}. ${esc(causaNome(n))}</b>${causaPerg(n) ? `<br><span style="font-style:italic;">${esc(causaPerg(n))}</span>` : ''}</div>`).join('')}</div>` : ''}
       <label style="margin-top:12px;">Com que idade este escudo se ativou? (anos)</label>
@@ -190,7 +191,7 @@
           <div id="pg-${p.id}" style="display:flex;gap:6px;margin-top:4px;">${NIVEIS.map(([v, t, cor]) => { const on = (S.pontos[p.id] || 'ok') === v; return `<button type="button" data-v="${v}" data-c="${cor}" onclick="psPonto('${p.id}','${v}')" style="flex:1;padding:7px 4px;border-radius:8px;border:2px solid ${cor};background:${on ? cor : '#fff'};color:${on ? '#fff' : '#444'};font-weight:600;font-size:.8rem;">${t}</button>`; }).join('')}</div></div>`).join('')}</div>`;
     }).join('');
     return `<div class="card"><h3 style="margin-top:0;">2. Chakras, glândulas e órgãos</h3>
-      <p class="muted">★ = chakras habitualmente ligados ao escudo escolhido. Marca os que vais pesquisar com o pêndulo. Deixa em «Normal» o que não estiver alterado.</p>
+      <p class="muted">★ = chakras habitualmente ligados ao escudo escolhido. Marca os que vais pesquisar com o pêndulo. Deixa em «Equilibrado» o que não estiver alterado.</p>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">${chips}</div></div>${blocos}${nav(true, true)}`;
   }
 
@@ -200,7 +201,7 @@
   function lerP3(){ S.queixas = $('psQueixas')?.value ?? S.queixas; S.notas = $('psNotas')?.value ?? S.notas; S.notasNoRel = !!$('psNotasRel')?.checked; }
   function p3(){
     const al = alterados(); const e = ESCUDOS[S.escudo];
-    const lista = al.length ? al.map(p => `<div style="padding:8px 0;border-top:1px solid #eee;"><b>${esc(p.nome)}</b> <span style="color:${p_cor(p)};font-weight:700;">· ${S.pontos[p.id] === 'mui' ? 'muito alterado' : 'alterado'}</span><div style="font-size:.85rem;">Representa: ${esc(p.tema)}. Com o escudo da ${S.escudo} ${esc(e.lente)}.</div><div style="font-size:.85rem;font-style:italic;">Pergunta: ${esc(p.pergunta)}</div></div>`).join('') : '<p class="muted">Não marcaste nenhum ponto como alterado. Volta atrás para pesquisar, ou segue só com o escudo.</p>';
+    const lista = al.length ? al.map(p => `<div style="padding:8px 0;border-top:1px solid #eee;"><b>${esc(p.nome)}</b> <span style="color:${p_cor(p)};font-weight:700;">· ${S.pontos[p.id] === 'mui' ? 'forte' : 'atenção'}</span><div style="font-size:.85rem;">Representa: ${esc(p.tema)}. Com o escudo da ${S.escudo} ${esc(e.lente)}.</div><div style="font-size:.85rem;font-style:italic;">Pergunta: ${esc(p.pergunta)}</div></div>`).join('') : '<p class="muted">Não marcaste nenhum ponto como alterado. Volta atrás para pesquisar, ou segue só com o escudo.</p>';
     return `<div class="card"><h3 style="margin-top:0;">3. Cruzar pontos com o escudo</h3>
       <p class="muted">Um ponto sozinho é uma pista. O escudo mostra o tom emocional; a história da pessoa confirma.</p>${lista}
       <label style="margin-top:12px;">Queixas (com as palavras da pessoa)</label><textarea id="psQueixas" rows="3" placeholder="ex: Não durmo bem, sinto o peito apertado…">${esc(S.queixas)}</textarea>
