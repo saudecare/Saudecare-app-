@@ -418,6 +418,7 @@
 <script type="module" src="cg-imagens.js?v=2026-11-15-8"></script>
 <script src="chakras-leitura.js?v=2026-11-20-2"></script>
 <script src="pesquisa-sistemas.js?v=2026-11-21-3"></script>
+<script src="causas-ficha.js?v=2026-11-21-4"></script>
 <script type="module" src="consulta-guiada.js?v=2026-11-20-11"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
@@ -445,7 +446,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-2';
+const APP_VERSION = '2026-11-21-4';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -11790,6 +11791,7 @@ async function renderCartomancia(main){
 
 /* ─── 40 causas de baixa vibração, com descrição em linguagem simples
    + exemplo — porque a maioria dos clientes não conhece estes termos. */
+window.__causaNome = n => { const x = (typeof TRIAGEM_BAIXA_VIBRACAO !== 'undefined') && TRIAGEM_BAIXA_VIBRACAO.find(c => c.n === n); return x ? x.nome : ''; };
 const TRIAGEM_BAIXA_VIBRACAO = [
   { n:1, nome:"Miasma", temas:["Miasma","Purificar","Limpeza de impurezas"],
     descricao:"Resíduo energético denso que se acumula por doenças, ambientes ou convivências negativas — como uma 'poeira espiritual' que baixa a vitalidade.",
@@ -13229,6 +13231,9 @@ function triApoCalc(){
   return { achados, corpos: D.CORPOS.filter(c => corpos.has(c.id)), chakras: chk, normais, fortes, inicio: todas.find(t => t.id === 'preparar'), fim: todas.find(t => t.id === 'selar'), alertas: D.ALERTAS };
 }
 window.__triApoSeguro = function(v){ if (__triagem) __triagem.apoSeguro = !!v; renderTriagemPasso(document.getElementById('mainView')); };
+function triFichasEnergias(paraRelatorio){
+  try{ const ns = TRIAGEM_BAIXA_VIBRACAO.filter((x, i) => __triagem.baixaVibracao[i]).map(x => x.n); return window.causaFichasCard ? window.causaFichasCard(ns, paraRelatorio) : ''; }catch(e){ return ''; }
+}
 function triApoCard(paraRelatorio){
   const r = triApoCalc();
   if (!r) return '';
@@ -13270,7 +13275,7 @@ function triagemPassoTratamento(main){
         <p class="muted">Faz-se só a triagem energética. Não se aplica nenhuma etiqueta, não se pede pagamento e não se marcam sessões. O relatório diz que ainda não foi feito nenhum tratamento.</p>
         <p class="muted" style="margin-top:8px;">Se a pessoa decidir avançar, abre a Triagem, escolhe o paciente e toca em <strong>Aplicar o tratamento agora</strong>: a primeira limpeza faz-se a partir desta mesma triagem, que fica guardada na ficha.</p>
       </div>
-      ${triApoCard(false)}
+      ${triFichasEnergias(false)}${triApoCard(false)}
       <div class="row" style="margin-top:12px;">
         <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
         <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
@@ -13290,7 +13295,7 @@ function triagemPassoTratamento(main){
       <button class="primary" style="width:100%;padding:14px;" onclick="triEterAbrir('todas')">⚡ Todas em conjunto, testemunho ao centro</button>
       <button class="ghost" style="width:100%;padding:14px;margin-top:8px;" onclick="triEterAbrir('uma')">1️⃣ Uma a uma</button>
     </div>
-    ${triApoCard(false)}
+    ${triFichasEnergias(false)}${triApoCard(false)}
     <div class="card">
       <h3>Lista das etiquetas <span class="muted" style="font-weight:400;font-size:.8rem;">(para marcar à mão, ou se usares as etiquetas físicas)</span></h3>
       <p class="muted">${n1 ? '1.ª consulta: protocolo completo.' : 'Etiquetas escolhidas pelo que saiu na triagem de hoje.'} São ${itens.length} etiquetas, por ordem. Toca em cada uma quando a aplicares.</p>
@@ -13362,11 +13367,11 @@ function triagemPassoTratamento(main){
 }
 
 /* Descrição e exemplo por item: botão ℹ️ em cada linha + um botão para ver todas de uma vez. */
-function infoItemHTML(id, descricao, exemplo){
+function infoItemHTML(id, descricao, exemplo, extra){
   if (!descricao && !exemplo) return '';
   return `<div id="${id}" class="info-bloco" style="display:none;margin:2px 0 8px 34px;padding:8px 10px;background:#f1f7f4;border-left:3px solid var(--primary,#2f6f5e);border-radius:6px;font-size:.85rem;line-height:1.45;">
     ${descricao ? `<div><b>O que é:</b> ${escapeHtml(descricao)}</div>` : ''}
-    ${exemplo ? `<div style="margin-top:4px;font-style:italic;"><b>Exemplo:</b> ${escapeHtml(exemplo)}</div>` : ''}</div>`;
+    ${exemplo ? `<div style="margin-top:4px;font-style:italic;"><b>Exemplo:</b> ${escapeHtml(exemplo)}</div>` : ''}${extra || ''}</div>`;
 }
 function infoBotaoHTML(id){ return `<button type="button" class="ghost" aria-label="O que é e exemplo" title="O que é e exemplo" onclick="infoToggle('${id}')" style="width:auto;padding:2px 8px;font-size:15px;line-height:1.2;flex-shrink:0;">ℹ️</button>`; }
 window.infoToggle = function(id){ const e = document.getElementById(id); if (e) e.style.display = (e.style.display === 'none' || !e.style.display) ? 'block' : 'none'; };
@@ -13393,7 +13398,7 @@ function triagemPassoBaixaVibracao(main){
           <input type="checkbox" id="triagem-bv-${item.n}" style="width:20px;height:20px;margin:0 8px;flex-shrink:0;" ${__triagem.baixaVibracao[item.n-1]?'checked':''} onchange="window.__triagemToggleBV(${item.n}, this.checked)">
           <label for="triagem-bv-${item.n}" style="flex:1;font-size:14px;">${escapeHtml(item.nome)}${(__triagem.anterior?.baixaVibracaoDetetada || []).indexOf(item.nome) >= 0 ? ' <span class="muted" style="font-size:12px;">(confirmada na última consulta)</span>' : ''}</label>
           ${infoBotaoHTML('bv-info-' + item.n)}
-        </div>${infoItemHTML('bv-info-' + item.n, item.descricao, item.exemplo)}`).join('')}
+        </div>${infoItemHTML('bv-info-' + item.n, item.descricao, item.exemplo, window.causaFichaInfo ? window.causaFichaInfo(item.n) : '')}`).join('')}
     </div>
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
