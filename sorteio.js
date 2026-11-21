@@ -25,7 +25,7 @@ export function renderSorteio(main, ctx) {
     const part = s.semCompra !== false
       ? 'A participação é gratuita e não depende da compra de qualquer produto ou serviço.'
       : 'Participam as pessoas que reservarem uma das cortesias (gratuitas) ou que fizerem uma marcação de triagem energética ou de reflexologia podal durante o período de participação. A organização regista cada marcação como uma participação.';
-    const ofertas = (nR || nT) ? `\nCortesias da campanha (gratuitas, por ordem de reserva, até esgotarem):\n${nR ? `• ${nR} sessões de reflexologia podal de 20 minutos.\n` : ''}${nT ? `• ${nT} triagens energéticas com pêndulo hebraico.\n` : ''}São trabalhos de bem-estar e autoconhecimento, não substituem acompanhamento médico ou psicológico nem fazem diagnósticos.\n` : '';
+    const ofertas = (nR || nT) ? `\nCortesias da campanha (gratuitas, por ordem de reserva, até esgotarem):\n${nR ? '• Sessões de reflexologia podal de 20 minutos.\n' : ''}${nT ? '• Triagens energéticas com pêndulo hebraico.\n' : ''}O número de lugares disponíveis está indicado nesta página e pode ser reforçado conforme a disponibilidade dos terapeutas. São trabalhos de bem-estar e autoconhecimento, não substituem acompanhamento médico ou psicológico nem fazem diagnósticos.\n` : '';
     return `REGULAMENTO — ${s.titulo || 'Sorteio'}
 
 1. Organização
@@ -142,7 +142,7 @@ Este regulamento rege-se pela lei portuguesa. Livro de Reclamações disponível
     const s = atual, alvo = $('soResto'); if (!alvo) return;
     const validos = parts.filter((p) => !p.excluido);
     const vencs = parts.filter((p) => p.vencedor || p.suplente).sort((a, b) => (a.vencedor ? 0 : a.suplente) - (b.vencedor ? 0 : b.suplente));
-    alvo.innerHTML = `<div class="card"><h3>👥 Participações: ${validos.length}</h3><p class="muted">Cortesias reservadas: 🦶 ${parts.filter((x) => (x.servicos || []).includes('reflexologia')).length}/${s.lugaresReflexologia || 0} · 🔮 ${parts.filter((x) => (x.servicos || []).includes('triagem')).length}/${s.lugaresTriagem || 0}. Quem marcar fora das cortesias: use "➕ Marcação / manual".</p>
+    alvo.innerHTML = `<div class="card"><h3>👥 Participações: ${validos.length}</h3><p class="muted">Cortesias reservadas: 🦶 ${parts.filter((x) => (x.servicos || []).includes('reflexologia')).length}/${s.lugaresReflexologia || 0} · 🔮 ${parts.filter((x) => (x.servicos || []).includes('triagem')).length}/${s.lugaresTriagem || 0}. Quem marcar fora das cortesias: use "➕ Marcação / manual".</p>${s.estado === 'aberto' ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0"><button class="ghost" onclick="soMaisVaga('reflexologia')">➕ +1 vaga reflexologia</button><button class="ghost" onclick="soMaisVaga('triagem')">➕ +1 vaga triagem</button></div>` : ''}
       ${s.estado === 'sorteado' ? '' : `<div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0"><input id="soPNome" placeholder="Nome" style="flex:1;min-width:120px;padding:9px;border:1px solid #ddd;border-radius:10px"><input id="soPCont" placeholder="Contacto" style="flex:1;min-width:120px;padding:9px;border:1px solid #ddd;border-radius:10px"><button class="ghost" onclick="soAddPart()">➕ Marcação / manual</button></div>`}
       <div style="max-height:220px;overflow:auto;font-size:13.5px">${validos.map((p) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid #eee"><span>${esc(p.nome)} <span class="muted">· ${esc(p.contacto)}${p.origem && p.origem !== 'site' ? ' · ' + esc(p.origem) : ''}${(p.servicos || []).length ? ' · ' + p.servicos.map((k) => k === 'reflexologia' ? '🦶' : '🔮').join('') : ''}</span></span><span class="muted">${esc(p.codigo)}${s.estado === 'sorteado' ? '' : ` <a href="#" onclick="soExcluir('${p.id}');return false" title="Excluir">🗑️</a>`}</span></div>`).join('') || '<p class="muted">Ainda ninguém participou.</p>'}</div>
       ${s.estado === 'aberto' || s.estado === 'fechado' ? `<button class="primary" style="width:100%;margin-top:10px" onclick="soSortear()" ${validos.length ? '' : 'disabled'}>🎲 Sortear agora</button><p class="muted">Se não clicar, o sorteio faz-se sozinho à hora marcada (depende da função do servidor estar publicada).</p>` : ''}
@@ -159,7 +159,7 @@ Este regulamento rege-se pela lei portuguesa. Livro de Reclamações disponível
   /* ───── ações ───── */
   const ler = () => {
     const v = (id) => ($(id) ? $(id).value.trim() : '');
-    return { titulo: v('soTitulo'), premio: v('soPremio'), descricao: v('soDesc'), inicio: v('soInicio'), fim: v('soFim'), sorteioEm: v('soSorteioEm'), organizador: v('soOrg'), contacto: v('soContacto'), validadePremio: v('soValidade'), semCompra: $('soSemCompra').checked, lugaresReflexologia: Math.max(0, Math.min(20, parseInt(v('soLugR'), 10) || 0)), lugaresTriagem: Math.max(0, Math.min(20, parseInt(v('soLugT'), 10) || 0)), regulamento: $('soReg').value };
+    return { titulo: v('soTitulo'), premio: v('soPremio'), descricao: v('soDesc'), inicio: v('soInicio'), fim: v('soFim'), sorteioEm: v('soSorteioEm'), organizador: v('soOrg'), contacto: v('soContacto'), validadePremio: v('soValidade'), semCompra: $('soSemCompra').checked, lugaresReflexologia: Math.max(0, Math.min(50, parseInt(v('soLugR'), 10) || 0)), lugaresTriagem: Math.max(0, Math.min(50, parseInt(v('soLugT'), 10) || 0)), regulamento: $('soReg').value };
   };
   window.soLista = () => ecraLista();
   window.soNovo = () => { atual = novoVazio(); atual.regulamento = regulamento(Object.assign({}, atual, { inicioTs: atual.inicio, fimTs: atual.fim, sorteioTs: atual.sorteioEm })); ecraEditor(); };
@@ -193,6 +193,12 @@ Este regulamento rege-se pela lei portuguesa. Livro de Reclamações disponível
   window.soExcluir = async (pid) => {
     if (!confirm('Excluir esta participação do sorteio?')) return;
     try { await fs.updateDoc(fs.doc(db, 'public_sorteios', atual.id, 'participantes', pid), { excluido: true }); await carregarParts(); desenharResto(); } catch (e) { toast('Não consegui: ' + (e.message || e), true); }
+  };
+  window.soMaisVaga = async (tipo) => {
+    const campo = tipo === 'reflexologia' ? 'lugaresReflexologia' : 'lugaresTriagem';
+    const novo = Math.min(50, (Number(atual[campo]) || 0) + 1);
+    try { await fs.updateDoc(fs.doc(db, 'public_sorteios', atual.id), { [campo]: novo }); atual[campo] = novo; toast('Vaga aberta. Agora são ' + novo + '.'); ecraEditor(); }
+    catch (e) { toast('Não consegui: ' + (e.message || e), true); }
   };
   window.soSortear = async () => {
     await carregarParts();
