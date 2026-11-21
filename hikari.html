@@ -165,7 +165,7 @@ footer{max-width:1040px;margin:34px auto 20px;padding:0 18px;font-size:13px;colo
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, getDocs, collection, query, where, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, getDocs, collection, query, where, setDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const app = initializeApp({
   apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
@@ -382,7 +382,13 @@ arrancar();
     return `<div style="display:grid;gap:12px;margin:16px 0;text-align:left">${ofertas.map(k => {
       const o = OF[k], rest = Math.max(0, o.total - ocup[k]);
       return `<div style="background:rgba(255,255,255,.12);border-radius:16px;padding:14px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:16px">${o.icone} ${o.nome}</b><span style="background:${rest ? 'var(--o)' : '#999'};color:#2b1d00;font-weight:800;font-size:12px;padding:4px 10px;border-radius:100px;white-space:nowrap">${S.estado === 'sorteado' ? 'Terminado' : (rest ? 'Restam ' + rest + ' de ' + o.total : 'Esgotado')}</span></div>
-        <div style="font-size:13px;opacity:.9;margin:4px 0">Grátis · ${o.dur} · ${o.total} lugares</div><p style="font-size:14px;margin:6px 0 0;max-width:none">${esc(o.texto)}</p>${S.estado === 'sorteado' ? '' : `<a class="btn claro pequeno" style="margin-top:10px" target="_blank" rel="noopener" href="${waLink(k)}">💬 Falar com ${o.quem} no WhatsApp</a>`}</div>`; }).join('')}</div>`;
+        <div style="font-size:13px;opacity:.9;margin:4px 0">Grátis · ${o.dur} · ${o.total} lugares</div><p style="font-size:14px;margin:6px 0 0;max-width:none">${esc(o.texto)}</p>${S.estado === 'sorteado' || minha ? '' : (rest ? `<button type="button" class="btn ouro pequeno" style="margin-top:10px" data-escolher="${k}">🎁 Participar</button>` : `<div style="margin-top:10px;font-size:13px;opacity:.9">Vagas esgotadas. Abrimos mais vagas em breve.</div>`)}</div>`; }).join('')}</div>`;
+  }
+  function msgWa(k, m){ return 'Olá ' + OF[k].quem + '! Sou ' + m.nome + ' e acabei de me inscrever no site para ' + (k === 'reflexologia' ? 'a cortesia de reflexologia podal (20 min)' : 'a triagem energética com pêndulo hebraico') + ' da campanha Black Friday. O meu código é ' + m.codigo + ' e o meu contacto é ' + m.contacto + '. Quando posso marcar?'; }
+  function sucesso(){
+    const k = (minha.servicos || [])[0];
+    return `<div class="ok">✅ Inscrição feita${k && OF[k] ? ': ' + OF[k].nome : ''}.<br>O seu código: <b>${esc(minha.codigo)}</b><br><span style="font-size:13px">Já ficou registada. Entra no sorteio do Mapa da Alma Diamante, com resultado a ${esc(fmt(S.sorteioTs))}. Agora combine o dia por WhatsApp:</span>
+      ${k && OF[k] ? `<br><a class="btn ouro pequeno" style="margin-top:8px" target="_blank" rel="noopener" href="https://wa.me/${OF[k].wa}?text=${encodeURIComponent(msgWa(k, minha))}">💬 Abrir WhatsApp com ${OF[k].quem}</a>` : ''}</div>`;
   }
   function desenhar(){
     const aberto = S.estado === 'aberto' && Date.now() <= ms(S.fimTs);
@@ -392,12 +398,14 @@ arrancar();
         : `<div class="ok">🎉 <b>${esc(S.vencedorNome || '')}</b><br><span>Participação n.º <b style="font-size:16px">${esc(S.vencedorCodigo || '')}</b> · ${S.total || ''} participações</span><br><span style="font-size:13px">Sorteio realizado a ${esc(fmt(S.sorteadoEm))}, de forma automática e aleatória. Parabéns!</span></div>`;
     } else if (aberto) {
       const livres = ofertas.filter(k => OF[k].total - ocup[k] > 0);
-      corpo = `<div class="cont" id="soCont"></div>` + (minha ? `<div class="ok">✅ Reserva feita${minha.servicos ? ': ' + minha.servicos.map(k => OF[k] ? OF[k].nome : k).join(' + ') : ''}.<br>O seu código: <b>${esc(minha.codigo)}</b><br><span style="font-size:13px">Guarde-o. Entra no sorteio do Mapa da Alma Diamante, com resultado a ${esc(fmt(S.sorteioTs))}. Combine agora o dia por WhatsApp:</span><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px">${(minha.servicos || []).filter(k => OF[k]).map(k => `<a class="btn ouro pequeno" target="_blank" rel="noopener" href="${waLink(k, minha.codigo)}">💬 ${OF[k].icone} Marcar com ${OF[k].quem}</a>`).join('')}</div></div>`
-        : (livres.length ? `<form id="soForm"><input type="text" id="soNome" placeholder="O seu nome" maxlength="80" autocomplete="name" required><input type="text" id="soContacto" placeholder="E-mail ou telemóvel" maxlength="120" autocomplete="email" required>
-          <div style="display:grid;gap:6px">${livres.map(k => `<label class="ck"><input type="checkbox" name="soServ" value="${k}"><span><b>${OF[k].icone} ${OF[k].nome}</b><br><span style="font-size:12px">Marcação por WhatsApp com ${OF[k].quem}: ${OF[k].wa.replace(/^351(\d{3})(\d{3})(\d{3})$/, '$1 $2 $3')}</span></span></label>`).join('')}</div>
+      corpo = `<div class="cont" id="soCont"></div>` + (minha ? sucesso()
+        : (livres.length ? `<form id="soForm"><div style="font-weight:800;font-size:16px;text-align:center">🎁 Participar</div>
+          <input type="text" id="soNome" placeholder="O seu nome" maxlength="80" autocomplete="name" required><input type="text" id="soContacto" placeholder="E-mail ou telemóvel" maxlength="120" autocomplete="email" required>
+          <div style="font-size:13px;color:#eadcf7">Escolha uma oferta:</div>
+          <div style="display:grid;gap:6px">${ofertas.map(k => { const livre = OF[k].total - ocup[k] > 0; return `<label class="ck" style="${livre ? '' : 'opacity:.5'}"><input type="radio" name="soServ" value="${k}" ${livre ? '' : 'disabled'} ${livres.length === 1 && livre ? 'checked' : ''}><span><b>${OF[k].icone} ${OF[k].nome}</b>${livre ? '' : ' (esgotado)'}<br><span style="font-size:12px">Combina o dia com ${OF[k].quem} por WhatsApp.</span></span></label>`; }).join('')}</div>
           <label class="ck"><input type="checkbox" id="soAceito" required><span>Li e aceito o regulamento e autorizo o tratamento dos meus dados apenas para esta campanha.</span></label>
-          <button class="btn ouro" type="submit" id="soBt">🎁 Reservar o meu lugar</button><span id="soErro" style="color:#ffd0d0;font-size:13px"></span></form>`
-          : `<p>As cortesias esgotaram. 💜 Quem marcar uma triagem ou reflexologia até ${esc(fmt(S.fimTs))} entra no sorteio do Mapa da Alma Diamante.</p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">${ofertas.map(k => `<a class="btn ouro pequeno" target="_blank" rel="noopener" href="${waLink(k)}">💬 ${OF[k].icone} Marcar com ${OF[k].quem}</a>`).join('')}</div>`));
+          <button class="btn ouro" type="submit" id="soBt">🎁 Participar e abrir o WhatsApp</button><span id="soErro" style="color:#ffd0d0;font-size:13px"></span></form>`
+          : `<div class="ok">As vagas estão esgotadas por agora. 💜<br><span style="font-size:13px">Abrimos mais vagas assim que houver disponibilidade. Volte a esta página mais tarde.</span></div>`));
     } else {
       corpo = `<p>As reservas estão encerradas. O resultado do sorteio sai a ${esc(fmt(S.sorteioTs))}.</p>`;
     }
@@ -405,6 +413,7 @@ arrancar();
       <p>${esc(S.premio || '')}${S.descricao ? '<br>' + esc(S.descricao) : ''}</p>
       <p style="font-size:14px">🎁 <b>Sorteio do Mapa da Alma Diamante</b> para quem fizer marcação de triagem energética ou de reflexologia podal.</p>${blocoOfertas(aberto)}${corpo}${reg}</div>`;
     if (window.__funil) document.querySelectorAll('#sorteio [data-funil]').forEach(a => a.href = window.__funil);
+    document.querySelectorAll('#sorteio [data-escolher]').forEach(bt => bt.addEventListener('click', () => { const r = document.querySelector('input[name=soServ][value=' + bt.dataset.escolher + ']'); if (r) r.checked = true; const f = $('soForm'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'center' }); }));
     const f = $('soForm'); if (f) f.addEventListener('submit', enviar);
     if ($('soCont')) tic();
   }
@@ -421,28 +430,36 @@ arrancar();
   async function enviar(e){
     e.preventDefault();
     const nome = $('soNome').value.trim(), contacto = $('soContacto').value.trim(), erro = $('soErro');
-    const quer = Array.from(document.querySelectorAll('input[name=soServ]:checked')).map(x => x.value);
+    const sel = document.querySelector('input[name=soServ]:checked'), k = sel ? sel.value : '';
     const ehMail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contacto), tel = contacto.replace(/[\s().+-]/g, '');
     if (nome.length < 2) { erro.textContent = 'Escreva o seu nome.'; return; }
     if (!ehMail && !/^\d{9,15}$/.test(tel)) { erro.textContent = 'Indique um e-mail ou telemóvel válido.'; return; }
-    if (!quer.length) { erro.textContent = 'Escolha pelo menos uma das ofertas.'; return; }
+    if (!k) { erro.textContent = 'Escolha reflexologia ou triagem energética.'; return; }
     $('soBt').disabled = true; erro.textContent = '';
-    const codigo = cod(); const obtidos = [];
+    const codigo = cod();
     try {
       await lerLugares();
-      for (const k of quer) {
-        for (let n = ocup[k] + 1; n <= OF[k].total; n++) {
-          try { await setDoc(doc(db, 'public_sorteios', S.id, 'lugares', k + '_' + n), { tipo: k, n, codigo, criadoEm: serverTimestamp() }); obtidos.push(k); break; } catch (_) { /* lugar ocupado: tenta o seguinte */ }
-        }
-      }
-      if (!obtidos.length) { await lerLugares(); desenhar(); return; }
       const id = await sha(S.id + '|' + (ehMail ? contacto.toLowerCase() : tel));
-      await setDoc(doc(db, 'public_sorteios', S.id, 'participantes', id), { nome, contacto, aceitou: true, codigo, criadoEm: serverTimestamp(), origem: 'site', servicos: obtidos });
-      minha = { codigo, servicos: obtidos }; try { localStorage.setItem(chave, JSON.stringify(minha)); } catch (_) {}
+      let feito = false;
+      // Inscrição e lugar gravam-se juntos: ou ficam os dois ou nenhum (assim ninguém gasta uma vaga sem ficar inscrito)
+      for (let n = ocup[k] + 1; n <= OF[k].total && !feito; n++) {
+        try {
+          const lote = writeBatch(db);
+          lote.set(doc(db, 'public_sorteios', S.id, 'lugares', k + '_' + n), { tipo: k, n, codigo, criadoEm: serverTimestamp() });
+          lote.set(doc(db, 'public_sorteios', S.id, 'participantes', id), { nome, contacto, aceitou: true, codigo, criadoEm: serverTimestamp(), origem: 'site', servicos: [k] });
+          await lote.commit(); feito = true;
+        } catch (_) { /* lugar ocupado ou contacto repetido: tenta o seguinte */ }
+      }
+      if (!feito) {
+        await lerLugares();
+        if (OF[k].total - ocup[k] <= 0) { desenhar(); return; }
+        $('soBt').disabled = false; erro.textContent = 'Este contacto já participou. Só é possível participar uma vez.'; return;
+      }
+      minha = { codigo, nome, contacto, servicos: [k] }; try { localStorage.setItem(chave, JSON.stringify(minha)); } catch (_) {}
       await lerLugares(); desenhar();
+      try { window.open('https://wa.me/' + OF[k].wa + '?text=' + encodeURIComponent(msgWa(k, minha)), '_blank'); } catch (_) {}
     } catch (err) {
-      $('soBt').disabled = false;
-      erro.textContent = (err && /permission/i.test(err.message || '')) ? 'Este contacto já fez uma reserva, ou as reservas já fecharam.' : 'Não foi possível enviar. Tente outra vez.';
+      $('soBt').disabled = false; erro.textContent = 'Não foi possível enviar. Tente outra vez.';
     }
   }
   desenhar();
