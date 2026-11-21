@@ -68,7 +68,7 @@ Este regulamento rege-se pela lei portuguesa. Livro de Reclamações disponível
     const fim = dePt(s.fimTs || s.fim || Date.now()), res = dePt(s.sorteioTs || s.sorteioEm || Date.now());
     const tags = '#hikarifafe #sorteio #mapadaalma #autoconhecimento #bemestar #espiritualidade #fafe #portugal';
     const pr = s.premio || 'o prémio';
-    const gratis = s.semCompra !== false ? 'Participação gratuita.' : '';
+    const gratis = (s.semCompra !== false && !((Number(s.precoReflexologia) || 0) + (Number(s.precoTriagem) || 0))) ? 'Participação gratuita.' : '';
     const nR = s.lugaresReflexologia || 0, nT = s.lugaresTriagem || 0;
     const of = (nR || nT) ? `\n🎁 ${nR ? nR + ' reflexologias podais de 40 min, presenciais, a ${s.precoReflexologia != null ? s.precoReflexologia : 15} € ' : ''}${nR && nT ? 'e ' : ''}${nT ? nT + ' triagens energéticas com pêndulo hebraico, online ou à distância, a ${s.precoTriagem != null ? s.precoTriagem : 15} € ' : ''}— preço especial, por ordem de reserva! Reservas por WhatsApp: reflexologia com a Natália (934 744 633), triagem com o Ricardo (928 122 918).\n🦶 Reflexologia: massagem nos pés para relaxar e perceber onde o corpo anda sensível.\n🔮 Triagem: pesquisa com o pêndulo das energias que pesam, dos teus chakras e dos teus caminhos, com relatório pessoal.\n` : '';
     const sort = 'Quem marcar triagem ou reflexologia entra ainda no sorteio de um Mapa da Alma Diamante completo! 💎\n🔮 E o Mapa da Alma Espelho é GRÁTIS para todos: https://vindora.pt/mapa-da-alma.html';
@@ -142,6 +142,7 @@ Este regulamento rege-se pela lei portuguesa. Livro de Reclamações disponível
     const s = atual, alvo = $('soResto'); if (!alvo) return;
     const validos = parts.filter((p) => !p.excluido);
     const vencs = parts.filter((p) => p.vencedor || p.suplente).sort((a, b) => (a.vencedor ? 0 : a.suplente) - (b.vencedor ? 0 : b.suplente));
+    setTimeout(desenharCartazes, 0);
     alvo.innerHTML = `<div class="card"><h3>👥 Participações: ${validos.length}</h3><p class="muted">Vagas ocupadas: 🦶 ${parts.filter((x) => (x.servicos || []).includes('reflexologia')).length}/${s.lugaresReflexologia || 0} · 🔮 ${parts.filter((x) => (x.servicos || []).includes('triagem')).length}/${s.lugaresTriagem || 0}. Quem marcar fora das cortesias: use "➕ Marcação / manual".</p>${s.estado === 'aberto' ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0"><button class="ghost" onclick="soMaisVaga('reflexologia')">➕ +1 vaga reflexologia</button><button class="ghost" onclick="soMaisVaga('triagem')">➕ +1 vaga triagem</button></div>` : ''}
       ${s.estado === 'sorteado' ? '' : `<div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0"><input id="soPNome" placeholder="Nome" style="flex:1;min-width:120px;padding:9px;border:1px solid #ddd;border-radius:10px"><input id="soPCont" placeholder="Contacto" style="flex:1;min-width:120px;padding:9px;border:1px solid #ddd;border-radius:10px"><button class="ghost" onclick="soAddPart()">➕ Marcação / manual</button></div>`}
       <div style="max-height:220px;overflow:auto;font-size:13.5px">${validos.map((p) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid #eee"><span>${esc(p.nome)} <span class="muted">· ${esc(p.contacto)}${p.origem && p.origem !== 'site' ? ' · ' + esc(p.origem) : ''}${(p.servicos || []).length ? ' · ' + p.servicos.map((k) => k === 'reflexologia' ? '🦶' : '🔮').join('') : ''}</span></span><span class="muted">${esc(p.codigo)}${s.estado === 'sorteado' ? '' : ` <a href="#" onclick="soExcluir('${p.id}');return false" title="Excluir">🗑️</a>`}</span></div>`).join('') || '<p class="muted">Ainda ninguém participou.</p>'}</div>
@@ -151,10 +152,55 @@ Este regulamento rege-se pela lei portuguesa. Livro de Reclamações disponível
     <div class="card"><h3>📣 Divulgar nas redes sociais</h3>
       <p class="muted">Link do sorteio: <b>${LINK}</b></p>
       <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="ghost" onclick="soCopiarLink()">🔗 Copiar link</button><button class="ghost" onclick="soPartilharLink()">📲 Partilhar</button></div>
+      <h4 style="margin:12px 0 4px">🖼️ Imagens para publicar</h4><div id="soImgs"><p class="muted">A criar as imagens…</p></div>
+      <h4 style="margin:12px 0 4px">✍️ Textos</h4>
       ${publicacoes(s).map((p, i) => `<details style="margin:6px 0"><summary><b>${p[0]}</b></summary><textarea id="soPub${i}" rows="8" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:13.5px">${esc(p[1])}</textarea><button class="ghost" onclick="soCopiarPub(${i})">📋 Copiar texto</button></details>`).join('')}
       <p class="muted" style="margin-top:8px"><b>Plano de publicações:</b> lançamento (dia de abertura) · stories todos os dias · WhatsApp aos clientes · "Último dia" na véspera do fim · anúncio do vencedor logo após o sorteio.</p>
       <p class="muted">Dica: ponha o link na bio do Instagram e nos stories com o autocolante de link.</p></div>`;
   }
+
+  /* ───── imagens para publicar (feitas aqui, com os dados do sorteio) ───── */
+  const CART = {};
+  function carregarLogo() { return new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = 'logo-hikari-fafe.png'; }); }
+  function quebra(ctx, texto, x, y, larg, alt) { const pal = String(texto).split(' '); let l = ''; for (const p of pal) { const t = l ? l + ' ' + p : p; if (ctx.measureText(t).width > larg && l) { ctx.fillText(l, x, y); y += alt; l = p; } else l = t; } if (l) { ctx.fillText(l, x, y); y += alt; } return y; }
+  function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  async function cartaz(h) {
+    const w = 1080, c = document.createElement('canvas'); c.width = w; c.height = h; const ctx = c.getContext('2d'), s = atual, logo = await carregarLogo();
+    const F = 'system-ui, -apple-system, "Segoe UI", Roboto, "Noto Color Emoji", sans-serif';
+    const g = ctx.createLinearGradient(0, 0, w * 0.4, h); g.addColorStop(0, '#2d1b4e'); g.addColorStop(0.55, '#5b2a86'); g.addColorStop(1, '#b0508f'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 70; i++) { ctx.globalAlpha = 0.15 + rnd() * 0.5; ctx.fillStyle = '#f0d878'; ctx.beginPath(); ctx.arc(rnd() * w, rnd() * h, 1 + rnd() * 3, 0, 7); ctx.fill(); } ctx.globalAlpha = 1;
+    ctx.textAlign = 'center'; const story = h > 1500, top = story ? 250 : 36, ch = story ? 190 : 150, st = story ? 230 : 172;
+    if (logo) { ctx.save(); ctx.beginPath(); ctx.arc(w / 2, top + 80, 80, 0, 7); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill(); ctx.clip(); ctx.drawImage(logo, w / 2 - 80, top, 160, 160); ctx.restore(); ctx.lineWidth = 6; ctx.strokeStyle = '#d4af37'; ctx.beginPath(); ctx.arc(w / 2, top + 80, 80, 0, 7); ctx.stroke(); }
+    let y = top + 230;
+    ctx.fillStyle = '#d4af37'; rr(ctx, w / 2 - 190, y - 46, 380, 66, 33); ctx.fill(); ctx.fillStyle = '#2b1d00'; ctx.font = `800 36px ${F}`; ctx.fillText('⭐ BLACK FRIDAY', w / 2, y);
+    y += 100; ctx.fillStyle = '#fff'; ctx.font = `800 84px ${F}`; ctx.fillText('Semana Hikari Fafe', w / 2, y);
+    y += 62; ctx.fillStyle = '#f0d878'; ctx.font = `600 38px ${F}`; y = quebra(ctx, 'Sorteio de um Mapa da Alma Diamante completo 💎', w / 2, y, 880, 50);
+    y += 20;
+    const pR = s.precoReflexologia != null ? s.precoReflexologia : 15, pT = s.precoTriagem != null ? s.precoTriagem : 15;
+    const cartao = (tit, sub, preco) => {
+      ctx.fillStyle = 'rgba(255,255,255,.16)'; rr(ctx, 70, y, w - 140, ch, 28); ctx.fill(); ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = `800 44px ${F}`; ctx.fillText(tit, 105, y + ch * 0.4);
+      ctx.fillStyle = '#eadcf7'; ctx.font = `500 32px ${F}`; ctx.fillText(sub, 105, y + ch * 0.73); ctx.textAlign = 'right'; ctx.fillStyle = '#f0d878'; ctx.font = `800 70px ${F}`; ctx.fillText(preco + ' €', w - 105, y + ch * 0.65); ctx.textAlign = 'center'; y += st;
+    };
+    cartao('🦶 Reflexologia podal', '40 minutos · presencial', pR);
+    cartao('🔮 Triagem com pêndulo', 'Online ou à distância', pT);
+    y += 10; ctx.fillStyle = '#fff'; ctx.font = `600 36px ${F}`; y = quebra(ctx, 'Quem marcar entra no sorteio do Mapa da Alma Diamante completo', w / 2, y + 30, 860, 48);
+    y += 24; ctx.fillStyle = '#25d366'; rr(ctx, w / 2 - 330, y - 8, 660, 76, 38); ctx.fill(); ctx.fillStyle = '#073b17'; ctx.font = `800 34px ${F}`; ctx.fillText('🔮 Mapa da Alma Espelho: GRÁTIS', w / 2, y + 42);
+    const fim = new Date(s.fimTs && s.fimTs.toMillis ? s.fimTs.toMillis() : (s.fim || Date.now())).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' });
+    ctx.fillStyle = '#fff'; ctx.font = `700 36px ${F}`; ctx.fillText('Reservas até ' + fim, w / 2, h - (story ? 190 : 108)); ctx.fillStyle = '#f0d878'; ctx.font = `800 40px ${F}`; ctx.fillText('vindora.pt/hikari.html', w / 2, h - (story ? 130 : 50));
+    return c;
+  }
+  async function desenharCartazes() {
+    const alvo = $('soImgs'); if (!alvo) return;
+    try {
+      CART.post = await cartaz(1350); CART.story = await cartaz(1920);
+      alvo.innerHTML = [['post', 'Publicação (Instagram / Facebook)'], ['story', 'Stories / Estado do WhatsApp']].map(([k, t]) => `<div style="margin:10px 0"><b>${t}</b><div id="soImg_${k}" style="margin:6px 0"></div><div class="row" style="gap:6px;flex-wrap:wrap"><button class="ghost" onclick="soBaixarImg('${k}')">⬇️ Descarregar</button><button class="ghost" onclick="soPartilharImg('${k}')">📲 Partilhar</button></div></div>`).join('');
+      ['post', 'story'].forEach((k) => { CART[k].style.cssText = 'width:100%;max-width:340px;border-radius:12px'; $('soImg_' + k).appendChild(CART[k]); });
+    } catch (e) { alvo.innerHTML = '<p class="muted">Não consegui criar as imagens.</p>'; }
+  }
+  const blobDe = (k) => new Promise((r) => CART[k].toBlob(r, 'image/png'));
+  window.soBaixarImg = async (k) => { const b = await blobDe(k); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'black-friday-hikari-fafe-' + k + '.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
+  window.soPartilharImg = async (k) => { const b = await blobDe(k); const f = new File([b], 'black-friday-hikari-fafe-' + k + '.png', { type: 'image/png' }); try { if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'Black Friday Hikari Fafe' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; } window.soBaixarImg(k); toast('Imagem descarregada.'); };
 
   /* ───── ações ───── */
   const ler = () => {
