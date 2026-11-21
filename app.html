@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-17';
+const APP_VERSION = '2026-11-21-18';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4952,6 +4952,7 @@ window.viewPatient = async function(patientId){
         <strong style="color:#7a5b00;">🕓 Triagem por tratar</strong>
         <p class="muted" style="margin:4px 0 8px;">Foi feita a triagem, mas a limpeza (protocolo de cura) ainda não foi aplicada.</p>
         <button class="primary" onclick="triagemRetomarPaciente('${patientId}','${escapeAttrJs(p.fullName||'')}')">▶ Aplicar a limpeza desta triagem</button>
+        <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap;"><button class="ghost" style="width:auto;" onclick="triagemVerRelatorio('${patientId}')">📄 Ver o relatório</button><button class="ghost" style="width:auto;" onclick="triagemEnviarRelatorio('${patientId}')">📲 Enviar link ao paciente</button></div>
       </div>` : ''}
       ${temModulo('cartomancia') ? `<div style="margin-top:10px;"><button class="ghost" onclick="consultarCartas('${patientId}')">🃏 Consultar as cartas para ${escapeHtml((p.fullName||'').split(/\s+/)[0])}</button></div>` : ''}
       ${acompHtml}
@@ -12942,6 +12943,7 @@ function triagemCartaoContinuar(){
   return cab('#d9822b', '🕓 Limpeza pendente') +
     `<p class="muted">Triagem${dt ? ' de ' + dt : ''}. Foi feita só a triagem. A limpeza (protocolo de cura) ainda não foi feita: fica pendente até a marcares como feita ou cancelada.</p>${pago}
     <button class="primary" style="margin-top:10px;" onclick="window.__triagemContinuar()">Aplicar o tratamento agora</button>
+    <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap;"><button class="ghost" style="width:auto;" onclick="triagemVerRelatorio('${__triagem.patientId}')">📄 Ver o relatório</button><button class="ghost" style="width:auto;" onclick="triagemEnviarRelatorio('${__triagem.patientId}')">📲 Enviar link ao paciente</button></div>
     ${temModulo('cartomancia') ? `<button class="ghost" style="margin-top:8px;" onclick="consultarCartas('${__triagem.patientId}','triagem')">🃏 Consultar as cartas</button>` : ''}
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e3e3e3;">
       <p class="muted" style="margin-bottom:6px;">Já fez a limpeza fora da app?</p>
@@ -18673,7 +18675,7 @@ window.pdfDeRelatorioGuardado = async function(pid, rid){
     pdfRelatorioIlustrado(sn.exists() ? sn.data().reportHtml : '', (sn.data() || {}).protocolName || 'Relatório');
   }catch(e){ toast('Não consegui abrir o relatório.', true); }
 };
-window.triagemRegerarIlustrado = async function(pid, rid){
+window.triagemRegerarIlustrado = async function(pid, rid, silencioso){
   try{
     const sn = await getDoc(doc(db, 'tenants', tenantId, 'patients', pid, 'reports', rid));
     if (!sn.exists()){ toast('Relatório não encontrado.', true); return; }
@@ -18705,11 +18707,24 @@ window.triagemRegerarIlustrado = async function(pid, rid){
       sessoesNecessarias: r.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas, pedido: '', pedidoTemas: [], perfil
     }, cli));
     const copia = { ...r, reportHtml: html, continuacaoDe: rid };
-    await addDoc(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), { ...copia, tipo: r.tipo || 'triagem-energetica', generatedAt: r.generatedAt || serverTimestamp() });
+    const refNovo = await addDoc(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), { ...copia, tipo: r.tipo || 'triagem-energetica', generatedAt: r.generatedAt || serverTimestamp() });
+    if (silencioso) return refNovo.id;
     toast('Relatório ilustrado criado ✓ (já está no portal do paciente).');
     viewPatient(pid);
-  }catch(e){ console.error(e); toast('Não consegui gerar: ' + (e.message || e), true); }
+    return refNovo.id;
+  }catch(e){ console.error(e); toast('Não consegui gerar: ' + (e.message || e), true); return null; }
 };
+// Última triagem do paciente, com o relatório ilustrado pronto (gera-o se ainda não existir).
+async function _triagemRelatorioPronto(pid){
+  const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), orderBy('generatedAt', 'desc')));
+  const ult = triagemTriagensValidas(snap.docs.map(d => ({ ...d.data(), _id: d.id })))[0];
+  if (!ult){ toast('Este paciente ainda não tem triagem.', true); return null; }
+  if (typeof ult.reportHtml === 'string' && ult.reportHtml.indexOf('rbx') >= 0) return ult._id;
+  toast('A preparar o relatório ilustrado…');
+  return await window.triagemRegerarIlustrado(pid, ult._id, true);
+}
+window.triagemVerRelatorio = async function(pid){ const id = await _triagemRelatorioPronto(pid); if (id) viewSavedReport(pid, id); };
+window.triagemEnviarRelatorio = async function(pid){ const id = await _triagemRelatorioPronto(pid); if (id) enviarRelatorioPortal(pid); };
 window.pesquisaRegerarIlustrado = async function(pid, rid){
   try{
     const sn = await getDoc(doc(db, 'tenants', tenantId, 'patients', pid, 'reports', rid));
