@@ -361,13 +361,15 @@ arrancar();
     snap.forEach(d => { const x = Object.assign({ id: d.id }, d.data()); const t = x.criadoTs && x.criadoTs.toMillis ? x.criadoTs.toMillis() : 0; if (!S || t >= S._t) { x._t = t; S = x; } });
   } catch (e) { return; }
   if (!S) return;
-  async function lerLugares(){ try { const l = await getDocs(collection(db, 'public_sorteios', S.id, 'lugares')); ocup = { reflexologia: 0, triagem: 0 }; l.forEach(d => { const t = d.data().tipo; if (ocup[t] != null) ocup[t]++; }); } catch (_) {} }
+  async function lerLugares(){ try { const l = await getDocs(collection(db, 'public_sorteios', S.id, 'lugares')); ocup = { reflexologia: 0, triagem: 0 }; const cods = new Set(); l.forEach(d => { const t = d.data().tipo; if (ocup[t] != null) ocup[t]++; cods.add(d.data().codigo); });
+    // Se a inscrição foi apagada na app (a vaga ficou livre), este telemóvel deixa de a mostrar e volta a permitir participar
+    if (minha && !cods.has(minha.codigo)) { minha = null; try { localStorage.removeItem(chave); } catch (_) {} } } catch (_) {} }
+  const chave = 'sorteio_' + S.id;
+  let minha = null; try { minha = JSON.parse(localStorage.getItem(chave) || 'null'); } catch (_) {}
   await lerLugares();
   alvo.classList.remove('hidden'); $('mSorteio').classList.remove('hidden');
   const ms = (t) => t && t.toMillis ? t.toMillis() : (t ? new Date(t).getTime() : 0);
   const fmt = (t) => new Date(ms(t)).toLocaleString('pt-PT', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' });
-  const chave = 'sorteio_' + S.id;
-  let minha = null; try { minha = JSON.parse(localStorage.getItem(chave) || 'null'); } catch (_) {}
   const reg = S.regulamento ? `<details><summary>📜 Regulamento</summary><pre>${esc(S.regulamento)}</pre></details>` : '';
   const OF = {
     reflexologia: { icone: '🦶', quem: 'Natália', wa: '351934744633', nome: 'Cortesia de reflexologia podal', dur: '20 minutos · presencial', total: Number(S.lugaresReflexologia) || 0,
