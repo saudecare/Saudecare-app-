@@ -126,6 +126,7 @@
   window.psAbrir = function(patientId, nome){
     S = { patientId, nome, passo:1, escudo:'', idade:'', epoca:'', vivencia:'', queixas:'', notas:'', notasNoRel:false, pontos:{}, chakras:[], apo:{ on:false, seguro:false }, formato:'unica', secoes:null, extraTrat:'' };
     corpoOverlay(); render();
+    if (!window.__psApo) import('./apometria-dados.js?v=2').then(m => { window.__psApo = m; }).catch(() => {});
   };
   const barra = () => `<div style="display:flex;gap:4px;margin-bottom:12px;">${[1,2,3,4,5].map(i => `<div style="flex:1;height:5px;border-radius:3px;background:${i <= S.passo ? 'var(--primary,#2f6f5e)' : '#e5e5e5'};"></div>`).join('')}</div>`;
   const nav = (voltar, seguinte, txt) => `<div class="row" style="margin-top:14px;gap:8px;">${voltar ? '<button class="ghost" onclick="psIr(-1)">← Anterior</button>' : ''}${seguinte ? `<button class="primary" onclick="psIr(1)">${txt || 'Seguinte →'}</button>` : ''}</div>`;
@@ -248,6 +249,7 @@
     sec.push({ id:'agora', titulo:'O que pode estar a viver neste momento', texto: (S.queixas ? `O que nos contou: ${S.queixas}\n\n` : '') + `Num escudo da ${S.escudo}, é comum: ${e.exemplo}\nSe se reconhece nisto, não está sozinho(a): é uma forma de o corpo e a mente se protegerem, e pode ir sendo trabalhada.` });
     const ord = ordemTratamento(); const et = etiquetas();
     sec.push({ id:'plano', titulo:'Plano de tratamento', texto: (S.formato === 'pack4' ? 'Formato: pack de 4 consultas (avaliação e três consultas de tratamento).\n' : 'Formato: consulta única / inicial.\n') + (ord.length ? 'Chakras a harmonizar, por ordem: ' + ord.map(c => c.nome).join(' → ') + '.\n' : '') + (et.length ? 'Etiquetas: ' + et.map(r => (r.item.heb ? r.item.heb + ' (' : '') + r.item.pt + (r.item.heb ? ')' : '')).join('; ') + '.\n' : '') + (S.apo.on && S.apo.seguro ? `Trabalho nos corpos subtis (apometria): ${nomeCorpos(corposApometria()).join(', ')}.\nTécnicas: ${tecnicasApometria().map(id => TEC[id][0].replace(/^\S+\s/, '')).join(' → ')}.\n` : '') + `Salmos e orações: ${e.salmos}.\nAfirmação: «${e.afi}»` + (S.extraTrat ? `\n${S.extraTrat}` : '') });
+    const A = window.__psApo; if (A && A.DICAS_VIBRACAO){ const dc = A.DICAS_VIBRACAO; const ls = corposApometria().map(i => dc.corpos[i]).filter(Boolean); if (ls.length) sec.push({ id:'casa', titulo:'O que pode fazer em casa', texto: ls.join('\n') + '\n' + (dc.fecho || '') }); }
     if (S.notasNoRel && S.notas.trim()) sec.push({ id:'notas', titulo:'Notas da consulta', texto: S.notas.trim() });
     sec.push({ id:'nota', titulo:'Uma nota importante sobre o seu caminho', texto: NOTA_RECAIDAS.split('\n').slice(1).join('\n') });
     return sec;

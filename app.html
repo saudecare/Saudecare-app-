@@ -417,7 +417,7 @@
 <script type="module" src="pe-carregador.js"></script>
 <script type="module" src="cg-imagens.js?v=2026-11-15-8"></script>
 <script src="chakras-leitura.js?v=2026-11-20-2"></script>
-<script src="pesquisa-sistemas.js?v=2026-11-21-2"></script>
+<script src="pesquisa-sistemas.js?v=2026-11-21-3"></script>
 <script type="module" src="consulta-guiada.js?v=2026-11-20-11"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
@@ -13245,7 +13245,15 @@ function triApoCard(paraRelatorio){
     <p style="margin:6px 0 2px;"><b>Corpos a trabalhar:</b> ${r.corpos.map(c => escapeHtml(c.nome)).join(' · ')}.</p>
     <p style="margin:8px 0 2px;"><b>Técnicas, por ordem:</b></p>
     <ol style="margin:0 0 0 18px;">${[r.inicio].concat(r.normais, [r.fim]).filter(Boolean).map(li).join('')}</ol>
-    ${fortes}${confirmacao}</div>`;
+    ${fortes}${confirmacao}${triApoDicas(r, paraRelatorio)}</div>`;
+}
+function triApoDicas(r, paraRelatorio){
+  const D = __apoDados; if (!D || !D.DICAS_VIBRACAO) return '';
+  const dc = D.DICAS_VIBRACAO; const ls = [];
+  r.corpos.forEach(c => { if (dc.corpos && dc.corpos[c.id]) ls.push(dc.corpos[c.id]); });
+  r.achados.forEach(a => { if (dc.achados && dc.achados[a.id]) ls.push(dc.achados[a.id]); });
+  if (!ls.length) return '';
+  return `<p style="margin:10px 0 2px;"><b>O que a pessoa pode fazer em casa:</b></p><ul style="margin:0 0 0 18px;font-size:.88rem;">${ls.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul><p class="muted" style="font-size:.82rem;margin-top:6px;">${escapeHtml(dc.fecho || '')}</p>`;
 }
 
 function triagemPassoTratamento(main){
