@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-21';
+const APP_VERSION = '2026-11-21-22';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -21537,7 +21537,7 @@ async function renderSorteioApp(main){
   if (tenantId !== 'hikari-terapias'){ main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica.</p></div>'; return; }
   try {
     const mod = await import('./sorteio.js?v=' + APP_VERSION);
-    mod.renderSorteio(main, { tenantId, db, escapeHtml, toast, fs: { collection, doc, getDoc, getDocs, addDoc, updateDoc, setDoc, query, where, serverTimestamp, Timestamp } });
+    mod.renderSorteio(main, { tenantId, db, escapeHtml, toast, fs: { collection, doc, getDoc, getDocs, addDoc, updateDoc, setDoc, deleteDoc, query, where, serverTimestamp, Timestamp } });
   } catch(e){ main.innerHTML = '<div class="card"><h2>🎁 Sorteios</h2><p class="muted">Não consegui abrir: ' + escapeHtml(e.message || String(e)) + '</p></div>'; }
 }
 

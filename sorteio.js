@@ -191,8 +191,16 @@ Este regulamento rege-se pela lei portuguesa. Livro de Reclamações disponível
     catch (e) { toast('Não consegui: ' + (e.message || e), true); }
   };
   window.soExcluir = async (pid) => {
-    if (!confirm('Excluir esta participação do sorteio?')) return;
-    try { await fs.updateDoc(fs.doc(db, 'public_sorteios', atual.id, 'participantes', pid), { excluido: true }); await carregarParts(); desenharResto(); } catch (e) { toast('Não consegui: ' + (e.message || e), true); }
+    if (!confirm('Excluir esta participação do sorteio? A vaga que ocupava fica livre outra vez.')) return;
+    try {
+      const p = parts.find((x) => x.id === pid);
+      await fs.updateDoc(fs.doc(db, 'public_sorteios', atual.id, 'participantes', pid), { excluido: true });
+      if (p && p.codigo) {
+        const l = await fs.getDocs(fs.collection(db, 'public_sorteios', atual.id, 'lugares'));
+        for (const d of l.docs) if (d.data().codigo === p.codigo) await fs.deleteDoc(d.ref || fs.doc(db, 'public_sorteios', atual.id, 'lugares', d.id));
+      }
+      await carregarParts(); desenharResto(); toast('Participação excluída e vaga libertada.');
+    } catch (e) { toast('Não consegui: ' + (e.message || e), true); }
   };
   window.soMaisVaga = async (tipo) => {
     const campo = tipo === 'reflexologia' ? 'lugaresReflexologia' : 'lugaresTriagem';
