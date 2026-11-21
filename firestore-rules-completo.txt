@@ -511,6 +511,29 @@ service cloud.firestore {
         (resource == null || resource.data.tenantId == request.auth.token.tenantId);
     }
 
+    // Sorteios da Hikari Fafe: o público lê o sorteio e participa (cria uma participação, uma só por contacto);
+    // só a equipa da conta hikari-terapias gere, e só ela lê a lista de participantes.
+    match /public_sorteios/{sorteioId} {
+      allow read: if true;
+      allow create: if isEquipaClinica('hikari-terapias') && request.resource.data.tenantId == 'hikari-terapias';
+      allow update: if isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias' && request.resource.data.tenantId == 'hikari-terapias';
+      allow delete: if isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias';
+
+      match /participantes/{partId} {
+        allow create: if isEquipaClinica('hikari-terapias') ||
+          (request.resource.data.keys().hasOnly(['nome', 'contacto', 'aceitou', 'codigo', 'criadoEm', 'origem']) &&
+           request.resource.data.origem == 'site' &&
+           request.resource.data.aceitou == true &&
+           request.resource.data.nome is string && request.resource.data.nome.size() >= 2 && request.resource.data.nome.size() <= 80 &&
+           request.resource.data.contacto is string && request.resource.data.contacto.size() >= 5 && request.resource.data.contacto.size() <= 120 &&
+           request.resource.data.codigo is string && request.resource.data.codigo.size() == 6 &&
+           request.resource.data.criadoEm == request.time &&
+           get(/databases/$(database)/documents/public_sorteios/$(sorteioId)).data.estado == 'aberto' &&
+           request.time <= get(/databases/$(database)/documents/public_sorteios/$(sorteioId)).data.fimTs);
+        allow read, update, delete: if isEquipaClinica('hikari-terapias');
+      }
+    }
+
     match /public_booking_requests/{requestId} {
       allow create: if request.resource.data.tenantId is string &&
                       request.resource.data.status == "pending_review";
