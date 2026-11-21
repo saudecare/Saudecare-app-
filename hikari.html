@@ -372,21 +372,26 @@ arrancar();
   const fmt = (t) => new Date(ms(t)).toLocaleString('pt-PT', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' });
   const reg = S.regulamento ? `<details><summary>📜 Regulamento</summary><pre>${esc(S.regulamento)}</pre></details>` : '';
   const OF = {
-    reflexologia: { icone: '🦶', quem: 'Natália', wa: '351934744633', nome: 'Cortesia de reflexologia podal', dur: '20 minutos · presencial', total: Number(S.lugaresReflexologia) || 0,
+    reflexologia: { icone: '🦶', quem: 'Natália', wa: '351934744633', nome: 'Reflexologia podal', preco: S.precoReflexologia != null ? Number(S.precoReflexologia) : 15, dur: '20 minutos · presencial', total: Number(S.lugaresReflexologia) || 0,
       texto: 'A reflexologia podal é uma massagem nos pés, com pressão suave em zonas que correspondem a diferentes partes do corpo. Serve para relaxar, aliviar a tensão e ajudar a perceber onde o corpo anda mais sensível. É feita presencialmente, em Fafe. Nos 20 minutos: conversamos um pouco, vejo os teus pés, trabalho cada zona e no fim digo-te o que notei. Não é um tratamento médico e não faz diagnósticos.' },
-    triagem: { icone: '🔮', quem: 'Ricardo', wa: '351928122918', nome: 'Triagem energética com pêndulo hebraico', dur: 'cerca de 30 minutos · online ou à distância', total: Number(S.lugaresTriagem) || 0,
+    triagem: { icone: '🔮', quem: 'Ricardo', wa: '351928122918', nome: 'Triagem energética com pêndulo hebraico', preco: S.precoTriagem != null ? Number(S.precoTriagem) : 15, dur: 'cerca de 30 minutos · online ou à distância', total: Number(S.lugaresTriagem) || 0,
       texto: 'É uma pesquisa com o pêndulo hebraico para descobrir o que está a pesar na tua energia. Vejo, uma a uma, as energias de baixa vibração (como olho gordo, inveja ou cargas de lugares e de pessoas), como estão os teus 9 chakras (equilibrados, em desarmonia ou bloqueados) e quanto estão abertos os teus caminhos. No fim recebes um relatório pessoal, ilustrado e fácil de ler, por link, a explicar cada coisa. É feita online ou à distância, por isso podes fazê-la de onde estiveres. A limpeza, se quiseres, fica para outra sessão.' }
   };
   const waLink = (k, codigo) => 'https://wa.me/' + OF[k].wa + '?text=' + encodeURIComponent('Olá ' + OF[k].quem + '! Reservei no site a ' + OF[k].nome.toLowerCase() + (codigo ? ' (código ' + codigo + ')' : '') + '. Quando posso marcar?');
   const ofertas = Object.keys(OF).filter(k => OF[k].total > 0);
+  function blocoEspelho(){
+    return `<div style="background:rgba(255,255,255,.12);border-radius:16px;padding:14px;margin:12px 0;text-align:left"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:16px">🔮 Mapa da Alma Espelho</b><span style="background:var(--o);color:#2b1d00;font-weight:800;font-size:12px;padding:4px 10px;border-radius:100px">Grátis</span></div>
+      <div style="font-size:13px;opacity:.9;margin:4px 0">Online · faz já, sem marcação</div><p style="font-size:14px;margin:6px 0 0;max-width:none">Um primeiro retrato do teu Mapa da Alma, a partir da tua data de nascimento. É a porta de entrada: mostra o que o Mapa Diamante completo vai mais fundo (o prémio do sorteio).</p>
+      <a class="btn claro pequeno" style="margin-top:10px" href="mapa-da-alma.html">✨ Fazer o meu Mapa Espelho grátis</a></div>`;
+  }
   function blocoOfertas(aberto){
-    if (!ofertas.length) return '';
-    return `<div style="display:grid;gap:12px;margin:16px 0;text-align:left">${ofertas.map(k => {
+    if (!ofertas.length) return blocoEspelho();
+    return blocoEspelho() + `<div style="display:grid;gap:12px;margin:16px 0;text-align:left">${ofertas.map(k => {
       const o = OF[k], rest = Math.max(0, o.total - ocup[k]);
       return `<div style="background:rgba(255,255,255,.12);border-radius:16px;padding:14px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:16px">${o.icone} ${o.nome}</b><span style="background:${rest ? 'var(--o)' : '#999'};color:#2b1d00;font-weight:800;font-size:12px;padding:4px 10px;border-radius:100px;white-space:nowrap">${S.estado === 'sorteado' ? 'Terminado' : (rest ? 'Restam ' + rest + ' de ' + o.total : 'Esgotado')}</span></div>
-        <div style="font-size:13px;opacity:.9;margin:4px 0">Grátis · ${o.dur} · ${o.total} lugares</div><p style="font-size:14px;margin:6px 0 0;max-width:none">${esc(o.texto)}</p>${S.estado === 'sorteado' || minha ? '' : (rest ? `<button type="button" class="btn ouro pequeno" style="margin-top:10px" data-escolher="${k}">🎁 Participar</button>` : `<div style="margin-top:10px;font-size:13px;opacity:.9">Vagas esgotadas. Abrimos mais vagas em breve.</div>`)}</div>`; }).join('')}</div>`;
+        <div style="font-size:13px;opacity:.9;margin:4px 0">${o.preco} € · ${o.dur} · ${o.total} lugares</div><p style="font-size:14px;margin:6px 0 0;max-width:none">${esc(o.texto)}</p>${S.estado === 'sorteado' || minha ? '' : (rest ? `<button type="button" class="btn ouro pequeno" style="margin-top:10px" data-escolher="${k}">🎁 Participar</button>` : `<div style="margin-top:10px;font-size:13px;opacity:.9">Vagas esgotadas. Abrimos mais vagas em breve.</div>`)}</div>`; }).join('')}</div>`;
   }
-  function msgWa(k, m){ return 'Olá ' + OF[k].quem + '! Sou ' + m.nome + ' e acabei de me inscrever no site para ' + (k === 'reflexologia' ? 'a cortesia de reflexologia podal (20 min)' : 'a triagem energética com pêndulo hebraico') + ' da campanha Black Friday. O meu código é ' + m.codigo + ' e o meu contacto é ' + m.contacto + '. Quando posso marcar?'; }
+  function msgWa(k, m){ return 'Olá ' + OF[k].quem + '! Sou ' + m.nome + ' e acabei de me inscrever no site para ' + (k === 'reflexologia' ? 'a reflexologia podal (20 min, 15 €)' : 'a triagem energética com pêndulo hebraico (15 €)') + ' da campanha Black Friday. O meu código é ' + m.codigo + ' e o meu contacto é ' + m.contacto + '. Quando posso marcar?'; }
   function sucesso(){
     const k = (minha.servicos || [])[0];
     return `<div class="ok">✅ Inscrição feita${k && OF[k] ? ': ' + OF[k].nome : ''}.<br>O seu código: <b>${esc(minha.codigo)}</b><br><span style="font-size:13px">Já ficou registada. Entra no sorteio do Mapa da Alma Diamante, com resultado a ${esc(fmt(S.sorteioTs))}. Agora combine o dia por WhatsApp:</span>
@@ -413,7 +418,7 @@ arrancar();
     }
     alvo.innerHTML = `<div class="sorteio"><span class="selo">${S.estado === 'sorteado' ? 'Sorteio realizado' : 'Black Friday'}</span><h3>${esc(S.titulo || 'Sorteio')}</h3>
       <p>${esc(S.premio || '')}${S.descricao ? '<br>' + esc(S.descricao) : ''}</p>
-      <p style="font-size:14px">🎁 <b>Sorteio do Mapa da Alma Diamante</b> para quem fizer marcação de triagem energética ou de reflexologia podal.</p>${blocoOfertas(aberto)}${corpo}${reg}</div>`;
+      <p style="font-size:14px">🎁 <b>Sorteio de um Mapa da Alma Diamante completo</b> para quem fizer marcação de triagem energética ou de reflexologia podal.</p>${blocoOfertas(aberto)}${corpo}${reg}</div>`;
     if (window.__funil) document.querySelectorAll('#sorteio [data-funil]').forEach(a => a.href = window.__funil);
     document.querySelectorAll('#sorteio [data-escolher]').forEach(bt => bt.addEventListener('click', () => { const r = document.querySelector('input[name=soServ][value=' + bt.dataset.escolher + ']'); if (r) r.checked = true; const f = $('soForm'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'center' }); }));
     const f = $('soForm'); if (f) f.addEventListener('submit', enviar);
