@@ -166,7 +166,7 @@
   window.rpGuardar = async function(){
     const texto = textoFinal();
     const dados = { data: hoje(), motivo:S.motivo, zonas:S.zonas, observacao:S.obs, tecnicas: TECNICAS.filter((t, i) => S.tecnicas[i]), duracao:S.duracao };
-    const ok = window.guardarNaFicha ? await window.guardarNaFicha(S.patientId, { tipo:'reflexologia_podal', titulo:'Reflexologia podal — ' + hoje(), texto, dados }) : false;
+    const ok = window.guardarNaFicha ? await window.guardarNaFicha(S.patientId, { tipo:'reflexologia_podal', titulo:'Reflexologia podal — ' + hoje(), texto, dados, reportHtml: (window.relatorioPessoalDeSeccoes ? window.relatorioPessoalDeSeccoes({ titulo:'A sua reflexologia podal', nome:S.nome, nome1:String(S.nome||'').split(/\s+/)[0], oQueFiz:'a reflexologia podal', pedido:(S.queixas||S.motivo||'') }, S.secoes.filter(x => !/internas/.test(x.titulo))) : '') }) : false;
     if (ok && window.anexarNotasClinicas) await window.anexarNotasClinicas(S.patientId, 'Reflexologia podal', [{ rotulo:'Queixas', valor:S.queixas }, { rotulo:'Notas clínicas', valor:S.notas }]);
     toast(ok ? 'Guardado na ficha do paciente.' : 'Não foi possível guardar.', !ok);
   };

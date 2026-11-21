@@ -245,6 +245,52 @@ function mixHex(h1, h2, t) {
   const a = p(h1), b = p(h2);
   return '#' + a.map((x, i) => Math.round(x + (b[i] - x) * t).toString(16).padStart(2, '0')).join('');
 }
+
+// ───────────────────────────────────────────────────────────────────────────────────────
+// Modelo PESSOAL — o estilo de todos os relatórios da Vindora: fala diretamente com a pessoa,
+// em tom próximo e acolhedor, explica cada coisa encontrada, diz como vai ser feito e termina
+// com uma leitura do momento, perguntas para pensar e um resumo. Todas as consultas (as da
+// app e as que os terapeutas criam) devem montar o relatório por aqui.
+//   o = { tema, emoji, titulo, subtitulo, nome, nome1 (1.º nome), data, assinatura, aviso, cor,
+//         oQueFiz ('a pesquisa com o pêndulo'), pedido, abertura (substitui a 1.ª frase), porque, extraAbertura:[],
+//         antes:[blocos], encontrados:[{nome, descricao, notar, exemplo}], tituloEncontrados, nadaEncontrado,
+//         meio:[blocos], como:[], tituloComo, leitura (texto|[]), perguntas:[], proximos:[{rotulo,texto}],
+//         depois:[blocos], resumo:[], mensagem }
+export function rbJunta(l, e) {
+  l = (l || []).filter(Boolean); e = e || 'e';
+  return l.length < 2 ? (l[0] || '') : l.slice(0, -1).join(', ') + ' ' + e + ' ' + l[l.length - 1];
+}
+export function rbModeloPessoal(o) {
+  const B = [], n1 = o.nome1 || '';
+  const abre = [o.abertura || `Fiz ${o.oQueFiz || 'a pesquisa'} a pensar só em si${o.pedido ? `, a partir do que me contou: “${o.pedido}”` : ''}.`,
+    o.porque || 'Serve para perceber, uma a uma, as coisas que andam a pesar e que muitas vezes não se veem. Abaixo explico cada uma, o que costuma causar e o que vamos fazer.'].concat(o.extraAbertura || []);
+  B.push({ tipo: 'texto', icone: '👋', titulo: n1 ? `Olá, ${n1}` : 'Olá', paras: abre });
+  (o.antes || []).forEach(b => b && B.push(b));
+  if ((o.encontrados || []).length) B.push({ tipo: 'detalhe', icone: '🔎', titulo: o.tituloEncontrados || 'O que encontrei, explicado', intro: 'Toque em cada item para perceber o que é e como costuma notar-se.',
+    itens: o.encontrados.map(x => ({ nome: x.nome, descricao: [x.descricao, x.notar ? 'Costuma notar-se em: ' + x.notar : ''].filter(Boolean).join('\n\n'), exemplo: x.exemplo || '' })) });
+  else if (o.nadaEncontrado) B.push({ tipo: 'texto', icone: '🔎', titulo: o.tituloEncontrados || 'O que encontrei', paras: [o.nadaEncontrado] });
+  (o.meio || []).forEach(b => b && B.push(b));
+  if ((o.como || []).length) B.push({ tipo: 'texto', icone: '🧹', titulo: o.tituloComo || 'Como vai ser feito', paras: o.como });
+  const lt = [].concat(o.leitura || []).filter(Boolean);
+  if (lt.length) B.push({ tipo: 'texto', icone: '🌙', titulo: 'Leitura do momento', paras: lt });
+  if ((o.perguntas || []).length) B.push({ tipo: 'lista', icone: '💭', titulo: 'Para pensar, sem pressa', marca: '•', itens: o.perguntas });
+  if ((o.proximos || []).length) B.push({ tipo: 'linha', icone: '📅', titulo: 'Próximos passos', passos: o.proximos });
+  (o.depois || []).forEach(b => b && B.push(b));
+  B.push({ tipo: 'resumo', icone: '✅', titulo: 'Em resumo', paras: o.resumo && o.resumo.length ? o.resumo : ['Isto é um retrato do momento, não uma sentença. Nos próximos dias é normal sentir mais sono, emoção ou cansaço leve, e também mais leveza. Beba água e descanse.', 'Qualquer dúvida, fale comigo.'] });
+  return { tema: o.tema || 'geral', cor: o.cor, emoji: o.emoji, titulo: o.titulo, subtitulo: o.subtitulo || 'Relatório pessoal', nome: o.nome || n1, data: o.data, assinatura: o.assinatura || '', blocos: B, mensagem: o.mensagem || '', aviso: o.aviso };
+}
+// Para consultas que já têm secções de texto (editáveis): cada secção passa a bloco, com abertura e fecho pessoais.
+export function rbModeloDeSeccoes(o, secoes, icones) {
+  const IC = Object.assign({ default: '🌿' }, icones || {});
+  const blocos = (secoes || []).filter(s => s && String(s.texto || '').trim()).map(s => {
+    const linhas = String(s.texto).split('\n').map(x => x.trim()).filter(Boolean);
+    const lista = linhas.length > 1 && linhas.filter(x => /^[•\-–]/.test(x)).length >= Math.ceil(linhas.length / 2);
+    const ic = IC[s.id] || IC.default;
+    return lista ? { tipo: 'lista', icone: ic, titulo: s.titulo, marca: '•', itens: linhas.map(x => x.replace(/^[•\-–]\s*/, '')) } : { tipo: 'texto', icone: ic, titulo: s.titulo, paras: linhas };
+  });
+  return rbModeloPessoal(Object.assign({}, o, { meio: (o.meio || []).concat(blocos) }));
+}
+
 // modelo: { tema, titulo, subtitulo, nome, data, assinatura, blocos:[], mensagem, aviso }
 export function rbFragmento(m) {
   const T = TEMAS[m.tema] || TEMAS.geral;

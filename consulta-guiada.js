@@ -4,7 +4,7 @@
 //  (pergunta, escolha com conhecimento, instrução, tratamento, notas).
 //  Não toca nos métodos antigos (lista livre / mapeamento por zonas).
 // ═══════════════════════════════════════════════════════════════════
-import { rbFragmento, rbPreVisualizar } from './relatorio-bonito.js?v=2026-11-15-2';
+import { rbFragmento, rbPreVisualizar, rbModeloPessoal } from './relatorio-bonito.js?v=2026-11-21-20';
 
 const iconeUri = (o) => (typeof o.icone === 'number' && window.CG_IMG && window.CG_IMG.icones[o.icone]) ? window.CG_IMG.uri(window.CG_IMG.icones[o.icone]) : '';
 const esc = (t) => (window.escapeHtml ? window.escapeHtml(String(t == null ? '' : t)) : String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
@@ -912,9 +912,11 @@ export function cgModeloBonito(proto, resp, nomePaciente, data, marca) {
     if (s.type === 'instrucao' && s.noPlano && s.texto) plano.push({ rotulo: s.title, texto: s.texto });
     if (s.type === 'tratamento' && s.noPlano && (s.passos || []).length) plano.push({ rotulo: s.title, texto: s.passos.map((p, i) => `${i + 1}. ${p}`).join('  ') + (s.segundos > 0 ? ` (temporizador sugerido: ${fmtT(s.segundos)})` : '') });
   }
-  if (resumo.length) blocos.unshift({ tipo: 'lista', icone: '📋', titulo: 'Resumo', marca: '•', itens: resumo });
-  if (plano.length) blocos.push({ tipo: 'linha', icone: '🏡', titulo: 'O teu plano em casa', passos: plano });
-  return { tema: 'geral', cor: m.cor, emoji: '🌿', titulo: proto.name || 'A tua consulta', subtitulo: 'Relatório pessoal', nome: nomePaciente, data, assinatura: m.nome || '', blocos, aviso: AVISO };
+  const antes = resumo.length ? [{ tipo: 'lista', icone: '📋', titulo: 'O que me contou', marca: '•', itens: resumo }] : [];
+  const n1 = String(nomePaciente || '').trim().split(/\s+/)[0] || '';
+  return rbModeloPessoal({ tema: 'geral', cor: m.cor, emoji: '🌿', titulo: proto.name || 'A sua consulta', nome: nomePaciente, nome1: n1, data, assinatura: m.nome || '',
+    oQueFiz: 'a consulta «' + (proto.name || 'a sua consulta') + '»', antes, meio: blocos,
+    proximos: plano.length ? plano.map(x => ({ rotulo: x.rotulo, texto: x.texto })) : [], aviso: AVISO });
 }
 window.cgBonito = () => {
   const data = new Date().toLocaleDateString('pt-PT');

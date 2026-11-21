@@ -417,10 +417,10 @@
 <script type="module" src="pe-carregador.js"></script>
 <script type="module" src="cg-imagens.js?v=2026-11-15-8"></script>
 <script src="chakras-leitura.js?v=2026-11-20-2"></script>
-<script src="pesquisa-sistemas.js?v=2026-11-21-15"></script>
+<script src="pesquisa-sistemas.js?v=2026-11-21-20"></script>
 <script src="causas-ficha.js?v=2026-11-21-7"></script>
-<script src="reflexologia-podal.js?v=2026-11-21-11"></script>
-<script type="module" src="consulta-guiada.js?v=2026-11-20-11"></script>
+<script src="reflexologia-podal.js?v=2026-11-21-20"></script>
+<script type="module" src="consulta-guiada.js?v=2026-11-21-20"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
 <script type="module">
@@ -429,7 +429,7 @@ import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
 import { iniciarFinancas } from './financas.js?v=2026-11-15-8';
 import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-8';
-import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento } from './relatorio-bonito.js?v=2026-11-15-8';
+import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento, rbModeloPessoal, rbModeloDeSeccoes, rbJunta } from './relatorio-bonito.js?v=2026-11-21-20';
 import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
 import { corpoMensagem as reikiCorpoMsg, escolherFoto as reikiEscolherFoto } from './reiki-midia-chat.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-19';
+const APP_VERSION = '2026-11-21-20';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -18704,7 +18704,7 @@ window.triagemRegerarIlustrado = async function(pid, rid, silencioso){
     }catch(e){ console.warn('Texto do cliente não regenerado, uso só o modelo:', e); }
     const html = rbFragmento(triagemModeloBonito({
       primeiroNome, causasDetetadas, chakrasTodos, aberturaNivel, comparacao: null,
-      sessoesNecessarias: r.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas, pedido: '', pedidoTemas: [], perfil
+      sessoesNecessarias: r.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas, pedido: '', pedidoTemas: [], perfil, corpos: r.corposPesquisa || {}
     }, cli));
     const copia = { ...r, reportHtml: html, continuacaoDe: rid };
     const refNovo = await addDoc(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), { ...copia, tipo: r.tipo || 'triagem-energetica', generatedAt: r.generatedAt || serverTimestamp() });
@@ -18861,8 +18861,9 @@ function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, 
 // Relatório ilustrado da triagem (mesmos dados do relatório em texto, com gráficos e caixas que abrem).
 function triagemModeloBonito(d, cli){
   const nome = d.primeiroNome;
-  const blocos = [];
-  blocos.push({ tipo:'texto', icone:'👋', titulo:`Olá, ${nome}`, paras:[`Aqui está o retrato do seu momento energético. Toque nas caixas e nos gráficos para ver mais. É um retrato do momento, não uma sentença.`].concat((d.aplicadas && d.aplicadas.length) ? [] : ['Por agora foi feita apenas a triagem. Ainda não foi feita nenhuma limpeza nem tratamento.']) });
+  const soTriagem = !(d.aplicadas && d.aplicadas.length);
+  const blocos = [];   // vai sendo preenchido por partes e entregue ao modelo pessoal
+  const antes = [], meio = [], depois = [];
   if (d.perfil){
     const pf = d.perfil, it = [];
     it.push({ nome:`Caminho de Vida ${pf.cv}${pf.cvNome ? ' — ' + pf.cvNome : ''}`, paras:[`O seu número de Caminho de Vida é ${pf.cv}${pf.cvNome ? ', ' + pf.cvNome : ''}. Mostra a direção geral da sua vida.`] });
@@ -18873,22 +18874,23 @@ function triagemModeloBonito(d, cli){
       it.push({ nome:`Nodo Sul (vidas passadas): ${pf.nodos.nodoSul.signo}`, paras:[NODO_SUL_TEXTOS[pf.nodos.nodoSul.signo] || ''] });
       it.push({ nome:`Nodo Norte (propósito): ${pf.nodos.nodoNorte.signo}`, paras:['Para onde a sua alma procura crescer.'] });
     }
-    blocos.push({ tipo:'secoes', icone:'✨', titulo:'O seu perfil energético', itens: it.filter(x => x.nome) });
+    antes.push({ tipo:'secoes', icone:'✨', titulo:'O seu perfil energético', itens: it.filter(x => x.nome) });
   }
   const ch = d.chakrasTodos || [];
   if (ch.length){
     const afet = ch.filter(triChakraAfetado);
-    blocos.push(afet.length
-      ? { tipo:'detalhe', icone:'🌀', titulo:'Centros de energia que pedem atenção', intro:'Toque em cada centro para perceber o que representa e ver um exemplo do dia a dia. Os restantes centros estão equilibrados.', itens: afet.map(c => ({ nome: c.nome + ' — ' + triRotuloEstado(triEstadoChakra(c)).toLowerCase(), descricao: c.descricao, exemplo: c.exemplo })) }
+    meio.push(afet.length
+      ? { tipo:'detalhe', icone:'🌀', titulo:'Centros de energia que pedem atenção', intro:'Estes são os centros de energia que encontrei a pedir mais carinho. Toque em cada um para perceber o que representa e como se costuma notar. Os restantes estão equilibrados.', itens: afet.map(c => ({ nome: c.nome + ' — ' + triRotuloEstado(triEstadoChakra(c)).toLowerCase(), descricao: c.descricao, exemplo: c.exemplo })) }
       : { tipo:'texto', icone:'🌀', titulo:'Os seus centros de energia', paras:['Todos os centros de energia estão equilibrados neste momento. ✨'] });
   }
-  const causas = d.causasDetetadas || [];
-  blocos.push(causas.length
-    ? { tipo:'detalhe', icone:'🔎', titulo:'O que foi encontrado', intro:'Toque em cada item para perceber o que é e ver um exemplo do dia a dia.', itens: causas.map(c => ({ nome:c.nome, descricao:c.descricao, exemplo:c.exemplo })) }
-    : { tipo:'texto', icone:'🔎', titulo:'O que foi encontrado', paras:['Nada de baixa vibração foi detetado: o campo está equilibrado. ✨'] });
+
+  // Corpos subtis (aura) pesquisados com o pêndulo
+  { const NOMES = { fisico:['Corpo físico','o corpo que se vê e se toca'], etereo:['Corpo etérico','a energia vital, que alimenta o corpo'], astral:['Corpo astral','as emoções e os desejos'], 'mental-inf':['Mental inferior','os pensamentos do dia a dia'], 'mental-sup':['Mental superior','o sentido de vida e a visão de conjunto'], budico:['Corpo búdico','o amor sem condições e a compaixão'], atmico:['Corpo átmico','a essência de cada pessoa'] };
+    const cp = d.corpos || {}, its = Object.keys(cp).filter(k => cp[k] > 0 && NOMES[k]).map(k => ({ nome: NOMES[k][0] + (cp[k] >= 2 ? ' — bloqueado' : ' — em desarmonia'), descricao: 'Representa ' + NOMES[k][1] + '. Foi uma das camadas que encontrei a pedir atenção.' }));
+    if (its.length) meio.push({ tipo:'detalhe', icone:'🧬', titulo:'Os seus corpos subtis (a sua aura)', intro:'A aura tem várias camadas. Estas foram as que encontrei em desequilíbrio.', itens: its }); }
   const secAb = cli && cli.sec ? cli.sec.find(x => x.titulo === 'Abertura de caminhos') : null;
-  if (secAb) blocos.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras: secAb.paras.concat((secAb.lista || []).map(y => '• ' + y)) });
-  else if (d.aberturaNivel) blocos.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras:[String(d.aberturaNivel)] });
+  if (secAb) meio.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras: secAb.paras.concat((secAb.lista || []).map(y => '• ' + y)) });
+  else if (d.aberturaNivel) meio.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras:[String(d.aberturaNivel)] });
   const c = d.comparacao;
   if (c){
     const l = [];
@@ -18896,28 +18898,53 @@ function triagemModeloBonito(d, cli){
     (c.persistentes || []).forEach(x => l.push('🔁 A continuar a trabalhar: ' + x));
     (c.novas || []).forEach(x => l.push('🆕 Novo desde a última vez: ' + x));
     (c.chakrasComparados || []).filter(x => x.delta !== 0).forEach(x => l.push((x.delta > 0 ? '🌿 Melhorou: ' : '⚠️ Pede mais atenção: ') + 'centro ' + x.nome + ' (' + triRotuloEstado(x.antes).toLowerCase() + ' → ' + triRotuloEstado(x.agora).toLowerCase() + ')'));
-    if (l.length) blocos.push({ tipo:'lista', icone:'🌱', titulo:'O que mudou', marca:'•', itens:l });
+    if (l.length) meio.push({ tipo:'lista', icone:'🌱', titulo:'O que mudou', marca:'•', itens:l });
   }
-  if (d.pedido) blocos.push({ tipo:'texto', icone:'🎯', titulo:'O que pediu', paras:[`Pediu ajuda com: ${d.pedido}.`, 'As etiquetas foram escolhidas a pensar nesse pedido e juntas ao trabalho de limpeza.'] });
   if (d.aplicadas && d.aplicadas.length){
     const rg = etqRegisto().mapa;
-    blocos.push({ tipo:'lista', icone:'✨', titulo:'O trabalho feito hoje (limpeza etérica)', marca:'•', itens: d.aplicadas.map(it => { const q = rg[etqChave(it.pt)]; return (q ? q.codigo + ': ' : '') + (it.simples || it.pt); }) });
-    blocos.push({ tipo:'sentir', icone:'🫶', titulo:'Como se pode sentir agora', intro:'Depois de uma limpeza é normal o corpo e as emoções mexerem um pouco. Não é mau sinal, é sinal de que algo se está a soltar.', itens:[
+    depois.push({ tipo:'lista', icone:'✨', titulo:'O trabalho feito hoje (limpeza etérica)', marca:'•', itens: d.aplicadas.map(it => { const q = rg[etqChave(it.pt)]; return (q ? q.codigo + ': ' : '') + (it.simples || it.pt); }) });
+    depois.push({ tipo:'sentir', icone:'🫶', titulo:'Como se pode sentir agora', intro:'Depois de uma limpeza é normal o corpo e as emoções mexerem um pouco. Não é mau sinal, é sinal de que algo se está a soltar.', itens:[
       { estado:'ok', nome:'Mais leve', texto:'Pode sentir alívio, calma ou vontade de respirar fundo, como depois de arrumar uma divisão da casa.' },
       { estado:'de', nome:'Mais sensível', texto:'Pode surgir vontade de chorar, sono diferente ou cansaço. É o corpo a pôr as coisas em ordem. Beber água e descansar ajuda.' },
       { estado:'bl', nome:'Se pesar demais', texto:'Se algo incomodar muito ou durar mais de uns dias, fale comigo para ajustarmos.' } ] });
   }
+
+  const causas = d.causasDetetadas || [];
+  const ficha = c => (window.CAUSA_FICHA && window.CAUSA_FICHA[c.n]) || null;
+  const afet = (d.chakrasTodos || []).filter(triChakraAfetado);
+  const bloq = afet.filter(c => triEstadoChakra(c) === 'bloqueado').map(c => c.nome);
+  const abIdx = TRIAGEM_NIVEIS_ABERTURA.indexOf(d.aberturaNivel);
+  // Leitura do momento: escrita a partir do que foi mesmo encontrado nesta pessoa
+  const leitura = [];
+  if (!causas.length && !afet.length) leitura.push(`${nome} está, neste momento, num ponto de bastante equilíbrio. Não encontrei nada que precise de limpeza, e isso é uma boa notícia. 🌿`);
+  else {
+    if (causas.length) leitura.push(`O que mais pesa agora é ${rbJunta(causas.slice(0, 3).map(c => c.nome.toLowerCase()))}${causas.length > 3 ? ' (e mais ' + (causas.length - 3) + ')' : ''}.`);
+    if (afet.length) leitura.push(`Em termos de energia, os centros que pedem mais carinho são ${rbJunta(afet.map(c => c.nome))}${bloq.length ? ', sendo ' + rbJunta(bloq) + ' ' + (bloq.length > 1 ? 'os mais fechados' : 'o mais fechado') : ''}.`);
+    if (abIdx >= 2) leitura.push('Os seus caminhos estão a precisar de ajuda para se abrirem.');
+    leitura.push('Nada disto é uma sentença: é o retrato de agora, e tudo isto tem solução.');
+  }
+  const perguntas = causas.map(c => ficha(c) && ficha(c).pergunta).filter(Boolean).slice(0, 3);
+  const como = soTriagem
+    ? [`Por agora fiz só a triagem, ainda não fiz nenhuma limpeza. Faço-a quando combinarmos, com calma, com o seu nome ao centro e com as etiquetas certas para cada coisa que encontrei.`]
+    : [];
   const passos = [];
   if (d.sessoesNecessarias) passos.push({ rotulo:'Sessões recomendadas', texto:`${d.sessoesNecessarias} sessão(ões) de limpeza.` });
   if (d.temAlgumaCoisaDetetada) passos.push({ rotulo:'Nos dias seguintes', texto:'É normal sentir mais cansaço, emotividade ou sono alterado nos 1 a 3 dias a seguir. É o corpo a processar. Ajuda beber água, descansar e ter momentos calmos.' });
   passos.push({ rotulo:'Acompanhamento', texto:'Vamos fazendo o ponto da situação em cada sessão.' });
-  blocos.push({ tipo:'linha', icone:'📅', titulo:'Próximos passos', passos });
-  const secExp = cli && cli.sec ? cli.sec.find(x => /^Porque os centros mudam/.test(x.titulo)) : null;
-  const secRes = cli && cli.sec ? cli.sec.find(x => x.titulo === 'Resumo da leitura') : null;
-  if (secExp) blocos.push({ tipo:'detalhe', icone:'🔗', titulo:'Porque os centros mudam, e a que estão ligados', intro: secExp.paras[0], itens: (secExp.lista || []).map(t => { const i = t.indexOf('. '); return { nome: i > 0 ? t.slice(0, i) : t, descricao: i > 0 ? t.slice(i + 2) : '', exemplo: '' }; }) });
-  if (cli && cli.sec) blocos.push({ tipo:'secoes', icone:'📖', titulo:'A leitura completa, em palavras', itens: cli.sec.filter(x => x !== secRes && x !== secExp && x !== secAb).map(x => ({ nome:x.titulo, paras:(x.paras || []).concat((x.lista || []).map(y => '• ' + y)) })) });
-  if (secRes) blocos.push({ tipo:'texto', icone:'🧭', titulo:'Resumo da leitura', paras: secRes.paras.concat((secRes.lista || []).map(y => y.replace(/^\s+/, '• '))) });
-  return { tema:'triagem', emoji:'🌿', titulo:'A sua triagem energética', subtitulo:'Relatório pessoal', nome, data:new Date().toLocaleDateString('pt-PT'), assinatura:'Ricardo Correia · Hikari Fafe', blocos };
+  const encontrados = causas.map(c => ({ nome: c.nome, descricao: c.descricao, notar: ficha(c) ? ficha(c).sinais : '', exemplo: c.exemplo }));
+  const extraAb = [];
+  if (d.pedido) extraAb.push(`Disse-me que precisa de ajuda com: ${d.pedido}. Escolhi as etiquetas a pensar nisso.`);
+  const m = rbModeloPessoal({
+    tema:'triagem', emoji:'🌿', titulo:'A sua triagem energética', nome1: nome, data: new Date().toLocaleDateString('pt-PT'), assinatura:'Ricardo Correia · Hikari Fafe',
+    oQueFiz:'a triagem energética com o pêndulo', pedido: d.pedido || '', extraAbertura: extraAb,
+    antes, encontrados, tituloEncontrados:'O que encontrei, explicado', nadaEncontrado:'Não encontrei nada de baixa vibração: o seu campo está equilibrado. ✨',
+    meio, como, leitura, perguntas, proximos: passos, depois,
+    resumo: [ causas.length || afet.length ? `Encontrei ${causas.length} ${causas.length === 1 ? 'coisa' : 'coisas'} a limpar e ${afet.length} ${afet.length === 1 ? 'centro' : 'centros'} de energia a pedir atenção.` : 'Está tudo em equilíbrio neste momento.',
+      soTriagem ? 'A limpeza fica para quando combinarmos. Até lá, beba água e descanse.' : 'Nos próximos dias é normal sentir mais sono ou emoção, e também mais leveza. É o campo a assentar.', 'Qualquer dúvida, fale comigo.' ],
+    mensagem: 'Isto é um retrato do momento, não uma sentença. Obrigado pela confiança. 🌿'
+  });
+  m.aviso = 'Este é um trabalho energético e complementar. Não substitui o acompanhamento médico ou psicológico.';
+  return m;
 }
 
 async function triagemGerarRelatorio(){
@@ -19050,6 +19077,7 @@ async function triagemGerarRelatorio(){
     // O perfil energético (Mapa da Alma) vai só no relatório da 1ª sessão; nas seguintes
     // não se repete, a não ser que seja pedido (botão "Incluir perfil energético").
     const dadosModelo = {
+      corpos: __triagem.corpos || {},
       primeiroNome: __triagem.patientNome.split(/\s+/)[0], causasDetetadas, chakrasTodos, aberturaNivel, comparacao,
       sessoesNecessarias: __triagem.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas: etiquetasAplicadas,
       pedido: (__triagem.pedido || '').trim(), pedidoTemas: __triagem.pedidoTemas || [],
@@ -22128,6 +22156,8 @@ window.sendChatbotMessage = async function(){
   if (!window.mostrarAviso) window.mostrarAviso = function(msg, err){ toast(msg, !!err); };
   window.firebase       = { auth: () => auth };
   window.guardarNaFicha = function(...args){ return guardarNaFicha(...args); };
+  // Relatório pessoal (estilo acolhedor) a partir de secções editáveis — usado por consultas em ficheiros à parte
+  window.relatorioPessoalDeSeccoes = function(o, secoes){ try { return rbFragmento(rbModeloDeSeccoes(Object.assign({ assinatura:'Ricardo Correia · Hikari Fafe', data:new Date().toLocaleDateString('pt-PT') }, o), secoes)); } catch(e){ console.error(e); return ''; } };
   window.lerRelatoriosPaciente = async function(patientId, tipo){
     try{
       const sn = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), where('tipo', '==', tipo)));

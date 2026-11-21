@@ -327,7 +327,7 @@
       dados.estado = n === 1 ? { escudo:S.escudo, idade:S.idade, epoca:S.epoca, vivencia:S.vivencia, chakras:S.chakras, pontos:S.pontos } : { escudo:S.escudo, idade:S.idade, epoca:S.epoca, vivencia:S.vivencia, chakras:S.chakras, pontos:S.pontosAntes || S.pontos };
       try { localStorage.setItem('ps_validade_dias', String(S.validade || 0)); } catch (_) {}
     }
-    const ok = window.guardarNaFicha ? await window.guardarNaFicha(S.patientId, { tipo:'pesquisa_sistemas', titulo:'Pesquisa por escudos e sistemas — ' + hoje(), texto, dados }) : false;
+    const ok = window.guardarNaFicha ? await window.guardarNaFicha(S.patientId, { tipo:'pesquisa_sistemas', titulo:'Pesquisa por escudos e sistemas — ' + hoje(), texto, dados, reportHtml: (window.relatorioPessoalDeSeccoes ? window.relatorioPessoalDeSeccoes({ titulo:'A sua pesquisa por escudos', nome:S.nome, nome1:String(S.nome||'').split(/\s+/)[0], oQueFiz:'a pesquisa por escudos e sistemas', pedido:(S.queixas||S.motivo||'') }, S.secoes.filter(x => !/internas/.test(x.titulo))) : '') }) : false;
     if (ok && window.anexarNotasClinicas) await window.anexarNotasClinicas(S.patientId, 'Pesquisa por escudos e sistemas', [{ rotulo:'Queixas', valor:S.queixas }, { rotulo:'Notas clínicas', valor:S.notas }]);
     toast(ok ? 'Guardado na ficha do paciente.' : 'Não foi possível guardar.', !ok);
   };
