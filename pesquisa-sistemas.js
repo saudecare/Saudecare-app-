@@ -38,6 +38,16 @@
       temas:['Libertar mágoas','Perdoar','Aceitação','Compaixão'], salmos:'Salmo 23 e Salmo 34 (consolo na dor)', afi:'Deixo ir, com suavidade, a dor, a tristeza e a sensação de perda. Permito que em mim entrem paz, amor e aceitação.' }
   };
   const ESCUDO_NOMES = Object.keys(ESCUDOS);
+  // Energias (das 40 da Triagem) a pesquisar primeiro com cada escudo. É só uma sugestão de partida para poupar tempo.
+  const ESCUDO_CAUSAS = {
+    'Desproteção': [10, 2, 30, 31, 33, 36],
+    'Desvalorização': [28, 29, 39, 4, 17, 26],
+    'Impotência': [28, 25, 16, 22, 37, 20],
+    'Sobrevivência': [22, 38, 18, 30, 14, 37],
+    'Perda': [15, 27, 26, 23, 34, 21]
+  };
+  const causaNome = n => (window.__causaNome && window.__causaNome(n)) || ('Energia ' + n);
+  const causaPerg = n => (window.CAUSA_FICHA && window.CAUSA_FICHA[n] && window.CAUSA_FICHA[n].pergunta) || '';
 
   const CHAKRAS = [
     { nome:'Raiz', emoji:'🔴', corpos:['fisico','etereo'] },
@@ -156,6 +166,7 @@
     return `<div class="card"><h3 style="margin-top:0;">1. Escudo emocional mais ativo</h3>
       <p class="muted">Pesquisa com o pêndulo qual dos 5 escudos está mais ativo agora.</p>${botoes}
       ${e ? `<div style="margin-top:10px;background:#f1f7f4;border-left:3px solid var(--primary,#2f6f5e);padding:8px 10px;border-radius:6px;font-size:.88rem;"><b>Função do escudo:</b> ${esc(e.funcao)}<br><b>Frases típicas:</b> ${e.frases.map(esc).join(' · ')}<br><b>Chakras habitualmente ligados:</b> ${e.chakras.join(', ')}</div>` : ''}
+      ${e ? `<div style="margin-top:10px;background:#faf5ff;border-left:3px solid #7c3aed;padding:8px 10px;border-radius:6px;font-size:.86rem;"><b>🔎 Energias a pesquisar primeiro (das 40)</b><br><span class="muted">Sugestão para poupar tempo. Confirma sempre com o pêndulo; na Triagem tens a lista completa.</span>${(ESCUDO_CAUSAS[S.escudo] || []).map(n => `<div style="margin-top:5px;"><b>${n}. ${esc(causaNome(n))}</b>${causaPerg(n) ? `<br><span style="font-style:italic;">${esc(causaPerg(n))}</span>` : ''}</div>`).join('')}</div>` : ''}
       <label style="margin-top:12px;">Com que idade este escudo se ativou? (anos)</label>
       <input id="psIdade" type="number" min="0" max="120" inputmode="numeric" value="${esc(S.idade)}" placeholder="ex: 7">
       <label>Em que época?</label>

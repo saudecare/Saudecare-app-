@@ -417,8 +417,8 @@
 <script type="module" src="pe-carregador.js"></script>
 <script type="module" src="cg-imagens.js?v=2026-11-15-8"></script>
 <script src="chakras-leitura.js?v=2026-11-20-2"></script>
-<script src="pesquisa-sistemas.js?v=2026-11-21-3"></script>
-<script src="causas-ficha.js?v=2026-11-21-6"></script>
+<script src="pesquisa-sistemas.js?v=2026-11-21-7"></script>
+<script src="causas-ficha.js?v=2026-11-21-7"></script>
 <script type="module" src="consulta-guiada.js?v=2026-11-20-11"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
@@ -446,7 +446,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-6';
+const APP_VERSION = '2026-11-21-8';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13223,7 +13223,9 @@ function triApoCalc(){
   const chk = TRIAGEM_CHAKRAS_9.filter((c, i) => triChakraAfetado({ estado: __triagem.chakras[i] }));
   chk.forEach(c => (TRI_APO_CORPOS_CHAKRA[c.nome] || []).forEach(k => corpos.add(k)));
   if (chk.length) tec.add('chakras');
-  if (!achados.length && !chk.length) return null;
+  const cp = __triagem.corpos || {}; const corposMarc = Object.keys(cp).filter(k => cp[k] > 0);
+  corposMarc.forEach(k => corpos.add(k));
+  if (!achados.length && !chk.length && !corposMarc.length) return null;
   const todas = D.TECNICAS;
   const lista = ids => ids.map(id => todas.find(t => t.id === id)).filter(Boolean);
   const normais = lista(Array.from(tec)).filter(t => !t.forte && !t.fixa && t.id !== 'pesquisa');
@@ -13231,6 +13233,36 @@ function triApoCalc(){
   return { achados, corpos: D.CORPOS.filter(c => corpos.has(c.id)), chakras: chk, normais, fortes, inicio: todas.find(t => t.id === 'preparar'), fim: todas.find(t => t.id === 'selar'), alertas: D.ALERTAS };
 }
 window.__triApoSeguro = function(v){ if (__triagem) __triagem.apoSeguro = !!v; renderTriagemPasso(document.getElementById('mainView')); };
+
+/* Rastreio de segurança (início) e pesquisa dos 7 corpos — vindos da apometria, ligados à Triagem */
+const TRI_NIVEIS3 = [[0,'Equilibrado','😊','#16a34a'],[1,'Atenção','😟','#ea580c'],[2,'Forte','😣','#dc2626']];
+function triGarantirApo(){ if (__apoDados === null) triApoCarregar().then(() => { try{ renderTriagemPasso(document.getElementById('mainView')); }catch(e){} }); }
+window.__triAlerta = function(id, on){
+  __triagem.alertas = __triagem.alertas || {}; __triagem.alertas[id] = !!on;
+  __triagem.apoSeguro = !Object.keys(__triagem.alertas).some(k => __triagem.alertas[k]);
+  renderTriagemPasso(document.getElementById('mainView'));
+};
+function triRastreioCard(){
+  triGarantirApo();
+  const D = __apoDados; if (!D || !D.ALERTAS) return '';
+  const al = __triagem.alertas || {};
+  const marcados = D.ALERTAS.filter(a => al[a.id]);
+  const grave = marcados.some(a => a.grave);
+  return `<div class="card" style="border-left:4px solid #dc2626;"><h3>🛡️ Antes de começar — rastreio de segurança</h3>
+    <p class="muted" style="font-size:.85rem;">Marca o que se aplica a esta pessoa. Se marcares algum, as técnicas mais intensas ficam bloqueadas.</p>
+    ${D.ALERTAS.map(a => `<label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:6px 0;font-size:.9rem;"><input type="checkbox" style="width:20px;height:20px;margin-top:2px;flex-shrink:0;" ${al[a.id] ? 'checked' : ''} onchange="window.__triAlerta('${a.id}', this.checked)"> <span>${escapeHtml(a.texto)}</span></label>`).join('')}
+    ${marcados.length ? `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:8px 10px;font-size:.85rem;">⚠️ ${grave ? 'Só técnicas suaves (pêndulo, Reiki, etiquetas e salmos). Trabalhar sempre em articulação com o médico ou o psicólogo da pessoa.' : 'Só técnicas suaves e com mais cuidado.'}${marcados.some(a => a.urgente) ? ' Falar com a pessoa com calma e orientá-la para apoio profissional antes de continuar.' : ''}${marcados.some(a => a.id === 'menor') ? ' Pedir autorização a quem a representa.' : ''}</div>` : '<p class="muted" style="font-size:.82rem;margin:4px 0 0;">✔ Sem sinais de alerta: as técnicas completas ficam disponíveis.</p>'}</div>`;
+}
+window.__triCorpo = function(id, v){ __triagem.corpos = __triagem.corpos || {}; __triagem.corpos[id] = v; renderTriagemPasso(document.getElementById('mainView')); };
+function triCorposCard(){
+  triGarantirApo();
+  const D = __apoDados; if (!D || !D.CORPOS) return '';
+  const c = __triagem.corpos || {};
+  return `<div class="card"><h3>🧬 Os 7 corpos (aura)</h3>
+    <p class="muted" style="font-size:.85rem;">Pesquisa com o pêndulo quais corpos estão em desequilíbrio. Deixa em «Equilibrado» o que estiver bem. O que marcares entra no trabalho de apometria e no relatório.</p>
+    ${D.CORPOS.map(k => `<div style="padding:8px 0;border-top:1px solid #eee;"><div style="font-weight:600;">${k.emoji} ${escapeHtml(k.nome)}</div><div class="muted" style="font-size:.8rem;">${escapeHtml(k.sobre)} <i>${escapeHtml(k.sinais)}</i></div>
+      <div style="display:flex;gap:6px;margin-top:5px;">${TRI_NIVEIS3.map(([v, t, e, cor]) => { const on = (c[k.id] || 0) === v; return `<button type="button" onclick="window.__triCorpo('${k.id}', ${v})" style="flex:1;padding:8px 4px;border-radius:10px;border:2px solid ${cor};font-weight:700;font-size:12px;cursor:pointer;background:${on ? cor : '#fff'};color:${on ? '#fff' : cor};">${e} ${t}</button>`; }).join('')}</div></div>`).join('')}</div>`;
+}
 function triFichasEnergias(paraRelatorio){
   try{ const ns = TRIAGEM_BAIXA_VIBRACAO.filter((x, i) => __triagem.baixaVibracao[i]).map(x => x.n); return window.causaFichasCard ? window.causaFichasCard(ns, paraRelatorio) : ''; }catch(e){ return ''; }
 }
@@ -13247,7 +13279,7 @@ function triApoCard(paraRelatorio){
     <p class="muted" style="font-size:.85rem;">Junta ao pêndulo o trabalho nos corpos subtis. Leitura orientativa, decide o terapeuta.</p>
     ${r.achados.length ? `<p style="margin:6px 0 2px;"><b>Interferências detetadas:</b> ${r.achados.map(a => escapeHtml(a.nome)).join('; ')}.</p>` : ''}
     ${r.chakras.length ? `<p style="margin:6px 0 2px;"><b>Chakras a harmonizar:</b> ${r.chakras.map(c => escapeHtml(c.nome)).join(', ')}.</p>` : ''}
-    <p style="margin:6px 0 2px;"><b>Corpos a trabalhar:</b> ${r.corpos.map(c => escapeHtml(c.nome)).join(' · ')}.</p>
+    <p style="margin:6px 0 2px;"><b>Corpos a trabalhar:</b> ${r.corpos.map(c => { const v = (__triagem.corpos || {})[c.id]; return escapeHtml(c.nome) + (v ? ' (' + (v >= 2 ? 'forte' : 'atenção') + ')' : ''); }).join(' · ')}.</p>
     <p style="margin:8px 0 2px;"><b>Técnicas, por ordem:</b></p>
     <ol style="margin:0 0 0 18px;">${[r.inicio].concat(r.normais, [r.fim]).filter(Boolean).map(li).join('')}</ol>
     ${fortes}${confirmacao}${triApoDicas(r, paraRelatorio)}</div>`;
@@ -13388,6 +13420,7 @@ function triagemPassoBaixaVibracao(main){
   main.innerHTML = `
     <h2>🎴 Triagem — ${escapeHtml(__triagem.patientNome)}</h2>
     ${triagemProgressoHTML()}
+    ${triRastreioCard()}
     <div class="card">
       <h3>4. Baixa Vibração — Pesquisa com o Pêndulo (${TRIAGEM_BAIXA_VIBRACAO.length} causas)</h3>
       <p class="muted">Pesquise cada número com o pêndulo e marque apenas os que confirmar. Toque em ℹ️ para ver o que é e um exemplo.</p>
@@ -13432,6 +13465,7 @@ function triagemPassoChakras(main){
         ${infoItemHTML('chk-info-' + c.n, c.descricao, c.exemplo).replace('margin:2px 0 8px 34px', 'margin:0 0 12px 0').replace(/<\/div>$/, (window.chakraExtraTriagem ? window.chakraExtraTriagem(c.nome) : '') + '</div>')}
         <div style="margin-bottom:10px;"></div>`).join('')}
     </div>
+    ${triCorposCard()}
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
       <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
@@ -18806,7 +18840,7 @@ async function triagemGerarRelatorio(){
     if (anteriorDoc){
       ehPrimeiraSessao = false;
       comparacao = compararComAnterior(anteriorDoc, {
-        baixaVibracaoDetetada: causasDetetadas.map(c => c.nome),
+        baixaVibracaoDetetada: causasDetetadas.map(c => c.nome), corposPesquisa: __triagem.corpos || {}, alertasRastreio: __triagem.alertas || {},
         chakras: chakrasTodos.map(c => ({ nome:c.nome, estado: triEstadoChakra(c) })),
         bovisInicial: __triagem.bovisIni, bovisFinal: __triagem.bovisFin, aberturaCaminhos: aberturaNivel
       });
@@ -18909,7 +18943,7 @@ async function triagemGerarRelatorio(){
     dataNascimento: __triagem.dataNascimento || null, paisNascimento: __triagem.paisNascimento || null, numeroConsulta: __triagem.numConsulta || 1,
     reportText, reportTextCliente: clienteRel.texto, reportHtml: reportHtmlBonitoTriagem || clienteRel.html, reportHtmlSimples: clienteRel.html,
     bovisInicial: __triagem.bovisIni || null, bovisFinal: __triagem.bovisFin || null,
-    baixaVibracaoDetetada: causasDetetadas.map(c => c.nome),
+    baixaVibracaoDetetada: causasDetetadas.map(c => c.nome), corposPesquisa: __triagem.corpos || {}, alertasRastreio: __triagem.alertas || {},
     chakras: chakrasTodos.map(c => ({ nome:c.nome, estado: triEstadoChakra(c) })),
     aberturaCaminhos: aberturaNivel,
     leituraComplementar: __triagem.leituraComplementar ? {
