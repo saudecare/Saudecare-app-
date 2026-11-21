@@ -521,7 +521,8 @@ service cloud.firestore {
 
       match /participantes/{partId} {
         allow create: if isEquipaClinica('hikari-terapias') ||
-          (request.resource.data.keys().hasOnly(['nome', 'contacto', 'aceitou', 'codigo', 'criadoEm', 'origem']) &&
+          (request.resource.data.keys().hasOnly(['nome', 'contacto', 'aceitou', 'codigo', 'criadoEm', 'origem', 'servicos']) &&
+           request.resource.data.servicos is list && request.resource.data.servicos.size() >= 1 && request.resource.data.servicos.size() <= 2 &&
            request.resource.data.origem == 'site' &&
            request.resource.data.aceitou == true &&
            request.resource.data.nome is string && request.resource.data.nome.size() >= 2 && request.resource.data.nome.size() <= 80 &&
@@ -531,6 +532,22 @@ service cloud.firestore {
            get(/databases/$(database)/documents/public_sorteios/$(sorteioId)).data.estado == 'aberto' &&
            request.time <= get(/databases/$(database)/documents/public_sorteios/$(sorteioId)).data.fimTs);
         allow read, update, delete: if isEquipaClinica('hikari-terapias');
+      }
+
+      // Cortesias (lugares limitados): cada lugar é um documento que só pode ser criado uma vez, por isso ninguém fica com o mesmo lugar.
+      match /lugares/{lugarId} {
+        allow read: if true;
+        allow create: if isEquipaClinica('hikari-terapias') ||
+          (request.resource.data.keys().hasOnly(['tipo', 'n', 'codigo', 'criadoEm']) &&
+           request.resource.data.tipo in ['reflexologia', 'triagem'] &&
+           lugarId == request.resource.data.tipo + '_' + string(request.resource.data.n) &&
+           request.resource.data.n is int && request.resource.data.n >= 1 &&
+           request.resource.data.n <= get(/databases/$(database)/documents/public_sorteios/$(sorteioId)).data.get(request.resource.data.tipo == 'reflexologia' ? 'lugaresReflexologia' : 'lugaresTriagem', 0) &&
+           request.resource.data.codigo is string && request.resource.data.codigo.size() == 6 &&
+           request.resource.data.criadoEm == request.time &&
+           get(/databases/$(database)/documents/public_sorteios/$(sorteioId)).data.estado == 'aberto' &&
+           request.time <= get(/databases/$(database)/documents/public_sorteios/$(sorteioId)).data.fimTs);
+        allow update, delete: if isEquipaClinica('hikari-terapias');
       }
     }
 

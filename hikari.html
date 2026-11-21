@@ -352,21 +352,38 @@ arrancar();
     window.open('https://wa.me/?text=' + encodeURIComponent(P[1] + ' ' + url), '_blank');
   };
 
-/* ───── Sorteio (só aparece quando existe um sorteio aberto ou já realizado) ───── */
+/* ───── Sorteio e ofertas de Black Friday (só aparece quando existe um sorteio aberto ou já realizado) ───── */
 (async function sorteioPublico(){
   const alvo = $('sorteio'); if (!alvo) return;
-  let S = null;
+  let S = null, ocup = { reflexologia: 0, triagem: 0 };
   try {
     const snap = await getDocs(query(collection(db, 'public_sorteios'), where('tenantId', '==', TENANT), where('estado', 'in', ['aberto', 'sorteado'])));
     snap.forEach(d => { const x = Object.assign({ id: d.id }, d.data()); const t = x.criadoTs && x.criadoTs.toMillis ? x.criadoTs.toMillis() : 0; if (!S || t >= S._t) { x._t = t; S = x; } });
   } catch (e) { return; }
   if (!S) return;
+  async function lerLugares(){ try { const l = await getDocs(collection(db, 'public_sorteios', S.id, 'lugares')); ocup = { reflexologia: 0, triagem: 0 }; l.forEach(d => { const t = d.data().tipo; if (ocup[t] != null) ocup[t]++; }); } catch (_) {} }
+  await lerLugares();
   alvo.classList.remove('hidden'); $('mSorteio').classList.remove('hidden');
   const ms = (t) => t && t.toMillis ? t.toMillis() : (t ? new Date(t).getTime() : 0);
   const fmt = (t) => new Date(ms(t)).toLocaleString('pt-PT', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' });
   const chave = 'sorteio_' + S.id;
   let minha = null; try { minha = JSON.parse(localStorage.getItem(chave) || 'null'); } catch (_) {}
-  const reg = S.regulamento ? `<details><summary>📜 Regulamento do sorteio</summary><pre>${esc(S.regulamento)}</pre></details>` : '';
+  const reg = S.regulamento ? `<details><summary>📜 Regulamento</summary><pre>${esc(S.regulamento)}</pre></details>` : '';
+  const OF = {
+    reflexologia: { icone: '🦶', quem: 'Natália', wa: '351934744633', nome: 'Cortesia de reflexologia podal', dur: '20 minutos', total: Number(S.lugaresReflexologia) || 0,
+      texto: 'A reflexologia podal é uma massagem nos pés, com pressão suave em zonas que correspondem a diferentes partes do corpo. Serve para relaxar, aliviar a tensão e ajudar a perceber onde o corpo anda mais sensível. Nos 20 minutos: conversamos um pouco, vejo os teus pés, trabalho cada zona e no fim digo-te o que notei. Não é um tratamento médico e não faz diagnósticos.' },
+    triagem: { icone: '🔮', quem: 'Ricardo', wa: '351938122918', nome: 'Triagem energética com pêndulo hebraico', dur: 'cerca de 30 minutos', total: Number(S.lugaresTriagem) || 0,
+      texto: 'É uma pesquisa com o pêndulo hebraico para descobrir o que está a pesar na tua energia. Vejo, uma a uma, as energias de baixa vibração (como olho gordo, inveja ou cargas de lugares e de pessoas), como estão os teus 9 chakras (equilibrados, em desarmonia ou bloqueados) e quanto estão abertos os teus caminhos. No fim recebes um relatório pessoal, bonito e fácil de ler, por link, a explicar cada coisa. A limpeza, se quiseres, fica para outra sessão.' }
+  };
+  const waLink = (k, codigo) => 'https://wa.me/' + OF[k].wa + '?text=' + encodeURIComponent('Olá ' + OF[k].quem + '! Reservei no site a ' + OF[k].nome.toLowerCase() + (codigo ? ' (código ' + codigo + ')' : '') + '. Quando posso marcar?');
+  const ofertas = Object.keys(OF).filter(k => OF[k].total > 0);
+  function blocoOfertas(aberto){
+    if (!ofertas.length) return '';
+    return `<div style="display:grid;gap:12px;margin:16px 0;text-align:left">${ofertas.map(k => {
+      const o = OF[k], rest = Math.max(0, o.total - ocup[k]);
+      return `<div style="background:rgba(255,255,255,.12);border-radius:16px;padding:14px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:16px">${o.icone} ${o.nome}</b><span style="background:${rest ? 'var(--o)' : '#999'};color:#2b1d00;font-weight:800;font-size:12px;padding:4px 10px;border-radius:100px;white-space:nowrap">${S.estado === 'sorteado' ? 'Terminado' : (rest ? 'Restam ' + rest + ' de ' + o.total : 'Esgotado')}</span></div>
+        <div style="font-size:13px;opacity:.9;margin:4px 0">Grátis · ${o.dur} · ${o.total} lugares</div><p style="font-size:14px;margin:6px 0 0;max-width:none">${esc(o.texto)}</p>${S.estado === 'sorteado' ? '' : `<a class="btn claro pequeno" style="margin-top:10px" target="_blank" rel="noopener" href="${waLink(k)}">💬 Falar com ${o.quem} no WhatsApp</a>`}</div>`; }).join('')}</div>`;
+  }
   function desenhar(){
     const aberto = S.estado === 'aberto' && Date.now() <= ms(S.fimTs);
     let corpo = '';
@@ -374,15 +391,19 @@ arrancar();
       corpo = S.semVencedor ? `<p>O sorteio já foi realizado, sem participações válidas.</p>`
         : `<div class="ok">🎉 <b>${esc(S.vencedorNome || '')}</b><br><span>Participação n.º <b style="font-size:16px">${esc(S.vencedorCodigo || '')}</b> · ${S.total || ''} participações</span><br><span style="font-size:13px">Sorteio realizado a ${esc(fmt(S.sorteadoEm))}, de forma automática e aleatória. Parabéns!</span></div>`;
     } else if (aberto) {
-      corpo = `<div class="cont" id="soCont"></div>` + (minha ? `<div class="ok">✅ Já está a participar.<br>O seu código: <b>${esc(minha.codigo)}</b><br><span style="font-size:13px">Guarde-o. O resultado sai a ${esc(fmt(S.sorteioTs))}.</span></div>`
-        : `<form id="soForm"><input type="text" id="soNome" placeholder="O seu nome" maxlength="80" autocomplete="name" required><input type="text" id="soContacto" placeholder="E-mail ou telemóvel" maxlength="120" autocomplete="email" required>
-          <label class="ck"><input type="checkbox" id="soAceito" required><span>Li e aceito o regulamento e autorizo o tratamento dos meus dados apenas para este sorteio.</span></label>
-          <button class="btn ouro" type="submit" id="soBt">🎁 Quero participar</button><span id="soErro" style="color:#ffd0d0;font-size:13px"></span></form>`);
+      const livres = ofertas.filter(k => OF[k].total - ocup[k] > 0);
+      corpo = `<div class="cont" id="soCont"></div>` + (minha ? `<div class="ok">✅ Reserva feita${minha.servicos ? ': ' + minha.servicos.map(k => OF[k] ? OF[k].nome : k).join(' + ') : ''}.<br>O seu código: <b>${esc(minha.codigo)}</b><br><span style="font-size:13px">Guarde-o. Entra no sorteio do Mapa da Alma Diamante, com resultado a ${esc(fmt(S.sorteioTs))}. Combine agora o dia por WhatsApp:</span><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px">${(minha.servicos || []).filter(k => OF[k]).map(k => `<a class="btn ouro pequeno" target="_blank" rel="noopener" href="${waLink(k, minha.codigo)}">💬 ${OF[k].icone} Marcar com ${OF[k].quem}</a>`).join('')}</div></div>`
+        : (livres.length ? `<form id="soForm"><input type="text" id="soNome" placeholder="O seu nome" maxlength="80" autocomplete="name" required><input type="text" id="soContacto" placeholder="E-mail ou telemóvel" maxlength="120" autocomplete="email" required>
+          <div style="display:grid;gap:6px">${livres.map(k => `<label class="ck"><input type="checkbox" name="soServ" value="${k}"><span><b>${OF[k].icone} ${OF[k].nome}</b></span></label>`).join('')}</div>
+          <label class="ck"><input type="checkbox" id="soAceito" required><span>Li e aceito o regulamento e autorizo o tratamento dos meus dados apenas para esta campanha.</span></label>
+          <button class="btn ouro" type="submit" id="soBt">🎁 Reservar o meu lugar</button><span id="soErro" style="color:#ffd0d0;font-size:13px"></span></form>`
+          : `<p>As cortesias esgotaram. 💜 Quem marcar uma triagem ou reflexologia até ${esc(fmt(S.fimTs))} entra no sorteio do Mapa da Alma Diamante.</p><a class="btn ouro" href="marcar.html">📅 Marcar</a>`));
     } else {
-      corpo = `<p>As participações estão encerradas. O resultado sai a ${esc(fmt(S.sorteioTs))}.</p>`;
+      corpo = `<p>As reservas estão encerradas. O resultado do sorteio sai a ${esc(fmt(S.sorteioTs))}.</p>`;
     }
-    alvo.innerHTML = `<div class="sorteio"><span class="selo">${S.estado === 'sorteado' ? 'Sorteio realizado' : 'Sorteio'}</span><h3>${esc(S.titulo || 'Sorteio')}</h3>
-      <p>${esc(S.premio || '')}${S.descricao ? '<br>' + esc(S.descricao) : ''}</p>${corpo}${reg}</div>`;
+    alvo.innerHTML = `<div class="sorteio"><span class="selo">${S.estado === 'sorteado' ? 'Sorteio realizado' : 'Black Friday'}</span><h3>${esc(S.titulo || 'Sorteio')}</h3>
+      <p>${esc(S.premio || '')}${S.descricao ? '<br>' + esc(S.descricao) : ''}</p>
+      <p style="font-size:14px">🎁 <b>Sorteio do Mapa da Alma Diamante</b> para quem fizer marcação de triagem energética ou de reflexologia podal.</p>${blocoOfertas(aberto)}${corpo}${reg}</div>`;
     const f = $('soForm'); if (f) f.addEventListener('submit', enviar);
     if ($('soCont')) tic();
   }
@@ -395,22 +416,32 @@ arrancar();
     setTimeout(tic, 1000);
   }
   async function sha(t){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 40); }
+  const cod = () => Array.from(crypto.getRandomValues(new Uint8Array(6))).map(x => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
   async function enviar(e){
     e.preventDefault();
     const nome = $('soNome').value.trim(), contacto = $('soContacto').value.trim(), erro = $('soErro');
+    const quer = Array.from(document.querySelectorAll('input[name=soServ]:checked')).map(x => x.value);
     const ehMail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contacto), tel = contacto.replace(/[\s().+-]/g, '');
     if (nome.length < 2) { erro.textContent = 'Escreva o seu nome.'; return; }
     if (!ehMail && !/^\d{9,15}$/.test(tel)) { erro.textContent = 'Indique um e-mail ou telemóvel válido.'; return; }
+    if (!quer.length) { erro.textContent = 'Escolha pelo menos uma das ofertas.'; return; }
     $('soBt').disabled = true; erro.textContent = '';
-    const codigo = Array.from(crypto.getRandomValues(new Uint8Array(6))).map(x => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
+    const codigo = cod(); const obtidos = [];
     try {
+      await lerLugares();
+      for (const k of quer) {
+        for (let n = ocup[k] + 1; n <= OF[k].total; n++) {
+          try { await setDoc(doc(db, 'public_sorteios', S.id, 'lugares', k + '_' + n), { tipo: k, n, codigo, criadoEm: serverTimestamp() }); obtidos.push(k); break; } catch (_) { /* lugar ocupado: tenta o seguinte */ }
+        }
+      }
+      if (!obtidos.length) { await lerLugares(); desenhar(); return; }
       const id = await sha(S.id + '|' + (ehMail ? contacto.toLowerCase() : tel));
-      await setDoc(doc(db, 'public_sorteios', S.id, 'participantes', id), { nome, contacto, aceitou: true, codigo, criadoEm: serverTimestamp(), origem: 'site' });
-      minha = { codigo }; try { localStorage.setItem(chave, JSON.stringify(minha)); } catch (_) {}
-      desenhar();
+      await setDoc(doc(db, 'public_sorteios', S.id, 'participantes', id), { nome, contacto, aceitou: true, codigo, criadoEm: serverTimestamp(), origem: 'site', servicos: obtidos });
+      minha = { codigo, servicos: obtidos }; try { localStorage.setItem(chave, JSON.stringify(minha)); } catch (_) {}
+      await lerLugares(); desenhar();
     } catch (err) {
       $('soBt').disabled = false;
-      erro.textContent = (err && /permission/i.test(err.message || '')) ? 'Este contacto já está a participar, ou as participações já fecharam.' : 'Não foi possível enviar. Tente outra vez.';
+      erro.textContent = (err && /permission/i.test(err.message || '')) ? 'Este contacto já fez uma reserva, ou as reservas já fecharam.' : 'Não foi possível enviar. Tente outra vez.';
     }
   }
   desenhar();
