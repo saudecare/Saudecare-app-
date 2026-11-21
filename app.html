@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-11';
+const APP_VERSION = '2026-11-21-12';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -8851,9 +8851,14 @@ window.startGuidedConsultation = async function(patientId, patientName){
     if (window.temPesquisaEmocional && window.temPesquisaEmocional()) exclusivos.push({ ic: '🔬', n: 'Pesquisa Emocional Clínica', fn: `iniciarExclusivo('pe','${patientId}')` });
     if (temModulo('triagemPendulo') && tenantId !== 'hikari-terapias') exclusivos.push({ ic: '🎴', n: 'Triagem — Pêndulo Hebraico', fn: `iniciarExclusivo('triagem','${patientId}')` });
     if (tenantId === 'hikari-terapias' || temModulo('pesquisaSistemas')) exclusivos.push({ ic: '🛡️', n: 'Pesquisa por escudos e sistemas', fn: `iniciarExclusivo('sistemas','${patientId}')` });
-    if (tenantId === 'hikari-terapias' || temModulo('reflexologiaPodal')) exclusivos.push({ ic: '🦶', n: 'Reflexologia podal — registo da consulta', fn: `iniciarExclusivo('reflexologia','${patientId}')` });
+    if (tenantId === 'hikari-terapias') exclusivos.push({ ic: '🦶', n: 'Reflexologia podal — registo da consulta', area: 'Reflexologia', fn: `iniciarExclusivo('reflexologia','${patientId}')` });
     if (temModulo('cartomancia')) exclusivos.push({ ic: '🃏', n: 'Consultar as cartas', fn: `iniciarExclusivo('cartas','${patientId}')` });
 
+    // Exclusivos com terapia própria aparecem dentro do grupo dessa terapia (e não na lista geral de exclusivos)
+    exclusivos.filter(x => x.area).forEach(x => {
+      const k = Object.keys(grupos).find(g => g.toLowerCase() === x.area.toLowerCase()) || x.area;
+      (grupos[k] = grupos[k] || []).unshift({ excl: x });
+    });
     if (snap.empty && !exclusivos.length){
       toast('Crie um método primeiro, em "Os Meus Métodos".', true);
       return;
@@ -8862,10 +8867,10 @@ window.startGuidedConsultation = async function(patientId, patientName){
     const tipoTxt = p => p.type === 'guided' ? 'Consulta guiada por passos' : p.type === 'mapping' ? 'Pesquisa por zonas' : 'Lista de pontos';
     const secMetodos = Object.keys(grupos).sort((a, b) => a.localeCompare(b)).map(a => `
       <h3 style="margin:16px 0 4px;">${escapeHtml(a)}</h3>
-      ${grupos[a].map(x => cartao('🧭', x.p.name, tipoTxt(x.p), `escolherMetodoHub('${x.id}','${patientId}','${escapeAttrJs(patientName)}')`)).join('')}`).join('');
-    const secExcl = exclusivos.length ? `
+      ${grupos[a].map(x => x.excl ? cartao(x.excl.ic, x.excl.n, '', x.excl.fn) : cartao('🧭', x.p.name, tipoTxt(x.p), `escolherMetodoHub('${x.id}','${patientId}','${escapeAttrJs(patientName)}')`)).join('')}`).join('');
+    const secExcl = exclusivos.some(x => !x.area) ? `
       <h3 style="margin:16px 0 4px;">Métodos exclusivos ativos</h3>
-      ${exclusivos.map(x => cartao(x.ic, x.n, '', x.fn)).join('')}` : '';
+      ${exclusivos.filter(x => !x.area).map(x => cartao(x.ic, x.n, '', x.fn)).join('')}` : '';
 
     showPatientOverlay(`Nova consulta — ${patientName}`, `
       <div class="card">
