@@ -25,7 +25,7 @@ export function renderSorteio(main, ctx) {
     const part = s.semCompra !== false
       ? 'A participação é gratuita e não depende da compra de qualquer produto ou serviço.'
       : 'Participam as pessoas que reservarem uma das cortesias (gratuitas) ou que fizerem uma marcação de triagem energética ou de reflexologia podal durante o período de participação. A organização regista cada marcação como uma participação.';
-    const ofertas = (nR || nT) ? `\nCortesias da campanha (gratuitas, por ordem de reserva, até esgotarem):\n${nR ? '• Sessões de reflexologia podal de 20 minutos.\n' : ''}${nT ? '• Triagens energéticas com pêndulo hebraico.\n' : ''}O número de lugares disponíveis está indicado nesta página e pode ser reforçado conforme a disponibilidade dos terapeutas. São trabalhos de bem-estar e autoconhecimento, não substituem acompanhamento médico ou psicológico nem fazem diagnósticos.\n` : '';
+    const ofertas = (nR || nT) ? `\nCortesias da campanha (gratuitas, por ordem de reserva, até esgotarem):\n${nR ? '• Sessões de reflexologia podal de 20 minutos, presenciais.\n' : ''}${nT ? '• Triagens energéticas com pêndulo hebraico, online ou à distância.\n' : ''}O número de lugares disponíveis está indicado nesta página e pode ser reforçado conforme a disponibilidade dos terapeutas. São trabalhos de bem-estar e autoconhecimento, não substituem acompanhamento médico ou psicológico nem fazem diagnósticos.\n` : '';
     return `REGULAMENTO — ${s.titulo || 'Sorteio'}
 
 1. Organização
@@ -70,7 +70,7 @@ Este regulamento rege-se pela lei portuguesa. Livro de Reclamações disponível
     const pr = s.premio || 'o prémio';
     const gratis = s.semCompra !== false ? 'Participação gratuita.' : '';
     const nR = s.lugaresReflexologia || 0, nT = s.lugaresTriagem || 0;
-    const of = (nR || nT) ? `\n🎁 ${nR ? nR + ' cortesias de reflexologia podal (20 min) ' : ''}${nR && nT ? 'e ' : ''}${nT ? nT + ' triagens energéticas com pêndulo hebraico ' : ''}— grátis, por ordem de reserva! Reservas por WhatsApp: reflexologia com a Natália (934 744 633), triagem com o Ricardo (928 122 918).\n🦶 Reflexologia: massagem nos pés para relaxar e perceber onde o corpo anda sensível.\n🔮 Triagem: pesquisa com o pêndulo das energias que pesam, dos teus chakras e dos teus caminhos, com relatório pessoal.\n` : '';
+    const of = (nR || nT) ? `\n🎁 ${nR ? nR + ' cortesias de reflexologia podal (20 min, presencial) ' : ''}${nR && nT ? 'e ' : ''}${nT ? nT + ' triagens energéticas com pêndulo hebraico (online ou à distância) ' : ''}— grátis, por ordem de reserva! Reservas por WhatsApp: reflexologia com a Natália (934 744 633), triagem com o Ricardo (928 122 918).\n🦶 Reflexologia: massagem nos pés para relaxar e perceber onde o corpo anda sensível.\n🔮 Triagem: pesquisa com o pêndulo das energias que pesam, dos teus chakras e dos teus caminhos, com relatório pessoal.\n` : '';
     const sort = 'Quem marcar triagem ou reflexologia entra ainda no sorteio de um Mapa da Alma Diamante! 💎';
     return [
       ['📸 Instagram / Facebook — lançamento', `🖤 BLACK FRIDAY · ${s.titulo || ''}\n${of}\n${sort}\n\nComo reservar:\n1️⃣ Entra no link da bio (ou ${LINK})\n2️⃣ Escolhe a oferta e deixa o teu nome e contacto\n3️⃣ Aceita o regulamento\n\n${gratis} Reservas até ${fim}.\nO resultado sai ${res}, sorteado automaticamente na página. ✨\n\nMarca alguém que também ia adorar! 👇\n\n${tags}`],

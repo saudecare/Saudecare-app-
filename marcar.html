@@ -156,8 +156,8 @@ async function load(){
 function destaqueHtml(){
   if (!sorteio) return '';
   const O = [
-    { k: 'reflexologia', icone: '🦶', nome: 'Reflexologia podal — cortesia', dur: '20 minutos', total: Number(sorteio.lugaresReflexologia) || 0, quem: 'Natália', wa: '351934744633', txt: 'Massagem nos pés para relaxar e perceber onde o corpo anda mais sensível.' },
-    { k: 'triagem', icone: '🔮', nome: 'Triagem energética com pêndulo hebraico', dur: 'cerca de 30 minutos', total: Number(sorteio.lugaresTriagem) || 0, quem: 'Ricardo', wa: '351928122918', txt: 'Descobre as energias que pesam, os teus chakras e os teus caminhos, com relatório pessoal.' }
+    { k: 'reflexologia', icone: '🦶', nome: 'Reflexologia podal — cortesia', dur: '20 minutos · presencial', total: Number(sorteio.lugaresReflexologia) || 0, quem: 'Natália', wa: '351934744633', txt: 'Massagem nos pés para relaxar e perceber onde o corpo anda mais sensível.' },
+    { k: 'triagem', icone: '🔮', nome: 'Triagem energética com pêndulo hebraico', dur: 'cerca de 30 minutos · online ou à distância', total: Number(sorteio.lugaresTriagem) || 0, quem: 'Ricardo', wa: '351928122918', txt: 'Descobre as energias que pesam, os teus chakras e os teus caminhos, com relatório pessoal.' }
   ].filter(o => o.total > 0);
   if (!O.length) return '';
   return `<div style="background:linear-gradient(150deg,#3a1f66,#6b2f93 60%,#b0508f);color:#fff;border-radius:20px;padding:18px 16px;margin-bottom:16px;box-shadow:0 8px 24px rgba(60,30,100,.25)">
