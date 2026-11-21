@@ -156,7 +156,7 @@ async function load(){
 function destaqueHtml(){
   if (!sorteio) return '';
   const O = [
-    { k: 'reflexologia', icone: '🦶', nome: 'Reflexologia podal', preco: sorteio.precoReflexologia != null ? Number(sorteio.precoReflexologia) : 15, dur: '20 minutos · presencial', total: Number(sorteio.lugaresReflexologia) || 0, quem: 'Natália', wa: '351934744633', txt: 'Massagem nos pés para relaxar e perceber onde o corpo anda mais sensível.' },
+    { k: 'reflexologia', icone: '🦶', nome: 'Reflexologia podal', preco: sorteio.precoReflexologia != null ? Number(sorteio.precoReflexologia) : 15, dur: '40 minutos · presencial', total: Number(sorteio.lugaresReflexologia) || 0, quem: 'Natália', wa: '351934744633', txt: 'Massagem nos pés para relaxar e perceber onde o corpo anda mais sensível.' },
     { k: 'triagem', icone: '🔮', nome: 'Triagem energética com pêndulo hebraico', preco: sorteio.precoTriagem != null ? Number(sorteio.precoTriagem) : 15, dur: 'cerca de 30 minutos · online ou à distância', total: Number(sorteio.lugaresTriagem) || 0, quem: 'Ricardo', wa: '351928122918', txt: 'Descobre as energias que pesam, os teus chakras e os teus caminhos, com relatório pessoal.' }
   ].filter(o => o.total > 0);
   if (!O.length) return '';
