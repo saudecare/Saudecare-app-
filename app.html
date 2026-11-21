@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-16';
+const APP_VERSION = '2026-11-21-17';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4083,7 +4083,7 @@ async function carregarAcompanhamento(){
     await Promise.all(ativos.slice(i, i + 8).map(async p => {
       try{
         const rs = await getDocs(collection(db, 'tenants', tenantId, 'patients', p.id, 'reports'));
-        rs.forEach(r => { const x = r.data(); if (x.tipo === 'cartomancia') return; const dt = x.generatedAt && x.generatedAt.toDate ? x.generatedAt.toDate() : null; if (dt) add(p.id, dt); });
+        rs.forEach(r => { const x = r.data(); if (x.tipo === 'cartomancia' || x.tipo === 'manual') return; const dt = x.generatedAt && x.generatedAt.toDate ? x.generatedAt.toDate() : null; if (dt) add(p.id, dt); });
       }catch(e){ /* sem acesso aos registos: conta só as marcações */ }
     }));
   }
@@ -4898,6 +4898,20 @@ window.viewPatient = async function(patientId){
   });
   if (!invoicesHtml) invoicesHtml = '<p class="muted">Ainda sem marcações com preço para faturar.</p>';
 
+  // Resumo do acompanhamento (todas as consultas, de qualquer tipo): nº de consultas, datas e alta
+  let acompHtml = '';
+  try{
+    const _dias = {}; const _add = dt => { _dias[dt.getFullYear() + '-' + (dt.getMonth() + 1) + '-' + dt.getDate()] = dt; };
+    reportsSnap.forEach(rd => { const r = rd.data(); if (r.tipo === 'cartomancia' || r.tipo === 'manual') return; const t = r.generatedAt && r.generatedAt.toDate ? r.generatedAt.toDate() : null; if (t) _add(t); });
+    try{ const _as = await getDocs(query(collection(db, 'tenants', tenantId, 'appointments'), where('patientId', '==', patientId)));
+      _as.forEach(ad => { const a = ad.data(); const t = a.startsAt && a.startsAt.toDate ? a.startsAt.toDate() : null; if (t && a.status !== 'cancelled' && t.getTime() <= Date.now()) _add(t); }); }catch(_){}
+    const _l = Object.values(_dias).sort((x, y) => y - x);
+    const _altaDt = p.altaEm && p.altaEm.toDate ? p.altaEm.toDate() : null;
+    acompHtml = `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:${p.altaEm ? '#e8f3ec' : '#f1f7f4'};border:1px solid ${p.altaEm ? '#b7d9c4' : '#d6e6dd'};">
+      <strong>${p.altaEm ? '✅ Alta' + (_altaDt ? ' em ' + _fmtDia(_altaDt) : '') : '🩺 Em acompanhamento'}</strong>
+      <div style="font-size:.9rem;margin-top:2px;"><b>${_l.length}</b> consulta${_l.length === 1 ? '' : 's'}${_l.length ? ' · última ' + _fmtDia(_l[0]) : ''}</div>
+      ${_l.length ? `<div style="margin-top:4px;line-height:1.9;">${_l.slice(0, 12).map(d => `<span class="badge" style="background:#fff;color:#234;">${_fmtDia(d)}</span>`).join(' ')}${_l.length > 12 ? ` <span class="muted">+${_l.length - 12}</span>` : ''}</div>` : ''}</div>`;
+  }catch(e){ console.warn('Resumo de acompanhamento indisponível', e); }
   const customFieldsHtml = (p.customFields||[]).length
     ? (p.customFields||[]).map(f => `<p class="muted"><strong>${escapeHtml(f.label)}:</strong> ${escapeHtml(f.value)}</p>`).join('')
     : '';
@@ -4940,6 +4954,7 @@ window.viewPatient = async function(patientId){
         <button class="primary" onclick="triagemRetomarPaciente('${patientId}','${escapeAttrJs(p.fullName||'')}')">▶ Aplicar a limpeza desta triagem</button>
       </div>` : ''}
       ${temModulo('cartomancia') ? `<div style="margin-top:10px;"><button class="ghost" onclick="consultarCartas('${patientId}')">🃏 Consultar as cartas para ${escapeHtml((p.fullName||'').split(/\s+/)[0])}</button></div>` : ''}
+      ${acompHtml}
       ${customFieldsHtml}
 
       <div class="row" style="margin-top:12px;">
