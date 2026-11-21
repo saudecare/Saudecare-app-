@@ -417,7 +417,7 @@
 <script type="module" src="pe-carregador.js"></script>
 <script type="module" src="cg-imagens.js?v=2026-11-15-8"></script>
 <script src="chakras-leitura.js?v=2026-11-20-2"></script>
-<script src="pesquisa-sistemas.js?v=2026-11-21-10"></script>
+<script src="pesquisa-sistemas.js?v=2026-11-21-13"></script>
 <script src="causas-ficha.js?v=2026-11-21-7"></script>
 <script src="reflexologia-podal.js?v=2026-11-21-11"></script>
 <script type="module" src="consulta-guiada.js?v=2026-11-20-11"></script>
@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-21-12';
+const APP_VERSION = '2026-11-21-13';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -22007,6 +22007,13 @@ window.sendChatbotMessage = async function(){
   if (!window.mostrarAviso) window.mostrarAviso = function(msg, err){ toast(msg, !!err); };
   window.firebase       = { auth: () => auth };
   window.guardarNaFicha = function(...args){ return guardarNaFicha(...args); };
+  window.lerRelatoriosPaciente = async function(patientId, tipo){
+    try{
+      const sn = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), where('tipo', '==', tipo)));
+      const out = []; sn.forEach(d => { const x = d.data(); out.push({ id: d.id, ...x, _t: x.generatedAt && x.generatedAt.toMillis ? x.generatedAt.toMillis() : 0 }); });
+      return out.sort((p, q) => q._t - p._t);
+    }catch(e){ console.warn('lerRelatoriosPaciente', e); return []; }
+  };
   const NETLIFY_BASE    = 'https://effortless-entremet-7de9ef.netlify.app/.netlify/functions';
   window.NETLIFY_BASE   = NETLIFY_BASE;
   window.temPesquisaEmocional = function(){ return tenantId === 'hikari-terapias' || window.__peAtivo === true || (typeof temModulo === 'function' && temModulo('pesquisaEmocional')); };

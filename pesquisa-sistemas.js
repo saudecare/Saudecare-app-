@@ -135,8 +135,42 @@
 
   window.psAbrir = function(patientId, nome){
     S = { patientId, nome, passo:1, escudo:'', idade:'', epoca:'', vivencia:'', queixas:'', notas:'', notasNoRel:false, pontos:{}, chakras:[], apo:{ on:false, seguro:false }, formato:'unica', secoes:null, extraTrat:'' };
+    S.validade = Math.max(0, parseInt((function(){ try { return localStorage.getItem('ps_validade_dias'); } catch (_) { return ''; } })(), 10) || 60);
     corpoOverlay(); render();
     if (!window.__psApo) import('./apometria-dados.js?v=2').then(m => { window.__psApo = m; }).catch(() => {});
+    procurarPack(patientId);
+  };
+  // ── Pack de 4 consultas: a 1.ª é a avaliação (tem validade); as 2.ª a 4.ª são tratamento a partir dela
+  const DIA = 86400000;
+  async function procurarPack(patientId){
+    if (!window.lerRelatoriosPaciente) return;
+    const rs = await window.lerRelatoriosPaciente(patientId, 'pesquisa_sistemas');
+    if (!S || S.patientId !== patientId) return;
+    const visto = {}; // só conta a consulta mais recente de cada pack
+    const r = rs.find(x => { const pk = x.dados && x.dados.pack; if (!pk) return false; if (visto[pk.grupoId]) return false; visto[pk.grupoId] = 1; return pk.consultaN < pk.total; });
+    if (r){ S.pendente = r; S.decidiu = false; render(); }
+  }
+  const diasRestantes = pk => { if (!pk.validadeDias) return null; const fim = new Date(pk.avaliacaoISO).getTime() + pk.validadeDias * DIA; return Math.ceil((fim - Date.now()) / DIA); };
+  function cartaoPack(){
+    const r = S.pendente, pk = r.dados.pack, falta = diasRestantes(pk), expirou = falta !== null && falta < 0;
+    return `<div class="card" style="border:2px solid #7c3aed;"><h3 style="margin-top:0;">📦 Pack de ${pk.total} consultas em curso</h3>
+      <p>Já feitas: <b>${pk.consultaN} de ${pk.total}</b>. Avaliação de <b>${esc(pk.avaliacaoData)}</b> · escudo da <b>${esc(r.dados.escudo || '')}</b>.</p>
+      ${falta === null ? '<p class="muted">A avaliação não tem prazo de validade.</p>' : expirou ? `<div style="background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:8px 10px;font-size:.88rem;">⚠️ A validade da avaliação terminou há ${-falta} dia(s). As emoções e os padrões mudam com o tempo, por isso convém fazer uma nova avaliação.</div>` : `<p class="muted">A avaliação é válida por mais ${falta} dia(s).</p>`}
+      <button class="primary" style="margin-top:8px;" onclick="psPackContinuar()">${pk.consultaN + 1 === pk.total ? 'Consulta ' + (pk.consultaN + 1) + ' — reavaliação final' : 'Continuar: consulta ' + (pk.consultaN + 1) + ' de ' + pk.total}</button>
+      <button class="ghost" style="margin-top:8px;" onclick="psPackNova()">Fazer uma nova avaliação</button></div>`;
+  }
+  window.psPackNova = function(){ S.pendente = null; S.decidiu = true; render(); };
+  window.psPackContinuar = function(){
+    const r = S.pendente, pk = r.dados.pack, es = r.dados.estado || {};
+    S.packN = pk.consultaN + 1; S.grupoId = pk.grupoId; S.formato = 'pack4'; S.validade = pk.validadeDias; S.packAvalISO = pk.avaliacaoISO; S.packAvalData = pk.avaliacaoData;
+    S.escudo = es.escudo || r.dados.escudo || ''; S.idade = es.idade || ''; S.epoca = es.epoca || ''; S.vivencia = es.vivencia || '';
+    S.chakras = (es.chakras || r.dados.chakras || []).slice(); S.pontos = Object.assign({}, es.pontos || {});
+    S.pontosAntes = Object.assign({}, S.pontos);
+    S.decidiu = true; S.pendente = null;
+    // 2.ª e 3.ª: vai direto ao tratamento. 4.ª: reavaliar primeiro os pontos.
+    S.passo = S.packN >= pk.total ? 2 : 3;
+    if (S.packN >= pk.total) S.pontos = {};
+    render();
   };
   const barra = () => `<div style="display:flex;gap:4px;margin-bottom:12px;">${[1,2,3,4,5].map(i => `<div style="flex:1;height:5px;border-radius:3px;background:${i <= S.passo ? 'var(--primary,#2f6f5e)' : '#e5e5e5'};"></div>`).join('')}</div>`;
   const nav = (voltar, seguinte, txt) => `<div class="row" style="margin-top:14px;gap:8px;">${voltar ? '<button class="ghost" onclick="psIr(-1)">← Anterior</button>' : ''}${seguinte ? `<button class="primary" onclick="psIr(1)">${txt || 'Seguinte →'}</button>` : ''}</div>`;
@@ -145,8 +179,9 @@
     if (!S) return;
     $('psTitulo').textContent = 'Pesquisa por escudos — ' + S.nome;
     const c = $('psCorpo');
+    if (S.pendente && !S.decidiu){ c.innerHTML = cartaoPack(); return; }
     const f = [p1, p2, p3, p4, p5][S.passo - 1];
-    c.innerHTML = barra() + f();
+    c.innerHTML = barra() + (S.packN ? `<div style="background:#faf5ff;border-radius:8px;padding:6px 10px;font-size:.84rem;margin-bottom:8px;">📦 Pack · consulta <b>${S.packN} de 4</b> · avaliação de ${esc(S.packAvalData)}${S.packN >= 4 ? ' · reavaliação final: marca de novo os pontos' : ''}</div>` : '') + f();
     c.scrollTop = 0;
   }
   window.psIr = function(d){
@@ -211,7 +246,7 @@
   const p_cor = p => S.pontos[p.id] === 'mui' ? '#dc2626' : '#d97706';
 
   // PASSO 4 — tratamento
-  function lerP4(){ S.extraTrat = $('psExtra')?.value ?? S.extraTrat; }
+  function lerP4(){ S.extraTrat = $('psExtra')?.value ?? S.extraTrat; const v = $('psValid'); if (v) S.validade = Math.max(0, parseInt(v.value, 10) || 0); }
   window.psFormato = function(v){ S.formato = v; render(); };
   function ordemTratamento(){
     const sel = CHAKRAS.filter(c => S.chakras.includes(c.nome) && alterados().some(p => p.chakra === c.nome));
@@ -239,7 +274,7 @@
     return `<div class="card"><h3 style="margin-top:0;">4. Tratamento com o pêndulo</h3>
       <label>Formato</label>
       <div class="row" style="gap:8px;"><button class="${S.formato === 'unica' ? 'primary' : 'ghost'}" onclick="psFormato('unica')">Consulta única / inicial</button><button class="${S.formato === 'pack4' ? 'primary' : 'ghost'}" onclick="psFormato('pack4')">Pack de 4 consultas</button></div>
-      ${S.formato === 'pack4' ? '<p class="muted" style="font-size:.85rem;">1.ª consulta: avaliação. Consultas 2 a 4: tratamento a partir desta avaliação, com reavaliação no fim.</p>' : ''}
+      ${S.formato === 'pack4' ? `<p class="muted" style="font-size:.85rem;">1.ª consulta: avaliação. Consultas 2 a 4: tratamento a partir desta avaliação, com reavaliação no fim.</p><label>Validade da avaliação (dias; 0 = sem limite)</label><input id="psValid" type="number" min="0" inputmode="numeric" value="${esc(S.validade)}"><p class="muted" style="font-size:.8rem;">Porquê? Em temas emocionais e energéticos as coisas vão mudando com os dias. Se passar muito tempo, a avaliação inicial deixa de estar atualizada e convém repetir.</p>` : ''}
       <h4 style="margin:14px 0 4px;">Chakras a tratar, por ordem</h4>
       ${ord.length ? `<ol style="margin:0 0 0 18px;">${ord.map(c => `<li><b>${c.emoji} ${c.nome}</b> — ${alterados().filter(p => p.chakra === c.nome).map(p => esc(p.nome)).join(', ')}<div class="muted" style="font-size:.8rem;">Corpos: ${nomeCorpos(c.corpos).join(' · ')}</div></li>`).join('')}</ol><p class="muted" style="font-size:.8rem;">Trata com o pêndulo em cada chakra, para os órgãos e pontos indicados. Termina no coração e na coroa.</p>` : '<p class="muted">Sem chakras com pontos alterados.</p>'}
       <h4 style="margin:14px 0 4px;">Etiquetas sugeridas</h4>
@@ -260,6 +295,11 @@
     sec.push({ id:'perguntas', titulo:'Perguntas para refletir', texto: Array.from(new Set(al.map(p => p.pergunta).concat(e.perguntas))).slice(0, 8).map(q => '• ' + q).join('\n') });
     sec.push({ id:'agora', titulo:'O que pode estar a viver neste momento', texto: (S.queixas ? `O que nos contou: ${S.queixas}\n\n` : '') + `Num escudo da ${S.escudo}, é comum: ${e.exemplo}\nSe se reconhece nisto, não está sozinho(a): é uma forma de o corpo e a mente se protegerem, e pode ir sendo trabalhada.` });
     const ord = ordemTratamento(); const et = etiquetas();
+    if (S.packN){ const nomeP = pid => (PONTOS.find(x => x.id === pid) || {}).nome || pid; const alt = o => Object.keys(o || {}).filter(k => o[k] === 'alt' || o[k] === 'mui');
+      let t = `Consulta ${S.packN} de 4 do pack. Avaliação feita em ${S.packAvalData}.`;
+      if (S.packN >= 4){ const antes = alt(S.pontosAntes), depois = alt(S.pontos); const melhoraram = antes.filter(k => depois.indexOf(k) < 0), ficaram = antes.filter(k => depois.indexOf(k) >= 0), novos = depois.filter(k => antes.indexOf(k) < 0);
+        t += `\nReavaliação final, comparada com a avaliação inicial:\n• Voltaram ao equilíbrio: ${melhoraram.length ? melhoraram.map(nomeP).join(', ') : 'nenhum'}.\n• Continuam a precisar de atenção: ${ficaram.length ? ficaram.map(nomeP).join(', ') : 'nenhum'}.` + (novos.length ? `\n• Apareceram agora: ${novos.map(nomeP).join(', ')}.` : '') + '\nO caminho continua com a sua prática diária, e pode voltar quando sentir necessidade.'; }
+      sec.push({ id:'pack', titulo:'Pack de 4 consultas', texto:t }); }
     sec.push({ id:'plano', titulo:'Plano de tratamento', texto: (S.formato === 'pack4' ? 'Formato: pack de 4 consultas (avaliação e três consultas de tratamento).\n' : 'Formato: consulta única / inicial.\n') + (ord.length ? 'Chakras a harmonizar, por ordem: ' + ord.map(c => c.nome).join(' → ') + '.\n' : '') + (et.length ? 'Etiquetas: ' + et.map(r => (r.item.heb ? r.item.heb + ' (' : '') + r.item.pt + (r.item.heb ? ')' : '')).join('; ') + '.\n' : '') + (S.apo.on && S.apo.seguro ? `Trabalho nos corpos subtis (apometria): ${nomeCorpos(corposApometria()).join(', ')}.\nTécnicas: ${tecnicasApometria().map(id => TEC[id][0].replace(/^\S+\s/, '')).join(' → ')}.\n` : '') + `Salmos e orações: ${e.salmos}.\nAfirmação: «${e.afi}»` + (S.extraTrat ? `\n${S.extraTrat}` : '') });
     const A = window.__psApo; if (A && A.DICAS_VIBRACAO){ const dc = A.DICAS_VIBRACAO; const ls = corposApometria().map(i => dc.corpos[i]).filter(Boolean); if (ls.length) sec.push({ id:'casa', titulo:'O que pode fazer em casa', texto: ls.join('\n') + '\n' + (dc.fecho || '') }); }
     if (S.notasNoRel && S.notas.trim()) sec.push({ id:'notas', titulo:'Notas da consulta', texto: S.notas.trim() });
@@ -280,6 +320,13 @@
   window.psGuardar = async function(){
     const texto = textoFinal();
     const dados = { escudo:S.escudo, idade:S.idade, epoca:S.epoca, formato:S.formato, chakras:S.chakras, pontosAlterados: alterados().map(p => ({ id:p.id, nome:p.nome, nivel:S.pontos[p.id] })), data: hoje() };
+    if (S.formato === 'pack4'){
+      const n = S.packN || 1;
+      dados.pack = { grupoId: S.grupoId || ('pk' + Date.now()), total:4, consultaN:n, validadeDias:S.validade || 0, avaliacaoISO: S.packAvalISO || new Date().toISOString(), avaliacaoData: S.packAvalData || hoje() };
+      // A avaliação (1.ª consulta) guarda o estado completo; as seguintes reaproveitam o da avaliação
+      dados.estado = n === 1 ? { escudo:S.escudo, idade:S.idade, epoca:S.epoca, vivencia:S.vivencia, chakras:S.chakras, pontos:S.pontos } : { escudo:S.escudo, idade:S.idade, epoca:S.epoca, vivencia:S.vivencia, chakras:S.chakras, pontos:S.pontosAntes || S.pontos };
+      try { localStorage.setItem('ps_validade_dias', String(S.validade || 0)); } catch (_) {}
+    }
     const ok = window.guardarNaFicha ? await window.guardarNaFicha(S.patientId, { tipo:'pesquisa_sistemas', titulo:'Pesquisa por escudos e sistemas — ' + hoje(), texto, dados }) : false;
     if (ok && window.anexarNotasClinicas) await window.anexarNotasClinicas(S.patientId, 'Pesquisa por escudos e sistemas', [{ rotulo:'Queixas', valor:S.queixas }, { rotulo:'Notas clínicas', valor:S.notas }]);
     toast(ok ? 'Guardado na ficha do paciente.' : 'Não foi possível guardar.', !ok);
