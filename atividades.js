@@ -102,6 +102,7 @@ export function renderAtividades(main, ctx) {
       <div class="card"><div class="row" style="gap:8px;flex-wrap:wrap"><button class="primary" onclick="atGuardar()">💾 Guardar</button>
         ${E.id && d.estado === 'rascunho' ? '<button class="ghost" onclick="atEstado(\'aberta\')">🟢 Abrir inscrições (publicar)</button>' : ''}
         ${E.id && d.estado === 'aberta' ? '<button class="ghost" onclick="atEstado(\'rascunho\')">⏸️ Tirar da página</button><button class="ghost" onclick="atEstado(\'encerrada\')">⛔ Encerrar inscrições</button>' : ''}
+        ${E.id ? '<button class="ghost" style="color:#b3261e" onclick="atApagar()">🗑️ Apagar atividade inteira</button>' : ''}
         ${E.id && d.estado === 'encerrada' ? '<button class="ghost" onclick="atEstado(\'aberta\')">🟢 Reabrir inscrições</button>' : ''}</div>
         <p class="muted" style="margin-top:8px">Estado: <b>${esc(EST[d.estado] || d.estado)}</b>${novo ? ' · guarde primeiro para ter o link.' : ''}</p>
         ${link ? `<p style="margin-top:6px;word-break:break-all"><b>Link da atividade:</b><br>${link}</p><div class="row" style="gap:6px;flex-wrap:wrap"><button class="ghost" onclick="atCopiar('${link}')">🔗 Copiar link</button><a class="ghost" href="${link}" target="_blank" style="padding:10px 14px;text-decoration:none">👁️ Ver página</a></div>` : ''}</div>
@@ -200,6 +201,18 @@ export function renderAtividades(main, ctx) {
   window.atEstado = async (est) => {
     try { await fs.updateDoc(fs.doc(db, 'public_atividades', E.id), { estado: est }); E.d.estado = est; toast(est === 'aberta' ? 'Inscrições abertas. A página já funciona.' : (est === 'encerrada' ? 'Inscrições encerradas.' : 'Tirada da página.')); await carregarLista(); ecraEditor(); }
     catch (e) { toast('Não consegui: ' + (e.message || e), true); }
+  };
+  window.atApagar = async () => {
+    if (!E || !E.id) return;
+    if (!confirm('Apagar esta atividade inteira, com todas as sessões e inscritos? Não dá para desfazer.')) return;
+    try {
+      for (const sub of ['sessoes', 'conteudos', 'inscricoes']) {
+        const sn = await fs.getDocs(fs.collection(db, 'public_atividades', E.id, sub));
+        for (const x of sn.docs) await fs.deleteDoc(fs.doc(db, 'public_atividades', E.id, sub, x.id));
+      }
+      await fs.deleteDoc(fs.doc(db, 'public_atividades', E.id));
+      toast('Atividade apagada.'); await ecraLista();
+    } catch (e) { toast('Não consegui apagar: ' + (e.message || e), true); }
   };
   window.atCopiar = (t) => copiar(t);
   window.atCopiarPub = (i) => copiar($('atPub' + i).value);
