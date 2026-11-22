@@ -96,7 +96,7 @@ export function renderAtividades(main, ctx) {
           <div class="row" style="gap:8px;flex-wrap:wrap">${inp('gDia', 'Primeiro dia', paraInput(E.ses.length ? E.ses[0].libertaEm : Date.now()).slice(0, 10), 'date')}${inp('gHora', 'Hora', paraInput(E.ses.length ? E.ses[0].libertaEm : Date.now()).slice(11), 'time')}</div>
           <button class="ghost" style="margin-top:8px" onclick="atGerarDatas()">📅 Uma sessão por dia, a partir daqui</button></div>
         ${E.ses.map(sessaoHtml).join('')}
-        <button class="ghost" style="margin-top:10px" onclick="atMaisSessao()">➕ Juntar sessão</button></div>
+        <button class="ghost" style="margin-top:10px" onclick="atMaisSessao()">➕ Juntar sessão</button>${E.ses.length === 7 ? '<button class="ghost" style="margin-top:10px;display:block" onclick="atAplicarModelo()">🌈 Pôr os textos completos dos 7 chakras (mantém datas e links)</button>' : ''}</div>
       <div class="card"><h3>💚 No fim: convite para o Reiki</h3><p class="muted">Aparece na página só a quem está inscrito. Deixe vazio para não mostrar.</p>
         ${inp('aCtaT', 'Título', d.ctaTitulo)}${area('aCtaX', 'Texto', d.ctaTexto, 3)}${inp('aCtaB', 'Texto do botão', d.ctaBotao)}${inp('aCtaL', 'Link do botão (vazio = WhatsApp do Ricardo)', d.ctaLink)}</div>
       <div class="card"><div class="row" style="gap:8px;flex-wrap:wrap"><button class="primary" onclick="atGuardar()">💾 Guardar</button>
@@ -175,6 +175,12 @@ export function renderAtividades(main, ctx) {
   window.atLista = () => ecraLista();
   window.atNovo = (q) => { E = q === 'chakras' ? modeloChakras() : (q === 'workshop' ? modeloWorkshop() : modeloBranco()); ecraEditor(); };
   window.atAbrir = async (id) => { try { E = await carregarAtividade(id); ecraEditor(); } catch (e) { toast('Não consegui abrir: ' + (e.message || e), true); } };
+  window.atAplicarModelo = () => {
+    ler();
+    if (!confirm('Substituir os textos de cada dia (resumo, descrição completa, guião e imagem) pelos do modelo dos 7 chakras? As datas e os links de áudio/vídeo ficam como estão.')) return;
+    E.ses.forEach((x, i) => { const g = MODELO_GUIOES[i]; if (!g) return; x.titulo = g.titulo; x.resumo = g.resumo; x.detalhe = g.detalhe || ''; x.guiao = g.guiao; x.imagem = 'img/chakras/' + (i + 1) + '.jpg'; });
+    ecraEditor(); toast('Textos atualizados. Carregue em Guardar.');
+  };
   window.atMaisSessao = () => { ler(); const ult = E.ses[E.ses.length - 1], t = ult ? ult.libertaEm + 864e5 : Date.now() + 864e5; E.ses.push({ id: 's' + (Math.max(0, ...E.ses.map((s) => s.n)) + 1), n: Math.max(0, ...E.ses.map((s) => s.n)) + 1, titulo: 'Dia ' + (E.ses.length + 1), resumo: '', libertaEm: t, url: '', guiao: '' }); ecraEditor(); };
   window.atTirarSessao = (i) => { if (!confirm('Tirar esta sessão?')) return; ler(); E.ses.splice(i, 1); ecraEditor(); };
   window.atGerarDatas = () => { ler(); const dia = $('gDia').value, hora = $('gHora').value; if (!dia || !hora) { toast('Escolha o primeiro dia e a hora.', true); return; } const [y, m, d] = dia.split('-').map(Number), [hh, mm] = hora.split(':').map(Number); E.ses.forEach((s, i) => { s.libertaEm = new Date(y, m - 1, d + i, hh, mm).getTime(); }); ecraEditor(); toast('Datas atualizadas. Falta guardar.'); };
