@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-22-13';
+const APP_VERSION = '2026-11-22-14';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12709,6 +12709,7 @@ function __triagemReset(){
     chakras: TRIAGEM_CHAKRAS_9.map(() => 'np'), // 'np' (não pesquisado) | 'ok' | 'desarmonia' | 'bloqueado', pesquisado com o pêndulo
     aberturaCaminhos: -1, // -1 = não pesquisado; senão índice em TRIAGEM_NIVEIS_ABERTURA
     origemPedido: 'paciente', pedinteNome: '', pedinteRel: '', cartasAberto: false,
+    fam: null, casa: { morada:'', notas:'' }, veiculos: [],
     modoCartas: 'auto',
     leituraComplementar: null, perguntasCartas: [],
     sessoesNecessarias: '', preco: ''
@@ -12839,11 +12840,176 @@ function triCartasPainel(){
 window.__triCartasToggle = function(){ __triagem.cartasAberto = !__triagem.cartasAberto; renderTriagemPasso(document.getElementById('mainView')); };
 window.__triagemSetModoCartas2 = function(m){ __triagem.modoCartas = m; renderTriagemPasso(document.getElementById('mainView')); };
 window.__triCartasTirar3 = function(){ const [momento, porTras, tendencia] = triagemTirarVarias(3); __triagem.leituraComplementar = { momento, porTras, tendencia }; renderTriagemPasso(document.getElementById('mainView')); };
+/* ─── FAMÍLIA: várias pessoas na mesma triagem ─────────────────────────────
+   Cada pessoa tem os seus passos 2 a 6 (data, Bovis, 40 causas, chakras, abertura).
+   O tratamento, as cartas, a casa e os veículos são feitos uma só vez, para todos.
+   Cada pessoa fica com o seu relatório, na sua ficha. */
+const FAM_CAMPOS = ['patientId','patientNome','dataNascimento','paisNascimento','bovisIni','baixaVibracao','chakras','aberturaCaminhos','corpos','alertas','anterior','numConsulta','_ultimaSemTratamento','_penultima','_totalTriagens','continuacaoDe','soTriagem','requester'];
+Object.defineProperty(window, '__triDbg', { get: () => __triagem, configurable: true });
+function famAtiva(){ return !!(__triagem.fam && __triagem.fam.pessoas.length > 1); }
+function famSnap(){ const o = {}; FAM_CAMPOS.forEach(k => { o[k] = __triagem[k]; }); return o; }
+function famCarregar(o){ FAM_CAMPOS.forEach(k => { __triagem[k] = o[k]; }); }
+function famVazio(){
+  return { patientId:null, patientNome:'', dataNascimento:'', paisNascimento:'', bovisIni:'', baixaVibracao: TRIAGEM_BAIXA_VIBRACAO.map(() => false), chakras: TRIAGEM_CHAKRAS_9.map(() => 'np'),
+    aberturaCaminhos:-1, corpos:undefined, alertas:undefined, anterior:null, numConsulta:1, _ultimaSemTratamento:null, _penultima:null, _totalTriagens:undefined, continuacaoDe:null, soTriagem:null, requester:undefined };
+}
+async function famAdicionar(id, nome){
+  if (!__triagem.fam) __triagem.fam = { pessoas:[{ id: __triagem.patientId, nome: __triagem.patientNome, snap:null }], idx:0, uniao:false };
+  const F = __triagem.fam;
+  if (F.pessoas.some(p => p.id === id)){ toast('Essa pessoa já está na família.', true); return; }
+  F.pessoas[F.idx].snap = famSnap();
+  famCarregar(famVazio());
+  F.pessoas.push({ id, nome, snap:null }); F.idx = F.pessoas.length - 1;
+  __triagem.patientId = id; __triagem.patientNome = nome;
+  const pc = (window.__allPatientsCache || []).find(x => x.id === id);
+  if (pc){ if (pc.birthDate) __triagem.dataNascimento = pc.birthDate; if (pc.birthCountry) __triagem.paisNascimento = pc.birthCountry; }
+  await triagemCarregarAnterior(id);
+  __triagem._ultimaSemTratamento = null; __triagem.continuacaoDe = null;   // só o titular pode "continuar" uma triagem pendente
+  __triagem.passo = 1; __triagem._ultimo = 0; window.scrollTo(0, 0);
+  renderTriagemPasso(document.getElementById('mainView'));
+  toast(nome.split(/\s+/)[0] + ' juntou-se à triagem da família ✓');
+}
+window.__famAdicionarNome = async function(){
+  const v = ((document.getElementById('famBusca') || {}).value || '').trim(); if (!v){ toast('Escreva o nome da pessoa.', true); return; }
+  const pc = (window.__allPatientsCache || []).find(x => stripAccents(x.fullName || '') === stripAccents(v)) || (window.__allPatientsCache || []).find(x => stripAccents(x.fullName || '').includes(stripAccents(v)));
+  if (!pc){ toast('Não encontrei esse paciente. Crie-o primeiro em Pacientes.', true); return; }
+  await famAdicionar(pc.id, pc.fullName);
+};
+window.__famIr = function(i){
+  const F = __triagem.fam; if (!F || i === F.idx) return;
+  F.pessoas[F.idx].snap = famSnap(); famCarregar(F.pessoas[i].snap || famVazio()); F.idx = i;
+  renderTriagemPasso(document.getElementById('mainView'));
+};
+window.__famTirar = function(i){
+  const F = __triagem.fam; if (!F || F.pessoas.length < 2) return;
+  if (!confirm('Tirar ' + F.pessoas[i].nome + ' desta triagem de família?')) return;
+  F.pessoas[F.idx].snap = famSnap();
+  F.pessoas.splice(i, 1); F.idx = Math.min(F.idx, F.pessoas.length - 1);
+  famCarregar(F.pessoas[F.idx].snap || famVazio());
+  if (F.pessoas.length < 2) __triagem.fam = null;
+  renderTriagemPasso(document.getElementById('mainView'));
+};
+// Passo 6 trabalha sobre a soma de todos (uma só limpeza para a família); fora do passo 6 cada pessoa volta aos seus dados.
+function famUniaoDe(snaps){
+  const rk = { np:-1, ok:0, desarmonia:1, bloqueado:2 };
+  return {
+    baixaVibracao: TRIAGEM_BAIXA_VIBRACAO.map((_, i) => snaps.some(x => x.baixaVibracao && x.baixaVibracao[i])),
+    chakras: TRIAGEM_CHAKRAS_9.map((_, i) => snaps.reduce((w, x) => { const e = (x.chakras || [])[i] || 'np'; return rk[e] > rk[w] ? e : w; }, 'np')),
+    aberturaCaminhos: Math.max.apply(null, snaps.map(x => (typeof x.aberturaCaminhos === 'number' ? x.aberturaCaminhos : -1)))
+  };
+}
+async function triagemGerarFamilia(){
+  const F = __triagem.fam; F.pessoas[F.idx].snap = famSnap();
+  const snaps = F.pessoas.map(p => p.snap || famVazio()), U = famUniaoDe(snaps), nomes = F.pessoas.map(p => p.nome), grupoId = 'fam' + Date.now();
+  const leit = __triagem.leituraComplementar, perg = __triagem.perguntasCartas;
+  try{
+    __triagem.leituraComplementar = null; __triagem.perguntasCartas = [];
+    for (let i = 0; i < snaps.length; i++){
+      famCarregar(snaps[i]); __triagem.patientId = F.pessoas[i].id; __triagem.patientNome = F.pessoas[i].nome;
+      __triagem._famU = U; __triagem._famSegundo = i > 0; __triagem._famSilencio = i < snaps.length - 1;
+      __triagem._famInfo = { grupoId, nomes, atual: F.pessoas[i].nome, leitura: leit, perguntas: perg };
+      await triagemGerarRelatorio();
+    }
+    toast('Triagem de família guardada: ' + nomes.length + ' relatórios ✓');
+  } finally {
+    __triagem._famU = null; __triagem._famSegundo = false; __triagem._famSilencio = false; __triagem._famInfo = null;
+    __triagem.leituraComplementar = leit; __triagem.perguntasCartas = perg;
+  }
+}
+function famSincronizar(){
+  const F = __triagem.fam; if (!famAtiva()) return;
+  if (__triagem.passo === 6 && !F.uniao){
+    F.pessoas[F.idx].snap = famSnap();
+    const snaps = F.pessoas.map(p => p.snap || famVazio());
+    famCarregar(Object.assign({}, snaps[0], famUniaoDe(snaps)));
+    F.uniao = true;
+  } else if (__triagem.passo !== 6 && F.uniao){
+    famCarregar(F.pessoas[F.idx].snap); F.uniao = false;
+  }
+}
+function famBarraHTML(){
+  const p = __triagem.passo, F = __triagem.fam;
+  if (!__triagem.patientId) return '';
+  if (p >= 1 && p <= 5){
+    const tabs = F ? F.pessoas.map((x, i) => `<span style="white-space:nowrap;"><button type="button" class="${i === F.idx ? 'primary' : 'ghost'}" style="width:auto;padding:6px 10px;margin:2px;" onclick="window.__famIr(${i})">${i === F.idx ? '👤 ' : ''}${escapeHtml(x.nome.split(/\s+/)[0])}</button>${(i > 0 && i === F.idx) ? `<button type="button" class="ghost" style="width:auto;padding:4px 8px;" title="Tirar da família" onclick="window.__famTirar(${i})">✕</button>` : ''}</span>`).join('') : '';
+    const usados = new Set([__triagem.patientId].concat(F ? F.pessoas.map(x => x.id) : []));
+    const opts = (window.__allPatientsCache || []).filter(x => !usados.has(x.id)).map(x => `<option value="${escapeHtml(x.fullName || '')}">`).join('');
+    return `<div class="card" style="padding:8px 10px;background:#f7f4fb;">
+      ${F ? `<div><strong>👨‍👩‍👧 Família</strong> <span class="muted">· toque numa pessoa para ver ou alterar os dados dela</span></div><div>${tabs}</div>` : `<div class="muted">Triagem a mais pessoas da família? Adicione-as aqui: fazem-se todas juntas e o tratamento é um só.</div>`}
+      <div style="margin-top:4px;"><input id="famBusca" list="famLista" placeholder="➕ Adicionar pessoa da família (nome)…" style="width:62%;"><datalist id="famLista">${opts}</datalist> <button type="button" class="ghost" style="width:auto;" onclick="window.__famAdicionarNome()">Adicionar</button></div>
+    </div>`;
+  }
+  if (F && F.pessoas.length > 1) return `<div class="card" style="padding:8px 10px;background:#f7f4fb;">👨‍👩‍👧 <strong>Família:</strong> ${F.pessoas.map(x => escapeHtml(x.nome)).join(', ')} · tratamento, cartas, casa e veículos feitos em conjunto</div>`;
+  return '';
+}
+// Passo 5: depois da última pessoa segue para o tratamento; antes, passa à pessoa seguinte.
+function famAvancarAbertura(main){
+  const F = __triagem.fam;
+  if (famAtiva() && F.idx < F.pessoas.length - 1){
+    F.pessoas[F.idx].snap = famSnap(); F.idx++; famCarregar(F.pessoas[F.idx].snap || famVazio()); __triagem.passo = 1; __triagem._ultimo = 0; window.scrollTo(0, 0);
+  } else __triagem.passo++;
+  renderTriagemPasso(main);
+}
+function famRotuloSeguinte(){
+  const F = __triagem.fam;
+  return (famAtiva() && F.idx < F.pessoas.length - 1) ? 'Próxima pessoa: ' + escapeHtml(F.pessoas[F.idx + 1].nome.split(/\s+/)[0]) + ' →' : 'Seguinte →';
+}
+/* Casa e veículos (opcional, também fora da família) */
+const FAM_TIPOS_VEIC = [['carro','Carro'],['mota','Mota'],['carrinha','Carrinha/camião'],['outro','Outro']];
+function famCasaHTML(){
+  const C = __triagem.casa || (__triagem.casa = { morada:'', notas:'' }), V = __triagem.veiculos || (__triagem.veiculos = []);
+  return `<div class="card" style="border:1px solid #cdbbe6;">
+    <h3>🏠 Casa e veículos <span class="muted" style="font-weight:400;font-size:.8rem;">(opcional)</span></h3>
+    <p class="muted">Se quiser incluir a casa ou os veículos neste trabalho, escreva aqui. Aparecem no relatório.</p>
+    <input id="famCasaMorada" placeholder="Morada da casa" value="${escapeHtml(C.morada || '')}" style="margin-bottom:6px;">
+    <input id="famCasaNotas" placeholder="Notas sobre a casa (opcional)" value="${escapeHtml(C.notas || '')}">
+    <div style="margin-top:8px;">${V.map((v, i) => `<div class="row" style="gap:6px;align-items:center;margin-bottom:6px;">
+      <select data-fv="${i}" data-k="tipo" style="width:auto;">${FAM_TIPOS_VEIC.map(t => `<option value="${t[0]}" ${v.tipo === t[0] ? 'selected' : ''}>${t[1]}</option>`).join('')}</select>
+      <input data-fv="${i}" data-k="matricula" placeholder="Matrícula" value="${escapeHtml(v.matricula || '')}" style="flex:1;min-width:90px;">
+      <input data-fv="${i}" data-k="notas" placeholder="Notas" value="${escapeHtml(v.notas || '')}" style="flex:1;min-width:90px;">
+      <button type="button" class="ghost" style="width:auto;" onclick="window.__famVeicTirar(${i})">✕</button></div>`).join('')}</div>
+    <button type="button" class="ghost" onclick="window.__famVeicAdd()">➕ Adicionar veículo (carro, mota…)</button>
+  </div>`;
+}
+window.__famVeicAdd = function(){ (__triagem.veiculos = __triagem.veiculos || []).push({ tipo:'carro', matricula:'', notas:'' }); const b = document.getElementById('famCasaBox'); if (b){ b.innerHTML = famCasaHTML(); famLigarCasa(); } };
+window.__famVeicTirar = function(i){ __triagem.veiculos.splice(i, 1); const b = document.getElementById('famCasaBox'); if (b){ b.innerHTML = famCasaHTML(); famLigarCasa(); } };
+function famLigarCasa(){
+  const b = document.getElementById('famCasaBox'); if (!b) return;
+  const m = document.getElementById('famCasaMorada'), n = document.getElementById('famCasaNotas');
+  if (m) m.addEventListener('input', e => { __triagem.casa.morada = e.target.value; });
+  if (n) n.addEventListener('input', e => { __triagem.casa.notas = e.target.value; });
+  b.querySelectorAll('[data-fv]').forEach(el => { const f = () => { const v = __triagem.veiculos[+el.dataset.fv]; if (v) v[el.dataset.k] = el.value; }; el.addEventListener('input', f); el.addEventListener('change', f); });
+}
+/* Blocos extra do relatório: família, cartas da família, casa e veículos. */
+function triExtraBlocos(op){
+  const T = __triagem, blocos = [], txt = [], fam = op && op.familia;
+  if (fam){
+    const outros = fam.nomes.filter(n => n !== fam.atual).map(n => n.split(/\s+/)[0]);
+    const par = `Esta triagem foi feita em família, em conjunto com ${rbJunta(outros)}. Cada pessoa tem o seu relatório e o tratamento é feito para todos ao mesmo tempo.`;
+    blocos.push({ tipo:'texto', icone:'👨‍👩‍👧', titulo:'Triagem em família', paras:[par] }); txt.push('== Triagem em família ==\n' + par);
+    const L = fam.leitura;
+    if (L){
+      const ps = [`Para além do que o pêndulo mediu, as cartas olharam para a família como um todo.`,
+        `No momento atual, a família atravessa ${triMin(L.momento.tema)}.${TRI_CARTA_NOTA[L.momento.n] || ''}`,
+        `Por baixo disso, em silêncio, está ${triMin(L.porTras.tema)}, ligado a ${triMin(L.porTras.area)}.${TRI_CARTA_NOTA[L.porTras.n] || ''}`,
+        `Se nada mudar, o caminho tende para ${triMin(L.tendencia.tema)}.${TRI_CARTA_NOTA[L.tendencia.n] || ''} A boa notícia é que ter consciência disto já é o primeiro passo para mudar o rumo.`];
+      blocos.push({ tipo:'texto', icone:'🃏', titulo:'As cartas da família', paras:ps }); txt.push('== As cartas da família ==\n' + ps.join('\n'));
+    }
+    (fam.perguntas || []).forEach(q => { const r = triRespostaPergunta(q); if (!r.length) return; const t = q.pergunta ? `A pergunta: ${q.pergunta}` : `O que se vê sobre ${triPergAreaRot(q.area).toLowerCase()}`; blocos.push({ tipo:'texto', icone:'🃏', titulo:t, paras:r }); txt.push('== ' + t + ' ==\n' + r.join('\n')); });
+  }
+  const C = T.casa || {}, V = (T.veiculos || []).filter(v => (v.matricula || v.notas));
+  const itens = [];
+  if ((C.morada || '').trim() || (C.notas || '').trim()) itens.push('Casa: ' + [(C.morada || '').trim(), (C.notas || '').trim() ? '(' + C.notas.trim() + ')' : ''].filter(Boolean).join(' '));
+  V.forEach(v => itens.push(((FAM_TIPOS_VEIC.find(t => t[0] === v.tipo) || [0, 'Veículo'])[1]) + ': ' + [(v.matricula || '').trim(), (v.notas || '').trim() ? '— ' + v.notas.trim() : ''].filter(Boolean).join(' ')));
+  if (itens.length){ blocos.push({ tipo:'lista', icone:'🏠', titulo:'A casa e os veículos', marca:'•', itens }); txt.push('== A casa e os veículos ==\n' + itens.map(x => '• ' + x).join('\n')); }
+  return { blocos, texto: txt.join('\n\n'), casa: { morada: (C.morada || '').trim() || null, notas: (C.notas || '').trim() || null }, veiculos: V.map(v => ({ tipo:v.tipo, matricula:(v.matricula || '').trim() || null, notas:(v.notas || '').trim() || null })) };
+}
+
 function triagemProgressoHTML(){
   const total = 9;
   const cartas = __triagem.patientId ? `<div style="text-align:right;margin:-4px 0 10px;"><button class="ghost" style="width:auto;" onclick="window.__triCartasToggle()">🎴 ${__triagem.cartasAberto ? 'Fechar as cartas' : 'Tirar cartas agora'}</button></div>${(__triagem.cartasAberto && __triagem.passo !== 7) ? triCartasPainel() : ''}` : '';
   return `<div class="row" style="gap:4px;margin-bottom:12px;">${Array.from({length: total}).map((_,i) =>
-    `<div style="flex:1;height:5px;border-radius:3px;background:${i <= __triagem.passo ? 'var(--primary)' : '#e5e5e5'};"></div>`).join('')}</div>${cartas}`;
+    `<div style="flex:1;height:5px;border-radius:3px;background:${i <= __triagem.passo ? 'var(--primary)' : '#e5e5e5'};"></div>`).join('')}</div>${famBarraHTML()}${cartas}`;
 }
 
 function triagemPodePularData(){ return !!(__triagem.anterior && __triagem.dataNascimento); }
@@ -12993,6 +13159,7 @@ function renderTriagemPasso(main){
 }
 function renderTriagemPasso0(main){
   const m = main || document.getElementById('mainView');
+  famSincronizar();
   if (__triagem.passo === 1 && triagemPodePularData()){ __triagem.passo = (__triagem._ultimo > 1) ? 0 : 2; }
   __triagem._ultimo = __triagem.passo;
   if (__triagem.passo === 0) return triagemPasso0Paciente(m);
@@ -13299,9 +13466,10 @@ window.triEterAbrir = async function(modo, opts){
   pintar();
 };
 function triagemItensAplicar(){
-  const causas = TRIAGEM_BAIXA_VIBRACAO.filter((x, i) => __triagem.baixaVibracao[i]);
-  const chakrasTodos = TRIAGEM_CHAKRAS_9.map((c, i) => ({ ...c, estado: __triagem.chakras[i] }));
-  const ab = TRIAGEM_NIVEIS_ABERTURA[__triagem.aberturaCaminhos];
+  const B = __triagem._famU || __triagem;
+  const causas = TRIAGEM_BAIXA_VIBRACAO.filter((x, i) => B.baixaVibracao[i]);
+  const chakrasTodos = TRIAGEM_CHAKRAS_9.map((c, i) => ({ ...c, estado: B.chakras[i] }));
+  const ab = TRIAGEM_NIVEIS_ABERTURA[B.aberturaCaminhos];
   const fases = (__triagem.numConsulta || 1) === 1
     ? TRIAGEM_PROTOCOLO_COMPLETO.map(f => ({ ...f, itens: f.itens.filter(i => i.base) }))
     : triagemFasesDaSessao(causas, chakrasTodos, ab);
@@ -13647,7 +13815,7 @@ function triagemPassoAbertura(main){
     </div>
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
-      <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
+      <button class="primary" onclick="window.__triagemAvancar()">${famRotuloSeguinte()}</button>
     </div>`;
   document.getElementById('triagemSelAbertura').addEventListener('change', e => __triagem.aberturaCaminhos = parseInt(e.target.value, 10));
   document.getElementById('triPedidoTxt').addEventListener('input', e => window.__triPedidoTxt(e.target.value));
@@ -13656,7 +13824,7 @@ function triagemPassoAbertura(main){
   document.getElementById('triPedinteRel').addEventListener('input', e => { __triagem.pedinteRel = e.target.value; });
   if ((__triagem.pedido || '').trim()) triPedidoPintar(true);
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
-  window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
+  window.__triagemAvancar = function(){ famAvancarAbertura(main); };
 }
 
 /* ─── Perguntas às cartas: respostas e previsões por tema ──────────────────
@@ -13802,16 +13970,17 @@ function triagemPassoSessoesPreco(main){
       <label>Nº de sessões de limpeza necessárias</label>
       <input id="triagemSessoes" type="number" min="1" value="${escapeHtml(__triagem.sessoesNecessarias)}">
       ${__triagem.anterior && __triagem.anterior.sessoesNecessarias ? `<p class="muted">Plano da consulta anterior: ${escapeHtml(__triagem.anterior.sessoesNecessarias)} sessões.</p>` : ''}
-      <label style="margin-top:10px;">Preço indicado (€)</label>
+      <label style="margin-top:10px;">Preço indicado (€)${famAtiva() ? ' (para toda a família)' : ''}</label>
       <input id="triagemPreco" type="number" step="0.01" value="${escapeHtml(__triagem.preco)}">
       <div id="triagemMotivoBox" style="margin-top:10px;display:none;">
         <label>Porque mudou o plano? (aparece no relatório para a família)</label>
         <textarea id="triagemMotivoPlano" rows="3" placeholder="Se deixares em branco, uso uma explicação simples e geral.">${escapeHtml(__triagem.motivoPlano)}</textarea>
       </div>
     </div>
+    <div id="famCasaBox">${famCasaHTML()}</div>
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
-      <button class="primary" onclick="window.__triagemGerarRelatorio()">🔮 Gerar Relatório</button>
+      <button class="primary" onclick="window.__triagemGerarRelatorio()">🔮 Gerar Relatório${famAtiva() ? ' da família' : ''}</button>
     </div>`;
   const mostrarMotivo = () => { const ant = Number(__triagem.anterior?.sessoesNecessarias), at = Number(__triagem.sessoesNecessarias); document.getElementById('triagemMotivoBox').style.display = (ant && at && ant !== at) ? 'block' : 'none'; };
   document.getElementById('triagemSessoes').addEventListener('input', e => { __triagem.sessoesNecessarias = e.target.value; mostrarMotivo(); });
@@ -13819,7 +13988,8 @@ function triagemPassoSessoesPreco(main){
   mostrarMotivo();
   document.getElementById('triagemPreco').addEventListener('input', e => __triagem.preco = e.target.value);
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
-  window.__triagemGerarRelatorio = triagemGerarRelatorio;
+  famLigarCasa();
+  window.__triagemGerarRelatorio = () => famAtiva() ? triagemGerarFamilia() : triagemGerarRelatorio();
 }
 
 /* ─── Motor final + gravação na ficha do paciente ──────────────────────── */
@@ -18934,6 +19104,7 @@ function triagemModeloBonito(d, cli){
   if (secAb) meio.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras: secAb.paras.concat((secAb.lista || []).map(y => '• ' + y)) });
   else if (d.aberturaNivel) meio.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras:[String(d.aberturaNivel)] });
   // Cartas tiradas durante a triagem: ficam registadas no relatório
+  (d.extraBlocos || []).forEach(b => meio.push(b));
   ((cli && cli.sec) || []).filter(x => x && (x.titulo === 'O que está por trás de tudo isto' || /^A pergunta:|^O que se vê sobre/.test(x.titulo || ''))).forEach(x => meio.push({ tipo:'texto', icone:'🃏', titulo:x.titulo, paras:(x.paras || []).concat((x.lista || []).map(y => '• ' + y)) }));
   const c = d.comparacao;
   if (c){
@@ -19016,23 +19187,20 @@ async function triagemGerarRelatorio(){
   }
   const causasDetetadas = [];
   const protocolo = [];
+  const U = __triagem._famU || __triagem;
   TRIAGEM_BAIXA_VIBRACAO.forEach((item, i) => {
-    if (__triagem.baixaVibracao[i]){
-      causasDetetadas.push(item);
-      triagemBuscarEtiquetas(item.temas, 2).forEach(r => protocolo.push({...r, motivo: item.nome}));
-    }
+    if (__triagem.baixaVibracao[i]) causasDetetadas.push(item);
+    if (U.baixaVibracao[i]) triagemBuscarEtiquetas(item.temas, 2).forEach(r => protocolo.push({...r, motivo: item.nome}));
   });
   const chakrasTodos = TRIAGEM_CHAKRAS_9.map((c, i) => ({ ...c, estado: __triagem.chakras[i] }));
   const chakrasAfetados = [];
-  chakrasTodos.forEach(c => {
-    if (triChakraAfetado(c)){
-      chakrasAfetados.push(c);
-      triagemBuscarEtiquetas(c.temas, 2).forEach(r => protocolo.push({...r, motivo: `Chakra ${c.nome}`}));
-    }
+  chakrasTodos.forEach((c, i) => {
+    if (triChakraAfetado(c)) chakrasAfetados.push(c);
+    if (triChakraAfetado({ ...c, estado: U.chakras[i] })) triagemBuscarEtiquetas(c.temas, 2).forEach(r => protocolo.push({...r, motivo: `Chakra ${c.nome}`}));
   });
   const aberturaNivel = TRIAGEM_NIVEIS_ABERTURA[__triagem.aberturaCaminhos] || null;
   const chkP = chakrasTodos.filter(c => c.estado !== 'np'); // só o que foi mesmo pesquisado vai para o relatório da pessoa
-  if (__triagem.aberturaCaminhos >= 2){
+  if (U.aberturaCaminhos >= 2){
     triagemBuscarEtiquetas(["Desbloqueio","Vontade","Prosperidade","Abundância"], 2).forEach(r => protocolo.push({...r, motivo: 'Abertura de Caminhos'}));
   }
   const temAlgumaCoisaDetetada = causasDetetadas.length > 0 || chakrasAfetados.length > 0 || __triagem.aberturaCaminhos >= 2;
@@ -19049,7 +19217,8 @@ async function triagemGerarRelatorio(){
   let anteriorDoc = null;
   const itensAplicar = triagemItensAplicar();
   const etiquetasAplicadas = itensAplicar.filter(it => __triagem.aplicadas.indexOf(it.key) >= 0);
-  const pagamentoInfo = await triagemRegistarPagamento();
+  const pagamentoInfo = __triagem._famSegundo ? null : await triagemRegistarPagamento();
+  const extra = triExtraBlocos({ familia: __triagem._famInfo || null });
   try{
     const todosSnap = await getDocs(query(
       collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'),
@@ -19135,6 +19304,7 @@ async function triagemGerarRelatorio(){
     pedido: (__triagem.pedido || '').trim(), pedidoTemas: __triagem.pedidoTemas || [],
     origemPedido: __triagem.origemPedido || 'paciente', pedinteNome: (__triagem.pedinteNome || '').trim(), pedinteRel: (__triagem.pedinteRel || '').trim()
   });
+  if (extra.texto) clienteRel.texto += '\n\n' + extra.texto;
   window.__triagemTextoClienteAtual = clienteRel.texto;
   let reportHtmlBonitoTriagem = '';
   try {
@@ -19146,7 +19316,7 @@ async function triagemGerarRelatorio(){
       sessoesNecessarias: __triagem.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas: etiquetasAplicadas,
       pedido: (__triagem.pedido || '').trim(), pedidoTemas: __triagem.pedidoTemas || [],
       origemPedido: __triagem.origemPedido || 'paciente', pedinteNome: (__triagem.pedinteNome || '').trim(), pedinteRel: (__triagem.pedinteRel || '').trim(),
-      perfil: (ehPrimeiraSessao && perfil) ? perfil : null
+      perfil: (ehPrimeiraSessao && perfil) ? perfil : null, extraBlocos: extra.blocos
     };
     window.__triagemModeloArgs = { dados: dadosModelo, cli: clienteRel, perfil };
     reportHtmlBonitoTriagem = rbFragmento(triagemModeloBonito(dadosModelo, clienteRel));
@@ -19181,6 +19351,8 @@ async function triagemGerarRelatorio(){
     pagamento: pagamentoInfo,
     etiquetasAplicadas: etiquetasAplicadas.map(it => ({ codigo: etqCodigo(it.pt) || null, heb: it.heb, pt: it.pt, fase: it.fase })),
     tratamentoAplicado: etiquetasAplicadas.length > 0,
+    familia: __triagem._famInfo ? { grupoId: __triagem._famInfo.grupoId, pessoas: __triagem._famInfo.nomes } : null,
+    casa: extra.casa, veiculos: extra.veiculos,
     continuacaoDe: __triagem.continuacaoDe || null,
     motivoPlano: __triagem.motivoPlano || null,
     perfilMapaAlma: perfil ? {
@@ -19195,6 +19367,7 @@ async function triagemGerarRelatorio(){
   const guardadoComSucesso = await triagemTentarGravar(payloadParaGuardar);
   if (!guardadoComSucesso) window.__triagemPayloadPendente = payloadParaGuardar;
 
+  if (__triagem._famSilencio) return;
   triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfetados, aberturaNivel, protocoloFinal, comparacao, temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA, perfil, ehPrimeiraSessao, cruzamentoVidasPassadas, guardadoComSucesso);
 }
 
