@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-22-11';
+const APP_VERSION = '2026-11-22-13';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12706,8 +12706,9 @@ function __triagemReset(){
     bovisIni: '', bovisFin: '',
     soTriagem: null, aplicadas: [], pedido: '', pedidoEtq: [], pedidoTemas: [], continuacaoDe: null, motivoPlano: '', pagoAntes: 0, pagamentoApptId: null, pagamentoValor: '', pagamentoMetodo: '', _ultimaSemTratamento: null, _penultima: null, _avisoFalta: false,
     baixaVibracao: TRIAGEM_BAIXA_VIBRACAO.map(() => false),
-    chakras: TRIAGEM_CHAKRAS_9.map(() => 'ok'), // 'ok' | 'desarmonia' | 'bloqueado', pesquisado com o pêndulo
-    aberturaCaminhos: 0, // índice em TRIAGEM_NIVEIS_ABERTURA
+    chakras: TRIAGEM_CHAKRAS_9.map(() => 'np'), // 'np' (não pesquisado) | 'ok' | 'desarmonia' | 'bloqueado', pesquisado com o pêndulo
+    aberturaCaminhos: -1, // -1 = não pesquisado; senão índice em TRIAGEM_NIVEIS_ABERTURA
+    origemPedido: 'paciente', pedinteNome: '', pedinteRel: '', cartasAberto: false,
     modoCartas: 'auto',
     leituraComplementar: null, perguntasCartas: [],
     sessoesNecessarias: '', preco: ''
@@ -12820,9 +12821,27 @@ async function renderTriagemBaixaVibracao(main, opts){
   }
 }
 
+/* Cartas a qualquer momento: ficam registadas na própria triagem e entram no relatório. */
+function triCartasPainel(){
+  const L = __triagem.leituraComplementar;
+  return `<div class="card" style="border:2px solid #7b4fb5;background:#fbf8ff;">
+    <h3>🎴 Cartas desta triagem</h3>
+    <p class="muted">Tudo o que tirares aqui fica gravado nesta triagem e aparece no relatório.</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
+      <button class="${__triagem.modoCartas==='auto'?'primary':'ghost'}" style="width:auto;" onclick="window.__triagemSetModoCartas2('auto')">🎴 Automática</button>
+      <button class="${__triagem.modoCartas==='manual'?'primary':'ghost'}" style="width:auto;" onclick="window.__triagemSetModoCartas2('manual')">✋ Baralho físico</button>
+      ${__triagem.modoCartas==='auto' ? '<button class="ghost" style="width:auto;" onclick="window.__triCartasTirar3()">🔮 Leitura de 3 cartas (agora · por baixo · tendência)</button>' : ''}
+    </div>
+    ${L ? `<p style="margin:6px 0;"><strong>Leitura de 3 cartas:</strong> ${escapeHtml(L.momento.nome)} · ${escapeHtml(L.porTras.nome)} · ${escapeHtml(L.tendencia.nome)}</p>` : ''}
+    ${triPergHTML()}
+  </div>`;
+}
+window.__triCartasToggle = function(){ __triagem.cartasAberto = !__triagem.cartasAberto; renderTriagemPasso(document.getElementById('mainView')); };
+window.__triagemSetModoCartas2 = function(m){ __triagem.modoCartas = m; renderTriagemPasso(document.getElementById('mainView')); };
+window.__triCartasTirar3 = function(){ const [momento, porTras, tendencia] = triagemTirarVarias(3); __triagem.leituraComplementar = { momento, porTras, tendencia }; renderTriagemPasso(document.getElementById('mainView')); };
 function triagemProgressoHTML(){
   const total = 9;
-  const cartas = (__triagem.patientId && temModulo('cartomancia')) ? `<div style="text-align:right;margin:-4px 0 10px;"><button class="ghost" style="width:auto;" onclick="consultarCartas('${__triagem.patientId}','triagem')">🃏 Consultar as cartas</button></div>` : '';
+  const cartas = __triagem.patientId ? `<div style="text-align:right;margin:-4px 0 10px;"><button class="ghost" style="width:auto;" onclick="window.__triCartasToggle()">🎴 ${__triagem.cartasAberto ? 'Fechar as cartas' : 'Tirar cartas agora'}</button></div>${(__triagem.cartasAberto && __triagem.passo !== 7) ? triCartasPainel() : ''}` : '';
   return `<div class="row" style="gap:4px;margin-bottom:12px;">${Array.from({length: total}).map((_,i) =>
     `<div style="flex:1;height:5px;border-radius:3px;background:${i <= __triagem.passo ? 'var(--primary)' : '#e5e5e5'};"></div>`).join('')}</div>${cartas}`;
 }
@@ -12888,8 +12907,9 @@ window.__triagemContinuar = async function(){
   __triagem.bovisIni = u.bovisInicial || ''; __triagem.bovisFin = ''; __triagem.aplicadas = [];
   __triagem.pagamentoValor = ''; await triagemLerPagamentoAnterior(u);
   __triagem.baixaVibracao = TRIAGEM_BAIXA_VIBRACAO.map(c => (u.baixaVibracaoDetetada || []).indexOf(c.nome) >= 0);
-  __triagem.chakras = TRIAGEM_CHAKRAS_9.map(c => { const f = (u.chakras || []).find(x => x.nome === c.nome); return f ? triEstadoChakra(f) : 'ok'; });
-  __triagem.aberturaCaminhos = Math.max(0, TRIAGEM_NIVEIS_ABERTURA.indexOf(u.aberturaCaminhos));
+  __triagem.chakras = TRIAGEM_CHAKRAS_9.map(c => { const f = (u.chakras || []).find(x => x.nome === c.nome); return f ? (f.estado === 'np' ? 'np' : triEstadoChakra(f)) : 'ok'; });
+  __triagem.aberturaCaminhos = u.aberturaCaminhos === null ? -1 : Math.max(0, TRIAGEM_NIVEIS_ABERTURA.indexOf(u.aberturaCaminhos));
+  __triagem.origemPedido = u.origemPedido || 'paciente'; __triagem.pedinteNome = u.pedinteNome || ''; __triagem.pedinteRel = u.pedinteRel || ''; if (u.pedido) __triagem.pedido = u.pedido;
   __triagem.sessoesNecessarias = u.sessoesNecessarias ? String(u.sessoesNecessarias) : ''; if (u.preco) __triagem.preco = String(u.preco);
   const L = u.leituraComplementar;
   if (L){ const arc = (nome) => TRIAGEM_ARCANOS.find(x => x.nome === nome); const m = arc(L.momento), p = arc(L.porTras), t = arc(L.tendencia); __triagem.leituraComplementar = (m && p && t) ? { momento:m, porTras:p, tendencia:t } : null; }
@@ -13556,7 +13576,7 @@ function triagemPassoBaixaVibracao(main){
 /* PASSO 4 — Chakras 1-9 (nível escolhido, sem cartas) */
 function triagemChakraAntes(nome){ const c = (__triagem.anterior?.chakras || []).find(x => x.nome === nome); return c ? triEstadoChakra(c) : null; }
 function triagemPassoChakras(main){
-  const botoesEstado = (i) => TRIAGEM_ESTADOS_CHAKRA.map(e => {
+  const botoesEstado = (i) => TRIAGEM_ESTADOS_CHAKRA.concat([{ id:'np', rotulo:'Não pesquisado', cor:'#757575' }]).map(e => {
     const on = __triagem.chakras[i] === e.id;
     return `<button type="button" data-estado="${e.id}" data-cor="${e.cor}" onclick="window.__triagemSetChakra(${i}, '${e.id}')" style="flex:1;min-width:96px;padding:9px 6px;border-radius:10px;border:2px solid ${e.cor};font-weight:700;font-size:13px;cursor:pointer;background:${on ? e.cor : '#fff'};color:${on ? '#fff' : '#444'};">${e.rotulo}</button>`;
   }).join('');
@@ -13565,7 +13585,7 @@ function triagemPassoChakras(main){
     ${triagemProgressoHTML()}
     <div class="card">
       <h3>5. Chakras (1 a 9) — Quais estão em desarmonia ou bloqueados?</h3>
-      <p class="muted">Pesquise com o pêndulo só os chakras que estão <strong>em desarmonia</strong> ou <strong>bloqueados</strong>. Os que não estiverem, deixe em «Equilibrado». Não se usam percentagens.</p>
+      <p class="muted">Pesquise com o pêndulo só os chakras que estão <strong>em desarmonia</strong> ou <strong>bloqueados</strong>. Os que pesquisou e estão bem, marque «Equilibrado». Os que não pesquisou ficam em «Não pesquisado» e <strong>não aparecem no relatório</strong>. Não se usam percentagens.</p>
       ${infoTodosBotaoHTML()}
       ${TRIAGEM_CHAKRAS_9.map((c,i) => `
         <div class="row" style="margin-bottom:6px;align-items:center;">
@@ -13603,12 +13623,24 @@ function triagemPassoAbertura(main){
       <h3>6. Nível de Abertura de Caminhos</h3>
       ${__triagem.anterior?.aberturaCaminhos ? `<p class="muted">Última consulta: ${escapeHtml(__triagem.anterior.aberturaCaminhos)}</p>` : ''}
       <select id="triagemSelAbertura">
+        <option value="-1" ${__triagem.aberturaCaminhos===-1?'selected':''}>— Não pesquisado (não aparece no relatório) —</option>
         ${TRIAGEM_NIVEIS_ABERTURA.map((niv, idx) => `<option value="${idx}" ${__triagem.aberturaCaminhos===idx?'selected':''}>${niv}</option>`).join('')}
       </select>
     </div>
     <div class="card" style="border:2px solid var(--primary);">
-      <h3>🎯 O que o paciente pede</h3>
+      <h3>🎯 O que se pede ou o que sei da situação</h3>
       <p class="muted">Escreve o que a pessoa quer alcançar ou resolver (ex.: deixar de fumar, ser promovido, encontrar amor, desbloquear uma situação, engravidar). A app escolhe as etiquetas mais indicadas e junta-as ao tratamento. Se não houver pedido, deixa em branco.</p>
+      <label>De onde vem este texto?</label>
+      <select id="triOrigem">
+        <option value="paciente" ${__triagem.origemPedido==='paciente'?'selected':''}>O próprio paciente pediu</option>
+        <option value="terapeuta" ${__triagem.origemPedido==='terapeuta'?'selected':''}>São observações minhas (eu sei isto sobre a pessoa)</option>
+        <option value="terceiro" ${__triagem.origemPedido==='terceiro'?'selected':''}>Pediu outra pessoa (mãe, familiar…) e o paciente pode não saber</option>
+      </select>
+      <div id="triPedinteBox" style="display:${__triagem.origemPedido==='terceiro'?'block':'none'};margin:6px 0;">
+        <input id="triPedinteNome" placeholder="Quem pediu (nome, ex.: Maria)" value="${escapeHtml(__triagem.pedinteNome || '')}" style="margin-bottom:6px;">
+        <input id="triPedinteRel" placeholder="Quem é para o paciente (ex.: mãe)" value="${escapeHtml(__triagem.pedinteRel || '')}">
+        <p class="muted" style="margin-top:4px;">O relatório passa a falar com esta pessoa, a explicar como o paciente está e como se sente, e não faz perguntas ao paciente.</p>
+      </div>
       <textarea id="triPedidoTxt" rows="2" style="width:100%;" placeholder="Ex.: quer deixar de fumar e ser promovido no trabalho">${escapeHtml(__triagem.pedido || '')}</textarea>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${TRI_PEDIDOS.map((c, i) => `<button type="button" class="ghost" style="padding:5px 10px;font-size:.85rem;" onclick="window.__triPedidoChip(${i})">${escapeHtml(c.chip)}</button>`).join('')}</div>
       <div id="triPedidoSug"></div>
@@ -13619,6 +13651,9 @@ function triagemPassoAbertura(main){
     </div>`;
   document.getElementById('triagemSelAbertura').addEventListener('change', e => __triagem.aberturaCaminhos = parseInt(e.target.value, 10));
   document.getElementById('triPedidoTxt').addEventListener('input', e => window.__triPedidoTxt(e.target.value));
+  document.getElementById('triOrigem').addEventListener('change', e => { __triagem.origemPedido = e.target.value; document.getElementById('triPedinteBox').style.display = e.target.value === 'terceiro' ? 'block' : 'none'; });
+  document.getElementById('triPedinteNome').addEventListener('input', e => { __triagem.pedinteNome = e.target.value; });
+  document.getElementById('triPedinteRel').addEventListener('input', e => { __triagem.pedinteRel = e.target.value; });
   if ((__triagem.pedido || '').trim()) triPedidoPintar(true);
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
   window.__triagemAvancar = function(){ __triagem.passo++; renderTriagemPasso(main); };
@@ -13848,9 +13883,9 @@ function compararComAnterior(anterior, atual){
   const persistentes = [...causasAtuais].filter(c => causasAnteriores.has(c));
 
   const chakrasAnteriores = {};
-  (anterior.chakras || []).forEach(c => { chakrasAnteriores[c.nome] = triEstadoChakra(c); });
+  (anterior.chakras || []).forEach(c => { if (c.estado !== 'np') chakrasAnteriores[c.nome] = triEstadoChakra(c); });
   // delta > 0 = melhorou (ex.: bloqueado → equilibrado); delta < 0 = piorou
-  const chakrasComparados = (atual.chakras || []).map(c => {
+  const chakrasComparados = (atual.chakras || []).filter(c => c.estado !== 'np').map(c => {
     const antes = chakrasAnteriores[c.nome], agora = triEstadoChakra(c);
     return { nome: c.nome, antes: antes ?? null, agora, delta: (antes != null) ? (triRankChakra(antes) - triRankChakra(agora)) : null };
   }).filter(c => c.delta !== null);
@@ -18482,7 +18517,7 @@ function triagemRelatorioCliente(d){
   const soTriagem = !(d.aplicadas && d.aplicadas.length);
   const primeira = (d.numConsulta || 1) === 1;
 
-  sec.push({ titulo:`Para ${nome} e para quem o(a) acompanha`, paras:[
+  sec.push({ titulo: (d.origemPedido === 'terceiro' && (d.pedinteNome || '').trim()) ? `Para ${d.pedinteNome.trim().split(/\s+/)[0]}, sobre ${nome}` : `Para ${nome} e para quem o(a) acompanha`, paras:[
     `Este relatório resume a triagem energética de ${nome}, feita em ${hoje}. Foi escrito em palavras simples, para que ${nome} e a família percebam como a pessoa está neste momento, o que se sente e o que pode ajudar.`,
     `Não é um diagnóstico nem uma sentença. É um retrato do momento, para ajudar a compreender e a escolher o melhor caminho.`
   ].concat(soTriagem ? [`Por agora foi feita apenas a triagem. Ainda não foi feita nenhuma limpeza nem tratamento.`] : []) });
@@ -18520,13 +18555,13 @@ function triagemRelatorioCliente(d){
   const fracos = d.chakrasTodos.filter(triChakraAfetado);
   const agora = [];
   if (fracos.length) agora.push(`Neste momento, o que mais pede cuidado ${fracos.length === 1 ? 'é o centro' : 'são os centros'} ${triLista(fracos.map(c => c.nome))}. Na prática, isto pode traduzir-se em ${triLista(fracos.map(c => TRI_CHAKRA_HUMANO[c.nome]?.[1]||'cansaço'))}.`);
-  else agora.push(`Os centros de energia estão, no geral, equilibrados, o que é um bom sinal.`);
+  else if (d.chakrasTodos.length) agora.push(`Os centros de energia estão, no geral, equilibrados, o que é um bom sinal.`);
   if (d.aberturaNivel && d.aberturaNivel !== 'Aberto'){
     const lv = { 'Parcialmente Aberto':'algo travado', 'Bloqueado':'bastante travado', 'Muito Bloqueado':'muito travado' }[d.aberturaNivel] || 'travado';
     agora.push(`O caminho à frente de ${nome} parece ${lv} neste momento: é como se, por mais que se esforce, as portas custassem a abrir. Isto não é uma sentença, é algo que se pode trabalhar.`);
-  } else agora.push(`O caminho à frente de ${nome} está aberto, o que ajuda a avançar.`);
-  sec.push({ titulo:'Como está neste momento', paras:agora });
-  {
+  } else if (d.aberturaNivel) agora.push(`O caminho à frente de ${nome} está aberto, o que ajuda a avançar.`);
+  if (agora.length) sec.push({ titulo:'Como está neste momento', paras:agora });
+  if (d.chakrasTodos.length) {
     const linhas = d.chakrasTodos.map(c => {
       const L9 = TRI_CHAKRA_LIVRO[c.n]; if (!L9) return null;
       const niv = triChakraNivel(c);
@@ -18537,7 +18572,7 @@ function triagemRelatorioCliente(d){
     }).filter(Boolean);
     sec.push({ titulo:'Os nove centros de energia, um a um', paras:[`Os chakras são centros de energia ao longo do corpo e acima dele. Esta é a leitura de cada um, em palavras simples. Não é um diagnóstico.`], lista:linhas });
   }
-  sec.push(triExplicaChakras(d, nome));
+  if (d.chakrasTodos.length) sec.push(triExplicaChakras(d, nome));
 
   triagemAreasVida(d, nome, idade).forEach(x => sec.push(x));
 
@@ -18605,7 +18640,7 @@ function triagemRelatorioCliente(d){
   }
 
   if (d.pedido){
-    sec.push({ titulo:'O que pediu', paras:[`${nome} pediu ajuda com: ${d.pedido}. Escolhi etiquetas pensadas para ${(d.pedidoTemas && d.pedidoTemas.length) ? d.pedidoTemas.join(', ') : 'este pedido'} e juntei-as ao trabalho desta consulta.`, `São um apoio para abrir caminho e dar força a essa intenção. Os resultados dependem também do dia a dia e do ritmo de cada pessoa.`] });
+    sec.push({ titulo: d.origemPedido === 'paciente' || !d.origemPedido ? 'O que pediu' : (d.origemPedido === 'terceiro' ? 'O que foi pedido' : 'O que sei da situação'), paras:[(d.origemPedido === 'terceiro' ? `${d.pedinteNome || 'Quem fez o pedido'}${d.pedinteRel ? ' (' + d.pedinteRel + ')' : ''} pediu ajuda para ${nome}${d.pedido ? ': ' + d.pedido : ''}.` : (d.origemPedido === 'terapeuta' ? `Tenho em conta o que conheço da situação de ${nome}: ${d.pedido}.` : `${nome} pediu ajuda com: ${d.pedido}.`)) + ` Escolhi etiquetas pensadas para ${(d.pedidoTemas && d.pedidoTemas.length) ? d.pedidoTemas.join(', ') : 'este pedido'} e juntei-as ao trabalho desta consulta.`, `São um apoio para abrir caminho e dar força a essa intenção. Os resultados dependem também do dia a dia e do ritmo de cada pessoa.`] });
   }
 
   if (d.aplicadas && d.aplicadas.length){
@@ -18687,8 +18722,8 @@ window.triagemRegerarIlustrado = async function(pid, rid, silencioso){
     const pdoc = (await getDoc(doc(db, 'tenants', tenantId, 'patients', pid))).data() || {};
     const nome = pdoc.fullName || '';
     const causasDetetadas = TRIAGEM_BAIXA_VIBRACAO.filter(c => (r.baixaVibracaoDetetada || []).indexOf(c.nome) >= 0);
-    const chakrasTodos = TRIAGEM_CHAKRAS_9.map(c => { const f = (r.chakras || []).find(x => x.nome === c.nome); return { ...c, estado: f ? triEstadoChakra(f) : 'ok' }; });
-    const aberturaNivel = r.aberturaCaminhos || TRIAGEM_NIVEIS_ABERTURA[0];
+    const chakrasTodos = TRIAGEM_CHAKRAS_9.map(c => { const f = (r.chakras || []).find(x => x.nome === c.nome); return { ...c, estado: f ? (f.estado === 'np' ? 'np' : triEstadoChakra(f)) : 'ok' }; }).filter(c => c.estado !== 'np');
+    const aberturaNivel = r.aberturaCaminhos === null ? null : (r.aberturaCaminhos || TRIAGEM_NIVEIS_ABERTURA[0]);
     const aplicadas = r.etiquetasAplicadas || [];
     const nasc = r.dataNascimento || pdoc.birthDate || '';
     const perfil = ((r.numeroConsulta || 1) <= 1 && nasc) ? (() => { try{ return calcularPerfilMapaAlma(nome, nasc); }catch(e){ return null; } })() : null;
@@ -18703,12 +18738,12 @@ window.triagemRegerarIlustrado = async function(pid, rid, silencioso){
         perfil, causasDetetadas, chakrasTodos, aberturaNivel, comparacao: null, cruzamento: null,
         leituraComplementar: lc, perguntasCartas: [], sessoesNecessarias: r.sessoesNecessarias, preco: r.preco, temAlgumaCoisaDetetada,
         aplicadas, numConsulta: r.numeroConsulta || 1, bovisIni: r.bovisInicial, bovisFin: r.bovisFinal,
-        sessoesAntes: null, motivoPlano: r.motivoPlano, pagamento: r.pagamento || null, pedido: '', pedidoTemas: []
+        sessoesAntes: null, motivoPlano: r.motivoPlano, pagamento: r.pagamento || null, pedido: r.pedido || '', pedidoTemas: [], origemPedido: r.origemPedido || 'paciente', pedinteNome: r.pedinteNome || '', pedinteRel: r.pedinteRel || ''
       });
     }catch(e){ console.warn('Texto do cliente não regenerado, uso só o modelo:', e); }
     const html = rbFragmento(triagemModeloBonito({
       primeiroNome, causasDetetadas, chakrasTodos, aberturaNivel, comparacao: null,
-      sessoesNecessarias: r.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas, pedido: '', pedidoTemas: [], perfil, corpos: r.corposPesquisa || {}
+      sessoesNecessarias: r.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas, pedido: r.pedido || '', pedidoTemas: [], origemPedido: r.origemPedido || 'paciente', pedinteNome: r.pedinteNome || '', pedinteRel: r.pedinteRel || '', perfil, corpos: r.corposPesquisa || {}
     }, cli));
     const copia = { ...r, reportHtml: html, continuacaoDe: rid };
     const refNovo = await addDoc(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), { ...copia, tipo: r.tipo || 'triagem-energetica', generatedAt: r.generatedAt || serverTimestamp() });
@@ -18826,13 +18861,13 @@ function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, 
   }
 
   const chakrasAtencao = chakrasTodos.filter(triChakraAfetado);
-  html += `<h3 style="color:var(--primary);margin-top:18px;">🌀 Chakras</h3>`;
-  if (chakrasAtencao.length){
+  if (chakrasTodos.length) html += `<h3 style="color:var(--primary);margin-top:18px;">🌀 Chakras</h3>`;
+  if (!chakrasTodos.length){ /* não pesquisados */ } else if (chakrasAtencao.length){
     html += `<p>A vigiar: ${chakrasAtencao.map(c => esc(c.nome)+' ('+triRotuloEstado(triEstadoChakra(c)).toLowerCase()+')').join(', ')}.</p>`;
   } else {
     html += `<p>Todos os chakras estão equilibrados. 🙂</p>`;
   }
-  html += `<p style="margin-top:6px;"><strong>Abertura de Caminhos:</strong> ${esc(aberturaNivel)}</p>`;
+  if (aberturaNivel) html += `<p style="margin-top:6px;"><strong>Abertura de Caminhos:</strong> ${esc(aberturaNivel)}</p>`;
 
   if (comparacao){
     html += `<h3 style="color:var(--primary);margin-top:18px;">📈 Desde a última sessão</h3>`;
@@ -18865,36 +18900,41 @@ function gerarReportHtmlPaciente({ primeiroNome, causasDetetadas, chakrasTodos, 
 // Relatório ilustrado da triagem (mesmos dados do relatório em texto, com gráficos e caixas que abrem).
 function triagemModeloBonito(d, cli){
   const nome = d.primeiroNome;
+  const terc = d.origemPedido === 'terceiro' && !!(d.pedinteNome || '').trim();   // pediu outra pessoa (ex.: a mãe) e o paciente pode não saber
+  const T = (a, b) => terc ? b : a;                                                  // a = fala com a própria pessoa, b = fala com quem pediu
+  const pn1 = terc ? d.pedinteNome.trim().split(/\s+/)[0] : '';
   const soTriagem = !(d.aplicadas && d.aplicadas.length);
   const blocos = [];   // vai sendo preenchido por partes e entregue ao modelo pessoal
   const antes = [], meio = [], depois = [];
   if (d.perfil){
     const pf = d.perfil, it = [];
-    it.push({ nome:`Caminho de Vida ${pf.cv}${pf.cvNome ? ' — ' + pf.cvNome : ''}`, paras:[`O seu número de Caminho de Vida é ${pf.cv}${pf.cvNome ? ', ' + pf.cvNome : ''}. Mostra a direção geral da sua vida.`] });
-    if (pf.signo && pf.signo.nome) it.push({ nome:`Signo: ${pf.signo.nome}`, paras:['O seu signo solar, a base da forma como se expressa.'] });
+    it.push({ nome:`Caminho de Vida ${pf.cv}${pf.cvNome ? ' — ' + pf.cvNome : ''}`, paras:[T(`O seu número de Caminho de Vida é ${pf.cv}${pf.cvNome ? ', ' + pf.cvNome : ''}. Mostra a direção geral da sua vida.`, `O número de Caminho de Vida de ${nome} é ${pf.cv}${pf.cvNome ? ', ' + pf.cvNome : ''}. Mostra a direção geral da vida de ${nome}.`)] });
+    if (pf.signo && pf.signo.nome) it.push({ nome:`Signo: ${pf.signo.nome}`, paras:[T('O seu signo solar, a base da forma como se expressa.', `O signo solar de ${nome}, a base da forma como se expressa.`)] });
     if (pf.anjo) it.push({ nome: pf.anjo.tipo === 'anjo' ? `Anjo do Nascimento: ${pf.anjo.nome}` : `Anjos Universais (${pf.anjo.elemento})`, paras: pf.anjo.tipo === 'anjo' ? [pf.anjo.virtude || ''] : ['Ligação direta aos Anjos Universais.'] });
-    if (pf.arcanoPNome) it.push({ nome:`Arcano Pessoal: ${pf.arcanoPNome}`, paras:['A carta que descreve a sua energia de fundo.'] });
+    if (pf.arcanoPNome) it.push({ nome:`Arcano Pessoal: ${pf.arcanoPNome}`, paras:[T('A carta que descreve a sua energia de fundo.', `A carta que descreve a energia de fundo de ${nome}.`)] });
     if (pf.nodos){
       it.push({ nome:`Nodo Sul (vidas passadas): ${pf.nodos.nodoSul.signo}`, paras:[NODO_SUL_TEXTOS[pf.nodos.nodoSul.signo] || ''] });
-      it.push({ nome:`Nodo Norte (propósito): ${pf.nodos.nodoNorte.signo}`, paras:['Para onde a sua alma procura crescer.'] });
+      it.push({ nome:`Nodo Norte (propósito): ${pf.nodos.nodoNorte.signo}`, paras:[T('Para onde a sua alma procura crescer.', `Para onde a alma de ${nome} procura crescer.`)] });
     }
-    antes.push({ tipo:'secoes', icone:'✨', titulo:'O seu perfil energético', itens: it.filter(x => x.nome) });
+    antes.push({ tipo:'secoes', icone:'✨', titulo: T('O seu perfil energético', `O perfil energético de ${nome}`), itens: it.filter(x => x.nome) });
   }
   const ch = d.chakrasTodos || [];
   if (ch.length){
     const afet = ch.filter(triChakraAfetado);
     meio.push(afet.length
       ? { tipo:'detalhe', icone:'🌀', titulo:'Centros de energia que pedem atenção', intro:'Estes são os centros de energia que encontrei a pedir mais carinho. Toque em cada um para perceber o que representa e como se costuma notar. Os restantes estão equilibrados.', itens: afet.map(c => ({ nome: c.nome + ' — ' + triRotuloEstado(triEstadoChakra(c)).toLowerCase(), descricao: c.descricao, exemplo: c.exemplo })) }
-      : { tipo:'texto', icone:'🌀', titulo:'Os seus centros de energia', paras:['Todos os centros de energia estão equilibrados neste momento. ✨'] });
+      : { tipo:'texto', icone:'🌀', titulo: T('Os seus centros de energia', `Os centros de energia de ${nome}`), paras:['Todos os centros de energia estão equilibrados neste momento. ✨'] });
   }
 
   // Corpos subtis (aura) pesquisados com o pêndulo
   { const NOMES = { fisico:['Corpo físico','o corpo que se vê e se toca'], etereo:['Corpo etérico','a energia vital, que alimenta o corpo'], astral:['Corpo astral','as emoções e os desejos'], 'mental-inf':['Mental inferior','os pensamentos do dia a dia'], 'mental-sup':['Mental superior','o sentido de vida e a visão de conjunto'], budico:['Corpo búdico','o amor sem condições e a compaixão'], atmico:['Corpo átmico','a essência de cada pessoa'] };
     const cp = d.corpos || {}, its = Object.keys(cp).filter(k => cp[k] > 0 && NOMES[k]).map(k => ({ nome: NOMES[k][0] + (cp[k] >= 2 ? ' — bloqueado' : ' — em desarmonia'), descricao: 'Representa ' + NOMES[k][1] + '. Foi uma das camadas que encontrei a pedir atenção.' }));
-    if (its.length) meio.push({ tipo:'detalhe', icone:'🧬', titulo:'Os seus corpos subtis (a sua aura)', intro:'A aura tem várias camadas. Estas foram as que encontrei em desequilíbrio.', itens: its }); }
+    if (its.length) meio.push({ tipo:'detalhe', icone:'🧬', titulo: T('Os seus corpos subtis (a sua aura)', `Os corpos subtis de ${nome} (a aura)`), intro:'A aura tem várias camadas. Estas foram as que encontrei em desequilíbrio.', itens: its }); }
   const secAb = cli && cli.sec ? cli.sec.find(x => x.titulo === 'Abertura de caminhos') : null;
   if (secAb) meio.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras: secAb.paras.concat((secAb.lista || []).map(y => '• ' + y)) });
   else if (d.aberturaNivel) meio.push({ tipo:'texto', icone:'🛤️', titulo:'Abertura de caminhos', paras:[String(d.aberturaNivel)] });
+  // Cartas tiradas durante a triagem: ficam registadas no relatório
+  ((cli && cli.sec) || []).filter(x => x && (x.titulo === 'O que está por trás de tudo isto' || /^A pergunta:|^O que se vê sobre/.test(x.titulo || ''))).forEach(x => meio.push({ tipo:'texto', icone:'🃏', titulo:x.titulo, paras:(x.paras || []).concat((x.lista || []).map(y => '• ' + y)) }));
   const c = d.comparacao;
   if (c){
     const l = [];
@@ -18908,8 +18948,8 @@ function triagemModeloBonito(d, cli){
     const rg = etqRegisto().mapa;
     depois.push({ tipo:'lista', icone:'✨', titulo:'O trabalho feito hoje (limpeza etérica)', marca:'•', itens: d.aplicadas.map(it => { const q = rg[etqChave(it.pt)]; return (q ? q.codigo + ': ' : '') + (it.simples || it.pt); }) });
     depois.push({ tipo:'sentir', icone:'🫶', titulo:'Como se pode sentir agora', intro:'Depois de uma limpeza é normal o corpo e as emoções mexerem um pouco. Não é mau sinal, é sinal de que algo se está a soltar.', itens:[
-      { estado:'ok', nome:'Mais leve', texto:'Pode sentir alívio, calma ou vontade de respirar fundo, como depois de arrumar uma divisão da casa.' },
-      { estado:'de', nome:'Mais sensível', texto:'Pode surgir vontade de chorar, sono diferente ou cansaço. É o corpo a pôr as coisas em ordem. Beber água e descansar ajuda.' },
+      { estado:'ok', nome:'Mais leve', texto: T('Pode sentir alívio, calma ou vontade de respirar fundo, como depois de arrumar uma divisão da casa.', `${nome} pode sentir alívio, calma ou vontade de respirar fundo, como depois de arrumar uma divisão da casa.`) },
+      { estado:'de', nome:'Mais sensível', texto: T('Pode surgir vontade de chorar, sono diferente ou cansaço. É o corpo a pôr as coisas em ordem. Beber água e descansar ajuda.', `Pode surgir em ${nome} vontade de chorar, sono diferente ou cansaço. É o corpo a pôr as coisas em ordem. Beber água e descansar ajuda.`) },
       { estado:'bl', nome:'Se pesar demais', texto:'Se algo incomodar muito ou durar mais de uns dias, fale comigo para ajustarmos.' } ] });
   }
 
@@ -18924,27 +18964,45 @@ function triagemModeloBonito(d, cli){
   else {
     if (causas.length) leitura.push(`O que mais pesa agora é ${rbJunta(causas.slice(0, 3).map(c => c.nome.toLowerCase()))}${causas.length > 3 ? ' (e mais ' + (causas.length - 3) + ')' : ''}.`);
     if (afet.length) leitura.push(`Em termos de energia, os centros que pedem mais carinho são ${rbJunta(afet.map(c => c.nome))}${bloq.length ? ', sendo ' + rbJunta(bloq) + ' ' + (bloq.length > 1 ? 'os mais fechados' : 'o mais fechado') : ''}.`);
-    if (abIdx >= 2) leitura.push('Os seus caminhos estão a precisar de ajuda para se abrirem.');
+    if (abIdx >= 2) leitura.push(T('Os seus caminhos estão a precisar de ajuda para se abrirem.', `Os caminhos de ${nome} estão a precisar de ajuda para se abrirem.`));
     leitura.push('Nada disto é uma sentença: é o retrato de agora, e tudo isto tem solução.');
   }
-  const perguntas = causas.map(c => ficha(c) && ficha(c).pergunta).filter(Boolean).slice(0, 3);
+  const perguntas = terc
+    ? [`Desde quando nota ${nome} assim? O que aconteceu na vida de ${nome} por essa altura?`, `Como costuma ${nome} reagir quando está a passar por um momento difícil? O que costuma ajudar?`, `De que forma pode estar presente, sem pressionar, respeitando o ritmo de ${nome}?`]
+    : causas.map(c => ficha(c) && ficha(c).pergunta).filter(Boolean).slice(0, 3);
   const como = soTriagem
-    ? [`Por agora fiz só a triagem, ainda não fiz nenhuma limpeza. Faço-a quando combinarmos, com calma, com o seu nome ao centro e com as etiquetas certas para cada coisa que encontrei.`]
+    ? [T(`Por agora fiz só a triagem, ainda não fiz nenhuma limpeza. Faço-a quando combinarmos, com calma, com o seu nome ao centro e com as etiquetas certas para cada coisa que encontrei.`, `Por agora fiz só a triagem, ainda não fiz nenhuma limpeza. Faço-a quando combinarmos, com calma, com o nome de ${nome} ao centro e com as etiquetas certas para cada coisa que encontrei.`)]
     : [];
   const passos = [];
   if (d.sessoesNecessarias) passos.push({ rotulo:'Sessões recomendadas', texto:`${d.sessoesNecessarias} sessão(ões) de limpeza.` });
-  if (d.temAlgumaCoisaDetetada) passos.push({ rotulo:'Nos dias seguintes', texto:'É normal sentir mais cansaço, emotividade ou sono alterado nos 1 a 3 dias a seguir. É o corpo a processar. Ajuda beber água, descansar e ter momentos calmos.' });
+  if (d.temAlgumaCoisaDetetada) passos.push({ rotulo:'Nos dias seguintes', texto: T('É normal sentir mais cansaço, emotividade ou sono alterado nos 1 a 3 dias a seguir. É o corpo a processar. Ajuda beber água, descansar e ter momentos calmos.', `É normal que ${nome} sinta mais cansaço, emotividade ou sono alterado nos 1 a 3 dias a seguir. É o corpo a processar. Ajuda beber água, descansar e ter momentos calmos.`) });
   passos.push({ rotulo:'Acompanhamento', texto:'Vamos fazendo o ponto da situação em cada sessão.' });
   const encontrados = causas.map(c => ({ nome: c.nome, descricao: c.descricao, notar: ficha(c) ? ficha(c).sinais : '', exemplo: c.exemplo }));
   const extraAb = [];
-  if (d.pedido) extraAb.push(`Disse-me que precisa de ajuda com: ${d.pedido}. Escolhi as etiquetas a pensar nisso.`);
+  const ped = (d.pedido || '').trim().replace(/[.\s]+$/, '');
+  const relTxt = (d.pedinteRel || '').trim();
+  let abertura, porque;
+  if (terc){
+    abertura = `Fiz a triagem energética com o pêndulo a pensar em ${nome}, a seu pedido${relTxt ? ` (${relTxt})` : ''}.`;
+    porque = `Serve para perceber, uma a uma, as coisas que podem estar a pesar em ${nome} e que muitas vezes não se veem. Abaixo explico cada uma, como ${nome} pode estar a sentir-se e o que vamos fazer.`;
+    if (ped) extraAb.push(`Pediu ajuda para ${nome}: ${ped}. Escolhi as etiquetas a pensar nisso.`);
+  } else if (d.origemPedido === 'terapeuta'){
+    abertura = `Fiz a triagem energética com o pêndulo a pensar só em si${ped ? `, tendo em conta o que conheço da sua situação: “${ped}”` : ''}.`;
+    if (ped) extraAb.push(`Escolhi as etiquetas a pensar no que conheço da sua situação.`);
+  } else if (ped){
+    extraAb.push(`Disse-me que precisa de ajuda com: ${ped}. Escolhi as etiquetas a pensar nisso.`);
+  }
+  const comoSeSente = terc ? [{ tipo:'texto', icone:'🫂', titulo:`Como ${nome} pode estar a sentir-se`, paras:[
+    `Pelo que a triagem mostrou, ${nome} pode estar a atravessar um período de peso emocional e energético${ped ? ', ligado ao que me descreveu' : ''}. Não são sinais de alarme: são formas de dar nome ao que pode estar a sentir sem conseguir explicar.`,
+    causas.length ? `O que mais pesa neste momento: ${rbJunta(causas.slice(0, 4).map(c => c.nome.toLowerCase()))}. Mais abaixo explico cada ponto e como costuma notar-se no dia a dia.` : `Neste momento não encontrei nada de baixa vibração a pesar em ${nome}.` ] }] : [];
+
   const m = rbModeloPessoal({
-    tema:'triagem', emoji:'🌿', titulo:'A sua triagem energética', nome1: nome, data: new Date().toLocaleDateString('pt-PT'), assinatura:'Ricardo Correia · Hikari Fafe',
+    tema:'triagem', emoji:'🌿', titulo: T('A sua triagem energética', `A triagem energética de ${nome}`), nome: nome, nome1: terc ? pn1 : nome, abertura, porque, data: new Date().toLocaleDateString('pt-PT'), assinatura:'Ricardo Correia · Hikari Fafe',
     oQueFiz:'a triagem energética com o pêndulo', pedido: d.pedido || '', extraAbertura: extraAb,
-    antes, encontrados, tituloEncontrados:'O que encontrei, explicado', nadaEncontrado:'Não encontrei nada de baixa vibração: o seu campo está equilibrado. ✨',
+    antes: antes.concat(comoSeSente), encontrados, tituloEncontrados:'O que encontrei, explicado', nadaEncontrado: T('Não encontrei nada de baixa vibração: o seu campo está equilibrado. ✨', `Não encontrei nada de baixa vibração: o campo de ${nome} está equilibrado. ✨`),
     meio, como, leitura, perguntas, proximos: passos, depois,
-    resumo: [ causas.length || afet.length ? `Encontrei ${causas.length} ${causas.length === 1 ? 'coisa' : 'coisas'} a limpar e ${afet.length} ${afet.length === 1 ? 'centro' : 'centros'} de energia a pedir atenção.` : 'Está tudo em equilíbrio neste momento.',
-      soTriagem ? 'A limpeza fica para quando combinarmos. Até lá, beba água e descanse.' : 'Nos próximos dias é normal sentir mais sono ou emoção, e também mais leveza. É o campo a assentar.', 'Qualquer dúvida, fale comigo.' ],
+    resumo: [ causas.length || afet.length ? `Encontrei ${causas.length} ${causas.length === 1 ? 'coisa' : 'coisas'} a limpar${(d.chakrasTodos || []).length ? ` e ${afet.length} ${afet.length === 1 ? 'centro' : 'centros'} de energia a pedir atenção` : ''}.` : 'Está tudo em equilíbrio neste momento.',
+      soTriagem ? T('A limpeza fica para quando combinarmos. Até lá, beba água e descanse.', `A limpeza fica para quando combinarmos. Até lá, que ${nome} beba água e descanse.`) : T('Nos próximos dias é normal sentir mais sono ou emoção, e também mais leveza. É o campo a assentar.', `Nos próximos dias é normal que ${nome} sinta mais sono ou emoção, e também mais leveza. É o campo a assentar.`), 'Qualquer dúvida, fale comigo.' ],
     mensagem: 'Isto é um retrato do momento, não uma sentença. Obrigado pela confiança. 🌿'
   });
   m.aviso = 'Este é um trabalho energético e complementar. Não substitui o acompanhamento médico ou psicológico.';
@@ -18972,7 +19030,8 @@ async function triagemGerarRelatorio(){
       triagemBuscarEtiquetas(c.temas, 2).forEach(r => protocolo.push({...r, motivo: `Chakra ${c.nome}`}));
     }
   });
-  const aberturaNivel = TRIAGEM_NIVEIS_ABERTURA[__triagem.aberturaCaminhos];
+  const aberturaNivel = TRIAGEM_NIVEIS_ABERTURA[__triagem.aberturaCaminhos] || null;
+  const chkP = chakrasTodos.filter(c => c.estado !== 'np'); // só o que foi mesmo pesquisado vai para o relatório da pessoa
   if (__triagem.aberturaCaminhos >= 2){
     triagemBuscarEtiquetas(["Desbloqueio","Vontade","Prosperidade","Abundância"], 2).forEach(r => protocolo.push({...r, motivo: 'Abertura de Caminhos'}));
   }
@@ -19001,8 +19060,8 @@ async function triagemGerarRelatorio(){
       ehPrimeiraSessao = false;
       comparacao = compararComAnterior(anteriorDoc, {
         baixaVibracaoDetetada: causasDetetadas.map(c => c.nome), corposPesquisa: __triagem.corpos || {}, alertasRastreio: __triagem.alertas || {},
-        chakras: chakrasTodos.map(c => ({ nome:c.nome, estado: triEstadoChakra(c) })),
-        bovisInicial: __triagem.bovisIni, bovisFinal: __triagem.bovisFin, aberturaCaminhos: aberturaNivel
+        chakras: chakrasTodos.map(c => ({ nome:c.nome, estado: c.estado === 'np' ? 'np' : triEstadoChakra(c) })),
+        bovisInicial: __triagem.bovisIni, bovisFinal: __triagem.bovisFin, aberturaCaminhos: aberturaNivel || null
       });
     }
   }catch(e){ console.warn('Não foi possível carregar a sessão anterior para comparação:', e); }
@@ -19037,9 +19096,9 @@ async function triagemGerarRelatorio(){
     causasDetetadas.forEach(c => { reportText += `• ${c.n}. ${c.nome}\n   O que é: ${c.descricao}\n   Exemplo: ${c.exemplo}\n\n`; });
     if (cruzamentoVidasPassadas) reportText += `🔗 Ligação com o Mapa da Alma: ${cruzamentoVidasPassadas.motivo} pode estar ligado ao Nodo Sul em ${cruzamentoVidasPassadas.nodoSulSigno} — ${cruzamentoVidasPassadas.nodoSulTexto}\n\n`;
   } else reportText += 'Nenhuma — campo equilibrado.\n\n';
-  { const afCk = chakrasTodos.filter(triChakraAfetado);
-    reportText += `== Chakras em desarmonia ou bloqueados ==\n${afCk.length ? afCk.map(c => `• ${c.nome}: ${triRotuloEstado(triEstadoChakra(c)).toLowerCase()} ⚠️`).join('\n') + '\nOs restantes chakras estão equilibrados.' : 'Nenhum — todos os chakras estão equilibrados.'}\n\n`; }
-  reportText += `== Abertura de Caminhos ==\n${aberturaNivel}\n\n`;
+  { const afCk = chkP.filter(triChakraAfetado);
+    reportText += !chkP.length ? `== Chakras ==\nNão pesquisados nesta triagem.\n\n` : `== Chakras em desarmonia ou bloqueados ==\n${afCk.length ? afCk.map(c => `• ${c.nome}: ${triRotuloEstado(triEstadoChakra(c)).toLowerCase()} ⚠️`).join('\n') + '\nOs restantes chakras estão equilibrados.' : 'Nenhum — todos os chakras estão equilibrados.'}\n\n`; }
+  reportText += `== Abertura de Caminhos ==\n${aberturaNivel || 'Não pesquisado'}\n\n`;
   if (comparacao){
     reportText += `== Evolução desde a última sessão ==\n`;
     reportText += comparacao.resolvidas.length ? `• Resolvidas: ${comparacao.resolvidas.join(', ')}\n` : '';
@@ -19068,12 +19127,13 @@ async function triagemGerarRelatorio(){
   // ── Relatório para a pessoa e a família: texto corrido e pessoal ───────
   const clienteRel = triagemRelatorioCliente({
     primeiroNome: __triagem.patientNome.split(/\s+/)[0], dataNascimento: __triagem.dataNascimento, paisNascimento: __triagem.paisNascimento,
-    perfil, causasDetetadas, chakrasTodos, aberturaNivel, comparacao, cruzamento: cruzamentoVidasPassadas,
+    perfil, causasDetetadas, chakrasTodos: chkP, aberturaNivel, comparacao, cruzamento: cruzamentoVidasPassadas,
     leituraComplementar: __triagem.leituraComplementar, perguntasCartas: __triagem.perguntasCartas, sessoesNecessarias: __triagem.sessoesNecessarias,
     preco: __triagem.preco, temAlgumaCoisaDetetada,
     aplicadas: etiquetasAplicadas, numConsulta: __triagem.numConsulta || 1, bovisIni: __triagem.bovisIni, bovisFin: __triagem.bovisFin,
     sessoesAntes: anteriorDoc ? anteriorDoc.sessoesNecessarias : null, motivoPlano: __triagem.motivoPlano, pagamento: pagamentoInfo,
-    pedido: (__triagem.pedido || '').trim(), pedidoTemas: __triagem.pedidoTemas || []
+    pedido: (__triagem.pedido || '').trim(), pedidoTemas: __triagem.pedidoTemas || [],
+    origemPedido: __triagem.origemPedido || 'paciente', pedinteNome: (__triagem.pedinteNome || '').trim(), pedinteRel: (__triagem.pedinteRel || '').trim()
   });
   window.__triagemTextoClienteAtual = clienteRel.texto;
   let reportHtmlBonitoTriagem = '';
@@ -19082,9 +19142,10 @@ async function triagemGerarRelatorio(){
     // não se repete, a não ser que seja pedido (botão "Incluir perfil energético").
     const dadosModelo = {
       corpos: __triagem.corpos || {},
-      primeiroNome: __triagem.patientNome.split(/\s+/)[0], causasDetetadas, chakrasTodos, aberturaNivel, comparacao,
+      primeiroNome: __triagem.patientNome.split(/\s+/)[0], causasDetetadas, chakrasTodos: chkP, aberturaNivel, comparacao,
       sessoesNecessarias: __triagem.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas: etiquetasAplicadas,
       pedido: (__triagem.pedido || '').trim(), pedidoTemas: __triagem.pedidoTemas || [],
+      origemPedido: __triagem.origemPedido || 'paciente', pedinteNome: (__triagem.pedinteNome || '').trim(), pedinteRel: (__triagem.pedinteRel || '').trim(),
       perfil: (ehPrimeiraSessao && perfil) ? perfil : null
     };
     window.__triagemModeloArgs = { dados: dadosModelo, cli: clienteRel, perfil };
@@ -19092,7 +19153,7 @@ async function triagemGerarRelatorio(){
   } catch(e){ console.warn('Relatório ilustrado da triagem falhou, uso o simples:', e); }
   const reportHtmlAntigo = gerarReportHtmlPaciente({
     primeiroNome: __triagem.patientNome.split(/\s+/)[0],
-    causasDetetadas, chakrasTodos, aberturaNivel, comparacao,
+    causasDetetadas, chakrasTodos: chkP, aberturaNivel, comparacao,
     sessoesNecessarias: __triagem.sessoesNecessarias, preco: __triagem.preco,
     temAlgumaCoisaDetetada, NOTA_CRISE_DE_CURA,
     perfil, ehPrimeiraSessao, cruzamento: cruzamentoVidasPassadas,
@@ -19105,8 +19166,9 @@ async function triagemGerarRelatorio(){
     reportText, reportTextCliente: clienteRel.texto, reportHtml: reportHtmlBonitoTriagem || clienteRel.html, reportHtmlSimples: clienteRel.html,
     bovisInicial: __triagem.bovisIni || null, bovisFinal: __triagem.bovisFin || null,
     baixaVibracaoDetetada: causasDetetadas.map(c => c.nome), corposPesquisa: __triagem.corpos || {}, alertasRastreio: __triagem.alertas || {},
-    chakras: chakrasTodos.map(c => ({ nome:c.nome, estado: triEstadoChakra(c) })),
-    aberturaCaminhos: aberturaNivel,
+    chakras: chakrasTodos.map(c => ({ nome:c.nome, estado: c.estado === 'np' ? 'np' : triEstadoChakra(c) })),
+    aberturaCaminhos: aberturaNivel || null,
+    pedido: (__triagem.pedido || '').trim() || null, origemPedido: __triagem.origemPedido || 'paciente', pedinteNome: (__triagem.pedinteNome || '').trim() || null, pedinteRel: (__triagem.pedinteRel || '').trim() || null,
     leituraComplementar: __triagem.leituraComplementar ? {
       momento: __triagem.leituraComplementar.momento.nome,
       porTras: __triagem.leituraComplementar.porTras.nome,
@@ -19514,13 +19576,13 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
       </div>` : ''}
     </div>` : ''}
     <div class="card"><h3>🌀 Chakras em desarmonia ou bloqueados</h3>
-      ${chakrasTodos.filter(triChakraAfetado).length
+      ${!chakrasTodos.some(c => c.estado !== 'np') ? '<p class="muted">Não pesquisados nesta triagem.</p>' : chakrasTodos.filter(triChakraAfetado).length
         ? chakrasTodos.filter(triChakraAfetado).map(c => `<p class="muted">${escapeHtml(c.nome)}: <strong style="color:${(TRIAGEM_ESTADOS_CHAKRA.find(e => e.id === triEstadoChakra(c)) || {}).cor || '#c0392b'};">${triRotuloEstado(triEstadoChakra(c))}</strong> ⚠️</p>`).join('') + '<p class="muted">Os restantes chakras estão equilibrados.</p>'
         : '<p class="muted">Todos os chakras estão equilibrados.</p>'}
     </div>
     ${triApoCard(true)}
     ${window.chakraSeccaoTriagem ? window.chakraSeccaoTriagem(chakrasTodos.filter(triChakraAfetado).map(c => ({ nome: c.nome, estadoRotulo: triRotuloEstado(triEstadoChakra(c)), cor: (TRIAGEM_ESTADOS_CHAKRA.find(e => e.id === triEstadoChakra(c)) || {}).cor || '#c0392b' }))) : ''}
-    <div class="card"><h3>🛤️ Abertura de Caminhos</h3><p><strong>${escapeHtml(aberturaNivel)}</strong></p></div>
+    <div class="card"><h3>🛤️ Abertura de Caminhos</h3><p><strong>${escapeHtml(aberturaNivel || 'Não pesquisado')}</strong></p></div>
     ${comparacao ? `<div class="card" style="border:2px solid #4a9d5f;">
       <h3>📈 Evolução desde a última consulta${comparacao.dataAnterior?.toDate ? ' ('+comparacao.dataAnterior.toDate().toLocaleDateString('pt-PT')+(comparacao.diasEntre != null ? ', há '+comparacao.diasEntre+' dias' : '')+')' : ''}</h3>
       <p style="margin-top:6px;"><strong>${comparacao.resolvidas.length}</strong> resolvida(s) · <strong>${comparacao.persistentes.length}</strong> persistente(s) · <strong>${comparacao.novas.length}</strong> nova(s) · chakras: <strong style="color:#2e7d32;">${comparacao.melhoraram} melhoraram</strong>, <strong style="color:#c0392b;">${comparacao.pioraram} desceram</strong></p>
