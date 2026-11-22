@@ -39,7 +39,7 @@ export function renderAtividades(main, ctx) {
   }
 
   /* ───── modelos ───── */
-  function proximaSegunda() { const d = new Date(); d.setDate(d.getDate() + 5); while (d.getDay() !== 1) d.setDate(d.getDate() + 1); d.setHours(21, 30, 0, 0); return d; }
+  function proximaSegunda() { const fixo = new Date(2026, 10, 23, 21, 30, 0, 0); if (fixo.getTime() > Date.now()) return fixo; const d = new Date(); d.setDate(d.getDate() + 5); while (d.getDay() !== 1) d.setDate(d.getDate() + 1); d.setHours(21, 30, 0, 0); return d; }
   function modeloChakras() {
     const ini = proximaSegunda();
     return { id: null, d: { tipo: 'desafio', estado: 'rascunho', titulo: 'Desafio 7 Chakras · 7 Dias · 7 Minutos', subtitulo: 'Uma meditação guiada por dia, às 21:30, para pôr a tua energia a fluir.',
