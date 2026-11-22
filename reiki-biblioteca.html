@@ -971,9 +971,9 @@ function categoriasSala(){
     subs:['Ver','Tela','Papel','Memória'], href:urlP('reiki-simbolos.html'), so: !!emEstudo || !!C.concluido };
 
   cats['cat:templo'] = { ic:'🌿', nome:'Templo de paz', desc:'Para respirar, meditar e inspirar.',
-    subs:(hikari ? ['Músicas'] : []).concat(temPrat ? ['Meditações'] : []).concat(['Poemas','Mapa da Alma','Cartas','Ervas']),
+    subs:(hikari ? ['Músicas','Desafio 7 chakras'] : []).concat(temPrat ? ['Meditações'] : []).concat(['Poemas','Mapa da Alma','Cartas','Ervas']),
     musica: hikari,
-    itens:[{ ic:'☀️', t:'Poema do dia', d:'Um poema e o seu princípio para meditar hoje. A app escolhe, ou escolhes tu.', href:urlP('poemas-meiji.html') }]
+    itens:(hikari ? [{ ic:'🌈', t:'Desafio 7 Chakras · 7 Dias · 7 Minutos', d:'7 meditações guiadas em vídeo, uma por chakra. Já disponíveis para ti.', href:'desafio-chakras.html', novo:true }] : []).concat([{ ic:'☀️', t:'Poema do dia', d:'Um poema e o seu princípio para meditar hoje. A app escolhe, ou escolhes tu.', href:urlP('poemas-meiji.html') }])
       .concat(temPrat ? [{ ic:'🧘', t:'Meditações guiadas', d:'Áudios para acompanhar a prática dos 21 dias.', href:praticaHref }] : []).concat([
       { ic:'🎴', t:'Todos os poemas do Meiji', d:'125 poemas para ler, tirar um ao acaso ou escolher por princípio.', href:urlP('poemas-meiji.html'), novo:true },
       { ic:'🔮', t:'Mapa da Alma', d:'Descobre o teu mapa.', href:'mapa-da-alma.html', novo:true },
@@ -1008,7 +1008,7 @@ function categoriasSala(){
 function linhaItem(i){
   const corpo = '<div class="ci">' + i.ic + '</div><div><b>' + esc(i.t) + (i.novo ? '' : '') + '</b><span class="d">' + esc(i.d || '') + '</span></div><span class="seta">›</span>';
   if (i.href){
-    const ext = !/reiki-(percurso|simbolos)\.html|mesinhas\.html/.test(i.href);
+    const ext = !/reiki-(percurso|simbolos)\.html|mesinhas\.html|desafio-chakras\.html/.test(i.href);
     return '<a class="item" href="' + esc(i.href) + '"' + (ext ? ' target="_blank" rel="noopener"' : '') + '>' + corpo + '</a>';
   }
   return '<div class="item" role="button" tabindex="0" onclick="' + i.fn + '">' + corpo + '</div>';
@@ -1068,6 +1068,11 @@ function verInicio(){
   }
 
   h += '<div id="poemaDia"></div>';
+  if (C.tenant === TENANT_MUSICA){
+    h += '<a href="desafio-chakras.html" style="text-decoration:none;color:inherit;display:block;"><div class="cartao" style="display:flex;gap:12px;align-items:center;">'
+      + '<div style="font-size:2rem;">🌈</div><div style="flex:1;min-width:0;"><b>Desafio 7 Chakras · 7 Dias · 7 Minutos</b>'
+      + '<div style="font-size:.82rem;color:var(--suave);">7 meditações guiadas em vídeo, já disponíveis para ti.</div></div><span style="font-size:1.3rem;">›</span></div></a>';
+  }
   let fechado = false; try { fechado = localStorage.getItem('sala_banner_app') === '1'; } catch(e){}
   if (!jaInstalada() && !fechado){
     h += '<div class="cartao" style="display:flex;gap:12px;align-items:center;"><div style="font-size:1.8rem;">📲</div>'
