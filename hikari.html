@@ -241,11 +241,13 @@ function desenharServicos(cats, servicos, funil){
     servicos.forEach(s => { const n = s.category || 'Serviços'; nomes[n] = nomes[n] || { id: n, name: n, icon: s.categoryIcon || '🩺' }; s.categoryId = n; });
     grupos = Object.values(nomes);
   }
+  const ICONES = [[/reiki/i,'🌿'],[/reflex|p[eé]s/i,'🦶'],[/radiest|p[eê]ndulo|triagem|energ|apometr/i,'🔮'],[/psicol|emocion|ansied/i,'🧠'],[/massag/i,'💆'],[/tarot|carto|cartas/i,'🃏'],[/mapa|numerol|astr/i,'🌟'],[/chakra/i,'🌈'],[/crian|jovem|adolesc/i,'🧒'],[/medita|relax/i,'🧘']];
+  const iconeDe = (g, itens) => { if (g.icon && String(g.icon).trim() && g.icon !== '🩺') return g.icon; const doServico = (itens.find(s => s.categoryIcon && s.categoryIcon !== '🩺') || {}).categoryIcon; if (doServico) return doServico; const f = ICONES.find(x => x[0].test(g.name || '')); return f ? f[1] : (g.icon || '🩺'); };
   el.innerHTML = grupos.map(g => {
     const itens = servicos.filter(s => s.categoryId === g.id);
     if (!itens.length) return '';
     return `<div class="cartao">
-      <h3>${esc(g.icon || '🩺')} ${esc(g.name)}</h3>
+      <h3>${esc(iconeDe(g, itens))} ${esc(g.name)}</h3>
       ${g.modalidade && mod[g.modalidade] ? `<p>${mod[g.modalidade]}</p>` : ''}
       ${g.description ? `<p>${esc(g.description)}</p>` : ''}
       <div>${itens.map(s => `<div class="linha-servico"><div><strong>${esc(s.name)}</strong>${s.type === 'pack' ? `<div class="suave">Pack · ${esc(s.packSessions||'')} sessões</div>` : ''}${s.description ? `<div class="suave">${esc(s.description)}</div>` : ''}</div><span class="preco">${esc(s.price)}€</span></div>`).join('')}</div>
