@@ -154,7 +154,7 @@ function sessoes() {
     else if (!registado) corpo = `<div class="res">Inscreve-te acima para aceder.</div>`;
     else if (!c) corpo = `<div class="res">Disponível! Se não carregar, atualiza a página daqui a um instante.</div>`;
     else corpo = `<div class="player">${embed(c.url)}${c.guiao ? `<details class="g"><summary>📖 Ler a meditação</summary><div>${esc(c.guiao)}</div></details>` : ''}</div>`;
-    return `<div class="sess ${livre ? 'on' : ''}"><div class="top"><b>${esc(s.titulo)}</b><span class="est ${livre ? 'livre' : 'lock'}">${livre ? 'Disponível' : 'Em breve'}</span></div><div class="res" style="color:var(--v);font-weight:700">📅 ${esc(quando(s.libertaEm))}</div>${s.resumo ? `<div class="res">${esc(s.resumo)}</div>` : ''}${s.imagem ? `<img class="im" src="${esc(s.imagem)}" alt="" loading="lazy">` : ''}${corpo}</div>`;
+    return `<div class="sess ${livre ? 'on' : ''}"><div class="top"><b>${esc(s.titulo)}</b><span class="est ${livre ? 'livre' : 'lock'}">${livre ? 'Disponível' : 'Em breve'}</span></div><div class="res" style="color:var(--v);font-weight:700">📅 ${esc(quando(s.libertaEm))}</div>${s.resumo ? `<div class="res">${esc(s.resumo)}</div>` : ''}${s.imagem ? `<img class="im" src="${esc(s.imagem)}" alt="" loading="lazy">` : ''}${s.detalhe ? `<details class="g"><summary>🌈 Saber mais sobre este dia</summary><div>${esc(s.detalhe)}</div></details>` : ''}${corpo}</div>`;
   }).join('')}</div>`;
 }
 function guia() {
