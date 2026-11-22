@@ -24,6 +24,7 @@ function mapaSvg(corpos) {
 // Relatório ilustrado para o paciente (mesma informação da mensagem serena, com gráficos e caixas que abrem).
 // Serve tanto a pesquisa em curso como pesquisas já guardadas (St = dados guardados).
 export function modeloBonitoDeDados(St, pac, plano, dataTxt) {
+    const nivel = (v) => NIVEIS.find((n) => n.v === v) || NIVEIS[0];
     const nome = pac ? String(pac.fullName).split(' ')[0] : '';
     const blocos = [];
     blocos.push({ tipo: 'texto', icone: '🌿', titulo: nome ? 'Olá, ' + nome : 'Olá', paras: [TEXTO_PACIENTE.intro, 'Eu sou um intercessor: peço e trabalho para o teu bem, mas a mudança que se mantém é a tua. Atraímos o que vibramos, por isso a tua parte é cuidar do teu estado todos os dias.'] });
