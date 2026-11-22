@@ -15,6 +15,11 @@ const TEMAS = {
 };
 
 const CSS = `
+.rbx .ficha{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}.rbx .ficha div{font-size:14px;line-height:1.3}.rbx .ficha small{display:block;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.5px}.rbx .ficha .l{grid-column:1/-1}
+.rbx .dest{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}.rbx .dest .chip{background:linear-gradient(135deg,var(--c),#fff);border-radius:14px;padding:8px 12px;font-size:14px}.rbx .dest .chip small{display:block;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+.rbx .zona{border-left:4px solid var(--b);background:#fbfaff;border-radius:12px;padding:10px 12px;margin:10px 0}.rbx .zona h3{margin:0 0 2px;font-size:15px;color:var(--a)}.rbx .zona .sub{margin:0 0 8px;font-size:12.5px;color:var(--mut)}
+.rbx .zona .kv{margin:6px 0;font-size:14px}.rbx .zona .kv b{color:var(--a)}
+.rbx .orient{counter-reset:o;list-style:none;margin:0;padding:0}.rbx .orient li{counter-increment:o;position:relative;padding:8px 8px 8px 40px;margin:6px 0;background:#f6f1fb;border-radius:12px;font-size:14.5px}.rbx .orient li:before{content:counter(o);position:absolute;left:10px;top:7px;width:22px;height:22px;border-radius:50%;background:var(--a);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
 .rbx{--a:#5b2a86;--b:#c0398b;--c:#f6c453;--fundo:#fbf6ff;--tx:#2b2236;--mut:#6d6477;font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;color:var(--tx);background:var(--fundo);border-radius:22px;overflow:hidden;max-width:760px;margin:0 auto;line-height:1.55;box-shadow:0 10px 40px rgba(60,30,90,.18)}
 .rbx *{box-sizing:border-box}
 .rbx .hero{position:relative;padding:34px 22px 56px;color:#fff;text-align:center;background:linear-gradient(135deg,var(--a),var(--b));overflow:hidden}
@@ -206,6 +211,14 @@ function bloco(b, T) {
       return `<section class="bloco">${tit}${b.intro ? `<p class="mut">${nl(b.intro)}</p>` : ''}${radar(b.itens || [])}</section>`;
     case 'caminhos':
       return `<section class="bloco">${tit}<div class="caminhos">${(b.itens || []).map(it => { const k = it.estado === 'aberto' ? 'aberto' : (it.estado === 'fechado' ? 'fechado' : 'meio'); return `<div class="placa ${k}"><b>${k === 'aberto' ? '🟢' : (k === 'fechado' ? '🔴' : '🟡')}</b>${esc(it.rotulo)}<br><small>${k === 'aberto' ? 'Caminho aberto' : (k === 'fechado' ? 'Caminho fechado por agora' : 'Aberto, com condições')}</small></div>`; }).join('')}</div>${b.texto ? `<p>${nl(b.texto)}</p>` : ''}</section>`;
+    case 'ficha':
+      return `<section class="bloco">${tit}<div class="ficha">${(b.itens || []).filter(x => x && x.valor).map(x => `<div class="${x.largo ? 'l' : ''}"><small>${esc(x.rotulo)}</small>${esc(x.valor)}</div>`).join('')}</div></section>`;
+    case 'destaque':
+      return `<section class="bloco">${tit}<div class="dest">${(b.chips || []).filter(x => x && x.valor).map(x => `<div class="chip"><small>${esc(x.rotulo)}</small><b>${esc(x.valor)}</b></div>`).join('')}</div>${(b.paras || []).filter(Boolean).map(p => `<p>${nl(p)}</p>`).join('')}</section>`;
+    case 'zonas':
+      return `<section class="bloco">${tit}${b.intro ? `<p class="mut">${nl(b.intro)}</p>` : ''}${(b.zonas || []).map(z => `<div class="zona"><h3>${esc(z.titulo)}</h3>${z.subtitulo ? `<p class="sub">${esc(z.subtitulo)}</p>` : ''}${(z.destaques || []).filter(d => d && d.nome).map(d => `<div class="kv"><b>${esc(d.rotulo)}:</b> ${esc(d.nome)}${d.texto ? ' — ' + nl(d.texto) : ''}</div>`).join('')}${(z.pontos || []).length ? `<details class="det"><summary>Pontos identificados (${z.pontos.length})</summary><div class="in">${z.pontos.map(pt => `<p><b>${esc(pt.nome)}</b>${pt.texto ? ': ' + nl(pt.texto) : ''}${pt.nota ? `<br><i>${esc(pt.nota)}</i>` : ''}</p>`).join('')}</div></details>` : ''}</div>`).join('')}</section>`;
+    case 'orientacoes':
+      return `<section class="bloco">${tit}${b.intro ? `<p>${nl(b.intro)}</p>` : ''}<ol class="orient">${(b.itens || []).filter(Boolean).map(x => `<li>${nl(x)}</li>`).join('')}</ol></section>`;
     case 'lista':
       return `<section class="bloco">${tit}<ul class="lista">${(b.itens || []).map(x => `<li data-i="${esc(b.marca != null ? b.marca : '•')}"${b.marca === '' ? ' style="padding-left:12px"' : ''}>${nl(x)}</li>`).join('')}</ul></section>`;
     case 'linha':
@@ -289,6 +302,30 @@ export function rbModeloDeSeccoes(o, secoes, icones) {
     return lista ? { tipo: 'lista', icone: ic, titulo: s.titulo, marca: '•', itens: linhas.map(x => x.replace(/^[•\-–]\s*/, '')) } : { tipo: 'texto', icone: ic, titulo: s.titulo, paras: linhas };
   });
   return rbModeloPessoal(Object.assign({}, o, { meio: (o.meio || []).concat(blocos) }));
+}
+
+
+// Modelo único para qualquer terapia: identificação, acolhimento, origem/foco, leitura por zonas,
+// síntese, orientações para casa e assinatura. Junta o visual ilustrado com a escrita acolhedora.
+// o: { tema, titulo, subtitulo, emoji, nome, nome1, data, assinatura, ficha:[{rotulo,valor,largo}],
+//      acolhimento:[], chips:[{rotulo,valor}], tituloOrigem, origem:[], zonas:[], introZonas, antes:[], meio:[], sintese:[],
+//      orientacoes:[], introOrientacoes, fecho, aviso }
+export function rbModeloTerapeutico(o) {
+  const B = [], n1 = o.nome1 || '';
+  const fi = (o.ficha || []).filter(x => x && x.valor);
+  if (fi.length) B.push({ tipo: 'ficha', icone: '🪪', titulo: 'Identificação e sessão', itens: fi });
+  const ac = (o.acolhimento || []).filter(Boolean);
+  B.push({ tipo: 'texto', icone: '🤍', titulo: 'Acolhimento e visão geral', paras: ac.length ? ac : [`Este relatório foi preparado com carinho para traduzir, de forma simples, o que foi observado na sessão${n1 ? ' de ' + n1 : ''}. Cada ponto é só uma pista para compreender melhor o momento e cuidar com leveza.`] });
+  const chips = (o.chips || []).filter(x => x && x.valor), orig = (o.origem || []).filter(Boolean);
+  if (chips.length || orig.length) B.push({ tipo: 'destaque', icone: '🌱', titulo: o.tituloOrigem || 'A origem e o foco', chips, paras: orig });
+  (o.antes || []).forEach(b => b && B.push(b));
+  if ((o.zonas || []).length) B.push({ tipo: 'zonas', icone: '🧭', titulo: o.tituloZonas || 'Leitura por zonas', intro: o.introZonas || '', zonas: o.zonas });
+  (o.meio || []).forEach(b => b && B.push(b));
+  const sn = (o.sintese || []).filter(Boolean);
+  if (sn.length) B.push({ tipo: 'texto', icone: '🧩', titulo: 'Síntese', paras: sn });
+  const or = (o.orientacoes || []).filter(Boolean);
+  if (or.length) B.push({ tipo: 'orientacoes', icone: '🏡', titulo: 'Orientações de cuidado', intro: o.introOrientacoes || 'Para apoiar nos próximos dias:', itens: or });
+  return { tema: o.tema || 'geral', cor: o.cor, emoji: o.emoji, titulo: o.titulo || 'Relatório de Avaliação Terapêutica', subtitulo: o.subtitulo || 'Relatório pessoal', nome: o.nome || n1, data: o.data, assinatura: o.assinatura || '', blocos: B, mensagem: o.fecho || 'Com carinho e presença.', aviso: o.aviso };
 }
 
 // modelo: { tema, titulo, subtitulo, nome, data, assinatura, blocos:[], mensagem, aviso }

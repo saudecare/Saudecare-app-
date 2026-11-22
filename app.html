@@ -429,7 +429,7 @@ import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
 import { iniciarFinancas } from './financas.js?v=2026-11-15-8';
 import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-8';
-import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento, rbModeloPessoal, rbModeloDeSeccoes, rbJunta } from './relatorio-bonito.js?v=2026-11-21-20';
+import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento, rbModeloPessoal, rbModeloDeSeccoes, rbJunta, rbModeloTerapeutico } from './relatorio-bonito.js?v=2026-11-22-15';
 import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
 import { corpoMensagem as reikiCorpoMsg, escolherFoto as reikiEscolherFoto } from './reiki-midia-chat.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-22-14';
+const APP_VERSION = '2026-11-22-15';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -9267,10 +9267,13 @@ window.generateReport = async function(patientId, patientName){
     return;
   }
 
+  const reportHtml = relatorioIlustradoConsulta({ patientId, patientName: (window.__allPatientsCache || []).find(x => x.id === patientId)?.fullName || '', protoName: proto.name, beforeAnswers, duringAnswers, classifications: afterAnswers,
+    itens: detectedItems.filter(i => i.kind !== 'question').map(i => ({ name: i.name, text: i.knowledgeText || '', note: i.note || '' })), perguntas: detectedItems.filter(i => i.kind === 'question') });
+  window.__ultimoReportHtml = reportHtml;
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
     protocolId: protoId, protocolName: proto.name, points: detectedItems,
     beforeAnswers, duringAnswers, classifications: afterAnswers,
-    reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
+    reportText, ...(reportHtml ? { reportHtml } : {}), generatedAt: serverTimestamp(), generatedBy: currentUser.uid
   });
   await logAudit('report_generated', patientId);
   renderGeneratedReportScreen(proto.name, reportText);
@@ -9580,6 +9583,41 @@ function computeMappingPointText(pt, zona, lado){
   return text;
 }
 
+/* Relatório ilustrado único, para qualquer terapia (mapeamento, consultas guiadas…). */
+function relatorioIlustradoConsulta(o){
+  try{
+    const pc = (window.__allPatientsCache || []).find(x => x.id === o.patientId) || {};
+    const nasc = pc.birthDate ? String(pc.birthDate).split('-').reverse().join('/') : '';
+    const negocio = (currentTenantDoc && currentTenantDoc.businessName) || '';
+    const ans = (l) => (l || []).filter(a => a && a.value && String(a.value).trim());
+    const antes = ans(o.beforeAnswers), durante = ans(o.duringAnswers), classes = ans(o.classifications);
+    const ficha = [{ rotulo:'Nome', valor:o.patientName || '' }, { rotulo:'Data de nascimento', valor:nasc }, { rotulo:'Terapia', valor:o.protoName || '' }, { rotulo:'Data da sessão', valor:new Date().toLocaleDateString('pt-PT') }]
+      .concat(antes.slice(0, 6).map(a => ({ rotulo:a.label, valor:String(a.value), largo: String(a.value).length > 40 })));
+    const n1 = String(o.patientName || '').split(/\s+/)[0];
+    const nPts = (o.zonas || []).reduce((t, z) => t + z.pontos.length, 0) + (o.itens || []).length;
+    const meio = [];
+    if (durante.length) meio.push({ tipo:'lista', icone:'💬', titulo:'O que se observou durante a sessão', marca:'•', itens: durante.map(a => a.label + ': ' + a.value) });
+    if ((o.perguntas || []).length) meio.push({ tipo:'lista', icone:'❓', titulo:'Perguntas e respostas', marca:'•', itens: o.perguntas.map(q => q.name + ' — ' + q.value) });
+    const m = rbModeloTerapeutico({
+      tema:'triagem', emoji:'🌿', titulo:'Relatório de Avaliação Terapêutica', subtitulo: o.protoName || '', nome: o.patientName, nome1: n1, ficha,
+      acolhimento:[`Olá${n1 ? ', ' + n1 : ''}! Este relatório foi preparado com carinho para traduzir, de forma simples, tudo o que foi observado na sessão${o.protoName ? ' de ' + o.protoName : ''}.`,
+        'Cada ponto identificado é só uma pista para compreender o momento e libertar o que já não serve, devolvendo leveza, segurança e bem-estar.'],
+      chips: classes.map(a => ({ rotulo:a.label, valor:String(a.value) })),
+      zonas: o.zonas || [], introZonas: o.introZonas || 'Toque em "Pontos identificados" para ver o significado de cada um.',
+      itensGuiados: o.itens, meio: meio.concat(o.itens && o.itens.length ? [{ tipo:'detalhe', icone:'🔎', titulo:'O que foi encontrado', intro:'Toque em cada item para perceber o que é.', itens: o.itens.map(i => ({ nome:i.name, descricao:[i.text, i.note ? 'Nota da sessão: ' + i.note : ''].filter(Boolean).join('\n\n') })) }] : []),
+      sintese: nPts ? [`Nesta sessão foram identificados ${nPts} pontos. Não são um diagnóstico: mostram onde o corpo e a energia pedem mais atenção neste momento.`] : [],
+      orientacoes:['Beba água ao longo do dia e descanse mais do que o habitual nos próximos 2 a 3 dias.', 'Se surgirem emoções, sono diferente ou cansaço leve, acolha-os sem julgar: é normal depois de uma sessão.', 'Anote o que sentir e partilhe na próxima sessão.'],
+      assinatura: negocio, fecho:'Com carinho e presença.'
+    });
+    return rbFragmento(m);
+  }catch(e){ console.warn('Relatório ilustrado da consulta falhou:', e); return ''; }
+}
+window.relatorioIlustradoConsulta = relatorioIlustradoConsulta;
+window.verUltimoRelatorioIlustrado = function(){
+  const h = window.__ultimoReportHtml; if (!h){ toast('Ainda não há relatório ilustrado.', true); return; }
+  rbPreVisualizarHtml(rbDocumentoDeFragmento(h, 'Relatório'), 'Relatório');
+};
+
 window.generateMappingReport = async function(patientId, patientName){
   const proto = window.__guidedProtocols[window.__currentGuidedProtoId];
   const combos = window.__mappingCombos;
@@ -9665,11 +9703,16 @@ window.generateMappingReport = async function(patientId, patientName){
     return;
   }
 
+  const zmap = {};
+  detected.forEach(d => { const k = d.zona + '|' + d.lado; (zmap[k] = zmap[k] || { titulo: zonaLabel[d.zona] + ' — Lado ' + ladoLabel[d.lado].toLowerCase(), pontos: [] }).pontos.push({ nome: d.group + ' · ' + d.name, texto: d.text, nota: d.note ? 'Nota da sessão: ' + d.note : '' }); });
+  freePointsFlat.forEach(fp => { const k = fp.zona + '|' + fp.lado; (zmap[k] = zmap[k] || { titulo: zonaLabel[fp.zona] + ' — Lado ' + ladoLabel[fp.lado].toLowerCase(), pontos: [] }).pontos.push({ nome: fp.label, texto: '', nota: '' }); });
+  const reportHtml = relatorioIlustradoConsulta({ patientId, patientName, protoName: proto.name, beforeAnswers, duringAnswers, classifications: classificationAnswers, zonas: Object.values(zmap) });
+  window.__ultimoReportHtml = reportHtml;
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
     protocolId: window.__currentGuidedProtoId, protocolName: proto.name,
     mappingDetected: detected, freePoints: freePointsFlat,
     beforeAnswers, duringAnswers, classifications: classificationAnswers,
-    reportText, generatedAt: serverTimestamp(), generatedBy: currentUser.uid
+    reportText, ...(reportHtml ? { reportHtml } : {}), generatedAt: serverTimestamp(), generatedBy: currentUser.uid
   });
   await logAudit('report_generated', patientId);
   const nm = window.__mappingSessionNotes || {}; window.__mappingSessionNotes = null;
@@ -9784,6 +9827,7 @@ function renderGeneratedReportScreen(protocolName, reportText, detected, patient
       <div class="row" style="margin-top:8px;">
         <button class="primary" onclick="downloadReportPDF('${escapeHtml(protocolName)}', document.getElementById('mainReportTextarea').value)">📄 Descarregar PDF</button>
         <button class="ghost" onclick="shareReportPDF('${escapeHtml(protocolName)}', document.getElementById('mainReportTextarea').value)">📤 Partilhar</button>
+        ${window.__ultimoReportHtml ? '<button class="primary" onclick="window.verUltimoRelatorioIlustrado()">🌿 Ver relatório ilustrado</button>' : ''}
       </div>
       <p class="muted" style="margin-top:8px;">Guardado na ficha do paciente. "Partilhar" abre o WhatsApp, Email ou outra app, já com o PDF pronto a enviar.</p>`}
     </div>
