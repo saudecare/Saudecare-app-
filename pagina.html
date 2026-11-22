@@ -181,6 +181,14 @@ async function load(){
   const tenantId = profile.tenantId || tenantSlug;
   window.__tenantAval = tenantId;
 
+  // A Hikari Fafe tem uma só página pública: hikari.html (Sorteio, Desafios,
+  // Terapias, Escola, Equipa, Testemunhos, Horários, Contactos). O endereço
+  // antigo, já partilhado nas redes, abre aí. Mantém o # (ex.: #sorteio).
+  if (tenantId === 'hikari-terapias' && !params.has('antiga')) {
+    location.replace('hikari.html' + window.location.hash);
+    return;
+  }
+
   aplicarCorMarca(profile.branding?.primaryColor);
   try { const el = document.getElementById('musicaPublica'); if (el) el.innerHTML = cartaoMusicaHtml(tenantId, 'Músicas para ouvir', 'Canções de Reiki e espiritualidade — para relaxar e meditar.'); } catch(e){}
 
