@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-22-15';
+const APP_VERSION = '2026-11-22-16';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -8110,6 +8110,16 @@ function renderProtocolForm(editId, data){
         <option value="mapping" ${type==='mapping'?'selected':''}>Pesquisa por zonas do corpo (frente/costas × esquerda/direita)</option>
       </select>
       <div id="protoTypeBody">${bodyHtml}</div>
+      <div class="card" style="margin-top:12px;background:#f3fbfb;">
+        <h3>🌿 Relatório ao paciente <span class="muted" style="font-weight:400;font-size:.8rem;">(opcional)</span></h3>
+        <p class="muted">O relatório ilustrado sai sempre pronto. Aqui pode personalizar os textos desta terapia. Se deixar em branco, usa os textos padrão.</p>
+        <label>Acolhimento (primeira mensagem)</label>
+        <textarea id="protoRelAcolh" rows="3" placeholder="ex: Este relatório foi preparado com carinho para explicar, de forma simples, o que sentimos na sessão.">${escapeHtml(((data.relatorio || {}).acolhimento) || '')}</textarea>
+        <label>Síntese (texto fixo da terapia)</label>
+        <textarea id="protoRelSint" rows="2" placeholder="ex: Isto é um retrato do momento, não um diagnóstico.">${escapeHtml(((data.relatorio || {}).sintese) || '')}</textarea>
+        <label>Orientações de cuidado (uma por linha)</label>
+        <textarea id="protoRelOrient" rows="4" placeholder="Beba água e descanse nos próximos dias&#10;Anote o que sentir e traga na próxima sessão">${escapeHtml((((data.relatorio || {}).orientacoes) || []).join('\n'))}</textarea>
+      </div>
       <div style="margin-top:14px;">
         <button class="primary" onclick="saveProtocol('${editId||''}')">Guardar protocolo</button>
       </div>
@@ -8797,6 +8807,8 @@ window.saveProtocol = async function(editId){
   const type = document.getElementById('protoType').value;
 
   let data = { name, type, area: (document.getElementById('protoArea')?.value || '').trim(), updatedAt: serverTimestamp() };
+  { const ac = (document.getElementById('protoRelAcolh')?.value || '').trim(), sn = (document.getElementById('protoRelSint')?.value || '').trim(), or = (document.getElementById('protoRelOrient')?.value || '').split('\n').map(x => x.trim()).filter(Boolean);
+    data.relatorio = { acolhimento: ac, sintese: sn, orientacoes: or }; }
   data.finalClassifications = type === 'guided' ? [] : protocolClassificationsDraft.filter(c => c.label && c.label.trim());
   if (type === 'guided'){
     const erro = window.cgValidar ? window.cgValidar() : 'Construtor indisponível.';
@@ -9199,6 +9211,7 @@ window.generateReport = async function(patientId, patientName){
   const protoId = window.__currentGuidedProtoId;
   const proto = window.__guidedProtocols[protoId];
   const detectedItems = [];
+  const ter = await terapeutaDoRelatorio(); if (!ter) return;
 
   proto.points.forEach((pt, idx) => {
     if (pt.kind === 'question'){
@@ -9229,6 +9242,7 @@ window.generateReport = async function(patientId, patientName){
 
   let reportText = `Relatório de Consulta — ${proto.name}\n`;
   reportText += `Paciente: ${patientName}\n`;
+  if (ter.nome) reportText += `Terapeuta: ${ter.nome}\n`;
   reportText += `Data: ${new Date().toLocaleDateString('pt-PT')}\n\n`;
 
   if (beforeAnswers.length){
@@ -9267,7 +9281,7 @@ window.generateReport = async function(patientId, patientName){
     return;
   }
 
-  const reportHtml = relatorioIlustradoConsulta({ patientId, patientName: (window.__allPatientsCache || []).find(x => x.id === patientId)?.fullName || '', protoName: proto.name, beforeAnswers, duringAnswers, classifications: afterAnswers,
+  const reportHtml = relatorioIlustradoConsulta({ patientId, patientName: (window.__allPatientsCache || []).find(x => x.id === patientId)?.fullName || '', protoName: proto.name, terapeuta: ter, cfg: proto.relatorio, beforeAnswers, duringAnswers, classifications: afterAnswers,
     itens: detectedItems.filter(i => i.kind !== 'question').map(i => ({ name: i.name, text: i.knowledgeText || '', note: i.note || '' })), perguntas: detectedItems.filter(i => i.kind === 'question') });
   window.__ultimoReportHtml = reportHtml;
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
@@ -9583,6 +9597,44 @@ function computeMappingPointText(pt, zona, lado){
   return text;
 }
 
+/* ─── Terapeuta do relatório ──────────────────────────────────────────────
+   Quem entra pelo seu perfil (equipa) fica atribuído automaticamente.
+   O dono, quando há mais do que um perfil de terapeuta, escolhe quem faz a consulta. */
+async function terapeutasPerfis(){
+  try{
+    const sn = await getDocs(collection(db, 'tenants', tenantId, 'teamMembers'));
+    const l = sn.docs.map(d => ({ id: d.id, nome: d.data().name || '', funcao: d.data().role || d.data().category || '', staffUid: d.data().staffUid || '' })).filter(x => x.nome);
+    return l;
+  }catch(e){ return []; }
+}
+function terapeutaModal(lista, padrao){
+  return new Promise(res => {
+    const f = document.createElement('div');
+    f.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    f.innerHTML = `<div class="card" style="max-width:380px;width:100%;"><h3>👤 Quem fez a consulta?</h3><p class="muted">O nome do terapeuta aparece no relatório.</p>
+      <select id="terSel" style="width:100%;">${lista.map(x => `<option value="${escapeHtml(x.id)}" ${x.id === padrao ? 'selected' : ''}>${escapeHtml(x.nome)}${x.funcao ? ' — ' + escapeHtml(x.funcao) : ''}</option>`).join('')}</select>
+      <div class="row" style="margin-top:12px;"><button class="ghost" id="terNao">Cancelar</button><button class="primary" id="terOk">Continuar</button></div></div>`;
+    document.body.appendChild(f);
+    f.querySelector('#terNao').onclick = () => { f.remove(); res(null); };
+    f.querySelector('#terOk').onclick = () => { const id = f.querySelector('#terSel').value; f.remove(); res(lista.find(x => x.id === id) || null); };
+  });
+}
+// Devolve { nome, funcao } ou null se o utilizador cancelar.
+async function terapeutaDoRelatorio(){
+  const lista = await terapeutasPerfis();
+  if (tenantRole !== 'owner'){
+    const meu = lista.find(x => x.staffUid && currentUser && x.staffUid === currentUser.uid);
+    return meu ? { nome: meu.nome, funcao: meu.funcao } : { nome: currentUserDisplayName || '', funcao: '' };
+  }
+  if (lista.length < 2){ const u = lista[0]; return { nome: (u && u.nome) || (currentTenantDoc && currentTenantDoc.ownerName) || currentUserDisplayName || '', funcao: (u && u.funcao) || '' }; }
+  let padrao = ''; try{ padrao = localStorage.getItem('terapeutaRelatorio_' + tenantId) || ''; }catch(e){}
+  const esc = await terapeutaModal(lista, padrao || lista[0].id);
+  if (!esc) return null;
+  try{ localStorage.setItem('terapeutaRelatorio_' + tenantId, esc.id); }catch(e){}
+  return { nome: esc.nome, funcao: esc.funcao };
+}
+window.terapeutaDoRelatorio = terapeutaDoRelatorio;
+
 /* Relatório ilustrado único, para qualquer terapia (mapeamento, consultas guiadas…). */
 function relatorioIlustradoConsulta(o){
   try{
@@ -9591,7 +9643,8 @@ function relatorioIlustradoConsulta(o){
     const negocio = (currentTenantDoc && currentTenantDoc.businessName) || '';
     const ans = (l) => (l || []).filter(a => a && a.value && String(a.value).trim());
     const antes = ans(o.beforeAnswers), durante = ans(o.duringAnswers), classes = ans(o.classifications);
-    const ficha = [{ rotulo:'Nome', valor:o.patientName || '' }, { rotulo:'Data de nascimento', valor:nasc }, { rotulo:'Terapia', valor:o.protoName || '' }, { rotulo:'Data da sessão', valor:new Date().toLocaleDateString('pt-PT') }]
+    const cfg = o.cfg || {}, ter = o.terapeuta || null;
+    const ficha = [{ rotulo:'Nome', valor:o.patientName || '' }, { rotulo:'Data de nascimento', valor:nasc }, { rotulo:'Terapia', valor:o.protoName || '' }, { rotulo:'Data da sessão', valor:new Date().toLocaleDateString('pt-PT') }, { rotulo:'Terapeuta', valor: ter ? ter.nome : '' }]
       .concat(antes.slice(0, 6).map(a => ({ rotulo:a.label, valor:String(a.value), largo: String(a.value).length > 40 })));
     const n1 = String(o.patientName || '').split(/\s+/)[0];
     const nPts = (o.zonas || []).reduce((t, z) => t + z.pontos.length, 0) + (o.itens || []).length;
@@ -9600,14 +9653,14 @@ function relatorioIlustradoConsulta(o){
     if ((o.perguntas || []).length) meio.push({ tipo:'lista', icone:'❓', titulo:'Perguntas e respostas', marca:'•', itens: o.perguntas.map(q => q.name + ' — ' + q.value) });
     const m = rbModeloTerapeutico({
       tema:'triagem', emoji:'🌿', titulo:'Relatório de Avaliação Terapêutica', subtitulo: o.protoName || '', nome: o.patientName, nome1: n1, ficha,
-      acolhimento:[`Olá${n1 ? ', ' + n1 : ''}! Este relatório foi preparado com carinho para traduzir, de forma simples, tudo o que foi observado na sessão${o.protoName ? ' de ' + o.protoName : ''}.`,
+      acolhimento: (cfg.acolhimento || '').trim() ? [`Olá${n1 ? ', ' + n1 : ''}!`].concat(cfg.acolhimento.trim().split(/\n+/)) : [`Olá${n1 ? ', ' + n1 : ''}! Este relatório foi preparado com carinho para traduzir, de forma simples, tudo o que foi observado na sessão${o.protoName ? ' de ' + o.protoName : ''}.`,
         'Cada ponto identificado é só uma pista para compreender o momento e libertar o que já não serve, devolvendo leveza, segurança e bem-estar.'],
       chips: classes.map(a => ({ rotulo:a.label, valor:String(a.value) })),
       zonas: o.zonas || [], introZonas: o.introZonas || 'Toque em "Pontos identificados" para ver o significado de cada um.',
       itensGuiados: o.itens, meio: meio.concat(o.itens && o.itens.length ? [{ tipo:'detalhe', icone:'🔎', titulo:'O que foi encontrado', intro:'Toque em cada item para perceber o que é.', itens: o.itens.map(i => ({ nome:i.name, descricao:[i.text, i.note ? 'Nota da sessão: ' + i.note : ''].filter(Boolean).join('\n\n') })) }] : []),
-      sintese: nPts ? [`Nesta sessão foram identificados ${nPts} pontos. Não são um diagnóstico: mostram onde o corpo e a energia pedem mais atenção neste momento.`] : [],
-      orientacoes:['Beba água ao longo do dia e descanse mais do que o habitual nos próximos 2 a 3 dias.', 'Se surgirem emoções, sono diferente ou cansaço leve, acolha-os sem julgar: é normal depois de uma sessão.', 'Anote o que sentir e partilhe na próxima sessão.'],
-      assinatura: negocio, fecho:'Com carinho e presença.'
+      sintese: [nPts ? `Nesta sessão foram identificados ${nPts} pontos. Não são um diagnóstico: mostram onde o corpo e a energia pedem mais atenção neste momento.` : '', (cfg.sintese || '').trim()].filter(Boolean),
+      orientacoes: (cfg.orientacoes || []).length ? cfg.orientacoes : ['Beba água ao longo do dia e descanse mais do que o habitual nos próximos 2 a 3 dias.', 'Se surgirem emoções, sono diferente ou cansaço leve, acolha-os sem julgar: é normal depois de uma sessão.', 'Anote o que sentir e partilhe na próxima sessão.'],
+      assinatura: [ter && ter.nome, negocio].filter(Boolean).join(' · '), fecho:'Com carinho e presença.'
     });
     return rbFragmento(m);
   }catch(e){ console.warn('Relatório ilustrado da consulta falhou:', e); return ''; }
@@ -9624,6 +9677,7 @@ window.generateMappingReport = async function(patientId, patientName){
   const zonaLabel = { frente:'Frente', costas:'Costas' };
   const ladoLabel = { esquerdo:'Esquerdo', direito:'Direito' };
   const detected = [];
+  const ter = await terapeutaDoRelatorio(); if (!ter) return;
 
   combos.forEach((combo, cIdx) => {
     proto.groups.forEach((g, gIdx) => {
@@ -9654,6 +9708,7 @@ window.generateMappingReport = async function(patientId, patientName){
 
   let reportText = `Relatório de Pesquisa — ${proto.name}\n`;
   reportText += `Paciente: ${patientName}\n`;
+  if (ter.nome) reportText += `Terapeuta: ${ter.nome}\n`;
   reportText += `Data: ${new Date().toLocaleDateString('pt-PT')}\n\n`;
 
   if (beforeAnswers.length){
@@ -9706,7 +9761,7 @@ window.generateMappingReport = async function(patientId, patientName){
   const zmap = {};
   detected.forEach(d => { const k = d.zona + '|' + d.lado; (zmap[k] = zmap[k] || { titulo: zonaLabel[d.zona] + ' — Lado ' + ladoLabel[d.lado].toLowerCase(), pontos: [] }).pontos.push({ nome: d.group + ' · ' + d.name, texto: d.text, nota: d.note ? 'Nota da sessão: ' + d.note : '' }); });
   freePointsFlat.forEach(fp => { const k = fp.zona + '|' + fp.lado; (zmap[k] = zmap[k] || { titulo: zonaLabel[fp.zona] + ' — Lado ' + ladoLabel[fp.lado].toLowerCase(), pontos: [] }).pontos.push({ nome: fp.label, texto: '', nota: '' }); });
-  const reportHtml = relatorioIlustradoConsulta({ patientId, patientName, protoName: proto.name, beforeAnswers, duringAnswers, classifications: classificationAnswers, zonas: Object.values(zmap) });
+  const reportHtml = relatorioIlustradoConsulta({ patientId, patientName, protoName: proto.name, terapeuta: ter, cfg: proto.relatorio, beforeAnswers, duringAnswers, classifications: classificationAnswers, zonas: Object.values(zmap) });
   window.__ultimoReportHtml = reportHtml;
   await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
     protocolId: window.__currentGuidedProtoId, protocolName: proto.name,
@@ -12947,7 +13002,7 @@ async function triagemGerarFamilia(){
   const snaps = F.pessoas.map(p => p.snap || famVazio()), U = famUniaoDe(snaps), nomes = F.pessoas.map(p => p.nome), grupoId = 'fam' + Date.now();
   const leit = __triagem.leituraComplementar, perg = __triagem.perguntasCartas;
   try{
-    __triagem.leituraComplementar = null; __triagem.perguntasCartas = [];
+    __triagem.leituraComplementar = null; __triagem.perguntasCartas = []; __triagem._terapeuta = null;
     for (let i = 0; i < snaps.length; i++){
       famCarregar(snaps[i]); __triagem.patientId = F.pessoas[i].id; __triagem.patientNome = F.pessoas[i].nome;
       __triagem._famU = U; __triagem._famSegundo = i > 0; __triagem._famSilencio = i < snaps.length - 1;
@@ -19212,7 +19267,7 @@ function triagemModeloBonito(d, cli){
     causas.length ? `O que mais pesa neste momento: ${rbJunta(causas.slice(0, 4).map(c => c.nome.toLowerCase()))}. Mais abaixo explico cada ponto e como costuma notar-se no dia a dia.` : `Neste momento não encontrei nada de baixa vibração a pesar em ${nome}.` ] }] : [];
 
   const m = rbModeloPessoal({
-    tema:'triagem', emoji:'🌿', titulo: T('A sua triagem energética', `A triagem energética de ${nome}`), nome: nome, nome1: terc ? pn1 : nome, abertura, porque, data: new Date().toLocaleDateString('pt-PT'), assinatura:'Ricardo Correia · Hikari Fafe',
+    tema:'triagem', emoji:'🌿', titulo: T('A sua triagem energética', `A triagem energética de ${nome}`), nome: nome, nome1: terc ? pn1 : nome, abertura, porque, data: new Date().toLocaleDateString('pt-PT'), assinatura: (__triagem._terapeuta && __triagem._terapeuta.nome) ? (__triagem._terapeuta.nome + ' · Hikari Fafe') : 'Ricardo Correia · Hikari Fafe',
     oQueFiz:'a triagem energética com o pêndulo', pedido: d.pedido || '', extraAbertura: extraAb,
     antes: antes.concat(comoSeSente), encontrados, tituloEncontrados:'O que encontrei, explicado', nadaEncontrado: T('Não encontrei nada de baixa vibração: o seu campo está equilibrado. ✨', `Não encontrei nada de baixa vibração: o campo de ${nome} está equilibrado. ✨`),
     meio, como, leitura, perguntas, proximos: passos, depois,
@@ -19225,6 +19280,7 @@ function triagemModeloBonito(d, cli){
 }
 
 async function triagemGerarRelatorio(){
+  if (!__triagem._terapeuta || !__triagem._famInfo){ const t = await terapeutaDoRelatorio(); if (!t) return; __triagem._terapeuta = t; }
   if (!__triagem.patientId){
     toast('Não há nenhum paciente seleccionado — volte ao passo 1 e escolha o paciente.', true);
     return;
