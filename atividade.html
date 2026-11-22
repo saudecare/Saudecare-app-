@@ -45,7 +45,7 @@ label.ck{display:flex;gap:9px;font-size:13.5px;color:var(--s);align-items:flex-s
 .sess .res{font-size:14px;color:var(--s);margin-top:4px}
 .player{margin-top:10px}.player iframe,.player video{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000}.player audio{width:100%}
 details.g{margin-top:8px;background:#f5f1fb;border-radius:12px;padding:8px 12px;font-size:14px}details.g summary{cursor:pointer;font-weight:700;color:var(--r3)}details.g div{white-space:pre-wrap;margin-top:6px;color:#3b3350}
-.sess img.im{width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin-top:8px}.guia{display:flex;gap:14px;align-items:center}.guia img{width:110px;height:140px;object-fit:cover;object-position:top;border-radius:16px;background:#f39d16;flex:none}.cta{background:linear-gradient(150deg,#1f4d40,#2f6f5e);color:#fff}.cta h2{color:#fff}.cta p{color:#e1f1ea}
+.sess img.im{width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin-top:8px}.guia{display:flex;gap:14px;align-items:center}.guia img{width:104px;height:104px;object-fit:cover;border-radius:50%;border:3px solid var(--o);background:#f39d16;flex:none}.cta{background:linear-gradient(150deg,#1f4d40,#2f6f5e);color:#fff}.cta h2{color:#fff}.cta p{color:#e1f1ea}
 footer{text-align:center;font-size:12.5px;color:var(--s);padding:10px 16px 30px}
 </style>
 </head>
@@ -159,7 +159,7 @@ function sessoes() {
 }
 function guia() {
   if (!A.guiaFoto && !A.guiaTexto) return '';
-  return `<div class="card guia">${A.guiaFoto ? `<img src="${esc(A.guiaFoto)}" alt="">` : ''}<div><h2>${esc(A.guiaTitulo || 'Quem te guia')}</h2><p>${esc(A.guiaTexto || '')}</p></div></div>`;
+  return `<div class="card guia">${A.guiaFoto ? `<img src="${esc(A.guiaFoto)}" alt="">` : ''}<div><h2>${esc(A.guiaTitulo || 'Quem te guia')}</h2><p>${esc(A.guiaTexto || '')}</p><a class="btn verde p" href="https://wa.me/351928122918?text=${encodeURIComponent('Olá Ricardo! Vi o desafio ' + (A.titulo || '') + ' e gostava de falar contigo.')}" target="_blank" rel="noopener">💬 Falar comigo no WhatsApp</a></div></div>`;
 }
 function cta() {
   if (!A.ctaTitulo && !A.ctaLink) return '';
