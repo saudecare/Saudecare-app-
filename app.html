@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-22-16';
+const APP_VERSION = '2026-11-23-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12808,7 +12808,7 @@ function __triagemReset(){
     chakras: TRIAGEM_CHAKRAS_9.map(() => 'np'), // 'np' (não pesquisado) | 'ok' | 'desarmonia' | 'bloqueado', pesquisado com o pêndulo
     aberturaCaminhos: -1, // -1 = não pesquisado; senão índice em TRIAGEM_NIVEIS_ABERTURA
     origemPedido: 'paciente', pedinteNome: '', pedinteRel: '', cartasAberto: false,
-    fam: null, casa: { morada:'', notas:'' }, veiculos: [],
+    fam: null, casa: { morada:'', notas:'' }, veiculos: [], alvos: [],
     modoCartas: 'auto',
     leituraComplementar: null, perguntasCartas: [],
     sessoesNecessarias: '', preco: ''
@@ -13002,16 +13002,17 @@ async function triagemGerarFamilia(){
   const snaps = F.pessoas.map(p => p.snap || famVazio()), U = famUniaoDe(snaps), nomes = F.pessoas.map(p => p.nome), grupoId = 'fam' + Date.now();
   const leit = __triagem.leituraComplementar, perg = __triagem.perguntasCartas;
   try{
-    __triagem.leituraComplementar = null; __triagem.perguntasCartas = []; __triagem._terapeuta = null;
+    __triagem.leituraComplementar = null; __triagem.perguntasCartas = []; __triagem._terapeuta = null; __triagem._famColeta = [];
     for (let i = 0; i < snaps.length; i++){
       famCarregar(snaps[i]); __triagem.patientId = F.pessoas[i].id; __triagem.patientNome = F.pessoas[i].nome;
       __triagem._famU = U; __triagem._famSegundo = i > 0; __triagem._famSilencio = i < snaps.length - 1;
       __triagem._famInfo = { grupoId, nomes, atual: F.pessoas[i].nome, leitura: leit, perguntas: perg };
       await triagemGerarRelatorio();
+      if (!(__triagem._famColeta && __triagem._famColeta.length === i + 1)){ toast('A triagem de ' + F.pessoas[i].nome + ' não foi concluída.', true); return; }
     }
-    toast('Triagem de família guardada: ' + nomes.length + ' relatórios ✓');
+    await famFinalizar(__triagem._famColeta, nomes, leit, perg);
   } finally {
-    __triagem._famU = null; __triagem._famSegundo = false; __triagem._famSilencio = false; __triagem._famInfo = null;
+    __triagem._famColeta = null; __triagem._famU = null; __triagem._famSegundo = false; __triagem._famSilencio = false; __triagem._famInfo = null;
     __triagem.leituraComplementar = leit; __triagem.perguntasCartas = perg;
   }
 }
@@ -13053,38 +13054,120 @@ function famRotuloSeguinte(){
   const F = __triagem.fam;
   return (famAtiva() && F.idx < F.pessoas.length - 1) ? 'Próxima pessoa: ' + escapeHtml(F.pessoas[F.idx + 1].nome.split(/\s+/)[0]) + ' →' : 'Seguinte →';
 }
-/* Casa e veículos (opcional, também fora da família) */
-const FAM_TIPOS_VEIC = [['carro','Carro'],['mota','Mota'],['carrinha','Carrinha/camião'],['outro','Outro']];
-function famCasaHTML(){
-  const C = __triagem.casa || (__triagem.casa = { morada:'', notas:'' }), V = __triagem.veiculos || (__triagem.veiculos = []);
-  return `<div class="card" style="border:1px solid #cdbbe6;">
-    <h3>🏠 Casa e veículos <span class="muted" style="font-weight:400;font-size:.8rem;">(opcional)</span></h3>
-    <p class="muted">Se quiser incluir a casa ou os veículos neste trabalho, escreva aqui. Aparecem no relatório.</p>
-    <input id="famCasaMorada" placeholder="Morada da casa" value="${escapeHtml(C.morada || '')}" style="margin-bottom:6px;">
-    <input id="famCasaNotas" placeholder="Notas sobre a casa (opcional)" value="${escapeHtml(C.notas || '')}">
-    <div style="margin-top:8px;">${V.map((v, i) => `<div class="row" style="gap:6px;align-items:center;margin-bottom:6px;">
-      <select data-fv="${i}" data-k="tipo" style="width:auto;">${FAM_TIPOS_VEIC.map(t => `<option value="${t[0]}" ${v.tipo === t[0] ? 'selected' : ''}>${t[1]}</option>`).join('')}</select>
-      <input data-fv="${i}" data-k="matricula" placeholder="Matrícula" value="${escapeHtml(v.matricula || '')}" style="flex:1;min-width:90px;">
-      <input data-fv="${i}" data-k="notas" placeholder="Notas" value="${escapeHtml(v.notas || '')}" style="flex:1;min-width:90px;">
-      <button type="button" class="ghost" style="width:auto;" onclick="window.__famVeicTirar(${i})">✕</button></div>`).join('')}</div>
-    <button type="button" class="ghost" onclick="window.__famVeicAdd()">➕ Adicionar veículo (carro, mota…)</button>
+/* Pesquisa energética de casa, veículos e outras questões (opcional).
+   Cada "alvo" tem as 40 causas, como uma pessoa. O que sair entra na limpeza única. */
+const ALVO_TIPOS = { casa:['🏠','Casa'], carro:['🚗','Carro'], mota:['🏍️','Mota'], outro:['🔎','Outra pesquisa'] };
+function famAlvosHTML(){
+  const A = __triagem.alvos || (__triagem.alvos = []);
+  const cartao = (a, i) => {
+    const t = ALVO_TIPOS[a.tipo] || ALVO_TIPOS.outro, n = (a.causas || []).filter(Boolean).length;
+    return `<div class="card" style="background:#faf7ff;border:1px solid #d9c9ee;margin:8px 0;">
+      <div class="row" style="gap:6px;align-items:center;">
+        <strong>${t[0]} ${t[1]}</strong>
+        <input style="flex:1;min-width:120px;" placeholder="${a.tipo === 'casa' ? 'Morada' : (a.tipo === 'outro' ? 'O que se quer pesquisar? (negócio, terreno, pergunta…)' : 'Matrícula')}" value="${escapeHtml(a.nome || '')}" onchange="window.__alvCampo(${i},'nome',this.value)">
+        <button type="button" class="ghost" style="width:auto;" onclick="window.__alvDel(${i})">✕</button>
+      </div>
+      <input style="margin-top:6px;" placeholder="Notas (opcional)" value="${escapeHtml(a.notas || '')}" onchange="window.__alvCampo(${i},'notas',this.value)">
+      <p class="muted" style="margin:6px 0 2px;">${n ? '🔴 ' + n + ' causa(s) encontrada(s)' : (a.pesquisado ? '✅ Pesquisado: nada encontrado' : '⚪ Ainda sem pesquisa energética')}</p>
+      <details ${a.aberto ? 'open' : ''} ontoggle="window.__alvAberto(${i},this.open)"><summary style="cursor:pointer;color:var(--primary);">🔎 Pesquisar com o pêndulo (40 causas)</summary>
+        <div style="margin-top:6px;">${TRIAGEM_BAIXA_VIBRACAO.map((c, j) => `<label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:4px 0;"><input type="checkbox" style="width:auto;margin-top:3px;" ${(a.causas || [])[j] ? 'checked' : ''} onchange="window.__alvCausa(${i},${j},this.checked)"><span>${c.n}. ${escapeHtml(c.nome)}</span></label>`).join('')}</div>
+        <button type="button" class="ghost" style="margin-top:6px;" onclick="window.__alvNada(${i})">✅ Pesquisei e não encontrei nada</button>
+      </details>
+    </div>`;
+  };
+  return `<div class="card" id="famAlvosBox" style="border:1px solid #cdbbe6;">
+    <h3>🏠 Casa, veículos e outras pesquisas <span class="muted" style="font-weight:400;font-size:.8rem;">(opcional)</span></h3>
+    <p class="muted">Pesquise com o pêndulo (ou cartas) a casa, os carros, as motas ou qualquer outra questão. O que sair entra na limpeza única e no relatório.</p>
+    ${A.map(cartao).join('')}
+    <div class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px;">${Object.keys(ALVO_TIPOS).map(k => `<button type="button" class="ghost" style="width:auto;" onclick="window.__alvAdd('${k}')">➕ ${ALVO_TIPOS[k][0]} ${ALVO_TIPOS[k][1]}</button>`).join('')}</div>
   </div>`;
 }
-window.__famVeicAdd = function(){ (__triagem.veiculos = __triagem.veiculos || []).push({ tipo:'carro', matricula:'', notas:'' }); const b = document.getElementById('famCasaBox'); if (b){ b.innerHTML = famCasaHTML(); famLigarCasa(); } };
-window.__famVeicTirar = function(i){ __triagem.veiculos.splice(i, 1); const b = document.getElementById('famCasaBox'); if (b){ b.innerHTML = famCasaHTML(); famLigarCasa(); } };
-function famLigarCasa(){
-  const b = document.getElementById('famCasaBox'); if (!b) return;
-  const m = document.getElementById('famCasaMorada'), n = document.getElementById('famCasaNotas');
-  if (m) m.addEventListener('input', e => { __triagem.casa.morada = e.target.value; });
-  if (n) n.addEventListener('input', e => { __triagem.casa.notas = e.target.value; });
-  b.querySelectorAll('[data-fv]').forEach(el => { const f = () => { const v = __triagem.veiculos[+el.dataset.fv]; if (v) v[el.dataset.k] = el.value; }; el.addEventListener('input', f); el.addEventListener('change', f); });
+function alvosRefazer(){
+  // O tratamento é a soma de todos: quando a pesquisa muda, volta a calcular.
+  const F = __triagem.fam;
+  if (famAtiva() && F.uniao){ famCarregar(F.pessoas[F.idx].snap); F.uniao = false; }
+  renderTriagemPasso(document.getElementById('mainView'));
 }
+window.__alvAdd = function(t){ (__triagem.alvos = __triagem.alvos || []).push({ tipo:t, nome:'', notas:'', causas: TRIAGEM_BAIXA_VIBRACAO.map(() => false), pesquisado:false, aberto:true }); alvosRefazer(); };
+window.__alvDel = function(i){ __triagem.alvos.splice(i, 1); alvosRefazer(); };
+window.__alvCampo = function(i, k, v){ if (__triagem.alvos[i]) __triagem.alvos[i][k] = v; };
+window.__alvAberto = function(i, v){ if (__triagem.alvos[i]) __triagem.alvos[i].aberto = !!v; };
+window.__alvCausa = function(i, j, v){ const a = __triagem.alvos[i]; if (!a) return; a.causas[j] = !!v; if (v) a.pesquisado = true; a.aberto = true; alvosRefazer(); };
+window.__alvNada = function(i){ const a = __triagem.alvos[i]; if (!a) return; a.pesquisado = true; a.causas = TRIAGEM_BAIXA_VIBRACAO.map(() => false); a.aberto = false; alvosRefazer(); };
+function triUniaoEfetiva(b){
+  const bv = (b.baixaVibracao || []).slice();
+  (__triagem.alvos || []).forEach(a => (a.causas || []).forEach((v, i) => { if (v) bv[i] = true; }));
+  return { baixaVibracao: bv, chakras: b.chakras, aberturaCaminhos: b.aberturaCaminhos };
+}
+function triAlvosResumo(){
+  return (__triagem.alvos || []).filter(a => (a.nome || '').trim() || (a.causas || []).some(Boolean) || a.pesquisado).map(a => ({
+    tipo: a.tipo, nome: (a.nome || '').trim(), notas: (a.notas || '').trim(), pesquisado: !!(a.pesquisado || (a.causas || []).some(Boolean)),
+    causas: TRIAGEM_BAIXA_VIBRACAO.filter((c, j) => (a.causas || [])[j]) }));
+}
+/* Relatório ÚNICO da família: uma pessoa por cartão, e depois cartas, casa/veículos e limpeza em conjunto. */
+const FAM_CORPOS_NOMES = { fisico:'Corpo físico', etereo:'Corpo etérico', astral:'Corpo astral', 'mental-inf':'Mental inferior', 'mental-sup':'Mental superior', budico:'Corpo búdico', atmico:'Corpo átmico' };
+function famHtmlUnico(col, nomes, leit, perg){
+  const T = __triagem, ter = T._terapeuta || {}, negocio = (currentTenantDoc && currentTenantDoc.businessName) || '';
+  const extra = triExtraBlocos({ familia: { unico:true, nomes, atual:'', leitura: leit, perguntas: perg } });
+  const total = col.reduce((t, x) => t + x.causas.length, 0) + triAlvosResumo().reduce((t, a) => t + a.causas.length, 0);
+  const zonas = col.map(x => {
+    const ch = x.chk.filter(triChakraAfetado).map(c => c.nome + ' (' + triRotuloEstado(triEstadoChakra(c)).toLowerCase() + ')');
+    const cp = Object.keys(x.corpos || {}).filter(k => x.corpos[k] > 0 && FAM_CORPOS_NOMES[k]).map(k => FAM_CORPOS_NOMES[k] + (x.corpos[k] >= 2 ? ' (bloqueado)' : ' (em desarmonia)'));
+    const dest = [];
+    if (x.chk.length) dest.push({ rotulo:'Centros de energia', nome: ch.length ? ch.join(', ') : 'Todos equilibrados', texto:'' });
+    if (cp.length) dest.push({ rotulo:'Corpos subtis', nome: cp.join(', '), texto:'' });
+    if (x.aberturaNivel) dest.push({ rotulo:'Abertura de caminhos', nome: String(x.aberturaNivel), texto:'' });
+    return { titulo:'👤 ' + x.nome, subtitulo: x.causas.length ? x.causas.length + ' coisa(s) a limpar' : 'Nada a limpar — campo equilibrado ✅', destaques: dest, pontos: x.causas.map(c => ({ nome:c.nome, texto:c.descricao })) };
+  });
+  const apl = (col[0] && col[0].aplicadas) || [];
+  const trat = apl.length
+    ? [{ tipo:'texto', icone:'🧹', titulo:'A limpeza em conjunto', paras:[`A limpeza foi feita uma só vez, para toda a família${triAlvosResumo().length ? ', a casa e os veículos' : ''}, com ${apl.length} etiquetas, com o nome de cada um ao centro.`] }, { tipo:'lista', icone:'🏷️', titulo:'Etiquetas usadas', marca:'•', itens: apl.map(it => it.pt) }]
+    : [{ tipo:'texto', icone:'🧹', titulo:'Como vai ser feito', paras:['Por agora fiz só a triagem, ainda não fiz nenhuma limpeza. Faço-a quando combinarmos, uma só vez para toda a família (e para a casa e os veículos), com calma e com as etiquetas certas para tudo o que encontrei.'] }];
+  const sess = T.sessoesNecessarias ? [{ tipo:'texto', icone:'📅', titulo:'Sessões recomendadas', paras:[`${T.sessoesNecessarias} sessão(ões) em conjunto para toda a família.`] }] : [];
+  const m = rbModeloTerapeutico({
+    tema:'triagem', emoji:'👨‍👩‍👧', titulo:'A triagem energética da família', subtitulo: nomes.map(n => n.split(/\s+/)[0]).join(' · '), nome: nomes.map(n => n.split(/\s+/)[0]).join(', '),
+    ficha:[{ rotulo:'Família', valor: nomes.join(', '), largo:true }, { rotulo:'Data da sessão', valor: new Date().toLocaleDateString('pt-PT') }, { rotulo:'Terapeuta', valor: ter.nome || '' }],
+    acolhimento:['Fiz a triagem energética à família com o pêndulo, pessoa a pessoa, e junto aqui tudo num único relatório.', (T.pedido || '').trim() ? 'O que se pede: “' + (T.pedido || '').trim() + '”.' : ''],
+    tituloZonas:'Cada pessoa da família', introZonas:'Toque em "Pontos identificados" para perceber o que encontrei em cada um.', zonas,
+    meio: extra.blocos.concat(trat, sess),
+    sintese:[total ? `No total encontrei ${total} coisa(s) a limpar entre as pessoas${triAlvosResumo().length ? ', a casa e os veículos' : ''}. Nada disto é uma sentença: é o retrato de agora, e tudo isto tem solução.` : 'Não encontrei nada a limpar: o campo da família está equilibrado.'],
+    orientacoes:['Beba água ao longo do dia e descansem mais do que o habitual nos próximos 1 a 3 dias.', 'É normal haver mais cansaço, emotividade ou sono alterado depois da limpeza: é o corpo a processar.', 'Se algo se repetir em casa ou no carro, avisem para voltarmos a pesquisar.'],
+    assinatura: [ter.nome, negocio].filter(Boolean).join(' · '), fecho:'Com carinho e presença para toda a família. 🌿' });
+  return { html: rbFragmento(m), texto: ['Triagem energética da família: ' + nomes.join(', ')].concat(col.map(x => x.nome + ': ' + (x.causas.length ? x.causas.map(c => c.nome).join(', ') : 'nada a limpar'))).concat(extra.texto ? [extra.texto] : []).join('\n\n'), extra };
+}
+async function famFinalizar(col, nomes, leit, perg){
+  const U = famHtmlUnico(col, nomes, leit, perg);
+  let ok = true;
+  for (const x of col){
+    __triagem.patientId = x.patientId; __triagem.patientNome = x.nome;
+    x.payload.reportHtml = U.html; x.payload.reportTextCliente = U.texto; x.payload.familiaUnica = true;
+    x.payload.familia = { grupoId: __triagem._famInfo.grupoId, pessoas: nomes };
+    if (!(await triagemTentarGravar(x.payload))) ok = false;
+  }
+  window.__ultimoReportHtml = U.html; window.__triagemTextoClienteAtual = U.texto;
+  const main = document.getElementById('mainView');
+  main.innerHTML = `<h2>👨‍👩‍👧 Relatório da família</h2>
+    <div class="card" style="background:${ok ? '#eef7ee' : '#fdecea'};border:1px solid ${ok ? '#7fae3a' : '#c0392b'};"><p>${ok ? '✅ Um só relatório, guardado na ficha de: ' + escapeHtml(nomes.join(', ')) + '.' : '⚠️ Algum relatório não ficou guardado. Carregue em "Voltar a pesquisar" e gere de novo.'}</p></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;margin:10px 0;">
+      <button class="primary" onclick="window.verUltimoRelatorioIlustrado()">🌿 Ver / partilhar relatório</button>
+      <button class="ghost" onclick="window.__triagemReabrir()">🔁 Voltar a pesquisar (acrescentar ou corrigir)</button>
+    </div>
+    ${U.html}`;
+  window.scrollTo(0, 0);
+}
+window.__triagemReabrir = function(){
+  const F = __triagem.fam;
+  if (famAtiva()){ famCarregar(F.pessoas[F.idx].snap || famSnap()); F.uniao = false; }
+  __triagem.passo = famAtiva() ? 1 : 1; __triagem._ultimo = 0; __triagem._terapeuta = null;
+  toast('Pode acrescentar ou corrigir qualquer passo. Ao gerar de novo, o relatório é atualizado.');
+  renderTriagemPasso(document.getElementById('mainView'));
+};
 /* Blocos extra do relatório: família, cartas da família, casa e veículos. */
 function triExtraBlocos(op){
-  const T = __triagem, blocos = [], txt = [], fam = op && op.familia;
+  const blocos = [], txt = [], fam = op && op.familia;
   if (fam){
-    const outros = fam.nomes.filter(n => n !== fam.atual).map(n => n.split(/\s+/)[0]);
-    const par = `Esta triagem foi feita em família, em conjunto com ${rbJunta(outros)}. Cada pessoa tem o seu relatório e o tratamento é feito para todos ao mesmo tempo.`;
+    const par = fam.unico ? `Esta triagem foi feita em família (${fam.nomes.join(', ')}). O relatório e a limpeza são feitos em conjunto, para todos ao mesmo tempo.`
+      : `Esta triagem foi feita em família, em conjunto com ${rbJunta(fam.nomes.filter(n => n !== fam.atual).map(n => n.split(/\s+/)[0]))}.`;
     blocos.push({ tipo:'texto', icone:'👨‍👩‍👧', titulo:'Triagem em família', paras:[par] }); txt.push('== Triagem em família ==\n' + par);
     const L = fam.leitura;
     if (L){
@@ -13094,14 +13177,28 @@ function triExtraBlocos(op){
         `Se nada mudar, o caminho tende para ${triMin(L.tendencia.tema)}.${TRI_CARTA_NOTA[L.tendencia.n] || ''} A boa notícia é que ter consciência disto já é o primeiro passo para mudar o rumo.`];
       blocos.push({ tipo:'texto', icone:'🃏', titulo:'As cartas da família', paras:ps }); txt.push('== As cartas da família ==\n' + ps.join('\n'));
     }
-    (fam.perguntas || []).forEach(q => { const r = triRespostaPergunta(q); if (!r.length) return; const t = q.pergunta ? `A pergunta: ${q.pergunta}` : `O que se vê sobre ${triPergAreaRot(q.area).toLowerCase()}`; blocos.push({ tipo:'texto', icone:'🃏', titulo:t, paras:r }); txt.push('== ' + t + ' ==\n' + r.join('\n')); });
+    const vistos = {};
+    (fam.perguntas || []).forEach(q => {
+      const r = triRespostaPergunta(q); if (!r.length) return;
+      let t = q.pergunta ? `A pergunta: ${q.pergunta}` : `O que se vê sobre ${triPergAreaRot(q.area).toLowerCase()}`;
+      vistos[t] = (vistos[t] || 0) + 1; if (vistos[t] > 1) t += ` (${vistos[t]})`;
+      blocos.push({ tipo:'texto', icone:'🃏', titulo:t, paras:r }); txt.push('== ' + t + ' ==\n' + r.join('\n'));
+    });
   }
-  const C = T.casa || {}, V = (T.veiculos || []).filter(v => (v.matricula || v.notas));
-  const itens = [];
-  if ((C.morada || '').trim() || (C.notas || '').trim()) itens.push('Casa: ' + [(C.morada || '').trim(), (C.notas || '').trim() ? '(' + C.notas.trim() + ')' : ''].filter(Boolean).join(' '));
-  V.forEach(v => itens.push(((FAM_TIPOS_VEIC.find(t => t[0] === v.tipo) || [0, 'Veículo'])[1]) + ': ' + [(v.matricula || '').trim(), (v.notas || '').trim() ? '— ' + v.notas.trim() : ''].filter(Boolean).join(' ')));
-  if (itens.length){ blocos.push({ tipo:'lista', icone:'🏠', titulo:'A casa e os veículos', marca:'•', itens }); txt.push('== A casa e os veículos ==\n' + itens.map(x => '• ' + x).join('\n')); }
-  return { blocos, texto: txt.join('\n\n'), casa: { morada: (C.morada || '').trim() || null, notas: (C.notas || '').trim() || null }, veiculos: V.map(v => ({ tipo:v.tipo, matricula:(v.matricula || '').trim() || null, notas:(v.notas || '').trim() || null })) };
+  const A = triAlvosResumo();
+  if (A.length){
+    const zonas = A.map(a => { const t = ALVO_TIPOS[a.tipo] || ALVO_TIPOS.outro;
+      return { titulo: t[0] + ' ' + t[1] + (a.nome ? ' — ' + a.nome : ''),
+        subtitulo: a.causas.length ? `${a.causas.length} coisa(s) encontrada(s)` : (a.pesquisado ? 'Pesquisado: nada encontrado, energia equilibrada ✅' : 'Registado — ainda sem pesquisa energética'),
+        destaques: a.notas ? [{ rotulo:'Nota', nome:a.notas, texto:'' }] : [],
+        pontos: a.causas.map(c => ({ nome:c.nome, texto:c.descricao })) }; });
+    blocos.push({ tipo:'zonas', icone:'🏠', titulo:'Casa, veículos e outras pesquisas', intro:'Também olhei, com o pêndulo, para estes espaços e questões. Toque em cada um para ver o que encontrei.', zonas });
+    txt.push('== Casa, veículos e outras pesquisas ==\n' + A.map(a => ((ALVO_TIPOS[a.tipo] || ALVO_TIPOS.outro)[1]) + (a.nome ? ' ' + a.nome : '') + ': ' + (a.causas.length ? a.causas.map(c => c.nome).join(', ') : (a.pesquisado ? 'nada encontrado' : 'sem pesquisa'))).join('\n'));
+  }
+  const casa = A.find(a => a.tipo === 'casa');
+  return { blocos, texto: txt.join('\n\n'), alvos: A.map(a => ({ tipo:a.tipo, nome:a.nome || null, notas:a.notas || null, pesquisado:a.pesquisado, causas:a.causas.map(c => c.nome) })),
+    casa: { morada: casa ? (casa.nome || null) : null, notas: casa ? (casa.notas || null) : null },
+    veiculos: A.filter(a => a.tipo === 'carro' || a.tipo === 'mota').map(a => ({ tipo:a.tipo, matricula:a.nome || null, notas:a.notas || null })) };
 }
 
 function triagemProgressoHTML(){
@@ -13565,7 +13662,7 @@ window.triEterAbrir = async function(modo, opts){
   pintar();
 };
 function triagemItensAplicar(){
-  const B = __triagem._famU || __triagem;
+  const B = triUniaoEfetiva(__triagem._famU || __triagem);
   const causas = TRIAGEM_BAIXA_VIBRACAO.filter((x, i) => B.baixaVibracao[i]);
   const chakrasTodos = TRIAGEM_CHAKRAS_9.map((c, i) => ({ ...c, estado: B.chakras[i] }));
   const ab = TRIAGEM_NIVEIS_ABERTURA[B.aberturaCaminhos];
@@ -13705,7 +13802,7 @@ function triagemPassoTratamento(main){
         <p class="muted">Faz-se só a triagem energética. Não se aplica nenhuma etiqueta, não se pede pagamento e não se marcam sessões. O relatório diz que ainda não foi feito nenhum tratamento.</p>
         <p class="muted" style="margin-top:8px;">Se a pessoa decidir avançar, abre a Triagem, escolhe o paciente e toca em <strong>Aplicar o tratamento agora</strong>: a primeira limpeza faz-se a partir desta mesma triagem, que fica guardada na ficha.</p>
       </div>
-      ${triFichasEnergias(false)}${triApoCard(false)}
+      ${famAlvosHTML()}${triFichasEnergias(false)}${triApoCard(false)}
       <div class="row" style="margin-top:12px;">
         <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
         <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
@@ -13725,7 +13822,7 @@ function triagemPassoTratamento(main){
       <button class="primary" style="width:100%;padding:14px;" onclick="triEterAbrir('todas')">⚡ Todas em conjunto, testemunho ao centro</button>
       <button class="ghost" style="width:100%;padding:14px;margin-top:8px;" onclick="triEterAbrir('uma')">1️⃣ Uma a uma</button>
     </div>
-    ${triFichasEnergias(false)}${triApoCard(false)}
+    ${famAlvosHTML()}${triFichasEnergias(false)}${triApoCard(false)}
     <div class="card">
       <h3>Lista das etiquetas <span class="muted" style="font-weight:400;font-size:.8rem;">(para marcar à mão, ou se usares as etiquetas físicas)</span></h3>
       <p class="muted">${n1 ? '1.ª consulta: protocolo completo.' : 'Etiquetas escolhidas pelo que saiu na triagem de hoje.'} São ${itens.length} etiquetas, por ordem. Toca em cada uma quando a aplicares.</p>
@@ -14076,7 +14173,6 @@ function triagemPassoSessoesPreco(main){
         <textarea id="triagemMotivoPlano" rows="3" placeholder="Se deixares em branco, uso uma explicação simples e geral.">${escapeHtml(__triagem.motivoPlano)}</textarea>
       </div>
     </div>
-    <div id="famCasaBox">${famCasaHTML()}</div>
     <div class="row" style="margin-top:12px;">
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
       <button class="primary" onclick="window.__triagemGerarRelatorio()">🔮 Gerar Relatório${famAtiva() ? ' da família' : ''}</button>
@@ -14087,7 +14183,6 @@ function triagemPassoSessoesPreco(main){
   mostrarMotivo();
   document.getElementById('triagemPreco').addEventListener('input', e => __triagem.preco = e.target.value);
   window.__triagemVoltar = function(){ __triagem.passo--; renderTriagemPasso(main); };
-  famLigarCasa();
   window.__triagemGerarRelatorio = () => famAtiva() ? triagemGerarFamilia() : triagemGerarRelatorio();
 }
 
@@ -19287,7 +19382,7 @@ async function triagemGerarRelatorio(){
   }
   const causasDetetadas = [];
   const protocolo = [];
-  const U = __triagem._famU || __triagem;
+  const U = triUniaoEfetiva(__triagem._famU || __triagem);
   TRIAGEM_BAIXA_VIBRACAO.forEach((item, i) => {
     if (__triagem.baixaVibracao[i]) causasDetetadas.push(item);
     if (U.baixaVibracao[i]) triagemBuscarEtiquetas(item.temas, 2).forEach(r => protocolo.push({...r, motivo: item.nome}));
@@ -19452,7 +19547,7 @@ async function triagemGerarRelatorio(){
     etiquetasAplicadas: etiquetasAplicadas.map(it => ({ codigo: etqCodigo(it.pt) || null, heb: it.heb, pt: it.pt, fase: it.fase })),
     tratamentoAplicado: etiquetasAplicadas.length > 0,
     familia: __triagem._famInfo ? { grupoId: __triagem._famInfo.grupoId, pessoas: __triagem._famInfo.nomes } : null,
-    casa: extra.casa, veiculos: extra.veiculos,
+    casa: extra.casa, veiculos: extra.veiculos, alvos: extra.alvos,
     continuacaoDe: __triagem.continuacaoDe || null,
     motivoPlano: __triagem.motivoPlano || null,
     perfilMapaAlma: perfil ? {
@@ -19464,6 +19559,11 @@ async function triagemGerarRelatorio(){
     } : null
   };
 
+  if (__triagem._famColeta){
+    __triagem._famColeta.push({ patientId: __triagem.patientId, nome: __triagem.patientNome, causas: causasDetetadas, chk: chkP, aberturaNivel, corpos: __triagem.corpos || {}, perfil: (ehPrimeiraSessao && perfil) ? perfil : null,
+      aplicadas: etiquetasAplicadas, protocolo: protocoloFinal, payload: payloadParaGuardar, textoExtra: extra.texto });
+    return;
+  }
   const guardadoComSucesso = await triagemTentarGravar(payloadParaGuardar);
   if (!guardadoComSucesso) window.__triagemPayloadPendente = payloadParaGuardar;
 
@@ -19477,9 +19577,17 @@ async function triagemGerarRelatorio(){
 // sem ter de refazer a triagem toda.
 async function triagemTentarGravar(payload){
   try{
-    const refNovo = await addDoc(collection(db, 'tenants', tenantId, 'patients', __triagem.patientId, 'reports'), {
-      tipo: 'triagem-energetica', ...payload, generatedAt: serverTimestamp()
-    });
+    const ids = (__triagem._idsGravados = __triagem._idsGravados || {}), pidG = __triagem.patientId;
+    let refNovo;
+    if (ids[pidG]){
+      refNovo = doc(db, 'tenants', tenantId, 'patients', pidG, 'reports', ids[pidG]);
+      await updateDoc(refNovo, { tipo: 'triagem-energetica', ...payload, generatedAt: serverTimestamp(), atualizadoEm: serverTimestamp() });
+    } else {
+      refNovo = await addDoc(collection(db, 'tenants', tenantId, 'patients', pidG, 'reports'), {
+        tipo: 'triagem-energetica', ...payload, generatedAt: serverTimestamp()
+      });
+      ids[pidG] = refNovo.id;
+    }
     window.__triagemUltimoReportId = refNovo.id;
     window.__triagemIdTriagem = refNovo.id;
     window.__triagemUltimoPayload = payload;
@@ -19801,6 +19909,7 @@ function triagemRenderRelatorioFinal(causasDetetadas, chakrasTodos, chakrasAfeta
     : `A triagem de ${escapeHtml(__triagem.patientNome)} não revelou causas — campo equilibrado.`;
   main.innerHTML = `
     <h2>🔮 Relatório — ${escapeHtml(__triagem.patientNome)}</h2>
+    <div class="row" style="margin-bottom:8px;"><button class="ghost" onclick="window.__triagemReabrir()">🔁 Voltar a pesquisar (acrescentar ou corrigir)</button></div>
     ${guardadoComSucesso ? `<div class="card" style="background:#eef7ee;border:1px solid #7fae3a;"><p>✅ Guardado na ficha de ${escapeHtml(__triagem.patientNome)}.</p></div>` : `
     <div class="card" id="triagemAvisoGravacao" style="background:#fdecea;border:2px solid #c0392b;">
       <p><strong>⚠️ ESTE RELATÓRIO NÃO FICOU GUARDADO NA FICHA DO PACIENTE.</strong></p>
