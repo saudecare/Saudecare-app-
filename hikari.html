@@ -83,6 +83,8 @@ body.vista .menu{display:none}body.vista #voltar{display:block}
 main section{display:none}main section.ativa{display:block;padding-top:14px}
 body.vista .part{display:none}
 body.vista .hero{padding:20px 20px 46px}body.vista .hero p,body.vista .hero .bt,body.vista .hero .selo{display:none}body.vista .hero img.logo{width:58px;height:58px;margin-bottom:6px}body.vista .hero h1{font-size:26px;margin:0}
+em.rel{font-style:normal;font-weight:800;font-size:13px;background:rgba(255,255,255,.18);border-radius:100px;padding:4px 11px;margin-top:2px;display:none}em.rel.on{display:inline-block}.menu a.dest small{font-size:13px;font-weight:600;line-height:1.25}
+em.rel{font-style:normal;font-weight:800;font-size:13px;background:rgba(255,255,255,.18);border-radius:100px;padding:4px 11px;margin-top:2px;display:none}em.rel.on{display:inline-block}.menu a.dest small{font-size:13px;font-weight:600;line-height:1.25}
 details.cat{background:#fff;border:1px solid var(--l);border-radius:20px;box-shadow:0 4px 18px rgba(45,27,78,.06);overflow:hidden}
 details.cat summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:16px 18px;font-weight:700;font-size:17px;color:var(--r)}
 details.cat summary::-webkit-details-marker{display:none}details.cat summary .ic{font-size:28px}details.cat summary small{display:block;font-weight:500;font-size:12.5px;color:var(--s)}
@@ -103,8 +105,8 @@ details.cat .corpo{padding:0 18px 16px}details.cat .corpo p{font-size:14.5px;col
 </header>
 
 <div id="menu" class="menu">
-  <a id="mSorteio" class="hidden dest" href="#sorteio"><span class="ic">🎁</span>Sorteio<small>Participa grátis</small></a>
-  <a id="mAtividades" class="hidden dest" href="#atividades"><span class="ic">🌈</span>Desafios<small>Meditações e workshops</small></a>
+  <a id="mSorteio" class="hidden dest" href="#sorteio"><span class="ic">🎁</span>Sorteio<small id="tSorteioN">Participa grátis</small><em class="rel" id="tSorteioR"></em></a>
+  <a id="mAtividades" class="hidden dest" href="#atividades"><span class="ic">🌈</span>Desafios<small id="tAtivN">Meditações e workshops</small><em class="rel" id="tAtivR"></em></a>
   <a href="#terapias"><span class="ic">🩺</span>Terapias<small>Preços e marcações</small></a>
   <a href="#espiritual"><span class="ic">✨</span>Espiritual<small>Mapa da Alma, Tarot…</small></a>
   <a class="dest2" href="#escola"><span class="ic">🎓</span>Escola de Reiki<small>Turmas e workshop</small></a>
@@ -236,6 +238,14 @@ function rota(){
   window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
 window.addEventListener('hashchange', rota);
+const TILES = { sorteio: null, ativ: null };
+function fmtFalta(ms){ if (ms <= 0) return ''; const d = Math.floor(ms/864e5), h = Math.floor(ms%864e5/36e5), m = Math.floor(ms%36e5/6e4), s = Math.floor(ms%6e4/1e3); return (d ? d + 'd ' : '') + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0'); }
+function tilesTic(){
+  const set = (n, r, nome, rotulo, alvo) => { const f = alvo ? fmtFalta(alvo - Date.now()) : ''; $(n).textContent = nome; $(r).textContent = f ? rotulo + ' ' + f : ''; $(r).classList.toggle('on', !!f); };
+  if (TILES.sorteio) set('tSorteioN', 'tSorteioR', TILES.sorteio.nome, '⏳ Termina em', TILES.sorteio.fim);
+  if (TILES.ativ){ const t = TILES.ativ, falta = t.alvo ? t.alvo - Date.now() : 0; set('tAtivN', 'tAtivR', t.nome, t.rotulo, falta > 0 ? t.alvo : 0); }
+}
+setInterval(tilesTic, 1000);
 
 async function carregarAtividades(){
   try {
@@ -247,6 +257,10 @@ async function carregarAtividades(){
       const t = a.inicioTs && a.inicioTs.toMillis ? new Date(a.inicioTs.toMillis()).toLocaleString('pt-PT', { weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' }) : '';
       return `<div class="ativ"><h3>${esc(a.titulo || '')}</h3>${a.subtitulo ? `<p>${esc(a.subtitulo)}</p>` : ''}<p>${t ? '📅 Começa ' + esc(t) + '<br>' : ''}${a.duracao ? '⏱️ ' + esc(a.duracao) + ' · ' : ''}🎁 Grátis</p><a class="btn ouro pequeno" href="atividade.html?a=${encodeURIComponent(a.id)}">Ver e inscrever-me</a></div>`;
     }).join('');
+    const prim = l[0]; let alvo = 0, rotulo = '⏳ Começa em', nome = prim.titulo || 'Desafio';
+    try { const ss = await getDocs(collection(db, 'public_atividades', prim.id, 'sessoes')); const ts = []; ss.forEach(x => { const t = x.data().libertaEm; if (t && t.toMillis) ts.push(t.toMillis()); }); ts.sort((a,b) => a-b); const prox = ts.find(t => t > Date.now()); if (prox){ alvo = prox; rotulo = prox === ts[0] ? '⏳ Começa em' : '⏳ Próxima sessão em'; } else if (ts.length) { nome += ' · a decorrer'; } } catch (_) {}
+    if (!alvo && prim.inicioTs && prim.inicioTs.toMillis && prim.inicioTs.toMillis() > Date.now()){ alvo = prim.inicioTs.toMillis(); }
+    TILES.ativ = { nome: l.length > 1 ? nome + ' (+' + (l.length - 1) + ')' : nome, rotulo, alvo }; tilesTic();
     $('atividades').classList.remove('hidden'); $('mAtividades').classList.remove('hidden');
     rota();
   } catch (e) { console.warn('atividades indisponíveis', e); }
@@ -426,7 +440,7 @@ arrancar().then(() => { rota(); carregarAtividades(); }); setTimeout(rota, 2500)
   const chave = 'sorteio_' + S.id;
   let minha = null; try { minha = JSON.parse(localStorage.getItem(chave) || 'null'); } catch (_) {}
   await lerLugares();
-  alvo.classList.remove('hidden'); $('mSorteio').classList.remove('hidden'); rota();
+  alvo.classList.remove('hidden'); $('mSorteio').classList.remove('hidden'); TILES.sorteio = { nome: S.estado === 'sorteado' ? (S.titulo || 'Sorteio') + ' · terminado' : (S.titulo || 'Sorteio'), fim: S.estado === 'aberto' && S.fimTs ? (S.fimTs.toMillis ? S.fimTs.toMillis() : new Date(S.fimTs).getTime()) : 0 }; tilesTic(); rota();
   const ms = (t) => t && t.toMillis ? t.toMillis() : (t ? new Date(t).getTime() : 0);
   const fmt = (t) => new Date(ms(t)).toLocaleString('pt-PT', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' });
   const reg = S.regulamento ? `<details><summary>📜 Regulamento</summary><pre>${esc(S.regulamento)}</pre></details>` : '';
