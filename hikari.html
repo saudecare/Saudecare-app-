@@ -253,9 +253,13 @@ async function carregarAtividades(){
     const l = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.tenantId === TENANT);
     if (!l.length) return;
     l.sort((a,b) => ((a.inicioTs && a.inicioTs.toMillis ? a.inicioTs.toMillis() : 0) - (b.inicioTs && b.inicioTs.toMillis ? b.inicioTs.toMillis() : 0)));
+    for (const a of l){ a._ses = []; try { const ss = await getDocs(collection(db, 'public_atividades', a.id, 'sessoes')); ss.forEach(x => a._ses.push({ id: x.id, ...x.data() })); a._ses.sort((p,q) => (p.n||0) - (q.n||0)); } catch (_) {} }
+    const dt = (t) => t && t.toMillis ? new Date(t.toMillis()).toLocaleString('pt-PT', { weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' }) : '';
     $('listaAtividades').innerHTML = l.map(a => {
-      const t = a.inicioTs && a.inicioTs.toMillis ? new Date(a.inicioTs.toMillis()).toLocaleString('pt-PT', { weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' }) : '';
-      return `<div class="ativ"><h3>${esc(a.titulo || '')}</h3>${a.subtitulo ? `<p>${esc(a.subtitulo)}</p>` : ''}<p>${t ? '📅 Começa ' + esc(t) + '<br>' : ''}${a.duracao ? '⏱️ ' + esc(a.duracao) + ' · ' : ''}🎁 Grátis</p><a class="btn ouro pequeno" href="atividade.html?a=${encodeURIComponent(a.id)}">Ver e inscrever-me</a></div>`;
+      const t = dt(a.inicioTs);
+      const desc = String(a.descricao || '').split('\n').filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('');
+      const dias = a._ses.length ? `<div style="margin:10px 0 4px;font-weight:800;color:var(--r)">🗓️ Programa dia a dia</div>` + a._ses.map((x, i) => `<div style="display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--l)"><div style="flex:none;width:30px;height:30px;border-radius:50%;background:var(--r);color:var(--oc);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px">${i + 1}</div><div><b style="color:var(--r)">${esc(x.titulo || '')}</b><div style="font-size:12.5px;color:var(--v);font-weight:700">${esc(dt(x.libertaEm))}</div>${x.resumo ? `<div style="font-size:14px;color:var(--s)">${esc(x.resumo)}</div>` : ''}</div></div>`).join('') : '';
+      return `<div class="ativ"><h3>${esc(a.titulo || '')}</h3>${a.subtitulo ? `<p><b>${esc(a.subtitulo)}</b></p>` : ''}<p>${t ? '📅 Começa ' + esc(t) + '<br>' : ''}${a.duracao ? '⏱️ ' + esc(a.duracao) + ' · ' : ''}🎁 Grátis</p>${desc}${dias}<a class="btn ouro pequeno" style="margin-top:12px" href="atividade.html?a=${encodeURIComponent(a.id)}">Ver e inscrever-me</a></div>`;
     }).join('');
     const prim = l[0]; let alvo = 0, rotulo = '⏳ Começa em', nome = prim.titulo || 'Desafio';
     try { const ss = await getDocs(collection(db, 'public_atividades', prim.id, 'sessoes')); const ts = []; ss.forEach(x => { const t = x.data().libertaEm; if (t && t.toMillis) ts.push(t.toMillis()); }); ts.sort((a,b) => a-b); const prox = ts.find(t => t > Date.now()); if (prox){ alvo = prox; rotulo = prox === ts[0] ? '⏳ Começa em' : '⏳ Próxima sessão em'; } else if (ts.length) { nome += ' · a decorrer'; } } catch (_) {}
