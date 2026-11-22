@@ -68,6 +68,28 @@ footer{max-width:1040px;margin:34px auto 20px;padding:0 18px;font-size:13px;colo
 .sorteio label.ck{display:flex;gap:9px;font-size:13px;color:#eadcf7;align-items:flex-start}.sorteio label.ck input{margin-top:3px}
 .sorteio details{max-width:560px;margin:14px auto 0;text-align:left;background:rgba(0,0,0,.18);border-radius:14px;padding:10px 14px;font-size:13.5px}.sorteio summary{cursor:pointer;font-weight:700}.sorteio details pre{white-space:pre-wrap;font-family:inherit;margin-top:8px;color:#efe6f9}
 .sorteio .ok{background:rgba(255,255,255,.16);border-radius:14px;padding:14px;margin-top:12px}.sorteio .ok b{font-size:22px;letter-spacing:.14em;color:var(--oc)}
+
+/* menu por botões: cada botão abre só uma secção */
+.menu{max-width:1040px;margin:-28px auto 0;padding:22px 16px 6px;background:var(--bg);border-radius:24px 24px 0 0;position:relative;display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:640px){.menu{grid-template-columns:repeat(3,1fr)}}
+.menu a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-decoration:none;text-align:center;background:#fff;border:1px solid var(--l);border-radius:20px;padding:20px 10px;min-height:112px;box-shadow:0 4px 16px rgba(45,27,78,.07);color:var(--r);font-weight:700;font-size:15.5px;transition:transform .12s}
+.menu a:active{transform:scale(.97);background:var(--r);color:#fff}
+.menu a .ic{font-size:34px;line-height:1}.menu a small{font-weight:500;font-size:12.5px;color:var(--s)}.menu a:active small{color:#d9cdef}
+.menu a.dest{background:linear-gradient(145deg,#3a1f66,#6b2f93);color:#fff;border-color:rgba(212,175,55,.5)}.menu a.dest small{color:#eadcf7}
+.menu a.dest2{background:linear-gradient(145deg,var(--vd),var(--v));color:#fff;border-color:transparent}.menu a.dest2 small{color:#d8efe7}
+#voltar{display:none;max-width:1040px;margin:-28px auto 0;padding:16px 18px 0;background:var(--bg);border-radius:24px 24px 0 0;position:relative}
+#voltar a{display:inline-block;text-decoration:none;font-weight:700;color:var(--r);background:#fff;border:1px solid var(--l);border-radius:100px;padding:9px 18px;font-size:14.5px}
+body.vista .menu{display:none}body.vista #voltar{display:block}
+main section{display:none}main section.ativa{display:block;padding-top:14px}
+body.vista .part{display:none}
+body.vista .hero{padding:20px 20px 46px}body.vista .hero p,body.vista .hero .bt,body.vista .hero .selo{display:none}body.vista .hero img.logo{width:58px;height:58px;margin-bottom:6px}body.vista .hero h1{font-size:26px;margin:0}
+details.cat{background:#fff;border:1px solid var(--l);border-radius:20px;box-shadow:0 4px 18px rgba(45,27,78,.06);overflow:hidden}
+details.cat summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:16px 18px;font-weight:700;font-size:17px;color:var(--r)}
+details.cat summary::-webkit-details-marker{display:none}details.cat summary .ic{font-size:28px}details.cat summary small{display:block;font-weight:500;font-size:12.5px;color:var(--s)}
+details.cat summary::after{content:"▾";margin-left:auto;color:var(--s);transition:transform .15s}details.cat[open] summary::after{transform:rotate(180deg)}
+details.cat .corpo{padding:0 18px 16px}details.cat .corpo p{font-size:14.5px;color:var(--s);margin:0 0 6px}
+.lista-cats{display:grid;gap:12px}
+.ativ{background:#fff;border:1px solid var(--l);border-radius:20px;padding:18px;box-shadow:0 4px 18px rgba(45,27,78,.06)}.ativ h3{color:var(--r);font-size:19px}.ativ p{color:var(--s);font-size:14.5px;margin:4px 0 8px}
 </style>
 </head>
 <body>
@@ -80,20 +102,24 @@ footer{max-width:1040px;margin:34px auto 20px;padding:0 18px;font-size:13px;colo
   <div class="bt"><a class="btn ouro" data-funil href="marcar.html">📅 Marcar consulta</a><a class="btn claro" href="#espiritual">✨ Leitura grátis</a></div>
 </header>
 
-<nav class="nav"><div class="nav-in">
-  <a id="mSorteio" class="hidden" href="#sorteio">🎁 Sorteio</a>
-  <a href="#espiritual">✨ Espiritual</a>
-  <a href="#terapias">🩺 Terapias</a>
-  <a href="#escola">🎓 Escola de Reiki</a>
-  <a id="mEquipa" class="hidden" href="#equipa">🙋 Terapeutas</a>
-  <a id="mLoja" class="hidden" href="#loja">🛍️ Loja</a>
-  <a id="mTestemunhos" class="hidden" href="#testemunhos">⭐ Testemunhos</a>
-  <a id="mHorarios" class="hidden" href="#horarios">🗓️ Horários</a>
-  <a id="mContactos" class="hidden" href="#contactos">📍 Contactos</a>
-</div></nav>
+<div id="menu" class="menu">
+  <a id="mSorteio" class="hidden dest" href="#sorteio"><span class="ic">🎁</span>Sorteio<small>Participa grátis</small></a>
+  <a id="mAtividades" class="hidden dest" href="#atividades"><span class="ic">🌈</span>Desafios<small>Meditações e workshops</small></a>
+  <a href="#terapias"><span class="ic">🩺</span>Terapias<small>Preços e marcações</small></a>
+  <a href="#espiritual"><span class="ic">✨</span>Espiritual<small>Mapa da Alma, Tarot…</small></a>
+  <a class="dest2" href="#escola"><span class="ic">🎓</span>Escola de Reiki<small>Turmas e workshop</small></a>
+  <a id="mEquipa" class="hidden" href="#equipa"><span class="ic">🙋</span>Terapeutas</a>
+  <a id="mLoja" class="hidden" href="#loja"><span class="ic">🛍️</span>Loja</a>
+  <a id="mTestemunhos" class="hidden" href="#testemunhos"><span class="ic">⭐</span>Testemunhos</a>
+  <a id="mHorarios" class="hidden" href="#horarios"><span class="ic">🗓️</span>Horários</a>
+  <a id="mContactos" class="hidden" href="#contactos"><span class="ic">📍</span>Contactos</a>
+</div>
+<div id="voltar"><a href="#menu">← Voltar ao menu</a></div>
 
 <main>
   <section id="sorteio" class="hidden"></section>
+
+  <section id="atividades" class="hidden"><div class="tit"><span>🌈</span><h2>Desafios e workshops</h2></div><p class="sub">Atividades com inscrição. As sessões abrem à hora marcada.</p><div id="listaAtividades" class="lista-cats"></div></section>
 
   <section id="espiritual">
     <div class="tit"><span>✨</span><h2>Serviços espirituais</h2></div>
@@ -198,6 +224,34 @@ async function ler(nome){
   catch(e){ console.warn('indisponível:', nome, e); return null; }
 }
 
+// Menu por botões: cada botão mostra só a sua secção.
+function rota(){
+  const h = decodeURIComponent((location.hash || '').replace('#','')).trim();
+  document.querySelectorAll('section.ativa').forEach(x => x.classList.remove('ativa'));
+  const alvo = h && h !== 'menu' ? $(h) : null;
+  const sec0 = alvo ? alvo.closest('section') : null;
+  const sec = sec0 && !sec0.classList.contains('hidden') ? sec0 : null;
+  if (sec){ sec.classList.add('ativa'); document.body.classList.add('vista'); }
+  else document.body.classList.remove('vista');
+  window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+}
+window.addEventListener('hashchange', rota);
+
+async function carregarAtividades(){
+  try {
+    const q = await getDocs(query(collection(db, 'public_atividades'), where('estado', '==', 'aberta')));
+    const l = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.tenantId === TENANT);
+    if (!l.length) return;
+    l.sort((a,b) => ((a.inicioTs && a.inicioTs.toMillis ? a.inicioTs.toMillis() : 0) - (b.inicioTs && b.inicioTs.toMillis ? b.inicioTs.toMillis() : 0)));
+    $('listaAtividades').innerHTML = l.map(a => {
+      const t = a.inicioTs && a.inicioTs.toMillis ? new Date(a.inicioTs.toMillis()).toLocaleString('pt-PT', { weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' }) : '';
+      return `<div class="ativ"><h3>${esc(a.titulo || '')}</h3>${a.subtitulo ? `<p>${esc(a.subtitulo)}</p>` : ''}<p>${t ? '📅 Começa ' + esc(t) + '<br>' : ''}${a.duracao ? '⏱️ ' + esc(a.duracao) + ' · ' : ''}🎁 Grátis</p><a class="btn ouro pequeno" href="atividade.html?a=${encodeURIComponent(a.id)}">Ver e inscrever-me</a></div>`;
+    }).join('');
+    $('atividades').classList.remove('hidden'); $('mAtividades').classList.remove('hidden');
+    rota();
+  } catch (e) { console.warn('atividades indisponíveis', e); }
+}
+
 async function arrancar(){
   // O endereço da página pública pode não ser igual ao id da conta; procura-o.
   let slug = TENANT, perfil = null;
@@ -243,16 +297,18 @@ function desenharServicos(cats, servicos, funil){
   }
   const ICONES = [[/reiki/i,'🌿'],[/reflex|p[eé]s/i,'🦶'],[/radiest|p[eê]ndulo|triagem|energ|apometr/i,'🔮'],[/psicol|emocion|ansied/i,'🧠'],[/massag/i,'💆'],[/tarot|carto|cartas/i,'🃏'],[/mapa|numerol|astr/i,'🌟'],[/chakra/i,'🌈'],[/crian|jovem|adolesc/i,'🧒'],[/medita|relax/i,'🧘']];
   const iconeDe = (g, itens) => { if (g.icon && String(g.icon).trim() && g.icon !== '🩺') return g.icon; const doServico = (itens.find(s => s.categoryIcon && s.categoryIcon !== '🩺') || {}).categoryIcon; if (doServico) return doServico; const f = ICONES.find(x => x[0].test(g.name || '')); return f ? f[1] : (g.icon || '🩺'); };
+  el.className = 'lista-cats';
   el.innerHTML = grupos.map(g => {
     const itens = servicos.filter(s => s.categoryId === g.id);
     if (!itens.length) return '';
-    return `<div class="cartao">
-      <h3>${esc(iconeDe(g, itens))} ${esc(g.name)}</h3>
-      ${g.modalidade && mod[g.modalidade] ? `<p>${mod[g.modalidade]}</p>` : ''}
+    return `<details class="cat">
+      <summary><span class="ic">${esc(iconeDe(g, itens))}</span><span>${esc(g.name)}<small>${itens.length} ${itens.length === 1 ? 'serviço' : 'serviços'}${g.modalidade && mod[g.modalidade] ? ' · ' + mod[g.modalidade] : ''}</small></span></summary>
+      <div class="corpo">
       ${g.description ? `<p>${esc(g.description)}</p>` : ''}
       <div>${itens.map(s => `<div class="linha-servico"><div><strong>${esc(s.name)}</strong>${s.type === 'pack' ? `<div class="suave">Pack · ${esc(s.packSessions||'')} sessões</div>` : ''}${s.description ? `<div class="suave">${esc(s.description)}</div>` : ''}</div><span class="preco">${esc(s.price)}€</span></div>`).join('')}</div>
-      <div class="acao"><a class="btn verde pequeno" href="${esc(funil)}">Marcar</a></div>
-    </div>`;
+      <div class="acao" style="padding-top:12px"><a class="btn verde pequeno" href="${esc(funil)}">Marcar</a></div>
+      </div>
+    </details>`;
   }).join('') || '<p class="vazio">Os serviços vão aparecer aqui.</p>';
 }
 
@@ -337,7 +393,8 @@ function desenharContactos(p){
   $('listaContactos').innerHTML = linhas.join('');
 }
 
-arrancar();
+rota();
+arrancar().then(() => { rota(); carregarAtividades(); }); setTimeout(rota, 2500);
 
   window.vdPartilhar = async function(k){
     const base = new URL('.', location.href).href;
@@ -369,7 +426,7 @@ arrancar();
   const chave = 'sorteio_' + S.id;
   let minha = null; try { minha = JSON.parse(localStorage.getItem(chave) || 'null'); } catch (_) {}
   await lerLugares();
-  alvo.classList.remove('hidden'); $('mSorteio').classList.remove('hidden');
+  alvo.classList.remove('hidden'); $('mSorteio').classList.remove('hidden'); rota();
   const ms = (t) => t && t.toMillis ? t.toMillis() : (t ? new Date(t).getTime() : 0);
   const fmt = (t) => new Date(ms(t)).toLocaleString('pt-PT', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' });
   const reg = S.regulamento ? `<details><summary>📜 Regulamento</summary><pre>${esc(S.regulamento)}</pre></details>` : '';
