@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hikari Fafe — Atividade</title>
+<meta name="description" content="Desafios, workshops e eventos de Hikari Fafe.">
+<meta name="robots" content="noindex, follow">
+<meta name="theme-color" content="#2d1b4e">
+<meta property="og:site_name" content="Vindora">
+<meta property="og:title" content="Hikari Fafe — Atividade">
+<meta property="og:description" content="Desafios, workshops e eventos de Hikari Fafe.">
+<meta property="og:image" content="https://vindora.pt/logo-hikari-fafe.png">
+<style>
+:root{--r:#2d1b4e;--r2:#1a0f2e;--r3:#3f2870;--o:#d4af37;--oc:#f0d878;--v:#2f6f5e;--bg:#f7f5fb;--t:#221a33;--s:#6a617a;--l:#e8e3f0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--t);line-height:1.55}
+a{color:inherit}.hidden{display:none!important}
+.hero{background:radial-gradient(circle at 80% 0%,rgba(212,175,55,.22),transparent 55%),linear-gradient(165deg,var(--r2),var(--r) 55%,var(--r3));color:#fff;text-align:center;padding:34px 20px 54px}
+.hero img{width:78px;height:78px;border-radius:50%;object-fit:cover;background:#fff;border:3px solid var(--o);margin-bottom:12px}
+.hero .selo{display:inline-block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--oc);margin-bottom:8px}
+.hero h1{font-size:clamp(28px,7.5vw,42px);line-height:1.1;font-weight:800;margin-bottom:8px}
+.hero p{max-width:480px;margin:0 auto;color:#d9cdef;font-size:17px}
+.chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.chip{background:rgba(255,255,255,.14);border-radius:100px;padding:6px 14px;font-size:13.5px;font-weight:600}
+main{max-width:640px;margin:-28px auto 0;padding:0 14px 60px;position:relative}
+.card{background:#fff;border-radius:22px;padding:20px 18px;margin-bottom:14px;box-shadow:0 6px 22px rgba(45,27,78,.10)}
+.card h2{font-size:20px;margin-bottom:8px;color:var(--r)}
+.card p{margin:6px 0;color:#3b3350}
+.relogio{background:linear-gradient(150deg,#3a1f66,#6b2f93 60%,#b0508f);color:#fff;text-align:center}
+.relogio .lbl{font-size:14px;color:#eadcf7;margin-bottom:6px}
+.cont{display:flex;gap:8px;justify-content:center}
+.cont div{background:rgba(255,255,255,.16);border-radius:12px;padding:8px 12px;min-width:64px}.cont b{display:block;font-size:24px}.cont span{font-size:11px;opacity:.85}
+input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid var(--l);font-size:16px;margin-top:8px}
+label.ck{display:flex;gap:9px;font-size:13.5px;color:var(--s);align-items:flex-start;margin-top:10px}label.ck input{margin-top:3px}
+.btn{display:inline-block;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:100px;font-size:15.5px;border:0;cursor:pointer;margin-top:12px}
+.btn.ouro{background:linear-gradient(135deg,var(--oc),var(--o));color:#2b1d00}.btn.verde{background:#25d366;color:#073b17}.btn.roxo{background:var(--r3);color:#fff}.btn.p{padding:10px 18px;font-size:14px}
+.err{color:#b3261e;font-size:13.5px;margin-top:8px}
+.ok{background:#eef8f1;border:1px solid #bfe3c8;border-radius:14px;padding:12px 14px;color:#1d4d2b}
+.sess{border:1.5px solid var(--l);border-radius:16px;padding:12px 14px;margin-top:10px}
+.sess.on{border-color:var(--o);background:#fffaf0}
+.sess .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.sess b{color:var(--r)}.sess .est{font-size:12.5px;font-weight:700;border-radius:100px;padding:3px 10px;white-space:nowrap}
+.est.lock{background:#eee;color:#666}.est.livre{background:var(--o);color:#2b1d00}
+.sess .res{font-size:14px;color:var(--s);margin-top:4px}
+.player{margin-top:10px}.player iframe,.player video{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000}.player audio{width:100%}
+details.g{margin-top:8px;background:#f5f1fb;border-radius:12px;padding:8px 12px;font-size:14px}details.g summary{cursor:pointer;font-weight:700;color:var(--r3)}details.g div{white-space:pre-wrap;margin-top:6px;color:#3b3350}
+.cta{background:linear-gradient(150deg,#1f4d40,#2f6f5e);color:#fff}.cta h2{color:#fff}.cta p{color:#e1f1ea}
+footer{text-align:center;font-size:12.5px;color:var(--s);padding:10px 16px 30px}
+</style>
+</head>
+<body>
+<div class="hero">
+  <img src="logo-hikari-fafe.png" alt="Hikari Fafe">
+  <div class="selo" id="selo">Hikari Fafe</div>
+  <h1 id="titulo">A carregar…</h1>
+  <p id="subtitulo"></p>
+  <div class="chips" id="chips"></div>
+</div>
+<main id="main"></main>
+<footer>Hikari Fafe · <a href="politica-privacidade.html">Política de privacidade</a> · <a href="hikari.html">Página inicial</a></footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, getDocs, collection, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+});
+const db = getFirestore(app);
+const $ = id => document.getElementById(id);
+const esc = s => s == null ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ms = t => t && t.toMillis ? t.toMillis() : (t ? new Date(t).getTime() : 0);
+const ID = new URLSearchParams(location.search).get('a') || '';
+const TIPOS = { desafio: 'Desafio', workshop: 'Workshop', evento: 'Evento', meditacao: 'Meditação' };
+
+let A = null, SES = [], CONT = {}, registado = null;
+const chave = 'atv_' + ID;
+try { registado = JSON.parse(localStorage.getItem(chave) || 'null'); } catch (_) {}
+
+function quando(t) { return new Date(ms(t)).toLocaleString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }); }
+function falta(t) { const f = ms(t) - Date.now(); if (f <= 0) return ''; const d = Math.floor(f / 864e5), h = Math.floor(f % 864e5 / 36e5), m = Math.floor(f % 36e5 / 6e4), s = Math.floor(f % 6e4 / 1e3); return [[d, 'dias'], [h, 'horas'], [m, 'min'], [s, 'seg']].map(x => `<div><b>${x[0]}</b><span>${x[1]}</span></div>`).join(''); }
+function embed(u) {
+  u = String(u || '').trim(); if (!u) return '';
+  let m;
+  if ((m = u.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/))) return `<iframe src="https://www.youtube-nocookie.com/embed/${m[1]}" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+  if ((m = u.match(/vimeo\.com\/(\d+)/))) return `<iframe src="https://player.vimeo.com/video/${m[1]}" allowfullscreen></iframe>`;
+  if ((m = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/))) return `<iframe src="https://drive.google.com/file/d/${m[1]}/preview" allowfullscreen></iframe>`;
+  if (/\.(mp3|m4a|wav|ogg|aac)(\?|$)/i.test(u)) return `<audio controls preload="none" src="${esc(u)}"></audio>`;
+  if (/\.(mp4|webm|mov)(\?|$)/i.test(u)) return `<video controls playsinline preload="none" src="${esc(u)}"></video>`;
+  return `<a class="btn ouro p" href="${esc(u)}" target="_blank" rel="noopener">▶ Abrir</a>`;
+}
+async function sha(t) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 40); }
+
+async function carregar() {
+  if (!ID) return erro('Esta ligação não está completa.');
+  try {
+    const d = await getDoc(doc(db, 'public_atividades', ID));
+    if (!d.exists()) return erro('Esta atividade não foi encontrada.');
+    A = d.data();
+    const s = await getDocs(collection(db, 'public_atividades', ID, 'sessoes'));
+    SES = []; s.forEach(x => SES.push(Object.assign({ id: x.id }, x.data()))); SES.sort((a, b) => (a.n || 0) - (b.n || 0));
+  } catch (e) { return erro('Esta atividade não está disponível.'); }
+  document.title = (A.titulo || 'Atividade') + ' — Hikari Fafe';
+  $('selo').textContent = (TIPOS[A.tipo] || 'Atividade') + ' · Hikari Fafe';
+  $('titulo').textContent = A.titulo || '';
+  $('subtitulo').textContent = A.subtitulo || '';
+  const ch = []; if (SES.length > 1) ch.push('📅 ' + SES.length + ' sessões'); if (A.duracao) ch.push('⏱️ ' + A.duracao); if (A.horario) ch.push('🕘 ' + A.horario); if (A.gratis !== false) ch.push('🎁 Grátis');
+  $('chips').innerHTML = ch.map(c => `<span class="chip">${esc(c)}</span>`).join('');
+  await carregarConteudos();
+  desenhar(); setInterval(tic, 1000);
+}
+function erro(m) { $('titulo').textContent = 'Ups…'; $('main').innerHTML = `<div class="card"><p>${esc(m)}</p><a class="btn ouro" href="hikari.html">Ir para a página inicial</a></div>`; }
+
+async function carregarConteudos() {
+  if (!registado) return;
+  for (const s of SES) {
+    if (ms(s.libertaEm) <= Date.now() && !CONT[s.id]) {
+      try { const c = await getDoc(doc(db, 'public_atividades', ID, 'conteudos', s.id)); if (c.exists()) CONT[s.id] = c.data(); } catch (_) { /* ainda não libertado no servidor */ }
+    }
+  }
+}
+
+function proxima() { return SES.find(s => ms(s.libertaEm) > Date.now()); }
+function relogio() {
+  const inicio = SES.length ? ms(SES[0].libertaEm) : ms(A.inicioTs);
+  const p = proxima();
+  if (!p) return `<div class="card relogio"><div class="lbl">${SES.length > 1 ? 'O desafio terminou. As sessões ficam aqui à tua espera.' : 'A sessão já começou. Está disponível abaixo.'}</div></div>`;
+  const lbl = ms(p.libertaEm) === inicio ? `${esc(TIPOS[A.tipo] || 'Atividade')} começa em` : `Próxima sessão (${esc(p.titulo)}) em`;
+  return `<div class="card relogio"><div class="lbl">${lbl}<br><b>${esc(quando(p.libertaEm))}</b></div><div class="cont" id="relogio">${falta(p.libertaEm)}</div></div>`;
+}
+function form() {
+  if (registado) {
+    const g = A.grupoLink ? `<a class="btn verde" href="${esc(A.grupoLink)}" target="_blank" rel="noopener">💬 Entrar no grupo de WhatsApp</a> ` : '';
+    return `<div class="card"><div class="ok">✅ Estás inscrito${registado.nome ? ', ' + esc(String(registado.nome).split(' ')[0]) : ''}! Guarda esta página nos favoritos.</div><div style="margin-top:6px">${g}<button class="btn roxo" id="btCal">📅 Pôr no calendário</button></div></div>`;
+  }
+  return `<div class="card"><h2>🎟️ Inscrição${A.gratis !== false ? ' grátis' : ''}</h2><p>Deixa o teu nome e contacto para ficares com acesso. É rápido.</p>
+    <form id="fIns"><input type="text" id="iNome" placeholder="O teu nome" maxlength="80" autocomplete="name" required><input type="text" id="iCont" placeholder="Telemóvel ou e-mail" maxlength="120" autocomplete="email" required>
+    <label class="ck"><input type="checkbox" id="iAceito" required><span>Aceito que usem o meu nome e contacto para esta atividade e para me avisarem das sessões. Posso pedir para apagar os meus dados quando quiser.</span></label>
+    <label class="ck"><input type="checkbox" id="iReiki"><span>Quero receber novidades sobre sessões de Reiki e formações (opcional).</span></label>
+    <button class="btn ouro" type="submit" id="iBt">✨ Quero participar</button><div class="err" id="iErr"></div></form></div>`;
+}
+function sessoes() {
+  if (!SES.length) return '';
+  return `<div class="card"><h2>${SES.length > 1 ? '🗓️ As sessões' : '🗓️ A sessão'}</h2>${SES.map(s => {
+    const livre = ms(s.libertaEm) <= Date.now(), c = CONT[s.id];
+    let corpo = '';
+    if (!livre) corpo = `<div class="res">🔒 Liberta ${esc(quando(s.libertaEm))}</div>`;
+    else if (!registado) corpo = `<div class="res">Inscreve-te acima para aceder.</div>`;
+    else if (!c) corpo = `<div class="res">Disponível! Se não carregar, atualiza a página daqui a um instante.</div>`;
+    else corpo = `<div class="player">${embed(c.url)}${c.guiao ? `<details class="g"><summary>📖 Ler a meditação</summary><div>${esc(c.guiao)}</div></details>` : ''}</div>`;
+    return `<div class="sess ${livre ? 'on' : ''}"><div class="top"><b>${esc(s.titulo)}</b><span class="est ${livre ? 'livre' : 'lock'}">${livre ? 'Disponível' : 'Em breve'}</span></div>${s.resumo ? `<div class="res">${esc(s.resumo)}</div>` : ''}${corpo}</div>`;
+  }).join('')}</div>`;
+}
+function cta() {
+  if (!A.ctaTitulo && !A.ctaLink) return '';
+  const link = A.ctaLink || ('https://wa.me/351928122918?text=' + encodeURIComponent('Olá Ricardo! Participei na atividade "' + (A.titulo || '') + '" e quero saber mais sobre as sessões de Reiki.'));
+  return `<div class="card cta"><h2>${esc(A.ctaTitulo || 'Quer ir mais fundo?')}</h2><p>${esc(A.ctaTexto || '')}</p><a class="btn ouro" href="${esc(link)}" target="_blank" rel="noopener">${esc(A.ctaBotao || 'Falar comigo no WhatsApp')}</a></div>`;
+}
+function desenhar() {
+  const desc = String(A.descricao || '').split('\n').filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('');
+  $('main').innerHTML = (A.estado === 'encerrada' ? `<div class="card"><p>As inscrições estão encerradas.</p></div>` : '') + relogio() + (desc ? `<div class="card"><h2>Sobre</h2>${desc}</div>` : '') + (A.estado === 'aberta' || registado ? form() : '') + sessoes() + (registado ? cta() : '');
+  const f = $('fIns'); if (f) f.addEventListener('submit', inscrever);
+  const c = $('btCal'); if (c) c.addEventListener('click', calendario);
+}
+let ultimoLibertado = -1;
+function tic() {
+  const r = $('relogio'), p = proxima(); if (r && p) r.innerHTML = falta(p.libertaEm);
+  const n = SES.filter(s => ms(s.libertaEm) <= Date.now()).length;
+  if (n !== ultimoLibertado) { const primeira = ultimoLibertado === -1; ultimoLibertado = n; if (!primeira) { carregarConteudos().then(desenhar); } }
+}
+async function inscrever(e) {
+  e.preventDefault();
+  const nome = $('iNome').value.trim(), contacto = $('iCont').value.trim(), err = $('iErr');
+  const mail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contacto), tel = contacto.replace(/[\s().+-]/g, '');
+  if (nome.length < 2) { err.textContent = 'Escreve o teu nome.'; return; }
+  if (!mail && !/^\d{9,15}$/.test(tel)) { err.textContent = 'Indica um telemóvel ou e-mail válido.'; return; }
+  $('iBt').disabled = true; err.textContent = '';
+  try {
+    const id = await sha(ID + '|' + (mail ? contacto.toLowerCase() : tel));
+    try { await setDoc(doc(db, 'public_atividades', ID, 'inscricoes', id), { nome, contacto, aceitou: true, reiki: $('iReiki').checked, criadoEm: serverTimestamp(), origem: 'site' }); }
+    catch (x) { /* contacto já inscrito: deixa entrar na mesma */ if (!/permission/i.test(x.message || '')) throw x; }
+    registado = { nome }; try { localStorage.setItem(chave, JSON.stringify(registado)); } catch (_) {}
+    await carregarConteudos(); desenhar();
+  } catch (x) { $('iBt').disabled = false; err.textContent = 'Não foi possível inscrever. Tenta outra vez.'; }
+}
+function calendario() {
+  const z = t => new Date(t).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const ev = SES.map(s => ['BEGIN:VEVENT', 'UID:' + ID + '-' + s.id + '@vindora.pt', 'DTSTAMP:' + z(Date.now()), 'DTSTART:' + z(ms(s.libertaEm)), 'DTEND:' + z(ms(s.libertaEm) + (Number(A.minutos) || 10) * 60000), 'SUMMARY:' + String(A.titulo || '').replace(/[,;\n]/g, ' ') + ' — ' + String(s.titulo || '').replace(/[,;\n]/g, ' '), 'DESCRIPTION:Abre aqui: ' + location.href.split('#')[0], 'BEGIN:VALARM', 'TRIGGER:-PT10M', 'ACTION:DISPLAY', 'DESCRIPTION:Começa daqui a 10 minutos', 'END:VALARM', 'END:VEVENT'].join('\r\n')).join('\r\n');
+  const ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Hikari Fafe//Vindora//PT\r\n' + ev + '\r\nEND:VCALENDAR';
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })); a.download = 'hikari-fafe-atividade.ics'; document.body.appendChild(a); a.click(); a.remove();
+}
+carregar();
+</script>
+</body>
+</html>

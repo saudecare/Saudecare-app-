@@ -1,0 +1,211 @@
+// Atividades da Hikari Fafe (desafios, workshops, eventos): o terapeuta cria a atividade sem escrever código.
+// Cada atividade tem uma página pública própria (atividade.html?a=ID) com descrição, relógio, inscrição e as sessões,
+// que ficam bloqueadas até à hora marcada e depois ficam gravadas na página.
+const TENANT = 'hikari-terapias';
+const BASE = 'https://vindora.pt/atividade.html?a=';
+const MODELO_GUIOES = [{"titulo": "Dia 1 · Raiz", "resumo": "Segurança, chão e pertença. Começamos por pousar.", "guiao": "Procura um sítio sossegado e senta-te com a coluna direita, ou deita-te, como for mais confortável. Fecha os olhos, se te apetecer.\n\nFaz três respirações profundas: entra o ar pelo nariz, sai devagar pela boca. (pausa)\n\nDeixa os ombros caírem. Solta a mandíbula. Deixa a língua descansar. Não tens de fazer nada bem. Basta estares aqui.\n\nHoje vamos ao primeiro centro de energia, a raiz. Fica na base da coluna, onde o corpo toca o chão. Está ligada à segurança, ao sentires que tens lugar neste mundo.\n\nLeva a atenção à zona da bacia, ao ponto em que estás sentado ou deitado. Sente o apoio por baixo de ti. (pausa)\n\nImagina uma luz vermelha, quente e suave, a acender-se aí, do tamanho de uma pequena esfera. A cada expiração, ela fica um pouco mais calorosa.\n\nAgora imagina raízes a crescerem desta luz, descendo pelas pernas, atravessando o chão, entrando na terra. Raízes fortes e tranquilas, que descem fundo. (pausa)\n\nDiz para dentro, ao teu ritmo: «Estou seguro. Tenho lugar. Posso pousar.» (pausa)\n\nSe houver tensão nas pernas ou na barriga, deixa-a escorrer pelas raízes e entregar-se à terra. A terra recebe tudo sem esforço. (pausa)\n\nRespira com esta luz vermelha e estas raízes, mais três respirações.\n\nVolta agora à respiração, simples e calma. Sente o peso do corpo onde estás. (pausa)\n\nMexe devagar os dedos das mãos e dos pés. Quando quiseres, abre os olhos.\n\nBebe um copo de água e leva contigo esta calma. Amanhã, à mesma hora, há mais uma meditação à tua espera."}, {"titulo": "Dia 2 · Coroa", "resumo": "Abertura e silêncio. Abrimos o topo para a energia circular.", "guiao": "Procura um sítio sossegado e senta-te com a coluna direita, ou deita-te, como for mais confortável. Fecha os olhos, se te apetecer.\n\nFaz três respirações profundas: entra o ar pelo nariz, sai devagar pela boca. (pausa)\n\nDeixa os ombros caírem. Solta a mandíbula. Deixa a língua descansar. Não tens de fazer nada bem. Basta estares aqui.\n\nOntem acordámos a raiz. Hoje vamos ao lado oposto, à coroa, no topo da cabeça. Está ligada à abertura, ao silêncio e à sensação de fazer parte de algo maior.\n\nLeva a atenção ao alto da cabeça. Imagina que ali existe uma pequena abertura, como uma janela que se entreabre. (pausa)\n\nVisualiza uma luz violeta e branca, muito suave, a pousar no topo da tua cabeça, como uma chuva fina de luz. Não precisas de a puxar. Ela chega sozinha. (pausa)\n\nDeixa-a descer devagar, pela testa, pelo rosto, pela nuca, pelo pescoço. Cada zona por onde passa fica mais leve e mais solta. (pausa)\n\nAgora sente uma linha de luz a unir o topo da cabeça à base da coluna, e esta à terra. Do chão ao céu, um só caminho aberto. É por aqui que a energia pode circular livremente, sem ficar presa. (pausa)\n\nDiz para dentro: «Estou aberto a receber. Deixo a energia fluir.» (pausa)\n\nFica uns instantes neste silêncio, respirando com esta coluna de luz.\n\nVolta agora à respiração, simples e calma. Sente o peso do corpo onde estás. (pausa)\n\nMexe devagar os dedos das mãos e dos pés. Quando quiseres, abre os olhos.\n\nBebe um copo de água e leva contigo esta calma. Amanhã, à mesma hora, há mais uma meditação à tua espera."}, {"titulo": "Dia 3 · Esplénico", "resumo": "Fluir, emoções e criatividade.", "guiao": "Procura um sítio sossegado e senta-te com a coluna direita, ou deita-te, como for mais confortável. Fecha os olhos, se te apetecer.\n\nFaz três respirações profundas: entra o ar pelo nariz, sai devagar pela boca. (pausa)\n\nDeixa os ombros caírem. Solta a mandíbula. Deixa a língua descansar. Não tens de fazer nada bem. Basta estares aqui.\n\nCom a raiz e a coroa acordadas, a energia já tem por onde passar. Hoje vamos ao segundo centro, o esplénico, também chamado sacral, três dedos abaixo do umbigo. Fala-nos do fluir: das emoções, da criatividade e do prazer de estar vivo.\n\nLeva a atenção à zona do baixo-ventre. Pousa uma mão aí, se quiseres. (pausa)\n\nImagina uma luz cor de laranja, como o céu ao fim do dia, a ondular nesse espaço, como água morna a mexer devagar. (pausa)\n\nA cada inspiração, a água sobe e enche. A cada expiração, escorre e solta. Sem forçar. É natural as emoções virem e irem como ondas. (pausa)\n\nSe houver algo que tens guardado, uma mágoa, uma pressa, uma culpa, deixa-o dissolver-se nesta água e seguir o seu curso. (pausa)\n\nDiz para dentro: «Deixo as emoções passar. Permito-me sentir e criar.» (pausa)\n\nFica com esta onda laranja, tranquila, a embalar o teu centro.\n\nVolta agora à respiração, simples e calma. Sente o peso do corpo onde estás. (pausa)\n\nMexe devagar os dedos das mãos e dos pés. Quando quiseres, abre os olhos.\n\nBebe um copo de água e leva contigo esta calma. Amanhã, à mesma hora, há mais uma meditação à tua espera."}, {"titulo": "Dia 4 · Plexo solar", "resumo": "Vontade, confiança e clareza.", "guiao": "Procura um sítio sossegado e senta-te com a coluna direita, ou deita-te, como for mais confortável. Fecha os olhos, se te apetecer.\n\nFaz três respirações profundas: entra o ar pelo nariz, sai devagar pela boca. (pausa)\n\nDeixa os ombros caírem. Solta a mandíbula. Deixa a língua descansar. Não tens de fazer nada bem. Basta estares aqui.\n\nHoje vamos ao plexo solar, um pouco acima do umbigo, no centro do corpo. É o nosso sol interior: tem a ver com a vontade, a confiança e o dizer «sim» e «não» com clareza.\n\nLeva a atenção à boca do estômago. Pousa a mão aí, se te ajudar. (pausa)\n\nImagina uma luz amarela, brilhante e quente, como o sol da manhã, a crescer nesse ponto. A cada expiração, ela fica mais clara e mais forte. (pausa)\n\nSente este calor a espalhar-se pelas costas, pelas costelas, pelos braços. Ocupas o teu espaço sem pedir desculpa. (pausa)\n\nLembra-te de um momento em que agiste com coragem, mesmo pequeno. Deixa essa sensação encher o peito e o abdómen. (pausa)\n\nDiz para dentro: «Confio em mim. Tenho força. Escolho com clareza.» (pausa)\n\nRespira com este sol dentro de ti, mais três respirações, e deixa-o brilhar.\n\nVolta agora à respiração, simples e calma. Sente o peso do corpo onde estás. (pausa)\n\nMexe devagar os dedos das mãos e dos pés. Quando quiseres, abre os olhos.\n\nBebe um copo de água e leva contigo esta calma. Amanhã, à mesma hora, há mais uma meditação à tua espera."}, {"titulo": "Dia 5 · Coração", "resumo": "Amor, gratidão e compaixão.", "guiao": "Procura um sítio sossegado e senta-te com a coluna direita, ou deita-te, como for mais confortável. Fecha os olhos, se te apetecer.\n\nFaz três respirações profundas: entra o ar pelo nariz, sai devagar pela boca. (pausa)\n\nDeixa os ombros caírem. Solta a mandíbula. Deixa a língua descansar. Não tens de fazer nada bem. Basta estares aqui.\n\nHoje vamos ao coração, no centro do peito. É o ponto de ligação entre o que vem de baixo e o que vem de cima. Fala-nos de amor, de gratidão e de compaixão, também por nós.\n\nLeva a atenção ao peito. Pousa uma mão sobre o coração e sente-o bater. (pausa)\n\nImagina uma luz verde, suave, com um toque de rosa, a abrir-se aí como uma flor ao amanhecer. Cada respiração abre mais uma pétala. (pausa)\n\nPensa em alguém ou em algo que te faz bem. Deixa o calor dessa lembrança encher a flor. (pausa)\n\nAgora dirige um pouco desse calor a ti. Pelo que já passaste, pelo que fazes todos os dias. Diz para dentro: «Obrigado. Eu mereço cuidado.» (pausa)\n\nSe vier alguma emoção, deixa-a vir. O coração aguenta. (pausa)\n\nRespira com esta flor aberta e deixa o seu perfume espalhar-se pelo corpo todo.\n\nVolta agora à respiração, simples e calma. Sente o peso do corpo onde estás. (pausa)\n\nMexe devagar os dedos das mãos e dos pés. Quando quiseres, abre os olhos.\n\nBebe um copo de água e leva contigo esta calma. Amanhã, à mesma hora, há mais uma meditação à tua espera."}, {"titulo": "Dia 6 · Garganta", "resumo": "Voz, verdade e escuta.", "guiao": "Procura um sítio sossegado e senta-te com a coluna direita, ou deita-te, como for mais confortável. Fecha os olhos, se te apetecer.\n\nFaz três respirações profundas: entra o ar pelo nariz, sai devagar pela boca. (pausa)\n\nDeixa os ombros caírem. Solta a mandíbula. Deixa a língua descansar. Não tens de fazer nada bem. Basta estares aqui.\n\nHoje vamos à garganta, no centro do pescoço. É o centro da voz, de dizer o que sentimos e o que pensamos, e também do saber ouvir.\n\nLeva a atenção ao pescoço e à garganta. Roda a cabeça devagar para um lado e para o outro, para soltar. (pausa)\n\nImagina uma luz azul clara, fresca, como um céu limpo, a acender-se na garganta. A cada expiração, ela fica mais ampla e mais livre. (pausa)\n\nFaz um suspiro sonoro, deixando o ar sair pela boca com um «aaah». Uma vez, outra vez. Sente a garganta a soltar. (pausa)\n\nPensa numa coisa que gostavas de dizer e ainda não disseste. Não é preciso dizê-la agora. Basta deixar que ela exista dentro de ti, com a luz azul à volta. (pausa)\n\nDiz para dentro: «A minha voz é válida. Digo a minha verdade com calma.» (pausa)\n\nRespira com este céu azul na garganta e deixa o pescoço descansar.\n\nVolta agora à respiração, simples e calma. Sente o peso do corpo onde estás. (pausa)\n\nMexe devagar os dedos das mãos e dos pés. Quando quiseres, abre os olhos.\n\nBebe um copo de água e leva contigo esta calma. Amanhã, à mesma hora, há mais uma meditação à tua espera."}, {"titulo": "Dia 7 · Terceiro olho", "resumo": "Intuição e visão. Juntamos tudo.", "guiao": "Procura um sítio sossegado e senta-te com a coluna direita, ou deita-te, como for mais confortável. Fecha os olhos, se te apetecer.\n\nFaz três respirações profundas: entra o ar pelo nariz, sai devagar pela boca. (pausa)\n\nDeixa os ombros caírem. Solta a mandíbula. Deixa a língua descansar. Não tens de fazer nada bem. Basta estares aqui.\n\nHoje chegamos ao sétimo dia, ao terceiro olho, entre as sobrancelhas, um pouco acima. É o centro da intuição, da visão interior e do ver as coisas com clareza.\n\nLeva a atenção ao espaço entre as sobrancelhas. Mantém os olhos fechados e relaxa a testa. (pausa)\n\nImagina uma luz índigo, um azul profundo, como o céu pouco antes da noite, a acender-se aí. Calma e silenciosa. (pausa)\n\nDeixa a mente aquietar-se. Se vierem pensamentos, deixa-os passar como nuvens, sem os seguir. (pausa)\n\nAgora faz uma viagem rápida por todos os centros que visitámos: a raiz vermelha, o laranja do ventre, o sol amarelo, a flor verde do coração, o azul da garganta, o índigo aqui, e a luz violeta no topo. (pausa)\n\nSente-os ligados por uma coluna de luz, do chão ao céu, a energia a circular livremente de baixo para cima e de cima para baixo. (pausa)\n\nDiz para dentro: «Vejo com clareza. Confio na minha intuição.» (pausa)\n\nFica uns instantes a sentir este conjunto, inteiro e equilibrado, e agradece-te por estes sete dias.\n\nVolta agora à respiração, simples e calma. Sente o peso do corpo onde estás. (pausa)\n\nMexe devagar os dedos das mãos e dos pés. Quando quiseres, abre os olhos.\n\nBebe um copo de água e leva contigo esta calma. Amanhã, à mesma hora, há mais uma meditação à tua espera."}];
+
+export function renderAtividades(main, ctx) {
+  const { db, fs, escapeHtml: esc, toast } = ctx;
+  const $ = (id) => document.getElementById(id);
+  const ms = (t) => (t && t.toMillis ? t.toMillis() : (t ? new Date(t).getTime() : 0));
+  const pad = (n) => String(n).padStart(2, '0');
+  const paraInput = (t) => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const quando = (t) => new Date(t).toLocaleString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  const TIPOS = { desafio: '🌈 Desafio', workshop: '📚 Workshop', evento: '🎪 Evento', meditacao: '🧘 Meditação' };
+  const EST = { rascunho: '📝 Rascunho', aberta: '🟢 Aberta', encerrada: '⛔ Encerrada' };
+  let lista = [], E = null, inscritos = [];
+
+  if (ctx.tenantId !== TENANT) { main.innerHTML = '<div class="card"><h2>🔒 Ferramenta indisponível</h2><p class="muted">Esta ferramenta é exclusiva de uma conta específica.</p></div>'; return; }
+
+  const estiloInp = 'width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:15px';
+  const inp = (id, label, v, tipo, extra) => `<label style="display:block;margin-top:8px;font-size:13px;color:#6d6477">${label}<input id="${id}" type="${tipo || 'text'}" value="${esc(v == null ? '' : v)}" style="${estiloInp}" ${extra || ''}></label>`;
+  const area = (id, label, v, linhas) => `<label style="display:block;margin-top:8px;font-size:13px;color:#6d6477">${label}<textarea id="${id}" rows="${linhas || 4}" style="${estiloInp}">${esc(v || '')}</textarea></label>`;
+
+  /* ───── dados ───── */
+  async function carregarLista() {
+    const snap = await fs.getDocs(fs.query(fs.collection(db, 'public_atividades'), fs.where('tenantId', '==', TENANT)));
+    lista = []; snap.forEach((d) => lista.push(Object.assign({ id: d.id }, d.data())));
+    lista.sort((a, b) => ms(b.criadoTs) - ms(a.criadoTs));
+  }
+  async function carregarAtividade(id) {
+    const d = lista.find((x) => x.id === id) || (await fs.getDoc(fs.doc(db, 'public_atividades', id))).data();
+    const ss = await fs.getDocs(fs.collection(db, 'public_atividades', id, 'sessoes'));
+    const cs = await fs.getDocs(fs.collection(db, 'public_atividades', id, 'conteudos'));
+    const cont = {}; cs.forEach((c) => { cont[c.id] = c.data(); });
+    const ses = []; ss.forEach((s) => { const x = s.data(); ses.push({ id: s.id, n: x.n || 0, titulo: x.titulo || '', resumo: x.resumo || '', libertaEm: ms(x.libertaEm), url: (cont[s.id] || {}).url || '', guiao: (cont[s.id] || {}).guiao || '' }); });
+    ses.sort((a, b) => a.n - b.n);
+    return { id, d, ses, antigos: ses.map((s) => s.id) };
+  }
+
+  /* ───── modelos ───── */
+  function proximaSegunda() { const d = new Date(); d.setDate(d.getDate() + 5); while (d.getDay() !== 1) d.setDate(d.getDate() + 1); d.setHours(21, 30, 0, 0); return d; }
+  function modeloChakras() {
+    const ini = proximaSegunda();
+    return { id: null, d: { tipo: 'desafio', estado: 'rascunho', titulo: 'Desafio 7 Chakras · 7 Dias · 7 Minutos', subtitulo: 'Uma meditação guiada por dia, às 21:30, para pôr a tua energia a fluir.',
+      descricao: '7 chakras, 7 dias, 7 minutos. Todos os dias às 21:30 vou libertar aqui uma meditação guiada curta, de cerca de 7 minutos, dedicada a um dos teus centros de energia.\nComeçamos pela raiz e pela coroa, os dois extremos. Ao acordar primeiro a base e o topo, a energia tem por onde circular e o resto do percurso faz-se com mais suavidade e menos desconforto.\nDepois seguimos pelo esplénico, plexo solar, coração, garganta e terceiro olho, um por dia.\nAs meditações ficam gravadas aqui, por isso podes fazê-las à hora ou mais tarde, e repeti-las quando quiseres.\nNão precisas de experiência. Só de um sítio sossegado, sete minutos e vontade de te ouvires.\nEsta atividade é de bem-estar e relaxamento e não substitui acompanhamento médico ou psicológico.',
+      duracao: '7 minutos por dia', horario: 'Todos os dias às 21:30', minutos: 10, grupoLink: '',
+      ctaTitulo: 'Gostaste? Vai mais fundo com o Reiki', ctaTexto: 'Se sentiste algo a mexer durante estes 7 dias, uma sessão de Reiki ajuda a continuar este trabalho com acompanhamento.', ctaBotao: 'Falar comigo no WhatsApp', ctaLink: '' },
+      ses: MODELO_GUIOES.map((g, i) => { const d = new Date(ini); d.setDate(d.getDate() + i); return { id: 's' + (i + 1), n: i + 1, titulo: g.titulo, resumo: g.resumo, libertaEm: d.getTime(), url: '', guiao: g.guiao }; }), antigos: [] };
+  }
+  function modeloWorkshop() {
+    const d = new Date(); d.setDate(d.getDate() + 10); d.setHours(21, 0, 0, 0);
+    return { id: null, d: { tipo: 'workshop', estado: 'rascunho', titulo: 'Workshop', subtitulo: '', descricao: 'Descreve aqui o que vai acontecer, para quem é e o que cada pessoa leva consigo.', duracao: '1 hora', horario: '', minutos: 60, grupoLink: '', ctaTitulo: '', ctaTexto: '', ctaBotao: '', ctaLink: '' },
+      ses: [{ id: 's1', n: 1, titulo: 'Sessão ao vivo', resumo: 'Cola em baixo o link da sala (Zoom, Meet…).', libertaEm: d.getTime(), url: '', guiao: '' }], antigos: [] };
+  }
+  function modeloBranco() {
+    const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(21, 30, 0, 0);
+    return { id: null, d: { tipo: 'desafio', estado: 'rascunho', titulo: 'Nova atividade', subtitulo: '', descricao: '', duracao: '', horario: '', minutos: 10, grupoLink: '', ctaTitulo: '', ctaTexto: '', ctaBotao: '', ctaLink: '' },
+      ses: [{ id: 's1', n: 1, titulo: 'Dia 1', resumo: '', libertaEm: d.getTime(), url: '', guiao: '' }], antigos: [] };
+  }
+
+  /* ───── ecrãs ───── */
+  async function ecraLista() {
+    E = null; main.innerHTML = '<div class="card"><p class="muted">A carregar…</p></div>';
+    try { await carregarLista(); } catch (e) { main.innerHTML = `<div class="card"><h2>🌈 Atividades</h2><p class="muted">Não consegui abrir: ${esc(e.message || e)}. Se acabou de atualizar, confirme que as regras do Firestore já foram publicadas.</p></div>`; return; }
+    main.innerHTML = `<div class="card"><h2>🌈 Atividades</h2>
+      <p class="muted">Crie desafios, workshops e eventos. Cada um tem uma página própria com descrição, relógio e inscrição, e as sessões abrem sozinhas à hora marcada.</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="primary" onclick="atNovo('chakras')">🌈 Desafio 7 Chakras (modelo pronto)</button>
+        <button class="ghost" onclick="atNovo('workshop')">📚 Workshop (1 sessão)</button>
+        <button class="ghost" onclick="atNovo('branco')">➕ Em branco</button></div></div>
+      ${lista.map((a) => `<div class="card" style="cursor:pointer" onclick="atAbrir('${a.id}')"><b>${esc(a.titulo || 'Atividade')}</b> <span class="muted">${TIPOS[a.tipo] || ''} · ${EST[a.estado] || a.estado}</span></div>`).join('') || '<p class="muted" style="text-align:center">Ainda não criou nenhuma atividade.</p>'}`;
+  }
+
+  function sessaoHtml(s, i) {
+    return `<div style="border:1px solid #e5def0;border-radius:14px;padding:10px;margin-top:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><b>Sessão ${i + 1}</b><button class="ghost" style="padding:4px 10px" onclick="atTirarSessao(${i})">🗑️</button></div>
+      ${inp('sT' + i, 'Título', s.titulo)}${inp('sR' + i, 'Resumo (uma frase)', s.resumo)}${inp('sD' + i, 'Abre em (data e hora)', paraInput(s.libertaEm), 'datetime-local')}
+      ${inp('sU' + i, 'Link do áudio ou vídeo (YouTube, ficheiro mp3/mp4…)', s.url, 'text', 'placeholder="cole aqui o link depois de gravar"')}
+      <details style="margin-top:8px"><summary style="cursor:pointer;font-size:13.5px"><b>📖 Texto da meditação (guião)</b> ${s.guiao ? '· preenchido' : ''}</summary>${area('sG' + i, 'Aparece na página para quem quiser ler. Cada «(pausa)» são 10 a 15 segundos de silêncio.', s.guiao, 10)}</details></div>`;
+  }
+
+  function ecraEditor() {
+    const d = E.d, novo = !E.id;
+    const link = E.id ? BASE + E.id : '';
+    main.innerHTML = `<button class="ghost" onclick="atLista()">← Atividades</button>
+      <div class="card"><h2>${TIPOS[d.tipo] || ''} ${novo ? '(nova)' : ''}</h2>
+        <label style="display:block;margin-top:8px;font-size:13px;color:#6d6477">Tipo<select id="aTipo" style="${estiloInp}">${Object.keys(TIPOS).map((k) => `<option value="${k}" ${d.tipo === k ? 'selected' : ''}>${TIPOS[k]}</option>`).join('')}</select></label>
+        ${inp('aTit', 'Título', d.titulo)}${inp('aSub', 'Frase curta por baixo do título', d.subtitulo)}${area('aDesc', 'Descrição (uma linha em branco separa parágrafos)', d.descricao, 9)}
+        ${inp('aDur', 'Duração (aparece num rótulo)', d.duracao)}${inp('aHor', 'Horário (aparece num rótulo)', d.horario)}${inp('aMin', 'Minutos de cada sessão (para o calendário)', d.minutos, 'number')}
+        ${inp('aGrupo', 'Link do grupo de WhatsApp (opcional)', d.grupoLink, 'text', 'placeholder="https://chat.whatsapp.com/…"')}</div>
+      <div class="card"><h3>📅 Sessões</h3>
+        <p class="muted">As sessões abrem sozinhas à hora marcada. Antes disso, ninguém consegue ver o conteúdo.</p>
+        <div style="background:#f5f1fb;border-radius:12px;padding:10px;margin:8px 0"><b style="font-size:13.5px">Gerar as datas de uma vez</b>
+          <div class="row" style="gap:8px;flex-wrap:wrap">${inp('gDia', 'Primeiro dia', paraInput(E.ses.length ? E.ses[0].libertaEm : Date.now()).slice(0, 10), 'date')}${inp('gHora', 'Hora', paraInput(E.ses.length ? E.ses[0].libertaEm : Date.now()).slice(11), 'time')}</div>
+          <button class="ghost" style="margin-top:8px" onclick="atGerarDatas()">📅 Uma sessão por dia, a partir daqui</button></div>
+        ${E.ses.map(sessaoHtml).join('')}
+        <button class="ghost" style="margin-top:10px" onclick="atMaisSessao()">➕ Juntar sessão</button></div>
+      <div class="card"><h3>💚 No fim: convite para o Reiki</h3><p class="muted">Aparece na página só a quem está inscrito. Deixe vazio para não mostrar.</p>
+        ${inp('aCtaT', 'Título', d.ctaTitulo)}${area('aCtaX', 'Texto', d.ctaTexto, 3)}${inp('aCtaB', 'Texto do botão', d.ctaBotao)}${inp('aCtaL', 'Link do botão (vazio = WhatsApp do Ricardo)', d.ctaLink)}</div>
+      <div class="card"><div class="row" style="gap:8px;flex-wrap:wrap"><button class="primary" onclick="atGuardar()">💾 Guardar</button>
+        ${E.id && d.estado === 'rascunho' ? '<button class="ghost" onclick="atEstado(\'aberta\')">🟢 Abrir inscrições (publicar)</button>' : ''}
+        ${E.id && d.estado === 'aberta' ? '<button class="ghost" onclick="atEstado(\'rascunho\')">⏸️ Tirar da página</button><button class="ghost" onclick="atEstado(\'encerrada\')">⛔ Encerrar inscrições</button>' : ''}
+        ${E.id && d.estado === 'encerrada' ? '<button class="ghost" onclick="atEstado(\'aberta\')">🟢 Reabrir inscrições</button>' : ''}</div>
+        <p class="muted" style="margin-top:8px">Estado: <b>${esc(EST[d.estado] || d.estado)}</b>${novo ? ' · guarde primeiro para ter o link.' : ''}</p>
+        ${link ? `<p style="margin-top:6px;word-break:break-all"><b>Link da atividade:</b><br>${link}</p><div class="row" style="gap:6px;flex-wrap:wrap"><button class="ghost" onclick="atCopiar('${link}')">🔗 Copiar link</button><a class="ghost" href="${link}" target="_blank" style="padding:10px 14px;text-decoration:none">👁️ Ver página</a></div>` : ''}</div>
+      <div id="atResto"></div>`;
+    if (E.id) carregarInscritos().then(desenharResto);
+  }
+
+  async function carregarInscritos() {
+    inscritos = [];
+    try { const s = await fs.getDocs(fs.collection(db, 'public_atividades', E.id, 'inscricoes')); s.forEach((x) => inscritos.push(Object.assign({ id: x.id }, x.data()))); inscritos.sort((a, b) => ms(a.criadoEm) - ms(b.criadoEm)); } catch (e) { /* sem acesso */ }
+  }
+
+  /* ───── divulgação ───── */
+  function textos() {
+    const d = E.d, l = BASE + E.id, ses = E.ses;
+    const t = [];
+    t.push(['📣 Convite (lançamento)', `✨ ${d.titulo}\n${d.subtitulo || ''}\n\n${d.horario ? '🕘 ' + d.horario + '\n' : ''}${d.duracao ? '⏱️ ' + d.duracao + '\n' : ''}🎁 Grátis, é só inscreveres-te:\n👉 ${l}\n\n#hikarifafe #meditacao #chakras #reiki #bemestar #fafe`]);
+    t.push(['💬 WhatsApp (convidar amigos e clientes)', `Olá! 😊 Vou fazer um desafio grátis: ${d.titulo}.\n${d.subtitulo || ''}\nInscreve-te aqui: ${l}\nPartilha com quem gostas! 💛`]);
+    ses.forEach((s, i) => t.push([`🔔 Lembrete — ${s.titulo}`, `🌙 Hoje às ${new Date(s.libertaEm).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}: ${s.titulo}.\n${s.resumo || ''}\nA meditação já está à tua espera aqui 👉 ${l}`]));
+    t.push(['💚 Depois do desafio (convite Reiki)', `Obrigado por teres feito este caminho comigo! 🙏\nSe sentiste algo a mexer, uma sessão de Reiki ajuda a continuar este trabalho.\nFala comigo por WhatsApp: https://wa.me/351928122918`]);
+    return t;
+  }
+  const CART = {};
+  function carregarLogo() { return new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = 'logo-hikari-fafe.png'; }); }
+  function quebra(ctx2, texto, x, y, larg, alt) { let l = ''; for (const p of String(texto).split(' ')) { const t = l ? l + ' ' + p : p; if (ctx2.measureText(t).width > larg && l) { ctx2.fillText(l, x, y); y += alt; l = p; } else l = t; } if (l) { ctx2.fillText(l, x, y); y += alt; } return y; }
+  async function cartaz(h) {
+    const w = 1080, c = document.createElement('canvas'); c.width = w; c.height = h; const g2 = c.getContext('2d'), d = E.d, logo = await carregarLogo();
+    const F = 'system-ui, -apple-system, "Segoe UI", Roboto, "Noto Color Emoji", sans-serif', story = h > 1500;
+    const gr = g2.createLinearGradient(0, 0, w * 0.4, h); gr.addColorStop(0, '#2d1b4e'); gr.addColorStop(0.55, '#5b2a86'); gr.addColorStop(1, '#b0508f'); g2.fillStyle = gr; g2.fillRect(0, 0, w, h);
+    let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 70; i++) { g2.globalAlpha = 0.15 + rnd() * 0.5; g2.fillStyle = '#f0d878'; g2.beginPath(); g2.arc(rnd() * w, rnd() * h, 1 + rnd() * 3, 0, 7); g2.fill(); } g2.globalAlpha = 1;
+    g2.textAlign = 'center'; let y = story ? 250 : 40;
+    if (logo) { g2.save(); g2.beginPath(); g2.arc(w / 2, y + 80, 80, 0, 7); g2.closePath(); g2.fillStyle = '#fff'; g2.fill(); g2.clip(); g2.drawImage(logo, w / 2 - 80, y, 160, 160); g2.restore(); g2.lineWidth = 6; g2.strokeStyle = '#d4af37'; g2.beginPath(); g2.arc(w / 2, y + 80, 80, 0, 7); g2.stroke(); }
+    y += 250; g2.fillStyle = '#fff'; g2.font = `800 76px ${F}`; y = quebra(g2, d.titulo || '', w / 2, y, 900, 90);
+    y += 10; g2.fillStyle = '#f0d878'; g2.font = `600 40px ${F}`; y = quebra(g2, d.subtitulo || '', w / 2, y + 10, 880, 54);
+    y += 30; const chips = [d.duracao && '⏱️ ' + d.duracao, d.horario && '🕘 ' + d.horario, '🎁 Grátis'].filter(Boolean);
+    g2.font = `700 38px ${F}`; chips.forEach((t) => { const lw = g2.measureText(t).width + 70; g2.fillStyle = 'rgba(255,255,255,.18)'; g2.beginPath(); g2.roundRect(w / 2 - lw / 2, y - 44, lw, 66, 33); g2.fill(); g2.fillStyle = '#fff'; g2.fillText(t, w / 2, y); y += 84; });
+    if (E.ses.length) { g2.fillStyle = '#f0d878'; g2.font = `700 40px ${F}`; g2.fillText('Começa ' + new Date(E.ses[0].libertaEm).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' }), w / 2, h - (story ? 250 : 150)); }
+    g2.fillStyle = '#25d366'; g2.beginPath(); g2.roundRect(w / 2 - 320, h - (story ? 200 : 110), 640, 74, 37); g2.fill(); g2.fillStyle = '#073b17'; g2.font = `800 34px ${F}`; g2.fillText('Inscreve-te no link da bio', w / 2, h - (story ? 152 : 62));
+    return c;
+  }
+  async function desenharCartazes() {
+    const al = $('atImgs'); if (!al) return;
+    try {
+      CART.post = await cartaz(1350); CART.story = await cartaz(1920);
+      al.innerHTML = [['post', 'Publicação (Instagram / Facebook)'], ['story', 'Stories / Estado do WhatsApp']].map(([k, t]) => `<div style="margin:10px 0"><b>${t}</b><div id="atImg_${k}" style="margin:6px 0"></div><div class="row" style="gap:6px;flex-wrap:wrap"><button class="ghost" onclick="atBaixarImg('${k}')">⬇️ Descarregar</button><button class="ghost" onclick="atPartilharImg('${k}')">📲 Partilhar</button></div></div>`).join('');
+      ['post', 'story'].forEach((k) => { CART[k].style.cssText = 'width:100%;max-width:340px;border-radius:12px'; $('atImg_' + k).appendChild(CART[k]); });
+    } catch (e) { al.innerHTML = '<p class="muted">Não consegui criar as imagens.</p>'; }
+  }
+
+  function desenharResto() {
+    const al = $('atResto'); if (!al) return;
+    const reiki = inscritos.filter((x) => x.reiki);
+    al.innerHTML = `<div class="card"><h3>👥 Inscritos: ${inscritos.length}</h3><p class="muted">Quiseram receber novidades de Reiki: <b>${reiki.length}</b></p>
+      <div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0"><button class="ghost" onclick="atCopiarInscritos(false)">📋 Copiar todos</button><button class="ghost" onclick="atCopiarInscritos(true)">💚 Copiar quem quer Reiki</button></div>
+      <div style="max-height:240px;overflow:auto;font-size:13.5px">${inscritos.map((p) => `<div style="padding:5px 0;border-top:1px solid #eee">${esc(p.nome)} <span class="muted">· ${esc(p.contacto)}${p.reiki ? ' · 💚' : ''}</span></div>`).join('') || '<p class="muted">Ainda ninguém se inscreveu.</p>'}</div></div>
+      <div class="card"><h3>📣 Divulgar</h3><h4 style="margin:8px 0 4px">🖼️ Imagens</h4><div id="atImgs"><p class="muted">A criar as imagens…</p></div>
+      <h4 style="margin:12px 0 4px">✍️ Textos prontos</h4>${textos().map((p, i) => `<details style="margin:6px 0"><summary><b>${esc(p[0])}</b></summary><textarea id="atPub${i}" rows="7" style="${estiloInp}">${esc(p[1])}</textarea><button class="ghost" onclick="atCopiarPub(${i})">📋 Copiar texto</button></details>`).join('')}
+      <p class="muted" style="margin-top:8px">Dica: no dia de cada sessão, envie o lembrete às inscritas por WhatsApp (copie os contactos acima).</p></div>`;
+    setTimeout(desenharCartazes, 0);
+  }
+
+  /* ───── ações ───── */
+  function ler() {
+    const v = (id) => ($(id) ? $(id).value : '');
+    E.d = Object.assign(E.d, { tipo: v('aTipo'), titulo: v('aTit').trim(), subtitulo: v('aSub').trim(), descricao: v('aDesc').trim(), duracao: v('aDur').trim(), horario: v('aHor').trim(), minutos: Math.max(1, parseInt(v('aMin'), 10) || 10), grupoLink: v('aGrupo').trim(), ctaTitulo: v('aCtaT').trim(), ctaTexto: v('aCtaX').trim(), ctaBotao: v('aCtaB').trim(), ctaLink: v('aCtaL').trim() });
+    E.ses = E.ses.map((s, i) => Object.assign({}, s, { titulo: v('sT' + i).trim(), resumo: v('sR' + i).trim(), libertaEm: v('sD' + i) ? new Date(v('sD' + i)).getTime() : s.libertaEm, url: v('sU' + i).trim(), guiao: v('sG' + i).trim() }));
+  }
+  const copiar = async (t) => { try { await navigator.clipboard.writeText(t); toast('Copiado.'); } catch (_) { toast('Não consegui copiar.', true); } };
+  window.atLista = () => ecraLista();
+  window.atNovo = (q) => { E = q === 'chakras' ? modeloChakras() : (q === 'workshop' ? modeloWorkshop() : modeloBranco()); ecraEditor(); };
+  window.atAbrir = async (id) => { try { E = await carregarAtividade(id); ecraEditor(); } catch (e) { toast('Não consegui abrir: ' + (e.message || e), true); } };
+  window.atMaisSessao = () => { ler(); const ult = E.ses[E.ses.length - 1], t = ult ? ult.libertaEm + 864e5 : Date.now() + 864e5; E.ses.push({ id: 's' + (Math.max(0, ...E.ses.map((s) => s.n)) + 1), n: Math.max(0, ...E.ses.map((s) => s.n)) + 1, titulo: 'Dia ' + (E.ses.length + 1), resumo: '', libertaEm: t, url: '', guiao: '' }); ecraEditor(); };
+  window.atTirarSessao = (i) => { if (!confirm('Tirar esta sessão?')) return; ler(); E.ses.splice(i, 1); ecraEditor(); };
+  window.atGerarDatas = () => { ler(); const dia = $('gDia').value, hora = $('gHora').value; if (!dia || !hora) { toast('Escolha o primeiro dia e a hora.', true); return; } const [y, m, d] = dia.split('-').map(Number), [hh, mm] = hora.split(':').map(Number); E.ses.forEach((s, i) => { s.libertaEm = new Date(y, m - 1, d + i, hh, mm).getTime(); }); ecraEditor(); toast('Datas atualizadas. Falta guardar.'); };
+  window.atGuardar = async () => {
+    ler();
+    if (!E.d.titulo) { toast('Escreva o título.', true); return; }
+    if (!E.ses.length) { toast('Junte pelo menos uma sessão.', true); return; }
+    try {
+      const dados = Object.assign({}, E.d, { tenantId: TENANT, gratis: true, inicioTs: fs.Timestamp.fromMillis(Math.min(...E.ses.map((s) => s.libertaEm))) });
+      if (!E.id) { const ref = fs.doc(fs.collection(db, 'public_atividades')); await fs.setDoc(ref, Object.assign(dados, { estado: 'rascunho', criadoTs: fs.serverTimestamp() })); E.id = ref.id; E.d.estado = 'rascunho'; }
+      else await fs.updateDoc(fs.doc(db, 'public_atividades', E.id), dados);
+      const ordenadas = E.ses.slice().sort((a, b) => a.libertaEm - b.libertaEm); E.ses = ordenadas;
+      for (let i = 0; i < ordenadas.length; i++) {
+        const s = ordenadas[i], sid = 's' + (i + 1); s.n = i + 1;
+        await fs.setDoc(fs.doc(db, 'public_atividades', E.id, 'sessoes', sid), { n: i + 1, titulo: s.titulo, resumo: s.resumo, libertaEm: fs.Timestamp.fromMillis(s.libertaEm) });
+        await fs.setDoc(fs.doc(db, 'public_atividades', E.id, 'conteudos', sid), { url: s.url, guiao: s.guiao });
+        s.id = sid;
+      }
+      for (const velho of E.antigos) if (!ordenadas.some((s) => s.id === velho)) { await fs.deleteDoc(fs.doc(db, 'public_atividades', E.id, 'sessoes', velho)); await fs.deleteDoc(fs.doc(db, 'public_atividades', E.id, 'conteudos', velho)); }
+      E.antigos = ordenadas.map((s) => s.id);
+      toast('Guardado.'); await carregarLista(); ecraEditor();
+    } catch (e) { toast('Não consegui guardar: ' + (e.message || e), true); }
+  };
+  window.atEstado = async (est) => {
+    try { await fs.updateDoc(fs.doc(db, 'public_atividades', E.id), { estado: est }); E.d.estado = est; toast(est === 'aberta' ? 'Inscrições abertas. A página já funciona.' : (est === 'encerrada' ? 'Inscrições encerradas.' : 'Tirada da página.')); await carregarLista(); ecraEditor(); }
+    catch (e) { toast('Não consegui: ' + (e.message || e), true); }
+  };
+  window.atCopiar = (t) => copiar(t);
+  window.atCopiarPub = (i) => copiar($('atPub' + i).value);
+  window.atCopiarInscritos = (soReiki) => copiar(inscritos.filter((p) => !soReiki || p.reiki).map((p) => `${p.nome}: ${p.contacto}`).join('\n'));
+  const blobDe = (k) => new Promise((r) => CART[k].toBlob(r, 'image/png'));
+  window.atBaixarImg = async (k) => { const b = await blobDe(k); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'atividade-hikari-fafe-' + k + '.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
+  window.atPartilharImg = async (k) => { const b = await blobDe(k); const f = new File([b], 'atividade-hikari-fafe-' + k + '.png', { type: 'image/png' }); try { if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: E.d.titulo }); return; } } catch (e) { if (e && e.name === 'AbortError') return; } window.atBaixarImg(k); toast('Imagem descarregada.'); };
+
+  ecraLista();
+}

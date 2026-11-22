@@ -551,6 +551,39 @@ service cloud.firestore {
       }
     }
 
+    // Atividades da Hikari Fafe (desafios, workshops, eventos): páginas públicas com inscrição.
+    // Os conteúdos (áudio/vídeo/guião) só se podem ler a partir da hora de libertação de cada sessão.
+    match /public_atividades/{atividadeId} {
+      allow read: if resource.data.estado in ['aberta', 'encerrada'] || isEquipaClinica('hikari-terapias');
+      allow create: if isEquipaClinica('hikari-terapias') && request.resource.data.tenantId == 'hikari-terapias';
+      allow update: if isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias' && request.resource.data.tenantId == 'hikari-terapias';
+      allow delete: if isEquipaClinica('hikari-terapias') && resource.data.tenantId == 'hikari-terapias';
+
+      match /sessoes/{sessaoId} {
+        allow read: if true;
+        allow write: if isEquipaClinica('hikari-terapias');
+      }
+
+      match /conteudos/{sessaoId} {
+        allow read: if isEquipaClinica('hikari-terapias') ||
+          request.time >= get(/databases/$(database)/documents/public_atividades/$(atividadeId)/sessoes/$(sessaoId)).data.libertaEm;
+        allow write: if isEquipaClinica('hikari-terapias');
+      }
+
+      match /inscricoes/{inscId} {
+        allow create: if isEquipaClinica('hikari-terapias') ||
+          (request.resource.data.keys().hasOnly(['nome', 'contacto', 'aceitou', 'reiki', 'criadoEm', 'origem']) &&
+           request.resource.data.origem == 'site' &&
+           request.resource.data.aceitou == true &&
+           request.resource.data.reiki is bool &&
+           request.resource.data.nome is string && request.resource.data.nome.size() >= 2 && request.resource.data.nome.size() <= 80 &&
+           request.resource.data.contacto is string && request.resource.data.contacto.size() >= 5 && request.resource.data.contacto.size() <= 120 &&
+           request.resource.data.criadoEm == request.time &&
+           get(/databases/$(database)/documents/public_atividades/$(atividadeId)).data.estado == 'aberta');
+        allow read, update, delete: if isEquipaClinica('hikari-terapias');
+      }
+    }
+
     match /public_booking_requests/{requestId} {
       allow create: if request.resource.data.tenantId is string &&
                       request.resource.data.status == "pending_review";
