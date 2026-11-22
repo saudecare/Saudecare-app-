@@ -45,7 +45,7 @@ label.ck{display:flex;gap:9px;font-size:13.5px;color:var(--s);align-items:flex-s
 .sess .res{font-size:14px;color:var(--s);margin-top:4px}
 .player{margin-top:10px}.player iframe,.player video{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000}.player audio{width:100%}
 details.g{margin-top:8px;background:#f5f1fb;border-radius:12px;padding:8px 12px;font-size:14px}details.g summary{cursor:pointer;font-weight:700;color:var(--r3)}details.g div{white-space:pre-wrap;margin-top:6px;color:#3b3350}
-.cta{background:linear-gradient(150deg,#1f4d40,#2f6f5e);color:#fff}.cta h2{color:#fff}.cta p{color:#e1f1ea}
+.sess img.im{width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin-top:8px}.guia{display:flex;gap:14px;align-items:center}.guia img{width:110px;height:140px;object-fit:cover;object-position:top;border-radius:16px;background:#f39d16;flex:none}.cta{background:linear-gradient(150deg,#1f4d40,#2f6f5e);color:#fff}.cta h2{color:#fff}.cta p{color:#e1f1ea}
 footer{text-align:center;font-size:12.5px;color:var(--s);padding:10px 16px 30px}
 </style>
 </head>
@@ -154,8 +154,12 @@ function sessoes() {
     else if (!registado) corpo = `<div class="res">Inscreve-te acima para aceder.</div>`;
     else if (!c) corpo = `<div class="res">Disponível! Se não carregar, atualiza a página daqui a um instante.</div>`;
     else corpo = `<div class="player">${embed(c.url)}${c.guiao ? `<details class="g"><summary>📖 Ler a meditação</summary><div>${esc(c.guiao)}</div></details>` : ''}</div>`;
-    return `<div class="sess ${livre ? 'on' : ''}"><div class="top"><b>${esc(s.titulo)}</b><span class="est ${livre ? 'livre' : 'lock'}">${livre ? 'Disponível' : 'Em breve'}</span></div>${s.resumo ? `<div class="res">${esc(s.resumo)}</div>` : ''}${corpo}</div>`;
+    return `<div class="sess ${livre ? 'on' : ''}"><div class="top"><b>${esc(s.titulo)}</b><span class="est ${livre ? 'livre' : 'lock'}">${livre ? 'Disponível' : 'Em breve'}</span></div>${s.resumo ? `<div class="res">${esc(s.resumo)}</div>` : ''}${s.imagem ? `<img class="im" src="${esc(s.imagem)}" alt="" loading="lazy">` : ''}${corpo}</div>`;
   }).join('')}</div>`;
+}
+function guia() {
+  if (!A.guiaFoto && !A.guiaTexto) return '';
+  return `<div class="card guia">${A.guiaFoto ? `<img src="${esc(A.guiaFoto)}" alt="">` : ''}<div><h2>${esc(A.guiaTitulo || 'Quem te guia')}</h2><p>${esc(A.guiaTexto || '')}</p></div></div>`;
 }
 function cta() {
   if (!A.ctaTitulo && !A.ctaLink) return '';
@@ -164,7 +168,7 @@ function cta() {
 }
 function desenhar() {
   const desc = String(A.descricao || '').split('\n').filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('');
-  $('main').innerHTML = (A.estado === 'encerrada' ? `<div class="card"><p>As inscrições estão encerradas.</p></div>` : '') + relogio() + (desc ? `<div class="card"><h2>Sobre</h2>${desc}</div>` : '') + (A.estado === 'aberta' || registado ? form() : '') + sessoes() + (registado ? cta() : '');
+  $('main').innerHTML = (A.estado === 'encerrada' ? `<div class="card"><p>As inscrições estão encerradas.</p></div>` : '') + relogio() + (desc ? `<div class="card"><h2>Sobre</h2>${desc}</div>` : '') + guia() + (A.estado === 'aberta' || registado ? form() : '') + sessoes() + (registado ? cta() : '');
   const f = $('fIns'); if (f) f.addEventListener('submit', inscrever);
   const c = $('btCal'); if (c) c.addEventListener('click', calendario);
 }

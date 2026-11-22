@@ -33,7 +33,7 @@ export function renderAtividades(main, ctx) {
     const ss = await fs.getDocs(fs.collection(db, 'public_atividades', id, 'sessoes'));
     const cs = await fs.getDocs(fs.collection(db, 'public_atividades', id, 'conteudos'));
     const cont = {}; cs.forEach((c) => { cont[c.id] = c.data(); });
-    const ses = []; ss.forEach((s) => { const x = s.data(); ses.push({ id: s.id, n: x.n || 0, titulo: x.titulo || '', resumo: x.resumo || '', libertaEm: ms(x.libertaEm), url: (cont[s.id] || {}).url || '', guiao: (cont[s.id] || {}).guiao || '' }); });
+    const ses = []; ss.forEach((s) => { const x = s.data(); ses.push({ id: s.id, n: x.n || 0, titulo: x.titulo || '', resumo: x.resumo || '', imagem: x.imagem || '', libertaEm: ms(x.libertaEm), url: (cont[s.id] || {}).url || '', guiao: (cont[s.id] || {}).guiao || '' }); });
     ses.sort((a, b) => a.n - b.n);
     return { id, d, ses, antigos: ses.map((s) => s.id) };
   }
@@ -44,9 +44,9 @@ export function renderAtividades(main, ctx) {
     const ini = proximaSegunda();
     return { id: null, d: { tipo: 'desafio', estado: 'rascunho', titulo: 'Desafio 7 Chakras · 7 Dias · 7 Minutos', subtitulo: 'Uma meditação guiada por dia, às 21:30, para pôr a tua energia a fluir.',
       descricao: '7 chakras, 7 dias, 7 minutos. Todos os dias às 21:30 vou libertar aqui uma meditação guiada curta, de cerca de 7 minutos, dedicada a um dos teus centros de energia.\nComeçamos pela raiz e pela coroa, os dois extremos. Ao acordar primeiro a base e o topo, a energia tem por onde circular e o resto do percurso faz-se com mais suavidade e menos desconforto.\nDepois seguimos pelo esplénico, plexo solar, coração, garganta e terceiro olho, um por dia.\nAs meditações ficam gravadas aqui, por isso podes fazê-las à hora ou mais tarde, e repeti-las quando quiseres.\nNão precisas de experiência. Só de um sítio sossegado, sete minutos e vontade de te ouvires.\nEsta atividade é de bem-estar e relaxamento e não substitui acompanhamento médico ou psicológico.',
-      duracao: '7 minutos por dia', horario: 'Todos os dias às 21:30', minutos: 10, grupoLink: '',
+      duracao: '7 minutos por dia', horario: 'Todos os dias às 21:30', minutos: 10, grupoLink: '', guiaFoto: 'img/ricardo-hikari.png', guiaTitulo: 'Quem te guia', guiaTexto: 'Sou o Ricardo, da Hikari Fafe. Pratico Reiki e terapias energéticas e ensino Reiki. Criei este desafio para te ajudares a sentir a tua energia em poucos minutos por dia.',
       ctaTitulo: 'Gostaste? Vai mais fundo com o Reiki', ctaTexto: 'Se sentiste algo a mexer durante estes 7 dias, uma sessão de Reiki ajuda a continuar este trabalho com acompanhamento.', ctaBotao: 'Falar comigo no WhatsApp', ctaLink: '' },
-      ses: MODELO_GUIOES.map((g, i) => { const d = new Date(ini); d.setDate(d.getDate() + i); return { id: 's' + (i + 1), n: i + 1, titulo: g.titulo, resumo: g.resumo, libertaEm: d.getTime(), url: '', guiao: g.guiao }; }), antigos: [] };
+      ses: MODELO_GUIOES.map((g, i) => { const d = new Date(ini); d.setDate(d.getDate() + i); return { id: 's' + (i + 1), n: i + 1, titulo: g.titulo, resumo: g.resumo, libertaEm: d.getTime(), imagem: 'img/chakras/' + (i + 1) + '.jpg', url: '', guiao: g.guiao }; }), antigos: [] };
   }
   function modeloWorkshop() {
     const d = new Date(); d.setDate(d.getDate() + 10); d.setHours(21, 0, 0, 0);
@@ -75,7 +75,7 @@ export function renderAtividades(main, ctx) {
   function sessaoHtml(s, i) {
     return `<div style="border:1px solid #e5def0;border-radius:14px;padding:10px;margin-top:10px">
       <div style="display:flex;justify-content:space-between;align-items:center"><b>Sessão ${i + 1}</b><button class="ghost" style="padding:4px 10px" onclick="atTirarSessao(${i})">🗑️</button></div>
-      ${inp('sT' + i, 'Título', s.titulo)}${inp('sR' + i, 'Resumo (uma frase)', s.resumo)}${inp('sD' + i, 'Abre em (data e hora)', paraInput(s.libertaEm), 'datetime-local')}
+      ${inp('sT' + i, 'Título', s.titulo)}${inp('sR' + i, 'Resumo (uma frase)', s.resumo)}${inp('sI' + i, 'Imagem (caminho ou link; vazio = sem imagem)', s.imagem)}${inp('sD' + i, 'Abre em (data e hora)', paraInput(s.libertaEm), 'datetime-local')}
       ${inp('sU' + i, 'Link do áudio ou vídeo (YouTube, ficheiro mp3/mp4…)', s.url, 'text', 'placeholder="cole aqui o link depois de gravar"')}
       <details style="margin-top:8px"><summary style="cursor:pointer;font-size:13.5px"><b>📖 Texto da meditação (guião)</b> ${s.guiao ? '· preenchido' : ''}</summary>${area('sG' + i, 'Aparece na página para quem quiser ler. Cada «(pausa)» são 10 a 15 segundos de silêncio.', s.guiao, 10)}</details></div>`;
   }
@@ -88,7 +88,8 @@ export function renderAtividades(main, ctx) {
         <label style="display:block;margin-top:8px;font-size:13px;color:#6d6477">Tipo<select id="aTipo" style="${estiloInp}">${Object.keys(TIPOS).map((k) => `<option value="${k}" ${d.tipo === k ? 'selected' : ''}>${TIPOS[k]}</option>`).join('')}</select></label>
         ${inp('aTit', 'Título', d.titulo)}${inp('aSub', 'Frase curta por baixo do título', d.subtitulo)}${area('aDesc', 'Descrição (uma linha em branco separa parágrafos)', d.descricao, 9)}
         ${inp('aDur', 'Duração (aparece num rótulo)', d.duracao)}${inp('aHor', 'Horário (aparece num rótulo)', d.horario)}${inp('aMin', 'Minutos de cada sessão (para o calendário)', d.minutos, 'number')}
-        ${inp('aGrupo', 'Link do grupo de WhatsApp (opcional)', d.grupoLink, 'text', 'placeholder="https://chat.whatsapp.com/…"')}</div>
+        ${inp('aGrupo', 'Link do grupo de WhatsApp (opcional)', d.grupoLink, 'text', 'placeholder="https://chat.whatsapp.com/…"')}
+        ${inp('aGFoto', 'Foto de quem guia (caminho ou link; vazio = não mostra)', d.guiaFoto)}${inp('aGTit', 'Título do cartão de quem guia', d.guiaTitulo)}${area('aGTxt', 'Texto sobre quem guia', d.guiaTexto, 3)}</div>
       <div class="card"><h3>📅 Sessões</h3>
         <p class="muted">As sessões abrem sozinhas à hora marcada. Antes disso, ninguém consegue ver o conteúdo.</p>
         <div style="background:#f5f1fb;border-radius:12px;padding:10px;margin:8px 0"><b style="font-size:13.5px">Gerar as datas de uma vez</b>
@@ -166,8 +167,8 @@ export function renderAtividades(main, ctx) {
   /* ───── ações ───── */
   function ler() {
     const v = (id) => ($(id) ? $(id).value : '');
-    E.d = Object.assign(E.d, { tipo: v('aTipo'), titulo: v('aTit').trim(), subtitulo: v('aSub').trim(), descricao: v('aDesc').trim(), duracao: v('aDur').trim(), horario: v('aHor').trim(), minutos: Math.max(1, parseInt(v('aMin'), 10) || 10), grupoLink: v('aGrupo').trim(), ctaTitulo: v('aCtaT').trim(), ctaTexto: v('aCtaX').trim(), ctaBotao: v('aCtaB').trim(), ctaLink: v('aCtaL').trim() });
-    E.ses = E.ses.map((s, i) => Object.assign({}, s, { titulo: v('sT' + i).trim(), resumo: v('sR' + i).trim(), libertaEm: v('sD' + i) ? new Date(v('sD' + i)).getTime() : s.libertaEm, url: v('sU' + i).trim(), guiao: v('sG' + i).trim() }));
+    E.d = Object.assign(E.d, { tipo: v('aTipo'), titulo: v('aTit').trim(), subtitulo: v('aSub').trim(), descricao: v('aDesc').trim(), duracao: v('aDur').trim(), horario: v('aHor').trim(), minutos: Math.max(1, parseInt(v('aMin'), 10) || 10), grupoLink: v('aGrupo').trim(), ctaTitulo: v('aCtaT').trim(), ctaTexto: v('aCtaX').trim(), ctaBotao: v('aCtaB').trim(), ctaLink: v('aCtaL').trim(), guiaFoto: v('aGFoto').trim(), guiaTitulo: v('aGTit').trim(), guiaTexto: v('aGTxt').trim() });
+    E.ses = E.ses.map((s, i) => Object.assign({}, s, { titulo: v('sT' + i).trim(), resumo: v('sR' + i).trim(), imagem: v('sI' + i).trim(), libertaEm: v('sD' + i) ? new Date(v('sD' + i)).getTime() : s.libertaEm, url: v('sU' + i).trim(), guiao: v('sG' + i).trim() }));
   }
   const copiar = async (t) => { try { await navigator.clipboard.writeText(t); toast('Copiado.'); } catch (_) { toast('Não consegui copiar.', true); } };
   window.atLista = () => ecraLista();
@@ -187,7 +188,7 @@ export function renderAtividades(main, ctx) {
       const ordenadas = E.ses.slice().sort((a, b) => a.libertaEm - b.libertaEm); E.ses = ordenadas;
       for (let i = 0; i < ordenadas.length; i++) {
         const s = ordenadas[i], sid = 's' + (i + 1); s.n = i + 1;
-        await fs.setDoc(fs.doc(db, 'public_atividades', E.id, 'sessoes', sid), { n: i + 1, titulo: s.titulo, resumo: s.resumo, libertaEm: fs.Timestamp.fromMillis(s.libertaEm) });
+        await fs.setDoc(fs.doc(db, 'public_atividades', E.id, 'sessoes', sid), { n: i + 1, titulo: s.titulo, resumo: s.resumo, imagem: s.imagem || '', libertaEm: fs.Timestamp.fromMillis(s.libertaEm) });
         await fs.setDoc(fs.doc(db, 'public_atividades', E.id, 'conteudos', sid), { url: s.url, guiao: s.guiao });
         s.id = sid;
       }
