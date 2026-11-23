@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-23-9';
+const APP_VERSION = '2026-11-23-10';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -6036,13 +6036,38 @@ window.__guardarEdicaoIlustrado = async function(patientId, reportId){
     toast('Alterações guardadas ✓ A nova versão continua ilustrada, com Link e PDF.');
   } catch(e){ console.error(e); toast('Não consegui guardar: ' + (e.message || e), true); }
 };
+/* Relatório só em texto (por exemplo, uma edição antiga): gera a versão ilustrada a partir do texto atual. */
+window.__ilustrarDoTexto = async function(patientId, reportId){
+  const ta = document.getElementById('savedReportText'); if (!ta) return;
+  try {
+    const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'reports', reportId));
+    const r = snap.data() || {};
+    const blocos = String(ta.value || '').split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
+    const secoes = []; let nome = '';
+    blocos.forEach((b, i) => {
+      const L = b.split('\n'), l0 = L[0].trim();
+      if (i === 0 && /^RELAT[ÓO]RIO/i.test(l0)) { nome = String(L[1] || '').split('·')[0].trim(); return; }
+      if (/^(Registo e leitura|Este relatório)/.test(l0) && L.length === 1) return;
+      if (l0.length < 60 && l0 === l0.toUpperCase() && /[A-ZÀ-Ý]/.test(l0)) secoes.push({ titulo: l0.charAt(0) + l0.slice(1).toLowerCase(), texto: L.slice(1).join('\n') });
+      else if (secoes.length) secoes[secoes.length - 1].texto += '\n\n' + b;
+      else secoes.push({ titulo: 'Resumo', texto: b });
+    });
+    const base = String(r.protocolName || 'Relatório').replace(/ \(versão editada\)$/, '');
+    const html = window.relatorioPessoalDeSeccoes ? window.relatorioPessoalDeSeccoes({ titulo: 'O seu relatório', subtitulo: base, nome: nome, nome1: String(nome).split(/\s+/)[0], oQueFiz: '', pedido: '' }, secoes.filter(x => String(x.texto).trim())) : '';
+    if (!html || html.indexOf('rbx') < 0){ toast('Não consegui gerar o ilustrado.', true); return; }
+    const corpo = {}; Object.keys(r).forEach(k => { const v = r[k]; if (k === 'generatedAt' || (v && typeof v === 'object' && typeof v.toDate === 'function')) return; corpo[k] = v; });
+    corpo.reportHtml = html; corpo.reportText = ta.value; corpo.protocolName = base + ' (ilustrado)'; corpo.editadoDe = reportId;
+    await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), Object.assign(JSON.parse(JSON.stringify(corpo)), { generatedAt: serverTimestamp() }));
+    toast('Relatório ilustrado criado ✓ Está na lista, com Link e PDF.');
+  } catch(e){ console.error(e); toast('Não consegui: ' + (e.message || e), true); }
+};
 window.__guardarEdicaoRelatorio = async function(patientId, reportId){
   const ta = document.getElementById('savedReportText'); if (!ta) return;
   try {
     const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'reports', reportId));
     const r = snap.data() || {}, txt = ta.value;
     const ok = await guardarNaFicha(patientId, { tipo: r.tipo || 'registo', titulo: String(r.protocolName || 'Relatório').replace(/ \(versão editada\)$/, '') + ' (versão editada)', texto: r.reportTextCliente ? (r.reportText || '') : txt,
-      dados: Object.assign({}, r.dados || {}, { editado: true }), reportHtml: r.reportHtml ? triagemTextoParaHtml(txt) : '', editadoDe: reportId });
+      dados: Object.assign({}, r.dados || {}, { editado: true }), reportHtml: '', editadoDe: reportId });
     if (ok){ toast('Alterações guardadas ✓ (nova versão na ficha).'); }
   } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
 };
@@ -6094,7 +6119,8 @@ window.viewSavedReport = async function(patientId, reportId){
       <button class="ghost" style="margin-top:6px;" onclick="verRelatorioIlustrado('${patientId}','${reportId}')">✨ Ver relatório ilustrado</button>`
       : `<textarea id="savedReportText" rows="14" style="margin-top:10px;">${escapeHtml(r.reportTextCliente || r.reportText)}</textarea>
       <p class="muted" style="font-size:.8rem;margin:4px 0 0;">✏️ Pode alterar o texto e guardar. A versão anterior mantém-se no histórico.</p>
-      <button class="primary" style="margin-top:8px;" onclick="window.__guardarEdicaoRelatorio('${patientId}','${reportId}')">💾 Guardar alterações</button>`}
+      <button class="primary" style="margin-top:8px;" onclick="window.__guardarEdicaoRelatorio('${patientId}','${reportId}')">💾 Guardar alterações</button>
+      <button class="primary" style="margin-top:6px;background:#7a3d12;" onclick="window.__ilustrarDoTexto('${patientId}','${reportId}')">✨ Gerar relatório ilustrado deste texto</button>`}
       ${r.reportTextCliente ? `<details style="margin-top:8px;"><summary class="muted">🔒 Ver relatório técnico (interno)</summary><div style="white-space:pre-wrap;font-size:13px;background:#f6f8f7;border-radius:8px;padding:10px;margin-top:6px;">${escapeHtml(r.reportText||'')}</div></details>` : ''}
       <div class="row" style="margin-top:8px;">
         <button class="primary" onclick="downloadReportPDF('${escapeHtml(r.protocolName)}', document.getElementById('savedReportText').value)">📄 Descarregar PDF</button>
