@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-23-11';
+const APP_VERSION = '2026-11-23-12';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -6009,11 +6009,11 @@ window.saveFilledFormNow = async function(patientId, formId, formTitle, includes
    Grava como nova versão, que continua ilustrada (com Link e PDF). */
 function edIlusPreparar(html){
   const d = new DOMParser().parseFromString('<body>' + html + '</body>', 'text/html');
-  const nos = [...d.querySelectorAll('.rbx .corpo p, .rbx .corpo li, .rbx .msg p')].filter(n => n.childElementCount === 0 && n.textContent.trim());
+  const nos = [...d.querySelectorAll('.rbx .corpo p, .rbx .corpo li, .rbx .msg p, .rbx .rodape .ass')].filter(n => n.childElementCount === 0 && n.textContent.trim());
   window.__edIlus = { doc: d, nos };
   let ult = '';
   const campos = nos.map((n, i) => {
-    const sec = n.closest('section'), tit = sec && sec.querySelector('h2') ? sec.querySelector('h2').textContent.trim() : (n.closest('.msg') ? '💌 Palavras para si' : '');
+    const sec = n.closest('section'), tit = sec && sec.querySelector('h2') ? sec.querySelector('h2').textContent.trim() : (n.closest('.msg') ? '💌 Palavras para si' : (n.closest('.rodape') ? '✍️ Assinatura (quem fez a consulta)' : ''));
     const cab = tit !== ult ? `<div style="font-weight:700;margin:14px 0 4px;color:var(--primary);">${escapeHtml(tit)}</div>` : ''; ult = tit;
     const t = n.textContent.trim();
     return cab + `<textarea data-ed="${i}" rows="${Math.min(8, 1 + Math.floor(t.length / 55))}" style="margin-bottom:6px;">${escapeHtml(t)}</textarea>`;
@@ -6053,10 +6053,13 @@ window.__ilustrarDoTexto = async function(patientId, reportId){
       else secoes.push({ titulo: 'Resumo', texto: b });
     });
     const base = String(r.protocolName || 'Relatório').replace(/ \(versão editada\)$/, '');
-    const html = window.relatorioPessoalDeSeccoes ? window.relatorioPessoalDeSeccoes({ titulo: 'O seu relatório', subtitulo: base, nome: nome, nome1: String(nome).split(/\s+/)[0], oQueFiz: '', pedido: '' }, secoes.filter(x => String(x.texto).trim())) : '';
+    let ter = r.dados && r.dados.terapeuta ? { nome: r.dados.terapeuta } : null;
+    if (!ter) { ter = await terapeutaDoRelatorio(); if (!ter) return; }
+    const negocio = (currentTenantDoc && currentTenantDoc.businessName) || '';
+    const html = window.relatorioPessoalDeSeccoes ? window.relatorioPessoalDeSeccoes({ titulo: 'O seu relatório', subtitulo: base, assinatura: [ter.nome, negocio].filter(Boolean).join(' · '), nome: nome, nome1: String(nome).split(/\s+/)[0], oQueFiz: '', pedido: '' }, secoes.filter(x => String(x.texto).trim())) : '';
     if (!html || html.indexOf('rbx') < 0){ toast('Não consegui gerar o ilustrado.', true); return; }
     const corpo = {}; Object.keys(r).forEach(k => { const v = r[k]; if (k === 'generatedAt' || (v && typeof v === 'object' && typeof v.toDate === 'function')) return; corpo[k] = v; });
-    corpo.reportHtml = html; corpo.reportText = ta.value; corpo.protocolName = base + ' (ilustrado)'; corpo.editadoDe = reportId;
+    corpo.reportHtml = html; corpo.reportText = ta.value; corpo.protocolName = base + ' (ilustrado)'; corpo.editadoDe = reportId; corpo.dados = Object.assign({}, r.dados || {}, { terapeuta: ter.nome });
     await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), Object.assign(JSON.parse(JSON.stringify(corpo)), { generatedAt: serverTimestamp() }));
     toast('Relatório ilustrado criado ✓ Está na lista, com Link e PDF.');
     try { window.verRelatorioHtml(html, base); } catch(_) {}
@@ -22846,7 +22849,7 @@ window.sendChatbotMessage = async function(){
   window.relatorioTerapeuticoHtml = function(o){ try { return rbFragmento(rbModeloTerapeutico(Object.assign({ data:new Date().toLocaleDateString('pt-PT') }, o))); } catch(e){ console.error(e); return ''; } };
   window.__negocioNome = () => (currentTenantDoc && currentTenantDoc.businessName) || '';
   window.verRelatorioHtml = function(h, titulo){ if (!h){ toast('Sem relatório para mostrar.', true); return; } rbPreVisualizarHtml(rbDocumentoDeFragmento(h, titulo || 'Relatório'), titulo || 'Relatório'); };
-  window.relatorioPessoalDeSeccoes = function(o, secoes){ try { return rbFragmento(rbModeloDeSeccoes(Object.assign({ assinatura:'Ricardo Correia · Hikari Fafe', data:new Date().toLocaleDateString('pt-PT') }, o), secoes)); } catch(e){ console.error(e); return ''; } };
+  window.relatorioPessoalDeSeccoes = function(o, secoes){ try { return rbFragmento(rbModeloDeSeccoes(Object.assign({ assinatura: (currentTenantDoc && currentTenantDoc.businessName) || '', data:new Date().toLocaleDateString('pt-PT') }, o), secoes)); } catch(e){ console.error(e); return ''; } };
   window.lerRelatoriosPaciente = async function(patientId, tipo){
     try{
       const sn = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), where('tipo', '==', tipo)));

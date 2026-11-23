@@ -205,7 +205,7 @@
     const ter = window.terapeutaDoRelatorio ? await window.terapeutaDoRelatorio() : null;
     if (window.terapeutaDoRelatorio && !ter) return;
     const texto = textoFinal();
-    const dados = { data: hoje(), motivo:S.motivo, zonas:S.zonas, observacao:S.obs, tecnicas: TECNICAS.filter((t, i) => S.tecnicas[i]), duracao:S.duracao };
+    const dados = { terapeuta: (ter && ter.nome) || '', data: hoje(), motivo:S.motivo, zonas:S.zonas, observacao:S.obs, tecnicas: TECNICAS.filter((t, i) => S.tecnicas[i]), duracao:S.duracao };
     let html = ''; try { html = htmlIlustrado(ter, window.__negocioNome ? window.__negocioNome() : ''); } catch (e) { console.error(e); }
     if (!html && window.relatorioPessoalDeSeccoes) html = window.relatorioPessoalDeSeccoes({ titulo:'A sua reflexologia podal', nome:S.nome, nome1:String(S.nome||'').split(/\s+/)[0], oQueFiz:'a reflexologia podal', pedido:(S.queixas||S.motivo||'') }, S.secoes.filter(x => !/internas/.test(x.titulo)));
     const ok = window.guardarNaFicha ? await window.guardarNaFicha(S.patientId, { tipo:'reflexologia_podal', titulo:'Reflexologia podal — ' + hoje(), texto, dados, reportHtml: html }) : false;
