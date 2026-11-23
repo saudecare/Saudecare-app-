@@ -262,7 +262,7 @@ function guardarEst(extra) {
 const chave = () => 'vo_c_' + (envioId || id);
 const hojeISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const proximo = () => { for (let n = 1; n <= O.dias; n++) if (!est.feitos.includes(n)) return n; return 0; };
-function semanaDe(n) { return n <= 7 ? 'Semana 1 · Limpar' : n <= 14 ? 'Semana 2 · Cortar' : 'Semana 3 · Proteger e selar'; }
+function semanaDe(n) { if (O && O.dias && O.dias <= 7) return 'Proteção e libertação · dia ' + n + ' de ' + O.dias; return n <= 7 ? 'Semana 1 · Limpar' : n <= 14 ? 'Semana 2 · Cortar' : 'Semana 3 · Proteger e selar'; }
 
 function desenharCaminho() {
   const el = $('caminho'); if (!el || !O.dias) return;
