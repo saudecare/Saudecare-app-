@@ -4,7 +4,7 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
   const $ = id => document.getElementById(id);
   const hoje = () => new Date().toLocaleDateString('pt-PT');
-  const AVISO = 'Registo e leitura orientativos, de uma terapia complementar. Não é um diagnóstico nem substitui o acompanhamento médico.';
+  const AVISO = 'Esta leitura é orientativa e de uma terapia complementar. Não é um diagnóstico nem substitui o teu médico.';
 
   // Estados de cada zona
   const ESTADOS = [['ok','Normal','#16a34a'],['sens','Sensível','#ca8a04'],['dor','Dor','#dc2626'],['nod','Nódulo / grânulos','#7c3aed'],['ten','Tensão / dureza','#ea580c']];
@@ -134,7 +134,7 @@
     const cu = CONTRA.filter((c, i) => S.contra[i]);
     if (cu.length) sec.push({ titulo:'Cuidados tidos em conta', texto: cu.map(c => '• ' + c).join('\n') + '\nForam usadas pressões suaves e evitadas as zonas afetadas.' });
     const ob = []; if (obsL('D').length) ob.push('Pé direito: ' + obsL('D').join(', ').toLowerCase() + '.'); if (obsL('E').length) ob.push('Pé esquerdo: ' + obsL('E').join(', ').toLowerCase() + '.'); if (S.obsTxt) ob.push(S.obsTxt);
-    sec.push({ titulo:'Observação dos pés', texto: ob.join('\n') || 'Sem alterações a registar.' });
+    sec.push({ titulo:'Observação dos pés', texto: ob.join('\n') || 'Nada de especial a registar.' });
     sec.push({ titulo:'Zonas encontradas — pé direito', texto: (d.length ? d.join('\n') : 'Sem alterações.') + (S.notasZ.D ? `\nNotas: ${S.notasZ.D}` : '') });
     sec.push({ titulo:'Zonas encontradas — pé esquerdo', texto: (e.length ? e.join('\n') : 'Sem alterações.') + (S.notasZ.E ? `\nNotas: ${S.notasZ.E}` : '') });
     // Leitura: agrupa por sistema e liga ao chakra e ao tema
@@ -144,11 +144,11 @@
     const leit = Object.keys(porSist).map(s => `• ${s}: ${porSist[s].map(x => x.z.nome.toLowerCase() + ' (pé ' + x.lados.join(' e ') + ')').join('; ')}.`);
     const chs = {}; itens.forEach(x => { (chs[x.z.chakra] = chs[x.z.chakra] || []).push(x.z.tema); });
     const chL = Object.keys(chs).map(c => `• Chakra ${c}: ${Array.from(new Set(chs[c])).slice(0, 3).join('; ')}.`);
-    sec.push({ titulo:'Leitura geral', texto: itens.length ? `Os pés mostraram alterações sobretudo nos sistemas:\n${leit.join('\n')}\n\nEm termos emocionais e energéticos, estas zonas costumam associar-se a:\n${chL.join('\n')}\n\nAs zonas sensíveis mostram onde o corpo pede mais atenção e descanso. Não indicam doença.` : 'Os pés estavam em equilíbrio nesta consulta.' });
+    sec.push({ titulo:'Leitura geral', texto: itens.length ? `Os teus pés contaram-me algumas coisas, sobretudo nestas zonas do corpo:\n${leit.join('\n')}\n\nEm termos emocionais e energéticos, estas zonas costumam ligar-se a:\n${chL.join('\n')}\n\nAs zonas mais sensíveis são só o teu corpo a dizer onde precisa de mais carinho e descanso. Não é sinal de doença, e é por isso mesmo que estas sessões ajudam.` : 'Os teus pés estavam bem equilibrados nesta sessão, e isso é uma boa notícia. 🌿' });
     const tec = TECNICAS.filter((t, i) => S.tecnicas[i]);
     sec.push({ titulo:'Sessão realizada', texto: (tec.length ? 'Técnicas: ' + tec.join(', ').toLowerCase() + '.\n' : '') + (S.duracao ? `Duração: ${S.duracao} minutos.\n` : '') + (S.reacao ? `Reação: ${S.reacao}.` : '') });
     if (S.recomend.trim()) sec.push({ titulo:'Recomendações', texto: S.recomend.trim() });
-    else sec.push({ titulo:'Recomendações', texto: 'Beber água ao longo do dia, descansar e usar calçado confortável. Se notar dor forte, inchaço ou febre, falar com o médico.' });
+    else sec.push({ titulo:'Recomendações', texto: 'Bebe água ao longo do dia, descansa um bocadinho mais e usa calçado confortável. Se sentires dor forte, inchaço ou febre, fala com o teu médico.' });
     if (S.notas.trim()) sec.push({ titulo:'Notas clínicas (internas)', texto: S.notas.trim() });
     return sec;
   }
@@ -175,31 +175,31 @@
     const zonas = ['D', 'E'].map(l => {
       const dest = []; const ob = obsL(l); if (ob) dest.push({ rotulo:'Observação do pé', nome: ob.charAt(0).toUpperCase() + ob.slice(1), texto:'' });
       if (S.notasZ[l]) dest.push({ rotulo:'Notas', nome: S.notasZ[l], texto:'' });
-      return { titulo:'🦶 Pé ' + (l === 'D' ? 'direito' : 'esquerdo'), subtitulo: alt[l].length ? alt[l].length + ' zona(s) com alteração' : 'Sem alterações ✅', destaques: dest,
-        pontos: alt[l].map(z => ({ nome: z.nome + ' · ' + NOME_ESTADO[S.zonas[l][z.id]], texto: z.onde + '. Costuma associar-se a ' + z.tema + ' (chakra ' + z.chakra + ').' })) };
+      return { titulo:'🦶 Pé ' + (l === 'D' ? 'direito' : 'esquerdo'), subtitulo: alt[l].length ? alt[l].length + ' zona(s) mais sensível(is)' : 'Tudo em ordem ✅', destaques: dest,
+        pontos: alt[l].map(z => ({ nome: z.nome + ' · ' + NOME_ESTADO[S.zonas[l][z.id]], texto: z.onde + '. Costuma ligar-se a ' + z.tema + ' (chakra ' + z.chakra + ').' })) };
     });
     const antes = [];
-    if (totalZ) { const eq = Math.round((totalZ - nAlt) / totalZ * 100); antes.push({ tipo:'medidor', icone:'🦶', titulo:'Equilíbrio dos pés', valor: eq, destaque: eq >= 85 ? 'Pés muito equilibrados' : (eq >= 65 ? 'Algumas zonas a acompanhar' : 'Pedem cuidado e continuidade'), legenda: 'Percentagem de zonas sem alteração, nos dois pés (' + nAlt + ' de ' + totalZ + ' zonas com alteração).' }); }
+    if (totalZ) { const eq = Math.round((totalZ - nAlt) / totalZ * 100); antes.push({ tipo:'medidor', icone:'🦶', titulo:'Como estão os teus pés', valor: eq, destaque: eq >= 85 ? 'Muito equilibrados 🌿' : (eq >= 65 ? 'Há zonas a acompanhar' : 'Pedem mais carinho e continuidade'), legenda: 'É a percentagem de zonas que estavam bem, nos dois pés. Encontrei ' + nAlt + ' zona(s) mais sensível(is) em ' + totalZ + '.' }); }
     const sist = {}, sistTot = {};
     ['D', 'E'].forEach(l => zonasDoLado(l).forEach(z => { sistTot[z.sist] = (sistTot[z.sist] || 0) + 1; if ((S.zonas[l][z.id] || 'ok') !== 'ok') sist[z.sist] = (sist[z.sist] || 0) + 1; }));
     const bs = Object.keys(sist).map(k => ({ nome: k, valor: Math.round(sist[k] / sistTot[k] * 100), texto: sist[k] + ' de ' + sistTot[k] + ' zonas' }));
-    if (bs.length) antes.push({ tipo:'barras', icone:'📊', titulo:'Por sistema do corpo', intro:'Quanto mais cheia a barra, mais zonas desse sistema pediram atenção nos pés.', itens: bs.sort((a, b) => b.valor - a.valor) });
+    if (bs.length) antes.push({ tipo:'barras', icone:'📊', titulo:'Por sistema do corpo', intro:'Quanto mais cheia a barra, mais zonas desse sistema pediram atenção. Não te assustes: é só um retrato de hoje.', itens: bs.sort((a, b) => b.valor - a.valor) });
     const chT = {}, chA = {};
     ['D', 'E'].forEach(l => zonasDoLado(l).forEach(z => { chT[z.chakra] = (chT[z.chakra] || 0) + 1; if ((S.zonas[l][z.id] || 'ok') !== 'ok') chA[z.chakra] = (chA[z.chakra] || 0) + 1; }));
-    if (Object.keys(chA).length >= 3) antes.push({ tipo:'radar', icone:'🕸️', titulo:'Ligação aos centros de energia', intro:'Quanto mais longe do centro, mais atenção pediu esse centro de energia.', itens: Object.keys(chT).map((c, i) => ({ nome: c, rotulo: String(i + 1), valor: Math.max(4, Math.round((chA[c] || 0) / chT[c] * 100)) })) });
+    if (Object.keys(chA).length >= 3) antes.push({ tipo:'radar', icone:'🕸️', titulo:'E a tua energia?', intro:'Quanto mais afastado do centro, mais atenção pediu esse centro de energia.', itens: Object.keys(chT).map((c, i) => ({ nome: c, rotulo: String(i + 1), valor: Math.max(4, Math.round((chA[c] || 0) / chT[c] * 100)) })) });
     const tec = TECNICAS.filter((t, i) => S.tecnicas[i]);
     const meio = [];
-    const sr = sec('Sessão realizada').trim(); if (sr) meio.push({ tipo:'texto', icone:'💆', titulo:'A sessão', paras: sr.split('\n').map(x => x.trim()).filter(Boolean) });
+    const sr = sec('Sessão realizada').trim(); if (sr) meio.push({ tipo:'texto', icone:'💆', titulo:'O que fizemos juntos', paras: sr.split('\n').map(x => x.trim()).filter(Boolean) });
     const cu = linhas('Cuidados tidos em conta'); if (cu.length) meio.push({ tipo:'lista', icone:'🛡️', titulo:'Cuidados tidos em conta', marca:'•', itens: cu.map(x => x.replace(/^[•\-–]\s*/, '')) });
     const ls = linhas('Leitura geral');
-    return window.relatorioTerapeuticoHtml({ tema:'alma', emoji:'🦶', titulo:'A sua reflexologia podal', subtitulo:'Relatório da sessão', nome: S.nome, nome1,
+    return window.relatorioTerapeuticoHtml({ tema:'alma', emoji:'🦶', titulo:'A sua reflexologia podal', subtitulo:'O que os teus pés me contaram', nome: S.nome, nome1,
       ficha:[{ rotulo:'Nome', valor: S.nome }, { rotulo:'Data da sessão', valor: hoje() }, { rotulo:'Terapeuta', valor: (ter && ter.nome) || '' }, { rotulo:'Duração', valor: S.duracao ? S.duracao + ' minutos' : '' }, { rotulo:'Motivo da consulta', valor: S.motivo, largo:true }],
-      acolhimento:['Este relatório resume, de forma simples, o que foi observado nos seus pés e o que foi feito na sessão' + (nome1 ? ', ' + nome1 : '') + '. É uma leitura orientativa, de uma terapia complementar.', S.queixas ? 'O que referiu: “' + S.queixas + '”.' : ''].filter(Boolean),
-      tituloOrigem:'O foco da sessão', chips:[{ rotulo:'Pés com alteração', valor: nAlt ? nAlt + ' zona(s)' : 'nenhuma' }, { rotulo:'Técnicas usadas', valor: tec.length ? String(tec.length) : '' }].filter(x => x.valor), origem: tec.length ? ['Técnicas: ' + tec.join(', ').toLowerCase() + '.'] : [],
-      antes, tituloZonas:'Os seus pés, zona a zona', introZonas:'Toque em "Pontos identificados" para ver o que foi encontrado em cada pé.', zonas, meio,
-      sintese: ls.length ? ls : ['Os pés não mostraram alterações marcantes nesta sessão.'],
-      introOrientacoes:'Para apoiar nos próximos dias:', orientacoes: linhas('Recomendações').map(x => x.replace(/^[•\-–]\s*/, '')),
-      assinatura: [ter && ter.nome, negocio].filter(Boolean).join(' · '), fecho:'Com carinho e presença. 🌿', aviso: AVISO });
+      acolhimento:[(nome1 ? 'Olá, ' + nome1 + '! ' : 'Olá! ') + 'Foi um gosto cuidar dos teus pés. Aqui ficas com um resumo simples e sem complicações do que encontrei e do que fizemos juntos na sessão. É uma leitura orientativa, de uma terapia complementar, feita com muito carinho.', S.queixas ? 'Disseste-me: “' + S.queixas + '”. Tive isso sempre presente.' : ''].filter(Boolean),
+      tituloOrigem:'Em que me concentrei', chips:[{ rotulo:'Pés com alteração', valor: nAlt ? nAlt + ' zona(s)' : 'nenhuma' }, { rotulo:'Técnicas usadas', valor: tec.length ? String(tec.length) : '' }].filter(x => x.valor), origem: tec.length ? ['Técnicas: ' + tec.join(', ').toLowerCase() + '.'] : [],
+      antes, tituloZonas:'Os teus pés, zona a zona', introZonas:'Toca em "Pontos identificados" para ver o que encontrei em cada pé.', zonas, meio,
+      sintese: ls.length ? ls : ['Os teus pés estavam bem, sem nada marcante. Continua a cuidar de ti. 🌿'],
+      introOrientacoes:'Para te sentires ainda melhor nos próximos dias:', orientacoes: linhas('Recomendações').map(x => x.replace(/^[•\-–]\s*/, '')),
+      assinatura: [ter && ter.nome, negocio].filter(Boolean).join(' · '), fecho:'Obrigado/a pela confiança. Cuida bem de ti e, se quiseres, conta-me como te sentiste nos próximos dias. 🌿', aviso: AVISO });
   }
   window.rpGuardar = async function(){
     const ter = window.terapeutaDoRelatorio ? await window.terapeutaDoRelatorio() : null;
