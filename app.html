@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-23-3';
+const APP_VERSION = '2026-11-23-4';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13152,6 +13152,7 @@ async function famFinalizar(col, nomes, leit, perg){
     __triagem.patientId = x.patientId; __triagem.patientNome = x.nome;
     x.payload.reportHtml = U.html; x.payload.reportTextCliente = U.texto; x.payload.familiaUnica = true;
     x.payload.familia = { grupoId: __triagem._famInfo.grupoId, pessoas: nomes, membros: col.map(y => ({ patientId: y.patientId, nome: y.nome })) };
+    x.payload.limpezaFamilia = __triagem.limpezaFam || {};
     x.payload.leituraJson = leit ? JSON.stringify(leit) : null; x.payload.perguntasJson = (perg || []).length ? JSON.stringify(perg) : null;
     if (!(await triagemTentarGravar(x.payload))) ok = false;
   }
@@ -13224,6 +13225,7 @@ window.__triagemReabrirGuardada = async function(reportId){
     else { __triagem.fam = null; famCarregar(snaps[0].snap); }
     // etiquetas já aplicadas (pelo nome)
     try{ const nomes = (u.etiquetasAplicadas || []).map(e => e.pt); __triagem.aplicadas = triagemItensAplicar().filter(it => nomes.indexOf(it.pt) >= 0).map(it => it.key); }catch(e){}
+    __triagem.limpezaFam = u.limpezaFamilia || {}; try{ if (famLimpezaAtiva()) famLimpezaSync(); }catch(e){}
     __triagem.passo = 1; __triagem._ultimo = 0; window.scrollTo(0, 0);
     renderTriagemPasso(document.getElementById('mainView'));
     toast(semCartas ? 'Triagem reaberta. As cartas desta triagem antiga não se recuperam: tire-as de novo se quiser.' : 'Triagem reaberta. Altere o que quiser e gere de novo.', false);
@@ -13244,6 +13246,44 @@ window.__triagemMostrarAnteriores = async function(){
     ${lista.length ? lista.map(r => `<div class="row" style="align-items:center;gap:8px;margin:6px 0;"><div style="flex:1;font-size:.9rem;"><strong>${dt(r)}</strong> · ${r.numeroConsulta || 1}.ª consulta<br><span class="muted">${(r.baixaVibracaoDetetada || []).length} causa(s)${r.familia ? ' · 👨‍👩‍👧 família' : ''}${(r.alvos || []).length ? ' · 🏠 ' + r.alvos.length + ' alvo(s)' : ''}</span></div><button class="primary" style="width:auto;" onclick="window.__triagemReabrirGuardada('${r._id}')">Reabrir</button></div>`).join('') : '<p class="muted">Este paciente ainda não tem triagens guardadas.</p>'}
     <button class="ghost" style="margin-top:8px;" onclick="document.getElementById('triReabrirModal').remove()">Fechar</button></div>`;
   document.body.appendChild(f);
+};
+/* Limpeza um de cada vez: cada pessoa (e cada casa, carro ou outra pesquisa) é um testemunho.
+   Faz-se a limpeza de uma, passa-se à seguinte; fica registado quem já foi limpo. */
+function famLimpezaAtiva(){ return famAtiva() || (__triagem.alvos || []).some(a => (a.nome || '').trim() || (a.causas || []).some(Boolean)); }
+function famTestemunhos(){
+  const F = __triagem.fam, L = [];
+  if (famAtiva()) F.pessoas.forEach((p, i) => { const sn = (i === F.idx ? (p.snap || famSnap()) : (p.snap || famVazio())); L.push({ tid: p.id, nome: p.nome, sub: sn.dataNascimento ? new Date(sn.dataNascimento + 'T12:00:00').toLocaleDateString('pt-PT') : '', pacienteId: p.id, icone:'👤' }); });
+  else L.push({ tid: __triagem.patientId || 'p', nome: __triagem.patientNome, sub: __triagem.dataNascimento ? new Date(__triagem.dataNascimento + 'T12:00:00').toLocaleDateString('pt-PT') : '', pacienteId: __triagem.patientId, icone:'👤' });
+  (__triagem.alvos || []).forEach((a, i) => { if (!((a.nome || '').trim() || (a.causas || []).some(Boolean))) return; const t = ALVO_TIPOS[a.tipo] || ALVO_TIPOS.outro; L.push({ tid: 'alvo' + i, nome: (a.nome || '').trim() || t[1], sub: t[1], pacienteId: '', icone: t[0] }); });
+  return L;
+}
+function famLimpezaSync(){
+  const T = __triagem, L = famTestemunhos(), lf = (T.limpezaFam = T.limpezaFam || {});
+  if (!Object.keys(lf).length && T.aplicadas && T.aplicadas.length) L.forEach(t => { lf[t.tid] = T.aplicadas.slice(); });   // triagens antigas: tudo aplicado a todos
+  const itens = triagemItensAplicar().map(i => i.key);
+  const feitas = itens.filter(k => L.length && L.every(t => (lf[t.tid] || []).indexOf(k) >= 0));
+  T.aplicadas = feitas;
+}
+function famLimpezaConteudo(){
+  const T = __triagem, L = famTestemunhos(), lf = (T.limpezaFam = T.limpezaFam || {}), itens = triagemItensAplicar();
+  const total = itens.length;
+  const feitoT = t => total && (lf[t.tid] || []).filter(k => itens.some(i => i.key === k)).length >= total;
+  const nFeitos = L.filter(feitoT).length;
+  return `<h3>✨ Limpeza etérica, um de cada vez</h3>
+    <p class="muted">${total} etiquetas escolhidas para tudo o que saiu (pessoas, casa e veículos). Faz-se uma limpeza por cada testemunho, com o nome dele ao centro. ${nFeitos} de ${L.length} feitas.</p>
+    ${L.map(t => { const n = (lf[t.tid] || []).filter(k => itens.some(i => i.key === k)).length, ok = feitoT(t);
+      return `<div class="row" style="align-items:center;gap:8px;margin:6px 0;padding:8px;border-radius:10px;background:${ok ? '#eef7ee' : '#faf7ff'};border:1px solid ${ok ? '#7fae3a' : '#d9c9ee'};">
+        <div style="flex:1;"><strong>${t.icone} ${escapeHtml(t.nome)}</strong><br><span class="muted">${ok ? '✅ Limpeza feita' : (n ? '⏳ ' + n + ' de ' + total + ' etiquetas' : '⏳ Por fazer')}</span></div>
+        <button class="${ok ? 'ghost' : 'primary'}" style="width:auto;" onclick="window.__famLimpar('${escapeHtml(t.tid)}')">${ok ? 'Repetir' : (n ? 'Continuar' : 'Fazer a limpeza')}</button></div>`; }).join('')}
+    <p class="muted" style="margin-top:6px;">Pode parar a meio: a limpeza que falta fica registada e continua ao reabrir esta triagem.</p>`;
+}
+window.__famLimpar = async function(tid){
+  const t = famTestemunhos().find(x => x.tid === tid); if (!t) return;
+  const itens = triagemItensAplicar(); if (!itens.length){ toast('Ainda não há etiquetas escolhidas.', true); return; }
+  const lf = (__triagem.limpezaFam = __triagem.limpezaFam || {});
+  const pc = (window.__allPatientsCache || []).find(x => x.id === t.pacienteId) || {};
+  await window.triEterAbrir('todas', { itens, pacienteId: t.pacienteId, testemunho: { nome: t.nome, foto: pc.photoUrl || '', sub: t.sub }, jaFeitas: lf[tid] || [],
+    onProgresso: keys => { lf[tid] = keys; famLimpezaSync(); const b = document.getElementById('famLimpezaBox'); if (b) b.innerHTML = famLimpezaConteudo(); } });
 };
 /* Blocos extra do relatório: família, cartas da família, casa e veículos. */
 function triExtraBlocos(op){
@@ -13934,6 +13974,10 @@ function triagemPassoTratamento(main){
       <button class="ghost" onclick="window.__triagemVoltar()">← Anterior</button>
       <button class="primary" onclick="window.__triagemAvancar()">Seguinte →</button>
     </div>`;
+  if (famLimpezaAtiva()){
+    const bt = main.querySelector('button[onclick*="triEterAbrir(\'todas\')"]'), cd = bt && bt.closest('.card');
+    if (cd){ cd.id = 'famLimpezaBox'; cd.innerHTML = famLimpezaConteudo(); famLimpezaSync(); }
+  }
   function pintar(){
     const feitas = new Set(__triagem.aplicadas);
     const mini = document.getElementById('triEterMini');
@@ -19617,6 +19661,7 @@ async function triagemGerarRelatorio(){
     chakras: chakrasTodos.map(c => ({ nome:c.nome, estado: c.estado === 'np' ? 'np' : triEstadoChakra(c) })),
     aberturaCaminhos: aberturaNivel || null,
     pedido: (__triagem.pedido || '').trim() || null, origemPedido: __triagem.origemPedido || 'paciente', pedinteNome: (__triagem.pedinteNome || '').trim() || null, pedinteRel: (__triagem.pedinteRel || '').trim() || null,
+    limpezaFamilia: __triagem.limpezaFam || null,
     leituraJson: __triagem.leituraComplementar ? JSON.stringify(__triagem.leituraComplementar) : null,
     perguntasJson: (__triagem.perguntasCartas || []).length ? JSON.stringify(__triagem.perguntasCartas) : null,
     leituraComplementar: __triagem.leituraComplementar ? {
