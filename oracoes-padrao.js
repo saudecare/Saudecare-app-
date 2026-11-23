@@ -932,5 +932,163 @@ export const PROTECAO_PADRAO = [
    }
   ],
   "temasDias": []
- }
+ },
+{
+ "padraoId": "salmos-libertacao-7",
+ "versaoPadrao": 1,
+ "regra": "seguidos",
+ "tipo": "ciclo",
+ "icone": "escudo",
+ "emoji": "🛡️",
+ "titulo": "Salmos de proteção e libertação · 7 dias",
+ "subtitulo": "Salmos 121, 91 e 140, mais a oração a São Miguel e o pedido dos Anjos",
+ "dias": 7,
+ "ordem": 5,
+ "seccoes": [
+  {
+   "tipo": "aviso",
+   "titulo": "Regra: 7 dias seguidos",
+   "texto": "Esta prática faz-se durante 7 dias seguidos, uma vez por dia. Se te esqueceres de algum dia, recomeças do Dia 1. Esta página avisa-te e deixa-te recomeçar com um toque."
+  },
+  {
+   "tipo": "texto",
+   "titulo": "Para que serve",
+   "texto": "É uma prática de fé para pedires proteção e libertação para ti e para a tua família, quando sentes que há uma influência pesada, uma obra maligna ou más intenções lançadas sobre ti ou sobre os teus.\n\nCada dia reza-se, por esta ordem: Salmo 121, Salmo 91, Salmo 140, (se quiseres, o Salmo 29), a Oração a São Miguel Arcanjo e, no fim, o pedido a Deus para que envie os Anjos a esta batalha.\n\nNão é magia nem promessa de resultados: é um tempo diário de silêncio, fé e confiança."
+  },
+  {
+   "tipo": "passos",
+   "titulo": "Como fazer",
+   "itens": [
+    "Escolhe uma hora fixa e um sítio calmo onde ninguém te interrompa. Põe o telemóvel em silêncio.",
+    "Se quiseres, acende uma vela branca (num sítio seguro) e põe ao lado um copo de água.",
+    "Respira fundo três vezes, devagar.",
+    "Lê cada salmo uma vez, em voz alta, pela ordem. O Salmo 29 é opcional.",
+    "Reza a Oração a São Miguel Arcanjo e faz o pedido final aos Anjos.",
+    "Fica um minuto em silêncio, a respirar. Agradece e marca o dia como feito."
+   ]
+  },
+  {
+   "tipo": "aviso",
+   "titulo": "Cuidados importantes",
+   "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico, psicológico, jurídico ou financeiro, nem a toma de medicação.\n\nSe sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, não esperes: fala com o teu médico, liga para o SNS 24 (808 24 24 24) ou, em emergência, para o 112.\n\nReza para a tua proteção e libertação, nunca para desejar mal a ninguém. Se acenderes uma vela, fá-lo com segurança e nunca a deixes sozinha acesa."
+  },
+  {
+   "tipo": "texto",
+   "titulo": "No último dia: selar",
+   "texto": "No dia 7, depois de rezares, fica um pouco mais em silêncio e agradece o caminho que fizeste. Põe a mão no peito e diz: «Está feito. Fica selado. Que a luz me proteja, a mim e à minha família.»"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Abertura",
+   "texto": "Respiro fundo, três vezes.\nEstou em segurança.\nEste momento é meu e é sagrado.\n\nPeço que este tempo seja abençoado e protegido."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 121 · parte 1 de 2",
+   "texto": "Levantarei os meus olhos para os montes, de onde vem o meu socorro.\n\nO meu socorro vem do Senhor, que fez os céus e a terra.\n\nNão deixará vacilar o teu pé; aquele que te guarda não dormitará.\n\nEis que não dormitará nem dormirá o que guarda Israel."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 121 · parte 2 de 2",
+   "texto": "O Senhor é quem te guarda; o Senhor é a tua sombra à tua direita.\n\nO sol não te ferirá de dia, nem a lua de noite.\n\nO Senhor te guardará de todo o mal; guardará a tua alma.\n\nO Senhor guardará a tua saída e a tua entrada, desde agora e para sempre."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 91 · parte 1 de 4",
+   "texto": "Tu que habitas sob a proteção do Altíssimo e moras à sombra do Omnipotente,\n\ndizes ao Senhor: \"Meu refúgio, minha fortaleza, meu Deus, em quem confio\".\n\nÉ ele quem te livrará do laço do caçador e da peste perniciosa.\n\nEle te cobrirá com as suas plumas, sob as suas asas encontrarás refúgio. A sua fidelidade ser-te-á um escudo e uma couraça."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 91 · parte 2 de 4",
+   "texto": "Não temerás os terrores da noite, nem a flecha que voa de dia,\n\nnem a peste que se propaga nas trevas, nem o mal que devasta ao meio-dia.\n\nCaiam mil ao teu lado e dez mil à tua direita; tu não serás atingido.\n\nMal abrirás os olhos, verás o castigo dos pecadores."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 91 · parte 3 de 4",
+   "texto": "Porque disseste: \"O Senhor é o meu refúgio\", fizeste do Altíssimo a tua morada.\n\nNenhum mal te atingirá, nenhum flagelo aproximar-se-á da tua tenda.\n\nPorque ele dará ordens aos seus anjos a teu respeito, para que te guardem em todos os teus caminhos.\n\nEles levar-te-ão nas suas mãos, para que o teu pé não tropece em nenhuma pedra."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 91 · parte 4 de 4",
+   "texto": "Pisarás sobre o leão e a víbora, calcarás aos pés o leãozinho e o dragão.\n\n\"Pois que se uniu a mim, eu o livrarei; protegê-lo-ei, porque conhece o meu nome.\n\nQuando me invocar, eu o atenderei; estarei com ele na tribulação, livrá-lo-ei e o glorificarei.\n\nSaciá-lo-ei com uma longa vida e lhe mostrarei a minha salvação.\""
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 140 · parte 1 de 3",
+   "texto": "Livra-me, Senhor, do homem mau; guarda-me do homem violento,\n\nque maquinam males no coração e cada dia suscitam guerras.\n\nAguçam a língua como a serpente; veneno de víbora está debaixo dos seus lábios.\n\nGuarda-me, Senhor, das mãos do ímpio; guarda-me do homem violento, que intentam transtornar os meus passos."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 140 · parte 2 de 3",
+   "texto": "Os soberbos esconderam-me um laço e cordas; estenderam uma rede à beira do caminho; armaram-me ciladas.\n\nEu disse ao Senhor: Tu és o meu Deus; ouve, Senhor, a voz das minhas súplicas.\n\nÓ Deus, Senhor, força da minha salvação, tu cobriste a minha cabeça no dia da batalha.\n\nNão concedas, Senhor, ao ímpio os seus desejos; não promovas o seu mau intento."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 140 · parte 3 de 3",
+   "texto": "Cubra-os a maldade dos seus próprios lábios.\n\nO homem de má língua não se firmará na terra; o mal perseguirá o violento até o derrubar.\n\nSei que o Senhor tomará a causa do aflito e o direito dos necessitados.\n\nCertamente os justos louvarão o teu nome; os retos habitarão na tua presença."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 29 · parte 1 de 2 (opcional)",
+   "texto": "Tributai ao Senhor, ó filhos de Deus, tributai ao Senhor glória e força.\n\nTributai ao Senhor a glória devida ao seu nome; adorai o Senhor na beleza da santidade.\n\nA voz do Senhor ouve-se sobre as águas; o Deus da glória troveja; o Senhor está sobre as muitas águas.\n\nA voz do Senhor é poderosa; a voz do Senhor é cheia de majestade."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 29 · parte 2 de 2 (opcional)",
+   "texto": "A voz do Senhor quebra os cedros; sim, o Senhor quebra os cedros do Líbano.\n\nA voz do Senhor separa as chamas de fogo; a voz do Senhor faz tremer o deserto.\n\nO Senhor assentou-se sobre o dilúvio; o Senhor reina como Rei eternamente.\n\nO Senhor dará força ao seu povo; o Senhor abençoará o seu povo com paz."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Oração a São Miguel Arcanjo",
+   "texto": "São Miguel Arcanjo, defendei-nos no combate, sede o nosso refúgio contra as maldades e ciladas do demónio.\nOrdene-lhe Deus, instantemente o pedimos, e vós, Príncipe da milícia celeste, pela virtude divina, precipitai no inferno a Satanás e aos outros espíritos malignos que andam pelo mundo para perdição das almas.\nÁmen."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Pedido final aos Anjos",
+   "texto": "Peço a Deus que envie os Anjos a esta batalha,\npara me ajudarem a derrotar toda a obra maligna\nlançada sobre mim e sobre a minha família.\n\nFico sob a proteção de Deus e dos Anjos. Ámen."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Encerramento",
+   "texto": "Obrigado/a.\nFecho agora este momento\ncom paz e com confiança.\nA luz fica comigo, em mim e à minha volta.\nÁmen."
+  }
+ ],
+ "temasDias": [
+  {
+   "titulo": "O começo",
+   "intencao": "Estou sob a proteção de Deus e dos Anjos, eu e a minha família.",
+   "acao": ""
+  },
+  {
+   "titulo": "Mais um dia sob a proteção de Deus",
+   "intencao": "Estou sob a proteção de Deus e dos Anjos, eu e a minha família.",
+   "acao": ""
+  },
+  {
+   "titulo": "Mais um dia sob a proteção de Deus",
+   "intencao": "Estou sob a proteção de Deus e dos Anjos, eu e a minha família.",
+   "acao": ""
+  },
+  {
+   "titulo": "Mais um dia sob a proteção de Deus",
+   "intencao": "Estou sob a proteção de Deus e dos Anjos, eu e a minha família.",
+   "acao": ""
+  },
+  {
+   "titulo": "Mais um dia sob a proteção de Deus",
+   "intencao": "Estou sob a proteção de Deus e dos Anjos, eu e a minha família.",
+   "acao": ""
+  },
+  {
+   "titulo": "Mais um dia sob a proteção de Deus",
+   "intencao": "Estou sob a proteção de Deus e dos Anjos, eu e a minha família.",
+   "acao": ""
+  },
+  {
+   "titulo": "Selar e agradecer",
+   "intencao": "Estou sob a proteção de Deus e dos Anjos, eu e a minha família.",
+   "acao": ""
+  }
+ ]
+}
 ];
