@@ -419,7 +419,7 @@
 <script src="chakras-leitura.js?v=2026-11-20-2"></script>
 <script src="pesquisa-sistemas.js?v=2026-11-21-20"></script>
 <script src="causas-ficha.js?v=2026-11-21-7"></script>
-<script src="reflexologia-podal.js?v=2026-11-21-20"></script>
+<script src="reflexologia-podal.js?v=2026-11-23-5"></script>
 <script type="module" src="consulta-guiada.js?v=2026-11-21-20"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-23-4';
+const APP_VERSION = '2026-11-23-5';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -6005,6 +6005,16 @@ window.saveFilledFormNow = async function(patientId, formId, formTitle, includes
   viewPatient(patientId);
 };
 
+window.__guardarEdicaoRelatorio = async function(patientId, reportId){
+  const ta = document.getElementById('savedReportText'); if (!ta) return;
+  try {
+    const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'reports', reportId));
+    const r = snap.data() || {}, txt = ta.value;
+    const ok = await guardarNaFicha(patientId, { tipo: r.tipo || 'registo', titulo: String(r.protocolName || 'Relatório').replace(/ \(versão editada\)$/, '') + ' (versão editada)', texto: r.reportTextCliente ? (r.reportText || '') : txt,
+      dados: Object.assign({}, r.dados || {}, { editado: true }), reportHtml: r.reportHtml ? triagemTextoParaHtml(txt) : '', editadoDe: reportId });
+    if (ok){ toast('Alterações guardadas ✓ (nova versão na ficha).'); }
+  } catch(e){ toast('Não consegui guardar: ' + (e.message || e), true); }
+};
 window.viewSavedReport = async function(patientId, reportId){
   await logAudit('report_viewed', patientId);
   const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'reports', reportId));
@@ -6046,7 +6056,9 @@ window.viewSavedReport = async function(patientId, reportId){
   showPatientOverlay(r.protocolName, `
     <div class="card">
       <button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button>
-      <textarea id="savedReportText" rows="14" readonly style="margin-top:10px;">${escapeHtml(r.reportTextCliente || r.reportText)}</textarea>
+      <textarea id="savedReportText" rows="14" style="margin-top:10px;">${escapeHtml(r.reportTextCliente || r.reportText)}</textarea>
+      <p class="muted" style="font-size:.8rem;margin:4px 0 0;">✏️ Pode alterar o texto e guardar. A versão anterior mantém-se no histórico.</p>
+      <button class="primary" style="margin-top:8px;" onclick="window.__guardarEdicaoRelatorio('${patientId}','${reportId}')">💾 Guardar alterações</button>
       ${r.reportTextCliente ? `<details style="margin-top:8px;"><summary class="muted">🔒 Ver relatório técnico (interno)</summary><div style="white-space:pre-wrap;font-size:13px;background:#f6f8f7;border-radius:8px;padding:10px;margin-top:6px;">${escapeHtml(r.reportText||'')}</div></details>` : ''}
       <div class="row" style="margin-top:8px;">
         <button class="primary" onclick="downloadReportPDF('${escapeHtml(r.protocolName)}', document.getElementById('savedReportText').value)">📄 Descarregar PDF</button>
@@ -12829,23 +12841,43 @@ async function atualizarRelatorioFicha(patientId, sessaoId, reportHtml, titulo){
   if (!patientId || !reportHtml) return false;
   return guardarNaFicha(patientId, { tipo: 'caso-energetico', titulo: (titulo || 'Relatório') + ' (versão editada)', texto: 'Versão editada do relatório, a partir do original.', reportHtml, dados: { editado: true, sessaoId: sessaoId || null } });
 }
-async function guardarNaFicha(patientId, { tipo, titulo, texto, dados, reportHtml }){
-  if (!patientId) return false;
-  try {
-    await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), {
-      tipo: tipo || 'registo',
-      protocolName: titulo || 'Registo',
-      reportText: texto || '',
-      ...(reportHtml ? { reportHtml } : {}),
-      dados: dados || null,
-      generatedAt: serverTimestamp()
-    });
-    return true;
-  } catch(e){
-    console.error('Não consegui gravar na ficha do paciente:', e);
-    return false;
+/* Gravar na ficha à prova de falhas: limpa valores inválidos (undefined), tenta duas vezes e,
+   se mesmo assim falhar, guarda uma cópia no próprio telemóvel para nunca se perder o relatório. */
+const RASC_KEY = 'vindora_rascunhos_ficha';
+function rascLer(){ try { return JSON.parse(localStorage.getItem(RASC_KEY) || '[]'); } catch(e){ return []; } }
+function rascGravar(l){ try { localStorage.setItem(RASC_KEY, JSON.stringify(l.slice(-30))); } catch(e){} }
+async function guardarNaFicha(patientId, { tipo, titulo, texto, dados, reportHtml, editadoDe }, _semRascunho){
+  if (!patientId){ window.__erroGuardar = 'Sem paciente escolhido.'; toast('Não há paciente associado: escolha o paciente para guardar.', true); return false; }
+  const limpo = x => { try { return JSON.parse(JSON.stringify(x === undefined ? null : x)); } catch(e){ return null; } };
+  const corpo = { tipo: tipo || 'registo', protocolName: titulo || 'Registo', reportText: texto || '', ...(reportHtml ? { reportHtml } : {}), dados: limpo(dados), ...(editadoDe ? { editadoDe } : {}) };
+  let ultimo = null;
+  for (let t = 0; t < 2; t++){
+    try {
+      await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), { ...limpo(corpo), generatedAt: serverTimestamp() });
+      if (!_semRascunho) setTimeout(() => { try { window.reenviarRascunhosFicha(true); } catch(e){} }, 800);
+      return true;
+    } catch(e){ ultimo = e; console.error('Não consegui gravar na ficha do paciente:', e); await new Promise(r => setTimeout(r, 700)); }
   }
+  window.__erroGuardar = (ultimo && (ultimo.code || ultimo.message)) || 'erro desconhecido';
+  if (!_semRascunho){
+    const l = rascLer(); l.push({ patientId, tenantId, corpo, quando: Date.now() }); rascGravar(l);
+    toast('Não consegui gravar agora (' + window.__erroGuardar + '). Fica uma cópia segura neste telemóvel e é enviada sozinha quando houver ligação.', true);
+  }
+  return false;
 }
+window.reenviarRascunhosFicha = async function(silencio){
+  const l = rascLer().filter(x => x.tenantId === tenantId); if (!l.length) return 0;
+  const resto = rascLer().filter(x => x.tenantId !== tenantId); let n = 0;
+  for (const x of l){
+    try { await addDoc(collection(db, 'tenants', tenantId, 'patients', x.patientId, 'reports'), { ...x.corpo, generatedAt: serverTimestamp() }); n++; }
+    catch(e){ resto.push(x); }
+  }
+  rascGravar(resto);
+  if (n) toast(n + ' relatório(s) que estavam por gravar foram guardados na ficha ✓');
+  else if (!silencio) toast('Continua sem ser possível gravar. Verifique a ligação.', true);
+  return n;
+};
+setTimeout(() => { try { if (rascLer().length) window.reenviarRascunhosFicha(true); } catch(e){} }, 6000);
 
 /* Envio de relatórios: SEMPRE o mesmo link do portal do paciente.
    O relatório fica gravado na ficha (reports) e aparece no portal; ao paciente
