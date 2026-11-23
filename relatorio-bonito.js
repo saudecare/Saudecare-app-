@@ -275,8 +275,9 @@ export function rbJunta(l, e) {
 }
 export function rbModeloPessoal(o) {
   const B = [], n1 = o.nome1 || '';
-  const abre = [o.abertura || `Fiz ${o.oQueFiz || 'a pesquisa'} a pensar só em si${o.pedido ? `, a partir do que me contou: “${o.pedido}”` : ''}.`,
-    o.porque || 'Serve para perceber, uma a uma, as coisas que andam a pesar e que muitas vezes não se veem. Abaixo explico cada uma, o que costuma causar e o que vamos fazer.'].concat(o.extraAbertura || []);
+  const tu = o.tom === 'tu';
+  const abre = [o.abertura || (tu ? `Preparei este relatório a pensar só em ti${o.oQueFiz ? ', a partir de ' + o.oQueFiz : ''}${o.pedido ? ` e do que me contaste: “${o.pedido}”` : ''}. 🤍` : `Fiz ${o.oQueFiz || 'a pesquisa'} a pensar só em si${o.pedido ? `, a partir do que me contou: “${o.pedido}”` : ''}.`),
+    o.porque || (tu ? 'Escrevi tudo de forma simples, como se estivéssemos a conversar, para perceberes o que se passou e o que podes fazer a seguir.' : 'Serve para perceber, uma a uma, as coisas que andam a pesar e que muitas vezes não se veem. Abaixo explico cada uma, o que costuma causar e o que vamos fazer.')].concat(o.extraAbertura || []);
   B.push({ tipo: 'texto', icone: '👋', titulo: n1 ? `Olá, ${n1}` : 'Olá', paras: abre });
   (o.antes || []).forEach(b => b && B.push(b));
   if ((o.encontrados || []).length) B.push({ tipo: 'detalhe', icone: '🔎', titulo: o.tituloEncontrados || 'O que encontrei, explicado', intro: 'Toque em cada item para perceber o que é e como costuma notar-se.',
@@ -289,7 +290,7 @@ export function rbModeloPessoal(o) {
   if ((o.perguntas || []).length) B.push({ tipo: 'lista', icone: '💭', titulo: 'Para pensar, sem pressa', marca: '•', itens: o.perguntas });
   if ((o.proximos || []).length) B.push({ tipo: 'linha', icone: '📅', titulo: 'Próximos passos', passos: o.proximos });
   (o.depois || []).forEach(b => b && B.push(b));
-  B.push({ tipo: 'resumo', icone: '✅', titulo: 'Em resumo', paras: o.resumo && o.resumo.length ? o.resumo : ['Isto é um retrato do momento, não uma sentença. Nos próximos dias é normal sentir mais sono, emoção ou cansaço leve, e também mais leveza. Beba água e descanse.', 'Qualquer dúvida, fale comigo.'] });
+  B.push({ tipo: 'resumo', icone: '✅', titulo: 'Em resumo', paras: o.resumo && o.resumo.length ? o.resumo : (tu ? ['Isto é só um retrato do momento, não é uma sentença. Nos próximos dias é normal sentires mais sono, emoção ou um cansaço leve, e também mais leveza. Bebe água e descansa.', 'Se tiveres alguma dúvida, é só falares comigo. Estou cá. 🌿'] : ['Isto é um retrato do momento, não uma sentença. Nos próximos dias é normal sentir mais sono, emoção ou cansaço leve, e também mais leveza. Beba água e descanse.', 'Qualquer dúvida, fale comigo.']) });
   return { tema: o.tema || 'geral', cor: o.cor, emoji: o.emoji, titulo: o.titulo, subtitulo: o.subtitulo || 'Relatório pessoal', nome: o.nome || n1, data: o.data, assinatura: o.assinatura || '', blocos: B, mensagem: o.mensagem || '', aviso: o.aviso };
 }
 // Para consultas que já têm secções de texto (editáveis): cada secção passa a bloco, com abertura e fecho pessoais.

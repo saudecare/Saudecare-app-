@@ -429,7 +429,7 @@ import { FUSO_PADRAO, fusoValido, fusoDoDispositivo } from './fuso.js';
 import { telefoneParaDigitos } from './contacto.js';
 import { iniciarFinancas } from './financas.js?v=2026-11-15-8';
 import { FC_TIPOS, fcHtmlTodas, fcLigar, fcRespostas } from './ficha-campos.js?v=2026-11-15-8';
-import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento, rbModeloPessoal, rbModeloDeSeccoes, rbJunta, rbModeloTerapeutico } from './relatorio-bonito.js?v=2026-11-22-15';
+import { rbFragmento, rbPreVisualizar, rbPreVisualizarHtml, rbDocumentoDeFragmento, rbModeloPessoal, rbModeloDeSeccoes, rbJunta, rbModeloTerapeutico } from './relatorio-bonito.js?v=2026-11-23-14';
 import { praticaPadrao, mesclarPratica, praticaId } from './reiki-pratica.js';
 import { corpoMensagem as reikiCorpoMsg, escolherFoto as reikiEscolherFoto } from './reiki-midia-chat.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-23-13';
+const APP_VERSION = '2026-11-23-14';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -22849,7 +22849,7 @@ window.sendChatbotMessage = async function(){
   window.relatorioTerapeuticoHtml = function(o){ try { return rbFragmento(rbModeloTerapeutico(Object.assign({ data:new Date().toLocaleDateString('pt-PT') }, o))); } catch(e){ console.error(e); return ''; } };
   window.__negocioNome = () => (currentTenantDoc && currentTenantDoc.businessName) || '';
   window.verRelatorioHtml = function(h, titulo){ if (!h){ toast('Sem relatório para mostrar.', true); return; } rbPreVisualizarHtml(rbDocumentoDeFragmento(h, titulo || 'Relatório'), titulo || 'Relatório'); };
-  window.relatorioPessoalDeSeccoes = function(o, secoes){ try { return rbFragmento(rbModeloDeSeccoes(Object.assign({ assinatura: (currentTenantDoc && currentTenantDoc.businessName) || '', data:new Date().toLocaleDateString('pt-PT') }, o), secoes)); } catch(e){ console.error(e); return ''; } };
+  window.relatorioPessoalDeSeccoes = function(o, secoes){ try { return rbFragmento(rbModeloDeSeccoes(Object.assign({ tom:'tu', aviso:'Esta leitura é orientativa e de uma terapia complementar. Não substitui o acompanhamento médico ou psicológico, e as decisões são sempre tuas.', assinatura: (currentTenantDoc && currentTenantDoc.businessName) || '', data:new Date().toLocaleDateString('pt-PT') }, o), secoes)); } catch(e){ console.error(e); return ''; } };
   window.lerRelatoriosPaciente = async function(patientId, tipo){
     try{
       const sn = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), where('tipo', '==', tipo)));
