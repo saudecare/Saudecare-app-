@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-23-8';
+const APP_VERSION = '2026-11-23-9';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -6005,6 +6005,37 @@ window.saveFilledFormNow = async function(patientId, formId, formTitle, includes
   viewPatient(patientId);
 };
 
+/* Edição de um relatório ilustrado: edita-se o texto de cada parágrafo e os gráficos, a ficha e o desenho mantêm-se.
+   Grava como nova versão, que continua ilustrada (com Link e PDF). */
+function edIlusPreparar(html){
+  const d = new DOMParser().parseFromString('<body>' + html + '</body>', 'text/html');
+  const nos = [...d.querySelectorAll('.rbx .corpo p, .rbx .corpo li, .rbx .msg p')].filter(n => n.childElementCount === 0 && n.textContent.trim());
+  window.__edIlus = { doc: d, nos };
+  let ult = '';
+  const campos = nos.map((n, i) => {
+    const sec = n.closest('section'), tit = sec && sec.querySelector('h2') ? sec.querySelector('h2').textContent.trim() : (n.closest('.msg') ? '💌 Palavras para si' : '');
+    const cab = tit !== ult ? `<div style="font-weight:700;margin:14px 0 4px;color:var(--primary);">${escapeHtml(tit)}</div>` : ''; ult = tit;
+    const t = n.textContent.trim();
+    return cab + `<textarea data-ed="${i}" rows="${Math.min(8, 1 + Math.floor(t.length / 55))}" style="margin-bottom:6px;">${escapeHtml(t)}</textarea>`;
+  }).join('');
+  return `<div id="edIlusBox">${campos}</div>`;
+}
+window.__guardarEdicaoIlustrado = async function(patientId, reportId){
+  const E = window.__edIlus; if (!E) return;
+  try {
+    const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'reports', reportId));
+    const r = snap.data() || {};
+    document.querySelectorAll('#edIlusBox textarea[data-ed]').forEach(t => { const n = E.nos[+t.dataset.ed]; if (n) n.textContent = t.value; });
+    const html = E.doc.body.innerHTML;
+    const corpo = {}; Object.keys(r).forEach(k => { const v = r[k]; if (k === 'generatedAt' || (v && typeof v === 'object' && typeof v.toDate === 'function')) return; corpo[k] = v; });
+    corpo.protocolName = String(r.protocolName || 'Relatório').replace(/ \(versão editada\)$/, '') + ' (versão editada)';
+    corpo.reportHtml = html; corpo.editadoDe = reportId;
+    corpo.reportText = E.nos.map(n => n.textContent.trim()).join('\n');
+    if (r.reportTextCliente) corpo.reportTextCliente = corpo.reportText;
+    await addDoc(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), Object.assign(JSON.parse(JSON.stringify(corpo)), { generatedAt: serverTimestamp() }));
+    toast('Alterações guardadas ✓ A nova versão continua ilustrada, com Link e PDF.');
+  } catch(e){ console.error(e); toast('Não consegui guardar: ' + (e.message || e), true); }
+};
 window.__guardarEdicaoRelatorio = async function(patientId, reportId){
   const ta = document.getElementById('savedReportText'); if (!ta) return;
   try {
@@ -6053,12 +6084,17 @@ window.viewSavedReport = async function(patientId, reportId){
     </div>`;
   }
 
+  const ilus = typeof r.reportHtml === 'string' && r.reportHtml.indexOf('rbx') >= 0;
   showPatientOverlay(r.protocolName, `
     <div class="card">
       <button class="ghost" onclick="viewPatient('${patientId}')">← Voltar à ficha</button>
-      <textarea id="savedReportText" rows="14" style="margin-top:10px;">${escapeHtml(r.reportTextCliente || r.reportText)}</textarea>
+      ${ilus ? `<p class="muted" style="font-size:.85rem;">✏️ Altere o texto de cada parágrafo. Os gráficos e o desenho mantêm-se. A versão anterior fica no histórico.</p>${edIlusPreparar(r.reportHtml)}
+      <textarea id="savedReportText" style="display:none;">${escapeHtml(r.reportTextCliente || r.reportText || '')}</textarea>
+      <button class="primary" style="margin-top:8px;" onclick="window.__guardarEdicaoIlustrado('${patientId}','${reportId}')">💾 Guardar alterações (continua ilustrado)</button>
+      <button class="ghost" style="margin-top:6px;" onclick="verRelatorioIlustrado('${patientId}','${reportId}')">✨ Ver relatório ilustrado</button>`
+      : `<textarea id="savedReportText" rows="14" style="margin-top:10px;">${escapeHtml(r.reportTextCliente || r.reportText)}</textarea>
       <p class="muted" style="font-size:.8rem;margin:4px 0 0;">✏️ Pode alterar o texto e guardar. A versão anterior mantém-se no histórico.</p>
-      <button class="primary" style="margin-top:8px;" onclick="window.__guardarEdicaoRelatorio('${patientId}','${reportId}')">💾 Guardar alterações</button>
+      <button class="primary" style="margin-top:8px;" onclick="window.__guardarEdicaoRelatorio('${patientId}','${reportId}')">💾 Guardar alterações</button>`}
       ${r.reportTextCliente ? `<details style="margin-top:8px;"><summary class="muted">🔒 Ver relatório técnico (interno)</summary><div style="white-space:pre-wrap;font-size:13px;background:#f6f8f7;border-radius:8px;padding:10px;margin-top:6px;">${escapeHtml(r.reportText||'')}</div></details>` : ''}
       <div class="row" style="margin-top:8px;">
         <button class="primary" onclick="downloadReportPDF('${escapeHtml(r.protocolName)}', document.getElementById('savedReportText').value)">📄 Descarregar PDF</button>
