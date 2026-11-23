@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-23-1';
+const APP_VERSION = '2026-11-23-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12999,7 +12999,8 @@ function famUniaoDe(snaps){
 }
 async function triagemGerarFamilia(){
   const F = __triagem.fam; F.pessoas[F.idx].snap = famSnap();
-  const snaps = F.pessoas.map(p => p.snap || famVazio()), U = famUniaoDe(snaps), nomes = F.pessoas.map(p => p.nome), grupoId = 'fam' + Date.now();
+  const snaps = F.pessoas.map(p => p.snap || famVazio()), U = famUniaoDe(snaps), nomes = F.pessoas.map(p => p.nome), grupoId = F.grupoId || ('fam' + Date.now());
+  F.grupoId = grupoId;
   const leit = __triagem.leituraComplementar, perg = __triagem.perguntasCartas;
   try{
     __triagem.leituraComplementar = null; __triagem.perguntasCartas = []; __triagem._terapeuta = null; __triagem._famColeta = [];
@@ -13141,7 +13142,8 @@ async function famFinalizar(col, nomes, leit, perg){
   for (const x of col){
     __triagem.patientId = x.patientId; __triagem.patientNome = x.nome;
     x.payload.reportHtml = U.html; x.payload.reportTextCliente = U.texto; x.payload.familiaUnica = true;
-    x.payload.familia = { grupoId: __triagem._famInfo.grupoId, pessoas: nomes };
+    x.payload.familia = { grupoId: __triagem._famInfo.grupoId, pessoas: nomes, membros: col.map(y => ({ patientId: y.patientId, nome: y.nome })) };
+    x.payload.leituraJson = leit ? JSON.stringify(leit) : null; x.payload.perguntasJson = (perg || []).length ? JSON.stringify(perg) : null;
     if (!(await triagemTentarGravar(x.payload))) ok = false;
   }
   window.__ultimoReportHtml = U.html; window.__triagemTextoClienteAtual = U.texto;
@@ -13161,6 +13163,78 @@ window.__triagemReabrir = function(){
   __triagem.passo = famAtiva() ? 1 : 1; __triagem._ultimo = 0; __triagem._terapeuta = null;
   toast('Pode acrescentar ou corrigir qualquer passo. Ao gerar de novo, o relatório é atualizado.');
   renderTriagemPasso(document.getElementById('mainView'));
+};
+/* Reabrir uma triagem guardada (de qualquer dia) para acrescentar ou corrigir. Ao gerar de novo,
+   grava uma nova versão que substitui a anterior (as triagens guardadas não se alteram). */
+function triSnapDeReport(u){
+  const o = famVazio();
+  o.patientId = u._pid; o.patientNome = u._nome || '';
+  o.dataNascimento = u.dataNascimento || ''; o.paisNascimento = u.paisNascimento || '';
+  o.bovisIni = u.bovisInicial || '';
+  o.baixaVibracao = TRIAGEM_BAIXA_VIBRACAO.map(c => (u.baixaVibracaoDetetada || []).indexOf(c.nome) >= 0);
+  o.chakras = TRIAGEM_CHAKRAS_9.map(c => { const f = (u.chakras || []).find(x => x.nome === c.nome); return f ? (f.estado === 'np' ? 'np' : triEstadoChakra(f)) : 'np'; });
+  o.aberturaCaminhos = (u.aberturaCaminhos === null || u.aberturaCaminhos === undefined) ? -1 : Math.max(0, TRIAGEM_NIVEIS_ABERTURA.indexOf(u.aberturaCaminhos));
+  o.corpos = u.corposPesquisa || undefined; o.alertas = u.alertasRastreio || undefined; o.numConsulta = u.numeroConsulta || 1;
+  return o;
+}
+window.__triagemReabrirGuardada = async function(reportId){
+  document.getElementById('triReabrirModal')?.remove();
+  const pid = __triagem.patientId; if (!pid) return;
+  try{
+    const todasSnap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), orderBy('generatedAt', 'desc')));
+    const todas = triagemTriagensValidas(todasSnap.docs.map(d => ({ ...d.data(), _id: d.id })));
+    const idx = todas.findIndex(r => r._id === reportId); if (idx < 0){ toast('Não encontrei essa triagem.', true); return; }
+    const u = todas[idx]; u._pid = pid; u._nome = __triagem.patientNome;
+    const comuns = { _terapeuta: null, _famColeta: null, _famU: null, aplicadas: [], bovisFin: '' };
+    // pessoa(s)
+    const membros = (u.familia && u.familia.membros && u.familia.membros.length > 1) ? u.familia.membros : null;
+    const snaps = []; const ids = {};
+    if (membros){
+      for (const m of membros){
+        let r = null;
+        if (m.patientId === pid) r = u;
+        else {
+          const sn = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', m.patientId, 'reports'), orderBy('generatedAt', 'desc')));
+          r = triagemTriagensValidas(sn.docs.map(d => ({ ...d.data(), _id: d.id }))).find(x => x.familia && x.familia.grupoId === u.familia.grupoId) || null;
+        }
+        if (r){ r._pid = m.patientId; r._nome = m.nome; snaps.push({ id: m.patientId, nome: m.nome, snap: triSnapDeReport(r) }); ids[m.patientId] = r._id; }
+      }
+    }
+    if (snaps.length < 2){ snaps.length = 0; snaps.push({ id: pid, nome: __triagem.patientNome, snap: triSnapDeReport(u) }); ids[pid] = u._id; }
+    Object.assign(__triagem, comuns);
+    __triagem._idsGravados = ids;
+    __triagem.anterior = todas[idx + 1] || null; __triagem.numConsulta = u.numeroConsulta || (todas.length - idx);
+    __triagem._ultimaSemTratamento = null; __triagem._penultima = null; __triagem.continuacaoDe = null; __triagem.soTriagem = false;
+    __triagem.origemPedido = u.origemPedido || 'paciente'; __triagem.pedinteNome = u.pedinteNome || ''; __triagem.pedinteRel = u.pedinteRel || ''; __triagem.pedido = u.pedido || '';
+    __triagem.sessoesNecessarias = u.sessoesNecessarias ? String(u.sessoesNecessarias) : ''; __triagem.preco = u.preco ? String(u.preco) : '';
+    __triagem.alvos = (u.alvos || []).map(a => ({ tipo: a.tipo, nome: a.nome || '', notas: a.notas || '', pesquisado: !!a.pesquisado, aberto: false, causas: TRIAGEM_BAIXA_VIBRACAO.map(c => (a.causas || []).indexOf(c.nome) >= 0) }));
+    try{ __triagem.leituraComplementar = u.leituraJson ? JSON.parse(u.leituraJson) : null; __triagem.perguntasCartas = u.perguntasJson ? JSON.parse(u.perguntasJson) : []; }catch(e){ __triagem.leituraComplementar = null; __triagem.perguntasCartas = []; }
+    const semCartas = !u.leituraJson && !u.perguntasJson && (u.leituraComplementar || (u.perguntasCartas || []).length);
+    // pessoas / família
+    if (snaps.length > 1){ __triagem.fam = { pessoas: snaps.map(x => ({ id: x.id, nome: x.nome, snap: x.snap })), idx: Math.max(0, snaps.findIndex(x => x.id === pid)), uniao: false, grupoId: u.familia.grupoId }; famCarregar(__triagem.fam.pessoas[__triagem.fam.idx].snap); }
+    else { __triagem.fam = null; famCarregar(snaps[0].snap); }
+    // etiquetas já aplicadas (pelo nome)
+    try{ const nomes = (u.etiquetasAplicadas || []).map(e => e.pt); __triagem.aplicadas = triagemItensAplicar().filter(it => nomes.indexOf(it.pt) >= 0).map(it => it.key); }catch(e){}
+    __triagem.passo = 1; __triagem._ultimo = 0; window.scrollTo(0, 0);
+    renderTriagemPasso(document.getElementById('mainView'));
+    toast(semCartas ? 'Triagem reaberta. As cartas desta triagem antiga não se recuperam: tire-as de novo se quiser.' : 'Triagem reaberta. Altere o que quiser e gere de novo.', false);
+  }catch(e){ console.error(e); toast('Não consegui reabrir a triagem: ' + (e.message || e), true); }
+};
+window.__triagemMostrarAnteriores = async function(){
+  const pid = __triagem.patientId; if (!pid){ toast('Escolha primeiro o paciente.', true); return; }
+  let lista = [];
+  try{
+    const sn = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), orderBy('generatedAt', 'desc')));
+    lista = triagemTriagensValidas(sn.docs.map(d => ({ ...d.data(), _id: d.id })));
+  }catch(e){ toast('Não consegui ver as triagens anteriores.', true); return; }
+  const f = document.createElement('div'); f.id = 'triReabrirModal';
+  f.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  const dt = r => { try{ return r.generatedAt.toDate().toLocaleDateString('pt-PT'); }catch(e){ return ''; } };
+  f.innerHTML = `<div class="card" style="max-width:420px;width:100%;max-height:80vh;overflow:auto;"><h3>🕘 Reabrir triagem anterior</h3>
+    <p class="muted">Abre a triagem com tudo o que já tinha. Pode acrescentar ou corrigir e gerar de novo: a nova versão substitui a anterior.</p>
+    ${lista.length ? lista.map(r => `<div class="row" style="align-items:center;gap:8px;margin:6px 0;"><div style="flex:1;font-size:.9rem;"><strong>${dt(r)}</strong> · ${r.numeroConsulta || 1}.ª consulta<br><span class="muted">${(r.baixaVibracaoDetetada || []).length} causa(s)${r.familia ? ' · 👨‍👩‍👧 família' : ''}${(r.alvos || []).length ? ' · 🏠 ' + r.alvos.length + ' alvo(s)' : ''}</span></div><button class="primary" style="width:auto;" onclick="window.__triagemReabrirGuardada('${r._id}')">Reabrir</button></div>`).join('') : '<p class="muted">Este paciente ainda não tem triagens guardadas.</p>'}
+    <button class="ghost" style="margin-top:8px;" onclick="document.getElementById('triReabrirModal').remove()">Fechar</button></div>`;
+  document.body.appendChild(f);
 };
 /* Blocos extra do relatório: família, cartas da família, casa e veículos. */
 function triExtraBlocos(op){
@@ -13205,7 +13279,7 @@ function triagemProgressoHTML(){
   const total = 9;
   const cartas = __triagem.patientId ? `<div style="text-align:right;margin:-4px 0 10px;"><button class="ghost" style="width:auto;" onclick="window.__triCartasToggle()">🎴 ${__triagem.cartasAberto ? 'Fechar as cartas' : 'Tirar cartas agora'}</button></div>${(__triagem.cartasAberto && __triagem.passo !== 7) ? triCartasPainel() : ''}` : '';
   return `<div class="row" style="gap:4px;margin-bottom:12px;">${Array.from({length: total}).map((_,i) =>
-    `<div style="flex:1;height:5px;border-radius:3px;background:${i <= __triagem.passo ? 'var(--primary)' : '#e5e5e5'};"></div>`).join('')}</div>${famBarraHTML()}${cartas}`;
+    `<div style="flex:1;height:5px;border-radius:3px;background:${i <= __triagem.passo ? 'var(--primary)' : '#e5e5e5'};"></div>`).join('')}</div>${famBarraHTML()}${(__triagem.patientId && __triagem.passo >= 1) ? '<div style="margin:4px 0;"><button type="button" class="ghost" style="width:auto;padding:6px 10px;" onclick="window.__triagemMostrarAnteriores()">🕘 Reabrir triagem anterior</button></div>' : ''}${cartas}`;
 }
 
 function triagemPodePularData(){ return !!(__triagem.anterior && __triagem.dataNascimento); }
@@ -19534,6 +19608,8 @@ async function triagemGerarRelatorio(){
     chakras: chakrasTodos.map(c => ({ nome:c.nome, estado: c.estado === 'np' ? 'np' : triEstadoChakra(c) })),
     aberturaCaminhos: aberturaNivel || null,
     pedido: (__triagem.pedido || '').trim() || null, origemPedido: __triagem.origemPedido || 'paciente', pedinteNome: (__triagem.pedinteNome || '').trim() || null, pedinteRel: (__triagem.pedinteRel || '').trim() || null,
+    leituraJson: __triagem.leituraComplementar ? JSON.stringify(__triagem.leituraComplementar) : null,
+    perguntasJson: (__triagem.perguntasCartas || []).length ? JSON.stringify(__triagem.perguntasCartas) : null,
     leituraComplementar: __triagem.leituraComplementar ? {
       momento: __triagem.leituraComplementar.momento.nome,
       porTras: __triagem.leituraComplementar.porTras.nome,
@@ -19579,15 +19655,11 @@ async function triagemTentarGravar(payload){
   try{
     const ids = (__triagem._idsGravados = __triagem._idsGravados || {}), pidG = __triagem.patientId;
     let refNovo;
-    if (ids[pidG]){
-      refNovo = doc(db, 'tenants', tenantId, 'patients', pidG, 'reports', ids[pidG]);
-      await updateDoc(refNovo, { tipo: 'triagem-energetica', ...payload, generatedAt: serverTimestamp(), atualizadoEm: serverTimestamp() });
-    } else {
-      refNovo = await addDoc(collection(db, 'tenants', tenantId, 'patients', pidG, 'reports'), {
-        tipo: 'triagem-energetica', ...payload, generatedAt: serverTimestamp()
-      });
-      ids[pidG] = refNovo.id;
-    }
+    // As triagens guardadas não se alteram: cada nova gravação é uma nova versão que substitui a anterior.
+    refNovo = await addDoc(collection(db, 'tenants', tenantId, 'patients', pidG, 'reports'), {
+      tipo: 'triagem-energetica', ...payload, ...(ids[pidG] ? { continuacaoDe: ids[pidG] } : {}), generatedAt: serverTimestamp()
+    });
+    ids[pidG] = refNovo.id;
     window.__triagemUltimoReportId = refNovo.id;
     window.__triagemIdTriagem = refNovo.id;
     window.__triagemUltimoPayload = payload;
