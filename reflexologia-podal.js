@@ -163,13 +163,62 @@
     return `RELATÓRIO — REFLEXOLOGIA PODAL\n${S.nome} · ${hoje()}\n\n` + S.secoes.filter(s => !/internas/.test(s.titulo)).map(s => s.titulo.toUpperCase() + '\n' + s.texto).join('\n\n') + `\n\n${AVISO}`;
   };
   window.rpCopiar = function(){ try { navigator.clipboard.writeText(textoFinal()); toast('Relatório copiado.'); } catch (_) { toast('Não foi possível copiar.', true); } };
+  // Relatório ilustrado (mesmo modelo da pesquisa energética): ficha, gráficos, zonas por pé e orientações.
+  function htmlIlustrado(ter, negocio){
+    textoFinal();
+    const sec = t => ((S.secoes || []).find(x => x.titulo === t) || {}).texto || '';
+    const linhas = t => sec(t).split('\n').map(x => x.trim()).filter(Boolean);
+    const alt = { D: alterados('D'), E: alterados('E') };
+    const totalZ = zonasDoLado('D').length + zonasDoLado('E').length, nAlt = alt.D.length + alt.E.length;
+    const nome1 = String(S.nome || '').split(/\s+/)[0];
+    const obsL = lado => OBS_PELE.filter((o, i) => S.obs[lado][i]).join(', ').toLowerCase();
+    const zonas = ['D', 'E'].map(l => {
+      const dest = []; const ob = obsL(l); if (ob) dest.push({ rotulo:'Observação do pé', nome: ob.charAt(0).toUpperCase() + ob.slice(1), texto:'' });
+      if (S.notasZ[l]) dest.push({ rotulo:'Notas', nome: S.notasZ[l], texto:'' });
+      return { titulo:'🦶 Pé ' + (l === 'D' ? 'direito' : 'esquerdo'), subtitulo: alt[l].length ? alt[l].length + ' zona(s) com alteração' : 'Sem alterações ✅', destaques: dest,
+        pontos: alt[l].map(z => ({ nome: z.nome + ' · ' + NOME_ESTADO[S.zonas[l][z.id]], texto: z.onde + '. Costuma associar-se a ' + z.tema + ' (chakra ' + z.chakra + ').' })) };
+    });
+    const antes = [];
+    if (totalZ) { const eq = Math.round((totalZ - nAlt) / totalZ * 100); antes.push({ tipo:'medidor', icone:'🦶', titulo:'Equilíbrio dos pés', valor: eq, destaque: eq >= 85 ? 'Pés muito equilibrados' : (eq >= 65 ? 'Algumas zonas a acompanhar' : 'Pedem cuidado e continuidade'), legenda: 'Percentagem de zonas sem alteração, nos dois pés (' + nAlt + ' de ' + totalZ + ' zonas com alteração).' }); }
+    const sist = {}, sistTot = {};
+    ['D', 'E'].forEach(l => zonasDoLado(l).forEach(z => { sistTot[z.sist] = (sistTot[z.sist] || 0) + 1; if ((S.zonas[l][z.id] || 'ok') !== 'ok') sist[z.sist] = (sist[z.sist] || 0) + 1; }));
+    const bs = Object.keys(sist).map(k => ({ nome: k, valor: Math.round(sist[k] / sistTot[k] * 100), texto: sist[k] + ' de ' + sistTot[k] + ' zonas' }));
+    if (bs.length) antes.push({ tipo:'barras', icone:'📊', titulo:'Por sistema do corpo', intro:'Quanto mais cheia a barra, mais zonas desse sistema pediram atenção nos pés.', itens: bs.sort((a, b) => b.valor - a.valor) });
+    const chT = {}, chA = {};
+    ['D', 'E'].forEach(l => zonasDoLado(l).forEach(z => { chT[z.chakra] = (chT[z.chakra] || 0) + 1; if ((S.zonas[l][z.id] || 'ok') !== 'ok') chA[z.chakra] = (chA[z.chakra] || 0) + 1; }));
+    if (Object.keys(chA).length >= 3) antes.push({ tipo:'radar', icone:'🕸️', titulo:'Ligação aos centros de energia', intro:'Quanto mais longe do centro, mais atenção pediu esse centro de energia.', itens: Object.keys(chT).map((c, i) => ({ nome: c, rotulo: String(i + 1), valor: Math.max(4, Math.round((chA[c] || 0) / chT[c] * 100)) })) });
+    const tec = TECNICAS.filter((t, i) => S.tecnicas[i]);
+    const meio = [];
+    const sr = sec('Sessão realizada').trim(); if (sr) meio.push({ tipo:'texto', icone:'💆', titulo:'A sessão', paras: sr.split('\n').map(x => x.trim()).filter(Boolean) });
+    const cu = linhas('Cuidados tidos em conta'); if (cu.length) meio.push({ tipo:'lista', icone:'🛡️', titulo:'Cuidados tidos em conta', marca:'•', itens: cu.map(x => x.replace(/^[•\-–]\s*/, '')) });
+    const ls = linhas('Leitura geral');
+    return window.relatorioTerapeuticoHtml({ tema:'alma', emoji:'🦶', titulo:'A sua reflexologia podal', subtitulo:'Relatório da sessão', nome: S.nome, nome1,
+      ficha:[{ rotulo:'Nome', valor: S.nome }, { rotulo:'Data da sessão', valor: hoje() }, { rotulo:'Terapeuta', valor: (ter && ter.nome) || '' }, { rotulo:'Duração', valor: S.duracao ? S.duracao + ' minutos' : '' }, { rotulo:'Motivo da consulta', valor: S.motivo, largo:true }],
+      acolhimento:['Este relatório resume, de forma simples, o que foi observado nos seus pés e o que foi feito na sessão' + (nome1 ? ', ' + nome1 : '') + '. É uma leitura orientativa, de uma terapia complementar.', S.queixas ? 'O que referiu: “' + S.queixas + '”.' : ''].filter(Boolean),
+      tituloOrigem:'O foco da sessão', chips:[{ rotulo:'Pés com alteração', valor: nAlt ? nAlt + ' zona(s)' : 'nenhuma' }, { rotulo:'Técnicas usadas', valor: tec.length ? String(tec.length) : '' }].filter(x => x.valor), origem: tec.length ? ['Técnicas: ' + tec.join(', ').toLowerCase() + '.'] : [],
+      antes, tituloZonas:'Os seus pés, zona a zona', introZonas:'Toque em "Pontos identificados" para ver o que foi encontrado em cada pé.', zonas, meio,
+      sintese: ls.length ? ls : ['Os pés não mostraram alterações marcantes nesta sessão.'],
+      introOrientacoes:'Para apoiar nos próximos dias:', orientacoes: linhas('Recomendações').map(x => x.replace(/^[•\-–]\s*/, '')),
+      assinatura: [ter && ter.nome, negocio].filter(Boolean).join(' · '), fecho:'Com carinho e presença. 🌿', aviso: AVISO });
+  }
   window.rpGuardar = async function(){
+    const ter = window.terapeutaDoRelatorio ? await window.terapeutaDoRelatorio() : null;
+    if (window.terapeutaDoRelatorio && !ter) return;
     const texto = textoFinal();
     const dados = { data: hoje(), motivo:S.motivo, zonas:S.zonas, observacao:S.obs, tecnicas: TECNICAS.filter((t, i) => S.tecnicas[i]), duracao:S.duracao };
-    const ok = window.guardarNaFicha ? await window.guardarNaFicha(S.patientId, { tipo:'reflexologia_podal', titulo:'Reflexologia podal — ' + hoje(), texto, dados, reportHtml: (window.relatorioPessoalDeSeccoes ? window.relatorioPessoalDeSeccoes({ titulo:'A sua reflexologia podal', nome:S.nome, nome1:String(S.nome||'').split(/\s+/)[0], oQueFiz:'a reflexologia podal', pedido:(S.queixas||S.motivo||'') }, S.secoes.filter(x => !/internas/.test(x.titulo))) : '') }) : false;
+    let html = ''; try { html = htmlIlustrado(ter, window.__negocioNome ? window.__negocioNome() : ''); } catch (e) { console.error(e); }
+    if (!html && window.relatorioPessoalDeSeccoes) html = window.relatorioPessoalDeSeccoes({ titulo:'A sua reflexologia podal', nome:S.nome, nome1:String(S.nome||'').split(/\s+/)[0], oQueFiz:'a reflexologia podal', pedido:(S.queixas||S.motivo||'') }, S.secoes.filter(x => !/internas/.test(x.titulo)));
+    const ok = window.guardarNaFicha ? await window.guardarNaFicha(S.patientId, { tipo:'reflexologia_podal', titulo:'Reflexologia podal — ' + hoje(), texto, dados, reportHtml: html }) : false;
     if (ok && window.anexarNotasClinicas) await window.anexarNotasClinicas(S.patientId, 'Reflexologia podal', [{ rotulo:'Queixas', valor:S.queixas }, { rotulo:'Notas clínicas', valor:S.notas }]);
-    if (ok) toast('Guardado na ficha do paciente ✓ Pode editá-lo mais tarde na ficha, em Relatórios.');
-    else { try { const b = new Blob([texto], { type:'text/plain;charset=utf-8' }); const u = URL.createObjectURL(b); const l = document.createElement('a'); l.href = u; l.download = 'reflexologia-' + String(S.nome||'').replace(/\s+/g,'-') + '.txt'; document.body.appendChild(l); l.click(); l.remove(); } catch(_){} }
+    if (!ok) {
+      try { const b = new Blob([texto], { type:'text/plain;charset=utf-8' }); const u = URL.createObjectURL(b); const l = document.createElement('a'); l.href = u; l.download = 'reflexologia-' + String(S.nome||'').replace(/\s+/g,'-') + '.txt'; document.body.appendChild(l); l.click(); l.remove(); } catch (_) {}
+      return;
+    }
+    window.__rpUltimoHtml = html;
+    $('rpCorpo').innerHTML = `<div class="card" style="background:#eef7ee;border:1px solid #7fae3a;"><h3 style="margin-top:0;">✅ Relatório guardado na ficha</h3><p class="muted">Pode vê-lo, enviar o link ao paciente, ou editá-lo mais tarde na ficha, em Relatórios.</p></div>
+      <div class="row" style="flex-wrap:wrap;gap:8px;margin:10px 0;"><button class="primary" onclick="window.verRelatorioHtml(window.__rpUltimoHtml,'Reflexologia podal')">🌿 Ver relatório ilustrado</button>
+      <button class="primary" onclick="window.enviarRelatorioPortal('${S.patientId}')">🔗 Gerar link e enviar ao paciente</button><button class="ghost" onclick="rpFechar()">Fechar</button></div>${html || ''}`;
+    $('rpCorpo').scrollTop = 0;
   };
 
   function render(){

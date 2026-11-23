@@ -419,7 +419,7 @@
 <script src="chakras-leitura.js?v=2026-11-20-2"></script>
 <script src="pesquisa-sistemas.js?v=2026-11-21-20"></script>
 <script src="causas-ficha.js?v=2026-11-21-7"></script>
-<script src="reflexologia-podal.js?v=2026-11-23-5"></script>
+<script src="reflexologia-podal.js?v=2026-11-23-8"></script>
 <script type="module" src="consulta-guiada.js?v=2026-11-21-20"></script>
 
 <!-- Firebase (SDK modular v9, via CDN) -->
@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-23-7';
+const APP_VERSION = '2026-11-23-8';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -22779,6 +22779,10 @@ window.sendChatbotMessage = async function(){
   window.firebase       = { auth: () => auth };
   window.guardarNaFicha = function(...args){ return guardarNaFicha(...args); };
   // Relatório pessoal (estilo acolhedor) a partir de secções editáveis — usado por consultas em ficheiros à parte
+  // Modelo ilustrado único (ficha, gráficos, zonas, orientações) para qualquer terapia que o chame
+  window.relatorioTerapeuticoHtml = function(o){ try { return rbFragmento(rbModeloTerapeutico(Object.assign({ data:new Date().toLocaleDateString('pt-PT') }, o))); } catch(e){ console.error(e); return ''; } };
+  window.__negocioNome = () => (currentTenantDoc && currentTenantDoc.businessName) || '';
+  window.verRelatorioHtml = function(h, titulo){ if (!h){ toast('Sem relatório para mostrar.', true); return; } rbPreVisualizarHtml(rbDocumentoDeFragmento(h, titulo || 'Relatório'), titulo || 'Relatório'); };
   window.relatorioPessoalDeSeccoes = function(o, secoes){ try { return rbFragmento(rbModeloDeSeccoes(Object.assign({ assinatura:'Ricardo Correia · Hikari Fafe', data:new Date().toLocaleDateString('pt-PT') }, o), secoes)); } catch(e){ console.error(e); return ''; } };
   window.lerRelatoriosPaciente = async function(patientId, tipo){
     try{
