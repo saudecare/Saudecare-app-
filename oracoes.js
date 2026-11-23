@@ -1,7 +1,7 @@
 /* Orações e Salmos — biblioteca da Hikari Fafe: criar, editar, ordenar e enviar por link ao paciente.
    Ferramenta exclusiva da conta hikari-terapias. Cada oração é um documento em «oracoes/{id}» e a página
    de leitura do paciente é oracao.html?o={id} (feita para telemóvel e para qualquer ecrã). */
-import { ORACAO_MIGUEL, MODELO_VAZIO, SALMOS_PADRAO } from './oracoes-padrao.js';
+import { ORACAO_MIGUEL, MODELO_VAZIO, SALMOS_PADRAO, PROTECAO_PADRAO } from './oracoes-padrao.js';
 
 export const TENANT_ORACOES = 'hikari-terapias';
 const BASE_LINK = 'https://vindora.pt/oracao.html?o=';
@@ -31,6 +31,14 @@ export function renderOracoes(main, ctx) {
     let semente = false; try { semente = localStorage.getItem('oracoes_semente_v1') === '1'; } catch (_) {}
     if (!lista.length && !semente) {
       try { await ctx.gravar(null, Object.assign(clone(ORACAO_MIGUEL), { ordem: 1 })); try { localStorage.setItem('oracoes_semente_v1', '1'); } catch (_) {} lista = await ctx.listar(); } catch (_) {}
+    }
+    let prot = false; try { prot = localStorage.getItem('oracoes_protecao_v1') === '1'; } catch (_) {}
+    if (!prot && lista.length) {
+      try {
+        for (const sd of PROTECAO_PADRAO) if (!lista.some((o) => o.padraoId === sd.padraoId)) await ctx.gravar(null, clone(sd));
+        try { localStorage.setItem('oracoes_protecao_v1', '1'); } catch (_) {}
+        lista = await ctx.listar(); ctx.toast('Orações de proteção instaladas. 🛡️');
+      } catch (_) {}
     }
     // instala os salmos (91, 51, 144 e o ritual) uma só vez; se os apagares, não voltam sozinhos
     let salmos = false; try { salmos = localStorage.getItem('oracoes_salmos_v1') === '1'; } catch (_) {}

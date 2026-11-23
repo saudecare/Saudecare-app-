@@ -814,3 +814,123 @@ export const SALMOS_PADRAO = [
   ]
  }
 ];
+
+
+/* Orações de proteção para o terapeuta (pêndulo, apometria, limpezas). Texto próprio, editável na app. */
+export const PROTECAO_PADRAO = [
+ {
+  "padraoId": "protecao-miguel-leao",
+  "versaoPadrao": 1,
+  "tipo": "oracao",
+  "emoji": "🛡️",
+  "titulo": "São Miguel Arcanjo (Papa Leão XIII)",
+  "subtitulo": "A oração curta de proteção, de 1886",
+  "dias": 0,
+  "ordem": 20,
+  "seccoes": [
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Oração tradicional de proteção, composta pelo Papa Leão XIII. Pode ser rezada a qualquer hora, sozinho ou antes de começar um trabalho."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "A oração",
+    "texto": "São Miguel Arcanjo, defendei-nos no combate, sede o nosso refúgio contra as maldades e ciladas do demónio.\nOrdene-lhe Deus, instantemente o pedimos, e vós, Príncipe da milícia celeste, pela virtude divina, precipitai no inferno a Satanás e aos outros espíritos malignos que andam pelo mundo para perdição das almas.\nÁmen."
+   }
+  ],
+  "temasDias": []
+ },
+ {
+  "padraoId": "protecao-antes-trabalho",
+  "versaoPadrao": 1,
+  "tipo": "oracao",
+  "emoji": "🕯️",
+  "titulo": "Proteção antes do trabalho",
+  "subtitulo": "Antes de pêndulo, cartas, apometria ou limpeza",
+  "dias": 0,
+  "ordem": 21,
+  "seccoes": [
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Para fazer antes de iniciar uma pesquisa com pêndulo ou cartas, uma limpeza ou uma sessão de apometria. Pede proteção para o terapeuta, para o espaço e para a pessoa que vai ser acompanhada."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "A oração",
+    "texto": "Respiro fundo e coloco-me em silêncio.\nPeço a Deus, ao meu Anjo da Guarda e ao Arcanjo Miguel que me envolvam em luz e protecção.\nProtegei o meu corpo, a minha mente e o meu coração.\nProtegei este espaço, as paredes, o chão e o ar que respiramos.\nProtegei a pessoa que hoje acompanho, para que receba só o que lhe faz bem e para que nada de pesado lhe seja acrescentado.\nQue só a luz, a verdade e o amor trabalhem aqui.\nQue eu seja apenas um instrumento de paz e que tudo o que não for para o bem de todos fique de fora.\nObrigado. Ámen."
+   }
+  ],
+  "temasDias": []
+ },
+ {
+  "padraoId": "protecao-familia-casa",
+  "versaoPadrao": 1,
+  "tipo": "oracao",
+  "emoji": "🏡",
+  "titulo": "Proteção da minha família e da minha casa",
+  "subtitulo": "Para fechar o dia de trabalho e proteger quem amo",
+  "dias": 0,
+  "ordem": 22,
+  "seccoes": [
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Para rezar antes ou depois de uma sessão, para que o trabalho feito não chegue a casa nem à família. Pode ser dita também à noite."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "A oração",
+    "texto": "Peço ao Arcanjo Miguel que guarde a minha casa e todos os que nela vivem.\nQue cada porta e cada janela estejam protegidas pela luz.\nProtegei a minha família, perto e longe, de dia e de noite, acordada ou a dormir.\nQue nada do que vi, ouvi ou toquei no meu trabalho venha comigo para casa.\nQue só entre aqui o que é paz, saúde e amor.\nAgradeço a proteção que sinto e confio. Ámen."
+   }
+  ],
+  "temasDias": []
+ },
+ {
+  "padraoId": "protecao-limpeza-espaco",
+  "versaoPadrao": 1,
+  "tipo": "oracao",
+  "emoji": "✨",
+  "titulo": "Proteção durante a limpeza e a apometria",
+  "subtitulo": "Para o espaço e para a pessoa em tratamento",
+  "dias": 0,
+  "ordem": 23,
+  "seccoes": [
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Para dizer em voz baixa durante uma limpeza energética, para manter o espaço e a pessoa em segurança até ao fim do trabalho."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "A oração",
+    "texto": "Peço que este trabalho decorra sob a luz e a protecção de Deus.\nQue a pessoa que está comigo seja envolvida e resguardada, e que tudo o que se solta seja entregue à luz, para ser transformado em paz.\nQue o espaço fique limpo, protegido e em equilíbrio.\nQue ninguém e nada de fora possa interferir.\nQue eu mantenha a calma, o discernimento e a humildade durante todo o trabalho.\nQue tudo seja feito para o bem e na vontade de Deus. Ámen."
+   }
+  ],
+  "temasDias": []
+ },
+ {
+  "padraoId": "protecao-fecho-trabalho",
+  "versaoPadrao": 1,
+  "tipo": "oracao",
+  "emoji": "🌙",
+  "titulo": "Fecho e agradecimento do trabalho",
+  "subtitulo": "Para encerrar e libertar-me no fim",
+  "dias": 0,
+  "ordem": 24,
+  "seccoes": [
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Para dizer no fim de uma pesquisa, limpeza ou sessão: agradece, fecha o trabalho e devolve cada pessoa a si própria."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "A oração",
+    "texto": "Agradeço a Deus, ao meu Anjo da Guarda e ao Arcanjo Miguel a ajuda e a protecção de hoje.\nDou por terminado este trabalho.\nDevolvo a cada um o que é seu e deixo com a luz o que não me pertence.\nO espaço fica limpo e protegido. A pessoa fica em paz e em segurança.\nEu fico leve, inteiro e em paz.\nEstá feito. Ámen.\n\nPara fechar: lavar as mãos e beber um copo de água."
+   }
+  ],
+  "temasDias": []
+ }
+];
