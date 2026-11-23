@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-23-2';
+const APP_VERSION = '2026-11-23-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -12952,7 +12952,7 @@ function famVazio(){
   return { patientId:null, patientNome:'', dataNascimento:'', paisNascimento:'', bovisIni:'', baixaVibracao: TRIAGEM_BAIXA_VIBRACAO.map(() => false), chakras: TRIAGEM_CHAKRAS_9.map(() => 'np'),
     aberturaCaminhos:-1, corpos:undefined, alertas:undefined, anterior:null, numConsulta:1, _ultimaSemTratamento:null, _penultima:null, _totalTriagens:undefined, continuacaoDe:null, soTriagem:null, requester:undefined };
 }
-async function famAdicionar(id, nome){
+async function famAdicionar(id, nome, usarUltima){
   if (!__triagem.fam) __triagem.fam = { pessoas:[{ id: __triagem.patientId, nome: __triagem.patientNome, snap:null }], idx:0, uniao:false };
   const F = __triagem.fam;
   if (F.pessoas.some(p => p.id === id)){ toast('Essa pessoa já está na família.', true); return; }
@@ -12964,15 +12964,24 @@ async function famAdicionar(id, nome){
   if (pc){ if (pc.birthDate) __triagem.dataNascimento = pc.birthDate; if (pc.birthCountry) __triagem.paisNascimento = pc.birthCountry; }
   await triagemCarregarAnterior(id);
   __triagem._ultimaSemTratamento = null; __triagem.continuacaoDe = null;   // só o titular pode "continuar" uma triagem pendente
+  if (usarUltima){
+    const ant = __triagem.anterior;
+    if (!ant){ toast(nome.split(/\s+/)[0] + ' ainda não tem triagem guardada: entra em branco.', true); }
+    else {
+      const num = __triagem.numConsulta;
+      famCarregar(Object.assign(triSnapDeReport(Object.assign({}, ant, { _pid: id, _nome: nome })), { anterior: ant, numConsulta: num, _totalTriagens: undefined }));
+      __triagem._idsGravados = Object.assign(__triagem._idsGravados || {}, { [id]: ant._id });
+    }
+  }
   __triagem.passo = 1; __triagem._ultimo = 0; window.scrollTo(0, 0);
   renderTriagemPasso(document.getElementById('mainView'));
   toast(nome.split(/\s+/)[0] + ' juntou-se à triagem da família ✓');
 }
-window.__famAdicionarNome = async function(){
+window.__famAdicionarNome = async function(usarUltima){
   const v = ((document.getElementById('famBusca') || {}).value || '').trim(); if (!v){ toast('Escreva o nome da pessoa.', true); return; }
   const pc = (window.__allPatientsCache || []).find(x => stripAccents(x.fullName || '') === stripAccents(v)) || (window.__allPatientsCache || []).find(x => stripAccents(x.fullName || '').includes(stripAccents(v)));
   if (!pc){ toast('Não encontrei esse paciente. Crie-o primeiro em Pacientes.', true); return; }
-  await famAdicionar(pc.id, pc.fullName);
+  await famAdicionar(pc.id, pc.fullName, usarUltima === true);
 };
 window.__famIr = function(i){
   const F = __triagem.fam; if (!F || i === F.idx) return;
@@ -13037,7 +13046,7 @@ function famBarraHTML(){
     const opts = (window.__allPatientsCache || []).filter(x => !usados.has(x.id)).map(x => `<option value="${escapeHtml(x.fullName || '')}">`).join('');
     return `<div class="card" style="padding:8px 10px;background:#f7f4fb;">
       ${F ? `<div><strong>👨‍👩‍👧 Família</strong> <span class="muted">· toque numa pessoa para ver ou alterar os dados dela</span></div><div>${tabs}</div>` : `<div class="muted">Triagem a mais pessoas da família? Adicione-as aqui: fazem-se todas juntas e o tratamento é um só.</div>`}
-      <div style="margin-top:4px;"><input id="famBusca" list="famLista" placeholder="➕ Adicionar pessoa da família (nome)…" style="width:62%;"><datalist id="famLista">${opts}</datalist> <button type="button" class="ghost" style="width:auto;" onclick="window.__famAdicionarNome()">Adicionar</button></div>
+      <div style="margin-top:4px;"><input id="famBusca" list="famLista" placeholder="➕ Adicionar pessoa da família (nome)…" style="width:62%;"><datalist id="famLista">${opts}</datalist> <button type="button" class="ghost" style="width:auto;" onclick="window.__famAdicionarNome()">Adicionar</button> <button type="button" class="ghost" style="width:auto;" onclick="window.__famAdicionarNome(true)">Adicionar com a última triagem</button></div>
     </div>`;
   }
   if (F && F.pessoas.length > 1) return `<div class="card" style="padding:8px 10px;background:#f7f4fb;">👨‍👩‍👧 <strong>Família:</strong> ${F.pessoas.map(x => escapeHtml(x.nome)).join(', ')} · tratamento, cartas, casa e veículos feitos em conjunto</div>`;
