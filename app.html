@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-17';
+const APP_VERSION = '2026-11-24-18';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -19768,7 +19768,7 @@ async function triagemCompletoHtml(pid, rid, o){
   const causasDetetadas = TRIAGEM_BAIXA_VIBRACAO.filter(c => (r.baixaVibracaoDetetada || []).indexOf(c.nome) >= 0);
   const chakrasTodos = TRIAGEM_CHAKRAS_9.map(c => { const f = (r.chakras || []).find(x => x.nome === c.nome); return { ...c, estado: f ? (f.estado === 'np' ? 'np' : triEstadoChakra(f)) : 'ok' }; }).filter(c => c.estado !== 'np');
   const aberturaNivel = r.aberturaCaminhos === null ? null : (r.aberturaCaminhos || TRIAGEM_NIVEIS_ABERTURA[0]);
-  const aplicadas = r.etiquetasAplicadas || [];
+  const aplicadas = (o.aplicadas && o.aplicadas.length) ? o.aplicadas : (r.etiquetasAplicadas || []);
   // todas as consultas válidas, da mais antiga à mais recente
   const todos = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), orderBy('generatedAt', 'asc')));
   const val = triagemTriagensValidas(todos.docs.map(x => ({ ...x.data(), _id: x.id })));
@@ -19777,6 +19777,8 @@ async function triagemCompletoHtml(pid, rid, o){
   const ant = antigas.length ? antigas[antigas.length - 1] : null;
   const comparacao = ant ? compararComAnterior(ant, r) : null;
   const numConsulta = antigas.length + 1;
+  const snec = parseInt(r.sessoesNecessarias, 10);
+  if (o.ultima === undefined) o.ultima = (snec && numConsulta >= snec) ? true : await reikiConfirmar('É a última consulta combinada?', 'Se sim, o relatório inclui um balanço final com o que ficou por assentar.', 'Sim, é a última');
   // evolução: todas as consultas até hoje
   const serie = antigas.concat([{ ...r, _id: rid }]);
   const meioExtra = [];
@@ -22349,7 +22351,18 @@ window.eeConcluir = async function(){
       const lo = await __linkOracaoTratamento({ patientId: __ee.pacienteId, nomePac: nomeP, terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel });
       const d = { causas: [], linkOracao: lo.link, textosOracao: lo.textos, nome: nomeP, terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel, modo: __ee.modo,
         aplicadas: sel.map(x => ({ pt: x.pt, codigo: x.codigo })), terapeuta: ter.nome, negocio: (currentTenantDoc && currentTenantDoc.businessName) || '', data: new Date().toLocaleDateString('pt-PT') };
-      htmlEE = window.tratamentoRelatorioHtml(d);
+      let ridT = (typeof __triagem !== 'undefined' && __triagem && __triagem.patientId === __ee.pacienteId && window.__triagemUltimoReportId) || '';
+      if (!ridT){ try {
+        const tq = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', __ee.pacienteId, 'reports'), orderBy('generatedAt', 'desc')));
+        const vt = triagemTriagensValidas(tq.docs.map(x => ({ ...x.data(), _id: x.id })))[0];
+        const g = vt && vt.generatedAt ? (vt.generatedAt.toMillis ? vt.generatedAt.toMillis() : (vt.generatedAt.seconds || 0) * 1000) : 0;
+        if (vt && g > Date.now() - 3 * 86400000) ridT = vt._id;
+      } catch(e){} }
+      if (ridT){
+        try { const c = await triagemCompletoHtml(__ee.pacienteId, ridT, { dst, ter, lo, aplicadas: sel.map(x => ({ pt: x.pt, codigo: x.codigo })) }); htmlEE = c.html; d.__completo = true; }
+        catch(e){ console.error('Relatório completo falhou nas etiquetas:', e); }
+      }
+      if (!htmlEE) htmlEE = window.tratamentoRelatorioHtml(d);
       dados = { ...dados, terapeuta: ter.nome, terceiro: dst.terc, pedinteNome: dst.pedinteNome || '', pedinteRel: dst.pedinteRel || '' };
     }catch(e){ console.warn('Relatório ilustrado das etiquetas falhou:', e); }
     window.__eeUltimoHtml = htmlEE;
