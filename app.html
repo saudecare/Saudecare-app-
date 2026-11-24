@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-2';
+const APP_VERSION = '2026-11-24-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4790,7 +4790,7 @@ window.viewPatient = async function(patientId){
         <div class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-end;">
           <button class="ghost" onclick="viewSavedReport('${patientId}','${rd.id}')">Ver</button>
           ${(typeof r.reportHtml === 'string' && r.reportHtml.indexOf('rbx') >= 0)
-            ? `<button class="primary" onclick="verRelatorioIlustrado('${patientId}','${rd.id}')">✨ Relatório ilustrado</button><button class="ghost" onclick="enviarRelatorioPortal('${patientId}')">📲 Link</button><button class="ghost" onclick="pdfDeRelatorioGuardado('${patientId}','${rd.id}')">📄 PDF</button>`
+            ? `${r.etiquetasAplicadas && r.etiquetasAplicadas.length ? `<button class="ghost" onclick="__tratamentoDeTriagem('${patientId}','${rd.id}')">🌿 Relatório do tratamento</button>` : ''}<button class="primary" onclick="verRelatorioIlustrado('${patientId}','${rd.id}')">✨ Relatório ilustrado</button><button class="ghost" onclick="enviarRelatorioPortal('${patientId}')">📲 Link</button><button class="ghost" onclick="pdfDeRelatorioGuardado('${patientId}','${rd.id}')">📄 PDF</button>`
             : (r.protocolName === 'Triagem de Baixa Vibração' ? `<button class="primary" onclick="triagemRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
               : (r.tipo === 'pesquisa-integrada' ? `<button class="primary" onclick="pesquisaRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
               : (r.tipo === 'cartomancia' ? `<button class="primary" onclick="cartasRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>` : '')))}
@@ -19600,6 +19600,68 @@ function triagemModeloBonito(d, cli){
   m.aviso = 'Este é um trabalho energético e complementar. Não substitui o acompanhamento médico ou psicológico.';
   return m;
 }
+
+/* ═══ Relatório do tratamento: só o que foi feito (limpeza) + aconselhamento, em linguagem próxima.
+   Pode ser dirigido ao próprio ou a quem pediu (mãe, pai, amigo, familiar...). ═══ */
+function tratamentoModelo(d){
+  const nome = d.nome || '', n1 = String(nome).split(/\s+/)[0], terc = !!d.terc, pn = (d.pedinteNome || '').trim(), pn1 = pn.split(/\s+/)[0] || 'olá', rel = (d.pedinteRel || '').trim();
+  const alvo = terc ? n1 : 'ti', ped = (d.pedido || '').trim().replace(/[.\s]+$/, '');
+  const ap = d.aplicadas || [];
+  const antes = [{ tipo:'ficha', icone:'🪪', titulo:'Ficha do tratamento', itens:[{ rotulo: terc ? 'Tratamento feito a' : 'Nome', valor: nome }, { rotulo:'Data', valor: d.data || '' }, { rotulo:'Terapeuta', valor: d.terapeuta || '' },
+    terc ? { rotulo:'Pedido por', valor: [pn, rel && '(' + rel + ')'].filter(Boolean).join(' ') } : null, { rotulo:'Limpezas aplicadas', valor: ap.length ? String(ap.length) : '' }].filter(Boolean) }];
+  const meio = [];
+  if (ap.length) meio.push({ tipo:'lista', icone:'✨', titulo:'O que foi feito', marca:'✓', itens: ap.map(a => (a.codigo ? '[' + a.codigo + '] ' : '') + (a.pt || a.nome || '')) });
+  if (d.bovisIni || d.bovisFin) meio.push({ tipo:'destaque', icone:'📈', titulo:'Antes e depois', chips:[{ rotulo:'Antes', valor: String(d.bovisIni || '') }, { rotulo:'Depois', valor: String(d.bovisFin || '') }], paras:['É uma medição do campo de energia, feita antes e depois do trabalho.'] });
+  const como = [terc ? `Trabalhei com o pêndulo e com o nome de ${nome} ao centro, a invocar a energia de cada etiqueta, uma a uma, até sentir o campo assentar.` : 'Trabalhei com o pêndulo e com o teu nome ao centro, a invocar a energia de cada etiqueta, uma a uma, até sentir o teu campo assentar.',
+    terc ? `Antes de começar, pedi proteção para mim, para o espaço e para ${nome}. No fim agradeci e fechei o trabalho.` : 'Antes de começar, pedi proteção para mim, para o espaço e para ti. No fim agradeci e fechei o trabalho.'];
+  const orient = terc ? [`Está presente sem pressionar. Às vezes basta perguntar “como estás?” e ouvir.`, `Ajuda ${n1} a beber água ao longo do dia e a descansar mais do que o costume.`, `Nos 1 a 3 dias a seguir, é normal ${n1} sentir mais sono, emoção ou um cansaço leve. É o corpo a assentar, não é motivo de alarme.`, `Evitem discussões e ambientes pesados nestes dias, se possível. Um passeio ou um momento calmo ajuda muito.`, `Se ${n1} sentir dor forte ou algo que preocupe, o melhor é falar com o médico. E podes sempre falar comigo.`]
+    : ['Bebe bastante água ao longo do dia.', 'Descansa um bocadinho mais do que o costume e dorme cedo, se puderes.', 'Nos 1 a 3 dias a seguir, é normal sentires mais sono, emoção ou um cansaço leve. É o teu corpo a assentar, não é motivo de alarme.', 'Evita ambientes pesados e discussões nestes dias. Um passeio ou um momento de silêncio ajuda.', 'Se sentires dor forte ou algo que te preocupe, fala com o teu médico. E podes sempre falar comigo.'];
+  const proximos = [];
+  if (d.sessoesNecessarias) proximos.push({ rotulo:'Sessões recomendadas', texto: d.sessoesNecessarias + ' sessão(ões) de limpeza.' });
+  proximos.push({ rotulo:'Acompanhamento', texto:'Vamos vendo como as coisas assentam e ajustamos juntos o que for preciso.' });
+  const abertura = terc ? `Olá, ${pn1}! A teu pedido${rel ? ` (${rel})` : ''}, fiz um tratamento de limpeza energética a pensar em ${nome}.` : `Olá, ${n1}! Aqui tens o resumo do tratamento que fiz por ti.`;
+  const m = rbModeloPessoal({ tema:'triagem', emoji:'🌿', titulo: terc ? 'O tratamento de ' + nome : 'O teu tratamento', subtitulo:'O que foi feito e como te podes ajudar', nome, nome1: terc ? pn1 : n1, tom:'tu',
+    abertura, porque: terc ? `Escrevi tudo de forma simples, para saberes o que foi feito e como podes ajudar ${n1} nos próximos dias.${ped ? ` Tive em conta o que me pediste: “${ped}”.` : ''}` : `Escrevi tudo de forma simples, para saberes exatamente o que foi feito e como te podes ajudar nos próximos dias.${ped ? ` Tive em conta o que me pediste: “${ped}”.` : ''}`,
+    data: d.data, assinatura: [d.terapeuta, d.negocio].filter(Boolean).join(' · '), antes, meio, como, tituloComo:'Como foi feito',
+    proximos, depois:[{ tipo:'orientacoes', icone:'🏡', titulo: terc ? `Como podes ajudar ${n1}` : 'Para te ajudares nos próximos dias', intro: terc ? '' : '', itens: orient }],
+    resumo:[ap.length ? `Foram aplicadas ${ap.length} ${ap.length === 1 ? 'limpeza' : 'limpezas'}${terc ? ' a pensar em ' + n1 : ''}.` : 'O trabalho foi feito com todo o cuidado.', terc ? `Obrigado pela confiança, ${pn1}. Estou cá para o que precisares. 🌿` : 'Obrigado pela confiança. Estou cá para o que precisares. 🌿' ],
+    mensagem:'Cuida bem de ti e dos teus. 🌿' });
+  m.aviso = 'Este é um trabalho energético e complementar. Não substitui o acompanhamento médico ou psicológico.';
+  return m;
+}
+window.tratamentoRelatorioHtml = function(d){ return rbFragmento(tratamentoModelo(d)); };
+/* Pergunta a quem se dirige o relatório: ao próprio ou a quem pediu (mãe, pai, amigo...). */
+function perguntarDestinatario(def){
+  return new Promise(res => {
+    const ov = document.createElement('div'); ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(20,10,30,.7);display:flex;align-items:center;justify-content:center;padding:16px;';
+    ov.innerHTML = `<div class="card" style="max-width:420px;width:100%;"><h3 style="margin-top:0;">📨 A quem se dirige o relatório?</h3>
+      <label style="display:flex;gap:8px;align-items:center;margin:8px 0;"><input type="radio" name="dst" value="eu" ${def && def.terc ? '' : 'checked'}> Ao próprio paciente</label>
+      <label style="display:flex;gap:8px;align-items:center;margin:8px 0;"><input type="radio" name="dst" value="ter" ${def && def.terc ? 'checked' : ''}> A quem pediu (mãe, pai, amigo, familiar…)</label>
+      <div id="dstCampos" style="display:${def && def.terc ? 'block' : 'none'};"><input id="dstNome" placeholder="Nome de quem pediu" value="${escapeHtml((def && def.pedinteNome) || '')}"><input id="dstRel" placeholder="Relação (mãe, pai, amiga…)" value="${escapeHtml((def && def.pedinteRel) || '')}" style="margin-top:6px;"></div>
+      <div class="row" style="gap:8px;margin-top:12px;"><button class="primary" id="dstOk">Continuar</button><button class="ghost" id="dstNo">Cancelar</button></div></div>`;
+    document.body.appendChild(ov);
+    ov.querySelectorAll('input[name=dst]').forEach(r => r.onchange = () => { ov.querySelector('#dstCampos').style.display = ov.querySelector('input[name=dst]:checked').value === 'ter' ? 'block' : 'none'; });
+    ov.querySelector('#dstNo').onclick = () => { ov.remove(); res(null); };
+    ov.querySelector('#dstOk').onclick = () => { const t = ov.querySelector('input[name=dst]:checked').value === 'ter', n = ov.querySelector('#dstNome').value.trim(), r = ov.querySelector('#dstRel').value.trim();
+      if (t && !n){ toast('Escreva o nome de quem pediu.', true); return; } ov.remove(); res({ terc: t, pedinteNome: t ? n : '', pedinteRel: t ? r : '' }); };
+  });
+}
+/* Gera (a partir de uma triagem guardada com limpeza aplicada) o relatório do tratamento e guarda-o na ficha. */
+window.__tratamentoDeTriagem = async function(patientId, reportId){
+  try {
+    const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'reports', reportId)); const u = snap.data() || {};
+    if (!(u.etiquetasAplicadas || []).length){ toast('Esta triagem ainda não tem limpeza aplicada.', true); return; }
+    const dst = await perguntarDestinatario({ terc: u.origemPedido === 'terceiro', pedinteNome: u.pedinteNome, pedinteRel: u.pedinteRel }); if (!dst) return;
+    const ter = await terapeutaDoRelatorio(); if (!ter) return;
+    const pc = (window.__allPatientsCache || []).find(x => x.id === patientId) || {};
+    const d = { nome: pc.fullName || u.nome || '', terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel, pedido: u.pedido || '', aplicadas: u.etiquetasAplicadas, bovisIni: u.bovisInicial, bovisFin: u.bovisFinal,
+      sessoesNecessarias: u.sessoesNecessarias, terapeuta: ter.nome, negocio: (currentTenantDoc && currentTenantDoc.businessName) || '', data: new Date().toLocaleDateString('pt-PT') };
+    const html = window.tratamentoRelatorioHtml(d);
+    const texto = ['RELATÓRIO DO TRATAMENTO', d.nome + ' · ' + d.data, '', 'O QUE FOI FEITO'].concat(u.etiquetasAplicadas.map((a, i) => (i + 1) + '. ' + a.pt)).join('\n');
+    const ok = await guardarNaFicha(patientId, { tipo:'tratamento', titulo:'Relatório do tratamento — ' + d.data, texto: texto.replace(/\\\\n/g, '\\n'), dados:{ terapeuta: ter.nome, terceiro: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel, deTriagem: reportId }, reportHtml: html });
+    if (ok){ toast('Relatório do tratamento guardado ✓ Está na lista, com Link e PDF.'); window.verRelatorioHtml(html, 'Relatório do tratamento'); }
+  } catch(e){ console.error(e); toast('Não consegui gerar: ' + (e.message || e), true); }
+};
 
 async function triagemGerarRelatorio(){
   if (!__triagem._terapeuta || !__triagem._famInfo){ const t = await terapeutaDoRelatorio(); if (!t) return; __triagem._terapeuta = t; }
