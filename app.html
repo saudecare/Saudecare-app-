@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-7';
+const APP_VERSION = '2026-11-24-8';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -19621,6 +19621,13 @@ function tratamentoModelo(d){
   proximos.push({ rotulo:'Acompanhamento', texto:'Vamos vendo como as coisas assentam e ajustamos juntos o que for preciso.' });
   // Orações e salmos: uma prática simples de 7 dias, com página própria (textos completos e marcação dos dias)
   const oracoes = [];
+  oracoes.push({ tipo:'texto', icone:'💛', titulo: terc ? `A tua parte também conta` : 'A tua parte também conta', paras: terc ? [
+    `O tratamento é um apoio, mas não faz tudo sozinho. Quando ${n1} e quem está à volta se envolvem, com presença, oração e pequenos cuidados, o resultado tende a ser melhor e mais rápido.`,
+    `Por isso, as sugestões abaixo são só sugestões, mas vale mesmo a pena fazê-las. Não esperes que tudo se resolva sem ${n1} e tu darem também um passo.` ] : [
+    'O tratamento é um apoio, mas não faz tudo sozinho. Quando também fazes a tua parte, com oração, descanso e pequenos cuidados, o resultado tende a ser melhor e mais rápido.',
+    'As sugestões abaixo são só sugestões, mas vale mesmo a pena fazê-las. Não esperes que tudo se resolva sem dares também um passo.' ] });
+  const dicas = []; (d.causas || []).forEach(c => { const f = window.CAUSA_FICHA && window.CAUSA_FICHA[c.n]; if (f && f.casa && dicas.indexOf(f.casa) < 0) dicas.push(f.casa); });
+  if (dicas.length) oracoes.push({ tipo:'lista', icone:'🎯', titulo:'Para este caso, ajuda ainda', marca:'•', itens: dicas.slice(0, 4) });
   if (d.linkOracao){
     oracoes.push({ tipo:'botao', icone:'🙏', titulo: terc ? `Orações para fazeres por ${n1}` : 'Orações para fazeres em casa',
       paras: [ terc ? `Sugiro que rezes por ${n1} durante 7 dias seguidos, uma vez por dia.` : 'Sugiro que rezes durante 7 dias seguidos, uma vez por dia.',
@@ -19698,7 +19705,7 @@ window.__tratamentoDeTriagem = async function(patientId, reportId){
     let nomePac = pc.fullName || u.nome || '';
     if (!nomePac){ try { const ps = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId)); nomePac = (ps.data() || {}).fullName || ''; } catch(e){} }
     const linkOracao = await __linkOracaoTratamento({ patientId, nomePac, terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel });
-    const causas = [];
+    const causas = (u.baixaVibracaoDetetada || []).map(nm => TRIAGEM_BAIXA_VIBRACAO.find(c => c.nome === nm)).filter(Boolean).map(c => ({ n: c.n, nome: c.nome }));
     const d = { causas, linkOracao, nome: nomePac, terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel, pedido: u.pedido || '', aplicadas: u.etiquetasAplicadas, bovisIni: u.bovisInicial, bovisFin: u.bovisFinal,
       sessoesNecessarias: u.sessoesNecessarias, terapeuta: ter.nome, negocio: (currentTenantDoc && currentTenantDoc.businessName) || '', data: new Date().toLocaleDateString('pt-PT') };
     const html = window.tratamentoRelatorioHtml(d);
