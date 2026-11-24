@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-20';
+const APP_VERSION = '2026-11-24-21';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -19784,26 +19784,36 @@ window.__relatorioCompletoAssistente = async function(patientId){
     const caixa = document.createElement('div');
     caixa.style.cssText = 'background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px;box-sizing:border-box;';
     ov.appendChild(caixa); document.body.appendChild(ov);
+    const tLimp = limpezas.length ? ms(limpezas[0].generatedAt) : 0, tTri = ms(tris[0].generatedAt);
+    let novo = !!(tLimp && tLimp > tTri + 6 * 3600000);   // há limpeza mais recente do que a última triagem guardada
+    const novoDet = {};
+    const aplicadasNovo = () => { const m = new Map(); limpezas.filter(l => Math.abs(ms(l.generatedAt) - tLimp) < 1.5 * DIA).forEach(l => ((l.dados && l.dados.etiquetas) || (l.etiquetasAplicadas) || []).forEach(e => { if (!m.has(e.pt)) m.set(e.pt, { pt: e.pt, codigo: e.codigo }); })); return Array.from(m.values()); };
     let atual = tris[0], sel = {};
     const pintar = () => {
-      const det = (atual.baixaVibracaoDetetada || []);
-      const aps = aplicadasDe(atual); const apPt = aps.map(a => a.pt);
+      const det = novo ? [] : (atual.baixaVibracaoDetetada || []);
+      const aps = novo ? aplicadasNovo() : aplicadasDe(atual); const apPt = aps.map(a => a.pt);
       Object.keys(sel).forEach(k => delete sel[k]); aps.forEach(a => sel[a.pt] = a);
       caixa.innerHTML = `<h3 style="margin:0 0 6px;">🌿 Relatório completo</h3>
         <label style="font-size:13px;font-weight:600;">1. Escolhe a triagem</label>
-        <select id="rcTri" style="width:100%;padding:10px;margin:4px 0 12px;">${tris.map((t, i) => `<option value="${i}" ${t._id === atual._id ? 'selected' : ''}>${fmt(ms(t.generatedAt))} · ${(t.baixaVibracaoDetetada || []).length} energias${t.numeroConsulta ? ' · consulta ' + t.numeroConsulta : ''}</option>`).join('')}</select>
+        <select id="rcTri" style="width:100%;padding:10px;margin:4px 0 12px;"><option value="N" ${novo ? 'selected' : ''}>➕ Hoje (${fmt(tLimp || Date.now())}) — a triagem de hoje não está guardada</option>${tris.map((t, i) => `<option value="${i}" ${(!novo && t._id === atual._id) ? 'selected' : ''}>${fmt(ms(t.generatedAt))} · ${(t.baixaVibracaoDetetada || []).length} energias${t.numeroConsulta ? ' · consulta ' + t.numeroConsulta : ''}</option>`).join('')}</select>
         <div style="font-size:13px;font-weight:600;">2. O que foi detetado nessa triagem</div>
-        <div style="background:#f7f4fb;border-radius:10px;padding:10px;margin:4px 0 12px;font-size:14px;">${det.length ? det.map(x => '• ' + esc(x)).join('<br>') : 'Nada a limpar nessa triagem 🙌'}</div>
+        ${novo ? `<div class="muted" style="font-size:12px;margin:2px 0;">Marca o que detetaste hoje (a lista completa):</div><div id="rcDet" style="background:#f7f4fb;border-radius:10px;padding:10px;margin:4px 0 12px;font-size:14px;max-height:220px;overflow:auto;">${TRIAGEM_BAIXA_VIBRACAO.map(c => `<label style="display:block;padding:3px 0;"><input type="checkbox" data-nome="${esc(c.nome)}" ${novoDet[c.nome] ? 'checked' : ''}> ${esc(c.nome)}</label>`).join('')}</div>` : `<div style="background:#f7f4fb;border-radius:10px;padding:10px;margin:4px 0 12px;font-size:14px;">${det.length ? det.map(x => '• ' + esc(x)).join('<br>') : 'Nada a limpar nessa triagem 🙌'}</div>`}
         <div style="font-size:13px;font-weight:600;">3. Limpeza aplicada (tira ou põe o visto)</div>
         <div id="rcAp" style="margin:4px 0 8px;font-size:14px;">${aps.length ? aps.map((a, i) => `<label style="display:block;padding:3px 0;"><input type="checkbox" data-pt="${esc(a.pt)}" checked> ${esc(a.pt)}</label>`).join('') : '<div class="muted">Não encontrei limpeza guardada para esta triagem. Escolhe abaixo o que aplicaste.</div>'}</div>
         <details style="margin-bottom:12px;"><summary style="font-size:13px;cursor:pointer;">➕ Juntar outras etiquetas</summary>
-          <div style="margin-top:6px;font-size:14px;">${todasProt.filter(t => apPt.indexOf(t.pt) < 0).map(t => `<label style="display:block;padding:3px 0;"><input type="checkbox" data-pt="${esc(t.pt)}" data-cod="${esc(t.codigo)}"> ${esc(t.pt)}</label>`).join('')}</div></details>
+          <div id="rcMais" style="margin-top:6px;font-size:14px;">${todasProt.filter(t => apPt.indexOf(t.pt) < 0).map(t => `<label style="display:block;padding:3px 0;"><input type="checkbox" data-pt="${esc(t.pt)}" data-cod="${esc(t.codigo)}"> ${esc(t.pt)}</label>`).join('')}</div></details>
         <div class="row" style="gap:8px;"><button class="ghost" id="rcNao" style="flex:1;">Cancelar</button><button class="primary" id="rcGo" style="flex:2;">Gerar relatório completo</button></div>`;
-      caixa.querySelector('#rcTri').onchange = e => { atual = tris[parseInt(e.target.value, 10)]; pintar(); };
+      caixa.querySelector('#rcTri').onchange = e => { if (e.target.value === 'N'){ novo = true; } else { novo = false; atual = tris[parseInt(e.target.value, 10)]; } pintar(); };
       caixa.querySelector('#rcNao').onclick = () => ov.remove();
       caixa.querySelector('#rcGo').onclick = async () => {
-        const escolhidas = Array.from(caixa.querySelectorAll('input[type=checkbox]:checked')).map(c => ({ pt: c.dataset.pt, codigo: c.dataset.cod || ((aps.find(a => a.pt === c.dataset.pt) || {}).codigo) || '' }));
+        const escolhidas = Array.from(caixa.querySelectorAll('#rcAp input:checked, #rcMais input:checked')).map(c => ({ pt: c.dataset.pt, codigo: c.dataset.cod || ((aps.find(a => a.pt === c.dataset.pt) || {}).codigo) || '' }));
         if (!escolhidas.length){ toast('Escolhe pelo menos uma limpeza aplicada.', true); return; }
+        if (novo){
+          const nomes = Array.from(caixa.querySelectorAll('#rcDet input:checked')).map(c => c.dataset.nome);
+          ov.remove();
+          await window.__gerarCompletoCom(patientId, { _id: '__novo__', protocolName: 'Triagem de Baixa Vibração', baixaVibracaoDetetada: nomes, generatedAt: { seconds: Math.floor((tLimp || Date.now()) / 1000) }, etiquetasAplicadas: escolhidas, chakras: [], numeroConsulta: null }, escolhidas);
+          return;
+        }
         ov.remove();
         await window.__gerarCompletoCom(patientId, atual, escolhidas);
       };
@@ -19820,7 +19830,7 @@ window.__gerarCompletoCom = async function(patientId, tri, aplicadas){
     toast('A preparar o relatório completo…');
     let nomePac = ''; try { nomePac = (await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId))).data()?.fullName || ''; } catch(e){}
     const lo = await __linkOracaoTratamento({ patientId, nomePac, terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel });
-    const c = await triagemCompletoHtml(patientId, tri._id || tri.id, { dst, ter, lo, aplicadas });
+    const c = await triagemCompletoHtml(patientId, tri._id || tri.id, { dst, ter, lo, aplicadas, triagemObj: tri._id === '__novo__' ? tri : null });
     const data = new Date().toLocaleDateString('pt-PT');
     const texto = ['RELATÓRIO COMPLETO', nomePac + ' · ' + data, '', 'O QUE FOI FEITO'].concat(aplicadas.map((a, i) => (i + 1) + '. ' + a.pt)).join('\n');
     const ok = await guardarNaFicha(patientId, { tipo:'tratamento', titulo:'Relatório completo — ' + data, texto, reportHtml: c.html, dados:{ terapeuta: ter.nome, terceiro: dst.terc, pedinteNome: dst.pedinteNome || '', pedinteRel: dst.pedinteRel || '', etiquetas: aplicadas } });
@@ -19873,8 +19883,8 @@ window.__refazerCompleto = async function(patientId, reportId){
 /* Relatório COMPLETO a partir de uma triagem guardada: o que foi detetado (modelo rico da triagem), comparação com TODAS as consultas,
    o trabalho feito (incluindo a abertura de caminhos no trabalho), balanço final e orações com link pessoal. */
 async function triagemCompletoHtml(pid, rid, o){
-  const sn = await getDoc(doc(db, 'tenants', tenantId, 'patients', pid, 'reports', rid));
-  const r = sn.data() || {};
+  const r = o.triagemObj ? o.triagemObj : ((await getDoc(doc(db, 'tenants', tenantId, 'patients', pid, 'reports', rid))).data() || {});
+  if (o.triagemObj) rid = '__novo__';
   const pdoc = (await getDoc(doc(db, 'tenants', tenantId, 'patients', pid))).data() || {};
   const nome = pdoc.fullName || r.nome || '';
   const primeiroNome = nome.trim().split(/\s+/)[0] || '';
