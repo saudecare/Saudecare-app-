@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-1';
+const APP_VERSION = '2026-11-24-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13809,6 +13809,7 @@ window.triEterAbrir = async function(modo, opts){
   document.body.appendChild(ov);
   let m = modo || 'todas', idx = 0, legenda = '', ajuda = false;
   const feitasSet = new Set(emTriagem ? __triagem.aplicadas : (opts.jaFeitas || []));
+  ajuda = (feitasSet.size === 0);   // no início de cada limpeza, mostra primeiro a proteção
   if (!emTriagem && m === 'uma'){ const prox = itens.findIndex(it => !feitasSet.has(it.key)); idx = prox < 0 ? Math.max(0, itens.length - 1) : prox; }
   const nFeitas = () => itens.filter(it => feitasSet.has(it.key)).length;
   const marcar = it => { feitasSet.add(it.key); if (!emTriagem && opts.onProgresso) opts.onProgresso(Array.from(feitasSet)); if (emTriagem){ if (__triagem.aplicadas.indexOf(it.key) < 0) __triagem.aplicadas.push(it.key); if (window.__triagemPintarEtq) window.__triagemPintarEtq(); } };
@@ -13817,10 +13818,11 @@ window.triEterAbrir = async function(modo, opts){
       ${foto ? `<img src="${escapeHtml(foto)}" alt="" style="width:${Math.round(tam * .46)}px;height:${Math.round(tam * .46)}px;border-radius:50%;object-fit:cover;margin-bottom:2px;">` : ''}
       <b style="font-size:${Math.max(10, Math.min(15, Math.round(tam / 9)))}px;line-height:1.1;">${escapeHtml(nome)}</b>${nasc ? `<small style="font-size:${Math.max(9, Math.min(12, Math.round(tam / 12)))}px;color:#6b5a80;">${nasc}</small>` : ''}
       <small style="font-size:9px;color:#6b5a80;">testemunho</small></div>`;
-  const passos = [['🌬️ Preparar', 'Respira fundo três vezes e centra-te. Intenção: limpar e abrir caminhos' + (nome ? ' para ' + escapeHtml(nome) : '') + '.'],
+  const protecao = ['🛡️ Proteger (reza antes de começar)', `<em>São Miguel Arcanjo, defendei-nos no combate, sede o nosso refúgio contra as maldades e ciladas do demónio. Ordene-lhe Deus, instantemente o pedimos, e vós, Príncipe da milícia celeste, pela virtude divina, precipitai no inferno a Satanás e aos outros espíritos malignos que andam pelo mundo para perdição das almas. Ámen.</em><br><br>Depois, em voz baixa: <em>«Peço ao Arcanjo Miguel e ao meu Anjo da Guarda que me envolvam em luz e protecção. Protegei o meu corpo, a minha mente e o meu coração. Protegei a minha família e a minha casa. Protegei este espaço e tudo o que nele existe. Protegei${nome ? ' ' + escapeHtml(nome) : ' a pessoa que vou tratar'}, para que receba só o que lhe faz bem. Que só a luz, a verdade e o amor trabalhem aqui. Obrigado. Ámen.»</em>`];
+  const passos = [protecao, ['🌬️ Preparar', 'Respira fundo três vezes e centra-te. Intenção: limpar e abrir caminhos' + (nome ? ' para ' + escapeHtml(nome) : '') + '.'],
     ['🙏 Invocar', 'Diz: <em>«Invoco, ao mesmo tempo, a energia de todas estas etiquetas. Que atuem em conjunto, com a mesma força das etiquetas físicas.»</em>'],
     ['🎯 Pêndulo', 'Segura-o sobre o testemunho ao centro até abrandar e parar ou mudar de movimento.'],
-    ['✨ Selar', 'Agradece e fecha o campo. Beber água ajuda a assentar.']];
+    ['✨ Selar', 'Agradece e fecha o campo. Diz: <em>«Agradeço a Deus, ao meu Anjo da Guarda e ao Arcanjo Miguel. Dou este trabalho por terminado. Devolvo a cada um o que é seu. O espaço fica limpo e protegido.»</em> Beber água ajuda a assentar.']];
   const tile = (it, i, x, y, t, tamImg) => { const q = info(it), on = feitasSet.has(it.key);
     return `<div data-t="${i}" style="position:absolute;left:${(x - t / 2).toFixed(2)}%;top:${(y - t / 2).toFixed(2)}%;width:${t}%;height:${t}%;border-radius:10px;background:${on ? '#eef7ee' : '#fff'};border:2px solid ${on ? '#2e9d57' : '#d9cde8'};display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;box-sizing:border-box;">
       <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:2px;box-sizing:border-box;min-height:0;"><span dir="rtl" style="font-size:${tamImg}px;line-height:1.05;text-align:center;font-weight:700;">${escapeHtml(q.heb || '')}</span></div>
@@ -13833,7 +13835,7 @@ window.triEterAbrir = async function(modo, opts){
         <button class="${m === 'uma' ? 'primary' : 'ghost'}" data-a="uma" style="padding:6px 10px;">1️⃣ Uma a uma</button>
         <button class="ghost" data-a="ajuda" style="padding:6px 10px;">ℹ️</button>
         <button class="ghost" data-a="fechar" style="padding:6px 10px;">✖</button></div>`;
-    const painel = ajuda ? `<div style="position:absolute;left:8px;right:8px;top:52px;z-index:5;background:#fff;border:2px solid #5b2a86;border-radius:12px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-height:70dvh;overflow:auto;">${passos.map(f => `<p style="margin:0 0 8px;"><strong>${f[0]}</strong><br>${f[1]}</p>`).join('')}<button class="primary" data-a="ajuda" style="width:100%;">Entendi</button></div>` : '';
+    const painel = ajuda ? `<div style="position:absolute;left:8px;right:8px;top:52px;z-index:5;background:#fff;border:2px solid #5b2a86;border-radius:12px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-height:70dvh;overflow:auto;">${passos.map(f => `<p style="margin:0 0 8px;"><strong>${f[0]}</strong><br>${f[1]}</p>`).join('')}<button class="primary" data-a="ajuda" style="width:100%;">Já rezei, vamos começar</button></div>` : '';
     let corpo = '';
     if (m === 'todas'){
       const n = itens.length;
