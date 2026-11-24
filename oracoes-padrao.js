@@ -1092,3 +1092,34 @@ export const PROTECAO_PADRAO = [
  ]
 }
 ];
+
+
+// Prática de 7 dias para rezar EM NOME DE OUTRA PESSOA (mãe, pai, amigo…), com pedido de licença.
+// «{{nome}}» é trocado, na página de leitura, pelo nome da pessoa por quem se reza.
+const _salmosBase = (PROTECAO_PADRAO.find((o) => o.padraoId === 'salmos-libertacao-7') || { seccoes: [] }).seccoes
+  .filter((x) => /^Salmo (121|91|140)/.test(x.titulo || ''));
+const _miguel = (PROTECAO_PADRAO.find((o) => o.padraoId === 'salmos-libertacao-7') || { seccoes: [] }).seccoes.find((x) => x.titulo === 'Oração a São Miguel Arcanjo');
+export const EM_NOME_PADRAO = {
+  padraoId: 'salmos-em-nome-7', versaoPadrao: 1, regra: 'seguidos', tipo: 'ciclo', icone: 'escudo', emoji: '🛡️',
+  titulo: 'Salmos de proteção e libertação · 7 dias · em nome de outra pessoa',
+  subtitulo: 'Para rezares por alguém que gostas, com licença e com amor', dias: 7, ordem: 6,
+  seccoes: [
+    { tipo: 'aviso', titulo: 'Regra: 7 dias seguidos', texto: 'Reza durante 7 dias seguidos, uma vez por dia, mais ou menos à mesma hora. Se falhares um dia, recomeças do Dia 1. Esta página avisa-te e deixa-te recomeçar com um toque.' },
+    { tipo: 'texto', titulo: 'Antes de começar', texto: 'Vais rezar em nome de {{nome}}.\n\nO ideal é que {{nome}} saiba e concorde. Se não souber ou não acreditar, não faz mal: o pedido de licença (primeira oração) garante que rezas com respeito pelo livre-arbítrio dessa pessoa e sem ficares com nenhuma carga ou karma.\n\nNão precisas de saber nada de cor. A página guia-te, passo a passo, com os textos completos.' },
+    { tipo: 'passos', titulo: 'Como fazer, em resumo', itens: [
+      'Escolhe uma hora fixa e um sítio calmo. Põe o telemóvel em silêncio.',
+      'Se quiseres, acende uma vela branca (num sítio seguro) e põe ao lado um copo de água.',
+      'Toca em «Rezar o dia». Vais ver uma oração de cada vez. Lê em voz alta, devagar, e toca em «Seguinte».',
+      'Pela ordem: pedir licença, rezar em nome de {{nome}}, os salmos 121, 91 e 140, São Miguel e o pedido aos Anjos.',
+      'No fim, toca em «Já fiz o dia». Amanhã fazes o dia seguinte, até completares os 7.' ] },
+    { tipo: 'aviso', titulo: 'Cuidados importantes', texto: 'Esta prática é espiritual e de fé. Reza sempre para a proteção e libertação, nunca para desejar mal a ninguém. Não substitui o acompanhamento médico ou psicológico.\n\nSe sentires medo forte ou mal-estar, fala com o terapeuta e com o médico.' },
+    { tipo: 'texto', titulo: 'No último dia: selar', texto: 'No dia 7, depois de rezares, fica um pouco mais em silêncio e agradece o caminho que fizeste. Põe a mão no peito e diz: «Está feito. Fica selado. Que a luz proteja {{nome}}.»' },
+    { tipo: 'oracao', titulo: '1. Preparar', texto: 'Respiro fundo, três vezes.\nEstou em segurança.\nEste momento é sagrado.\n\nPeço que este tempo seja abençoado e protegido.' },
+    { tipo: 'oracao', titulo: '2. Pedir licença', texto: 'Peço licença a Deus, ao meu Mestre e Guia superior,\ne ao Eu Superior de {{nome}}, para rezar por {{nome}}.\n\nSe for para o seu bem maior e respeitar o seu livre-arbítrio, que seja aceite e flua.\nSe não for permitido, que não se faça.\n\nPeço que nada desta oração recaia sobre mim como carga ou karma.\nFaço-o só com amor e sem querer impor nada.' },
+    { tipo: 'oracao', titulo: '3. Rezar em nome de {{nome}}', texto: 'Só depois de sentires que a licença foi dada, diz:\n\nRezo em nome de {{nome}}, com amor e para o seu bem supremo.\nPeço proteção e libertação para {{nome}},\nno tempo e na medida em que for melhor para a sua evolução.' }
+  ].concat(_salmosBase, _miguel ? [_miguel] : [], [
+    { tipo: 'oracao', titulo: 'Pedido final aos Anjos', texto: 'Peço a Deus que envie os Anjos\npara ajudarem a afastar toda a obra maligna lançada sobre {{nome}}.\n\n{{nome}} fica sob a proteção de Deus e dos Anjos. Ámen.' },
+    { tipo: 'oracao', titulo: 'Encerramento', texto: 'Obrigado/a.\nFecho agora este momento com paz e com confiança.\nA luz fica com {{nome}}, e fica comigo.\nÁmen.' }
+  ]),
+  temasDias: [1, 2, 3, 4, 5, 6, 7].map((n) => ({ titulo: n === 1 ? 'O começo' : (n === 7 ? 'Selar e agradecer' : 'Mais um dia sob a proteção de Deus'), intencao: 'Rezo por {{nome}}, com amor e para o seu bem supremo.', acao: '' }))
+};

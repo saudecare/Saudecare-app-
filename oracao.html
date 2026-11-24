@@ -445,6 +445,7 @@ const erro = (t, m) => { $('app').innerHTML = `<div class="estado"><h2>${t}</h2>
     const s = await getDoc(doc(db, 'oracoes', id));
     if (!s.exists()) return erro('Não encontrei esta oração', 'O link pode ter sido apagado ou estar incompleto. Pede um novo link.');
     O = s.data();
+    try { const qn = (envio && envio.emNomeDe) || 'a pessoa'; O = JSON.parse(JSON.stringify(O).replace(/\{\{nome\}\}/g, qn.replace(/[\\"]/g, ''))); } catch (_) {}
     if (!envioId && !q.get('pre')) return acessoPessoal();
     desenhar();
   } catch (_) { erro('Sem ligação', 'Verifica a internet e tenta outra vez.'); }

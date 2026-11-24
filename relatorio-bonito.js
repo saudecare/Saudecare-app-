@@ -199,6 +199,8 @@ function radar(itens) {
 function bloco(b, T) {
   const tit = b.titulo ? `<h2><span class="ic">${esc(b.icone || '✨')}</span>${esc(b.titulo)}</h2>` : '';
   switch (b.tipo) {
+    case 'botao':
+      return `<section class="bloco">${tit}${(b.paras || []).filter(Boolean).map(p => `<p>${nl(p)}</p>`).join('')}<p style="text-align:center;margin:14px 0"><a href="${esc(b.href || '#')}" target="_blank" rel="noopener" style="display:inline-block;background:#6b3fa0;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:14px;font-size:1.05rem">${esc(b.rotulo || 'Abrir')}</a></p>${b.nota ? `<p class="mut" style="word-break:break-all;font-size:.8rem">${esc(b.nota)}</p>` : ''}</section>`;
     case 'texto':
       return `<section class="bloco">${tit}${(b.paras || []).filter(Boolean).map(p => `<p>${nl(p)}</p>`).join('')}</section>`;
     case 'cartas':
