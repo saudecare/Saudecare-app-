@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-5';
+const APP_VERSION = '2026-11-24-6';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4784,13 +4784,13 @@ window.viewPatient = async function(patientId){
       <div class="appt-item row">
         <div>
           <span style="font-size:11px;background:#eef4f0;color:#1a6644;border-radius:20px;padding:2px 8px;margin-bottom:4px;display:inline-block;font-weight:600;">📖 Relatório</span>
-          <strong style="display:block;">${escapeHtml(r.protocolName)}</strong>
-          <div class="muted">${date}</div>
+          <strong style="display:block;">${escapeHtml(r.protocolName === 'Triagem de Baixa Vibração' ? ((r.etiquetasAplicadas && r.etiquetasAplicadas.length) ? '🌿 Triagem + limpeza aplicada' : '🔎 Triagem energética (só pesquisa)') : (r.protocolName || r.titulo || 'Relatório'))}</strong>
+          <div class="muted">${date}${(r.etiquetasAplicadas && r.etiquetasAplicadas.length) ? ' · ' + r.etiquetasAplicadas.length + ' limpezas feitas' : ''}</div>
         </div>
         <div class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-end;">
           <button class="ghost" onclick="viewSavedReport('${patientId}','${rd.id}')">Ver</button>
           ${(typeof r.reportHtml === 'string' && r.reportHtml.indexOf('rbx') >= 0)
-            ? `${r.etiquetasAplicadas && r.etiquetasAplicadas.length ? `<button class="ghost" onclick="__tratamentoDeTriagem('${patientId}','${rd.id}')">🌿 Relatório do tratamento</button>` : ''}<button class="primary" onclick="verRelatorioIlustrado('${patientId}','${rd.id}')">✨ Relatório ilustrado</button><button class="ghost" onclick="enviarRelatorioPortal('${patientId}')">📲 Link</button><button class="ghost" onclick="pdfDeRelatorioGuardado('${patientId}','${rd.id}')">📄 PDF</button>`
+            ? `${r.etiquetasAplicadas && r.etiquetasAplicadas.length ? `<button class="primary" onclick="__tratamentoDeTriagem('${patientId}','${rd.id}')">🌿 Relatório do tratamento + orações</button>` : ''}<button class="primary" onclick="verRelatorioIlustrado('${patientId}','${rd.id}')">✨ Relatório ilustrado</button><button class="ghost" onclick="enviarRelatorioPortal('${patientId}')">📲 Link</button><button class="ghost" onclick="pdfDeRelatorioGuardado('${patientId}','${rd.id}')">📄 PDF</button>`
             : (r.protocolName === 'Triagem de Baixa Vibração' ? `<button class="primary" onclick="triagemRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
               : (r.tipo === 'pesquisa-integrada' ? `<button class="primary" onclick="pesquisaRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
               : (r.tipo === 'cartomancia' ? `<button class="primary" onclick="cartasRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>` : '')))}
@@ -19672,6 +19672,7 @@ function perguntarDestinatario(def){
 /* Gera (a partir de uma triagem guardada com limpeza aplicada) o relatório do tratamento e guarda-o na ficha. */
 window.__tratamentoDeTriagem = async function(patientId, reportId){
   try {
+    toast('A preparar o relatório do tratamento…');
     const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'reports', reportId)); const u = snap.data() || {};
     if (!(u.etiquetasAplicadas || []).length){ toast('Esta triagem ainda não tem limpeza aplicada.', true); return; }
     const dst = await perguntarDestinatario({ terc: u.origemPedido === 'terceiro', pedinteNome: u.pedinteNome, pedinteRel: u.pedinteRel }); if (!dst) return;
