@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-9';
+const APP_VERSION = '2026-11-24-10';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -19635,14 +19635,14 @@ function tratamentoModelo(d){
     oracoes.push({ tipo:'lista', icone:'🗓️', titulo:'Marca cada dia (7 dias seguidos)', marca:'☐', itens:[1,2,3,4,5,6,7].map(n => 'Dia ' + n + ' — feito ____ / ____') });
     oracoes.push({ tipo:'orientacoes', icone:'📿', titulo:'Em resumo, são 5 passos', itens: (terc ? [
       'Escolhe uma hora calma, sempre a mesma, e põe o telemóvel em silêncio.',
-      `Pede licença para rezar por ${n1}. Está escrito na página, é só ler. Isto faz com que rezes com respeito pela vontade de ${n1} e sem ficares com nenhuma carga.`,
-      `Reza em nome de ${n1}, com amor. A página mostra uma oração de cada vez: os salmos 121, 91 e 140, a oração a São Miguel e o pedido aos Anjos.`,
-      'No fim, toca em «Já fiz o dia».',
+      `Pede licença para rezar por ${n1}. O texto está escrito mais abaixo, é só ler. Isto faz com que rezes com respeito pela vontade de ${n1} e sem ficares com nenhuma carga.`,
+      `Reza em nome de ${n1}, com amor. As orações estão escritas mais abaixo, pela ordem: os salmos 121, 91 e 140, a oração a São Miguel e o pedido aos Anjos.`,
+      'No fim, marca o dia na lista acima (ou toca em «Já fiz o dia» na página).',
       'Repete durante 7 dias seguidos. Se falhares um dia, recomeças do Dia 1, sem problema.' ] : [
       'Escolhe uma hora calma, sempre a mesma, e põe o telemóvel em silêncio.',
-      'Toca em «Rezar o dia». A página mostra uma oração de cada vez: os salmos 121, 91 e 140, a oração a São Miguel e o pedido aos Anjos.',
-      'Lê em voz alta, devagar, e toca em «Seguinte».',
-      'No fim, toca em «Já fiz o dia».',
+      'Reza as orações que estão escritas mais abaixo, pela ordem: os salmos 121, 91 e 140, a oração a São Miguel e o pedido aos Anjos.',
+      'Lê em voz alta, devagar, sem pressa.',
+      'No fim, marca o dia na lista acima (ou toca em «Já fiz o dia» na página).',
       'Repete durante 7 dias seguidos. Se falhares um dia, recomeças do Dia 1, sem problema.' ]) });
     (d.textosOracao || []).forEach(t => oracoes.push({ tipo:'texto', icone:'📜', titulo: t.titulo, paras: String(t.texto || '').split(/\n\s*\n/).map(x => x.trim()).filter(Boolean) }));
     oracoes.push({ tipo:'texto', icone:'🤍', titulo:'Com calma e sem medo', paras:[ 'A oração é um momento de fé e de paz. Reza só para a proteção e libertação, nunca para desejar mal a ninguém. Se sentires medo forte ou mal-estar, fala comigo e com o teu médico. Isto não substitui o acompanhamento médico ou psicológico.' ] });
@@ -19657,7 +19657,7 @@ function tratamentoModelo(d){
   m.aviso = 'Este é um trabalho energético e complementar. Não substitui o acompanhamento médico ou psicológico.';
   return m;
 }
-window.tratamentoRelatorioHtml = function(d){ return rbFragmento(tratamentoModelo(d)); };
+window.tratamentoRelatorioHtml = function(d){ return rbFragmento(tratamentoModelo(d)).replace('Palavras para si', 'Palavras para ti'); };
 /* Pergunta a quem se dirige o relatório: ao próprio ou a quem pediu (mãe, pai, amigo...). */
 function perguntarDestinatario(def){
   return new Promise(res => {
@@ -19693,7 +19693,13 @@ async function __linkOracaoTratamento(o){
       eid = r.id;
     }
     const nomeTxt = o.terc ? (o.nomePac || 'a pessoa') : '';
-    const textos = (padrao.seccoes || []).filter(x => x.tipo === 'oracao').map(x => ({ titulo: String(x.titulo || '').replace(/\{\{nome\}\}/g, nomeTxt), texto: String(x.texto || '').replace(/\{\{nome\}\}/g, nomeTxt) }));
+    const textos = [];
+    (padrao.seccoes || []).filter(x => x.tipo === 'oracao').forEach(x => {
+      const tit = String(x.titulo || '').replace(/\{\{nome\}\}/g, nomeTxt).replace(/\s*·\s*parte \d+ de \d+/i, '');
+      const txt = String(x.texto || '').replace(/\{\{nome\}\}/g, nomeTxt);
+      const ult = textos[textos.length - 1];
+      if (ult && ult.titulo === tit) ult.texto += '\n\n' + txt; else textos.push({ titulo: tit, texto: txt });
+    });
     return { link: 'https://vindora.pt/oracao.html?e=' + eid, textos };
   } catch(e){ console.warn('Link das orações falhou:', e); return { link: '', textos: [] }; }
 }
