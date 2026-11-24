@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-4';
+const APP_VERSION = '2026-11-24-5';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -19625,7 +19625,7 @@ function tratamentoModelo(d){
   if (cs.length){
     const salmos = []; cs.forEach(x => { if (x.f.salmo && salmos.indexOf(x.f.salmo) < 0) salmos.push(x.f.salmo); });
     oracoes.push({ tipo:'texto', icone:'🙏', titulo: terc ? `Orações para fazeres por ${n1}` : 'Orações para fazeres em casa', paras:[
-      terc ? `Se quiseres ajudar ${n1} também em casa, aqui ficam sugestões de oração ligadas ao que foi trabalhado. O ideal é que ${n1} saiba e concorde, e podes rezar em nome dessa pessoa.` : 'Aqui ficam sugestões de oração e pequenos gestos, ligados ao que foi trabalhado em ti. São um apoio da tua fé, para continuares em casa o que foi feito na sessão.',
+      terc ? `Se quiseres ajudar ${n1} também em casa, aqui ficam sugestões de oração ligadas ao que foi trabalhado. O ideal é que ${n1} saiba e concorde. Se ${n1} não souber ou não acreditar, reza só depois de pedires licença ao teu Guia superior e ao Eu Superior de ${n1}, para que a energia flua para o bem supremo e não fiques com nenhuma carga ou karma.` : 'Aqui ficam sugestões de oração e pequenos gestos, ligados ao que foi trabalhado em ti. São um apoio da tua fé, para continuares em casa o que foi feito na sessão.',
       salmos.length ? 'Salmos sugeridos: ' + salmos.join(' · ') + '.' : '' ].filter(Boolean) });
     oracoes.push({ tipo:'detalhe', icone:'🕯️', titulo:'O que fazer, conforme o que foi trabalhado', intro:'Toca em cada ponto para ver o que podes fazer em casa e a oração sugerida.',
       itens: cs.map(x => ({ nome: x.c.nome, descricao: [x.f.casa ? 'Em casa: ' + x.f.casa : '', x.f.salmo ? 'Oração sugerida: ' + x.f.salmo + '.' : ''].filter(Boolean).join('\n\n'), exemplo:'' })) });
@@ -19634,11 +19634,12 @@ function tratamentoModelo(d){
       'Escolhe um momento calmo, sem telemóvel nem interrupções. Lava as mãos e bebe um copo de água.',
       'Se quiseres, acende uma vela branca num sítio seguro e nunca a deixes sozinha.',
       'Respira fundo três vezes, devagar, e põe-te em silêncio.',
-      terc ? `Diz com calma: «Rezo em nome de ${nome}, com o seu conhecimento e com amor. Peço proteção e libertação para ${n1}.»` : 'Diz com calma: «Peço proteção e libertação para mim e para a minha família.»',
+      terc ? `Antes de rezares por ${n1}, pede licença. Diz com calma: «Peço licença a Deus, ao meu Mestre e Guia superior, e ao Eu Superior de ${nome}, para rezar por ${n1}. Se for para o seu bem maior e respeitar o seu livre-arbítrio, que seja aceite e flua. Se não for permitido, que não se faça. Peço que nada desta oração recaia sobre mim como carga ou karma. Faço-o só com amor e sem querer impor nada.»` : 'Diz com calma: «Peço proteção e libertação para mim e para a minha família.»',
+      terc ? `Só depois de sentires que a licença foi dada, diz: «Rezo em nome de ${nome}, com amor e para o seu bem supremo. Peço proteção e libertação para ${n1}, no tempo e na medida em que for melhor para a sua evolução.»` : '',
       'Reza a Oração a São Miguel Arcanjo: «São Miguel Arcanjo, defendei-nos no combate, sede o nosso refúgio contra as maldades e ciladas do demónio. Ordene-lhe Deus, instantemente o pedimos, e vós, Príncipe da milícia celeste, pela virtude divina, precipitai no inferno a Satanás e aos outros espíritos malignos que andam pelo mundo para perdição das almas. Ámen.»',
       'Lê devagar, em voz alta, o salmo (ou salmos) sugerido acima, uma vez cada. Se eu te indicar, repete durante 7 dias seguidos, sem falhar nenhum.',
       'Faz o pedido final: «Peço a Deus que envie os Anjos para ajudarem a afastar toda a obra maligna lançada sobre ' + (terc ? nome : 'mim e sobre a minha família') + '. Fico sob a proteção de Deus e dos Anjos. Ámen.»',
-      'Agradece, apaga a vela, bebe um pouco de água e fecha o momento em silêncio. Dá o dia por feito.' ] });
+      'Agradece, apaga a vela, bebe um pouco de água e fecha o momento em silêncio. Dá o dia por feito.' ].filter(Boolean) });
     oracoes.push({ tipo:'texto', icone:'🤍', titulo:'Com calma e sem medo', paras:[ 'A oração é um momento de fé e de paz. Reza para a proteção e libertação, nunca para desejar mal a ninguém. Se sentires medo forte, tristeza que não passa ou mal-estar, fala comigo e com o teu médico. Isto não substitui o acompanhamento médico ou psicológico.' ] });
   }
   const abertura = terc ? `Olá, ${pn1}! A teu pedido${rel ? ` (${rel})` : ''}, fiz um tratamento de limpeza energética a pensar em ${nome}.` : `Olá, ${n1}! Aqui tens o resumo do tratamento que fiz por ti.`;
