@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-11';
+const APP_VERSION = '2026-11-24-12';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4790,7 +4790,7 @@ window.viewPatient = async function(patientId){
         <div class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-end;">
           <button class="ghost" onclick="viewSavedReport('${patientId}','${rd.id}')">Ver</button>
           ${(typeof r.reportHtml === 'string' && r.reportHtml.indexOf('rbx') >= 0)
-            ? `${r.etiquetasAplicadas && r.etiquetasAplicadas.length ? `<button class="primary" onclick="__tratamentoDeTriagem('${patientId}','${rd.id}')">🌿 Relatório do tratamento + orações</button>` : ''}<button class="primary" onclick="verRelatorioIlustrado('${patientId}','${rd.id}')">✨ Relatório ilustrado</button><button class="ghost" onclick="enviarRelatorioPortal('${patientId}')">📲 Link</button><button class="ghost" onclick="pdfDeRelatorioGuardado('${patientId}','${rd.id}')">📄 PDF</button>`
+            ? `${r.etiquetasAplicadas && r.etiquetasAplicadas.length ? `<button class="primary" onclick="__tratamentoDeTriagem('${patientId}','${rd.id}')">🌿 Relatório do tratamento + orações</button><button class="ghost" onclick="__linkOracoesDeTriagem('${patientId}','${rd.id}')">🙏 Só o link das orações</button>` : ''}<button class="primary" onclick="verRelatorioIlustrado('${patientId}','${rd.id}')">✨ Relatório ilustrado</button><button class="ghost" onclick="enviarRelatorioPortal('${patientId}')">📲 Link</button><button class="ghost" onclick="pdfDeRelatorioGuardado('${patientId}','${rd.id}')">📄 PDF</button>`
             : (r.protocolName === 'Triagem de Baixa Vibração' ? `<button class="primary" onclick="triagemRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
               : (r.tipo === 'pesquisa-integrada' ? `<button class="primary" onclick="pesquisaRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
               : (r.tipo === 'cartomancia' ? `<button class="primary" onclick="cartasRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>` : '')))}
@@ -19711,6 +19711,27 @@ window.__tratamentoDeTriagem = async function(patientId, reportId){
     const ok = await guardarNaFicha(patientId, { tipo:'tratamento', titulo:'Relatório do tratamento — ' + d.data, texto: texto.replace(/\\\\n/g, '\\n'), dados:{ terapeuta: ter.nome, terceiro: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel, deTriagem: reportId }, reportHtml: html });
     if (ok){ toast('Relatório do tratamento guardado ✓ Está na lista, com Link e PDF.'); window.verRelatorioHtml(html, 'Relatório do tratamento'); }
   } catch(e){ console.error(e); toast('Não consegui gerar: ' + (e.message || e), true); }
+};
+
+/* Só o link da página de orações (7 dias) para este paciente ou para quem pediu. Copia, partilha ou abre o WhatsApp. */
+window.__linkOracoesDeTriagem = async function(patientId, reportId){
+  try {
+    toast('A preparar o link das orações…');
+    const snap = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId, 'reports', reportId)); const u = snap.data() || {};
+    const dst = await perguntarDestinatario({ terc: u.origemPedido === 'terceiro', pedinteNome: u.pedinteNome, pedinteRel: u.pedinteRel }); if (!dst) return;
+    let nomePac = u.nome || ''; try { const ps = await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId)); nomePac = (ps.data() || {}).fullName || nomePac; } catch(e){}
+    const lo = await __linkOracaoTratamento({ patientId, nomePac, terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel });
+    if (!lo.link){ toast('Não consegui criar o link das orações (esta função é da conta Hikari).', true); return; }
+    const quem = dst.terc ? (String(dst.pedinteNome || '').split(/\s+/)[0] || '') : String(nomePac).split(/\s+/)[0];
+    const msg = 'Olá' + (quem ? ' ' + quem : '') + '! 🙏 Aqui está a tua página de orações' + (dst.terc && nomePac ? ' para rezares por ' + String(nomePac).split(/\s+/)[0] : '') + '. Tem tudo escrito, por ordem, e podes marcar cada dia como feito (são 7 dias seguidos):\n' + lo.link;
+    const ov = document.createElement('div'); ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(20,10,30,.7);display:flex;align-items:center;justify-content:center;padding:16px;';
+    ov.innerHTML = '<div class="card" style="max-width:420px;width:100%;"><h3 style="margin-top:0;">🙏 Link das orações' + (quem ? ' · ' + escapeHtml(quem) : '') + '</h3><p class="muted" style="font-size:.85rem;">Este link é só dela/dele e guarda os dias marcados. Vês o progresso em Orações e Salmos.</p><div style="background:#f3f6fa;border-radius:8px;padding:8px;word-break:break-all;font-size:.8rem;user-select:all;margin-bottom:10px;">' + escapeHtml(lo.link) + '</div><div style="display:grid;gap:8px;"><button class="primary" id="loWa">📱 Enviar por WhatsApp</button><button class="ghost" id="loCp">🔗 Copiar a mensagem</button><button class="ghost" id="loSh">📤 Partilhar…</button><button class="ghost" id="loX">Fechar</button></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#loX').onclick = () => ov.remove();
+    ov.querySelector('#loWa').onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+    ov.querySelector('#loCp').onclick = async () => { try { await navigator.clipboard.writeText(msg); toast('Mensagem copiada.'); } catch(e){ window.prompt('Copia a mensagem:', msg); } };
+    ov.querySelector('#loSh').onclick = async () => { try { if (navigator.share) await navigator.share({ text: msg }); else { await navigator.clipboard.writeText(msg); toast('Mensagem copiada.'); } } catch(e){} };
+  } catch(e){ console.error(e); toast('Não consegui: ' + (e.message || e), true); }
 };
 
 async function triagemGerarRelatorio(){
