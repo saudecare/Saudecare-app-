@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-3';
+const APP_VERSION = '2026-11-24-4';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -19619,11 +19619,33 @@ function tratamentoModelo(d){
   const proximos = [];
   if (d.sessoesNecessarias) proximos.push({ rotulo:'Sessões recomendadas', texto: d.sessoesNecessarias + ' sessão(ões) de limpeza.' });
   proximos.push({ rotulo:'Acompanhamento', texto:'Vamos vendo como as coisas assentam e ajustamos juntos o que for preciso.' });
+  // Orações e salmos para fazer em casa, conforme as energias trabalhadas (ficha de cada energia)
+  const oracoes = [];
+  const cs = (d.causas || []).map(c => ({ c, f: (window.CAUSA_FICHA && window.CAUSA_FICHA[c.n]) || null })).filter(x => x.f && (x.f.salmo || x.f.casa));
+  if (cs.length){
+    const salmos = []; cs.forEach(x => { if (x.f.salmo && salmos.indexOf(x.f.salmo) < 0) salmos.push(x.f.salmo); });
+    oracoes.push({ tipo:'texto', icone:'🙏', titulo: terc ? `Orações para fazeres por ${n1}` : 'Orações para fazeres em casa', paras:[
+      terc ? `Se quiseres ajudar ${n1} também em casa, aqui ficam sugestões de oração ligadas ao que foi trabalhado. O ideal é que ${n1} saiba e concorde, e podes rezar em nome dessa pessoa.` : 'Aqui ficam sugestões de oração e pequenos gestos, ligados ao que foi trabalhado em ti. São um apoio da tua fé, para continuares em casa o que foi feito na sessão.',
+      salmos.length ? 'Salmos sugeridos: ' + salmos.join(' · ') + '.' : '' ].filter(Boolean) });
+    oracoes.push({ tipo:'detalhe', icone:'🕯️', titulo:'O que fazer, conforme o que foi trabalhado', intro:'Toca em cada ponto para ver o que podes fazer em casa e a oração sugerida.',
+      itens: cs.map(x => ({ nome: x.c.nome, descricao: [x.f.casa ? 'Em casa: ' + x.f.casa : '', x.f.salmo ? 'Oração sugerida: ' + x.f.salmo + '.' : ''].filter(Boolean).join('\n\n'), exemplo:'' })) });
+    const nomeQuem = terc ? nome : 'mim';
+    oracoes.push({ tipo:'orientacoes', icone:'📿', titulo:'Passo a passo da oração', intro: terc ? `Para rezares em nome de ${nome}:` : 'Faz assim, uma vez por dia:', itens: [
+      'Escolhe um momento calmo, sem telemóvel nem interrupções. Lava as mãos e bebe um copo de água.',
+      'Se quiseres, acende uma vela branca num sítio seguro e nunca a deixes sozinha.',
+      'Respira fundo três vezes, devagar, e põe-te em silêncio.',
+      terc ? `Diz com calma: «Rezo em nome de ${nome}, com o seu conhecimento e com amor. Peço proteção e libertação para ${n1}.»` : 'Diz com calma: «Peço proteção e libertação para mim e para a minha família.»',
+      'Reza a Oração a São Miguel Arcanjo: «São Miguel Arcanjo, defendei-nos no combate, sede o nosso refúgio contra as maldades e ciladas do demónio. Ordene-lhe Deus, instantemente o pedimos, e vós, Príncipe da milícia celeste, pela virtude divina, precipitai no inferno a Satanás e aos outros espíritos malignos que andam pelo mundo para perdição das almas. Ámen.»',
+      'Lê devagar, em voz alta, o salmo (ou salmos) sugerido acima, uma vez cada. Se eu te indicar, repete durante 7 dias seguidos, sem falhar nenhum.',
+      'Faz o pedido final: «Peço a Deus que envie os Anjos para ajudarem a afastar toda a obra maligna lançada sobre ' + (terc ? nome : 'mim e sobre a minha família') + '. Fico sob a proteção de Deus e dos Anjos. Ámen.»',
+      'Agradece, apaga a vela, bebe um pouco de água e fecha o momento em silêncio. Dá o dia por feito.' ] });
+    oracoes.push({ tipo:'texto', icone:'🤍', titulo:'Com calma e sem medo', paras:[ 'A oração é um momento de fé e de paz. Reza para a proteção e libertação, nunca para desejar mal a ninguém. Se sentires medo forte, tristeza que não passa ou mal-estar, fala comigo e com o teu médico. Isto não substitui o acompanhamento médico ou psicológico.' ] });
+  }
   const abertura = terc ? `Olá, ${pn1}! A teu pedido${rel ? ` (${rel})` : ''}, fiz um tratamento de limpeza energética a pensar em ${nome}.` : `Olá, ${n1}! Aqui tens o resumo do tratamento que fiz por ti.`;
   const m = rbModeloPessoal({ tema:'triagem', emoji:'🌿', titulo: terc ? 'O tratamento de ' + nome : 'O teu tratamento', subtitulo:'O que foi feito e como te podes ajudar', nome, nome1: terc ? pn1 : n1, tom:'tu',
     abertura, porque: terc ? `Escrevi tudo de forma simples, para saberes o que foi feito e como podes ajudar ${n1} nos próximos dias.${ped ? ` Tive em conta o que me pediste: “${ped}”.` : ''}` : `Escrevi tudo de forma simples, para saberes exatamente o que foi feito e como te podes ajudar nos próximos dias.${ped ? ` Tive em conta o que me pediste: “${ped}”.` : ''}`,
     data: d.data, assinatura: [d.terapeuta, d.negocio].filter(Boolean).join(' · '), antes, meio, como, tituloComo:'Como foi feito',
-    proximos, depois:[{ tipo:'orientacoes', icone:'🏡', titulo: terc ? `Como podes ajudar ${n1}` : 'Para te ajudares nos próximos dias', intro: terc ? '' : '', itens: orient }],
+    proximos, depois:[{ tipo:'orientacoes', icone:'🏡', titulo: terc ? `Como podes ajudar ${n1}` : 'Para te ajudares nos próximos dias', intro: terc ? '' : '', itens: orient }].concat(oracoes),
     resumo:[ap.length ? `Foram aplicadas ${ap.length} ${ap.length === 1 ? 'limpeza' : 'limpezas'}${terc ? ' a pensar em ' + n1 : ''}.` : 'O trabalho foi feito com todo o cuidado.', terc ? `Obrigado pela confiança, ${pn1}. Estou cá para o que precisares. 🌿` : 'Obrigado pela confiança. Estou cá para o que precisares. 🌿' ],
     mensagem:'Cuida bem de ti e dos teus. 🌿' });
   m.aviso = 'Este é um trabalho energético e complementar. Não substitui o acompanhamento médico ou psicológico.';
@@ -19654,7 +19676,8 @@ window.__tratamentoDeTriagem = async function(patientId, reportId){
     const dst = await perguntarDestinatario({ terc: u.origemPedido === 'terceiro', pedinteNome: u.pedinteNome, pedinteRel: u.pedinteRel }); if (!dst) return;
     const ter = await terapeutaDoRelatorio(); if (!ter) return;
     const pc = (window.__allPatientsCache || []).find(x => x.id === patientId) || {};
-    const d = { nome: pc.fullName || u.nome || '', terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel, pedido: u.pedido || '', aplicadas: u.etiquetasAplicadas, bovisIni: u.bovisInicial, bovisFin: u.bovisFinal,
+    const causas = (u.baixaVibracaoDetetada || []).map(nm => TRIAGEM_BAIXA_VIBRACAO.find(c => c.nome === nm)).filter(Boolean).map(c => ({ n: c.n, nome: c.nome }));
+    const d = { causas, nome: pc.fullName || u.nome || '', terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel, pedido: u.pedido || '', aplicadas: u.etiquetasAplicadas, bovisIni: u.bovisInicial, bovisFin: u.bovisFinal,
       sessoesNecessarias: u.sessoesNecessarias, terapeuta: ter.nome, negocio: (currentTenantDoc && currentTenantDoc.businessName) || '', data: new Date().toLocaleDateString('pt-PT') };
     const html = window.tratamentoRelatorioHtml(d);
     const texto = ['RELATÓRIO DO TRATAMENTO', d.nome + ' · ' + d.data, '', 'O QUE FOI FEITO'].concat(u.etiquetasAplicadas.map((a, i) => (i + 1) + '. ' + a.pt)).join('\n');
