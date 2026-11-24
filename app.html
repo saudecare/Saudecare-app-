@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-12';
+const APP_VERSION = '2026-11-24-13';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -19612,7 +19612,7 @@ function tratamentoModelo(d){
   const meio = [];
   if (ap.length) meio.push({ tipo:'lista', icone:'✨', titulo:'O que foi feito', marca:'✓', itens: ap.map(a => (a.pt || a.nome || '')) });
   if (d.bovisIni || d.bovisFin) meio.push({ tipo:'destaque', icone:'📈', titulo:'Antes e depois', chips:[{ rotulo:'Antes', valor: String(d.bovisIni || '') }, { rotulo:'Depois', valor: String(d.bovisFin || '') }], paras:['É uma medição do campo de energia, feita antes e depois do trabalho.'] });
-  const como = [terc ? `Trabalhei com o pêndulo e com o nome de ${nome} ao centro, a invocar a energia de cada etiqueta, uma a uma, até sentir o campo assentar.` : 'Trabalhei com o pêndulo e com o teu nome ao centro, a invocar a energia de cada etiqueta, uma a uma, até sentir o teu campo assentar.'];
+  const como = [terc ? `Trabalhei com o pêndulo e com o nome de ${nome} ao centro, ${d.modo === 'todas' ? 'a invocar a energia de todas as etiquetas ao mesmo tempo' : 'a invocar a energia de cada etiqueta, uma a uma'}, até sentir o campo assentar.` : `Trabalhei com o pêndulo e com o teu nome ao centro, ${d.modo === 'todas' ? 'a invocar a energia de todas as etiquetas ao mesmo tempo' : 'a invocar a energia de cada etiqueta, uma a uma'}, até sentir o teu campo assentar.`];
   const orient = terc ? [`Está presente sem pressionar. Às vezes basta perguntar “como estás?” e ouvir.`, `Ajuda ${n1} a beber água ao longo do dia e a descansar mais do que o costume.`, `Nos 1 a 3 dias a seguir, é normal ${n1} sentir mais sono, emoção ou um cansaço leve. É o corpo a assentar, não é motivo de alarme.`, `Evitem discussões e ambientes pesados nestes dias, se possível. Um passeio ou um momento calmo ajuda muito.`, `Se ${n1} sentir dor forte ou algo que preocupe, o melhor é falar com o médico. E podes sempre falar comigo.`]
     : ['Bebe bastante água ao longo do dia.', 'Descansa um bocadinho mais do que o costume e dorme cedo, se puderes.', 'Nos 1 a 3 dias a seguir, é normal sentires mais sono, emoção ou um cansaço leve. É o teu corpo a assentar, não é motivo de alarme.', 'Evita ambientes pesados e discussões nestes dias. Um passeio ou um momento de silêncio ajuda.', 'Se sentires dor forte ou algo que te preocupe, fala com o teu médico. E podes sempre falar comigo.'];
   const proximos = [];
@@ -22225,16 +22225,18 @@ window.eeConcluir = async function(){
     const texto = `Etiquetas aplicadas por via etérica (${__ee.modo === 'todas' ? 'todas ao mesmo tempo, com o pêndulo' : 'uma a uma, com o pêndulo'}):\n` + sel.map(x => `• [${x.codigo}] ${x.pt}`).join('\n');
     let nomeP = ''; try{ nomeP = String((await getDoc(doc(db, 'tenants', tenantId, 'patients', __ee.pacienteId))).data()?.fullName || ''); }catch(e){}
     let htmlEE = '';
+    let dados = { modo:__ee.modo, etiquetas: sel.map(x => ({ codigo:x.codigo, pt:x.pt })) };
     try{
-      htmlEE = rbFragmento({ tema:'triagem', emoji:'🏷️', titulo:'O trabalho energético de hoje', subtitulo:'Etiquetas etéricas', nome: nomeP.split(/\s+/)[0], data:new Date().toLocaleDateString('pt-PT'), assinatura:'Ricardo Correia · Hikari Fafe',
-        blocos:[
-          { tipo:'texto', icone:'👋', titulo:`Olá${nomeP ? ', ' + nomeP.split(/\s+/)[0] : ''}`, paras:[`Aqui fica o registo do trabalho energético feito hoje. Foram invocadas ${sel.length} etiqueta(s), ${__ee.modo === 'todas' ? 'todas ao mesmo tempo' : 'uma a uma'}, com o pêndulo. Tem o mesmo efeito que com as etiquetas físicas.`] },
-          { tipo:'lista', icone:'✨', titulo:'O que foi trabalhado', marca:'•', itens: sel.map(x => `${x.codigo ? x.codigo + ': ' : ''}${x.pt}`) },
-          { tipo:'linha', icone:'📅', titulo:'Nos dias seguintes', passos:[{ rotulo:'É normal', texto:'Sentir mais cansaço, sono diferente ou emoções mais à flor da pele durante 1 a 3 dias. É o corpo a processar.' }, { rotulo:'Ajuda', texto:'Beber água, descansar e caminhar ao ar livre.' }, { rotulo:'Se pesar', texto:'Fale comigo para ajustarmos.' }] }
-        ] });
+      const dst = await perguntarDestinatario({ terc:false }); if (!dst){ __ee.passo = 'modo'; eePintar(); return; }
+      const ter = await terapeutaDoRelatorio(); if (!ter){ __ee.passo = 'modo'; eePintar(); return; }
+      const lo = await __linkOracaoTratamento({ patientId: __ee.pacienteId, nomePac: nomeP, terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel });
+      const d = { causas: [], linkOracao: lo.link, textosOracao: lo.textos, nome: nomeP, terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel, modo: __ee.modo,
+        aplicadas: sel.map(x => ({ pt: x.pt, codigo: x.codigo })), terapeuta: ter.nome, negocio: (currentTenantDoc && currentTenantDoc.businessName) || '', data: new Date().toLocaleDateString('pt-PT') };
+      htmlEE = window.tratamentoRelatorioHtml(d);
+      dados = { ...dados, terapeuta: ter.nome, terceiro: dst.terc, pedinteNome: dst.pedinteNome || '', pedinteRel: dst.pedinteRel || '' };
     }catch(e){ console.warn('Relatório ilustrado das etiquetas falhou:', e); }
     window.__eeUltimoHtml = htmlEE;
-    __ee.guardado = await guardarNaFicha(__ee.pacienteId, { tipo:'etiquetas-eterico', titulo:'Etiquetas etéricas', texto, reportHtml: htmlEE, dados:{ modo:__ee.modo, etiquetas: sel.map(x => ({ codigo:x.codigo, pt:x.pt })) } });
+    __ee.guardado = await guardarNaFicha(__ee.pacienteId, { tipo:'etiquetas-eterico', titulo:'Etiquetas etéricas', texto, reportHtml: htmlEE, dados });
     toast(__ee.guardado ? 'Registado na ficha ✓' : 'Não consegui registar na ficha.', !__ee.guardado);
   }
   __ee.passo = 'fim'; eePintar();
