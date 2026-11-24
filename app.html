@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-18';
+const APP_VERSION = '2026-11-24-19';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -4790,10 +4790,11 @@ window.viewPatient = async function(patientId){
         <div class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-end;">
           <button class="ghost" onclick="viewSavedReport('${patientId}','${rd.id}')">Ver</button>
           ${(typeof r.reportHtml === 'string' && r.reportHtml.indexOf('rbx') >= 0)
-            ? `${r.etiquetasAplicadas && r.etiquetasAplicadas.length ? `<button class="primary" onclick="__tratamentoDeTriagem('${patientId}','${rd.id}')">🌿 Relatório completo (triagem + limpeza + orações)</button><button class="ghost" onclick="__linkOracoesDeTriagem('${patientId}','${rd.id}')">🙏 Só o link das orações</button>` : ''}<button class="primary" onclick="verRelatorioIlustrado('${patientId}','${rd.id}')">✨ Relatório ilustrado</button><button class="ghost" onclick="enviarRelatorioPortal('${patientId}')">📲 Link</button><button class="ghost" onclick="pdfDeRelatorioGuardado('${patientId}','${rd.id}')">📄 PDF</button>`
-            : (r.protocolName === 'Triagem de Baixa Vibração' ? `<button class="primary" onclick="triagemRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
+            ? `${r.etiquetasAplicadas && r.etiquetasAplicadas.length ? `<button class="primary" onclick="__tratamentoDeTriagem('${patientId}','${rd.id}')">🌿 Relatório completo (triagem + limpeza + orações)</button><button class="ghost" onclick="__linkOracoesDeTriagem('${patientId}','${rd.id}')">🙏 Só o link das orações</button>` : (r.protocolName === 'Triagem de Baixa Vibração' ? `<button class="primary" onclick="__refazerCompleto('${patientId}','${rd.id}')">🌿 Juntar com a limpeza</button>` : '')}<button class="primary" onclick="verRelatorioIlustrado('${patientId}','${rd.id}')">✨ Relatório ilustrado</button><button class="ghost" onclick="enviarRelatorioPortal('${patientId}')">📲 Link</button><button class="ghost" onclick="pdfDeRelatorioGuardado('${patientId}','${rd.id}')">📄 PDF</button>`
+            : (r.protocolName === 'Triagem de Baixa Vibração' ? `<button class="primary" onclick="__refazerCompleto('${patientId}','${rd.id}')">🌿 Juntar com a limpeza</button><button class="primary" onclick="triagemRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
               : (r.tipo === 'pesquisa-integrada' ? `<button class="primary" onclick="pesquisaRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>`
               : (r.tipo === 'cartomancia' ? `<button class="primary" onclick="cartasRegerarIlustrado('${patientId}','${rd.id}')">✨ Gerar ilustrado</button>` : '')))}
+          ${(r.tipo === 'etiquetas-eterico' || r.tipo === 'tratamento') ? `<button class="primary" onclick="__refazerCompleto('${patientId}','${rd.id}')">🌿 Refazer como relatório completo</button>` : ''}
         </div>
       </div>` });
   });
@@ -19754,6 +19755,48 @@ window.__tratamentoDeTriagem = async function(patientId, reportId){
   } catch(e){ console.error(e); toast('Não consegui gerar: ' + (e.message || e), true); }
 };
 
+
+/* Refaz como RELATÓRIO COMPLETO a partir de um relatório antigo (etiquetas/tratamento) ou de uma triagem sem limpeza registada:
+   encontra a triagem e a limpeza que lhe correspondem e junta tudo num só. */
+window.__refazerCompleto = async function(patientId, reportId){
+  try {
+    toast('A juntar a triagem e a limpeza…');
+    const ms = ts => ts ? (ts.toMillis ? ts.toMillis() : (ts.seconds != null ? ts.seconds * 1000 : 0)) : 0;
+    const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', patientId, 'reports'), orderBy('generatedAt', 'desc')));
+    const todos = snap.docs.map(x => ({ ...x.data(), _id: x.id }));
+    const eu = todos.find(x => x._id === reportId); if (!eu){ toast('Não encontrei o relatório.', true); return; }
+    const ehTri = eu.protocolName === 'Triagem de Baixa Vibração';
+    const tris = triagemTriagensValidas(todos);
+    const DIA = 86400000;
+    const perto = (lista, t) => lista.slice().sort((a, b) => Math.abs(ms(a.generatedAt) - t) - Math.abs(ms(b.generatedAt) - t))[0];
+    let tri = null, aplicadas = [], dadosLimpeza = null;
+    if (ehTri){
+      tri = eu; aplicadas = eu.etiquetasAplicadas || [];
+      if (!aplicadas.length){
+        const limp = todos.filter(x => (x.tipo === 'etiquetas-eterico' || x.tipo === 'tratamento') && Math.abs(ms(x.generatedAt) - ms(eu.generatedAt)) < 3 * DIA);
+        const l = perto(limp, ms(eu.generatedAt));
+        if (l){ dadosLimpeza = l.dados || {}; aplicadas = (dadosLimpeza.etiquetas || []).map(e => ({ pt: e.pt, codigo: e.codigo })); }
+      }
+    } else {
+      dadosLimpeza = eu.dados || {};
+      aplicadas = (dadosLimpeza.etiquetas || eu.etiquetasAplicadas || []).map(e => ({ pt: e.pt, codigo: e.codigo }));
+      const t0 = ms(eu.generatedAt);
+      const antes = tris.filter(x => ms(x.generatedAt) <= t0 + DIA);
+      tri = antes.length ? antes[0] : perto(tris, t0);
+    }
+    if (!tri){ toast('Este paciente ainda não tem uma triagem guardada.', true); return; }
+    if (!aplicadas.length){ toast('Não encontrei a limpeza feita nesse dia. Conclui as etiquetas etéricas e tenta outra vez.', true); return; }
+    const u = tri;
+    const dst = await perguntarDestinatario({ terc: (dadosLimpeza && dadosLimpeza.terceiro) || u.origemPedido === 'terceiro', pedinteNome: (dadosLimpeza && dadosLimpeza.pedinteNome) || u.pedinteNome, pedinteRel: (dadosLimpeza && dadosLimpeza.pedinteRel) || u.pedinteRel }); if (!dst) return;
+    const ter = await terapeutaDoRelatorio(); if (!ter) return;
+    let nomePac = ''; try { nomePac = (await getDoc(doc(db, 'tenants', tenantId, 'patients', patientId))).data()?.fullName || ''; } catch(e){}
+    const lo = await __linkOracaoTratamento({ patientId, nomePac, terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel });
+    const c = await triagemCompletoHtml(patientId, tri._id || tri.id, { dst, ter, lo, aplicadas });
+    const texto = ['RELATÓRIO COMPLETO', nomePac + ' · ' + new Date().toLocaleDateString('pt-PT'), '', 'O QUE FOI FEITO'].concat(aplicadas.map((a, i) => (i + 1) + '. ' + a.pt)).join('\n');
+    const ok = await guardarNaFicha(patientId, { tipo:'tratamento', titulo:'Relatório completo — ' + new Date().toLocaleDateString('pt-PT'), texto, reportHtml: c.html, dados:{ terapeuta: ter.nome, terceiro: dst.terc, pedinteNome: dst.pedinteNome || '', pedinteRel: dst.pedinteRel || '', etiquetas: aplicadas } });
+    if (ok){ toast('Relatório completo guardado ✓ Está na lista, com Link e PDF.'); window.verRelatorioHtml(c.html, 'Relatório completo'); }
+  } catch(e){ console.error(e); toast('Não consegui gerar: ' + (e.message || e), true); }
+};
 
 /* Relatório COMPLETO a partir de uma triagem guardada: o que foi detetado (modelo rico da triagem), comparação com TODAS as consultas,
    o trabalho feito (incluindo a abertura de caminhos no trabalho), balanço final e orações com link pessoal. */
