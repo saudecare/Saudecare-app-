@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-15';
+const APP_VERSION = '2026-11-24-17';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -19545,6 +19545,8 @@ function triagemModeloBonito(d, cli){
       { estado:'bl', nome:'Se pesar demais', texto:'Se algo incomodar muito ou durar mais de uns dias, fale comigo para ajustarmos.' } ] });
   }
 
+  (d.meioExtra || []).forEach(b => meio.push(b));
+  (d.depoisExtra || []).forEach(b => depois.push(b));
   const causas = d.causasDetetadas || [];
   const ficha = c => (window.CAUSA_FICHA && window.CAUSA_FICHA[c.n]) || null;
   const afet = (d.chakrasTodos || []).filter(triChakraAfetado);
@@ -19591,7 +19593,7 @@ function triagemModeloBonito(d, cli){
   const m = rbModeloPessoal({
     tema:'triagem', emoji:'🌿', titulo: T('A sua triagem energética', `A triagem energética de ${nome}`), nome: nome, nome1: terc ? pn1 : nome, abertura, porque, data: new Date().toLocaleDateString('pt-PT'), assinatura: (__triagem._terapeuta && __triagem._terapeuta.nome) ? (__triagem._terapeuta.nome + ' · Hikari Fafe') : 'Ricardo Correia · Hikari Fafe',
     oQueFiz:'a triagem energética com o pêndulo', pedido: d.pedido || '', extraAbertura: extraAb,
-    antes: antes.concat(comoSeSente), encontrados, tituloEncontrados:'O que encontrei, explicado', nadaEncontrado: T('Não encontrei nada de baixa vibração: o seu campo está equilibrado. ✨', `Não encontrei nada de baixa vibração: o campo de ${nome} está equilibrado. ✨`),
+    antes: antes.concat(comoSeSente, d.antesExtra || []), encontrados, tituloEncontrados:'O que encontrei, explicado', nadaEncontrado: T('Não encontrei nada de baixa vibração: o seu campo está equilibrado. ✨', `Não encontrei nada de baixa vibração: o campo de ${nome} está equilibrado. ✨`),
     meio, como, leitura, perguntas, proximos: passos, depois,
     resumo: [ causas.length || afet.length ? `Encontrei ${causas.length} ${causas.length === 1 ? 'coisa' : 'coisas'} a limpar${(d.chakrasTodos || []).length ? ` e ${afet.length} ${afet.length === 1 ? 'centro' : 'centros'} de energia a pedir atenção` : ''}.` : 'Está tudo em equilíbrio neste momento.',
       soTriagem ? T('A limpeza fica para quando combinarmos. Até lá, beba água e descanse.', `A limpeza fica para quando combinarmos. Até lá, que ${nome} beba água e descanse.`) : T('Nos próximos dias é normal sentir mais sono ou emoção, e também mais leveza. É o campo a assentar.', `Nos próximos dias é normal que ${nome} sinta mais sono ou emoção, e também mais leveza. É o campo a assentar.`), 'Qualquer dúvida, fale comigo.' ],
@@ -19660,13 +19662,15 @@ function tratamentoModelo(d){
     oracoes.push({ tipo:'texto', icone:'🤍', titulo:'Com calma e sem medo', paras:[ 'A oração é um momento de fé e de paz. Reza só para a proteção e libertação, nunca para desejar mal a ninguém. Se sentires medo forte ou mal-estar, fala comigo e com o teu médico. Isto não substitui o acompanhamento médico ou psicológico.' ] });
   }
   const abertura = terc ? `Olá, ${pn1}! A teu pedido${rel ? ` (${rel})` : ''}, fiz um tratamento de limpeza energética a pensar em ${nome}.` : `Olá, ${n1}! Aqui tens o resumo do tratamento que fiz por ti.`;
+  const depoisT = balanco.concat([{ tipo:'orientacoes', icone:'🏡', titulo: terc ? `Como podes ajudar ${n1}` : 'Para te ajudares nos próximos dias', intro: '', itens: orient }]).concat(oracoes);
   const m = rbModeloPessoal({ tema:'triagem', emoji:'🌿', titulo: completo ? (terc ? 'O relatório completo de ' + nome : 'O teu relatório completo') : (terc ? 'O tratamento de ' + nome : 'O teu tratamento'), subtitulo: completo ? 'O que foi detetado, o que foi feito e como te podes ajudar' : 'O que foi feito e como te podes ajudar', nome, nome1: terc ? pn1 : n1, tom:'tu',
     abertura, porque: terc ? `Escrevi tudo de forma simples, para saberes o que foi feito e como podes ajudar ${n1} nos próximos dias.${ped ? ` Tive em conta o que me pediste: “${ped}”.` : ''}` : `Escrevi tudo de forma simples, para saberes exatamente o que foi feito e como te podes ajudar nos próximos dias.${ped ? ` Tive em conta o que me pediste: “${ped}”.` : ''}`,
     data: d.data, assinatura: [d.terapeuta, d.negocio].filter(Boolean).join(' · '), antes, meio, como, tituloComo:'Como foi feito',
-    proximos, depois:balanco.concat([{ tipo:'orientacoes', icone:'🏡', titulo: terc ? `Como podes ajudar ${n1}` : 'Para te ajudares nos próximos dias', intro: terc ? '' : '', itens: orient }]).concat(oracoes),
+    proximos, depois: depoisT,
     resumo:[ap.length ? `Foram aplicadas ${ap.length} ${ap.length === 1 ? 'limpeza' : 'limpezas'}${terc ? ' a pensar em ' + n1 : ''}.` : 'O trabalho foi feito com todo o cuidado.', terc ? `Obrigado pela confiança, ${pn1}. Estou cá para o que precisares. 🌿` : 'Obrigado pela confiança. Estou cá para o que precisares. 🌿' ],
     mensagem:'Cuida bem de ti e dos teus. 🌿' });
   m.aviso = 'Este é um trabalho energético e complementar. Não substitui o acompanhamento médico ou psicológico.';
+  m._depoisT = depoisT;
   return m;
 }
 window.tratamentoRelatorioHtml = function(d){ return rbFragmento(tratamentoModelo(d)).replace('Palavras para si', 'Palavras para ti'); };
@@ -19741,12 +19745,86 @@ window.__tratamentoDeTriagem = async function(patientId, reportId){
     const restantes = (u.baixaVibracaoDetetada || []).filter(x => !cmp || (cmp.persistentes || []).indexOf(x) >= 0 || (cmp.novas || []).indexOf(x) >= 0);
     const d = { detetadas, comparacao: cmp, ultimaConsulta: ultima, restantes: ultima ? restantes : [], causas, linkOracao: lo.link, textosOracao: lo.textos, nome: nomePac, terc: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel, pedido: u.pedido || '', aplicadas: u.etiquetasAplicadas, bovisIni: u.bovisInicial, bovisFin: u.bovisFinal,
       sessoesNecessarias: u.sessoesNecessarias, terapeuta: ter.nome, negocio: (currentTenantDoc && currentTenantDoc.businessName) || '', data: new Date().toLocaleDateString('pt-PT') };
-    const html = window.tratamentoRelatorioHtml(d);
+    let html = '';
+    try { html = (await triagemCompletoHtml(patientId, reportId, { dst, ter, lo, ultima })).html; } catch(e){ console.error('Relatório completo falhou, uso o modelo simples:', e); }
+    if (!html) html = window.tratamentoRelatorioHtml(d);
     const texto = ['RELATÓRIO DO TRATAMENTO', d.nome + ' · ' + d.data, '', 'O QUE FOI FEITO'].concat(u.etiquetasAplicadas.map((a, i) => (i + 1) + '. ' + a.pt)).join('\n');
-    const ok = await guardarNaFicha(patientId, { tipo:'tratamento', titulo:'Relatório do tratamento — ' + d.data, texto: texto.replace(/\\\\n/g, '\\n'), dados:{ terapeuta: ter.nome, terceiro: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel, deTriagem: reportId }, reportHtml: html });
-    if (ok){ toast('Relatório do tratamento guardado ✓ Está na lista, com Link e PDF.'); window.verRelatorioHtml(html, 'Relatório do tratamento'); }
+    const ok = await guardarNaFicha(patientId, { tipo:'tratamento', titulo:'Relatório completo — ' + d.data, texto: texto.replace(/\\\\n/g, '\\n'), dados:{ terapeuta: ter.nome, terceiro: dst.terc, pedinteNome: dst.pedinteNome, pedinteRel: dst.pedinteRel, deTriagem: reportId }, reportHtml: html });
+    if (ok){ toast('Relatório completo guardado ✓ Está na lista, com Link e PDF.'); window.verRelatorioHtml(html, 'Relatório completo'); }
   } catch(e){ console.error(e); toast('Não consegui gerar: ' + (e.message || e), true); }
 };
+
+
+/* Relatório COMPLETO a partir de uma triagem guardada: o que foi detetado (modelo rico da triagem), comparação com TODAS as consultas,
+   o trabalho feito (incluindo a abertura de caminhos no trabalho), balanço final e orações com link pessoal. */
+async function triagemCompletoHtml(pid, rid, o){
+  const sn = await getDoc(doc(db, 'tenants', tenantId, 'patients', pid, 'reports', rid));
+  const r = sn.data() || {};
+  const pdoc = (await getDoc(doc(db, 'tenants', tenantId, 'patients', pid))).data() || {};
+  const nome = pdoc.fullName || r.nome || '';
+  const primeiroNome = nome.trim().split(/\s+/)[0] || '';
+  const ms = ts => ts ? (ts.toMillis ? ts.toMillis() : (ts.seconds != null ? ts.seconds * 1000 : 0)) : 0;
+  const fmt = t => t ? new Date(t).toLocaleDateString('pt-PT') : '';
+  const causasDetetadas = TRIAGEM_BAIXA_VIBRACAO.filter(c => (r.baixaVibracaoDetetada || []).indexOf(c.nome) >= 0);
+  const chakrasTodos = TRIAGEM_CHAKRAS_9.map(c => { const f = (r.chakras || []).find(x => x.nome === c.nome); return { ...c, estado: f ? (f.estado === 'np' ? 'np' : triEstadoChakra(f)) : 'ok' }; }).filter(c => c.estado !== 'np');
+  const aberturaNivel = r.aberturaCaminhos === null ? null : (r.aberturaCaminhos || TRIAGEM_NIVEIS_ABERTURA[0]);
+  const aplicadas = r.etiquetasAplicadas || [];
+  // todas as consultas válidas, da mais antiga à mais recente
+  const todos = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', pid, 'reports'), orderBy('generatedAt', 'asc')));
+  const val = triagemTriagensValidas(todos.docs.map(x => ({ ...x.data(), _id: x.id })));
+  const meuT = ms(r.generatedAt) || Date.now();
+  const antigas = val.filter(x => x._id !== rid && x._id !== r.continuacaoDe && ms(x.generatedAt) && ms(x.generatedAt) < meuT);
+  const ant = antigas.length ? antigas[antigas.length - 1] : null;
+  const comparacao = ant ? compararComAnterior(ant, r) : null;
+  const numConsulta = antigas.length + 1;
+  // evolução: todas as consultas até hoje
+  const serie = antigas.concat([{ ...r, _id: rid }]);
+  const meioExtra = [];
+  if (serie.length > 1){
+    const n0 = (serie[0].baixaVibracaoDetetada || []).length, n1 = (r.baixaVibracaoDetetada || []).length;
+    const linhas = serie.map((x, i) => `Consulta ${i + 1} (${fmt(ms(x.generatedAt))}): ${(x.baixaVibracaoDetetada || []).length} ${(x.baixaVibracaoDetetada || []).length === 1 ? 'energia a limpar' : 'energias a limpar'}${x.bovisInicial || x.bovisFinal ? ' · Bovis ' + (x.bovisInicial || '—') + ' → ' + (x.bovisFinal || '—') : ''}`);
+    const primeira = serie[0], resolvidasTotal = (primeira.baixaVibracaoDetetada || []).filter(c => (r.baixaVibracaoDetetada || []).indexOf(c) < 0);
+    meioExtra.push({ tipo:'texto', icone:'📈', titulo:'A evolução, consulta a consulta', paras:[
+      n1 < n0 ? `Na primeira consulta encontrei ${n0} ${n0 === 1 ? 'energia' : 'energias'} a pedir limpeza. Hoje encontrei ${n1}. Isto é evolução a sério.` : (n1 === n0 ? `Desde a primeira consulta o número de energias a limpar manteve-se (${n1}), mas vamos trabalhando em camadas.` : `Hoje apareceram mais energias do que no início (${n1} contra ${n0}). Acontece, quando se mexe em camadas mais fundas, e vamos trabalhando nelas.`),
+      resolvidasTotal.length ? `Já ficaram resolvidas desde o princípio: ${resolvidasTotal.join(', ')}.` : '' ].filter(Boolean) });
+    meioExtra.push({ tipo:'lista', icone:'🗓️', titulo:'Todas as consultas', marca:'•', itens: linhas });
+  }
+  // trabalho: etiquetas ligadas ao trabalho, à confiança e à abertura de caminhos
+  const eTrab = aplicadas.filter(a => /prosperidade|confian|poder pessoal|desbloqueio|sucesso|trabalho|reconhec|abund/i.test(a.pt || ''));
+  const terc = !!o.dst.terc, pnome = (o.dst.pedinteNome || '').trim(), n1 = primeiroNome;
+  if (eTrab.length){
+    meioExtra.push({ tipo:'texto', icone:'💼', titulo: terc ? `Abrir caminhos no trabalho de ${n1}` : 'Abrir caminhos no teu trabalho', paras:[
+      terc ? `Neste tratamento trabalhei também a vida profissional de ${n1}, para motivar, dar confiança e ajudar a que seja reconhecido(a) pelo que vale.` : 'Neste tratamento trabalhei também a tua vida profissional, para te motivar, dar-te confiança e ajudar a que sejas reconhecido(a) pelo que vales.',
+      'As limpezas ligadas a isto foram: ' + eTrab.map(a => a.pt).join('; ') + '.',
+      terc ? `Para ajudares: acredita em ${n1} em voz alta, elogia o que faz bem e evita comparações com os outros. A confiança cresce quando alguém de casa acredita.` : 'Ajuda-te: celebra cada pequeno passo e fala de ti com respeito. A confiança cresce com pequenos gestos.' ] });
+  }
+  // orações, balanço e ajuda em casa (reaproveita o modelo do tratamento)
+  const causasMin = causasDetetadas.map(c => ({ n: c.n, nome: c.nome }));
+  const restantes = (r.baixaVibracaoDetetada || []);
+  const tm = tratamentoModelo({ detetadas: [], comparacao: null, ultimaConsulta: o.ultima, restantes: o.ultima ? restantes : [], causas: causasMin, linkOracao: o.lo.link, textosOracao: [], nome, terc, pedinteNome: pnome, pedinteRel: o.dst.pedinteRel, pedido: r.pedido || '', aplicadas, terapeuta: o.ter.nome, negocio: '', data: new Date().toLocaleDateString('pt-PT') });
+  const depoisExtra = tm._depoisT || [];
+  const nasc = r.dataNascimento || pdoc.birthDate || '';
+  const perfil = (numConsulta <= 1 && nasc) ? (() => { try{ return calcularPerfilMapaAlma(nome, nasc); }catch(e){ return null; } })() : null;
+  let lc = null; const L = r.leituraComplementar;
+  if (L){ const arc = n => TRIAGEM_ARCANOS.find(x => x.nome === n); const m1 = arc(L.momento), p2 = arc(L.porTras), t = arc(L.tendencia); lc = (m1 && p2 && t) ? { momento:m1, porTras:p2, tendencia:t } : null; }
+  const temAlgumaCoisaDetetada = causasDetetadas.length > 0 || chakrasTodos.some(triChakraAfetado) || TRIAGEM_NIVEIS_ABERTURA.indexOf(aberturaNivel) >= 2;
+  let cli = null;
+  try{
+    cli = triagemRelatorioCliente({ primeiroNome, dataNascimento: nasc, paisNascimento: r.paisNascimento || pdoc.birthCountry || '', perfil, causasDetetadas, chakrasTodos, aberturaNivel, comparacao, cruzamento: null,
+      leituraComplementar: lc, perguntasCartas: [], sessoesNecessarias: r.sessoesNecessarias, preco: r.preco, temAlgumaCoisaDetetada, aplicadas, numConsulta, bovisIni: r.bovisInicial, bovisFin: r.bovisFinal,
+      sessoesAntes: null, motivoPlano: r.motivoPlano, pagamento: r.pagamento || null, pedido: r.pedido || '', pedidoTemas: [], origemPedido: terc ? 'terceiro' : 'paciente', pedinteNome: pnome, pedinteRel: o.dst.pedinteRel || '' });
+  }catch(e){ console.warn('Texto do cliente não regenerado:', e); }
+  const triGuardado = __triagem; __triagem = { ...(__triagem || {}), _terapeuta: { nome: o.ter.nome }, patientId: pid, patientNome: nome };
+  let mdl;
+  try {
+  mdl = triagemModeloBonito({ primeiroNome, causasDetetadas, chakrasTodos, aberturaNivel, comparacao, sessoesNecessarias: r.sessoesNecessarias, temAlgumaCoisaDetetada, aplicadas, pedido: r.pedido || '', pedidoTemas: [], origemPedido: terc ? 'terceiro' : 'paciente', pedinteNome: pnome, pedinteRel: o.dst.pedinteRel || '', perfil, corpos: r.corposPesquisa || {}, meioExtra, depoisExtra }, cli);
+  } finally { __triagem = triGuardado; }
+  mdl.titulo = terc ? `O relatório completo de ${n1}` : 'O teu relatório completo';
+  mdl.assinatura = [o.ter.nome, (currentTenantDoc && currentTenantDoc.businessName) || ''].filter(Boolean).join(' · ');
+  let html = rbFragmento(mdl);
+  [['Toque em','Toca em'],['toque em','toca em'],['fale comigo','fala comigo'],['Fale comigo','Fala comigo'],['a seu pedido','a teu pedido'],['Pediu ajuda','Pediste ajuda'],['Palavras para si','Palavras para ti']].forEach(p => { html = html.split(p[0]).join(p[1]); });
+  return { html, r, nome, numConsulta };
+}
 
 /* Só o link da página de orações (7 dias) para este paciente ou para quem pediu. Copia, partilha ou abre o WhatsApp. */
 window.__linkOracoesDeTriagem = async function(patientId, reportId){
