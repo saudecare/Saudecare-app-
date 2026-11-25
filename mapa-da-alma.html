@@ -435,6 +435,9 @@ function blocoMestreChakraHTML(r, estilo){
   const card = (inner) => estilo === 'card' ? `<div class="card">${inner}</div>` : `<div class="result-block">${inner}</div>`;
   const h = (t) => estilo === 'card' ? `<h3 style="color:var(--gold-light);">${t}</h3>` : `<h3>${t}</h3>`;
   let out = '';
+  if (r.ascendente) out += card(`${h('🌅 O seu Ascendente: ' + escapeHtml(r.ascendente.signo) + ' (' + r.ascendente.graus + '°)')}
+    <p class="muted" style="margin-top:6px;">${r.localNascimento ? 'Nasceu em ' + escapeHtml([r.localNascimento.cidade, r.localNascimento.pais].filter(Boolean).join(', ')) + (r.horaNascimento ? ', às ' + escapeHtml(r.horaNascimento) : '') + '. ' : ''}${escapeHtml(r.ascendente.texto)}</p>
+    ${r.ascendente.aproximado ? '<p class="muted" style="margin-top:6px;font-size:.8rem;">Cálculo aproximado, feito a partir da cidade principal do país.</p>' : ''}`);
   const cvN = r.caminhoDeVida, cvI = cvN && DONS_NUMERICOS[cvN];
   const signoNome = r.signo, ps = signoNome && PLANETA_SIGNO[signoNome], pa = r.anjo && r.anjo.tipo === 'anjo' && r.anjo.planeta;
   const planetas = [md && md.planeta && `<strong>${escapeHtml(md.planeta)}</strong> (dia em que nasceu)`, ps && `<strong>${escapeHtml(ps)}</strong> (signo ${escapeHtml(signoNome)})`, pa && `<strong>${escapeHtml(pa)}</strong> (Anjo do nascimento)`].filter(Boolean);
@@ -453,6 +456,90 @@ function blocoMestreChakraHTML(r, estilo){
     <p class="muted" style="margin-top:6px;"><strong>🌿 O caminho de equilíbrio:</strong> ${escapeHtml(cd.caminho)}.</p>`);
   return out;
 }
+/* ─── Ascendente (signo tropical) a partir de data, hora legal e local de nascimento ─── */
+const ASC_RAD = Math.PI / 180;
+function ascDiaJuliano(y, m, d, hUT){
+  if (m <= 2){ y -= 1; m += 12; }
+  const A = Math.floor(y / 100), B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + hUT / 24 + B - 1524.5;
+}
+function ascOffsetFuso(tz, instanteUTC){
+  const f = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle:'h23', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const p = {}; f.formatToParts(new Date(instanteUTC)).forEach(x => { p[x.type] = x.value; });
+  const local = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+  return local - Math.floor(instanteUTC / 1000) * 1000;
+}
+function ascHoraLegalParaUT(dataISO, hhmm, tz){
+  const [Y, M, D] = dataISO.split('-').map(Number), [h, mi] = hhmm.split(':').map(Number);
+  const alvo = Date.UTC(Y, M - 1, D, h, mi, 0);
+  let utc = alvo - ascOffsetFuso(tz, alvo);
+  utc = alvo - ascOffsetFuso(tz, utc);
+  return new Date(utc);
+}
+function calcularAscendente(dataISO, hhmm, lat, lon, tz){
+  const ut = ascHoraLegalParaUT(dataISO, hhmm, tz);
+  const jd = ascDiaJuliano(ut.getUTCFullYear(), ut.getUTCMonth() + 1, ut.getUTCDate(), ut.getUTCHours() + ut.getUTCMinutes() / 60 + ut.getUTCSeconds() / 3600);
+  const T = (jd - 2451545.0) / 36525;
+  const gmst = 280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * T * T - T * T * T / 38710000;
+  const ramc = ((gmst + lon) % 360 + 360) % 360;
+  const eps = (23.4392911 - 0.0130042 * T) * ASC_RAD;
+  const r = ramc * ASC_RAD, ph = lat * ASC_RAD;
+  let asc = Math.atan2(Math.cos(r), -(Math.sin(r) * Math.cos(eps) + Math.tan(ph) * Math.sin(eps))) / ASC_RAD;
+  asc = (asc % 360 + 360) % 360;
+  const SIG = ['Carneiro','Touro','Gémeos','Caranguejo','Leão','Virgem','Balança','Escorpião','Sagitário','Capricórnio','Aquário','Peixes'];
+  const i = Math.floor(asc / 30);
+  return { grau: asc, signo: SIG[i], indice: i, graus: Math.floor(asc - i * 30) };
+}
+
+const CIDADES_PT = {
+  'Aveiro':[40.64,-8.65], 'Beja':[38.02,-7.86], 'Braga':[41.55,-8.43], 'Bragança':[41.81,-6.76], 'Castelo Branco':[39.82,-7.49],
+  'Coimbra':[40.21,-8.43], 'Évora':[38.57,-7.91], 'Faro':[37.02,-7.93], 'Fafe':[41.45,-8.17], 'Guarda':[40.54,-7.27], 'Guimarães':[41.44,-8.30],
+  'Leiria':[39.74,-8.81], 'Lisboa':[38.72,-9.14], 'Portalegre':[39.29,-7.43], 'Porto':[41.15,-8.61], 'Santarém':[39.24,-8.69],
+  'Setúbal':[38.52,-8.89], 'Viana do Castelo':[41.69,-8.83], 'Vila Nova de Famalicão':[41.41,-8.52], 'Barcelos':[41.54,-8.62],
+  'Vila Real':[41.30,-7.74], 'Viseu':[40.66,-7.91], 'Funchal (Madeira)':[32.65,-16.91, 'Atlantic/Madeira'], 'Ponta Delgada (Açores)':[37.74,-25.67, 'Atlantic/Azores']
+};
+const PAISES_NASC = {
+  'Portugal':{ tz:'Europe/Lisbon' },
+  'Brasil':{ lat:-15.79, lon:-47.88, tz:'America/Sao_Paulo' }, 'Angola':{ lat:-8.84, lon:13.23, tz:'Africa/Luanda' },
+  'Moçambique':{ lat:-25.97, lon:32.57, tz:'Africa/Maputo' }, 'Cabo Verde':{ lat:14.93, lon:-23.51, tz:'Atlantic/Cape_Verde' },
+  'Guiné-Bissau':{ lat:11.86, lon:-15.60, tz:'Africa/Bissau' }, 'São Tomé e Príncipe':{ lat:0.34, lon:6.73, tz:'Africa/Sao_Tome' },
+  'Timor-Leste':{ lat:-8.56, lon:125.57, tz:'Asia/Dili' }, 'França':{ lat:48.86, lon:2.35, tz:'Europe/Paris' },
+  'Suíça':{ lat:46.95, lon:7.45, tz:'Europe/Zurich' }, 'Luxemburgo':{ lat:49.61, lon:6.13, tz:'Europe/Luxembourg' },
+  'Espanha':{ lat:40.42, lon:-3.70, tz:'Europe/Madrid' }, 'Alemanha':{ lat:52.52, lon:13.40, tz:'Europe/Berlin' },
+  'Reino Unido':{ lat:51.51, lon:-0.13, tz:'Europe/London' }, 'Estados Unidos':{ lat:40.71, lon:-74.01, tz:'America/New_York' },
+  'Canadá':{ lat:43.65, lon:-79.38, tz:'America/Toronto' }, 'Venezuela':{ lat:10.48, lon:-66.90, tz:'America/Caracas' },
+  'Itália':{ lat:41.90, lon:12.50, tz:'Europe/Rome' }
+};
+const ASCENDENTE_TEXTOS = {
+  'Carneiro':'Ascendente em Carneiro: a primeira impressão que dá é de energia, coragem e iniciativa. Gosta de começar, de abrir caminho e de agir sem esperar muito. O desafio é ter paciência e não se queimar de tanto correr.',
+  'Touro':'Ascendente em Touro: passa calma, firmeza e segurança. Aprecia o conforto, a beleza e as coisas bem feitas, e constrói devagar mas com raízes fundas. O desafio é não se agarrar demais ao que já conhece.',
+  'Gémeos':'Ascendente em Gémeos: aparece curioso, comunicativo e leve. Aprende depressa, fala com todos e tem muitas ideias ao mesmo tempo. O desafio é focar-se e não dispersar a energia.',
+  'Caranguejo':'Ascendente em Caranguejo: mostra-se sensível, protetor e acolhedor. Sente tudo com intensidade e cuida de quem ama como se fosse família. O desafio é não se esconder na casca quando se sente magoado.',
+  'Leão':'Ascendente em Leão: tem presença e brilho próprio. Passa generosidade, calor e vontade de criar e de liderar. O desafio é não depender do reconhecimento dos outros para se sentir valioso.',
+  'Virgem':'Ascendente em Virgem: parece atento, prático e cuidadoso. Repara nos detalhes, gosta de ser útil e de ajudar a pôr as coisas em ordem. O desafio é ser menos exigente consigo próprio.',
+  'Balança':'Ascendente em Balança: transmite equilíbrio, simpatia e bom gosto. Procura harmonia nas relações e tem jeito para a diplomacia. O desafio é decidir sem esperar a aprovação de todos.',
+  'Escorpião':'Ascendente em Escorpião: tem uma presença intensa e magnética, que parece ver o que está por baixo. Vive as emoções a fundo e é capaz de se transformar de dentro para fora. O desafio é confiar e deixar cair as defesas.',
+  'Sagitário':'Ascendente em Sagitário: mostra otimismo, franqueza e sede de aventura. Procura sentido, liberdade e conhecimento, e contagia os outros com a sua fé na vida. O desafio é não prometer mais do que consegue cumprir.',
+  'Capricórnio':'Ascendente em Capricórnio: passa seriedade, maturidade e responsabilidade. Constrói com paciência e persistência e chega longe. O desafio é permitir-se descansar, sentir e pedir ajuda.',
+  'Aquário':'Ascendente em Aquário: aparece original, independente e à frente do seu tempo. Valoriza a liberdade, a amizade e as ideias novas. O desafio é deixar os outros aproximarem-se do seu lado mais emotivo.',
+  'Peixes':'Ascendente em Peixes: tem uma presença suave, intuitiva e compassiva. Sente o que os outros sentem e vive muito do sonho e da fé. O desafio é pôr limites e manter os pés na terra.'
+};
+function localNascimentoResolvido(pais, cidade){
+  const p = PAISES_NASC[pais]; if (!p) return null;
+  if (pais === 'Portugal'){
+    const c = CIDADES_PT[cidade]; if (!c) return null;
+    return { pais, cidade, lat:c[0], lon:c[1], tz:c[2] || p.tz, aproximado:false };
+  }
+  return { pais, cidade: cidade || '', lat:p.lat, lon:p.lon, tz:p.tz, aproximado:true };
+}
+function ascendenteDoMapa(dataISO, hhmm, loc){
+  try{
+    if (!loc || !hhmm || !/^\d{1,2}:\d{2}$/.test(hhmm)) return null;
+    const a = calcularAscendente(dataISO, hhmm, loc.lat, loc.lon, loc.tz);
+    return { signo:a.signo, graus:a.graus, texto:ASCENDENTE_TEXTOS[a.signo] || '', aproximado:!!loc.aproximado };
+  }catch(_){ return null; }
+}
+
 function hojeISO(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 /* ─── Nodos Lunares (Vidas Passadas / Propósito de Vida) ──────────────
@@ -951,6 +1038,9 @@ function renderForm(){
         O seu Mapa fica completo de qualquer forma. O Método Hikari Fafe foi construído
         para funcionar sem hora de nascimento — nunca inventamos o que não sabemos.
       </p>
+      <label style="margin-top:14px;">País de nascimento <span class="muted" style="font-weight:400;">(opcional)</span></label>
+      <select id="inpPais"><option value="">—</option>${Object.keys(PAISES_NASC).map(p => `<option value="${p}">${p}</option>`).join('')}<option value="Outro">Outro país</option></select>
+      <div id="localCidadeBox"></div>
 
       ${selectedTipo === 'casal' ? `
       <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(212,175,55,.3);">
@@ -1013,7 +1103,7 @@ function renderForm(){
   document.getElementById('btnCalcular').addEventListener('click', onCalcular);
   document.getElementById('btnVoltarTipo').addEventListener('click', renderTypeSelector);
   wireElementosExtra();
-  wireHoraSelector();
+  wireHoraSelector(); wireLocalSelector();
   aplicarPrefillMapa();
 }
 
@@ -1030,6 +1120,15 @@ function aplicarPrefillMapa(){
   }catch(_){}
 }
 
+function wireLocalSelector(){
+  const sel = document.getElementById('inpPais'), box = document.getElementById('localCidadeBox'); if (!sel || !box) return;
+  sel.addEventListener('change', () => {
+    const p = sel.value;
+    if (p === 'Portugal') box.innerHTML = `<label style="margin-top:10px;">Concelho ou cidade de nascimento</label><select id="inpCidade"><option value="">—</option>${Object.keys(CIDADES_PT).sort((a,b)=>a.localeCompare(b,'pt')).map(c => `<option value="${c}">${c}</option>`).join('')}</select><p class="muted" style="font-size:.78rem;margin-top:6px;">Conta o local onde nasceu, não o do registo.</p>`;
+    else if (p && p !== 'Outro') box.innerHTML = `<label style="margin-top:10px;">Cidade de nascimento</label><input id="inpCidade" placeholder="Opcional"><p class="muted" style="font-size:.78rem;margin-top:6px;">Para este país o Ascendente é calculado de forma aproximada.</p>`;
+    else box.innerHTML = p === 'Outro' ? `<label style="margin-top:10px;">País e cidade de nascimento</label><input id="inpCidade" placeholder="Opcional">` : '';
+  });
+}
 let horaModo = 'nenhuma';
 function wireHoraSelector(){
   const opts = document.querySelectorAll('.hora-opt');
@@ -1143,6 +1242,10 @@ async function onCalcular(){
   extra.horaNascimento = horaExacta || null;
   extra.periodoNascimento = periodo || null;
   extra.selo = selo.id;
+  const paisNasc = g('inpPais'), cidadeNasc = g('inpCidade');
+  const locNasc = paisNasc ? localNascimentoResolvido(paisNasc, cidadeNasc) : null;
+  if (paisNasc) extra.localNascimento = { pais: paisNasc, cidade: cidadeNasc || null };
+  const ascNasc = (horaModo === 'exacta') ? ascendenteDoMapa(data, horaExacta, locNasc) : null;
   if (selectedTipo === 'empresa'){
     extra.denominacaoSocial = g('inpDenominacaoSocial');
     extra.telemovelLista = splitLines(g('inpTelemovel'));
@@ -1241,6 +1344,7 @@ async function onCalcular(){
     diaInfo, diaNome, signo: signo.nome,
     carmicas, excesso, mediunidade, anjo,
     mestreDia: calcularMestreDia(data), chakraDom: chakraDominanteNum(data),
+    localNascimento: paisNasc ? { pais: paisNasc, cidade: cidadeNasc || null } : null, ascendente: ascNasc,
     pinAtivo, ciclos, nodos, arcanoP, arcanoA, numExtra, grelhaCompat, leituraIntegrada,
     selo: selo.id, seloLabel: selo.label, seloIcon: selo.icon,
     horaModo, horaNascimento: horaExacta || null, periodoNascimento: periodo || null
@@ -1653,6 +1757,7 @@ function mapaModeloBonito(r, full, dom){
   else if (r.anjo && r.anjo.tipo === 'universal') blocos.push({ tipo:'texto', icone:'🕊️', titulo:'A sua essência angelical universal', paras:[r.anjo.nota || ''] });
   if (!r.mestreDia && r.dataNascimento) r.mestreDia = calcularMestreDia(r.dataNascimento);
   if (!r.chakraDom && r.dataNascimento) r.chakraDom = chakraDominanteNum(r.dataNascimento);
+  if (r.ascendente) blocos.push({ tipo:'texto', icone:'🌅', titulo:'O seu Ascendente: ' + r.ascendente.signo + ' (' + r.ascendente.graus + '°)', paras:[(r.localNascimento ? 'Nasceu em ' + [r.localNascimento.cidade, r.localNascimento.pais].filter(Boolean).join(', ') + (r.horaNascimento ? ', às ' + r.horaNascimento : '') + '. ' : '') + r.ascendente.texto + (r.ascendente.aproximado ? ' (Cálculo aproximado, feito a partir da cidade principal do país.)' : '')] });
   { const _cv = r.caminhoDeVida, _ci = _cv && DONS_NUMERICOS[_cv];
     if (_ci) blocos.push({ tipo:'texto', icone:'🔢', titulo:'O seu Número de Vida: ' + _cv + ' — ' + (_ci.nome || ''), paras:[_ci.texto || ''] });
     const _pd = r.mestreDia && r.mestreDia.planeta, _ps = r.signo && PLANETA_SIGNO[r.signo], _pa = r.anjo && r.anjo.tipo === 'anjo' && r.anjo.planeta;
