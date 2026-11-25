@@ -1132,7 +1132,7 @@ export const ESPACO_PADRAO = {
  "tipo": "ciclo",
  "icone": "escudo",
  "emoji": "🧂",
- "titulo": "Salmo 66 e copo de sal · casa, negócio ou espaço · 7 dias",
+ "titulo": "Salmo 66 e copo de sal · casa, negócio ou local · 7 dias",
  "subtitulo": "Para limpar e proteger um espaço com energia pesada",
  "dias": 7,
  "ordem": 7,
@@ -1145,7 +1145,7 @@ export const ESPACO_PADRAO = {
   {
    "tipo": "texto",
    "titulo": "Para que serve",
-   "texto": "É uma prática de fé para limpar e proteger uma casa, um negócio ou um espaço onde se sente a energia pesada.\n\nUsa-se com o copo de sal: o copo ajuda-te a perceber como está o ambiente, e o Salmo 66 reza-se durante 7 dias para pedir que o espaço fique em paz, limpo e protegido."
+   "texto": "É uma prática de fé para limpar e proteger uma casa, um negócio, uma loja ou qualquer local onde se sente a energia pesada. Também serve para outros locais, desde que haja um sítio abrigado e discreto onde pôr o copo.\n\nUsa-se com o copo de sal: o copo ajuda-te a perceber como está o ambiente, e o Salmo 66 reza-se durante 7 dias para pedir que o espaço fique em paz, limpo e protegido."
   },
   {
    "tipo": "passos",
@@ -1154,7 +1154,7 @@ export const ESPACO_PADRAO = {
     "Pega num copo de vidro liso e transparente, sem desenhos.",
     "Põe dois dedos de sal grosso no fundo.",
     "Junta três dedos de água por cima.",
-    "Coloca o copo atrás da porta de entrada, num sítio discreto onde ninguém mexa.",
+    "Coloca o copo atrás da porta de entrada, num sítio discreto onde ninguém mexa. Se o local não tiver porta, escolhe um canto abrigado e discreto (sem chuva, sol direto nem passagem), onde o copo fique sossegado.",
     "Reza o Salmo 66 uma vez por dia, durante 7 dias seguidos, ao pé do copo ou a pensar nele.",
     "Todos os dias olha para o copo, sem lhe mexer."
    ]

@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-25-1';
+const APP_VERSION = '2026-11-25-2';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -19884,11 +19884,11 @@ window.__refazerCompleto = async function(patientId, reportId){
 /* Casa, negócio ou espaço com energia carregada: copo de sal + Salmo 66 durante 7 dias. */
 function copoSalBlocos(link){
   const b = [{ tipo:'texto', icone:'🧂', titulo:'O copo de sal para o espaço', paras:[
-      'Quando o pêndulo mostra que uma casa, um negócio ou um espaço está carregado, há uma ajuda simples que podes fazer: o copo de sal. Serve para limpar o ambiente e também para perceberes como ele está.' ] },
+      'Quando o pêndulo mostra que uma casa, um negócio ou um local está carregado, há uma ajuda simples que podes fazer: o copo de sal. Serve para limpar o ambiente e também para perceberes como ele está. Também podes usar noutros locais, desde que tenhas um sítio abrigado e discreto onde pôr o copo.' ] },
     { tipo:'lista', icone:'🥛', titulo:'Como preparar', marca:'•', itens:[
       'Pega num copo de vidro liso e transparente.',
       'Põe dois dedos de sal grosso no fundo e junta três dedos de água.',
-      'Coloca-o atrás da porta de entrada, num sítio discreto onde ninguém mexa.',
+      'Coloca-o atrás da porta de entrada, num sítio discreto onde ninguém mexa. Se o local não tiver porta, escolhe um canto abrigado e discreto.',
       'Reza o Salmo 66 uma vez por dia, durante 7 dias seguidos.',
       'Olha para o copo todos os dias, sem lhe mexer.' ] },
     { tipo:'texto', icone:'👀', titulo:'Como ler o copo', paras:[
