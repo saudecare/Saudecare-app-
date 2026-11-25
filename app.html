@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-24-21';
+const APP_VERSION = '2026-11-25-1';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -13421,6 +13421,7 @@ function triExtraBlocos(op){
         destaques: a.notas ? [{ rotulo:'Nota', nome:a.notas, texto:'' }] : [],
         pontos: a.causas.map(c => ({ nome:c.nome, texto:c.descricao })) }; });
     blocos.push({ tipo:'zonas', icone:'🏠', titulo:'Casa, veículos e outras pesquisas', intro:'Também olhei, com o pêndulo, para estes espaços e questões. Toque em cada um para ver o que encontrei.', zonas });
+    if (alvosCarregados(A.map(a => ({ tipo:a.tipo, causas:a.causas }))).length) copoSalBlocos('').forEach(b => blocos.push(b));
     txt.push('== Casa, veículos e outras pesquisas ==\n' + A.map(a => ((ALVO_TIPOS[a.tipo] || ALVO_TIPOS.outro)[1]) + (a.nome ? ' ' + a.nome : '') + ': ' + (a.causas.length ? a.causas.map(c => c.nome).join(', ') : (a.pesquisado ? 'nada encontrado' : 'sem pesquisa'))).join('\n'));
   }
   const casa = A.find(a => a.tipo === 'casa');
@@ -19703,19 +19704,19 @@ async function __linkOracaoTratamento(o){
   try {
     if (tenantId !== 'hikari-terapias') return { link: '', textos: [] };
     const mod = await import('./oracoes-padrao.js?v=' + APP_VERSION);
-    const padrao = o.terc ? mod.EM_NOME_PADRAO : (mod.PROTECAO_PADRAO || []).find(x => x.padraoId === 'salmos-libertacao-7');
+    const padrao = o.padraoId ? (mod.PROTECAO_PADRAO || []).find(x => x.padraoId === o.padraoId) : (o.terc ? mod.EM_NOME_PADRAO : (mod.PROTECAO_PADRAO || []).find(x => x.padraoId === 'salmos-libertacao-7'));
     if (!padrao) return { link: '', textos: [] };
     const snap = await getDocs(query(collection(db, 'oracoes'), where('tenantId', '==', tenantId)));
     let oid = ''; snap.forEach(x => { if (!oid && (x.data() || {}).padraoId === padrao.padraoId) oid = x.id; });
     if (!oid){ const r = await addDoc(collection(db, 'oracoes'), { ...JSON.parse(JSON.stringify(padrao)), tenantId, atualizadoEm: serverTimestamp(), criadoEm: serverTimestamp() }); oid = r.id; }
-    const nomeLeitor = o.terc ? ([o.pedinteNome, o.pedinteRel && '(' + o.pedinteRel + ')'].filter(Boolean).join(' ') || 'Familiar') : (o.nomePac || 'Paciente');
+    const nomeLeitor = o.padraoId ? (o.nomeLeitor || o.nomePac || 'Paciente') : o.terc ? ([o.pedinteNome, o.pedinteRel && '(' + o.pedinteRel + ')'].filter(Boolean).join(' ') || 'Familiar') : (o.nomePac || 'Paciente');
     const es = await getDocs(query(collection(db, 'oracoes_envios'), where('tenantId', '==', tenantId)));
     let eid = ''; es.forEach(x => { const v = x.data() || {}; if (!eid && v.oracaoId === oid && v.patientId === o.patientId && v.patientNome === nomeLeitor) eid = x.id; });
     if (!eid){
       const r = await addDoc(collection(db, 'oracoes_envios'), { oracaoId: oid, titulo: padrao.titulo || '', patientId: o.patientId, patientNome: nomeLeitor, emNomeDe: o.terc ? (o.nomePac || '') : '', tenantId, feitos: [], feitosEm: {}, vezes: 0, abertoEm: '', ultimaAtividade: '', criadoEmIso: new Date().toISOString(), criadoEm: serverTimestamp() });
       eid = r.id;
     }
-    const nomeTxt = o.terc ? (o.nomePac || 'a pessoa') : '';
+    const nomeTxt = (o.terc && !o.padraoId) ? (o.nomePac || 'a pessoa') : '';
     const textos = [];
     (padrao.seccoes || []).filter(x => x.tipo === 'oracao').forEach(x => {
       const tit = String(x.titulo || '').replace(/\{\{nome\}\}/g, nomeTxt).replace(/\s*·\s*parte \d+ de \d+/i, '');
@@ -19880,6 +19881,24 @@ window.__refazerCompleto = async function(patientId, reportId){
   } catch(e){ console.error(e); toast('Não consegui gerar: ' + (e.message || e), true); }
 };
 
+/* Casa, negócio ou espaço com energia carregada: copo de sal + Salmo 66 durante 7 dias. */
+function copoSalBlocos(link){
+  const b = [{ tipo:'texto', icone:'🧂', titulo:'O copo de sal para o espaço', paras:[
+      'Quando o pêndulo mostra que uma casa, um negócio ou um espaço está carregado, há uma ajuda simples que podes fazer: o copo de sal. Serve para limpar o ambiente e também para perceberes como ele está.' ] },
+    { tipo:'lista', icone:'🥛', titulo:'Como preparar', marca:'•', itens:[
+      'Pega num copo de vidro liso e transparente.',
+      'Põe dois dedos de sal grosso no fundo e junta três dedos de água.',
+      'Coloca-o atrás da porta de entrada, num sítio discreto onde ninguém mexa.',
+      'Reza o Salmo 66 uma vez por dia, durante 7 dias seguidos.',
+      'Olha para o copo todos os dias, sem lhe mexer.' ] },
+    { tipo:'texto', icone:'👀', titulo:'Como ler o copo', paras:[
+      'Se o sal subir pelas paredes do copo, ou a água ficar turva, há perturbações energéticas no espaço e o copo está a trabalhar. Quando isso acontecer, deita o conteúdo no esgoto, lava o copo, prepara um novo e reza outra vez o Salmo 66 durante 7 dias.',
+      'Se o sal ficar no fundo e a água limpa, está tudo bem. Para prevenir, podes manter um copo sempre atrás da porta e renová-lo uma vez por semana.' ] }];
+  if (link) b.push({ tipo:'botao', icone:'🙏', titulo:'O Salmo 66, passo a passo', paras:['Aqui tens o Salmo 66 escrito, com os dias para marcares à medida que os fazes.'], rotulo:'Abrir a página do Salmo 66', href: link, nota:'Fica guardado o que já fizeste, por isso podes continuar noutro dia.' });
+  return b;
+}
+function alvosCarregados(A){ return (A || []).filter(a => (a.tipo === 'casa' || a.tipo === 'outro') && ((a.causas || []).length)); }
+
 /* Relatório COMPLETO a partir de uma triagem guardada: o que foi detetado (modelo rico da triagem), comparação com TODAS as consultas,
    o trabalho feito (incluindo a abertura de caminhos no trabalho), balanço final e orações com link pessoal. */
 async function triagemCompletoHtml(pid, rid, o){
@@ -19929,7 +19948,14 @@ async function triagemCompletoHtml(pid, rid, o){
   const causasMin = causasDetetadas.map(c => ({ n: c.n, nome: c.nome }));
   const restantes = (r.baixaVibracaoDetetada || []);
   const tm = tratamentoModelo({ detetadas: [], comparacao: null, ultimaConsulta: o.ultima, restantes: o.ultima ? restantes : [], causas: causasMin, linkOracao: o.lo.link, textosOracao: [], nome, terc, pedinteNome: pnome, pedinteRel: o.dst.pedinteRel, pedido: r.pedido || '', aplicadas, terapeuta: o.ter.nome, negocio: '', data: new Date().toLocaleDateString('pt-PT') });
-  const depoisExtra = tm._depoisT || [];
+  let depoisExtra = tm._depoisT || [];
+  const alvC = alvosCarregados(r.alvos);
+  if (alvC.length){
+    const lerNome = (o.dst && o.dst.terc) ? ([o.dst.pedinteNome, o.dst.pedinteRel && '(' + o.dst.pedinteRel + ')'].filter(Boolean).join(' ') || 'Familiar') : (nome || 'Paciente');
+    const lk2 = await __linkOracaoTratamento({ patientId: pid, nomePac: nome, terc: false, padraoId: 'salmo-66-espaco-7', nomeLeitor: lerNome });
+    meioExtra.push({ tipo:'lista', icone:'🏠', titulo:'Os espaços que também pesquisei', marca:'•', itens: alvC.map(a => ((a.tipo === 'casa' ? 'Casa' : 'Espaço') + (a.nome ? ' — ' + a.nome : '') + ': ' + (a.causas || []).join(', '))) });
+    depoisExtra = depoisExtra.concat(copoSalBlocos(lk2.link));
+  }
   const nasc = r.dataNascimento || pdoc.birthDate || '';
   const perfil = (numConsulta <= 1 && nasc) ? (() => { try{ return calcularPerfilMapaAlma(nome, nasc); }catch(e){ return null; } })() : null;
   let lc = null; const L = r.leituraComplementar;

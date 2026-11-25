@@ -1123,3 +1123,107 @@ export const EM_NOME_PADRAO = {
   ]),
   temasDias: [1, 2, 3, 4, 5, 6, 7].map((n) => ({ titulo: n === 1 ? 'O começo' : (n === 7 ? 'Selar e agradecer' : 'Mais um dia sob a proteção de Deus'), intencao: 'Rezo por {{nome}}, com amor e para o seu bem supremo.', acao: '' }))
 };
+
+// Casa, negócio ou espaço com energia carregada: copo de sal + Salmo 66 durante 7 dias.
+export const ESPACO_PADRAO = {
+ "padraoId": "salmo-66-espaco-7",
+ "versaoPadrao": 1,
+ "regra": "seguidos",
+ "tipo": "ciclo",
+ "icone": "escudo",
+ "emoji": "🧂",
+ "titulo": "Salmo 66 e copo de sal · casa, negócio ou espaço · 7 dias",
+ "subtitulo": "Para limpar e proteger um espaço com energia pesada",
+ "dias": 7,
+ "ordem": 7,
+ "seccoes": [
+  {
+   "tipo": "aviso",
+   "titulo": "Regra: 7 dias seguidos",
+   "texto": "Reza durante 7 dias seguidos, uma vez por dia, mais ou menos à mesma hora. Se falhares um dia, recomeças do Dia 1. Esta página avisa-te e deixa-te recomeçar com um toque."
+  },
+  {
+   "tipo": "texto",
+   "titulo": "Para que serve",
+   "texto": "É uma prática de fé para limpar e proteger uma casa, um negócio ou um espaço onde se sente a energia pesada.\n\nUsa-se com o copo de sal: o copo ajuda-te a perceber como está o ambiente, e o Salmo 66 reza-se durante 7 dias para pedir que o espaço fique em paz, limpo e protegido."
+  },
+  {
+   "tipo": "passos",
+   "titulo": "Como preparar o copo de sal",
+   "itens": [
+    "Pega num copo de vidro liso e transparente, sem desenhos.",
+    "Põe dois dedos de sal grosso no fundo.",
+    "Junta três dedos de água por cima.",
+    "Coloca o copo atrás da porta de entrada, num sítio discreto onde ninguém mexa.",
+    "Reza o Salmo 66 uma vez por dia, durante 7 dias seguidos, ao pé do copo ou a pensar nele.",
+    "Todos os dias olha para o copo, sem lhe mexer."
+   ]
+  },
+  {
+   "tipo": "texto",
+   "titulo": "Como ler o copo",
+   "texto": "Se ao fim de alguns dias o sal subir pelas paredes do copo, ou a água ficar turva, sinal de que há perturbações energéticas no espaço e o copo está a trabalhar.\n\nSe o sal ficar no fundo e a água limpa, está tudo bem.\n\nQuando o sal subir, deita o conteúdo no esgoto ou na sanita, lava o copo com água corrente, prepara um copo novo e recomeça o Salmo 66 por mais 7 dias."
+  },
+  {
+   "tipo": "texto",
+   "titulo": "Para prevenir",
+   "texto": "Podes manter um copo de sal sempre atrás da porta e renová-lo uma vez por semana, como prevenção. Quando o sal subir, renova o copo e reza outra vez o Salmo 66 durante 7 dias."
+  },
+  {
+   "tipo": "aviso",
+   "titulo": "Cuidados importantes",
+   "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico, psicológico, jurídico ou financeiro. Reza sempre para a paz e a proteção, nunca para desejar mal a ninguém. Mantém o copo fora do alcance de crianças e animais, e nunca bebas a água do copo."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Abertura",
+   "texto": "Respiro fundo, três vezes.\nEstou em segurança.\nPeço licença a Deus e ao meu Guia superior para rezar por este espaço.\nSe for para o bem maior de todos os que aqui vivem ou trabalham, que assim seja."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 66 · parte 1 de 2",
+   "texto": "Celebrai com júbilo a Deus, todas as terras.\nCantai à glória do seu nome; dai glória ao seu louvor.\n\nDizei a Deus: Quão tremendas são as tuas obras! Pela grandeza do teu poder, os teus inimigos se submeterão a ti.\nToda a terra te adorará e cantará a ti; cantará ao teu nome.\n\nVinde e vede as obras de Deus; ele é tremendo nos seus feitos para com os filhos dos homens.\nConverteu o mar em terra seca; passaram o rio a pé enxuto; ali nos alegrámos nele.\n\nEle domina eternamente pelo seu poder; os seus olhos vigiam as nações; que os rebeldes não se exaltem."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Salmo 66 · parte 2 de 2",
+   "texto": "Bendizei, povos, o nosso Deus, e fazei ouvir a voz do seu louvor.\nEle mantém a nossa alma na vida e não deixa vacilar os nossos pés.\n\nTu, ó Deus, nos provaste; refinaste-nos como se refina a prata.\nTu nos meteste na rede; puseste um fardo sobre os nossos ombros.\nFizeste cavalgar homens sobre as nossas cabeças; passámos pelo fogo e pela água, mas tu nos levaste a um lugar espaçoso.\n\nEntrarei em tua casa com ofertas; cumprirei os meus votos,\nos que os meus lábios pronunciaram e a minha boca declarou quando eu estava na angústia.\n\nVinde e ouvi, todos os que temeis a Deus, e contarei o que ele fez pela minha alma.\nClamei a ele com a minha boca, e a minha língua o exaltou.\nSe eu tivesse guardado a maldade no coração, o Senhor não me ouviria.\nMas, na verdade, Deus me ouviu; atendeu à voz da minha oração.\n\nBendito seja Deus, que não rejeitou a minha oração, nem afastou de mim a sua misericórdia."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Pedido final",
+   "texto": "Peço a Deus que envie os Anjos para limpar, proteger e abençoar este espaço e todos os que nele entram.\nQue aqui haja paz, saúde e luz.\nObrigado/a. Ámen."
+  }
+ ],
+ "temasDias": [
+  {
+   "titulo": "O começo",
+   "intencao": "Rezo para que este espaço fique limpo, protegido e em paz."
+  },
+  {
+   "titulo": "Mais um dia de limpeza e paz",
+   "intencao": "Rezo para que este espaço fique limpo, protegido e em paz."
+  },
+  {
+   "titulo": "Mais um dia de limpeza e paz",
+   "intencao": "Rezo para que este espaço fique limpo, protegido e em paz."
+  },
+  {
+   "titulo": "Mais um dia de limpeza e paz",
+   "intencao": "Rezo para que este espaço fique limpo, protegido e em paz."
+  },
+  {
+   "titulo": "Mais um dia de limpeza e paz",
+   "intencao": "Rezo para que este espaço fique limpo, protegido e em paz."
+  },
+  {
+   "titulo": "Mais um dia de limpeza e paz",
+   "intencao": "Rezo para que este espaço fique limpo, protegido e em paz."
+  },
+  {
+   "titulo": "Selar e agradecer",
+   "intencao": "Rezo para que este espaço fique limpo, protegido e em paz."
+  }
+ ]
+};
+PROTECAO_PADRAO.push(ESPACO_PADRAO);
