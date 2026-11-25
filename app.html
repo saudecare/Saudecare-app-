@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-25-5';
+const APP_VERSION = '2026-11-25-6';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -14432,13 +14432,13 @@ function triagemPassoSessoesPreco(main){
    Lista de referência: o dia n da semana (domingo = 1) liga-se ao raio n e ao seu mestre. O sábado (Saint Germain) está confirmado pelo terapeuta; os outros dias podem ser ajustados aqui (0 = domingo … 6 = sábado). */
 const DIAS_SEMANA_PT = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
 const MESTRE_DIA_SEMANA = {
-  0: { raio:'1.º Raio', cor:'azul', mestre:'El Morya', texto:'Quem nasce num {DIA} liga-se ao 1.º Raio, o Raio Azul: o raio da vontade, do poder, da fé e da proteção. O mestre ascensionado associado é El Morya, que ajuda a ter coragem, direção e firmeza para seguir o próprio caminho.' },
-  1: { raio:'2.º Raio', cor:'dourado', mestre:'o Mestre Lanto', texto:'Quem nasce numa {DIA} liga-se ao 2.º Raio, o Raio Dourado: o raio da sabedoria, da iluminação e do entendimento. O mestre ascensionado associado é o Mestre Lanto, que ajuda a ver as situações com clareza e a aprender com elas.' },
-  2: { raio:'3.º Raio', cor:'rosa', mestre:'Paulo, o Veneziano', texto:'Quem nasce numa {DIA} liga-se ao 3.º Raio, o Raio Rosa: o raio do amor, da beleza e da harmonia. O mestre ascensionado associado é Paulo, o Veneziano, que ajuda a abrir o coração, a criar e a cuidar das relações.' },
-  3: { raio:'4.º Raio', cor:'branco', mestre:'Serapis Bey', texto:'Quem nasce numa {DIA} liga-se ao 4.º Raio, o Raio Branco: o raio da pureza, da disciplina e da ascensão. O mestre ascensionado associado é Serapis Bey, que ajuda a pôr ordem, a purificar e a elevar a energia.' },
-  4: { raio:'5.º Raio', cor:'verde', mestre:'Hilarião', texto:'Quem nasce numa {DIA} liga-se ao 5.º Raio, o Raio Verde: o raio da cura, da verdade e do conhecimento. O mestre ascensionado associado é Hilarião, que ajuda a curar, a encontrar a verdade e a trazer equilíbrio ao corpo e à mente.' },
-  5: { raio:'6.º Raio', cor:'rubi', mestre:'a Mestra Nada', texto:'Quem nasce numa {DIA} liga-se ao 6.º Raio, o Raio Rubi: o raio da paz, do serviço e da devoção. O mestre ascensionado associado é a Mestra Nada, que ajuda a servir com amor e a manter a paz interior.' },
-  6: { raio:'7.º Raio', cor:'violeta', mestre:'Saint Germain', texto:'Quem nasce num {DIA} liga-se ao 7.º Raio, o Raio Violeta: o raio da transmutação, da liberdade e do perdão. O mestre ascensionado associado é Saint Germain, que ajuda a transformar o que pesa em luz e a limpar as energias densas.' }
+  0: { raio:'1.º Raio', cor:'azul', mestre:'El Morya', texto:'Quem nasce num {DIA} liga-se ao 1.º Raio, o Raio Azul: o raio da vontade, do poder, da fé e da proteção. O mestre ascensionado associado é El Morya, que ajuda a ter coragem, direção e firmeza para seguir o próprio caminho. É uma cura que passa por dar força: devolve a confiança e a coragem para sair do medo e da insegurança.' },
+  1: { raio:'2.º Raio', cor:'dourado', mestre:'o Mestre Lanto', texto:'Quem nasce numa {DIA} liga-se ao 2.º Raio, o Raio Dourado: o raio da sabedoria, da iluminação e do entendimento. O mestre ascensionado associado é o Mestre Lanto, que ajuda a ver as situações com clareza e a aprender com elas. É uma cura que passa pela compreensão: quando percebemos a origem do que vivemos, muita coisa deixa de pesar.' },
+  2: { raio:'3.º Raio', cor:'rosa', mestre:'Paulo, o Veneziano', texto:'Quem nasce numa {DIA} liga-se ao 3.º Raio, o Raio Rosa: o raio do amor, da beleza e da harmonia. O mestre ascensionado associado é Paulo, o Veneziano, que ajuda a abrir o coração, a criar e a cuidar das relações. É uma cura que passa pelo amor: as feridas do coração sossegam com carinho, ternura e perdão.' },
+  3: { raio:'4.º Raio', cor:'branco', mestre:'Serapis Bey', texto:'Quem nasce numa {DIA} liga-se ao 4.º Raio, o Raio Branco: o raio da pureza, da disciplina e da ascensão. O mestre ascensionado associado é Serapis Bey, que ajuda a pôr ordem, a purificar e a elevar a energia. É uma cura que passa pela purificação: limpar e pôr ordem faz o corpo e a mente voltarem a respirar.' },
+  4: { raio:'5.º Raio', cor:'verde', mestre:'Hilarião', texto:'Quem nasce numa {DIA} liga-se ao 5.º Raio, o Raio Verde: o raio da cura, da verdade e do conhecimento. O mestre ascensionado associado é Hilarião, que ajuda a curar, a encontrar a verdade e a trazer equilíbrio ao corpo e à mente. É a cura do corpo e da mente: encontrar a verdade e devolver o equilíbrio ao que estava desarrumado.' },
+  5: { raio:'6.º Raio', cor:'rubi', mestre:'a Mestra Nada', texto:'Quem nasce numa {DIA} liga-se ao 6.º Raio, o Raio Rubi: o raio da paz, do serviço e da devoção. O mestre ascensionado associado é a Mestra Nada, que ajuda a servir com amor e a manter a paz interior. É uma cura que passa pela paz: acalmar o coração e servir com amor alivia a alma.' },
+  6: { raio:'7.º Raio', cor:'violeta', mestre:'Saint Germain', texto:'Quem nasce num {DIA} liga-se ao 7.º Raio, o Raio Violeta: o raio da transmutação, da liberdade e do perdão. O mestre ascensionado associado é Saint Germain, que ajuda a transformar o que pesa em luz e a limpar as energias densas. É uma cura que passa por transformar e libertar o que pesa.' }
 };
 function calcularMestreDia(dateStr){
   const d = new Date(dateStr + 'T12:00:00'); if (isNaN(d)) return null;
