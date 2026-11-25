@@ -364,6 +364,87 @@ function calcularCiclosPessoais(dateStr, hojeStr){
   const diaPessoal = reduceNumber(mesPessoal + reduceNumber(diaAtual));
   return { anoPessoal, mesPessoal, diaPessoal, anoUniversal: anoUniv };
 }
+
+/* ─── Mestre ascensionado (dia da semana) e chakra dominante ─── */
+const DIAS_SEMANA_PT = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+const MESTRE_DIA_SEMANA = {
+  0: { raio:'1.º Raio', dons:'liderança, determinação, coragem, sentido de missão e vontade de proteger os outros', atencao:'teimosia, rigidez e querer controlar tudo', cor:'azul', mestre:'El Morya', texto:'Quem nasce num {DIA} liga-se ao 1.º Raio, o Raio Azul: o raio da vontade, do poder, da fé e da proteção. O mestre ascensionado associado é El Morya, que ajuda a ter coragem, direção e firmeza para seguir o próprio caminho. É uma cura que passa por dar força: devolve a confiança e a coragem para sair do medo e da insegurança.' },
+  1: { raio:'2.º Raio', dons:'sabedoria, serenidade, mente clara, jeito para ensinar e aconselhar e gosto por estudar e compreender', atencao:'viver demasiado na cabeça e ficar distante ou frio com as emoções', cor:'dourado', mestre:'o Mestre Lanto', texto:'Quem nasce numa {DIA} liga-se ao 2.º Raio, o Raio Dourado: o raio da sabedoria, da iluminação e do entendimento. O mestre ascensionado associado é o Mestre Lanto, que ajuda a ver as situações com clareza e a aprender com elas. É uma cura que passa pela compreensão: quando percebemos a origem do que vivemos, muita coisa deixa de pesar.' },
+  2: { raio:'3.º Raio', dons:'amor, criatividade, sensibilidade, sentido de beleza, arte e jeito para a harmonia nas relações', atencao:'dar demais, depender emocionalmente dos outros e esquecer-se de si', cor:'rosa', mestre:'Paulo, o Veneziano', texto:'Quem nasce numa {DIA} liga-se ao 3.º Raio, o Raio Rosa: o raio do amor, da beleza e da harmonia. O mestre ascensionado associado é Paulo, o Veneziano, que ajuda a abrir o coração, a criar e a cuidar das relações. É uma cura que passa pelo amor: as feridas do coração sossegam com carinho, ternura e perdão.' },
+  3: { raio:'4.º Raio', dons:'disciplina, foco, perseverança, procura de excelência e vontade de elevar a vida a um nível mais puro', atencao:'perfeccionismo e exigir demais de si', cor:'branco', mestre:'Serapis Bey', texto:'Quem nasce numa {DIA} liga-se ao 4.º Raio, o Raio Branco: o raio da pureza, da disciplina e da ascensão. O mestre ascensionado associado é Serapis Bey, que ajuda a pôr ordem, a purificar e a elevar a energia. É uma cura que passa pela purificação: limpar e pôr ordem faz o corpo e a mente voltarem a respirar.' },
+  4: { raio:'5.º Raio', dons:'intuição, concentração, sentido prático, procura da verdade, curiosidade e abundância', atencao:'duvidar de tudo e confiar só na lógica', cor:'verde', mestre:'Hilarião', texto:'Quem nasce numa {DIA} liga-se ao 5.º Raio, o Raio Verde: o raio da cura, da verdade e do conhecimento. O mestre ascensionado associado é Hilarião, que ajuda a curar, a encontrar a verdade e a trazer equilíbrio ao corpo e à mente. É a cura do corpo e da mente: encontrar a verdade e devolver o equilíbrio ao que estava desarrumado.' },
+  5: { raio:'6.º Raio', dons:'dedicação, compaixão, vontade de servir, devoção e uma coragem tranquila', atencao:'sacrificar-se demais e guardar mágoa quando não se sente reconhecido', cor:'rubi', mestre:'a Mestra Nada', texto:'Quem nasce numa {DIA} liga-se ao 6.º Raio, o Raio Rubi: o raio da paz, do serviço e da devoção. O mestre ascensionado associado é a Mestra Nada, que ajuda a servir com amor e a manter a paz interior. É uma cura que passa pela paz: acalmar o coração e servir com amor alivia a alma.' },
+  6: { raio:'7.º Raio', dons:'liberdade, criatividade, ritual e magia, justiça com misericórdia e capacidade de perdoar e recomeçar', atencao:'querer mudar tudo de uma vez ou carregar o peso dos outros', cor:'violeta', mestre:'Saint Germain', texto:'Quem nasce num {DIA} liga-se ao 7.º Raio, o Raio Violeta: o raio da transmutação, da liberdade e do perdão. O mestre ascensionado associado é Saint Germain, que ajuda a transformar o que pesa em luz e a limpar as energias densas. É uma cura que passa por transformar e libertar o que pesa.' }
+};
+function calcularMestreDia(dateStr){
+  const d = new Date(dateStr + 'T12:00:00'); if (isNaN(d)) return null;
+  const i = d.getDay();
+  const base = { dia: DIAS_SEMANA_PT[i], nasceuNum: (i === 0 || i === 6 ? 'num ' : 'numa ') + DIAS_SEMANA_PT[i] };
+  const m = MESTRE_DIA_SEMANA[i]; if (!m) return base;
+  return Object.assign(base, m, { texto: m.texto.replace('{DIA}', DIAS_SEMANA_PT[i]) });
+}
+
+const TRI_CHAKRA_LIVRO = {
+  1:{ nome:'Raiz', sans:'Muladhara', titulo:'O Realizador', cor:'vermelho', local:'base da coluna',
+      luz:'é o alicerce: prático, resiliente, leal e com grande força vital, é quem constrói, provê e protege',
+      sombra:'insegurança, sobretudo financeira, medo da perda, teimosia e, nos dias maus, apatia e a sensação de estar preso(a)',
+      caminho:'aterrar (caminhar descalço(a) na terra), confiar na vida e praticar o desapego do que é excessivo' },
+  2:{ nome:'Sacro', sans:'Svadhishthana', titulo:'O Criativo', cor:'laranja', local:'dois dedos abaixo do umbigo',
+      luz:'é o artista da vida: sente fundo, cria com paixão e tem um magnetismo natural',
+      sombra:'instabilidade emocional, excessos que viram vícios, culpa, vergonha e a ideia de não merecer',
+      caminho:'encontrar prazer em coisas simples, trabalhar o merecimento e aceitar as emoções sem julgamento' },
+  3:{ nome:'Plexo Solar', sans:'Manipura', titulo:'O Líder', cor:'amarelo', local:'acima do umbigo',
+      luz:'tem força de vontade, disciplina, confiança e capacidade de transformar ideias em realidade',
+      sombra:'ansiedade de desempenho, medo de falhar, a ideia de nunca ser suficiente e, em excesso, cansaço por controlar tudo',
+      caminho:'aprender a ser e não só a fazer, dar-se valor independentemente dos resultados e respirar fundo para soltar o nó no estômago' },
+  4:{ nome:'Coração', sans:'Anahata', titulo:'O Curador', cor:'verde ou rosa', local:'centro do peito',
+      luz:'é empático(a), compassivo(a) e diplomata, e a sua vida é um exercício de amor e de ligação',
+      sombra:'auto-sacrifício, mágoas guardadas, dependência emocional e medo de perder as ligações',
+      caminho:'pôr limites saudáveis, praticar o perdão e fazer do amor-próprio a base' },
+  5:{ nome:'Garganta', sans:'Vishuddha', titulo:'O Comunicador', cor:'azul claro', local:'base da garganta',
+      luz:'vive a sua verdade: exprime-se com clareza e honestidade e alinha o que diz com o que faz',
+      sombra:'medo de se expressar, dificuldade em dizer não, opiniões engolidas para evitar conflito ou, no extremo, falar demais sem ouvir',
+      caminho:'comunicar com assertividade, escutar com atenção e usar a criatividade (escrever, cantar, pintar)' },
+  6:{ nome:'Terceiro Olho', sans:'Ajna', titulo:'O Visionário', cor:'azul índigo', local:'centro da testa',
+      luz:'tem intuição, clareza mental e capacidade de distinguir a verdade da ilusão',
+      sombra:'prisão mental: pensar demais, cenários catastróficos, preocupação em círculo e dores de cabeça',
+      caminho:'sair da cabeça e voltar ao corpo, com exercício, respiração e aterramento' },
+  7:{ nome:'Coroa', sans:'Sahasrara', titulo:'O Espiritual', cor:'violeta ou branco-dourado', local:'topo da cabeça',
+      luz:'sente uma forte ligação ao divino e ao sentido maior da vida, e vê o quadro geral',
+      sombra:'fuga à realidade, sensação de desligamento do corpo e das emoções e falta de propósito',
+      caminho:'trazer o céu para a terra, ativando a raiz com dança, jardinagem e tarefas práticas' },
+  8:{ nome:'Estrela da Alma', sans:'Causal', titulo:'O Manifestador', cor:'branco-perolado, prateado ou magenta', local:'acima da cabeça',
+      luz:'tem uma ligação forte à alma e à missão de vida, e o poder de ligar o espírito à matéria',
+      sombra:'autoritarismo ou obsessão material, impaciência, sobrecarga mental e sensação de desfasamento',
+      caminho:'juntar visão espiritual e ação compassiva, ter paciência com o ritmo do plano físico e aterrar' },
+  9:{ nome:'Portal Estelar', sans:'Cósmico', titulo:'O Humanitário', cor:'dourado, platina ou luz branca', local:'bem acima da cabeça',
+      luz:'vive em unidade com o Todo e dedica-se ao serviço incondicional dos outros',
+      sombra:'sofrer demais com as dores do mundo, esgotamento, isolamento e dificuldade em viver o aqui e agora',
+      caminho:'proteger o campo energético, servir de forma sustentável e fazer do autocuidado um ato sagrado' }
+};
+function chakraDominanteNum(dataStr){
+  if (!dataStr) return null;
+  let n = String(dataStr).replace(/\D/g,'').split('').reduce((a,b) => a + Number(b), 0);
+  while (n > 9) n = String(n).split('').reduce((a,b) => a + Number(b), 0);
+  return n >= 1 ? n : null;
+}
+function blocoMestreChakraHTML(r, estilo){
+  const md = r.mestreDia || (r.dataNascimento ? calcularMestreDia(r.dataNascimento) : null);
+  const cdn = r.chakraDom || (r.dataNascimento ? chakraDominanteNum(r.dataNascimento) : null), cd = cdn && TRI_CHAKRA_LIVRO[cdn];
+  const card = (inner) => estilo === 'card' ? `<div class="card">${inner}</div>` : `<div class="result-block">${inner}</div>`;
+  const h = (t) => estilo === 'card' ? `<h3 style="color:var(--gold-light);">${t}</h3>` : `<h3>${t}</h3>`;
+  let out = '';
+  if (md && md.mestre) out += card(`${h('🌟 O seu Mestre Ascensionado')}
+    <p class="muted" style="margin-top:6px;">Nasceu ${escapeHtml(md.nasceuNum)}. ${escapeHtml(md.texto)}</p>
+    <p class="muted" style="margin-top:6px;"><strong>💎 Para além da cura, este raio traz:</strong> ${escapeHtml(md.dons)}.</p>
+    <p class="muted" style="margin-top:6px;"><strong>🌑 O que merece atenção:</strong> ${escapeHtml(md.atencao)}.</p>`);
+  if (cd) out += card(`${h('🌈 O seu Chakra Dominante: ' + escapeHtml(cd.nome) + ' — ' + escapeHtml(cd.titulo))}
+    <p class="muted" style="margin-top:6px;">Pelo mesmo cálculo do Caminho de Vida (${r.caminhoDeVida || ''}), o seu chakra dominante é o <strong>${escapeHtml(cd.nome)}</strong> (${escapeHtml(cd.sans)}), cor ${escapeHtml(cd.cor)}, ${escapeHtml(cd.local)}.</p>
+    <p class="muted" style="margin-top:6px;"><strong>💎 Na sua melhor versão:</strong> ${escapeHtml(cd.luz)}.</p>
+    <p class="muted" style="margin-top:6px;"><strong>🌑 O desafio que mais se repete:</strong> ${escapeHtml(cd.sombra)}.</p>
+    <p class="muted" style="margin-top:6px;"><strong>🌿 O caminho de equilíbrio:</strong> ${escapeHtml(cd.caminho)}.</p>`);
+  return out;
+}
 function hojeISO(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 /* ─── Nodos Lunares (Vidas Passadas / Propósito de Vida) ──────────────
@@ -1151,6 +1232,7 @@ async function onCalcular(){
     caminhoDeVida: cv, motivacao: mot,
     diaInfo, diaNome, signo: signo.nome,
     carmicas, excesso, mediunidade, anjo,
+    mestreDia: calcularMestreDia(data), chakraDom: chakraDominanteNum(data),
     pinAtivo, ciclos, nodos, arcanoP, arcanoA, numExtra, grelhaCompat, leituraIntegrada,
     selo: selo.id, seloLabel: selo.label, seloIcon: selo.icon,
     horaModo, horaNascimento: horaExacta || null, periodoNascimento: periodo || null
@@ -1280,6 +1362,7 @@ function renderFreeResult(leadId, r, signo, extra){
         <h3>🕊️ O seu Anjo do Nascimento</h3>
         <p class="muted"><strong>${escapeHtml(r.anjo.nome)}</strong>, ${r.anjo.numero}º da hierarquia dos ${escapeHtml(r.anjo.coro)}, sob a regência do ${escapeHtml(r.anjo.arcanjoRegente)}. <strong>${escapeHtml(variantePara(r.nome, r.dataNascimento, 'cta-anjo', CTA_DIAMANTE, 'a sua virtude completa, a sombra a vigiar e a hora exata de invocação'))}</strong></p>
       </div>` : ''}
+      ${blocoMestreChakraHTML(r, 'block')}
       ${r.anjo && r.anjo.tipo === 'universal' ? `
       <div class="result-block">
         <h3>🕊️ A sua Essência Angelical</h3>
@@ -1561,6 +1644,10 @@ function mapaModeloBonito(r, full, dom){
   }
   if (r.anjo && r.anjo.tipo === 'anjo') blocos.push({ tipo:'lista', icone:'🕊️', titulo:'O seu Anjo do Nascimento: ' + r.anjo.nome, marca:'', itens:[`${r.anjo.numero}º da hierarquia dos ${r.anjo.coro}, sob a regência do ${r.anjo.arcanjoRegente}.`, '💎 Virtude: ' + r.anjo.virtude, '🌑 Sombra a vigiar: ' + r.anjo.sombra] });
   else if (r.anjo && r.anjo.tipo === 'universal') blocos.push({ tipo:'texto', icone:'🕊️', titulo:'A sua essência angelical universal', paras:[r.anjo.nota || ''] });
+  if (!r.mestreDia && r.dataNascimento) r.mestreDia = calcularMestreDia(r.dataNascimento);
+  if (!r.chakraDom && r.dataNascimento) r.chakraDom = chakraDominanteNum(r.dataNascimento);
+  if (r.mestreDia && r.mestreDia.mestre) blocos.push({ tipo:'lista', icone:'🌟', titulo:'O seu Mestre Ascensionado: ' + r.mestreDia.mestre, marca:'', itens:['Nasceu ' + r.mestreDia.nasceuNum + '. ' + r.mestreDia.texto, '💎 Para além da cura, este raio traz: ' + r.mestreDia.dons + '.', '🌑 O que merece atenção: ' + r.mestreDia.atencao + '.'] });
+  if (r.chakraDom && TRI_CHAKRA_LIVRO[r.chakraDom]){ const cd = TRI_CHAKRA_LIVRO[r.chakraDom]; blocos.push({ tipo:'lista', icone:'🌈', titulo:'O seu Chakra Dominante: ' + cd.nome + ' — ' + cd.titulo, marca:'', itens:['Cor ' + cd.cor + ', ' + cd.local + '.', '💎 Na sua melhor versão: ' + cd.luz + '.', '🌑 O desafio que mais se repete: ' + cd.sombra + '.', '🌿 O caminho de equilíbrio: ' + cd.caminho + '.'] }); }
   if (r.ciclos && r.ciclos.anoPessoal){
     const ap = Number(r.ciclos.anoPessoal) || 0;
     blocos.push({ tipo:'medidor', icone:'📅', titulo:'O seu ano no ciclo de 9 anos', valor:Math.min(100, ap / 9 * 100), destaque:'Ano Pessoal ' + ap, legenda:`${nm(ap)}. ${tx(ap)}  Mês pessoal ${r.ciclos.mesPessoal} · Dia pessoal ${r.ciclos.diaPessoal}.` });
@@ -1638,6 +1725,7 @@ function renderFullReport(data){
       </div>
       <p class="muted" style="margin-top:8px;"><strong>Planeta regente:</strong> ${escapeHtml(r.anjo.planeta)} — o melhor horário de invocação alinha-se com o dia da semana deste planeta.</p>
     </div>` : ''}
+    ${blocoMestreChakraHTML(r, 'card')}
     ${r.anjo && r.anjo.tipo === 'universal' ? `
     <div class="card">
       <h3 style="color:var(--gold-light);">🕊️ A sua Essência Angelical Universal</h3>
