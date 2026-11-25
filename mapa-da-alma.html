@@ -622,6 +622,55 @@ function guiaVibHTML(num, tipo){
   return `<details style="margin:6px 0 10px;"><summary style="cursor:pointer;color:var(--gold-light);font-size:.85rem;">🌿 Como harmonizar passo a passo</summary><p class="muted" style="margin-top:6px;font-size:.85rem;"><strong>${escapeHtml(g.titulo)}</strong></p><ol class="muted" style="margin:6px 0 0 18px;font-size:.85rem;line-height:1.5;">${g.passos.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ol></details>`;
 }
 
+
+/* ─── Abundância e proteção da família (por Caminho de Vida) ─── */
+const ABUND_CV = {
+  1:{ tema:'iniciativa própria: o dinheiro chega quando você começa e decide', cuidado:'decidir sozinho tudo e gastar por impulso', passo:'escrever uma meta de dinheiro por mês e dar um primeiro passo concreto esta semana' },
+  2:{ tema:'cooperação: ganha mais em parceria e com paciência', cuidado:'depender dos outros ou ter dificuldade em pedir o que é justo', passo:'definir o valor do seu trabalho e dizê-lo sem pedir desculpa' },
+  3:{ tema:'comunicação e criatividade: o que partilha e ensina rende', cuidado:'dispersar-se e gastar a pensar no momento', passo:'escolher uma só fonte de rendimento criativa para cuidar este mês' },
+  4:{ tema:'base sólida: construir devagar, com regras e registos', cuidado:'rigidez e medo de arriscar o suficiente', passo:'ter um caderno ou folha de contas sempre em dia' },
+  5:{ tema:'movimento: o dinheiro vem de variedade e adaptação', cuidado:'instabilidade, gastos impulsivos e mudar de ideias a meio', passo:'separar um valor fixo todos os meses antes de gastar o resto' },
+  6:{ tema:'cuidado e família: o dinheiro serve para sustentar o lar', cuidado:'pôr os outros primeiro e esquecer-se de si', passo:'reservar um valor mensal só para si, sem culpa' },
+  7:{ tema:'estudo e sabedoria: o dinheiro vem do conhecimento e da confiança', cuidado:'desligar-se da parte prática e desconfiar de tudo', passo:'escolher um dia fixo para ver as contas, mesmo que não goste' },
+  8:{ tema:'poder pessoal e materialização: tem capacidade de gerir e criar abundância', cuidado:'trabalhar demais, medir o valor pelo que ganha e esquecer o descanso', passo:'ter um dia por semana sem trabalho e um dia fixo para as contas' },
+  9:{ tema:'entrega e serviço: o dinheiro vem ao servir os outros com amor', cuidado:'dar mais do que pode e não cobrar o devido', passo:'cobrar sempre o que é justo e doar com medida' },
+  11:{ tema:'intuição: as boas decisões chegam com calma, não com pressa', cuidado:'ansiedade e decisões tomadas sob tensão', passo:'esperar uma noite antes de qualquer decisão de dinheiro importante' },
+  22:{ tema:'construir em grande: projetos com visão e base prática', cuidado:'carregar tudo às costas e começar sem preparar', passo:'dividir cada grande objetivo em passos mensais com um valor definido' },
+  33:{ tema:'serviço e cuidado dos outros', cuidado:'esquecer-se das próprias contas por cuidar dos outros', passo:'tratar das suas contas primeiro, antes de ajudar' }
+};
+function guiaAbundancia(cv){
+  const a = ABUND_CV[cv] || ABUND_CV[reduceNumber(cv || 9)] || ABUND_CV[9];
+  const g = GUIA_VIB[cv] || GUIA_VIB[9];
+  return {
+    titulo: 'Abundância e proteção da família',
+    intro: `O seu Caminho de Vida ${cv} traz o tema de ${a.tema}. O cuidado a ter: ${a.cuidado}.`,
+    dinheiro: [
+      'Escolha um dia fixo por semana, só 20 minutos, para ver as contas com calma.',
+      'Passo prático para si: ' + a.passo + '.',
+      'Separe o dinheiro da casa do dinheiro do trabalho, e guarde todos os documentos organizados.',
+      'Vá guardando uma reserva para imprevistos todos os meses, mesmo que pequena.',
+      `Frase ao pagar uma conta, com gratidão em vez de medo: "${g.frase}"`,
+      'Para impostos e investimentos, fale com um contabilista ou um profissional da área.'
+    ],
+    familia: [
+      'Uma refeição por semana em família, sem telemóveis na mesa.',
+      'Um minuto de agradecimento juntos, ao fim do dia ou ao domingo.',
+      'Copo de sal grosso com água atrás da porta de entrada, num sítio discreto: se o sal subir, renove e faça o Salmo 66 durante 7 dias.',
+      `Use a cor ${g.cor} num canto da casa, e ${g.cristal} perto da porta de entrada.`,
+      'Façam o Mapa da Alma de cada pessoa da família, para se conhecerem melhor.'
+    ],
+    aviso: 'Isto é um apoio simbólico e prático, não substitui aconselhamento financeiro profissional.'
+  };
+}
+function guiaAbundanciaHTML(cv){
+  const g = guiaAbundancia(cv); const ul = a => `<ol class="muted" style="margin:6px 0 0 18px;font-size:.88rem;line-height:1.5;">${a.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ol>`;
+  return `<div class="card"><h3 style="color:var(--gold-light);">💰 ${g.titulo}</h3>
+    <p class="muted" style="margin-top:6px;">${escapeHtml(g.intro)}</p>
+    <p style="margin-top:10px;"><strong>Para o dinheiro</strong></p>${ul(g.dinheiro)}
+    <p style="margin-top:10px;"><strong>Para a família e a casa</strong></p>${ul(g.familia)}
+    <p class="muted" style="margin-top:10px;font-size:.8rem;">${escapeHtml(g.aviso)}</p></div>`;
+}
+
 function hojeISO(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 /* ─── Nodos Lunares (Vidas Passadas / Propósito de Vida) ──────────────
@@ -1839,6 +1888,9 @@ function mapaModeloBonito(r, full, dom){
   else if (r.anjo && r.anjo.tipo === 'universal') blocos.push({ tipo:'texto', icone:'🕊️', titulo:'A sua essência angelical universal', paras:[r.anjo.nota || ''] });
   if (!r.mestreDia && r.dataNascimento) r.mestreDia = calcularMestreDia(r.dataNascimento);
   if (!r.chakraDom && r.dataNascimento) r.chakraDom = chakraDominanteNum(r.dataNascimento);
+  if (r.tipo !== 'casal' && r.caminhoDeVida){ const _ab = guiaAbundancia(r.caminhoDeVida);
+    blocos.push({ tipo:'lista', icone:'💰', titulo:'Abundância: o seu caminho', marca:'', itens:[_ab.intro].concat(_ab.dinheiro.map((p,n) => (n+1) + '. ' + p)) });
+    blocos.push({ tipo:'lista', icone:'👨‍👩‍👧', titulo:'Proteção da família e da casa', marca:'', itens:_ab.familia.map((p,n) => (n+1) + '. ' + p).concat([_ab.aviso]) }); }
   [['vibMorada','morada','Morada'],['vibTelemovel','telemovel','Telemóvel'],['vibMatricula','matricula','Matrícula']].forEach(([k, tp, lab]) => {
     if (full[k] == null) return; const g = guiaHarmonizar(full[k], tp); if (!g) return;
     blocos.push({ tipo:'lista', icone:'🌿', titulo:'Harmonizar ' + lab.toLowerCase() + ' (vibração ' + full[k] + ')', marca:'', itens: [g.titulo].concat(g.passos.map((p, n) => (n + 1) + '. ' + p)) });
@@ -2042,6 +2094,7 @@ function renderFullReport(data){
       ${(full.vibContactos||[]).map(c => `<p class="muted" style="margin-top:6px;">Contacto ${escapeHtml(c.numero)}: vibração <strong>${c.vibracao}</strong> — ${escapeHtml(c.texto)}</p>`).join('')}
       ${(full.vibFrota||[]).map(f => `<p class="muted" style="margin-top:6px;">Matrícula ${escapeHtml(f.matricula)}: vibração <strong>${f.vibracao}</strong> — ${escapeHtml(f.texto)}</p>`).join('')}
     </div>
+    ${r.tipo !== 'casal' && r.caminhoDeVida ? guiaAbundanciaHTML(r.caminhoDeVida) : ''}
     ${full.grupo ? `
     <div class="card" style="background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);">
       <h3 style="color:var(--gold-light);">👨‍👩‍👧 Leitura de Grupo</h3>
@@ -2326,6 +2379,14 @@ function downloadFullReportPDF(r, full, dom){
   (full.vibContactos||[]).forEach(c => paragraph(`Contacto ${c.numero}: vibração ${c.vibracao} — ${c.texto}`));
   (full.vibFrota||[]).forEach(f => paragraph(`Matrícula ${f.matricula}: vibração ${f.vibracao} — ${f.texto}`));
 
+  if (r.tipo !== 'casal' && r.caminhoDeVida){
+    const _ab = guiaAbundancia(r.caminhoDeVida);
+    heading(_ab.titulo, 'IX.0');
+    paragraph(_ab.intro);
+    paragraph('Para o dinheiro', { bold:true, gap:2 }); _ab.dinheiro.forEach((p,i) => bullet((i+1) + '. ' + p));
+    paragraph('Para a família e a casa', { bold:true, gap:2 }); _ab.familia.forEach((p,i) => bullet((i+1) + '. ' + p));
+    paragraph(_ab.aviso, { size:9 });
+  }
   if (full.grupo){
     heading('Leitura de Grupo', 'IX.1');
     paragraph(`Vibração conjunta: ${full.grupo.vibracaoGrupo} — ${full.grupo.vibracaoGrupoTexto}`, { bold:true, gap:2 });
