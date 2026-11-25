@@ -438,6 +438,11 @@ function blocoMestreChakraHTML(r, estilo){
   if (r.ascendente) out += card(`${h('🌅 O seu Ascendente: ' + escapeHtml(r.ascendente.signo) + ' (' + r.ascendente.graus + '°)')}
     <p class="muted" style="margin-top:6px;">${r.localNascimento ? 'Nasceu em ' + escapeHtml([r.localNascimento.cidade, r.localNascimento.pais].filter(Boolean).join(', ')) + (r.horaNascimento ? ', às ' + escapeHtml(r.horaNascimento) : '') + '. ' : ''}${escapeHtml(r.ascendente.texto)}</p>
     ${r.ascendente.aproximado ? '<p class="muted" style="margin-top:6px;font-size:.8rem;">Cálculo aproximado, feito a partir da cidade principal do país.</p>' : ''}`);
+  if (r.ascendente && r.ascendente.casas) out += card(`${h('🏛️ As suas 12 Casas')}
+    <p class="muted" style="margin-top:6px;">O seu Sol está na <strong>Casa ${r.ascendente.solCasa}</strong> (${escapeHtml(r.ascendente.casas[r.ascendente.solCasa-1].tema)}): é aí que a sua luz mais quer brilhar.</p>
+    ${r.ascendente.casas.map(c => `<p class="muted" style="margin-top:6px;"><strong>Casa ${c.n} · ${escapeHtml(c.signo)}</strong> — ${escapeHtml(c.tema)}</p>`).join('')}`);
+  if (r.ascendente && r.ascendente.anjos && r.ascendente.anjos.length) out += card(`${h('👼 Os seus três Anjos')}
+    ${r.ascendente.anjos.map(j => `<p style="margin-top:10px;"><strong>${escapeHtml(j.titulo)}: ${escapeHtml(j.nome)}</strong> <span class="muted">(${escapeHtml(j.como)})</span></p><p class="muted">${escapeHtml(j.virtude)} Quando está em baixo, atenção a: ${escapeHtml(j.sombra.charAt(0).toLowerCase() + j.sombra.slice(1))}</p>`).join('')}`);
   const cvN = r.caminhoDeVida, cvI = cvN && DONS_NUMERICOS[cvN];
   const signoNome = r.signo, ps = signoNome && PLANETA_SIGNO[signoNome], pa = r.anjo && r.anjo.tipo === 'anjo' && r.anjo.planeta;
   const planetas = [md && md.planeta && `<strong>${escapeHtml(md.planeta)}</strong> (dia em que nasceu)`, ps && `<strong>${escapeHtml(ps)}</strong> (signo ${escapeHtml(signoNome)})`, pa && `<strong>${escapeHtml(pa)}</strong> (Anjo do nascimento)`].filter(Boolean);
@@ -532,11 +537,40 @@ function localNascimentoResolvido(pais, cidade){
   }
   return { pais, cidade: cidade || '', lat:p.lat, lon:p.lon, tz:p.tz, aproximado:true };
 }
+const CASAS_TEMAS = ['Eu, corpo e primeira impressão','Dinheiro, recursos e valores','Comunicação, irmãos e aprendizagem','Lar, raízes e família','Criatividade, amor e filhos','Saúde, rotina e trabalho diário','Parcerias e relações a dois','Transformação, partilhas e o que é profundo','Fé, estudos e viagens longas','Carreira, vocação e reconhecimento','Amizades, grupos e sonhos','Espiritualidade, recolhimento e o inconsciente'];
+const SIGNOS_ORDEM = ['Carneiro','Touro','Gémeos','Caranguejo','Leão','Virgem','Balança','Escorpião','Sagitário','Capricórnio','Aquário','Peixes'];
+function longitudeSolar(dataISO, hhmm, tz){
+  const ut = ascHoraLegalParaUT(dataISO, hhmm, tz);
+  const jd = ascDiaJuliano(ut.getUTCFullYear(), ut.getUTCMonth()+1, ut.getUTCDate(), ut.getUTCHours()+ut.getUTCMinutes()/60);
+  const n = jd - 2451545.0, L = 280.460 + 0.9856474*n, g = (357.528 + 0.9856003*n) * ASC_RAD;
+  return (((L + 1.915*Math.sin(g) + 0.020*Math.sin(2*g)) % 360) + 360) % 360;
+}
+function anjoPorNumero(n, titulo, como){
+  const g = GENIOS_72.find(x => x.n === n); if (!g) return null;
+  const coro = coroDoGenio(g.n) || {};
+  return { titulo, como, numero:g.n, nome:g.nome, coro:coro.nome || '', virtude:g.virtude, sombra:g.sombra, planeta:g.planeta };
+}
 function ascendenteDoMapa(dataISO, hhmm, loc){
   try{
     if (!loc || !hhmm || !/^\d{1,2}:\d{2}$/.test(hhmm)) return null;
     const a = calcularAscendente(dataISO, hhmm, loc.lat, loc.lon, loc.tz);
-    return { signo:a.signo, graus:a.graus, texto:ASCENDENTE_TEXTOS[a.signo] || '', aproximado:!!loc.aproximado };
+    const casas = [];
+    for (let k = 0; k < 12; k++){
+      const c = (a.grau + 30*k) % 360, si = Math.floor(c/30);
+      casas.push({ n:k+1, signo:SIGNOS_ORDEM[si], tema:CASAS_TEMAS[k] });
+    }
+    const sol = longitudeSolar(dataISO, hhmm, loc.tz);
+    const solCasa = Math.floor((((sol - a.grau) % 360) + 360) % 360 / 30) + 1;
+    const [h, mi] = hhmm.split(':').map(Number);
+    const nHora = Math.min(72, Math.floor((h*60 + mi) / 20) + 1);
+    const nAsc = Math.min(72, Math.floor(a.grau / 5) + 1);
+    const anjoData = calcularAnjoNascimento(dataISO);
+    const anjos = [];
+    if (anjoData && anjoData.tipo === 'anjo') anjos.push(anjoPorNumero(anjoData.numero, 'Anjo do Nascimento', 'pelo dia em que nasceu'));
+    anjos.push(anjoPorNumero(nHora, 'Anjo da Hora', 'pela hora a que nasceu, com cada Anjo a governar 20 minutos'));
+    anjos.push(anjoPorNumero(nAsc, 'Anjo do Ascendente', 'pelo grau do seu Ascendente, com cada Anjo a governar 5 graus'));
+    return { signo:a.signo, graus:a.graus, texto:ASCENDENTE_TEXTOS[a.signo] || '', aproximado:!!loc.aproximado,
+      casas, solCasa, solSigno:SIGNOS_ORDEM[Math.floor(sol/30)], anjos: anjos.filter(Boolean) };
   }catch(_){ return null; }
 }
 
@@ -1758,6 +1792,8 @@ function mapaModeloBonito(r, full, dom){
   if (!r.mestreDia && r.dataNascimento) r.mestreDia = calcularMestreDia(r.dataNascimento);
   if (!r.chakraDom && r.dataNascimento) r.chakraDom = chakraDominanteNum(r.dataNascimento);
   if (r.ascendente) blocos.push({ tipo:'texto', icone:'🌅', titulo:'O seu Ascendente: ' + r.ascendente.signo + ' (' + r.ascendente.graus + '°)', paras:[(r.localNascimento ? 'Nasceu em ' + [r.localNascimento.cidade, r.localNascimento.pais].filter(Boolean).join(', ') + (r.horaNascimento ? ', às ' + r.horaNascimento : '') + '. ' : '') + r.ascendente.texto + (r.ascendente.aproximado ? ' (Cálculo aproximado, feito a partir da cidade principal do país.)' : '')] });
+  if (r.ascendente && r.ascendente.casas) blocos.push({ tipo:'texto', icone:'🏛️', titulo:'As suas 12 Casas', paras:['O seu Sol está na Casa ' + r.ascendente.solCasa + ' (' + r.ascendente.casas[r.ascendente.solCasa-1].tema + '): é aí que a sua luz mais quer brilhar.'].concat(r.ascendente.casas.map(c => 'Casa ' + c.n + ' · ' + c.signo + ' — ' + c.tema)) });
+  if (r.ascendente && r.ascendente.anjos && r.ascendente.anjos.length) blocos.push({ tipo:'texto', icone:'👼', titulo:'Os seus três Anjos', paras: r.ascendente.anjos.map(j => j.titulo + ': ' + j.nome + ' (' + j.como + '). ' + j.virtude) });
   { const _cv = r.caminhoDeVida, _ci = _cv && DONS_NUMERICOS[_cv];
     if (_ci) blocos.push({ tipo:'texto', icone:'🔢', titulo:'O seu Número de Vida: ' + _cv + ' — ' + (_ci.nome || ''), paras:[_ci.texto || ''] });
     const _pd = r.mestreDia && r.mestreDia.planeta, _ps = r.signo && PLANETA_SIGNO[r.signo], _pa = r.anjo && r.anjo.tipo === 'anjo' && r.anjo.planeta;
