@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-25-2';
+const APP_VERSION = '2026-11-25-3';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -19888,12 +19888,12 @@ function copoSalBlocos(link){
     { tipo:'lista', icone:'🥛', titulo:'Como preparar', marca:'•', itens:[
       'Pega num copo de vidro liso e transparente.',
       'Põe dois dedos de sal grosso no fundo e junta três dedos de água.',
-      'Coloca-o atrás da porta de entrada, num sítio discreto onde ninguém mexa. Se o local não tiver porta, escolhe um canto abrigado e discreto.',
+      'Coloca-o num local discreto perto da porta de entrada (por exemplo, atrás da porta), onde ninguém mexa. Se o local não tiver porta, escolhe um canto abrigado e discreto.',
       'Reza o Salmo 66 uma vez por dia, durante 7 dias seguidos.',
       'Olha para o copo todos os dias, sem lhe mexer.' ] },
     { tipo:'texto', icone:'👀', titulo:'Como ler o copo', paras:[
       'Se o sal subir pelas paredes do copo, ou a água ficar turva, há perturbações energéticas no espaço e o copo está a trabalhar. Quando isso acontecer, deita o conteúdo no esgoto, lava o copo, prepara um novo e reza outra vez o Salmo 66 durante 7 dias.',
-      'Se o sal ficar no fundo e a água limpa, está tudo bem. Para prevenir, podes manter um copo sempre atrás da porta e renová-lo uma vez por semana.' ] }];
+      'Se o sal ficar no fundo e a água limpa, está tudo bem. Para prevenir, podes manter um copo sempre num local discreto perto da porta e renová-lo uma vez por semana.' ] }];
   if (link) b.push({ tipo:'botao', icone:'🙏', titulo:'O Salmo 66, passo a passo', paras:['Aqui tens o Salmo 66 escrito, com os dias para marcares à medida que os fazes.'], rotulo:'Abrir a página do Salmo 66', href: link, nota:'Fica guardado o que já fizeste, por isso podes continuar noutro dia.' });
   return b;
 }

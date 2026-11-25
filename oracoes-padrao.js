@@ -1154,7 +1154,7 @@ export const ESPACO_PADRAO = {
     "Pega num copo de vidro liso e transparente, sem desenhos.",
     "Põe dois dedos de sal grosso no fundo.",
     "Junta três dedos de água por cima.",
-    "Coloca o copo atrás da porta de entrada, num sítio discreto onde ninguém mexa. Se o local não tiver porta, escolhe um canto abrigado e discreto (sem chuva, sol direto nem passagem), onde o copo fique sossegado.",
+    "Coloca o copo num local discreto perto da porta de entrada (por exemplo, atrás da porta), onde ninguém mexa. Se o local não tiver porta, escolhe um canto abrigado e discreto (sem chuva, sol direto nem passagem), onde o copo fique sossegado.",
     "Reza o Salmo 66 uma vez por dia, durante 7 dias seguidos, ao pé do copo ou a pensar nele.",
     "Todos os dias olha para o copo, sem lhe mexer."
    ]
@@ -1167,7 +1167,7 @@ export const ESPACO_PADRAO = {
   {
    "tipo": "texto",
    "titulo": "Para prevenir",
-   "texto": "Podes manter um copo de sal sempre atrás da porta e renová-lo uma vez por semana, como prevenção. Quando o sal subir, renova o copo e reza outra vez o Salmo 66 durante 7 dias."
+   "texto": "Podes manter um copo de sal sempre num local discreto perto da porta e renová-lo uma vez por semana, como prevenção. Quando o sal subir, renova o copo e reza outra vez o Salmo 66 durante 7 dias."
   },
   {
    "tipo": "aviso",
