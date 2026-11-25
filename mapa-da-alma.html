@@ -574,6 +574,54 @@ function ascendenteDoMapa(dataISO, hhmm, loc){
   }catch(_){ return null; }
 }
 
+
+/* ─── Como harmonizar cada vibração (passo a passo) ─── */
+const GUIA_VIB = {
+  1:{ foco:'iniciativa e independência', cor:'vermelho ou laranja suave', cristal:'cornalina ou jaspe vermelho', rotina:'escolher, ao domingo, uma só coisa nova a começar nessa semana', frase:'Dou o primeiro passo com coragem e calma.' },
+  2:{ foco:'paz, parceria e cooperação', cor:'branco, rosa suave ou prateado', cristal:'quartzo rosa ou pedra da lua', rotina:'jantar ou tomar um chá com alguém, sem telemóvel na mesa', frase:'Dou e recebo com equilíbrio.' },
+  3:{ foco:'alegria, comunicação e criatividade', cor:'amarelo ou dourado', cristal:'citrino', rotina:'fazer uma coisa criativa por semana (cantar, escrever, cozinhar)', frase:'Exprimo-me com verdade e leveza.' },
+  4:{ foco:'ordem, estabilidade e bases firmes', cor:'verde ou castanho terra', cristal:'turmalina negra ou jaspe verde', rotina:'arrumar uma gaveta ou um canto por semana', frase:'Construo com paciência e confiança.' },
+  5:{ foco:'movimento, liberdade e mudança', cor:'azul turquesa ou verde água', cristal:'amazonite ou ágata azul', rotina:'mudar um pormenor da casa ou do caminho do dia a dia todas as semanas', frase:'Mudo com liberdade e com os pés na terra.' },
+  6:{ foco:'amor, família e cuidado', cor:'rosa ou verde claro', cristal:'quartzo rosa ou aventurina verde', rotina:'ter uma planta viva e uma refeição em família por semana', frase:'O meu lar é um lugar de amor e paz.' },
+  7:{ foco:'recolhimento, estudo e espiritualidade', cor:'violeta ou azul índigo', cristal:'ametista', rotina:'ter 10 minutos de silêncio ou oração por dia, sem ecrãs', frase:'No silêncio encontro as minhas respostas.' },
+  8:{ foco:'trabalho, abundância e poder pessoal', cor:'dourado ou verde escuro', cristal:'olho de tigre ou pirite', rotina:'reservar um dia por semana para descansar sem pensar em trabalho', frase:'Mereço abundância e também descanso.' },
+  9:{ foco:'entrega, compaixão e encerramento de ciclos', cor:'branco ou lilás', cristal:'quartzo transparente', rotina:'dar ou doar uma coisa que já não usa, todos os meses', frase:'Deixo ir o que terminou e abro espaço ao novo.' },
+  11:{ foco:'intuição forte, sensibilidade e alta energia elétrica (o risco é a sobrecarga nervosa e a sensação de "travar" a vida)', cor:'azul claro, branco ou verde suave (nada de vermelhos fortes ou luzes frias)', cristal:'selenite, quartzo transparente ou howlita', rotina:'descarregar a energia ao fim do dia: banho com uma mão-cheia de sal grosso e 10 minutos descalço na terra ou na relva', frase:'Estou seguro e em paz. Canalizo a minha energia com calma e ordem.',
+      extra:['Desligue o wi‑fi e carregue o telemóvel fora do quarto à noite.','Use luz quente e suave à noite e evite luz branca forte depois das 21h.','Evite deixar muitos aparelhos ligados juntos (televisão, rádio, computador) no mesmo espaço.'] },
+  22:{ foco:'construir em grande, com visão e responsabilidade', cor:'dourado e verde escuro', cristal:'fluorite ou pirite', rotina:'escrever à segunda-feira os três passos práticos da semana', frase:'Construo com firmeza aquilo que é grande e útil.' },
+  33:{ foco:'serviço, cuidado dos outros e amor incondicional', cor:'rosa e branco', cristal:'quartzo rosa', rotina:'uma tarde por semana só para si, sem cuidar de ninguém', frase:'Cuido dos outros começando por cuidar de mim.' }
+};
+function guiaHarmonizar(num, tipo){
+  const g = GUIA_VIB[num]; if (!g) return null;
+  let passos;
+  if (tipo === 'morada'){
+    passos = [
+      'Limpe primeiro: abra todas as janelas durante 10 minutos e lave o chão com um pouco de sal grosso na água.',
+      `Acrescente a cor ${g.cor} em pequenos detalhes (uma almofada, uma vela, um quadro) na sala e junto da entrada.`,
+      `Coloque ${g.cristal} perto da porta de entrada, num sítio discreto.`,
+      `À porta, antes de sair ou ao chegar, diga com calma: "${g.frase}"`,
+      `Rotina semanal: ${g.rotina}.`
+    ].concat(g.extra || []);
+  } else if (tipo === 'telemovel'){
+    passos = [
+      'Limpe o telemóvel: apague conversas e aplicações que já não usa e arrume os contactos.',
+      `Escolha um fundo de ecrã na cor ${g.cor}.`,
+      `Antes de atender uma chamada importante, respire fundo e pense: "${g.frase}"`
+    ];
+  } else {
+    passos = [
+      'Mantenha o carro limpo e arrumado por dentro.',
+      `Leve um pequeno objeto na cor ${g.cor} (ou ${g.cristal}) no carro.`,
+      `Antes de ligar o carro, diga em voz baixa: "${g.frase}"`
+    ];
+  }
+  return { titulo: 'Como harmonizar (foco: ' + g.foco + ')', passos };
+}
+function guiaVibHTML(num, tipo){
+  const g = guiaHarmonizar(num, tipo); if (!g) return '';
+  return `<details style="margin:6px 0 10px;"><summary style="cursor:pointer;color:var(--gold-light);font-size:.85rem;">🌿 Como harmonizar passo a passo</summary><p class="muted" style="margin-top:6px;font-size:.85rem;"><strong>${escapeHtml(g.titulo)}</strong></p><ol class="muted" style="margin:6px 0 0 18px;font-size:.85rem;line-height:1.5;">${g.passos.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ol></details>`;
+}
+
 function hojeISO(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 /* ─── Nodos Lunares (Vidas Passadas / Propósito de Vida) ──────────────
@@ -1791,6 +1839,10 @@ function mapaModeloBonito(r, full, dom){
   else if (r.anjo && r.anjo.tipo === 'universal') blocos.push({ tipo:'texto', icone:'🕊️', titulo:'A sua essência angelical universal', paras:[r.anjo.nota || ''] });
   if (!r.mestreDia && r.dataNascimento) r.mestreDia = calcularMestreDia(r.dataNascimento);
   if (!r.chakraDom && r.dataNascimento) r.chakraDom = chakraDominanteNum(r.dataNascimento);
+  [['vibMorada','morada','Morada'],['vibTelemovel','telemovel','Telemóvel'],['vibMatricula','matricula','Matrícula']].forEach(([k, tp, lab]) => {
+    if (full[k] == null) return; const g = guiaHarmonizar(full[k], tp); if (!g) return;
+    blocos.push({ tipo:'lista', icone:'🌿', titulo:'Harmonizar ' + lab.toLowerCase() + ' (vibração ' + full[k] + ')', marca:'', itens: [g.titulo].concat(g.passos.map((p, n) => (n + 1) + '. ' + p)) });
+  });
   if (r.ascendente) blocos.push({ tipo:'texto', icone:'🌅', titulo:'O seu Ascendente: ' + r.ascendente.signo + ' (' + r.ascendente.graus + '°)', paras:[(r.localNascimento ? 'Nasceu em ' + [r.localNascimento.cidade, r.localNascimento.pais].filter(Boolean).join(', ') + (r.horaNascimento ? ', às ' + r.horaNascimento : '') + '. ' : '') + r.ascendente.texto + (r.ascendente.aproximado ? ' (Cálculo aproximado, feito a partir da cidade principal do país.)' : '')] });
   if (r.ascendente && r.ascendente.casas) blocos.push({ tipo:'texto', icone:'🏛️', titulo:'As suas 12 Casas', paras:['O seu Sol está na Casa ' + r.ascendente.solCasa + ' (' + r.ascendente.casas[r.ascendente.solCasa-1].tema + '): é aí que a sua luz mais quer brilhar.'].concat(r.ascendente.casas.map(c => 'Casa ' + c.n + ' · ' + c.signo + ' — ' + c.tema)) });
   if (r.ascendente && r.ascendente.anjos && r.ascendente.anjos.length) blocos.push({ tipo:'texto', icone:'👼', titulo:'Os seus três Anjos', paras: r.ascendente.anjos.map(j => j.titulo + ': ' + j.nome + ' (' + j.como + '). ' + j.virtude) });
@@ -1984,9 +2036,9 @@ function renderFullReport(data){
     </div>` : ''}
     <div class="card">
       <h3 style="color:var(--gold-light);">🏠 Engenharia Vibracional</h3>
-      ${full.vibMorada!=null ? `<p class="muted">Morada: vibração <strong>${full.vibMorada}</strong> — ${escapeHtml(full.vibMoradaTexto||'')}</p>` : ''}
-      ${full.vibTelemovel!=null ? `<p class="muted" style="margin-top:6px;">Telemóvel: vibração <strong>${full.vibTelemovel}</strong> — ${escapeHtml(full.vibTelemovelTexto||'')}</p>` : ''}
-      ${full.vibMatricula!=null ? `<p class="muted" style="margin-top:6px;">Matrícula: vibração <strong>${full.vibMatricula}</strong> — ${escapeHtml(full.vibMatriculaTexto||'')}</p>` : ''}
+      ${full.vibMorada!=null ? `<p class="muted">Morada: vibração <strong>${full.vibMorada}</strong> — ${escapeHtml(full.vibMoradaTexto||'')}</p>${guiaVibHTML(full.vibMorada,'morada')}` : ''}
+      ${full.vibTelemovel!=null ? `<p class="muted" style="margin-top:6px;">Telemóvel: vibração <strong>${full.vibTelemovel}</strong> — ${escapeHtml(full.vibTelemovelTexto||'')}</p>${guiaVibHTML(full.vibTelemovel,'telemovel')}` : ''}
+      ${full.vibMatricula!=null ? `<p class="muted" style="margin-top:6px;">Matrícula: vibração <strong>${full.vibMatricula}</strong> — ${escapeHtml(full.vibMatriculaTexto||'')}</p>${guiaVibHTML(full.vibMatricula,'matricula')}` : ''}
       ${(full.vibContactos||[]).map(c => `<p class="muted" style="margin-top:6px;">Contacto ${escapeHtml(c.numero)}: vibração <strong>${c.vibracao}</strong> — ${escapeHtml(c.texto)}</p>`).join('')}
       ${(full.vibFrota||[]).map(f => `<p class="muted" style="margin-top:6px;">Matrícula ${escapeHtml(f.matricula)}: vibração <strong>${f.vibracao}</strong> — ${escapeHtml(f.texto)}</p>`).join('')}
     </div>
@@ -2266,8 +2318,11 @@ function downloadFullReportPDF(r, full, dom){
 
   heading('Engenharia Vibracional (Ajuste Numpro)', 'IX');
   if (full.vibMorada!=null) paragraph(`Morada: vibração ${full.vibMorada} — ${full.vibMoradaTexto}`);
+  if (full.vibMorada!=null){ const _g = guiaHarmonizar(full.vibMorada, 'morada'); if (_g){ paragraph(_g.titulo, { bold:true, size:9.5, gap:2 }); _g.passos.forEach((p,i) => bullet((i+1) + '. ' + p)); } }
   if (full.vibTelemovel!=null) paragraph(`Telemóvel: vibração ${full.vibTelemovel} — ${full.vibTelemovelTexto}`);
+  if (full.vibTelemovel!=null){ const _g = guiaHarmonizar(full.vibTelemovel, 'telemovel'); if (_g){ paragraph(_g.titulo, { bold:true, size:9.5, gap:2 }); _g.passos.forEach((p,i) => bullet((i+1) + '. ' + p)); } }
   if (full.vibMatricula!=null) paragraph(`Matrícula: vibração ${full.vibMatricula} — ${full.vibMatriculaTexto}`);
+  if (full.vibMatricula!=null){ const _g = guiaHarmonizar(full.vibMatricula, 'matricula'); if (_g){ paragraph(_g.titulo, { bold:true, size:9.5, gap:2 }); _g.passos.forEach((p,i) => bullet((i+1) + '. ' + p)); } }
   (full.vibContactos||[]).forEach(c => paragraph(`Contacto ${c.numero}: vibração ${c.vibracao} — ${c.texto}`));
   (full.vibFrota||[]).forEach(f => paragraph(`Matrícula ${f.matricula}: vibração ${f.vibracao} — ${f.texto}`));
 
