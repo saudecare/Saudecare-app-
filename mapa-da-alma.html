@@ -671,6 +671,35 @@ function guiaAbundanciaHTML(cv){
     <p class="muted" style="margin-top:10px;font-size:.8rem;">${escapeHtml(g.aviso)}</p></div>`;
 }
 
+
+/* ─── Responsabilidade pessoal e prevenção de recaídas ─── */
+function guiaAutonomia(cv){
+  const g = GUIA_VIB[cv] || GUIA_VIB[9];
+  return {
+    titulo: 'O que fazer agora: o seu caminho, com consistência',
+    intro: 'Uma terapia, um Reiki ou este Mapa podem ajudar muito, mas não resolvem tudo de uma vez. O que vai mantê-lo bem é aquilo que você fizer todos os dias. Ninguém consegue fazer isso por si, e é por isso que o seu poder está aí. Quem deixa a rotina cair costuma voltar ao ponto onde estava.',
+    pilares: [
+      { nome:'⚡ Energia', passos:['Todas as noites, tome um banho com um punhado de sal grosso e agradeça o dia.','Uma vez por semana, abra as janelas e arrume a casa (a casa também carrega o que carregamos).','Evite pessoas, conversas e notícias que o deixam sempre pesado, e ponha limites com carinho.'] },
+      { nome:'🙏 Espírito', passos:[`Todos os dias, 10 minutos de silêncio, oração ou meditação, sempre à mesma hora. Frase do seu número: "${g.frase}"`,`Uma vez por semana: ${g.rotina}.`,'Escreva três coisas pelas quais é grato ao fim do dia.'] },
+      { nome:'🧠 Mente', passos:['Durma e coma a horas, e mexa o corpo todos os dias, nem que seja uma caminhada de 20 minutos.','Quando uma preocupação o invadir, escreva-a num papel e decida um passo pequeno para amanhã.','Aprenda a dizer "não" sem culpa.'] }
+    ],
+    recaida: [
+      'Cansaço sem causa, sono mau, irritação, tristeza que não passa ou pensamentos que voltam sempre às mesmas coisas.',
+      'Se isto aparecer, não espere piorar: volte à rotina de cima durante 7 dias seguidos e peça uma sessão de acompanhamento.',
+      'Marque uma revisão (sessão ou Mapa) a cada 3 meses, mesmo que se sinta bem.'
+    ],
+    aviso: 'As terapias energéticas e este Mapa são um apoio e não substituem o médico ou o psicólogo. Se houver sofrimento intenso, desânimo profundo, medo constante ou ideias de se magoar, procure ajuda profissional de saúde. Em Portugal, pode ligar para o SNS 24 (808 24 24 24).'
+  };
+}
+function guiaAutonomiaHTML(cv){
+  const g = guiaAutonomia(cv); const ul = a => `<ul class="muted" style="margin:6px 0 0 18px;font-size:.88rem;line-height:1.5;">${a.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`;
+  return `<div class="card"><h3 style="color:var(--gold-light);">🌱 ${g.titulo}</h3>
+    <p class="muted" style="margin-top:6px;">${escapeHtml(g.intro)}</p>
+    ${g.pilares.map(p => `<p style="margin-top:10px;"><strong>${p.nome}</strong></p>${ul(p.passos)}`).join('')}
+    <p style="margin-top:10px;"><strong>🔔 Sinais de recaída</strong></p>${ul(g.recaida)}
+    <p class="muted" style="margin-top:10px;font-size:.8rem;">${escapeHtml(g.aviso)}</p></div>`;
+}
+
 function hojeISO(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 /* ─── Nodos Lunares (Vidas Passadas / Propósito de Vida) ──────────────
@@ -1891,6 +1920,10 @@ function mapaModeloBonito(r, full, dom){
   if (r.tipo !== 'casal' && r.caminhoDeVida){ const _ab = guiaAbundancia(r.caminhoDeVida);
     blocos.push({ tipo:'lista', icone:'💰', titulo:'Abundância: o seu caminho', marca:'', itens:[_ab.intro].concat(_ab.dinheiro.map((p,n) => (n+1) + '. ' + p)) });
     blocos.push({ tipo:'lista', icone:'👨‍👩‍👧', titulo:'Proteção da família e da casa', marca:'', itens:_ab.familia.map((p,n) => (n+1) + '. ' + p).concat([_ab.aviso]) }); }
+  if (r.tipo !== 'casal' && r.caminhoDeVida){ const _au = guiaAutonomia(r.caminhoDeVida);
+    blocos.push({ tipo:'texto', icone:'🌱', titulo:_au.titulo, paras:[_au.intro] });
+    _au.pilares.forEach(p => blocos.push({ tipo:'lista', icone:p.nome.split(' ')[0], titulo:p.nome.replace(/^\S+\s/, ''), marca:'', itens:p.passos }));
+    blocos.push({ tipo:'lista', icone:'🔔', titulo:'Sinais de recaída', marca:'', itens:_au.recaida.concat([_au.aviso]) }); }
   [['vibMorada','morada','Morada'],['vibTelemovel','telemovel','Telemóvel'],['vibMatricula','matricula','Matrícula']].forEach(([k, tp, lab]) => {
     if (full[k] == null) return; const g = guiaHarmonizar(full[k], tp); if (!g) return;
     blocos.push({ tipo:'lista', icone:'🌿', titulo:'Harmonizar ' + lab.toLowerCase() + ' (vibração ' + full[k] + ')', marca:'', itens: [g.titulo].concat(g.passos.map((p, n) => (n + 1) + '. ' + p)) });
@@ -2095,6 +2128,7 @@ function renderFullReport(data){
       ${(full.vibFrota||[]).map(f => `<p class="muted" style="margin-top:6px;">Matrícula ${escapeHtml(f.matricula)}: vibração <strong>${f.vibracao}</strong> — ${escapeHtml(f.texto)}</p>`).join('')}
     </div>
     ${r.tipo !== 'casal' && r.caminhoDeVida ? guiaAbundanciaHTML(r.caminhoDeVida) : ''}
+    ${r.tipo !== 'casal' && r.caminhoDeVida ? guiaAutonomiaHTML(r.caminhoDeVida) : ''}
     ${full.grupo ? `
     <div class="card" style="background:linear-gradient(135deg,#241640,#1a0f2e);border:1px solid rgba(212,175,55,.4);">
       <h3 style="color:var(--gold-light);">👨‍👩‍👧 Leitura de Grupo</h3>
@@ -2386,6 +2420,14 @@ function downloadFullReportPDF(r, full, dom){
     paragraph('Para o dinheiro', { bold:true, gap:2 }); _ab.dinheiro.forEach((p,i) => bullet((i+1) + '. ' + p));
     paragraph('Para a família e a casa', { bold:true, gap:2 }); _ab.familia.forEach((p,i) => bullet((i+1) + '. ' + p));
     paragraph(_ab.aviso, { size:9 });
+  }
+  if (r.tipo !== 'casal' && r.caminhoDeVida){
+    const _au = guiaAutonomia(r.caminhoDeVida);
+    heading(_au.titulo, 'IX.00');
+    paragraph(_au.intro);
+    _au.pilares.forEach(p => { paragraph(p.nome.replace(/^\S+\s/, ''), { bold:true, gap:2 }); p.passos.forEach(x => bullet('• ' + x)); });
+    paragraph('Sinais de recaída', { bold:true, gap:2 }); _au.recaida.forEach(x => bullet('• ' + x));
+    paragraph(_au.aviso, { size:9 });
   }
   if (full.grupo){
     heading('Leitura de Grupo', 'IX.1');
