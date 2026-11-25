@@ -447,7 +447,7 @@ import {
 // a escrever. Só mostra uma barra discreta; a pessoa escolhe quando.
 // Nomes que não podem ser usados como endereço de página (já são páginas da app).
 const SLUGS_RESERVADOS = ['app','pagina','marcar','inscricao','ficha','portal','index','cartomancia','form-publica','mapa-da-alma','pe-questionario','poemas-meiji','politica-privacidade','reiki-biblioteca','reiki-guia-nivel2','reiki-percurso','termos-utilizacao','triagem-baixa-vibracao','saudecare-admin','admin','login','api','manifest'];
-const APP_VERSION = '2026-11-25-3';
+const APP_VERSION = '2026-11-25-4';
 let __latestKnownVersion = APP_VERSION;
 (async function checkForAppUpdate(){
   try {
@@ -14428,6 +14428,18 @@ function triagemPassoSessoesPreco(main){
    (Anjo, Arcano, Nodo, Signo); nas sessões seguintes só a parte que
    MUDA com o tempo (Ano/Dia Pessoal, Arcano do Ano, Pináculo), para
    não repetir informação estática que já foi dada. */
+/* Mestre ascensionado pelo dia da semana de nascimento (7 Raios).
+   Só estão preenchidos os dias confirmados pelo terapeuta; os restantes mostram apenas o dia da semana.
+   Para acrescentar um dia: índice 0 = domingo … 6 = sábado. */
+const DIAS_SEMANA_PT = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+const MESTRE_DIA_SEMANA = {
+  6: { raio:'7.º Raio', cor:'violeta', mestre:'Saint Germain', texto:'Quem nasce a um sábado liga-se ao 7.º Raio, o Raio Violeta: o raio da transmutação, da liberdade e do perdão. O mestre ascensionado associado é o Saint Germain, que ajuda a transformar o que pesa em luz e a limpar as energias densas.' }
+};
+function calcularMestreDia(dateStr){
+  const d = new Date(dateStr + 'T12:00:00'); if (isNaN(d)) return null;
+  const i = d.getDay();
+  return Object.assign({ dia: DIAS_SEMANA_PT[i], nasceuNum: (i === 0 || i === 6 ? 'a um ' : 'a uma ') + DIAS_SEMANA_PT[i] }, MESTRE_DIA_SEMANA[i] || {});
+}
 function calcularPerfilMapaAlma(nome, dataStr){
   const hoje = hojeISO();
   const cv = caminhoDeVida(dataStr);
@@ -14438,7 +14450,8 @@ function calcularPerfilMapaAlma(nome, dataStr){
   const signo = getSigno(dataStr);
   const pinAtivo = pinaculoActivo(dataStr, hoje);
   const ciclos = calcularCiclosPessoais(dataStr, hoje);
-  return { cv, cvNome: (DONS_NUMERICOS[cv]||{}).nome, anjo, arcanoP, arcanoPNome: (ARCANOS_MAIORES[arcanoP]||{}).nome,
+  const mestreDia = calcularMestreDia(dataStr);
+  return { cv, cvNome: (DONS_NUMERICOS[cv]||{}).nome, anjo, mestreDia, arcanoP, arcanoPNome: (ARCANOS_MAIORES[arcanoP]||{}).nome,
     arcanoA, arcanoANome: (ARCANOS_MAIORES[arcanoA]||{}).nome, nodos, signo, pinAtivo, ciclos };
 }
 
@@ -19133,6 +19146,7 @@ function triagemRelatorioCliente(d){
     } else if (perfil.anjo){
       p.push(`${nome} não tem um Anjo fixo do nascimento: liga-se diretamente aos Anjos Universais.`);
     }
+    if (perfil.mestreDia && perfil.mestreDia.mestre) p.push(`${nome} nasceu ${perfil.mestreDia.nasceuNum}. ${perfil.mestreDia.texto}`);
     const arc = ARCANOS_MAIORES[perfil.arcanoP];
     if (arc) p.push(`Pela data de nascimento, ${nome} traz uma energia pessoal marcada por: ${triMin(arc.texto).replace(/\.$/, '')}.`);
     const sul = perfil.nodos.nodoSul.signo, norte = perfil.nodos.nodoNorte.signo;
@@ -19510,6 +19524,7 @@ function triagemModeloBonito(d, cli){
     it.push({ nome:`Caminho de Vida ${pf.cv}${pf.cvNome ? ' — ' + pf.cvNome : ''}`, paras:[T(`O seu número de Caminho de Vida é ${pf.cv}${pf.cvNome ? ', ' + pf.cvNome : ''}. Mostra a direção geral da sua vida.`, `O número de Caminho de Vida de ${nome} é ${pf.cv}${pf.cvNome ? ', ' + pf.cvNome : ''}. Mostra a direção geral da vida de ${nome}.`)] });
     if (pf.signo && pf.signo.nome) it.push({ nome:`Signo: ${pf.signo.nome}`, paras:[T('O seu signo solar, a base da forma como se expressa.', `O signo solar de ${nome}, a base da forma como se expressa.`)] });
     if (pf.anjo) it.push({ nome: pf.anjo.tipo === 'anjo' ? `Anjo do Nascimento: ${pf.anjo.nome}` : `Anjos Universais (${pf.anjo.elemento})`, paras: pf.anjo.tipo === 'anjo' ? [pf.anjo.virtude || ''] : ['Ligação direta aos Anjos Universais.'] });
+    if (pf.mestreDia && pf.mestreDia.mestre) it.push({ nome:`Mestre ascensionado: ${pf.mestreDia.mestre}`, paras:[`Nasceu ${pf.mestreDia.nasceuNum}. ${pf.mestreDia.texto}`] });
     if (pf.arcanoPNome) it.push({ nome:`Arcano Pessoal: ${pf.arcanoPNome}`, paras:[T('A carta que descreve a sua energia de fundo.', `A carta que descreve a energia de fundo de ${nome}.`)] });
     if (pf.nodos){
       it.push({ nome:`Nodo Sul (vidas passadas): ${pf.nodos.nodoSul.signo}`, paras:[NODO_SUL_TEXTOS[pf.nodos.nodoSul.signo] || ''] });
