@@ -38,6 +38,7 @@
   <p class="aviso">Prática espiritual e de bem-estar. Não substitui o acompanhamento médico ou psicológico.</p>
 </div>
 <script>
+try{ localStorage.setItem('vo_hub','caminho.html'); }catch(_){}
 try{
   var e=JSON.parse(localStorage.getItem('vo_c_p-plano-conexao-21')||'{}'), n=(e.feitos||[]).length;
   if(n){document.getElementById('prog').textContent=n+' de 21 dias feitos';document.getElementById('pgb').hidden=false;document.getElementById('pgi').style.width=Math.round(n/21*100)+'%';}

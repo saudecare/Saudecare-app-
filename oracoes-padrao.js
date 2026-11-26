@@ -1540,3 +1540,274 @@ CONEXAO_PADRAO.partes = true;
 CONEXAO_PADRAO.seccoes = CONEXAO_PADRAO.seccoes.filter((s) => s.tipo !== 'oracao').concat(
   MANHA_PADRAO.seccoes.filter((s) => s.tipo === 'oracao').map((s) => Object.assign({}, s, { parte: 'manha' })),
   CONEXAO_PADRAO.seccoes.filter((s) => s.tipo === 'oracao').map((s) => Object.assign({}, s, { parte: 'noite' })));
+
+// Plano pessoal da Natália (Anjos Iah-Hel, Harahel, Nith-Haiah; Mestra Rowena; Marte) e oração de sessão.
+export const NATALIA_PADRAO = {
+ "padraoId": "plano-conexao-natalia",
+ "versaoPadrao": 1,
+ "regra": "livre",
+ "tipo": "ciclo",
+ "icone": "luz",
+ "emoji": "🌸",
+ "titulo": "Plano de conexão da Natália · Anjos, Rowena e Marte · 21 dias",
+ "subtitulo": "Rituais da manhã e da noite, e dos dias de sessão",
+ "dias": 21,
+ "ordem": 9,
+ "partes": true,
+ "seccoes": [
+  {
+   "tipo": "aviso",
+   "titulo": "Como usar este plano",
+   "texto": "São 21 dias, de preferência com a oração da manhã ao acordar e a da noite antes de dormir. A da noite é a que marca o dia. Não é uma corrida: se falhares um dia, não há problema. O plano guarda onde ficaste e continuas daí."
+  },
+  {
+   "tipo": "texto",
+   "titulo": "Para que serve",
+   "texto": "É um ritual de ligação aos teus três Anjos (Iah-Hel, do dia em que nasceste, Harahel, da hora, e Nith-Haiah, do teu Ascendente), à Mestra Rowena (3.º Raio, o raio rosa do amor, da beleza e da harmonia, que rege a terça-feira) e à força de Marte, o teu planeta regente. Serve para a vida em geral: saúde, dinheiro, amor e proteção, e para cuidares de ti enquanto cuidas dos outros."
+  },
+  {
+   "tipo": "passos",
+   "titulo": "Nos dias de sessão (reflexologia podal e outras terapias)",
+   "itens": [
+    "Antes: lava as mãos, respira fundo 3 vezes e diz: «Peço autorização ao Plano Superior para trabalhar hoje. Meus Anjos Iah-Hel, Harahel e Nith-Haiah, Mestra Rowena, guias e mentores de Luz: protegei-me, protegei esta pessoa e este espaço.»",
+    "Imagina uma luz rosa e dourada a envolver-te e a pessoa. Diz: «Trabalho só com a Luz, só para o bem maior, e só até onde for permitido.»",
+    "Durante: pressões suaves, atenção à respiração da pessoa e à tua. Se sentires peso ou te perderes: «Meus Anjos, guiai-me. Que eu sinta apenas o que for necessário. Luz, transmuta.» Respira e continua.",
+    "Depois (obrigatório): «Agradeço aos meus Anjos, à Mestra Rowena e aos meus guias. Devolvo à Luz tudo o que não é meu. Corto todo o laço que não for de Luz.»",
+    "Lava as mãos e os antebraços com água fria, abre uma janela para arejar o espaço, bebe um copo de água e, se puderes, toma um banho com sal grosso ao fim do dia."
+   ]
+  },
+  {
+   "tipo": "aviso",
+   "titulo": "Cuidados importantes",
+   "texto": "Esta prática é espiritual e de fé. Quem cuida dos outros também precisa de descansar: não trabalhes cansada nem sem te proteger. Se sentires medo constante, tristeza que não passa ou ansiedade que te trava o dia a dia, fala com o teu médico. Não substitui o acompanhamento médico ou psicológico."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "1. Gratidão",
+   "texto": "Obrigada por mais um dia.\nObrigada pelo meu corpo, pela minha casa, pelos meus e pelo meu trabalho.\nAcordo em paz e com confiança.",
+   "parte": "manha"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "2. Proteção para o dia",
+   "texto": "Uma luz rosa e dourada envolve-me, a minha casa e a minha família.\nOnde eu for, vai Luz. O que não for Luz transmuta-se e vai embora em paz.",
+   "parte": "manha"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "3. Os meus Anjos, a minha Mestra e Marte",
+   "texto": "Meus Anjos Iah-Hel, Harahel e Nith-Haiah, caminhai comigo hoje e dai-me clareza.\nAmada Mestra Rowena, enche o meu dia de amor, beleza e harmonia.\nForça de Marte, dá-me coragem, energia e limites saudáveis.",
+   "parte": "manha"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "4. Pedidos para o dia",
+   "texto": "Saúde: que o meu corpo e a minha mente estejam fortes e em equilíbrio.\nDinheiro: que o meu trabalho dê frutos justos e eu saiba cuidar do que recebo.\nAmor: que haja respeito, ternura e paz à minha volta.\nTrabalho: que eu ajude com cuidado, clareza e proteção.",
+   "parte": "manha"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "5. Entregar o dia",
+   "texto": "Entrego este dia nas mãos do Divino.\nQue eu faça o meu melhor e aceite com calma o que não depende de mim.\nAssim seja, e assim é. Gratidão.",
+   "parte": "manha"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "1. Preparar",
+   "texto": "Deito-me, respiro fundo, três vezes.\nEstou em segurança.\nEste momento é sagrado.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "2. Proteção",
+   "texto": "Estou rodeada de Luz.\nUma luz rosa e dourada envolve o meu corpo, a minha casa e a minha família.\nTudo o que não for Luz transmuta-se e vai embora em paz.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "3. Os meus Anjos",
+   "texto": "Meus Anjos Iah-Hel, Harahel e Nith-Haiah, obrigada por me acompanharem.\nGuardai o meu sono, o meu corpo e os meus sonhos.\nDai-me clareza para ver a verdade e calma para a aceitar.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "4. A minha Mestra e o 3.º Raio",
+   "texto": "Amada Mestra Rowena, Mestra do 3.º Raio,\ntransmuta em mim o cansaço, a mágoa e a dúvida.\nAjuda-me a dar sem me esquecer de mim,\ne a viver com amor, beleza e harmonia.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "5. A força de Marte",
+   "texto": "Força de Marte,\ndá-me coragem para dizer «não» com carinho,\nenergia para o que importa\ne limites que me protejam.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "6. Os meus pedidos",
+   "texto": "Saúde: que o meu corpo e a minha mente descansem e se renovem esta noite.\n\nDinheiro: que o meu trabalho dê frutos justos, e que eu saiba cuidar do que recebo.\n\nAmor: que em minha casa haja respeito, ternura e paz.\n\nProteção: que nada de negativo me toque, nem a mim, nem aos meus.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "7. Intuição (só nos dias de treino)",
+   "texto": "Peço aos meus guias e mentores de Luz\nque me ajudem a afinar a minha sensibilidade\ncom segurança, equilíbrio e humildade, ao meu ritmo.\n\nFico em silêncio. Faço uma pergunta simples:\n«O que preciso de saber hoje?»\nE escrevo o que sentir, sem julgar.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "8. Entregar e dormir",
+   "texto": "Entrego esta noite nas mãos do Divino.\nSe for preciso acordar, que seja por uma boa razão. Se não, que eu durma em paz até de manhã.\n\nAssim seja, e assim é. Gratidão.",
+   "parte": "noite"
+  }
+ ],
+ "temasDias": [
+  {
+   "titulo": "O começo",
+   "intencao": "Peço aos meus Anjos (Iah-Hel, Harahel e Nith-Haiah) que me guardem e me guiem.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 1 · Os meus três Anjos",
+   "intencao": "Peço aos meus Anjos (Iah-Hel, Harahel e Nith-Haiah) que me guardem e me guiem.",
+   "acao": "Hoje é dia de treino da intuição: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 1 · Os meus três Anjos",
+   "intencao": "Peço aos meus Anjos (Iah-Hel, Harahel e Nith-Haiah) que me guardem e me guiem.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 1 · Os meus três Anjos",
+   "intencao": "Peço aos meus Anjos (Iah-Hel, Harahel e Nith-Haiah) que me guardem e me guiem.",
+   "acao": "Hoje é dia de treino da intuição: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 1 · Os meus três Anjos",
+   "intencao": "Peço aos meus Anjos (Iah-Hel, Harahel e Nith-Haiah) que me guardem e me guiem.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 1 · Os meus três Anjos",
+   "intencao": "Peço aos meus Anjos (Iah-Hel, Harahel e Nith-Haiah) que me guardem e me guiem.",
+   "acao": "Hoje é dia de treino da intuição: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 1 · Os meus três Anjos",
+   "intencao": "Peço aos meus Anjos (Iah-Hel, Harahel e Nith-Haiah) que me guardem e me guiem.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te. Relê o teu caderno e vê o que se repetiu."
+  },
+  {
+   "titulo": "Semana 2 · Rowena e o 3.º Raio (rosa)",
+   "intencao": "Peço à Mestra Rowena que traga amor, beleza e harmonia ao meu dia e ao meu trabalho.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 2 · Rowena e o 3.º Raio (rosa)",
+   "intencao": "Peço à Mestra Rowena que traga amor, beleza e harmonia ao meu dia e ao meu trabalho.",
+   "acao": "Hoje é dia de treino da intuição: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 2 · Rowena e o 3.º Raio (rosa)",
+   "intencao": "Peço à Mestra Rowena que traga amor, beleza e harmonia ao meu dia e ao meu trabalho.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 2 · Rowena e o 3.º Raio (rosa)",
+   "intencao": "Peço à Mestra Rowena que traga amor, beleza e harmonia ao meu dia e ao meu trabalho.",
+   "acao": "Hoje é dia de treino da intuição: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 2 · Rowena e o 3.º Raio (rosa)",
+   "intencao": "Peço à Mestra Rowena que traga amor, beleza e harmonia ao meu dia e ao meu trabalho.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 2 · Rowena e o 3.º Raio (rosa)",
+   "intencao": "Peço à Mestra Rowena que traga amor, beleza e harmonia ao meu dia e ao meu trabalho.",
+   "acao": "Hoje é dia de treino da intuição: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 2 · Rowena e o 3.º Raio (rosa)",
+   "intencao": "Peço à Mestra Rowena que traga amor, beleza e harmonia ao meu dia e ao meu trabalho.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te. Relê o teu caderno e vê o que se repetiu."
+  },
+  {
+   "titulo": "Semana 3 · Marte: coragem e limites",
+   "intencao": "Peço a força de Marte para agir com coragem, sem esgotar-me, com limites saudáveis.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 3 · Marte: coragem e limites",
+   "intencao": "Peço a força de Marte para agir com coragem, sem esgotar-me, com limites saudáveis.",
+   "acao": "Hoje é dia de treino da intuição: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 3 · Marte: coragem e limites",
+   "intencao": "Peço a força de Marte para agir com coragem, sem esgotar-me, com limites saudáveis.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 3 · Marte: coragem e limites",
+   "intencao": "Peço a força de Marte para agir com coragem, sem esgotar-me, com limites saudáveis.",
+   "acao": "Hoje é dia de treino da intuição: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 3 · Marte: coragem e limites",
+   "intencao": "Peço a força de Marte para agir com coragem, sem esgotar-me, com limites saudáveis.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 3 · Marte: coragem e limites",
+   "intencao": "Peço a força de Marte para agir com coragem, sem esgotar-me, com limites saudáveis.",
+   "acao": "Hoje é dia de treino da intuição: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Selar e agradecer",
+   "intencao": "Peço a força de Marte para agir com coragem, sem esgotar-me, com limites saudáveis.",
+   "acao": "Relê o caderno, agradece o caminho e escolhe como queres continuar (podes recomeçar o plano)."
+  }
+ ]
+};
+export const NATALIA_SESSAO_PADRAO = {
+ "padraoId": "sessao-reflexologia-natalia",
+ "versaoPadrao": 1,
+ "tipo": "oracao",
+ "emoji": "🦶",
+ "titulo": "Antes, durante e depois da sessão · Natália",
+ "subtitulo": "Para as sessões de reflexologia podal e outras terapias",
+ "dias": 0,
+ "ordem": 32,
+ "seccoes": [
+  {
+   "tipo": "texto",
+   "titulo": "Para que serve",
+   "texto": "Para dizeres a cada sessão: proteger-te a ti, à pessoa e ao espaço, trabalhar com calma e fechar bem no fim."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Antes da sessão",
+   "texto": "Peço autorização ao Plano Superior para trabalhar hoje.\nMeus Anjos Iah-Hel, Harahel e Nith-Haiah, Mestra Rowena, guias e mentores de Luz:\nprotegei-me, protegei esta pessoa e este espaço.\nTrabalho só com a Luz, só para o bem maior, e só até onde for permitido."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Durante a sessão",
+   "texto": "Meus Anjos, guiai-me.\nQue eu sinta apenas o que for necessário.\nLuz, transmuta o que pesa.\nRespiro, e continuo com calma."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Depois da sessão",
+   "texto": "Agradeço aos meus Anjos, à Mestra Rowena e aos meus guias.\nDevolvo à Luz tudo o que não é meu.\nCorto todo o laço que não for de Luz.\nAssim seja, e assim é. Gratidão."
+  },
+  {
+   "tipo": "passos",
+   "titulo": "Depois, não te esqueças",
+   "itens": [
+    "Lava as mãos e os antebraços com água fria.",
+    "Abre uma janela para arejar o espaço.",
+    "Bebe um copo de água.",
+    "Ao fim do dia, banho com sal grosso."
+   ]
+  }
+ ]
+};
+PROTECAO_PADRAO.push(NATALIA_PADRAO, NATALIA_SESSAO_PADRAO);
