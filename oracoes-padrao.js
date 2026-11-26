@@ -1227,3 +1227,204 @@ export const ESPACO_PADRAO = {
  ]
 };
 PROTECAO_PADRAO.push(ESPACO_PADRAO);
+
+// Plano pessoal de 21 dias: ligação ao Anjo da Guarda, ao Mestre e a Saturno; rituais da noite e dos dias de sessão.
+export const CONEXAO_PADRAO = {
+ "padraoId": "plano-conexao-21",
+ "versaoPadrao": 1,
+ "regra": "livre",
+ "tipo": "ciclo",
+ "icone": "luz",
+ "emoji": "🌙",
+ "titulo": "Plano de conexão · Anjo, Mestre e Saturno · 21 dias",
+ "subtitulo": "Ritual de cada noite e dos dias de sessão, com treino da mediunidade",
+ "dias": 21,
+ "ordem": 8,
+ "seccoes": [
+  {
+   "tipo": "aviso",
+   "titulo": "Como usar este plano",
+   "texto": "São 21 dias, um por dia, de preferência antes de dormir e sempre à mesma hora. Não é uma corrida: se falhares um dia, não há problema. O plano guarda onde ficaste e continuas daí. Toca em «Rezar o dia», segue as orações uma a uma e, no fim, toca em «Já fiz o dia»."
+  },
+  {
+   "tipo": "texto",
+   "titulo": "Para que serve",
+   "texto": "É um ritual de ligação ao teu Anjo da Guarda (Haamiah), ao teu mestre (Saint Germain, 7.º raio, Chama Violeta) e à força de Saturno (planeta regente do sábado, o dia em que nasceste). Serve para a vida em geral: saúde, dinheiro, amor e proteção, e para ir desenvolvendo a tua sensibilidade com calma."
+  },
+  {
+   "tipo": "passos",
+   "titulo": "Todos os dias, em resumo",
+   "itens": [
+    "Escolhe uma hora fixa, de preferência antes de dormir, num sítio calmo. Põe o telemóvel em silêncio.",
+    "Se quiseres, acende uma vela branca (num sítio seguro) e põe ao lado um copo de água.",
+    "Toca em «Rezar o dia» e lê cada oração em voz baixa, devagar.",
+    "Nos dias de treino, fica depois 5 a 10 minutos em silêncio e escreve o que sentires.",
+    "No fim, toca em «Já fiz o dia». Amanhã fazes o seguinte."
+   ]
+  },
+  {
+   "tipo": "passos",
+   "titulo": "Nos dias de sessão: antes, durante e depois",
+   "itens": [
+    "Antes: lava as mãos, respira fundo 3 vezes e diz: «Peço autorização ao Plano Superior para trabalhar hoje. Meu Anjo Haamiah, Mestre Saint Germain, guias e mentores de Luz: protegei-me, protegei esta pessoa e este espaço.»",
+    "Imagina a Chama Violeta a envolver-te e a pessoa. Diz: «Trabalho só com a Luz, só para o bem maior, e só até onde for permitido.»",
+    "Durante, se sentires peso ou te perderes: «Meu Anjo, guia-me. Que eu sinta apenas o que for necessário. Chama Violeta, transmuta.» Respira e continua.",
+    "Depois (obrigatório): «Agradeço aos meus guias, ao Anjo Haamiah e ao Mestre Saint Germain. Devolvo à Luz tudo o que não é meu. Corto todo o laço energético que não for de Luz.»",
+    "Lava as mãos e os pulsos com água fria, bebe um copo de água e, se puderes, toma um banho com sal grosso."
+   ]
+  },
+  {
+   "tipo": "aviso",
+   "titulo": "Cuidados importantes",
+   "texto": "Esta prática é espiritual e de fé. A mediunidade desenvolve-se com calma, humildade e regularidade, nunca com pressa nem para impressionar. Não trabalhes cansado. Se sentires medo constante, ouvires vozes que não consegues parar ou te sentires muito em baixo, fala com o teu médico. Não substitui o acompanhamento médico ou psicológico."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "1. Preparar",
+   "texto": "Deito-me, respiro fundo, três vezes.\nEstou em segurança.\nEste momento é sagrado.\n\nPeço que este tempo seja abençoado e protegido."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "2. Proteção",
+   "texto": "Estou rodeado de Luz.\nA Chama Violeta de Saint Germain envolve o meu corpo, a minha casa e a minha família.\nTudo o que não for Luz transmuta-se e vai embora em paz."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "3. O meu Anjo da Guarda",
+   "texto": "Meu Anjo Haamiah, obrigado por me acompanhares.\nGuarda o meu sono, o meu corpo e os meus sonhos.\nDá-me discernimento para ver a verdade\ne calma para a aceitar."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "4. O meu Mestre e o 7.º Raio",
+   "texto": "Amado Mestre Saint Germain, Mestre do 7.º Raio,\ntransmuta em mim o cansaço, o medo e a dúvida.\nAjuda-me a viver com ordem, com fé e com amor."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "5. A força de Saturno",
+   "texto": "Força de Saturno,\ndá-me disciplina, limites saudáveis\ne paciência para construir com firmeza."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "6. Os meus pedidos",
+   "texto": "Saúde: que o meu corpo e a minha mente descansem e se renovem esta noite.\n\nDinheiro: que o meu trabalho dê frutos justos, e que eu saiba cuidar do que recebo.\n\nAmor: que em minha casa haja respeito, ternura e paz.\n\nProteção: que nada de negativo me toque, nem a mim, nem aos meus."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "7. Mediunidade (só nos dias de treino)",
+   "texto": "Peço aos meus guias e mentores de Luz\nque me ajudem a desenvolver a minha sensibilidade\ncom segurança, equilíbrio e humildade, ao meu ritmo.\n\nFico em silêncio. Faço uma pergunta simples:\n«O que preciso de saber hoje?»\nE escrevo o que sentir, sem julgar."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "8. Entregar e dormir",
+   "texto": "Entrego esta noite nas mãos do Divino.\nSe for preciso acordar, que seja por uma boa razão.\nSe não, que eu durma em paz até de manhã.\n\nAssim seja, e assim é. Gratidão."
+  }
+ ],
+ "temasDias": [
+  {
+   "titulo": "O começo",
+   "intencao": "Peço ao meu Anjo Haamiah que me guarde e me dê discernimento.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo da Guarda (Haamiah)",
+   "intencao": "Peço ao meu Anjo Haamiah que me guarde e me dê discernimento.",
+   "acao": "Hoje é dia de treino da mediunidade: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo da Guarda (Haamiah)",
+   "intencao": "Peço ao meu Anjo Haamiah que me guarde e me dê discernimento.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo da Guarda (Haamiah)",
+   "intencao": "Peço ao meu Anjo Haamiah que me guarde e me dê discernimento.",
+   "acao": "Hoje é dia de treino da mediunidade: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo da Guarda (Haamiah)",
+   "intencao": "Peço ao meu Anjo Haamiah que me guarde e me dê discernimento.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo da Guarda (Haamiah)",
+   "intencao": "Peço ao meu Anjo Haamiah que me guarde e me dê discernimento.",
+   "acao": "Hoje é dia de treino da mediunidade: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo da Guarda (Haamiah)",
+   "intencao": "Peço ao meu Anjo Haamiah que me guarde e me dê discernimento.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te. Sábado ou fim de semana: relê o teu caderno e vê o que se repetiu."
+  },
+  {
+   "titulo": "Semana 2 · Saint Germain e a Chama Violeta",
+   "intencao": "Peço ao Mestre Saint Germain que transmute em mim o que pesa.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 2 · Saint Germain e a Chama Violeta",
+   "intencao": "Peço ao Mestre Saint Germain que transmute em mim o que pesa.",
+   "acao": "Hoje é dia de treino da mediunidade: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 2 · Saint Germain e a Chama Violeta",
+   "intencao": "Peço ao Mestre Saint Germain que transmute em mim o que pesa.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 2 · Saint Germain e a Chama Violeta",
+   "intencao": "Peço ao Mestre Saint Germain que transmute em mim o que pesa.",
+   "acao": "Hoje é dia de treino da mediunidade: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 2 · Saint Germain e a Chama Violeta",
+   "intencao": "Peço ao Mestre Saint Germain que transmute em mim o que pesa.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 2 · Saint Germain e a Chama Violeta",
+   "intencao": "Peço ao Mestre Saint Germain que transmute em mim o que pesa.",
+   "acao": "Hoje é dia de treino da mediunidade: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 2 · Saint Germain e a Chama Violeta",
+   "intencao": "Peço ao Mestre Saint Germain que transmute em mim o que pesa.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te. Sábado ou fim de semana: relê o teu caderno e vê o que se repetiu."
+  },
+  {
+   "titulo": "Semana 3 · Saturno: disciplina e proteção",
+   "intencao": "Peço a força de Saturno para construir com firmeza e limites saudáveis.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 3 · Saturno: disciplina e proteção",
+   "intencao": "Peço a força de Saturno para construir com firmeza e limites saudáveis.",
+   "acao": "Hoje é dia de treino da mediunidade: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 3 · Saturno: disciplina e proteção",
+   "intencao": "Peço a força de Saturno para construir com firmeza e limites saudáveis.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 3 · Saturno: disciplina e proteção",
+   "intencao": "Peço a força de Saturno para construir com firmeza e limites saudáveis.",
+   "acao": "Hoje é dia de treino da mediunidade: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Semana 3 · Saturno: disciplina e proteção",
+   "intencao": "Peço a força de Saturno para construir com firmeza e limites saudáveis.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 3 · Saturno: disciplina e proteção",
+   "intencao": "Peço a força de Saturno para construir com firmeza e limites saudáveis.",
+   "acao": "Hoje é dia de treino da mediunidade: depois do ritual, fica 5 a 10 minutos em silêncio, faz uma pergunta simples e escreve o que sentires."
+  },
+  {
+   "titulo": "Selar e agradecer",
+   "intencao": "Peço a força de Saturno para construir com firmeza e limites saudáveis.",
+   "acao": "Relê o caderno, agradece o caminho e escolhe como queres continuar (podes recomeçar o plano)."
+  }
+ ]
+};
+PROTECAO_PADRAO.push(CONEXAO_PADRAO);
