@@ -331,6 +331,30 @@ export function rbModeloTerapeutico(o) {
   return { tema: o.tema || 'geral', cor: o.cor, emoji: o.emoji, titulo: o.titulo || 'Relatório de Avaliação Terapêutica', subtitulo: o.subtitulo || 'Relatório pessoal', nome: o.nome || n1, data: o.data, assinatura: o.assinatura || '', blocos: B, mensagem: o.fecho || 'Com carinho e presença.', aviso: o.aviso };
 }
 
+
+// Bloco final, igual para todas as terapias (existentes e futuras): o que a pessoa pode fazer depois da sessão.
+// Para desligar num relatório: modelo.semAutonomia = true.
+export function rbBlocosAutonomia(m) {
+  if (!m || m.semAutonomia || (m.blocos || []).some(b => b && b.id === 'autonomia')) return [];
+  const leitura = m.tema === 'cartas';
+  const intro = leitura
+    ? ['As cartas mostram tendências e ajudam a ver as coisas de outro ângulo, mas não decidem nada por ti. O que acontece a seguir depende muito das escolhas que fizeres.',
+       'Se algumas coisas não mudarem logo, não quer dizer que a leitura “falhou”: quer dizer que há passos que só tu podes dar, ao teu ritmo.']
+    : ['Uma terapia dá-te um empurrão: alivia, abre espaço e ajuda a perceber o que se passa. Mas não faz milagres, e ninguém consegue mudar a vida de outra pessoa por ela. O que fica depende muito do que fizeres nos dias e semanas a seguir.',
+       'É normal sentires-te melhor e, passado algum tempo, o cansaço, a ansiedade ou a tristeza voltarem um bocadinho. Isso não quer dizer que a sessão “não funcionou”, nem que falhaste. O corpo e a mente precisam de repetição, tal como o exercício físico: uma ida ao ginásio não chega.'];
+  return [
+    { id: 'autonomia', tipo: 'texto', icone: '🤝', titulo: 'E depois da sessão? O teu papel nisto', paras: intro },
+    { id: 'autonomia', tipo: 'lista', icone: '🌱', titulo: 'O que ajuda a manter o bem-estar', marca: '•', itens: [
+      'Pequenos hábitos todos os dias: dormir e comer a horas, beber água, caminhar e respirar fundo.',
+      'Aprender a lidar com o que sentes: escrever, falar com alguém de confiança, pedir ajuda cedo.',
+      'Reparar quando a cabeça vai logo para o pior cenário e escolher um passo pequeno para amanhã.',
+      'Pôr limites e afastar-te, quando puderes, do que te pesa.',
+      'Dar tempo: as mudanças verdadeiras levam semanas. Se quiseres, combina sessões de acompanhamento, como um apoio e não como obrigação.'] },
+    { id: 'autonomia', tipo: 'texto', icone: '💛', titulo: 'Uma palavra honesta', paras: [
+      'Esta terapia é um apoio complementar e não promete curas. Se te sentires muito em baixo durante muito tempo, com ansiedade que te trava o dia a dia ou pensamentos de te magoares, fala com o teu médico ou liga para o SNS 24 (808 24 24 24). Nunca substitui o acompanhamento médico ou psicológico.'] }
+  ];
+}
+
 // modelo: { tema, titulo, subtitulo, nome, data, assinatura, blocos:[], mensagem, aviso }
 export function rbFragmento(m) {
   const T = TEMAS[m.tema] || TEMAS.geral;
@@ -341,7 +365,7 @@ export function rbFragmento(m) {
   return `<style>${CSS}</style><div class="rbx" style="${estilo}">
     <div class="hero">${estrelas()}<span class="emo">${m.emoji || T.emoji}</span><h1>${esc(m.titulo || 'O seu relatório')}</h1>
       ${m.subtitulo ? `<p>${esc(m.subtitulo)}</p>` : ''}<p>${m.nome ? '✦ ' + esc(m.nome) + ' ✦ ' : ''}${esc(m.data || '')}</p>${onda}</div>
-    <div class="corpo">${(m.blocos || []).map(b => bloco(b, T)).join('')}
+    <div class="corpo">${(m.blocos || []).concat(rbBlocosAutonomia(m)).map(b => bloco(b, T)).join('')}
       ${m.mensagem ? `<div class="msg"><h2>💌 Palavras para si</h2><p>${nl(m.mensagem)}</p></div>` : ''}
     </div>
     <div class="rodape">${m.assinatura ? `<div class="ass">${esc(m.assinatura)}</div>` : ''}${esc(m.aviso || 'Este relatório mostra tendências e energias do momento. É um trabalho complementar e não substitui o acompanhamento médico ou psicológico. As decisões são sempre suas.')}</div></div>`;

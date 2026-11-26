@@ -1,6 +1,6 @@
 /* Pesquisa Integrada (pêndulo + apometria) — ferramenta exclusiva da Hikari Fafe.
    Guia passo a passo: paciente e segurança → 7 corpos → o que saiu na pesquisa → chakras → plano à medida → guardar na ficha. */
-import { rbPreVisualizar, rbFragmento } from './relatorio-bonito.js';
+import { rbPreVisualizar, rbFragmento } from './relatorio-bonito.js?v=2026-11-26-1';
 import { NIVEIS, CORPOS, CHAKRAS, ALERTAS, ACHADOS, TECNICAS, TEXTO_PACIENTE, CAUSAS_40, NIVEIS_ABERTURA, faixaChakra, nivelDePct, MODALIDADES, MSG_ANTES_DISTANCIA, MSG_DEPOIS_DISTANCIA, PRE_CONSULTA, PRE_TITULO, PRE_DESCRICAO, PRE_FORM_ID, SEG_FORM, SEG_FORM_ID, SEG_TITULO, SEG_DESCRICAO, MSG_CONSCIENCIA, DICAS_VIBRACAO } from './apometria-dados.js';
 
 const TENANT = 'hikari-terapias';

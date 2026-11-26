@@ -4,7 +4,7 @@
 //  (pergunta, escolha com conhecimento, instrução, tratamento, notas).
 //  Não toca nos métodos antigos (lista livre / mapeamento por zonas).
 // ═══════════════════════════════════════════════════════════════════
-import { rbFragmento, rbPreVisualizar, rbModeloPessoal } from './relatorio-bonito.js?v=2026-11-21-20';
+import { rbFragmento, rbPreVisualizar, rbModeloPessoal } from './relatorio-bonito.js?v=2026-11-26-1';
 
 const iconeUri = (o) => (typeof o.icone === 'number' && window.CG_IMG && window.CG_IMG.icones[o.icone]) ? window.CG_IMG.uri(window.CG_IMG.icones[o.icone]) : '';
 const esc = (t) => (window.escapeHtml ? window.escapeHtml(String(t == null ? '' : t)) : String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
