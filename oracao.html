@@ -133,6 +133,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, doc, getDoc, updateDoc, addDoc, collection } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { PROTECAO_PADRAO } from './oracoes-padrao.js?v=2026-11-26-2';
 
 const app = initializeApp({
   apiKey:'AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg', authDomain:'saudecare-app.firebaseapp.com', projectId:'saudecare-app',
@@ -435,6 +436,12 @@ id = q.get('o') || ''; envioId = q.get('e') || '';
 const erro = (t, m) => { $('app').innerHTML = `<div class="estado"><h2>${t}</h2><p>${m}</p></div>`; };
 (async () => {
   try {
+    const pidPadrao = q.get('p');
+    if (pidPadrao && !envioId) { // acesso directo a uma oração padrão (progresso guardado só neste telemóvel)
+      const pd = PROTECAO_PADRAO.find((x) => x.padraoId === pidPadrao);
+      if (!pd) return erro('Não encontrei esta oração', 'O link pode estar incompleto.');
+      id = 'p-' + pidPadrao; O = JSON.parse(JSON.stringify(pd).replace(/\{\{nome\}\}/g, 'a pessoa')); desenhar(); return;
+    }
     if (envioId) {
       const se = await getDoc(doc(db, 'oracoes_envios', envioId));
       if (!se.exists()) { try { for (const k of Object.keys(localStorage)) if (k.startsWith('vo_t_') && localStorage.getItem(k) === envioId) localStorage.removeItem(k); } catch (_) {} return erro('Link não encontrado', 'O link pode estar incompleto ou ter sido apagado. Pede um novo link a quem te enviou.'); }
