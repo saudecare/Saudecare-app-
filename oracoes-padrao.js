@@ -1534,3 +1534,9 @@ export const NOITE_PADRAO = {
  ]
 };
 PROTECAO_PADRAO.push(MANHA_PADRAO, NOITE_PADRAO);
+
+// O plano de 21 dias reúne tudo no mesmo link: oração da manhã + oração da noite (esta é a que marca o dia).
+CONEXAO_PADRAO.partes = true;
+CONEXAO_PADRAO.seccoes = CONEXAO_PADRAO.seccoes.filter((s) => s.tipo !== 'oracao').concat(
+  MANHA_PADRAO.seccoes.filter((s) => s.tipo === 'oracao').map((s) => Object.assign({}, s, { parte: 'manha' })),
+  CONEXAO_PADRAO.seccoes.filter((s) => s.tipo === 'oracao').map((s) => Object.assign({}, s, { parte: 'noite' })));

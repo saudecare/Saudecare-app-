@@ -134,7 +134,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, doc, getDoc, updateDoc, addDoc, collection } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { PROTECAO_PADRAO } from './oracoes-padrao.js?v=2026-11-26-2';
+import { PROTECAO_PADRAO } from './oracoes-padrao.js?v=2026-11-26-4';
 
 const app = initializeApp({
   apiKey:'AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg', authDomain:'saudecare-app.firebaseapp.com', projectId:'saudecare-app',
@@ -317,9 +317,9 @@ const jaFezHoje = () => regraSeguidos() && est.feitos.length < O.dias && diasDes
 function recomecar() { est.feitos = []; est.feitosEm = {}; est.inicio = hojeISO(); ver = 1; guardarEst(); }
 
 // ── navegação por separadores (um ecrã de cada vez) ──
-let vista = 'inicio', passo = 0, feitoAgora = false;
+let vista = 'inicio', passo = 0, feitoAgora = false, parte = '';
 const seccoes = () => (O.seccoes || []);
-const oracoes = () => seccoes().filter((s) => s.tipo === 'oracao');
+const oracoes = () => seccoes().filter((s) => s.tipo === 'oracao' && (!O.partes || (s.parte || 'noite') === (parte || (new Date().getHours() < 15 ? 'manha' : 'noite'))));
 const infos = () => seccoes().filter((s) => s.tipo !== 'oracao');
 function irPara(v) { vista = v; passo = 0; mostrar(); window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' }); }
 function corpoSeccao(s) {
@@ -342,7 +342,8 @@ function ecraInicio() {
   } else if (completo) h += `<div class="final">🌟 <b>Completaste os ${O.dias} dias.</b><br>Que a luz continue contigo.</div>`;
   if (jaFezHoje()) h += `<p class="hojefeito">🌙 Já fizeste o dia de hoje. Volta amanhã para o dia ${prox}.</p>`;
   if (regraSeguidos()) h += `<p class="regra">📌 ${O.dias} dias seguidos, sem interrupção. Se falhares um dia, recomeças do Dia 1.</p>`;
-  if (!quebrou()) h += `<button class="btn grande" id="bRezar">🙏 ${O.dias && comecou && !completo ? (jaFezHoje() ? 'Rezar outra vez' : 'Rezar o dia ' + prox) : 'Começar a rezar'}</button>`;
+  if (!quebrou() && O.partes) h += `<button class="btn grande" id="bManha">🌅 Oração da manhã</button><button class="btn grande" id="bNoite">🌙 Oração da noite${O.dias && comecou && !completo ? ' · dia ' + prox : ''}</button>`;
+  else if (!quebrou()) h += `<button class="btn grande" id="bRezar">🙏 ${O.dias && comecou && !completo ? (jaFezHoje() ? 'Rezar outra vez' : 'Rezar o dia ' + prox) : 'Começar a rezar'}</button>`;
   if (O.dias) h += `<button class="btn sec" id="bCam">🗓️ O meu caminho${comecou ? ' · ' + est.feitos.length + '/' + O.dias : ''}</button>`;
   if (infos().length) h += `<button class="btn sec" id="bSaber">📖 Saber mais: para que serve e como fazer</button>`;
   return h;
@@ -353,6 +354,8 @@ function ecraRezar() {
   let h = `<div class="pontos" aria-label="Passo ${passo + 1} de ${n}">${ps.map((_, k) => `<i class="${k === passo ? 'ac' : k < passo ? 'ok' : ''}"></i>`).join('')}</div>`;
   if (p.t === 'oracao') {
     h += `<section class="oracao passo">${ORNA}${p.s.titulo ? `<h2>${esc(p.s.titulo)}</h2>` : ''}<div class="corpo">${corpoSeccao(p.s)}</div></section>`;
+  } else if (O.partes && (parte || (new Date().getHours() < 15 ? 'manha' : 'noite')) === 'manha') {
+    h += `<section class="oracao passo fim">${ORNA}<h2>☀️ Bom dia. Está feito.</h2><div class="corpo"><p>Respira fundo e começa o dia com confiança.</p><p>À noite, volta aqui para a oração da noite${O.dias ? ' e marca o dia ' + ver : ''}.</p></div></section>`;
   } else {
     const t = O.dias ? (O.temasDias || [])[ver - 1] : null;
     const ultimo = O.dias && ver === O.dias;
@@ -382,6 +385,7 @@ function mostrar() {
   $('tabs').hidden = false;
   if (vista === 'caminho') desenharCaminho();
   const on = (id, f) => { const e = $(id); if (e) e.onclick = f; };
+  on('bManha', () => { parte = 'manha'; irPara('rezar'); }); on('bNoite', () => { parte = 'noite'; irPara('rezar'); });
   on('bRezar', () => irPara('rezar')); on('bRecomecar', () => { recomecar(); irPara('inicio'); }); on('bCam', () => irPara('caminho')); on('bSaber', () => irPara('saber'));
   on('bSeg', () => { passo++; mostrar(); window.scrollTo(0, 0); }); on('bAnt', () => { passo = Math.max(0, passo - 1); mostrar(); window.scrollTo(0, 0); });
   on('bIni', () => irPara('inicio'));

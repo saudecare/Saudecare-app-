@@ -1,7 +1,7 @@
 /* Orações e Salmos — biblioteca da Hikari Fafe: criar, editar, ordenar e enviar por link ao paciente.
    Ferramenta exclusiva da conta hikari-terapias. Cada oração é um documento em «oracoes/{id}» e a página
    de leitura do paciente é oracao.html?o={id} (feita para telemóvel e para qualquer ecrã). */
-import { ORACAO_MIGUEL, MODELO_VAZIO, SALMOS_PADRAO, PROTECAO_PADRAO } from './oracoes-padrao.js?v=2026-11-26-2';
+import { ORACAO_MIGUEL, MODELO_VAZIO, SALMOS_PADRAO, PROTECAO_PADRAO } from './oracoes-padrao.js?v=2026-11-26-4';
 
 export const TENANT_ORACOES = 'hikari-terapias';
 const BASE_LINK = 'https://vindora.pt/oracao.html?o=';
