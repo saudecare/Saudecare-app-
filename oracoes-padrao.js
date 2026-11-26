@@ -1428,3 +1428,109 @@ export const CONEXAO_PADRAO = {
  ]
 };
 PROTECAO_PADRAO.push(CONEXAO_PADRAO);
+
+export const MANHA_PADRAO = {
+ "padraoId": "oracao-manha-conexao",
+ "versaoPadrao": 1,
+ "tipo": "oracao",
+ "emoji": "🌅",
+ "titulo": "Oração da manhã · Anjo, Mestre e Saturno",
+ "subtitulo": "Para começar o dia protegido e em paz",
+ "dias": 0,
+ "ordem": 30,
+ "seccoes": [
+  {
+   "tipo": "texto",
+   "titulo": "Para que serve",
+   "texto": "Para dizeres ao acordar, antes de pegares no telemóvel. Liga-te ao teu Anjo da Guarda (Haamiah), ao Mestre Saint Germain e à força de Saturno, e pede proteção, clareza e bênção para o dia: saúde, dinheiro, amor e trabalho."
+  },
+  {
+   "tipo": "passos",
+   "titulo": "Como fazer",
+   "itens": [
+    "Ao acordar, antes do telemóvel, senta-te na cama ou fica de pé, e respira fundo 3 vezes.",
+    "Lê cada oração devagar, em voz baixa.",
+    "Se tiveres sessões nesse dia, diz também a oração «Proteção antes do trabalho».",
+    "Bebe um copo de água e começa o dia."
+   ]
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "1. Gratidão",
+   "texto": "Obrigado por mais um dia.\nObrigado pelo meu corpo, pela minha casa, pelos meus e pelo meu trabalho.\nAcordo em paz e com confiança."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "2. Proteção para o dia",
+   "texto": "A Chama Violeta de Saint Germain envolve-me, a minha casa e a minha família.\nOnde eu for, vai Luz. O que não for Luz transmuta-se e vai embora em paz."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "3. O meu Anjo, o meu Mestre e Saturno",
+   "texto": "Meu Anjo Haamiah, caminha comigo hoje e dá-me discernimento.\nAmado Mestre Saint Germain, ajuda-me a transmutar o que pesa e a agir com ordem e fé.\nForça de Saturno, dá-me disciplina, limites saudáveis e paciência."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "4. Pedidos para o dia",
+   "texto": "Saúde: que o meu corpo e a minha mente estejam fortes e em equilíbrio.\nDinheiro: que o meu trabalho dê frutos justos e eu saiba cuidar do que recebo.\nAmor: que haja respeito, ternura e paz à minha volta.\nTrabalho: que eu ajude com humildade, clareza e proteção."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "5. Entregar o dia",
+   "texto": "Entrego este dia nas mãos do Divino.\nQue eu faça o meu melhor e aceite com calma o que não depende de mim.\nAssim seja, e assim é. Gratidão."
+  }
+ ]
+};
+export const NOITE_PADRAO = {
+ "padraoId": "oracao-noite-conexao",
+ "versaoPadrao": 1,
+ "tipo": "oracao",
+ "emoji": "🌙",
+ "titulo": "Oração da noite · Agradecer e entregar",
+ "subtitulo": "Para fechar o dia, limpar e dormir em paz",
+ "dias": 0,
+ "ordem": 31,
+ "seccoes": [
+  {
+   "tipo": "texto",
+   "titulo": "Para que serve",
+   "texto": "Para dizeres antes de dormir. Fecha o dia, devolve à Luz o que não é teu, perdoa e agradece. Depois podes fazer, nos dias certos, o plano de 21 dias."
+  },
+  {
+   "tipo": "passos",
+   "titulo": "Como fazer",
+   "itens": [
+    "Deita-te e respira fundo 3 vezes. Deixa o telemóvel longe.",
+    "Lê cada oração devagar, em voz baixa.",
+    "Se o dia foi pesado, toma antes um banho com sal grosso.",
+    "Fecha os olhos e adormece com a última frase."
+   ]
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "1. Agradecer",
+   "texto": "Obrigado por este dia, pelo que correu bem e também pelo que me ensinou.\nAgradeço ao meu Anjo, ao meu Mestre e aos meus guias de Luz."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "2. Devolver à Luz",
+   "texto": "Devolvo à Luz tudo o que hoje não era meu: cansaço, medos, palavras e energias de outros.\nCorto todo o laço que não for de Luz.\nA Chama Violeta transmuta e limpa o meu corpo, a minha mente e a minha casa."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "3. Perdoar e soltar",
+   "texto": "Perdoo-me pelo que podia ter feito melhor.\nPerdoo quem me magoou, e peço perdão a quem magoei.\nSolto o dia. Amanhã é um novo começo."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "4. Proteger o sono",
+   "texto": "Meu Anjo Haamiah, guarda o meu sono, o meu corpo e os meus sonhos.\nQue ninguém nem nada de negativo me toque, nem a mim, nem aos meus."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "5. Entregar e dormir",
+   "texto": "Entrego esta noite nas mãos do Divino.\nSe for preciso acordar, que seja por uma boa razão. Se não, que eu durma em paz até de manhã.\nAssim seja, e assim é. Gratidão."
+  }
+ ]
+};
+PROTECAO_PADRAO.push(MANHA_PADRAO, NOITE_PADRAO);

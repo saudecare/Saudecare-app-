@@ -32,11 +32,11 @@ export function renderOracoes(main, ctx) {
     if (!lista.length && !semente) {
       try { await ctx.gravar(null, Object.assign(clone(ORACAO_MIGUEL), { ordem: 1 })); try { localStorage.setItem('oracoes_semente_v1', '1'); } catch (_) {} lista = await ctx.listar(); } catch (_) {}
     }
-    let prot = false; try { prot = localStorage.getItem('oracoes_protecao_v4') === '1'; } catch (_) {}
+    let prot = false; try { prot = localStorage.getItem('oracoes_protecao_v5') === '1'; } catch (_) {}
     if (!prot && lista.length) {
       try {
         for (const sd of PROTECAO_PADRAO) if (!lista.some((o) => o.padraoId === sd.padraoId)) await ctx.gravar(null, clone(sd));
-        try { localStorage.setItem('oracoes_protecao_v4', '1'); } catch (_) {}
+        try { localStorage.setItem('oracoes_protecao_v5', '1'); } catch (_) {}
         lista = await ctx.listar(); ctx.toast('Orações de proteção instaladas. 🛡️');
       } catch (_) {}
     }
