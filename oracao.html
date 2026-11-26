@@ -119,6 +119,7 @@
 <div class="barra" id="barra" hidden>
   <div class="marca"><img src="logo-hikari-fafe.png" alt=""><span>HIKARI FAFE</span></div>
   <div class="grupo">
+    <a id="voltarCaminho" href="caminho.html" hidden aria-label="Voltar à página principal" style="min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:4px;border:1px solid var(--marca);background:var(--card);color:var(--marca);border-radius:12px;font-size:.85rem;font-weight:700;text-decoration:none;padding:0 10px;">🌿 O meu caminho</a>
     <span class="vol" id="vol"><input type="range" id="volr" min="5" max="60" value="25" aria-label="Volume da música"></span>
     <button id="musica" aria-label="Música ambiente" aria-pressed="false">🎵</button>
     <button id="menos" aria-label="Diminuir letra">A−</button>
@@ -437,6 +438,7 @@ const erro = (t, m) => { $('app').innerHTML = `<div class="estado"><h2>${t}</h2>
 (async () => {
   try {
     const pidPadrao = q.get('p');
+    if (pidPadrao) { const vc = document.getElementById('voltarCaminho'); if (vc) vc.hidden = false; }
     if (pidPadrao && !envioId) { // acesso directo a uma oração padrão (progresso guardado só neste telemóvel)
       const pd = PROTECAO_PADRAO.find((x) => x.padraoId === pidPadrao);
       if (!pd) return erro('Não encontrei esta oração', 'O link pode estar incompleto.');
