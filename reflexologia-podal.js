@@ -7,8 +7,8 @@
   const AVISO = 'Esta leitura é orientativa e de uma terapia complementar. Não é um diagnóstico nem substitui o teu médico.';
 
   // Estados de cada zona
-  const ESTADOS = [['ok','Normal','#16a34a'],['sens','Sensível','#ca8a04'],['dor','Dor','#dc2626'],['nod','Nódulo / grânulos','#7c3aed'],['ten','Tensão / dureza','#ea580c']];
-  const NOME_ESTADO = { sens:'sensível', dor:'dor', nod:'nódulos ou grânulos', ten:'tensão ou dureza' };
+  const ESTADOS = [['ok','Normal','#16a34a'],['sens','Sensível','#ca8a04'],['dor','Dor','#dc2626'],['nod','Textura diferente (grânulos)','#7c3aed'],['ten','Tensão / dureza','#ea580c']];
+  const NOME_ESTADO = { sens:'zona mais sensível ao toque', dor:'zona com algum desconforto', nod:'zona com uma textura diferente (pontos mais firmes)', ten:'zona mais firme ou tensa' };
 
   // Zonas: id, nome, onde (no pé), sistema, lado ('D','E' ou 'A' = ambos), chakra e tema (ligação à linguagem do resto da app)
   const ZONAS = [
