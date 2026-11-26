@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>O meu caminho — Hikari Fafe</title>
+<style>
+  :root{--bg:#faf6ee;--tinta:#2b2236;--suave:#6d6477;--card:#fff;--linha:#e8e3d6;--marca:#5b2a86;--on:#fff}
+  @media (prefers-color-scheme:dark){:root{--bg:#1b1526;--tinta:#f1ecf7;--suave:#b6aac4;--card:#261d35;--linha:#3a2f4d;--marca:#a47be0;--on:#1b1526}}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tinta);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5}
+  .w{max-width:560px;margin:0 auto;padding:22px 16px 40px}
+  h1{font-size:1.5rem;text-align:center;margin:8px 0 2px}.sub{text-align:center;color:var(--suave);margin:0 0 18px}
+  .t{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);margin:20px 4px 8px}
+  a.c{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--linha);border-radius:18px;padding:16px;margin-bottom:10px;text-decoration:none;color:inherit;min-height:72px}
+  a.c .e{font-size:1.9rem}a.c b{display:block;font-size:1.05rem}a.c span{color:var(--suave);font-size:.88rem}
+  a.c.g{border:2px solid var(--marca)}
+  .pg{height:8px;background:var(--linha);border-radius:9px;overflow:hidden;margin-top:6px}.pg i{display:block;height:100%;background:var(--marca)}
+  .aviso{color:var(--suave);font-size:.8rem;text-align:center;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>🌿 O meu caminho</h1>
+  <p class="sub">Tudo num só sítio. Guarda esta página no ecrã inicial.</p>
+
+  <p class="t">Todos os dias</p>
+  <a class="c" href="oracao.html?p=oracao-manha-conexao"><span class="e">🌅</span><div><b>Oração da manhã</b><span>Gratidão, proteção e pedidos para o dia</span></div></a>
+  <a class="c" href="oracao.html?p=oracao-noite-conexao"><span class="e">🌙</span><div><b>Oração da noite</b><span>Agradecer, limpar, perdoar e dormir em paz</span></div></a>
+
+  <p class="t">O meu plano</p>
+  <a class="c g" href="oracao.html?p=plano-conexao-21"><span class="e">✨</span><div><b>Plano de 21 dias</b><span id="prog">Anjo Haamiah, Saint Germain, Saturno e treino da mediunidade</span><div class="pg" id="pgb" hidden><i id="pgi"></i></div></div></a>
+
+  <p class="t">Nos dias de sessão</p>
+  <a class="c" href="oracao.html?p=protecao-antes-trabalho"><span class="e">🕯️</span><div><b>Proteção antes do trabalho</b><span>Antes de pêndulo, cartas, Reiki ou limpeza</span></div></a>
+  <a class="c" href="oracao.html?p=protecao-limpeza-espaco"><span class="e">🧹</span><div><b>Limpeza do espaço</b><span>Durante ou depois da sessão</span></div></a>
+  <a class="c" href="oracao.html?p=protecao-fecho-trabalho"><span class="e">🙏</span><div><b>Fecho do trabalho</b><span>Agradecer e devolver à Luz</span></div></a>
+
+  <p class="aviso">Prática espiritual e de bem-estar. Não substitui o acompanhamento médico ou psicológico.</p>
+</div>
+<script>
+try{
+  var e=JSON.parse(localStorage.getItem('vo_c_p-plano-conexao-21')||'{}'), n=(e.feitos||[]).length;
+  if(n){document.getElementById('prog').textContent=n+' de 21 dias feitos';document.getElementById('pgb').hidden=false;document.getElementById('pgi').style.width=Math.round(n/21*100)+'%';}
+}catch(_){}
+</script>
+</body>
+</html>
