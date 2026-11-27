@@ -91,6 +91,7 @@
   .hojefeito{text-align:center;color:var(--suave);margin:12px 0;font-weight:600;}
   .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;background:var(--card);border-top:1px solid var(--linha);padding:6px max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));gap:4px;}
   .tabs[hidden]{display:none;}
+  .capa .arcanjo{width:min(190px,52vw);border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18);margin:4px auto 0;display:block;}
   .capa .arte{width:min(170px,44vw);} .capa{padding-top:8px;}
   .tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:0;min-height:56px;border:none;background:transparent;color:var(--suave);font-size:.74rem;font-weight:700;border-radius:12px;cursor:pointer;line-height:1.2;padding:4px 2px;}
   .tabs button span{font-size:1.45rem;line-height:1.2;}
@@ -131,6 +132,7 @@
 <nav class="tabs" id="tabs" hidden aria-label="Navegação"></nav>
 <footer id="rodape" hidden>Prática espiritual e de bem-estar. Não substitui o acompanhamento médico ou psicológico.<br>Hikari Fafe · Corpo · Mente · Alma · Espírito</footer>
 
+<script src="mapa-imagens.js?v=2026-11-27-1"></script>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, doc, getDoc, updateDoc, addDoc, collection } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -178,7 +180,20 @@ const ARTE_LUZ = `<svg class="arte" viewBox="0 0 200 200" role="img" aria-label=
 <path d="M76 152h48M84 160h32" stroke="var(--marca)" stroke-width="3" stroke-linecap="round"/>
 ${ESTRELAS}</svg>`;
 const ORNA = `<svg class="orna" viewBox="0 0 120 18" aria-hidden="true"><g fill="none" stroke="var(--dest)" stroke-width="1.6" stroke-linecap="round"><path d="M6 9h38M76 9h38"/><path d="M60 3l3 6-3 6-3-6z" fill="var(--dest)"/><circle cx="48" cy="9" r="1.6" fill="var(--dest)"/><circle cx="72" cy="9" r="1.6" fill="var(--dest)"/></g></svg>`;
-const arteDe = () => O.icone ? (O.icone === 'escudo' ? ARTE_ESCUDO : ARTE_LUZ) : (O.tipo === 'ciclo' || /🛡|⚔/.test(O.emoji || '') ? ARTE_ESCUDO : ARTE_LUZ);
+const ARCANJOS = ['Miguel','Gabriel','Rafael','Uriel','Jofiel','Zadquiel','Chamuel'];
+function arcanjoDe() {
+  const IMG = (window.MAPA_IMG || {}).arcanjos || {};
+  const cab = ' ' + (O.titulo || '') + ' ' + (O.subtitulo || '');
+  let nome = ARCANJOS.find((n) => new RegExp('\\b' + n + '\\b', 'i').test(cab));
+  if (!nome) {
+    let txt = ''; try { txt = JSON.stringify(O.seccoes || []); } catch (_) {}
+    let melhor = 0;
+    ARCANJOS.forEach((n) => { const c = (txt.match(new RegExp('\\b' + n + '\\b', 'gi')) || []).length; if (c > melhor) { melhor = c; nome = n; } });
+    if (melhor < 3) nome = '';
+  }
+  return nome && IMG[nome] ? `<img class="arcanjo" src="${IMG[nome]}" alt="Arcanjo ${nome}">` : '';
+}
+const arteDe = () => arcanjoDe() || (O.icone ? (O.icone === 'escudo' ? ARTE_ESCUDO : ARTE_LUZ) : (O.tipo === 'ciclo' || /🛡|⚔/.test(O.emoji || '') ? ARTE_ESCUDO : ARTE_LUZ));
 const ICONE_SEMANA = (n) => {
   if (O.icone) { const c0 = '<svg class="tema-img" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="var(--marca)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'; if (O.icone === 'agua') return c0 + '<path d="M32 8C22 22 14 30 14 40a18 18 0 0 0 36 0C50 30 42 22 32 8z" fill="var(--caixa)"/><path d="M24 42a8 8 0 0 0 8 8" stroke="var(--dest)"/></g></svg>'; if (O.icone === 'chave') return c0 + '<circle cx="21" cy="32" r="11" fill="var(--caixa)"/><path d="M32 32h24M48 32v9M56 32v7" stroke="var(--dest)"/></g></svg>'; if (O.icone === 'escudo') return c0 + '<path d="M32 8l18 7v16c0 12-8 21-18 25-10-4-18-13-18-25V15z" fill="var(--caixa)"/><path d="M32 22v22M23 32h18" stroke="var(--dest)"/></g></svg>'; return c0 + '<circle cx="32" cy="32" r="10" fill="var(--dest)" stroke="var(--marca)"/><path d="M32 8v8M32 48v8M8 32h8M48 32h8M15 15l6 6M43 43l6 6M49 15l-6 6M21 43l-6 6" stroke="var(--dest)"/></g></svg>'; }
   const c = '<svg class="tema-img" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="var(--marca)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">';
