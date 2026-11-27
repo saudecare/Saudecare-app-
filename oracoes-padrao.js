@@ -1944,6 +1944,11 @@ export const ANA_PADRAO = {
    "texto": "É um ritual de ligação ao teu Anjo da Guarda (Haiaiel, do coro dos Anjos, que traz serenidade, vitória e força), ao Mestre El Morya (1.º Raio, o raio azul da vontade, da fé e da proteção, que rege o domingo, o dia em que nasceste) e ao Sol, o teu planeta regente. Serve para a vida em geral (saúde, dinheiro, amor e proteção) e para te ajudar a estares mais calma e mais firme no dia a dia."
   },
   {
+   "tipo": "texto",
+   "titulo": "Os teus guias",
+   "texto": "💙 Anjo da Guarda Haiaiel: acompanha-te desde o nascimento e traz serenidade, vitória e força. Quando a cabeça não pára, é a ele que podes pedir calma.\n\n🪽 Arcanjo Gabriel: o arcanjo que rege o teu coro de Anjos. Ajuda na comunicação e a encontrar as palavras certas, sobretudo as que tens engolido.\n\n🌟 Mestre El Morya: do 1.º Raio, o raio azul da vontade, da fé e da proteção. Dá coragem e direção. O cuidado, no teu caso, é não te endureceres nem quereres controlar tudo.\n\n☀️ O Sol: o teu planeta regente, o do domingo. É a vitalidade, a autoestima e a alegria de estares viva. Aquece o que anda frio por dentro."
+  },
+  {
    "tipo": "passos",
    "titulo": "Quando me sinto pior, mais ansiosa ou em baixo",
    "itens": [
@@ -1955,6 +1960,11 @@ export const ANA_PADRAO = {
     "Se te sentires sozinha, manda uma mensagem ou liga a alguém de confiança. Pedir companhia também é força.",
     "Mais tarde, quando estiveres mais calma, reza a oração «Para os momentos difíceis» que tens no teu caminho."
    ]
+  },
+  {
+   "tipo": "texto",
+   "titulo": "Cuidar da cabeça e do coração",
+   "texto": "Para a tua saúde mental, o que mais ajuda é a rotina simples: dormir a horas, comer com calma, apanhar luz do dia, mexer o corpo e falar com quem confias. As orações dão-te um espaço de pausa e de fé, e é esse hábito, repetido, que traz equilíbrio. Se sentires que o peso é grande, pedir ajuda a um profissional também faz parte do caminho."
   },
   {
    "tipo": "aviso",

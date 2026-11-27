@@ -20,10 +20,14 @@
 </head>
 <body>
 <div class="w">
-  <h1>🌸 O caminho da Ana</h1>
+  <h1>💙 O caminho da Ana</h1>
   <p class="sub">Tudo num só sítio. Guarda esta página no ecrã inicial.</p>
 
+  <div id="guias" style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:6px 0 4px"></div>
+  <p class="sub" style="margin-top:6px">Anjo Haiaiel · Mestre El Morya · Sol</p>
+
   <p class="t">O meu plano</p>
+  <a class="c" href="mapas/ana-7cb791673a57.html"><span class="e">📜</span><div><b>O meu Mapa da Alma</b><span>Para ler, imprimir ou guardar em PDF</span></div></a>
   <a class="c g" href="oracao.html?p=plano-conexao-ana"><span class="e">💙</span><div><b>Plano de 21 dias</b><span id="prog">Manhã e noite · Anjo Haiaiel, El Morya e Sol</span><div class="pg" id="pgb" hidden><i id="pgi"></i></div></div></a>
 
   <p class="t">Quando preciso de apoio</p>
@@ -33,7 +37,11 @@
 
   <p class="aviso">Prática espiritual e de bem-estar. Não substitui o acompanhamento médico ou psicológico.</p>
 </div>
+<script src="mapa-imagens.js?v=2026-11-27-2"></script>
 <script>
+(function(){var I=window.MAPA_IMG||{},g=[['arcanjos','Gabriel','Arcanjo Gabriel'],['planetas','Sol','Sol'],['planetas','Marte','Marte']],h='';
+g.forEach(function(x){var s=(I[x[0]]||{})[x[1]];if(s)h+='<div style="text-align:center;width:96px"><img src="'+s+'" alt="'+x[2]+'" style="width:84px;border-radius:12px"><div style="font-size:.78rem;color:var(--suave)">'+x[2]+'</div></div>';});
+var el=document.getElementById('guias');if(el)el.innerHTML=h;})();
 try{ localStorage.setItem('vo_hub','caminho-ana.html'); }catch(_){}
 try{
   var e=JSON.parse(localStorage.getItem('vo_c_p-plano-conexao-ana')||'{}'), n=(e.feitos||[]).length;

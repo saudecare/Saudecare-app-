@@ -2426,7 +2426,8 @@ function downloadFullReportPDF(r, full, dom){
   paragraph(`Nascido(a) ${/^(s[áa]bado|domingo)$/i.test(r.diaNome||'') ? 'num' : 'numa'} ${String(r.diaNome||'').toLowerCase()}, o seu planeta regente é ${r.diaInfo.planeta} e o seu Mestre Ascenso de conexão é ${r.diaInfo.mestre} (${r.diaInfo.raio}). Cristal do dia: ${r.diaInfo.cristal}. Cristal do signo: ${full.cristalSigno}.`);
   imagensLinha([
     { src: miSrc('planetas', r.diaInfo.planeta), fmt:'PNG', w:48, h:48, label: r.diaInfo.planeta },
-    { src: miSrc('mestres', r.diaInfo.mestre), fmt:'JPEG', w:54, h:68, label: String(r.diaInfo.mestre || '').replace(/^(o|a)\s+Mestr[ae]\s+/i,'') }
+    { src: miSrc('mestres', r.diaInfo.mestre), fmt:'JPEG', w:54, h:68, label: String(r.diaInfo.mestre || '').replace(/^(o|a)\s+Mestr[ae]\s+/i,'') },
+    { src: r.anjo && r.anjo.arcanjoRegente ? miSrc('arcanjos', r.anjo.arcanjoRegente) : '', fmt:'JPEG', w:68, h:60, label: r.anjo && r.anjo.arcanjoRegente ? miNorm('arcanjos', r.anjo.arcanjoRegente) : '' }
   ]);
 
   ensureSpace(90);
