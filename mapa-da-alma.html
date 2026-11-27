@@ -8,6 +8,7 @@
 <!-- APP_VERSION: 2026-09-12-03 -->
 <meta name="app-version" content="2026-09-12-03">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="mapa-imagens.js?v=2026-11-27-1"></script>
 <style>
   :root{
     --bg1:#1a0f2e; --bg2:#2d1b4e; --gold:#d4af37; --gold-light:#f0d878;
@@ -429,6 +430,28 @@ function chakraDominanteNum(dataStr){
   while (n > 9) n = String(n).split('').reduce((a,b) => a + Number(b), 0);
   return n >= 1 ? n : null;
 }
+/* ─── Imagens de apoio (planetas, mestres, arcanjos) ─── */
+function miNorm(grupo, nome){
+  let n = String(nome || '').replace(/^(o|a)\s+/i,'').replace(/^Mestr[ae]\s+/i,'').replace(/^Arcanjo\s+/i,'').trim();
+  const alias = { 'Hilarião':'Hilarion', 'Seraphis Bey':'Serapis Bey', 'Tzadquiel':'Zadquiel', 'Mikael':'Miguel', 'Michael':'Miguel' };
+  return alias[n] || n;
+}
+function miSrc(grupo, nome){
+  const g = (window.MAPA_IMG || {})[grupo]; return g ? g[miNorm(grupo, nome)] || '' : '';
+}
+function miPlanetasHTML(nomes){
+  const vistos = [], itens = [];
+  (nomes || []).forEach(n => { if (!n || vistos.includes(n)) return; vistos.push(n); const src = miSrc('planetas', n); if (src) itens.push(`<div style="text-align:center;width:70px;"><img src="${src}" alt="${escapeHtml(n)}" style="width:62px;height:62px;object-fit:contain;"><div class="muted" style="font-size:.78rem;margin-top:2px;">${escapeHtml(n)}</div></div>`); });
+  return itens.length ? `<div style="display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 2px;">${itens.join('')}</div>` : '';
+}
+function miMestreHTML(nome){
+  const src = miSrc('mestres', nome); if (!src) return '';
+  return `<img src="${src}" alt="${escapeHtml(nome)}" style="float:left;width:92px;border-radius:10px;margin:2px 12px 8px 0;box-shadow:0 2px 8px rgba(0,0,0,.25);">`;
+}
+function miArcanjoHTML(nome){
+  const src = miSrc('arcanjos', nome) || miSrc('mestres', nome); if (!src) return '';
+  return `<div style="text-align:center;width:130px;margin:10px auto 0;"><img src="${src}" alt="${escapeHtml(nome)}" style="width:130px;border-radius:12px;"><div class="muted" style="font-size:.78rem;margin-top:3px;">Arcanjo regente: ${escapeHtml(miNorm('arcanjos', nome))}</div></div>`;
+}
 function blocoMestreChakraHTML(r, estilo){
   const md = r.mestreDia || (r.dataNascimento ? calcularMestreDia(r.dataNascimento) : null);
   const cdn = r.chakraDom || (r.dataNascimento ? chakraDominanteNum(r.dataNascimento) : null), cd = cdn && TRI_CHAKRA_LIVRO[cdn];
@@ -449,11 +472,12 @@ function blocoMestreChakraHTML(r, estilo){
   if (cvI) out += card(`${h('🔢 O seu Número de Vida: ' + cvN + ' — ' + escapeHtml(cvI.nome || ''))}
     <p class="muted" style="margin-top:6px;">${escapeHtml(cvI.texto || '')}</p>`);
   if (planetas.length) out += card(`${h('🪐 Os seus Planetas Regentes')}
-    <p class="muted" style="margin-top:6px;">${planetas.join(' · ')}.</p>`);
+    <p class="muted" style="margin-top:6px;">${planetas.join(' · ')}.</p>
+    ${miPlanetasHTML([md && md.planeta, ps, pa])}`);
   if (md && md.mestre) out += card(`${h('🌟 O seu Mestre Ascensionado: ' + escapeHtml(md.mestre))}
-    <p class="muted" style="margin-top:6px;">Nasceu ${escapeHtml(md.nasceuNum)}. ${escapeHtml(md.texto)}</p>
+    ${miMestreHTML(md.mestre)}<p class="muted" style="margin-top:6px;">Nasceu ${escapeHtml(md.nasceuNum)}. ${escapeHtml(md.texto)}</p>
     <p class="muted" style="margin-top:6px;"><strong>💎 Para além da cura, este raio traz:</strong> ${escapeHtml(md.dons)}.</p>
-    <p class="muted" style="margin-top:6px;"><strong>🌑 O que merece atenção:</strong> ${escapeHtml(md.atencao)}.</p>`);
+    <p class="muted" style="margin-top:6px;"><strong>🌑 O que merece atenção:</strong> ${escapeHtml(md.atencao)}.</p><div style="clear:both;"></div>`);
   if (cd) out += card(`${h('🌈 O seu Chakra Dominante: ' + escapeHtml(cd.nome) + ' — ' + escapeHtml(cd.titulo))}
     <p class="muted" style="margin-top:6px;">Pelo mesmo cálculo do Caminho de Vida (${r.caminhoDeVida || ''}), o seu chakra dominante é o <strong>${escapeHtml(cd.nome)}</strong> (${escapeHtml(cd.sans)}), cor ${escapeHtml(cd.cor)}, ${escapeHtml(cd.local)}.</p>
     <p class="muted" style="margin-top:6px;"><strong>💎 Na sua melhor versão:</strong> ${escapeHtml(cd.luz)}.</p>
@@ -2014,6 +2038,7 @@ function renderFullReport(data){
         <p class="muted"><strong>🌑 Sombra a vigiar:</strong> ${escapeHtml(r.anjo.sombra)}</p>
       </div>
       <p class="muted" style="margin-top:8px;"><strong>Planeta regente:</strong> ${escapeHtml(r.anjo.planeta)} — o melhor horário de invocação alinha-se com o dia da semana deste planeta.</p>
+      ${miArcanjoHTML(r.anjo.arcanjoRegente)}
     </div>` : ''}
     ${blocoMestreChakraHTML(r, 'card')}
     ${r.anjo && r.anjo.tipo === 'universal' ? `
@@ -2277,6 +2302,20 @@ function downloadFullReportPDF(r, full, dom){
     pdf.text(lines, marginX + 12, y);
     y += lines.length * 12 + 5;
   }
+  function imagensLinha(itens){
+    itens = (itens || []).filter(i => i && i.src);
+    if (!itens.length) return;
+    const H = Math.max(...itens.map(i => i.h)) + 24;
+    ensureSpace(H + 8);
+    let x = marginX;
+    itens.forEach(i => {
+      try { pdf.addImage(i.src, i.fmt, x, y, i.w, i.h); } catch (e) {}
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(...MUTED);
+      pdf.text(i.label, x + i.w/2, y + i.h + 11, { align:'center' });
+      x += i.w + 18;
+    });
+    y += H + 4;
+  }
   function calloutBox(title, items, bg, bar, textColor){
     const lineTexts = items.map(it => pdf.splitTextToSize(it, contentW - 34));
     const totalLines = lineTexts.reduce((a,l) => a + l.length, 0);
@@ -2372,6 +2411,10 @@ function downloadFullReportPDF(r, full, dom){
 
   heading('Regência dos Astros, Mestre Ascenso & Alquimia', 'VI');
   paragraph(`Nascido(a) numa ${r.diaNome}, o seu planeta regente é ${r.diaInfo.planeta} e o seu Mestre Ascenso de conexão é ${r.diaInfo.mestre} (${r.diaInfo.raio}). Cristal do dia: ${r.diaInfo.cristal}. Cristal do signo: ${full.cristalSigno}.`);
+  imagensLinha([
+    { src: miSrc('planetas', r.diaInfo.planeta), fmt:'PNG', w:48, h:48, label: r.diaInfo.planeta },
+    { src: miSrc('mestres', r.diaInfo.mestre), fmt:'JPEG', w:54, h:68, label: String(r.diaInfo.mestre || '').replace(/^(o|a)\s+Mestr[ae]\s+/i,'') }
+  ]);
 
   ensureSpace(90);
   pdf.setFillColor(...NAVY);
