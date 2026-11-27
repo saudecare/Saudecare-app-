@@ -1811,3 +1811,285 @@ export const NATALIA_SESSAO_PADRAO = {
  ]
 };
 PROTECAO_PADRAO.push(NATALIA_PADRAO, NATALIA_SESSAO_PADRAO);
+
+// Plano pessoal da Ana (Anjo Haiaiel, Mestre El Morya, Sol) e oração para os momentos difíceis.
+export const ANA_PADRAO = {
+ "padraoId": "plano-conexao-ana",
+ "versaoPadrao": 1,
+ "regra": "livre",
+ "tipo": "ciclo",
+ "icone": "luz",
+ "emoji": "💙",
+ "titulo": "Plano de conexão da Ana · Anjo Haiaiel, El Morya e o Sol · 21 dias",
+ "subtitulo": "Rituais da manhã e da noite, e o que fazer nos dias mais difíceis",
+ "dias": 21,
+ "ordem": 10,
+ "partes": true,
+ "temasDias": [
+  {
+   "titulo": "O começo",
+   "intencao": "Peço ao meu Anjo Haiaiel que me guarde e me guie nestes 21 dias.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo Haiaiel",
+   "intencao": "Peço ao meu Anjo Haiaiel serenidade, vitória e força para este dia.",
+   "acao": "Bebe um copo de água devagar, a pensar: «estou a cuidar de mim»."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo Haiaiel",
+   "intencao": "Peço ao meu Anjo Haiaiel serenidade, vitória e força para este dia.",
+   "acao": "Escreve 3 coisas pelas quais és grata hoje, mesmo que sejam pequenas."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo Haiaiel",
+   "intencao": "Peço ao meu Anjo Haiaiel serenidade, vitória e força para este dia.",
+   "acao": "Sai 10 minutos para apanhar ar e luz do dia, sem telemóvel."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo Haiaiel",
+   "intencao": "Peço ao meu Anjo Haiaiel serenidade, vitória e força para este dia.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo Haiaiel",
+   "intencao": "Peço ao meu Anjo Haiaiel serenidade, vitória e força para este dia.",
+   "acao": "Escolhe uma tarefa pequena que andas a adiar e faz só os primeiros 5 minutos."
+  },
+  {
+   "titulo": "Semana 1 · O meu Anjo Haiaiel",
+   "intencao": "Peço ao meu Anjo Haiaiel serenidade, vitória e força para este dia.",
+   "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+  },
+  {
+   "titulo": "Semana 2 · El Morya e o Raio Azul",
+   "intencao": "Peço a El Morya coragem, fé e direção firme, com calma no coração.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 2 · El Morya e o Raio Azul",
+   "intencao": "Peço a El Morya coragem, fé e direção firme, com calma no coração.",
+   "acao": "Diz «não» com carinho a uma coisa que não consegues fazer hoje."
+  },
+  {
+   "titulo": "Semana 2 · El Morya e o Raio Azul",
+   "intencao": "Peço a El Morya coragem, fé e direção firme, com calma no coração.",
+   "acao": "Escreve numa folha o que te pesa e o que depende de ti. Faz uma só coisa pequena."
+  },
+  {
+   "titulo": "Semana 2 · El Morya e o Raio Azul",
+   "intencao": "Peço a El Morya coragem, fé e direção firme, com calma no coração.",
+   "acao": "Faz uma caminhada curta ou alonga o corpo 10 minutos."
+  },
+  {
+   "titulo": "Semana 2 · El Morya e o Raio Azul",
+   "intencao": "Peço a El Morya coragem, fé e direção firme, com calma no coração.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 2 · El Morya e o Raio Azul",
+   "intencao": "Peço a El Morya coragem, fé e direção firme, com calma no coração.",
+   "acao": "Fala com alguém de confiança sobre como te sentes (pode ser só uma mensagem)."
+  },
+  {
+   "titulo": "Semana 2 · El Morya e o Raio Azul",
+   "intencao": "Peço a El Morya coragem, fé e direção firme, com calma no coração.",
+   "acao": "Relê o teu caderno e vê o que mudou desde o primeiro dia."
+  },
+  {
+   "titulo": "Semana 3 · O Sol: a minha luz e a minha voz",
+   "intencao": "Peço ao Sol que me aqueça por dentro e me dê confiança para dizer o que sinto.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 3 · O Sol: a minha luz e a minha voz",
+   "intencao": "Peço ao Sol que me aqueça por dentro e me dê confiança para dizer o que sinto.",
+   "acao": "Diz em voz alta, ao espelho, uma coisa boa sobre ti. Devagar, a sentir."
+  },
+  {
+   "titulo": "Semana 3 · O Sol: a minha luz e a minha voz",
+   "intencao": "Peço ao Sol que me aqueça por dentro e me dê confiança para dizer o que sinto.",
+   "acao": "Escreve ou diz o que tens engolido. Não precisas de o enviar a ninguém."
+  },
+  {
+   "titulo": "Semana 3 · O Sol: a minha luz e a minha voz",
+   "intencao": "Peço ao Sol que me aqueça por dentro e me dê confiança para dizer o que sinto.",
+   "acao": "Canta ou cantarola uma música de que gostes, nem que seja no duche."
+  },
+  {
+   "titulo": "Semana 3 · O Sol: a minha luz e a minha voz",
+   "intencao": "Peço ao Sol que me aqueça por dentro e me dê confiança para dizer o que sinto.",
+   "acao": "Hoje é só o ritual. Descansa e protege-te."
+  },
+  {
+   "titulo": "Semana 3 · O Sol: a minha luz e a minha voz",
+   "intencao": "Peço ao Sol que me aqueça por dentro e me dê confiança para dizer o que sinto.",
+   "acao": "Organiza uma coisa do dinheiro ou da casa (uma gaveta, uma conta) sem pressa."
+  },
+  {
+   "titulo": "Selar e agradecer",
+   "intencao": "Agradeço ao meu Anjo, a El Morya e ao Sol o caminho feito.",
+   "acao": "Relê o caderno, agradece o caminho e escolhe como queres continuar (podes recomeçar o plano)."
+  }
+ ],
+ "seccoes": [
+  {
+   "tipo": "aviso",
+   "titulo": "Como usar este plano",
+   "texto": "São 21 dias, de preferência com a oração da manhã ao acordar e a da noite antes de dormir. A da noite é a que marca o dia. Não é uma corrida: se falhares um dia, não há problema. O plano guarda onde ficaste e continuas daí."
+  },
+  {
+   "tipo": "texto",
+   "titulo": "Para que serve",
+   "texto": "É um ritual de ligação ao teu Anjo da Guarda (Haiaiel, do coro dos Anjos, que traz serenidade, vitória e força), ao Mestre El Morya (1.º Raio, o raio azul da vontade, da fé e da proteção, que rege o domingo, o dia em que nasceste) e ao Sol, o teu planeta regente. Serve para a vida em geral (saúde, dinheiro, amor e proteção) e para te ajudar a estares mais calma e mais firme no dia a dia."
+  },
+  {
+   "tipo": "passos",
+   "titulo": "Quando me sinto pior, mais ansiosa ou em baixo",
+   "itens": [
+    "Pára um minuto. Senta-te ou encosta-te, pousa uma mão no peito e outra na barriga. Não tens de resolver nada agora.",
+    "Respira devagar: inspira 4 segundos pelo nariz, expira 6 segundos pela boca. Faz isto 10 vezes, com os olhos fechados se for possível.",
+    "Diz em voz baixa: «Estou em segurança. Isto é um momento e vai passar. Meu Anjo Haiaiel, fica comigo.» Repete até sentires o corpo a abrandar.",
+    "Bebe um copo de água e lava as mãos e a cara com água fresca. Se puderes, sai para apanhar ar e luz do dia durante 5 a 10 minutos.",
+    "Escreve numa folha o que estás a sentir e o que te preocupa, sem filtros. Depois pergunta-te: «O que é que posso fazer HOJE, uma só coisa pequena?» Faz só essa.",
+    "Se te sentires sozinha, manda uma mensagem ou liga a alguém de confiança. Pedir companhia também é força.",
+    "Mais tarde, quando estiveres mais calma, reza a oração «Para os momentos difíceis» que tens no teu caminho."
+   ]
+  },
+  {
+   "tipo": "aviso",
+   "titulo": "O teu papel nisto",
+   "texto": "Este caminho ajuda, mas não faz milagres sozinho: quem lhe dá força és tu, com a tua constância. Há dias em que apetece desistir, e é nesses que mais vale fazer ao menos o essencial. Aprender a lidar com o que sentes, descansar, pedir ajuda e manter estes hábitos é o que evita voltar ao mesmo sítio. Sem culpas: recomeçar também é caminhar."
+  },
+  {
+   "tipo": "aviso",
+   "titulo": "Cuidados importantes",
+   "texto": "Esta prática é espiritual e de fé. Se sentires medo constante, tristeza que não passa ou ansiedade que te trava o dia a dia, fala com o teu médico. Não substitui o acompanhamento médico ou psicológico."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "1. Gratidão",
+   "texto": "Obrigada por mais um dia.\nObrigada pelo meu corpo, pela minha casa, pelos meus e pelo meu trabalho.\nAcordo em paz e com confiança.",
+   "parte": "manha"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "2. Proteção para o dia",
+   "texto": "Uma luz azul e dourada envolve-me, a minha casa e a minha família.\nOnde eu for, vai Luz. O que não for Luz transmuta-se e vai embora em paz.",
+   "parte": "manha"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "3. O meu Anjo, El Morya e o Sol",
+   "texto": "Meu Anjo Haiaiel, caminha comigo hoje e dá-me serenidade.\nAmado mestre El Morya, dá-me coragem, fé e firmeza para fazer o que é preciso, sem me endurecer.\nSol, enche o meu dia de calor, ânimo e confiança.",
+   "parte": "manha"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "4. Pedidos para o dia",
+   "texto": "Saúde: que o meu corpo e a minha mente estejam fortes e em equilíbrio.\nDinheiro: que o meu trabalho dê frutos justos e eu saiba cuidar do que recebo.\nAmor: que eu dê e receba amor com verdade e com carinho.\nProteção: que eu esteja em paz, onde estiver.",
+   "parte": "manha"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "5. Entregar o dia",
+   "texto": "Entrego este dia nas mãos do Divino.\nVou fazer o meu melhor e aceitar com calma o que não depende de mim.\nAssim seja, e assim é. Gratidão.",
+   "parte": "manha"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "1. Preparar",
+   "texto": "Deito-me, respiro fundo, três vezes.\nEstou em segurança. Este momento é sagrado.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "2. Proteção",
+   "texto": "Estou rodeada de Luz. Uma luz azul e dourada envolve o meu corpo, a minha casa e a minha família.\nTudo o que não for Luz transmuta-se e vai embora em paz.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "3. O meu Anjo",
+   "texto": "Meu Anjo Haiaiel, obrigada por me acompanhares.\nGuarda o meu sono, o meu corpo e os meus sonhos.\nTraz-me serenidade, e a força para amanhã recomeçar.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "4. El Morya e o Raio Azul",
+   "texto": "Amado mestre El Morya, mestre do 1.º Raio, o raio azul da vontade, da fé e da proteção:\ntransmuta em mim o medo, a dúvida e o cansaço.\nAjuda-me a ter a coragem de quem é firme sem deixar de ser doce.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "5. A luz do Sol",
+   "texto": "Sol, que me deste a luz de hoje, aquece em mim o que anda frio.\nDá-me confiança para usar bem a minha voz e a minha força.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "6. Os meus pedidos",
+   "texto": "Saúde: que o meu corpo e a minha mente descansem e se renovem esta noite.\nDinheiro: que o meu trabalho dê frutos justos, e que eu saiba cuidar do que tenho.\nAmor: que o meu coração esteja leve e aberto.\nProteção: que eu esteja em paz, esta noite e sempre.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "7. Soltar o dia",
+   "texto": "Tudo o que hoje me pesou, devolvo à Luz.\nO que não era meu, deixo ir.\nSe houve preocupações, peço ao meu Anjo que as guarde até de manhã: de noite não resolvo nada, descanso.",
+   "parte": "noite"
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "8. Entregar e dormir",
+   "texto": "Entrego esta noite nas mãos do Divino.\nQue eu durma em paz até de manhã.\nAssim seja, e assim é. Gratidão.",
+   "parte": "noite"
+  }
+ ]
+};
+export const ANA_SOS_PADRAO = {
+ "padraoId": "ana-momentos-dificeis",
+ "versaoPadrao": 1,
+ "tipo": "oracao",
+ "emoji": "🕊️",
+ "titulo": "Para os momentos difíceis · Ana",
+ "subtitulo": "Quando estás mais ansiosa, em baixo ou sem forças",
+ "dias": 0,
+ "ordem": 33,
+ "seccoes": [
+  {
+   "tipo": "texto",
+   "titulo": "Para que serve",
+   "texto": "Para quando sentes o peito apertado, a cabeça a mil ou o ânimo no chão. Lê devagar, em voz baixa, e respira entre cada parte. Não precisas de acreditar em tudo para te fazer bem: basta ir lendo."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Parar e respirar",
+   "texto": "Paro. Respiro fundo.\nInspiro devagar... e solto o ar ainda mais devagar.\nEstou aqui, estou em segurança, e este momento vai passar.",
+   "intencao": "Peço calma para o meu corpo."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Pedir ajuda ao meu Anjo",
+   "texto": "Meu Anjo Haiaiel, estou cansada e preciso de ti.\nEnvolve-me na tua serenidade.\nAjuda-me a ver o que posso fazer hoje, uma coisa de cada vez.",
+   "intencao": "Peço serenidade."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "A luz azul",
+   "texto": "Imagino uma luz azul a descer sobre a minha cabeça e a espalhar-se pelo corpo todo.\nEla acalma o peito, a garganta, os ombros, a barriga.\nAmado mestre El Morya, dá-me firmeza e fé, para me levantar com calma.",
+   "intencao": "Peço firmeza com doçura."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Soltar",
+   "texto": "Devolvo à Luz tudo o que hoje me pesa e não é meu.\nFico só com o que me faz bem.\nObrigada, meu Anjo. Obrigada, El Morya. Obrigada, Sol.\nAssim seja, e assim é.",
+   "intencao": "Solto e agradeço."
+  },
+  {
+   "tipo": "aviso",
+   "titulo": "Se não passar",
+   "texto": "Se a angústia ou a tristeza durarem dias, ou se sentires que não consegues sozinha, fala com o teu médico ou com alguém de confiança. Se te sentires em perigo, liga ao 112. Esta oração é um apoio e não substitui a ajuda de profissionais."
+  }
+ ]
+};
+PROTECAO_PADRAO.push(ANA_PADRAO, ANA_SOS_PADRAO);

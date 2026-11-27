@@ -136,7 +136,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, doc, getDoc, updateDoc, addDoc, collection } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { PROTECAO_PADRAO } from './oracoes-padrao.js?v=2026-11-26-5';
+import { PROTECAO_PADRAO } from './oracoes-padrao.js?v=2026-11-27-1';
 
 const app = initializeApp({
   apiKey:'AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg', authDomain:'saudecare-app.firebaseapp.com', projectId:'saudecare-app',
@@ -457,7 +457,7 @@ const erro = (t, m) => { $('app').innerHTML = `<div class="estado"><h2>${t}</h2>
 (async () => {
   try {
     const pidPadrao = q.get('p');
-    if (pidPadrao) { const vc = document.getElementById('voltarCaminho'); if (vc) { try { const hb = localStorage.getItem('vo_hub'); if (hb === 'caminho.html' || hb === 'caminho-natalia.html') vc.href = hb; } catch (_) {} if (/natalia/.test(pidPadrao)) vc.href = 'caminho-natalia.html'; vc.hidden = false; } }
+    if (pidPadrao) { const vc = document.getElementById('voltarCaminho'); if (vc) { try { const hb = localStorage.getItem('vo_hub'); if (hb === 'caminho.html' || hb === 'caminho-natalia.html' || hb === 'caminho-ana.html') vc.href = hb; } catch (_) {} if (/natalia/.test(pidPadrao)) vc.href = 'caminho-natalia.html'; if (/(^|-)ana(-|$)/.test(pidPadrao)) vc.href = 'caminho-ana.html'; vc.hidden = false; } }
     if (pidPadrao && !envioId) { // acesso directo a uma oração padrão (progresso guardado só neste telemóvel)
       const pd = PROTECAO_PADRAO.find((x) => x.padraoId === pidPadrao);
       if (!pd) return erro('Não encontrei esta oração', 'O link pode estar incompleto.');

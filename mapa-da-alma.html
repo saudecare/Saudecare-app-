@@ -2410,7 +2410,7 @@ function downloadFullReportPDF(r, full, dom){
   }
 
   heading('Regência dos Astros, Mestre Ascenso & Alquimia', 'VI');
-  paragraph(`Nascido(a) numa ${r.diaNome}, o seu planeta regente é ${r.diaInfo.planeta} e o seu Mestre Ascenso de conexão é ${r.diaInfo.mestre} (${r.diaInfo.raio}). Cristal do dia: ${r.diaInfo.cristal}. Cristal do signo: ${full.cristalSigno}.`);
+  paragraph(`Nascido(a) ${/^(s[áa]bado|domingo)$/i.test(r.diaNome||'') ? 'num' : 'numa'} ${String(r.diaNome||'').toLowerCase()}, o seu planeta regente é ${r.diaInfo.planeta} e o seu Mestre Ascenso de conexão é ${r.diaInfo.mestre} (${r.diaInfo.raio}). Cristal do dia: ${r.diaInfo.cristal}. Cristal do signo: ${full.cristalSigno}.`);
   imagensLinha([
     { src: miSrc('planetas', r.diaInfo.planeta), fmt:'PNG', w:48, h:48, label: r.diaInfo.planeta },
     { src: miSrc('mestres', r.diaInfo.mestre), fmt:'JPEG', w:54, h:68, label: String(r.diaInfo.mestre || '').replace(/^(o|a)\s+Mestr[ae]\s+/i,'') }
