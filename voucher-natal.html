@@ -7,22 +7,55 @@
 <meta name="description" content="Oferece bem-estar neste Natal: Reiki, reflexologia podal, apoio à ansiedade e avaliação energética. Voucher presente da Hikari Fafe.">
 <style id="cssb"></style>
 <style>
-.opc{border:2px solid #e6dfca;border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;background:#fff}
-.opc.on{border-color:var(--vermelho);background:#fff6f4}.opc b{display:block;font-size:1.05rem}.opc .pr{float:right;font-weight:800;color:var(--vermelho)}
-.opc span{color:#6b7a73;font-size:.88rem}
-.th{display:flex;gap:10px;align-items:flex-start;border:2px solid #e6dfca;border-radius:14px;padding:11px;margin-bottom:8px;cursor:pointer;background:#fff}
-.th.on{border-color:var(--verde2);background:#f0f8f3}.th .e{font-size:1.5rem}.th b{display:block;font-size:.98rem}.th span{color:#6b7a73;font-size:.82rem}
+html{background:#0a1f17}body{background:radial-gradient(1200px 500px at 50% -100px,#1f5a43 0,#0e2a20 55%,#0a1f17 100%) no-repeat #0a1f17;min-height:100vh;color:#f6efdc}
+.hero{background:none;padding:26px 18px 6px;overflow:visible}.hero h1{font-size:1.9rem;color:#f3d98b}.hero p{color:#e9e2cc}
+.hero:before{content:"✦ ❄ ✦ ❄ ✦ ❄ ✦";opacity:.35;color:#f3d98b}
+.sel{display:inline-block;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:#f3d98b;border:1px solid rgba(243,217,139,.5);border-radius:100px;padding:4px 12px;margin-bottom:10px}
+.ex{position:relative;max-width:400px;margin:20px auto 4px;transform:rotate(-1.5deg)}
+.ex .vc{padding:24px 18px 20px;box-shadow:0 14px 34px rgba(0,0,0,.5),0 0 0 4px rgba(243,217,139,.18)}
+.ex .vc:before{content:"";position:absolute;inset:8px;border:1px dashed rgba(243,217,139,.55);border-radius:14px;pointer-events:none}
+.ex .vc h2{color:#f3d98b;font-size:1.55rem}.ex .vc p{font-size:.92rem;opacity:.95}
+.ex .ico{font-size:1.4rem;letter-spacing:6px;margin:8px 0}
+.ex .carimbo{position:absolute;right:6px;top:-12px;z-index:2;background:var(--vermelho);color:#fff;font-weight:800;font-size:.7rem;letter-spacing:.14em;padding:5px 11px;border-radius:8px;transform:rotate(6deg);box-shadow:0 4px 10px rgba(0,0,0,.35)}
+.ex .cod{filter:blur(3.5px);user-select:none}
+.leg{text-align:center;color:#cfc8b0;font-size:.82rem;margin:10px 0 2px}
+.tit{font-family:Georgia,serif;color:#f3d98b;font-size:1.3rem;text-align:center;margin:22px 0 4px}
+.sub{text-align:center;color:#d9d2bb;font-size:.92rem;margin-bottom:12px}
+.vit{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vit div{background:rgba(255,255,255,.07);border:1px solid rgba(243,217,139,.3);border-radius:18px;padding:16px 10px;text-align:center}
+.vit .e{font-size:2.3rem;display:block;margin-bottom:4px}.vit b{display:block;color:#f3d98b;font-size:.98rem;line-height:1.25}.vit span{font-size:.78rem;color:#d9d2bb}
+.pas{display:flex;gap:8px;margin:6px 0 2px}.pas div{flex:1;text-align:center;font-size:.8rem;color:#e9e2cc}.pas b{display:block;font-size:1.5rem}
+.card{background:#fffaf0;color:var(--tinta)}
+.opc{position:relative;border:2px solid #e6dfca;border-radius:18px;padding:14px;margin-bottom:10px;cursor:pointer;background:#fff;transition:.15s}
+.opc.on{border-color:var(--vermelho);background:#fff6f4;transform:scale(1.015)}.opc b{display:block;font-size:1.05rem}.opc .pr{float:right;font-weight:800;color:var(--vermelho);font-size:1.15rem}
+.opc span{color:#6b7a73;font-size:.88rem}.opc .fita{position:absolute;top:-9px;left:14px;background:var(--ouro);color:#2b2108;font-size:.68rem;font-weight:800;padding:2px 10px;border-radius:100px;letter-spacing:.06em}
+.tg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.th{border:2px solid #e6dfca;border-radius:16px;padding:14px 8px;text-align:center;cursor:pointer;background:#fff;transition:.15s}
+.th.on{border-color:var(--verde2);background:#eaf6ee;transform:scale(1.03)}.th .e{font-size:2.2rem;display:block}.th b{display:block;font-size:.9rem;line-height:1.25;margin-top:2px}
+#tdesc{margin-top:10px;background:#f0f8f3;border-radius:12px;padding:10px 12px;font-size:.88rem;color:#3d4d45}
 .passo{font-weight:800;color:var(--verde2);margin-bottom:8px}
 .ok{text-align:center}.ok .g{font-size:2.6rem}
 </style>
 </head>
 <body>
-<div class="hero"><img src="logo-hikari-fafe.png" alt=""><h1>🎁 Vouchers de Natal</h1><p>Oferece bem-estar a quem gostas. Um presente diferente, para o corpo, a mente e a alma.</p></div>
-<div class="w" id="app">
+<div class="hero"><span class="sel">✦ Natal · Hikari Fafe ✦</span><h1>Oferece uma prenda que ninguém espera</h1><p>Um voucher para o corpo, a mente e a alma. Bonito, pessoal e com código único.</p>
+<div class="ex"><span class="carimbo">EXEMPLO</span>
+<div class="vc"><small>Vale presente · Natal</small><h2>Prenda completa</h2><div class="ico">🔮 🦶 🌿</div>
+<p>Avaliação energética e limpeza<br>Reflexologia podal · Reiki</p>
+<p style="margin-top:8px;font-size:.85rem">Para: <b>Maria</b> · Com amor, da Ana 💚</p>
+<div class="cod">HF-XXXX-XXXXX-XXXXX</div><p style="margin-top:8px;font-size:.72rem;opacity:.8">Código único e pessoal · válido 6 meses</p></div></div>
+<p class="leg">É assim que o voucher chega ao teu WhatsApp. ✨</p></div>
+<div class="w">
+<h2 class="tit">As terapias que podes oferecer</h2><p class="sub">Cada sessão é pensada para acalmar, limpar e harmonizar.</p>
+<div class="vit" id="vitrine"></div>
+<h2 class="tit">Como funciona</h2>
+<div class="pas"><div><b>1️⃣</b>Escolhes o presente</div><div><b>2️⃣</b>Pagas por MB WAY</div><div><b>3️⃣</b>Recebes o voucher no WhatsApp</div></div>
+</div>
+<div class="w" id="app" style="padding-top:0">
   <div class="card" id="c1">
     <div class="passo">1 · Escolhe o presente</div>
     <div id="pacotes"></div>
-    <div id="terapiasBox" class="hidden"><label>Qual a terapia?</label><div id="terapias"></div></div>
+    <div id="terapiasBox" class="hidden"><label>Qual a terapia?</label><div class="tg" id="terapias"></div><div id="tdesc" class="hidden"></div></div>
   </div>
   <div class="card hidden" id="c2">
     <div class="passo">2 · Os teus dados</div>
@@ -45,12 +78,14 @@ document.getElementById('cssb').textContent = CSS_BASE;
 const db = getFirestore(initializeApp(FIREBASE_CFG));
 const $ = (i) => document.getElementById(i);
 let pacote = '', terapia = '';
-$('pacotes').innerHTML = Object.entries(PACOTES).map(([k, p]) => `<div class="opc" data-p="${k}"><span class="pr">${p.valor} €</span><b>${p.emoji} ${esc(p.nome)}</b><span>${esc(p.texto)}</span></div>`).join('');
-$('terapias').innerHTML = Object.entries(TERAPIAS).map(([k, t]) => `<div class="th" data-t="${k}"><span class="e">${t.emoji}</span><div><b>${esc(t.nome)}</b><span>${esc(t.desc)}</span></div></div>`).join('');
+$('pacotes').innerHTML = Object.entries(PACOTES).map(([k, p]) => `<div class="opc" data-p="${k}">${k === 'prenda' ? '<i class="fita">A MAIS OFERECIDA</i>' : ''}<span class="pr">${p.valor} €</span><b>${p.emoji} ${esc(p.nome)}</b><span>${esc(p.texto)}</span></div>`).join('');
+$('terapias').innerHTML = Object.entries(TERAPIAS).map(([k, t]) => `<div class="th" data-t="${k}"><span class="e">${t.emoji}</span><b>${esc(t.nome)}</b></div>`).join('');
+$('vitrine').innerHTML = Object.entries(TERAPIAS).map(([k, t]) => `<div><span class="e">${t.emoji}</span><b>${esc(t.nome)}</b></div>`).join('');
 function atualiza() {
   document.querySelectorAll('.opc').forEach((e) => e.classList.toggle('on', e.dataset.p === pacote));
   document.querySelectorAll('.th').forEach((e) => e.classList.toggle('on', e.dataset.t === terapia));
   $('terapiasBox').classList.toggle('hidden', !(pacote === 'unica' || pacote === 'pack3'));
+  $('tdesc').classList.toggle('hidden', !terapia); if (terapia) $('tdesc').textContent = TERAPIAS[terapia].desc;
   const pronto = pacote === 'prenda' || (pacote && terapia);
   $('c2').classList.toggle('hidden', !pronto);
   if (pronto) $('resumo').innerHTML = `<b>${esc(descreve(pacote, terapia))}</b> · <b>${PACOTES[pacote].valor} €</b>`;
