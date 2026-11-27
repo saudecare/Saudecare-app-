@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🎁 Vouchers de Natal · Hikari Fafe</title>
+<meta name="description" content="Oferece bem-estar neste Natal: Reiki, reflexologia podal, apoio à ansiedade e avaliação energética. Voucher presente da Hikari Fafe.">
+<style id="cssb"></style>
+<style>
+.opc{border:2px solid #e6dfca;border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;background:#fff}
+.opc.on{border-color:var(--vermelho);background:#fff6f4}.opc b{display:block;font-size:1.05rem}.opc .pr{float:right;font-weight:800;color:var(--vermelho)}
+.opc span{color:#6b7a73;font-size:.88rem}
+.th{display:flex;gap:10px;align-items:flex-start;border:2px solid #e6dfca;border-radius:14px;padding:11px;margin-bottom:8px;cursor:pointer;background:#fff}
+.th.on{border-color:var(--verde2);background:#f0f8f3}.th .e{font-size:1.5rem}.th b{display:block;font-size:.98rem}.th span{color:#6b7a73;font-size:.82rem}
+.passo{font-weight:800;color:var(--verde2);margin-bottom:8px}
+.ok{text-align:center}.ok .g{font-size:2.6rem}
+</style>
+</head>
+<body>
+<div class="hero"><img src="logo-hikari-fafe.png" alt=""><h1>🎁 Vouchers de Natal</h1><p>Oferece bem-estar a quem gostas. Um presente diferente, para o corpo, a mente e a alma.</p></div>
+<div class="w" id="app">
+  <div class="card" id="c1">
+    <div class="passo">1 · Escolhe o presente</div>
+    <div id="pacotes"></div>
+    <div id="terapiasBox" class="hidden"><label>Qual a terapia?</label><div id="terapias"></div></div>
+  </div>
+  <div class="card hidden" id="c2">
+    <div class="passo">2 · Os teus dados</div>
+    <label>O teu nome</label><input id="nome" maxlength="120" autocomplete="name">
+    <label>O teu telemóvel (WhatsApp)</label><input id="contacto" maxlength="40" inputmode="tel" autocomplete="tel">
+    <label>Para quem é o presente?</label><input id="dest" maxlength="120" placeholder="Nome de quem vai receber">
+    <label>Mensagem (opcional)</label><textarea id="msg" rows="3" maxlength="300" placeholder="Ex.: Feliz Natal! Mereces um tempo só para ti. 💚"></textarea>
+    <div id="resumo" class="muted" style="margin-top:12px"></div>
+    <button class="btn" id="bPedir">🎁 Reservar o meu voucher</button>
+    <p class="muted" id="erro" style="color:#b3262e;margin-top:8px"></p>
+  </div>
+  <div class="card ok hidden" id="c3"></div>
+  <p class="aviso">Terapias complementares: não substituem o acompanhamento médico ou psicológico. O voucher é pessoal, tem um código único e só pode ser usado uma vez por sessão. Hikari Fafe.</p>
+</div>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { FIREBASE_CFG, TENANT, MBWAY, WA, PACOTES, TERAPIAS, descreve, esc, CSS_BASE } from './voucher-dados.js?v=2026-11-27-5';
+document.getElementById('cssb').textContent = CSS_BASE;
+const db = getFirestore(initializeApp(FIREBASE_CFG));
+const $ = (i) => document.getElementById(i);
+let pacote = '', terapia = '';
+$('pacotes').innerHTML = Object.entries(PACOTES).map(([k, p]) => `<div class="opc" data-p="${k}"><span class="pr">${p.valor} €</span><b>${p.emoji} ${esc(p.nome)}</b><span>${esc(p.texto)}</span></div>`).join('');
+$('terapias').innerHTML = Object.entries(TERAPIAS).map(([k, t]) => `<div class="th" data-t="${k}"><span class="e">${t.emoji}</span><div><b>${esc(t.nome)}</b><span>${esc(t.desc)}</span></div></div>`).join('');
+function atualiza() {
+  document.querySelectorAll('.opc').forEach((e) => e.classList.toggle('on', e.dataset.p === pacote));
+  document.querySelectorAll('.th').forEach((e) => e.classList.toggle('on', e.dataset.t === terapia));
+  $('terapiasBox').classList.toggle('hidden', !(pacote === 'unica' || pacote === 'pack3'));
+  const pronto = pacote === 'prenda' || (pacote && terapia);
+  $('c2').classList.toggle('hidden', !pronto);
+  if (pronto) $('resumo').innerHTML = `<b>${esc(descreve(pacote, terapia))}</b> · <b>${PACOTES[pacote].valor} €</b>`;
+}
+document.querySelectorAll('.opc').forEach((e) => e.onclick = () => { pacote = e.dataset.p; if (pacote === 'prenda') terapia = ''; atualiza(); });
+document.querySelectorAll('.th').forEach((e) => e.onclick = () => { terapia = e.dataset.t; atualiza(); setTimeout(() => $('c2').scrollIntoView({ behavior: 'smooth' }), 80); });
+$('bPedir').onclick = async () => {
+  const nome = $('nome').value.trim(), contacto = $('contacto').value.trim(), dest = $('dest').value.trim(), msg = $('msg').value.trim();
+  $('erro').textContent = '';
+  if (nome.length < 2 || contacto.replace(/\D/g, '').length < 9 || dest.length < 2) { $('erro').textContent = 'Preenche o teu nome, o teu telemóvel e o nome de quem recebe.'; return; }
+  const b = $('bPedir'); b.disabled = true; b.textContent = 'A reservar…';
+  try {
+    const dados = { nome, contacto, destinatario: dest, mensagem: msg, pacote, terapia: pacote === 'prenda' ? '' : terapia, valor: PACOTES[pacote].valor, estado: 'pendente', criadoEm: serverTimestamp() };
+    const r = await addDoc(collection(db, 'tenants', TENANT, 'voucherPedidos'), dados);
+    const ref = r.id.slice(0, 6).toUpperCase();
+    const txt = `Olá! Quero oferecer um voucher de Natal: ${descreve(pacote, terapia)} (${dados.valor} €), para ${dest}. Referência ${ref}. Vou enviar já o comprovativo do MB WAY.`;
+    $('c1').classList.add('hidden'); $('c2').classList.add('hidden');
+    $('c3').classList.remove('hidden');
+    $('c3').innerHTML = `<div class="g">🎄</div><h2 style="font-family:Georgia,serif;margin:6px 0">Pedido reservado!</h2>
+      <p class="muted" style="margin-bottom:12px">Falta só o pagamento. É rápido:</p>
+      <div style="text-align:left;background:#f6f1e1;border-radius:14px;padding:14px;margin-bottom:6px">
+      <p><b>1.</b> Paga <b>${dados.valor} €</b> por <b>MB WAY</b> para <b>${MBWAY}</b>.</p>
+      <p style="margin-top:6px"><b>2.</b> Põe a referência <b>${ref}</b> na descrição.</p>
+      <p style="margin-top:6px"><b>3.</b> Envia-nos o comprovativo por WhatsApp (botão abaixo).</p></div>
+      <a class="btn v" href="https://wa.me/${WA.ricardo}?text=${encodeURIComponent(txt)}">💬 Enviar comprovativo por WhatsApp</a>
+      <p class="muted" style="margin-top:12px">Assim que confirmarmos o pagamento, recebes o voucher bonito, com código único, pronto a oferecer.</p>`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (e) { console.error(e); b.disabled = false; b.textContent = '🎁 Reservar o meu voucher'; $('erro').textContent = 'Não consegui reservar agora. Tenta outra vez ou escreve-nos por WhatsApp.'; }
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>🎁 O teu voucher · Hikari Fafe</title>
+<style id="cssb"></style>
+<style>
+.ses{display:flex;gap:12px;align-items:center;border:2px solid #e6dfca;border-radius:14px;padding:12px;margin-bottom:9px;background:#fff}
+.ses.feita{background:#eef3ef;border-color:#cfdcd3;opacity:.75}.ses .n{width:34px;height:34px;border-radius:50%;background:var(--verde2);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.ses.feita .n{background:#8aa395}.ses b{display:block;font-size:.95rem}.ses span{font-size:.8rem;color:#6b7a73}
+</style>
+</head>
+<body>
+<div class="hero"><img src="logo-hikari-fafe.png" alt=""><h1>🎁 O teu voucher</h1><p>Hikari Fafe · Vale presente de Natal</p></div>
+<div class="w" id="app"><p class="muted" style="text-align:center;margin-top:30px">A abrir o voucher…</p></div>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { FIREBASE_CFG, TENANT, WA, TERAPIAS, PACOTES, esc, fmtData, CSS_BASE } from './voucher-dados.js?v=2026-11-27-5';
+document.getElementById('cssb').textContent = CSS_BASE;
+const db = getFirestore(initializeApp(FIREBASE_CFG));
+const app = document.getElementById('app');
+const codigo = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
+let ref, V;
+const dataDe = (t) => t && (t.toDate ? t.toDate() : new Date(t));
+function erro(t, m) { app.innerHTML = `<div class="card" style="text-align:center"><h2>${t}</h2><p class="muted" style="margin-top:8px">${m}</p><a class="btn v" href="voucher-natal.html">🎁 Ver os vouchers de Natal</a></div>`; }
+function desenha(msgOk) {
+  const val = dataDe(V.validadeEm), expirou = val && val < new Date(), usadas = V.usadas || 0, total = V.total || V.sessoes.length;
+  const ativo = V.estado === 'ativo' && !expirou;
+  const lista = V.sessoes.map((k, i) => { const t = TERAPIAS[k] || { sessao: k, emoji: '✨' }, feita = i < usadas; return `<div class="ses ${feita ? 'feita' : ''}"><div class="n">${feita ? '✓' : i + 1}</div><div><b>${t.emoji} ${esc(t.sessao)}</b><span>${feita ? 'Sessão já marcada' : (i === usadas && ativo ? 'Próxima sessão' : 'Por marcar')}</span></div></div>`; }).join('');
+  const prox = V.sessoes[usadas], t = TERAPIAS[prox];
+  let estado = '';
+  if (V.estado === 'cancelado') estado = '<p style="color:#b3262e;font-weight:700;margin-top:8px">Este voucher foi cancelado.</p>';
+  else if (V.estado === 'usado' || usadas >= total) estado = '<p style="font-weight:700;margin-top:8px">✅ Todas as sessões já foram marcadas. Obrigada!</p>';
+  else if (expirou) estado = `<p style="color:#b3262e;font-weight:700;margin-top:8px">Este voucher expirou a ${fmtData(val)}. Fala connosco por WhatsApp.</p>`;
+  app.innerHTML = `${msgOk ? `<div class="card" style="background:#eaf6ee;text-align:center"><b>${msgOk}</b></div>` : ''}
+  <div class="vc"><small>Vale presente · Natal</small><h2>${esc(V.pacoteNome)}</h2>
+    <div>Para <b>${esc(V.destinatario)}</b></div>${V.mensagem ? `<p style="font-style:italic;margin-top:10px;opacity:.95">“${esc(V.mensagem)}”</p>` : ''}
+    ${V.comprador ? `<div style="margin-top:8px;font-size:.9rem;opacity:.9">De ${esc(V.comprador)}</div>` : ''}
+    <div class="cod">${esc(V.codigo)}</div>
+    <div style="margin-top:10px;font-size:.8rem;opacity:.85">Válido até ${fmtData(val)} · ${usadas} de ${total} sessões marcadas</div></div>
+  <div class="card" style="margin-top:14px"><h3 style="margin-bottom:10px">As tuas sessões</h3>${lista}${estado}
+    ${ativo && t ? `<button class="btn" id="bMarcar">📅 Marcar: ${esc(t.nome)}</button><p class="muted" style="margin-top:8px;text-align:center">Ao marcar, a sessão fica registada neste voucher e abre o WhatsApp para combinarmos o dia e a hora.</p>` : ''}</div>
+  <div class="card"><b>Como funciona</b><p class="muted" style="margin-top:6px">Toca em «Marcar», confirma e escreve-nos por WhatsApp. O código é único e pessoal: cada sessão só pode ser marcada uma vez. Não o partilhes com mais ninguém.</p></div>
+  <p class="aviso">Terapias complementares: não substituem o acompanhamento médico ou psicológico.</p>`;
+  const b = document.getElementById('bMarcar'); if (b) b.onclick = () => confirma(prox, t);
+}
+function confirma(prox, t) {
+  const b = document.getElementById('bMarcar');
+  b.outerHTML = `<div id="conf" style="margin-top:12px;background:#fff6f4;border-radius:14px;padding:14px;text-align:center"><b>Confirmas a marcação desta sessão?</b><p class="muted" style="margin-top:4px">${esc(t.sessao)}</p><button class="btn" id="sim">Sim, marcar</button><button class="btn c" id="nao">Agora não</button></div>`;
+  document.getElementById('nao').onclick = () => desenha();
+  document.getElementById('sim').onclick = async () => {
+    const s = document.getElementById('sim'); s.disabled = true; s.textContent = 'A registar…';
+    try {
+      const snap = await getDoc(ref); const atual = snap.data(); const u = (atual.usadas || 0) + 1, total = atual.total || atual.sessoes.length;
+      await updateDoc(ref, { usadas: u, estado: u >= total ? 'usado' : 'ativo', ultimaMarcacao: (t.sessao + ' · ' + new Date().toLocaleDateString('pt-PT')).slice(0, 280), atualizadoEm: serverTimestamp() });
+      V = Object.assign({}, atual, { usadas: u, estado: u >= total ? 'usado' : 'ativo' });
+      const txt = `Olá! Quero marcar a sessão «${t.sessao}» com o meu voucher ${V.codigo}.`;
+      desenha('✅ Sessão registada! Agora escreve-nos para combinarmos o dia.');
+      const cx = document.querySelector('.card[style*="margin-top:14px"]');
+      if (cx) cx.insertAdjacentHTML('beforeend', `<a class="btn v" href="https://wa.me/${WA[t.wa]}?text=${encodeURIComponent(txt)}">💬 Combinar o dia por WhatsApp</a>`);
+    } catch (e) { console.error(e); desenha('⚠️ Não foi possível registar agora. Tenta outra vez.'); }
+  };
+}
+(async () => {
+  if (!/^HF-[A-Z0-9]{4}-[A-Z0-9]{5}-[A-Z0-9]{5}$/.test(codigo)) return erro('Código inválido', 'Confirma o link que recebeste.');
+  ref = doc(db, 'tenants', TENANT, 'vouchers', codigo);
+  try { const s = await getDoc(ref); if (!s.exists()) return erro('Voucher não encontrado', 'Confirma o link que recebeste.'); V = s.data(); desenha(); }
+  catch (e) { console.error(e); erro('Não foi possível abrir', 'Tenta outra vez dentro de instantes.'); }
+})();
+</script>
+</body>
+</html>

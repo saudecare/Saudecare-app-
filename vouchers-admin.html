@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Vouchers de Natal · painel</title>
+<style id="cssb"></style>
+<style>
+.n4{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}.n4 div{background:#fff;border-radius:14px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.n4 b{display:block;font-size:1.6rem;color:var(--verde2)}.n4 span{font-size:.78rem;color:#6b7a73}
+.it{border:1px solid #e6dfca;border-radius:14px;padding:12px;margin-bottom:10px;background:#fff}.it .l{display:flex;justify-content:space-between;gap:8px}
+.tag{display:inline-block;font-size:.72rem;font-weight:800;border-radius:99px;padding:2px 9px;background:#e8e2d0}.tag.a{background:#dff1e5;color:#1f5a43}.tag.u{background:#e5e8f3;color:#2c3e80}.tag.x{background:#f6dcdc;color:#a22}
+.bt{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.bt button,.bt a{font:600 .82rem system-ui;padding:8px 11px;border:0;border-radius:99px;background:#e8e2d0;color:#222;text-decoration:none;cursor:pointer}.bt .g{background:#1f5a43;color:#fff}.bt .r{background:#f6dcdc;color:#a22}
+h2{font-family:Georgia,serif;margin:6px 0 10px}
+</style>
+</head>
+<body>
+<div class="hero"><img src="logo-hikari-fafe.png" alt=""><h1>🎁 Vouchers de Natal</h1><p>Painel da Hikari Fafe</p></div>
+<div class="w">
+  <div class="card hidden" id="login"><b>Entrar</b><p class="muted">Usa o mesmo email e palavra-passe da tua conta Vindora.</p>
+    <label>Email</label><input id="em" type="email" autocomplete="username"><label>Palavra-passe</label><input id="pw" type="password" autocomplete="current-password">
+    <button class="btn v" id="bEntrar">Entrar</button><p class="muted" id="lerro" style="color:#b3262e;margin-top:8px"></p></div>
+  <div id="painel" class="hidden">
+    <div class="n4" id="contas"></div>
+    <div class="card"><div class="l" style="display:flex;justify-content:space-between"><h2>⏳ Pedidos por confirmar</h2></div><p class="muted" style="margin-bottom:8px">Quando vires o MB WAY, toca em «Pagamento recebido» para criar o voucher.</p><div id="pedidos"></div></div>
+    <div class="card"><h2>🎫 Vouchers emitidos</h2><div id="vouchers"></div></div>
+    <p class="aviso"><a href="#" id="sair">Sair</a> · Link do público: <b>vindora.pt/voucher-natal.html</b></p>
+  </div>
+  <p class="muted" id="msg" style="text-align:center;margin-top:10px"></p>
+</div>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, doc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { FIREBASE_CFG, TENANT, SITE, VALIDADE_DIAS, PACOTES, TERAPIAS, sessoesDe, descreve, novoCodigo, waNumero, esc, fmtData, CSS_BASE } from './voucher-dados.js?v=2026-11-27-5';
+document.getElementById('cssb').textContent = CSS_BASE;
+const app = initializeApp(FIREBASE_CFG), db = getFirestore(app), auth = getAuth(app);
+const $ = (i) => document.getElementById(i);
+const col = (n) => collection(db, 'tenants', TENANT, n);
+const linkDe = (c) => SITE + 'voucher.html?c=' + c;
+const dataDe = (t) => t && (t.toDate ? t.toDate() : new Date(t));
+const fmt = (t) => { const d = dataDe(t); return d ? d.toLocaleDateString('pt-PT') : ''; };
+let PEDIDOS = [], VOUCHERS = [];
+onAuthStateChanged(auth, (u) => { if (u) { $('login').classList.add('hidden'); $('painel').classList.remove('hidden'); carrega(); } else { $('painel').classList.add('hidden'); $('login').classList.remove('hidden'); } });
+$('bEntrar').onclick = async () => { $('lerro').textContent = ''; try { await signInWithEmailAndPassword(auth, $('em').value.trim(), $('pw').value); } catch (e) { $('lerro').textContent = 'Email ou palavra-passe incorretos.'; } };
+$('sair').onclick = (e) => { e.preventDefault(); signOut(auth); };
+async function carrega() {
+  $('msg').textContent = 'A carregar…';
+  try {
+    const [p, v] = await Promise.all([getDocs(query(col('voucherPedidos'), orderBy('criadoEm', 'desc'))), getDocs(query(col('vouchers'), orderBy('emitidoEm', 'desc')))]);
+    PEDIDOS = p.docs.map((d) => Object.assign({ id: d.id }, d.data())); VOUCHERS = v.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+    $('msg').textContent = ''; desenha();
+  } catch (e) { console.error(e); $('msg').textContent = 'Sem permissão ou sem ligação. Confirma que entraste com a conta do dono da Hikari Fafe.'; }
+}
+function desenha() {
+  const ativos = VOUCHERS.filter((v) => v.estado === 'ativo');
+  const porUsar = ativos.filter((v) => !(v.usadas > 0)).length, emUso = ativos.filter((v) => v.usadas > 0).length;
+  const usados = VOUCHERS.filter((v) => v.estado === 'usado').length, canc = VOUCHERS.filter((v) => v.estado === 'cancelado').length;
+  const sessoesMarcadas = VOUCHERS.reduce((s, v) => s + (v.usadas || 0), 0), sessoesTotal = VOUCHERS.filter((v) => v.estado !== 'cancelado').reduce((s, v) => s + (v.total || 0), 0);
+  const faturado = VOUCHERS.filter((v) => v.estado !== 'cancelado').reduce((s, v) => s + (v.valor || 0), 0);
+  $('contas').innerHTML = [[VOUCHERS.length, 'vouchers emitidos'], [porUsar, 'por usar'], [emUso, 'com marcações em curso'], [usados, 'totalmente usados'], [sessoesMarcadas + ' / ' + sessoesTotal, 'sessões marcadas'], [faturado + ' €', 'valor emitido']].map(([n, t]) => `<div><b>${n}</b><span>${t}</span></div>`).join('') + (canc ? `<div><b>${canc}</b><span>cancelados</span></div>` : '');
+  const pend = PEDIDOS.filter((p) => p.estado === 'pendente');
+  $('pedidos').innerHTML = pend.length ? pend.map((p) => `<div class="it"><div class="l"><b>${esc(descreve(p.pacote, p.terapia))}</b><b>${p.valor} €</b></div><div class="muted">Ref. ${p.id.slice(0, 6).toUpperCase()} · ${fmt(p.criadoEm)}</div><div class="muted">De ${esc(p.nome)} (${esc(p.contacto)}) · Para ${esc(p.destinatario)}</div>
+    <div class="bt"><button class="g" data-conf="${p.id}">✅ Pagamento recebido</button><a href="https://wa.me/${waNumero(p.contacto)}" target="_blank">💬 Falar com o cliente</a><button class="r" data-del="${p.id}">Recusar</button></div></div>`).join('') : '<p class="muted">Sem pedidos por confirmar.</p>';
+  $('vouchers').innerHTML = VOUCHERS.length ? VOUCHERS.map((v) => { const tag = v.estado === 'cancelado' ? '<span class="tag x">cancelado</span>' : v.estado === 'usado' ? '<span class="tag u">usado</span>' : '<span class="tag a">ativo</span>';
+    return `<div class="it"><div class="l"><b>${esc(v.pacoteNome)}</b>${tag}</div><div class="muted" style="font-family:ui-monospace,monospace">${esc(v.id)}</div>
+    <div class="muted">Para ${esc(v.destinatario)} · de ${esc(v.comprador)} · ${v.valor} € · ${v.usadas || 0}/${v.total} sessões · até ${fmt(v.validadeEm)}</div>${v.ultimaMarcacao ? `<div class="muted">Última marcação: ${esc(v.ultimaMarcacao)}</div>` : ''}
+    <div class="bt"><button data-cp="${v.id}">📋 Copiar link</button><a class="g" target="_blank" href="https://wa.me/${waNumero(v.contacto)}?text=${encodeURIComponent('🎁 O teu voucher de Natal da Hikari Fafe está pronto! Abre aqui: ' + linkDe(v.id))}">💬 Enviar ao comprador</a>${v.estado === 'ativo' ? `<button data-baixa="${v.id}">Dar baixa a 1 sessão</button><button class="r" data-canc="${v.id}">Cancelar</button>` : ''}</div></div>`; }).join('') : '<p class="muted">Ainda não há vouchers.</p>';
+}
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+  try {
+    if (d.conf) {
+      if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Toca outra vez para confirmar'; return; }
+      const p = PEDIDOS.find((x) => x.id === d.conf), codigo = novoCodigo(), sessoes = sessoesDe(p.pacote, p.terapia);
+      const v = { codigo, pacote: p.pacote, terapia: p.terapia || '', pacoteNome: descreve(p.pacote, p.terapia), sessoes, total: sessoes.length, usadas: 0, estado: 'ativo', valor: p.valor, comprador: p.nome, contacto: p.contacto, destinatario: p.destinatario, mensagem: p.mensagem || '', pedidoId: p.id, emitidoEm: serverTimestamp(), validadeEm: Timestamp.fromDate(new Date(Date.now() + VALIDADE_DIAS * 864e5)) };
+      await setDoc(doc(col('vouchers'), codigo), v); await updateDoc(doc(col('voucherPedidos'), p.id), { estado: 'confirmado', voucherCodigo: codigo });
+      await carrega(); $('msg').textContent = '✅ Voucher criado: ' + codigo;
+    } else if (d.del) { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Confirmar'; return; } await deleteDoc(doc(col('voucherPedidos'), d.del)); await carrega();
+    } else if (d.cp) { await navigator.clipboard.writeText(linkDe(d.cp)); b.textContent = '✅ Copiado'; }
+    else if (d.baixa) { const v = VOUCHERS.find((x) => x.id === d.baixa), u = (v.usadas || 0) + 1; await updateDoc(doc(col('vouchers'), v.id), { usadas: u, estado: u >= v.total ? 'usado' : 'ativo', ultimaMarcacao: 'Baixa manual · ' + new Date().toLocaleDateString('pt-PT'), atualizadoEm: serverTimestamp() }); await carrega();
+    } else if (d.canc) { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Confirmar cancelamento'; return; } await updateDoc(doc(col('vouchers'), d.canc), { estado: 'cancelado', atualizadoEm: serverTimestamp() }); await carrega(); }
+  } catch (err) { console.error(err); $('msg').textContent = 'Não foi possível concluir. Verifica a ligação e as permissões.'; }
+});
+</script>
+</body>
+</html>

@@ -182,6 +182,38 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentStatus','paidAt']);
       }
 
+      // Vouchers de Natal: o público só cria pedidos (pendentes) e abre/baixa um voucher pelo código.
+      match /voucherPedidos/{pedidoId} {
+        allow create: if request.resource.data.keys().hasOnly(['nome','contacto','destinatario','mensagem','pacote','terapia','valor','estado','criadoEm']) &&
+          request.resource.data.nome is string && request.resource.data.nome.size() >= 2 && request.resource.data.nome.size() <= 120 &&
+          request.resource.data.contacto is string && request.resource.data.contacto.size() <= 40 &&
+          request.resource.data.destinatario is string && request.resource.data.destinatario.size() >= 2 && request.resource.data.destinatario.size() <= 120 &&
+          request.resource.data.mensagem is string && request.resource.data.mensagem.size() <= 300 &&
+          request.resource.data.pacote in ['unica', 'pack3', 'prenda'] &&
+          request.resource.data.terapia in ['', 'reiki', 'reflexologia', 'apoio', 'pendulo'] &&
+          ((request.resource.data.pacote == 'unica' && request.resource.data.valor == 40) ||
+           (request.resource.data.pacote != 'unica' && request.resource.data.valor == 105)) &&
+          request.resource.data.estado == 'pendente' &&
+          request.resource.data.criadoEm == request.time;
+        allow read, update, delete: if isTenantOwner(tenantId) || isPlatformAdmin();
+      }
+
+      match /vouchers/{codigo} {
+        // Abrir um voucher só é possível sabendo o código (longo e impossível de adivinhar); listar é só do dono.
+        allow get: if true;
+        allow list: if isTenantOwner(tenantId) || isPlatformAdmin();
+        allow create, delete: if isTenantOwner(tenantId) || isPlatformAdmin();
+        allow update: if isTenantOwner(tenantId) || isPlatformAdmin() ||
+          // Quem tem o código só pode dar baixa a UMA sessão de cada vez, num voucher ativo e dentro da validade.
+          (resource.data.estado == 'ativo' &&
+           request.time <= resource.data.validadeEm &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usadas', 'estado', 'ultimaMarcacao', 'atualizadoEm']) &&
+           request.resource.data.usadas == resource.data.usadas + 1 &&
+           request.resource.data.usadas <= resource.data.total &&
+           request.resource.data.estado == (request.resource.data.usadas == resource.data.total ? 'usado' : 'ativo') &&
+           request.resource.data.ultimaMarcacao is string && request.resource.data.ultimaMarcacao.size() <= 300);
+      }
+
       match /marketingContacts/{contactId} {
         allow create: if request.resource.data.nome is string &&
           request.resource.data.contacto is string &&
