@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Conversas · Vindora</title>
+<style>
+:root{--verde:#2e6e5c;--verde2:#1f5a43;--fundo:#efeae2;--tinta:#1d2b25;--cinza:#667;--ver:#25d366}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--tinta);background:#fff}
+#sem{display:none;padding:30px;text-align:center}
+#pagina{display:grid;grid-template-columns:340px 1fr;height:100vh;height:100dvh}
+/* lista à esquerda */
+#lista{border-right:1px solid #e3e3e3;display:flex;flex-direction:column;min-height:0;background:#fff}
+#topo{background:var(--verde);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px}
+#topo h1{font-size:1.1rem;margin:0;flex:1}
+#topo button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:10px;padding:8px 10px;font-weight:700;cursor:pointer}
+#filtro{padding:8px 10px;border-bottom:1px solid #eee}
+#filtro input{width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:20px;font-size:.95rem}
+#conversas{overflow-y:auto;flex:1;min-height:0}
+.item{display:flex;gap:10px;padding:11px 12px;border-bottom:1px solid #f1f1f1;cursor:pointer;align-items:center}
+.item:hover,.item.ativa{background:#f0f7f3}
+.av{width:44px;height:44px;border-radius:50%;background:var(--verde);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;position:relative}
+.av i{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:#bbb;border:2px solid #fff}
+.av i.on{background:var(--ver)}
+.meio{flex:1;min-width:0}
+.nome{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prev{font-size:.85rem;color:var(--cinza);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dir{text-align:right;font-size:.75rem;color:var(--cinza);flex:none}
+.badge{display:inline-block;background:var(--ver);color:#fff;border-radius:12px;padding:1px 7px;font-weight:800;font-size:.75rem;margin-top:4px}
+.estado{font-size:.75rem;color:var(--cinza)}
+/* chat à direita */
+#chat{display:flex;flex-direction:column;min-height:0;background:var(--fundo)}
+#cab{background:#f0f2f5;padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #ddd}
+#cab .nome{font-size:1rem}
+#voltar{display:none;background:none;border:0;font-size:1.3rem;cursor:pointer;padding:4px 8px}
+#msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-height:0}
+.bolha{max-width:72%;padding:8px 11px;border-radius:10px;font-size:.95rem;line-height:1.35;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+.bolha small{display:block;font-size:.7rem;color:var(--cinza);margin-top:3px;text-align:right}
+.de-paciente{background:#fff;align-self:flex-start;border-top-left-radius:2px}
+.de-mim{background:#d9fdd3;align-self:flex-end;border-top-right-radius:2px}
+#envio{display:flex;gap:8px;padding:10px;background:#f0f2f5}
+#envio textarea{flex:1;border:0;border-radius:20px;padding:10px 14px;font-size:1rem;resize:none;max-height:120px;font-family:inherit}
+#envio button{background:var(--verde);color:#fff;border:0;border-radius:50%;width:46px;height:46px;font-size:1.2rem;cursor:pointer}
+#vazio{margin:auto;color:var(--cinza);text-align:center;padding:30px}
+/* telemóvel: lista ou chat */
+@media (max-width:760px){
+  #pagina{grid-template-columns:1fr}
+  #pagina.com-chat #lista{display:none}
+  #pagina:not(.com-chat) #chat{display:none}
+  #voltar{display:inline-block}
+}
+</style>
+</head>
+<body>
+<div id="sem"><p>Para ver as conversas, entra primeiro na <a href="app.html">app</a>.</p></div>
+<div id="pagina" style="display:none">
+  <aside id="lista">
+    <div id="topo">
+      <h1>💬 Conversas</h1>
+      <button id="btnNova" type="button">+ Nova conversa</button>
+    </div>
+    <div id="filtro"><input id="pesquisa" type="search" placeholder="Pesquisar paciente…"></div>
+    <div id="conversas"></div>
+  </aside>
+  <section id="chat">
+    <div id="cab">
+      <button id="voltar" type="button" aria-label="Voltar">←</button>
+      <div class="av" id="cabAv">?</div>
+      <div class="meio"><div class="nome" id="cabNome">Escolhe uma conversa</div><div class="estado" id="cabEstado"></div></div>
+    </div>
+    <div id="msgs"><div id="vazio">Escolhe uma conversa à esquerda, ou começa uma nova.</div></div>
+    <form id="envio" hidden>
+      <textarea id="texto" rows="1" placeholder="Escreve uma mensagem"></textarea>
+      <button type="submit" aria-label="Enviar">➤</button>
+    </form>
+  </section>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, getDocs, query, where, orderBy, limit, onSnapshot, addDoc, updateDoc, serverTimestamp, doc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg",
+  authDomain: "saudecare-app.firebaseapp.com",
+  projectId: "saudecare-app",
+  storageBucket: "saudecare-app.firebasestorage.app",
+  messagingSenderId: "455466438728",
+  appId: "1:455466438728:web:61cfbf9fac85d59e18c87d"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ms = (t) => (t && typeof t.toMillis === 'function') ? t.toMillis() : (t ? Number(new Date(t)) : 0);
+const hora = (m) => m ? new Date(m).toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' }) : '';
+const dataCurta = (m) => {
+  if (!m) return '';
+  const d = new Date(m), hoje = new Date();
+  return d.toDateString() === hoje.toDateString() ? hora(m) : d.toLocaleDateString('pt-PT', { day:'2-digit', month:'2-digit' });
+};
+
+let tenantId = null;
+let pacientes = [];      // { id, nome, telefone, online, entradaMs, saidaMs, ultimaMs, ultimaTexto, naoLidas }
+let ativoId = null;
+let pararChat = null;
+let timerLista = null;
+
+// Ordem: online primeiro; depois a conversa mais recente (como no WhatsApp).
+function ordenar(){
+  pacientes.sort((a, b) =>
+    (b.online - a.online) || (b.ultimaMs - a.ultimaMs) || a.nome.localeCompare(b.nome, 'pt-PT'));
+}
+
+function desenharLista(){
+  const termo = ($('pesquisa').value || '').trim().toLowerCase();
+  const lista = pacientes.filter(p => !termo || p.nome.toLowerCase().includes(termo));
+  if (!lista.length){ $('conversas').innerHTML = '<div style="padding:16px;color:#667">Ainda não há conversas.</div>'; return; }
+  $('conversas').innerHTML = lista.map(p => `
+    <div class="item ${p.id === ativoId ? 'ativa' : ''}" data-id="${esc(p.id)}">
+      <div class="av">${esc((p.nome[0] || '?').toUpperCase())}<i class="${p.online ? 'on' : ''}"></i></div>
+      <div class="meio">
+        <div class="nome">${esc(p.nome)}</div>
+        <div class="prev">${esc(p.ultimaTexto || (p.online ? 'Online agora' : 'Sem mensagens'))}</div>
+      </div>
+      <div class="dir">${dataCurta(p.ultimaMs)}${p.naoLidas ? `<br><span class="badge">${p.naoLidas}</span>` : ''}</div>
+    </div>`).join('');
+  document.querySelectorAll('.item').forEach(el => el.addEventListener('click', () => abrir(el.dataset.id)));
+}
+
+function estadoTexto(p){
+  if (p.online) return 'online desde ' + hora(p.entradaMs);
+  if (p.saidaMs) return 'saiu às ' + hora(p.saidaMs) + (p.entradaMs ? ' · entrou às ' + hora(p.entradaMs) : '');
+  return 'sem atividade registada';
+}
+
+// Lê a lista completa: fichas (presença) + última mensagem e não lidas de cada paciente.
+async function carregarLista(){
+  const snap = await getDocs(collection(db, 'tenants', tenantId, 'patients'));
+  const base = snap.docs
+    .map(d => ({ id: d.id, d: d.data() }))
+    .filter(x => !x.d.preferredChannel || x.d.preferredChannel === 'portal');
+  const novos = await Promise.all(base.map(async ({ id, d }) => {
+    let ultimaMs = 0, ultimaTexto = '', naoLidas = 0;
+    try{
+      const ult = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', id, 'messages'), orderBy('createdAt', 'desc'), limit(1)));
+      if (!ult.empty){ const m = ult.docs[0].data(); ultimaMs = ms(m.createdAt); ultimaTexto = (m.sender === 'professional' ? 'Tu: ' : '') + (m.text || ''); }
+      const nl = await getDocs(query(collection(db, 'tenants', tenantId, 'patients', id, 'messages'), where('sender', '==', 'patient'), where('readByProfessional', '==', false)));
+      naoLidas = nl.size;
+    }catch(e){ /* sem permissões para este paciente: fica sem mensagens */ }
+    const agora = Date.now();
+    const pres = d.presenceLastSeenAt ? ms(d.presenceLastSeenAt) : 0;
+    return {
+      id, nome: d.fullName || 'Paciente', telefone: d.phone || '',
+      online: d.presenceOnline === true && agora - pres < 3 * 60 * 1000,
+      entradaMs: ms(d.presenceLastInAt), saidaMs: ms(d.presenceLastOutAt),
+      ultimaMs, ultimaTexto, naoLidas
+    };
+  }));
+  pacientes = novos;
+  ordenar();
+  desenharLista();
+  if (ativoId){ const p = pacientes.find(x => x.id === ativoId); if (p) $('cabEstado').textContent = estadoTexto(p); }
+}
+
+function abrir(id){
+  ativoId = id;
+  const p = pacientes.find(x => x.id === id);
+  $('cabAv').textContent = (p?.nome[0] || '?').toUpperCase();
+  $('cabNome').textContent = p?.nome || 'Paciente';
+  $('cabEstado').textContent = p ? estadoTexto(p) : '';
+  $('envio').hidden = false;
+  $('pagina').classList.add('com-chat');
+  desenharLista();
+  if (pararChat) pararChat();
+  const q = query(collection(db, 'tenants', tenantId, 'patients', id, 'messages'), orderBy('createdAt', 'asc'), limit(200));
+  pararChat = onSnapshot(q, (snap) => {
+    const linhas = snap.docs.map(d => ({ ref: d.ref, ...d.data() }));
+    $('msgs').innerHTML = linhas.length ? linhas.map(m => `
+      <div class="bolha ${m.sender === 'professional' ? 'de-mim' : 'de-paciente'}">${esc(m.text || '')}
+        <small>${hora(ms(m.createdAt))}</small></div>`).join('')
+      : '<div id="vazio">Ainda sem mensagens. Escreve a primeira.</div>';
+    $('msgs').scrollTop = $('msgs').scrollHeight;
+    // Marca como lidas as mensagens do paciente que estão a ser vistas.
+    linhas.filter(m => m.sender === 'patient' && m.readByProfessional === false)
+      .forEach(m => updateDoc(m.ref, { readByProfessional: true }).catch(() => {}));
+    if (p) { p.naoLidas = 0; desenharLista(); }
+  }, () => { $('msgs').innerHTML = '<div id="vazio">Não foi possível abrir esta conversa.</div>'; });
+}
+
+$('envio').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const texto = $('texto').value.trim();
+  if (!texto || !ativoId) return;
+  $('texto').value = '';
+  try{
+    await addDoc(collection(db, 'tenants', tenantId, 'patients', ativoId, 'messages'), {
+      sender: 'professional', text: texto, createdAt: serverTimestamp(), readByPatient: false
+    });
+    const p = pacientes.find(x => x.id === ativoId);
+    if (p){ p.ultimaMs = Date.now(); p.ultimaTexto = 'Tu: ' + texto; ordenar(); desenharLista(); }
+  }catch(err){ alert('Não foi possível enviar. Tenta de novo.'); $('texto').value = texto; }
+});
+
+$('texto').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); $('envio').requestSubmit(); }
+});
+
+// Nova conversa: escolher um paciente da lista.
+$('btnNova').addEventListener('click', () => {
+  // Escolher o paciente: a lista mostra todos; basta escrever o nome no campo de pesquisa.
+  $('pesquisa').value = '';
+  desenharLista();
+  $('pesquisa').focus();
+});
+
+$('pesquisa').addEventListener('input', desenharLista);
+$('voltar').addEventListener('click', () => { $('pagina').classList.remove('com-chat'); });
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user){ $('sem').style.display = 'block'; $('pagina').style.display = 'none'; return; }
+  const token = await user.getIdTokenResult(true);
+  tenantId = token.claims.tenantId || null;
+  if (!tenantId || token.claims.role === 'staff_bookings'){ $('sem').style.display = 'block'; $('sem').innerHTML = '<p>Esta página não está disponível para a tua conta.</p>'; $('pagina').style.display = 'none'; return; }
+  $('pagina').style.display = 'grid';
+  await carregarLista();
+  clearInterval(timerLista);
+  timerLista = setInterval(() => carregarLista().catch(() => {}), 30000);
+});
+</script>
+</body>
+</html>
