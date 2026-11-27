@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Arcanjos — Hikari Fafe</title>
+<style>
+  :root{--bg:#faf6ee;--tinta:#2b2236;--suave:#6d6477;--card:#fff;--linha:#e8e3d6;--marca:#1f4e8c;--on:#fff}
+  @media (prefers-color-scheme:dark){:root{--bg:#1b1526;--tinta:#f1ecf7;--suave:#b6aac4;--card:#261d35;--linha:#3a2f4d;--marca:#7fb0ee;--on:#1b1526}}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tinta);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5}
+  .w{max-width:560px;margin:0 auto;padding:22px 16px 40px}
+  h1{font-size:1.5rem;text-align:center;margin:8px 0 2px}.sub{text-align:center;color:var(--suave);margin:0 0 18px}
+  .t{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);margin:20px 4px 8px}
+  a.c{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--linha);border-radius:18px;padding:16px;margin-bottom:10px;text-decoration:none;color:inherit;min-height:72px}
+  a.c .im{width:78px;height:68px;object-fit:cover;border-radius:12px;flex:none}
+  a.c .e{font-size:1.9rem}a.c b{display:block;font-size:1.05rem}a.c span{color:var(--suave);font-size:.88rem}
+  a.c.g{border:2px solid var(--marca)}
+  .pg{height:8px;background:var(--linha);border-radius:9px;overflow:hidden;margin-top:6px}.pg i{display:block;height:100%;background:var(--marca)}
+  .aviso{color:var(--suave);font-size:.8rem;text-align:center;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>🪽 Os Arcanjos</h1>
+  <p class="sub">Cada Arcanjo tem a sua ajuda. Escolhe o que mais precisas e faz os 21 dias ao teu ritmo.</p>
+  <a class="c" href="oracao.html?p=arcanjo-miguel-21"><img class="im" data-n="Miguel" alt=""><div><b>🛡️ Arcanjo Miguel</b><span>Proteção, coragem, limpeza e libertação · 21 dias</span></div></a>
+  <a class="c" href="oracao.html?p=arcanjo-gabriel-21"><img class="im" data-n="Gabriel" alt=""><div><b>🕊️ Arcanjo Gabriel</b><span>Comunicação, mensagens, clareza e novos começos · 21 dias</span></div></a>
+  <a class="c" href="oracao.html?p=arcanjo-rafael-21"><img class="im" data-n="Rafael" alt=""><div><b>💚 Arcanjo Rafael</b><span>Saúde, descanso, cura e viagens seguras · 21 dias</span></div></a>
+  <a class="c" href="oracao.html?p=arcanjo-uriel-21"><img class="im" data-n="Uriel" alt=""><div><b>🔆 Arcanjo Uriel</b><span>Sabedoria, clareza nas decisões, paz e trabalho · 21 dias</span></div></a>
+  <a class="c" href="oracao.html?p=arcanjo-jofiel-21"><img class="im" data-n="Jofiel" alt=""><div><b>🌼 Arcanjo Jofiel</b><span>Mente clara, beleza, criatividade e pensamentos positivos · 21 dias</span></div></a>
+  <a class="c" href="oracao.html?p=arcanjo-zadquiel-21"><img class="im" data-n="Zadquiel" alt=""><div><b>💜 Arcanjo Zadquiel</b><span>Perdão, misericórdia, soltar o passado e transformar o que pesa · 21 dias</span></div></a>
+  <a class="c" href="oracao.html?p=arcanjo-chamuel-21"><img class="im" data-n="Chamuel" alt=""><div><b>🌸 Arcanjo Chamuel</b><span>Amor, relações, paz no lar e amor-próprio · 21 dias</span></div></a>
+
+  <p class="aviso">Prática espiritual e de bem-estar. Não substitui o acompanhamento médico ou psicológico.</p>
+</div>
+<script src="mapa-imagens.js?v=2026-11-27-3"></script>
+<script>
+try{ localStorage.setItem('vo_hub','arcanjos.html'); }catch(_){}
+(function(){var I=(window.MAPA_IMG||{}).arcanjos||{};document.querySelectorAll('img.im').forEach(function(e){var s=I[e.dataset.n];if(s)e.src=s;else e.remove();});})();
+</script>
+</body>
+</html>

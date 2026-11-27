@@ -2103,3 +2103,1130 @@ export const ANA_SOS_PADRAO = {
  ]
 };
 PROTECAO_PADRAO.push(ANA_PADRAO, ANA_SOS_PADRAO);
+
+// Orações de 21 dias dos arcanjos (Gabriel, Rafael, Uriel, Jofiel, Zadquiel, Chamuel), em complemento à do Arcanjo Miguel.
+export const ARCANJOS_PADRAO = [
+ {
+  "padraoId": "arcanjo-gabriel-21",
+  "versaoPadrao": 1,
+  "regra": "livre",
+  "tipo": "ciclo",
+  "icone": "luz",
+  "emoji": "🕊️",
+  "titulo": "Oração do Arcanjo Gabriel",
+  "subtitulo": "21 dias para comunicação, mensagens, clareza e novos começos",
+  "dias": 21,
+  "ordem": 40,
+  "seccoes": [
+   {
+    "tipo": "aviso",
+    "titulo": "Como usar",
+    "texto": "São 21 dias, de preferência à mesma hora, num sítio calmo. Se falhares um dia, não faz mal: continuas de onde ficaste, sem culpas. Esta página guarda o teu caminho."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Na tradição cristã e espiritual, Gabriel é o arcanjo das mensagens e da comunicação. É invocado por quem quer falar a verdade com calma, ouvir melhor, receber orientação, e também por quem espera uma boa notícia, um filho ou um recomeço.\n\nNesta prática, o Arcanjo Gabriel (branco e prata) é invocado para comunicação, mensagens, clareza e novos começos: limpa a confusão das palavras, os mal-entendidos e o que ficou por dizer."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Porque são 21 dias",
+    "texto": "Vinte e um dias são três semanas, um tempo simbólico para criar um hábito:\n\n• Semana 1 (dias 1 a 7): Limpar a palavra\n• Semana 2 (dias 8 a 14): Ouvir a mensagem\n• Semana 3 (dias 15 a 21): Recomeçar"
+   },
+   {
+    "tipo": "passos",
+    "titulo": "Como fazer, passo a passo",
+    "itens": [
+     "Escolhe uma hora fixa e um sítio calmo. Põe o telemóvel em silêncio.",
+     "Se quiseres, acende uma vela branca num sítio seguro e põe um copo de água ao lado.",
+     "Respira fundo três vezes e lê a oração devagar, em voz baixa.",
+     "Fica 2 a 3 minutos em silêncio e pensa na intenção do dia.",
+     "Faz a pequena ação do dia e marca-o como feito."
+    ]
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "O teu papel nisto",
+    "texto": "Esta prática ajuda, mas não faz milagres sozinha: o que a torna forte é a tua constância e o que fazes no dia a dia. Há dias em que apetece desistir, e é nesses que vale a pena fazer ao menos o essencial. Sem culpas: recomeçar também é caminhar."
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "Cuidados importantes",
+    "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico ou psicológico, nem a medicação. Se sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, fala com o teu médico ou liga ao 112."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Abertura",
+    "texto": "Respiro fundo, três vezes.\nEstou em segurança. Este momento é meu e é sagrado.\nPeço que este tempo seja abençoado e protegido.\nQue só a Luz entre e só a Luz permaneça."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Invocação do Arcanjo Gabriel",
+    "texto": "Amado Arcanjo Gabriel, envolve-me na tua luz branco e prata.\nEstou aqui com fé e com humildade.\nPeço a tua ajuda para comunicação, mensagens, clareza e novos começos."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "O meu pedido",
+    "texto": "Peço-te que limpes de mim as palavras que magoam e o silêncio que me prende. Ajuda-me a dizer a verdade com calma, a ouvir com paciência e a reconhecer a mensagem certa quando ela chegar. Protege os meus filhos, as crianças da minha família e tudo o que está a começar na minha vida."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Proteção e limpeza",
+    "texto": "Peço que a luz do Arcanjo Gabriel limpa a confusão das palavras, os mal-entendidos e o que ficou por dizer.\nTudo o que não for Luz, que se transforme e vá embora em paz.\nFico protegida(o) em corpo, mente e coração, e a minha casa também."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Encerramento",
+    "texto": "Obrigada(o), Arcanjo Gabriel.\nObrigada(o) pela tua luz e pela tua ajuda.\nFecho agora este momento com paz e com confiança.\nA luz fica comigo, em mim e à minha volta.\nÁmen."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "No 21.º dia: selar",
+    "texto": "No último dia, depois da oração, fica um pouco em silêncio e agradece o caminho. Relê o que escreveste no caderno e repara no que mudou, mesmo que seja pouco. Podes pôr a mão no peito e dizer: «Obrigada(o). Fiz o meu caminho e continuo com constância.»"
+   }
+  ],
+  "temasDias": [
+   {
+    "titulo": "Chegada",
+    "intencao": "Hoje começo. Peço ao Arcanjo Gabriel que me acompanhe nestes 21 dias.",
+    "acao": "Escreve no caderno porque decidiste fazer este caminho e o que queres mudar."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a palavra",
+    "intencao": "Peço ao Arcanjo Gabriel que limpe os mal-entendidos, as palavras duras e o que fiquei sem dizer.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a palavra",
+    "intencao": "Peço ao Arcanjo Gabriel que limpe os mal-entendidos, as palavras duras e o que fiquei sem dizer.",
+    "acao": "Rasga ou queima com segurança a folha de ontem e agradece."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a palavra",
+    "intencao": "Peço ao Arcanjo Gabriel que limpe os mal-entendidos, as palavras duras e o que fiquei sem dizer.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a palavra",
+    "intencao": "Peço ao Arcanjo Gabriel que limpe os mal-entendidos, as palavras duras e o que fiquei sem dizer.",
+    "acao": "Hoje fala devagar, sem interromper ninguém, pelo menos numa conversa."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a palavra",
+    "intencao": "Peço ao Arcanjo Gabriel que limpe os mal-entendidos, as palavras duras e o que fiquei sem dizer.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a palavra",
+    "intencao": "Peço ao Arcanjo Gabriel que limpe os mal-entendidos, as palavras duras e o que fiquei sem dizer.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 2 · Ouvir a mensagem",
+    "intencao": "Peço a Gabriel que me ajude a ouvir a mensagem certa, dentro e fora de mim.",
+    "acao": "Fica 5 minutos em silêncio e anota a primeira ideia calma que surgir."
+   },
+   {
+    "titulo": "Semana 2 · Ouvir a mensagem",
+    "intencao": "Peço a Gabriel que me ajude a ouvir a mensagem certa, dentro e fora de mim.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Ouvir a mensagem",
+    "intencao": "Peço a Gabriel que me ajude a ouvir a mensagem certa, dentro e fora de mim.",
+    "acao": "Agradece a alguém que te ajudou, por palavras ou por mensagem."
+   },
+   {
+    "titulo": "Semana 2 · Ouvir a mensagem",
+    "intencao": "Peço a Gabriel que me ajude a ouvir a mensagem certa, dentro e fora de mim.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Ouvir a mensagem",
+    "intencao": "Peço a Gabriel que me ajude a ouvir a mensagem certa, dentro e fora de mim.",
+    "acao": "Repara nos sinais do dia (uma frase, um encontro) e anota o que te tocou."
+   },
+   {
+    "titulo": "Semana 2 · Ouvir a mensagem",
+    "intencao": "Peço a Gabriel que me ajude a ouvir a mensagem certa, dentro e fora de mim.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Ouvir a mensagem",
+    "intencao": "Peço a Gabriel que me ajude a ouvir a mensagem certa, dentro e fora de mim.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 3 · Recomeçar",
+    "intencao": "Peço a Gabriel coragem e leveza para recomeçar o que preciso.",
+    "acao": "Escolhe um recomeço pequeno e dá o primeiro passo hoje."
+   },
+   {
+    "titulo": "Semana 3 · Recomeçar",
+    "intencao": "Peço a Gabriel coragem e leveza para recomeçar o que preciso.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Recomeçar",
+    "intencao": "Peço a Gabriel coragem e leveza para recomeçar o que preciso.",
+    "acao": "Marca uma conversa que andas a adiar."
+   },
+   {
+    "titulo": "Semana 3 · Recomeçar",
+    "intencao": "Peço a Gabriel coragem e leveza para recomeçar o que preciso.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Recomeçar",
+    "intencao": "Peço a Gabriel coragem e leveza para recomeçar o que preciso.",
+    "acao": "Diz em voz alta o que queres para os próximos meses."
+   },
+   {
+    "titulo": "Semana 3 · Recomeçar",
+    "intencao": "Peço a Gabriel coragem e leveza para recomeçar o que preciso.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Selar e agradecer",
+    "intencao": "Agradeço ao Arcanjo Gabriel o caminho feito.",
+    "acao": "Relê o caderno, agradece e escolhe como queres continuar (podes recomeçar o plano)."
+   }
+  ]
+ },
+ {
+  "padraoId": "arcanjo-rafael-21",
+  "versaoPadrao": 1,
+  "regra": "livre",
+  "tipo": "ciclo",
+  "icone": "luz",
+  "emoji": "💚",
+  "titulo": "Oração do Arcanjo Rafael",
+  "subtitulo": "21 dias para saúde, descanso, cura e viagens seguras",
+  "dias": 21,
+  "ordem": 40,
+  "seccoes": [
+   {
+    "tipo": "aviso",
+    "titulo": "Como usar",
+    "texto": "São 21 dias, de preferência à mesma hora, num sítio calmo. Se falhares um dia, não faz mal: continuas de onde ficaste, sem culpas. Esta página guarda o teu caminho."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Na tradição cristã e espiritual, Rafael é o arcanjo da cura e do cuidado. É invocado por quem precisa de força para a saúde, para descansar, para cuidar de alguém, e para viagens seguras. É sempre um apoio de fé: não substitui médicos nem tratamentos.\n\nNesta prática, o Arcanjo Rafael (verde esmeralda) é invocado para saúde, descanso, cura e viagens seguras: limpa o cansaço, o peso emocional e o que desequilibra o corpo e a mente."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Porque são 21 dias",
+    "texto": "Vinte e um dias são três semanas, um tempo simbólico para criar um hábito:\n\n• Semana 1 (dias 1 a 7): Descansar e limpar\n• Semana 2 (dias 8 a 14): Cuidar do corpo\n• Semana 3 (dias 15 a 21): Cuidar de quem cuida"
+   },
+   {
+    "tipo": "passos",
+    "titulo": "Como fazer, passo a passo",
+    "itens": [
+     "Escolhe uma hora fixa e um sítio calmo. Põe o telemóvel em silêncio.",
+     "Se quiseres, acende uma vela branca num sítio seguro e põe um copo de água ao lado.",
+     "Respira fundo três vezes e lê a oração devagar, em voz baixa.",
+     "Fica 2 a 3 minutos em silêncio e pensa na intenção do dia.",
+     "Faz a pequena ação do dia e marca-o como feito."
+    ]
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "O teu papel nisto",
+    "texto": "Esta prática ajuda, mas não faz milagres sozinha: o que a torna forte é a tua constância e o que fazes no dia a dia. Há dias em que apetece desistir, e é nesses que vale a pena fazer ao menos o essencial. Sem culpas: recomeçar também é caminhar."
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "Cuidados importantes",
+    "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico ou psicológico, nem a medicação. Se sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, fala com o teu médico ou liga ao 112."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Abertura",
+    "texto": "Respiro fundo, três vezes.\nEstou em segurança. Este momento é meu e é sagrado.\nPeço que este tempo seja abençoado e protegido.\nQue só a Luz entre e só a Luz permaneça."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Invocação do Arcanjo Rafael",
+    "texto": "Amado Arcanjo Rafael, envolve-me na tua luz verde esmeralda.\nEstou aqui com fé e com humildade.\nPeço a tua ajuda para saúde, descanso, cura e viagens seguras."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "O meu pedido",
+    "texto": "Peço-te que me envolvas numa luz verde de cura e de descanso. Ajuda-me a cuidar do meu corpo com carinho, a seguir os conselhos de quem me trata e a descansar sem culpa. Abençoa quem cuida de mim e quem eu cuido, e guarda os caminhos de quem viaja."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Proteção e limpeza",
+    "texto": "Peço que a luz do Arcanjo Rafael limpa o cansaço, o peso emocional e o que desequilibra o corpo e a mente.\nTudo o que não for Luz, que se transforme e vá embora em paz.\nFico protegida(o) em corpo, mente e coração, e a minha casa também."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Encerramento",
+    "texto": "Obrigada(o), Arcanjo Rafael.\nObrigada(o) pela tua luz e pela tua ajuda.\nFecho agora este momento com paz e com confiança.\nA luz fica comigo, em mim e à minha volta.\nÁmen."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "No 21.º dia: selar",
+    "texto": "No último dia, depois da oração, fica um pouco em silêncio e agradece o caminho. Relê o que escreveste no caderno e repara no que mudou, mesmo que seja pouco. Podes pôr a mão no peito e dizer: «Obrigada(o). Fiz o meu caminho e continuo com constância.»"
+   }
+  ],
+  "temasDias": [
+   {
+    "titulo": "Chegada",
+    "intencao": "Hoje começo. Peço ao Arcanjo Rafael que me acompanhe nestes 21 dias.",
+    "acao": "Escreve no caderno porque decidiste fazer este caminho e o que queres mudar."
+   },
+   {
+    "titulo": "Semana 1 · Descansar e limpar",
+    "intencao": "Peço ao Arcanjo Rafael que limpe o meu cansaço e me devolva descanso.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Descansar e limpar",
+    "intencao": "Peço ao Arcanjo Rafael que limpe o meu cansaço e me devolva descanso.",
+    "acao": "Faz 10 respirações lentas antes de dormir (inspira 4, expira 6)."
+   },
+   {
+    "titulo": "Semana 1 · Descansar e limpar",
+    "intencao": "Peço ao Arcanjo Rafael que limpe o meu cansaço e me devolva descanso.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Descansar e limpar",
+    "intencao": "Peço ao Arcanjo Rafael que limpe o meu cansaço e me devolva descanso.",
+    "acao": "Bebe água devagar ao longo do dia e come uma refeição com calma, sem ecrãs."
+   },
+   {
+    "titulo": "Semana 1 · Descansar e limpar",
+    "intencao": "Peço ao Arcanjo Rafael que limpe o meu cansaço e me devolva descanso.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Descansar e limpar",
+    "intencao": "Peço ao Arcanjo Rafael que limpe o meu cansaço e me devolva descanso.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 2 · Cuidar do corpo",
+    "intencao": "Peço a Rafael que me ajude a cuidar do meu corpo com carinho.",
+    "acao": "Dá um passeio de 15 a 20 minutos, ao teu ritmo."
+   },
+   {
+    "titulo": "Semana 2 · Cuidar do corpo",
+    "intencao": "Peço a Rafael que me ajude a cuidar do meu corpo com carinho.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Cuidar do corpo",
+    "intencao": "Peço a Rafael que me ajude a cuidar do meu corpo com carinho.",
+    "acao": "Alonga o corpo devagar durante 10 minutos."
+   },
+   {
+    "titulo": "Semana 2 · Cuidar do corpo",
+    "intencao": "Peço a Rafael que me ajude a cuidar do meu corpo com carinho.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Cuidar do corpo",
+    "intencao": "Peço a Rafael que me ajude a cuidar do meu corpo com carinho.",
+    "acao": "Marca ou confirma uma consulta ou exame que andas a adiar."
+   },
+   {
+    "titulo": "Semana 2 · Cuidar do corpo",
+    "intencao": "Peço a Rafael que me ajude a cuidar do meu corpo com carinho.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Cuidar do corpo",
+    "intencao": "Peço a Rafael que me ajude a cuidar do meu corpo com carinho.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 3 · Cuidar de quem cuida",
+    "intencao": "Peço a Rafael que cuide de mim e de quem amo, e que eu também me deixe cuidar.",
+    "acao": "Reserva uma hora do dia só para ti, sem obrigações."
+   },
+   {
+    "titulo": "Semana 3 · Cuidar de quem cuida",
+    "intencao": "Peço a Rafael que cuide de mim e de quem amo, e que eu também me deixe cuidar.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Cuidar de quem cuida",
+    "intencao": "Peço a Rafael que cuide de mim e de quem amo, e que eu também me deixe cuidar.",
+    "acao": "Escreve três coisas que o teu corpo faz por ti todos os dias."
+   },
+   {
+    "titulo": "Semana 3 · Cuidar de quem cuida",
+    "intencao": "Peço a Rafael que cuide de mim e de quem amo, e que eu também me deixe cuidar.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Cuidar de quem cuida",
+    "intencao": "Peço a Rafael que cuide de mim e de quem amo, e que eu também me deixe cuidar.",
+    "acao": "Agradece a uma pessoa que cuida de ti ou de quem amas."
+   },
+   {
+    "titulo": "Semana 3 · Cuidar de quem cuida",
+    "intencao": "Peço a Rafael que cuide de mim e de quem amo, e que eu também me deixe cuidar.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Selar e agradecer",
+    "intencao": "Agradeço ao Arcanjo Rafael o caminho feito.",
+    "acao": "Relê o caderno, agradece e escolhe como queres continuar (podes recomeçar o plano)."
+   }
+  ]
+ },
+ {
+  "padraoId": "arcanjo-uriel-21",
+  "versaoPadrao": 1,
+  "regra": "livre",
+  "tipo": "ciclo",
+  "icone": "luz",
+  "emoji": "🔆",
+  "titulo": "Oração do Arcanjo Uriel",
+  "subtitulo": "21 dias para sabedoria, clareza nas decisões, paz e trabalho",
+  "dias": 21,
+  "ordem": 40,
+  "seccoes": [
+   {
+    "tipo": "aviso",
+    "titulo": "Como usar",
+    "texto": "São 21 dias, de preferência à mesma hora, num sítio calmo. Se falhares um dia, não faz mal: continuas de onde ficaste, sem culpas. Esta página guarda o teu caminho."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Na tradição cristã e espiritual, Uriel é o arcanjo da luz da sabedoria. É invocado por quem precisa de clareza para decidir, de paz depois de uma tempestade e de ideias para o estudo, o trabalho e o dinheiro.\n\nNesta prática, o Arcanjo Uriel (dourado e rubi) é invocado para sabedoria, clareza nas decisões, paz e trabalho: limpa a confusão, as dúvidas que andam à roda e o medo de decidir."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Porque são 21 dias",
+    "texto": "Vinte e um dias são três semanas, um tempo simbólico para criar um hábito:\n\n• Semana 1 (dias 1 a 7): Limpar a confusão\n• Semana 2 (dias 8 a 14): Ver com clareza\n• Semana 3 (dias 15 a 21): Trabalho e sustento"
+   },
+   {
+    "tipo": "passos",
+    "titulo": "Como fazer, passo a passo",
+    "itens": [
+     "Escolhe uma hora fixa e um sítio calmo. Põe o telemóvel em silêncio.",
+     "Se quiseres, acende uma vela branca num sítio seguro e põe um copo de água ao lado.",
+     "Respira fundo três vezes e lê a oração devagar, em voz baixa.",
+     "Fica 2 a 3 minutos em silêncio e pensa na intenção do dia.",
+     "Faz a pequena ação do dia e marca-o como feito."
+    ]
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "O teu papel nisto",
+    "texto": "Esta prática ajuda, mas não faz milagres sozinha: o que a torna forte é a tua constância e o que fazes no dia a dia. Há dias em que apetece desistir, e é nesses que vale a pena fazer ao menos o essencial. Sem culpas: recomeçar também é caminhar."
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "Cuidados importantes",
+    "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico ou psicológico, nem a medicação. Se sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, fala com o teu médico ou liga ao 112."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Abertura",
+    "texto": "Respiro fundo, três vezes.\nEstou em segurança. Este momento é meu e é sagrado.\nPeço que este tempo seja abençoado e protegido.\nQue só a Luz entre e só a Luz permaneça."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Invocação do Arcanjo Uriel",
+    "texto": "Amado Arcanjo Uriel, envolve-me na tua luz dourado e rubi.\nEstou aqui com fé e com humildade.\nPeço a tua ajuda para sabedoria, clareza nas decisões, paz e trabalho."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "O meu pedido",
+    "texto": "Peço-te que acendas em mim a luz da clareza. Ajuda-me a ver o que é essencial, a decidir com calma e a trabalhar com honestidade. Dá-me paz depois dos dias difíceis e ideias justas para o meu trabalho, o meu estudo e o meu sustento."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Proteção e limpeza",
+    "texto": "Peço que a luz do Arcanjo Uriel limpa a confusão, as dúvidas que andam à roda e o medo de decidir.\nTudo o que não for Luz, que se transforme e vá embora em paz.\nFico protegida(o) em corpo, mente e coração, e a minha casa também."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Encerramento",
+    "texto": "Obrigada(o), Arcanjo Uriel.\nObrigada(o) pela tua luz e pela tua ajuda.\nFecho agora este momento com paz e com confiança.\nA luz fica comigo, em mim e à minha volta.\nÁmen."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "No 21.º dia: selar",
+    "texto": "No último dia, depois da oração, fica um pouco em silêncio e agradece o caminho. Relê o que escreveste no caderno e repara no que mudou, mesmo que seja pouco. Podes pôr a mão no peito e dizer: «Obrigada(o). Fiz o meu caminho e continuo com constância.»"
+   }
+  ],
+  "temasDias": [
+   {
+    "titulo": "Chegada",
+    "intencao": "Hoje começo. Peço ao Arcanjo Uriel que me acompanhe nestes 21 dias.",
+    "acao": "Escreve no caderno porque decidiste fazer este caminho e o que queres mudar."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a confusão",
+    "intencao": "Peço ao Arcanjo Uriel que limpe a confusão e as dúvidas que me rodeiam.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a confusão",
+    "intencao": "Peço ao Arcanjo Uriel que limpe a confusão e as dúvidas que me rodeiam.",
+    "acao": "Hoje não decidas nada com pressa: dorme sobre isso."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a confusão",
+    "intencao": "Peço ao Arcanjo Uriel que limpe a confusão e as dúvidas que me rodeiam.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a confusão",
+    "intencao": "Peço ao Arcanjo Uriel que limpe a confusão e as dúvidas que me rodeiam.",
+    "acao": "Arruma a secretária ou um canto da casa onde decides coisas."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a confusão",
+    "intencao": "Peço ao Arcanjo Uriel que limpe a confusão e as dúvidas que me rodeiam.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a confusão",
+    "intencao": "Peço ao Arcanjo Uriel que limpe a confusão e as dúvidas que me rodeiam.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 2 · Ver com clareza",
+    "intencao": "Peço a Uriel clareza para ver o essencial e decidir com calma.",
+    "acao": "Escolhe uma decisão pendente e escreve prós e contras."
+   },
+   {
+    "titulo": "Semana 2 · Ver com clareza",
+    "intencao": "Peço a Uriel clareza para ver o essencial e decidir com calma.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Ver com clareza",
+    "intencao": "Peço a Uriel clareza para ver o essencial e decidir com calma.",
+    "acao": "Dá o primeiro passo da decisão que já sabes que é certa."
+   },
+   {
+    "titulo": "Semana 2 · Ver com clareza",
+    "intencao": "Peço a Uriel clareza para ver o essencial e decidir com calma.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Ver com clareza",
+    "intencao": "Peço a Uriel clareza para ver o essencial e decidir com calma.",
+    "acao": "Pede conselho a uma pessoa em quem confias."
+   },
+   {
+    "titulo": "Semana 2 · Ver com clareza",
+    "intencao": "Peço a Uriel clareza para ver o essencial e decidir com calma.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Ver com clareza",
+    "intencao": "Peço a Uriel clareza para ver o essencial e decidir com calma.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 3 · Trabalho e sustento",
+    "intencao": "Peço a Uriel ideias justas e boa organização para o meu trabalho e o meu dinheiro.",
+    "acao": "Olha para as tuas contas com calma, durante 20 minutos."
+   },
+   {
+    "titulo": "Semana 3 · Trabalho e sustento",
+    "intencao": "Peço a Uriel ideias justas e boa organização para o meu trabalho e o meu dinheiro.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Trabalho e sustento",
+    "intencao": "Peço a Uriel ideias justas e boa organização para o meu trabalho e o meu dinheiro.",
+    "acao": "Agradece o que já tens e anota uma meta realista."
+   },
+   {
+    "titulo": "Semana 3 · Trabalho e sustento",
+    "intencao": "Peço a Uriel ideias justas e boa organização para o meu trabalho e o meu dinheiro.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Trabalho e sustento",
+    "intencao": "Peço a Uriel ideias justas e boa organização para o meu trabalho e o meu dinheiro.",
+    "acao": "Escolhe uma tarefa importante e faz só essa."
+   },
+   {
+    "titulo": "Semana 3 · Trabalho e sustento",
+    "intencao": "Peço a Uriel ideias justas e boa organização para o meu trabalho e o meu dinheiro.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Selar e agradecer",
+    "intencao": "Agradeço ao Arcanjo Uriel o caminho feito.",
+    "acao": "Relê o caderno, agradece e escolhe como queres continuar (podes recomeçar o plano)."
+   }
+  ]
+ },
+ {
+  "padraoId": "arcanjo-jofiel-21",
+  "versaoPadrao": 1,
+  "regra": "livre",
+  "tipo": "ciclo",
+  "icone": "luz",
+  "emoji": "🌼",
+  "titulo": "Oração do Arcanjo Jofiel",
+  "subtitulo": "21 dias para mente clara, beleza, criatividade e pensamentos positivos",
+  "dias": 21,
+  "ordem": 40,
+  "seccoes": [
+   {
+    "tipo": "aviso",
+    "titulo": "Como usar",
+    "texto": "São 21 dias, de preferência à mesma hora, num sítio calmo. Se falhares um dia, não faz mal: continuas de onde ficaste, sem culpas. Esta página guarda o teu caminho."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Na tradição cristã e espiritual, Jofiel é o arcanjo da beleza e da iluminação da mente. É invocado por quem quer acalmar a cabeça, afastar pensamentos pesados, criar com alegria e embelezar a casa e a vida.\n\nNesta prática, o Arcanjo Jofiel (amarelo-ouro) é invocado para mente clara, beleza, criatividade e pensamentos positivos: limpa o ruído da cabeça, os pensamentos repetitivos e a casa desarrumada."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Porque são 21 dias",
+    "texto": "Vinte e um dias são três semanas, um tempo simbólico para criar um hábito:\n\n• Semana 1 (dias 1 a 7): Limpar a mente\n• Semana 2 (dias 8 a 14): Embelezar o espaço\n• Semana 3 (dias 15 a 21): Criar com alegria"
+   },
+   {
+    "tipo": "passos",
+    "titulo": "Como fazer, passo a passo",
+    "itens": [
+     "Escolhe uma hora fixa e um sítio calmo. Põe o telemóvel em silêncio.",
+     "Se quiseres, acende uma vela branca num sítio seguro e põe um copo de água ao lado.",
+     "Respira fundo três vezes e lê a oração devagar, em voz baixa.",
+     "Fica 2 a 3 minutos em silêncio e pensa na intenção do dia.",
+     "Faz a pequena ação do dia e marca-o como feito."
+    ]
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "O teu papel nisto",
+    "texto": "Esta prática ajuda, mas não faz milagres sozinha: o que a torna forte é a tua constância e o que fazes no dia a dia. Há dias em que apetece desistir, e é nesses que vale a pena fazer ao menos o essencial. Sem culpas: recomeçar também é caminhar."
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "Cuidados importantes",
+    "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico ou psicológico, nem a medicação. Se sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, fala com o teu médico ou liga ao 112."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Abertura",
+    "texto": "Respiro fundo, três vezes.\nEstou em segurança. Este momento é meu e é sagrado.\nPeço que este tempo seja abençoado e protegido.\nQue só a Luz entre e só a Luz permaneça."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Invocação do Arcanjo Jofiel",
+    "texto": "Amado Arcanjo Jofiel, envolve-me na tua luz amarelo-ouro.\nEstou aqui com fé e com humildade.\nPeço a tua ajuda para mente clara, beleza, criatividade e pensamentos positivos."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "O meu pedido",
+    "texto": "Peço-te que limpes os pensamentos que me pesam e a confusão do meu espaço. Ajuda-me a ver beleza no dia a dia, a criar com alegria e a pensar em mim com gentileza."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Proteção e limpeza",
+    "texto": "Peço que a luz do Arcanjo Jofiel limpa o ruído da cabeça, os pensamentos repetitivos e a casa desarrumada.\nTudo o que não for Luz, que se transforme e vá embora em paz.\nFico protegida(o) em corpo, mente e coração, e a minha casa também."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Encerramento",
+    "texto": "Obrigada(o), Arcanjo Jofiel.\nObrigada(o) pela tua luz e pela tua ajuda.\nFecho agora este momento com paz e com confiança.\nA luz fica comigo, em mim e à minha volta.\nÁmen."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "No 21.º dia: selar",
+    "texto": "No último dia, depois da oração, fica um pouco em silêncio e agradece o caminho. Relê o que escreveste no caderno e repara no que mudou, mesmo que seja pouco. Podes pôr a mão no peito e dizer: «Obrigada(o). Fiz o meu caminho e continuo com constância.»"
+   }
+  ],
+  "temasDias": [
+   {
+    "titulo": "Chegada",
+    "intencao": "Hoje começo. Peço ao Arcanjo Jofiel que me acompanhe nestes 21 dias.",
+    "acao": "Escreve no caderno porque decidiste fazer este caminho e o que queres mudar."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a mente",
+    "intencao": "Peço ao Arcanjo Jofiel que limpe o ruído da minha cabeça.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a mente",
+    "intencao": "Peço ao Arcanjo Jofiel que limpe o ruído da minha cabeça.",
+    "acao": "Faz 10 respirações lentas antes de dormir."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a mente",
+    "intencao": "Peço ao Arcanjo Jofiel que limpe o ruído da minha cabeça.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a mente",
+    "intencao": "Peço ao Arcanjo Jofiel que limpe o ruído da minha cabeça.",
+    "acao": "Faz uma pausa de 5 minutos sem telemóvel, a olhar pela janela."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a mente",
+    "intencao": "Peço ao Arcanjo Jofiel que limpe o ruído da minha cabeça.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Limpar a mente",
+    "intencao": "Peço ao Arcanjo Jofiel que limpe o ruído da minha cabeça.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 2 · Embelezar o espaço",
+    "intencao": "Peço a Jofiel que a minha casa e os meus espaços fiquem leves e bonitos.",
+    "acao": "Arruma um canto da casa e põe lá uma flor, uma vela segura ou uma imagem de que gostes."
+   },
+   {
+    "titulo": "Semana 2 · Embelezar o espaço",
+    "intencao": "Peço a Jofiel que a minha casa e os meus espaços fiquem leves e bonitos.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Embelezar o espaço",
+    "intencao": "Peço a Jofiel que a minha casa e os meus espaços fiquem leves e bonitos.",
+    "acao": "Dá ou deita fora três coisas de que já não precisas."
+   },
+   {
+    "titulo": "Semana 2 · Embelezar o espaço",
+    "intencao": "Peço a Jofiel que a minha casa e os meus espaços fiquem leves e bonitos.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Embelezar o espaço",
+    "intencao": "Peço a Jofiel que a minha casa e os meus espaços fiquem leves e bonitos.",
+    "acao": "Abre as janelas uns minutos para arejar."
+   },
+   {
+    "titulo": "Semana 2 · Embelezar o espaço",
+    "intencao": "Peço a Jofiel que a minha casa e os meus espaços fiquem leves e bonitos.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Embelezar o espaço",
+    "intencao": "Peço a Jofiel que a minha casa e os meus espaços fiquem leves e bonitos.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 3 · Criar com alegria",
+    "intencao": "Peço a Jofiel alegria e criatividade para o que eu quiser criar.",
+    "acao": "Faz algo com as mãos que goste de fazer: desenhar, cozinhar, cantar, escrever."
+   },
+   {
+    "titulo": "Semana 3 · Criar com alegria",
+    "intencao": "Peço a Jofiel alegria e criatividade para o que eu quiser criar.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Criar com alegria",
+    "intencao": "Peço a Jofiel alegria e criatividade para o que eu quiser criar.",
+    "acao": "Tira uma fotografia de algo bonito que viste hoje."
+   },
+   {
+    "titulo": "Semana 3 · Criar com alegria",
+    "intencao": "Peço a Jofiel alegria e criatividade para o que eu quiser criar.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Criar com alegria",
+    "intencao": "Peço a Jofiel alegria e criatividade para o que eu quiser criar.",
+    "acao": "Diz ao espelho uma coisa bonita sobre ti."
+   },
+   {
+    "titulo": "Semana 3 · Criar com alegria",
+    "intencao": "Peço a Jofiel alegria e criatividade para o que eu quiser criar.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Selar e agradecer",
+    "intencao": "Agradeço ao Arcanjo Jofiel o caminho feito.",
+    "acao": "Relê o caderno, agradece e escolhe como queres continuar (podes recomeçar o plano)."
+   }
+  ]
+ },
+ {
+  "padraoId": "arcanjo-zadquiel-21",
+  "versaoPadrao": 1,
+  "regra": "livre",
+  "tipo": "ciclo",
+  "icone": "luz",
+  "emoji": "💜",
+  "titulo": "Oração do Arcanjo Zadquiel",
+  "subtitulo": "21 dias para perdão, misericórdia, soltar o passado e transformar o que pesa",
+  "dias": 21,
+  "ordem": 40,
+  "seccoes": [
+   {
+    "tipo": "aviso",
+    "titulo": "Como usar",
+    "texto": "São 21 dias, de preferência à mesma hora, num sítio calmo. Se falhares um dia, não faz mal: continuas de onde ficaste, sem culpas. Esta página guarda o teu caminho."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Na tradição cristã e espiritual, Zadquiel é o arcanjo da misericórdia e do perdão, ligado à chama violeta da transformação. É invocado por quem quer soltar mágoas, culpas e memórias que pesam, e recomeçar mais leve.\n\nNesta prática, o Arcanjo Zadquiel (violeta) é invocado para perdão, misericórdia, soltar o passado e transformar o que pesa: transforma a mágoa, a culpa e as memórias pesadas em aprendizagem e paz."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Porque são 21 dias",
+    "texto": "Vinte e um dias são três semanas, um tempo simbólico para criar um hábito:\n\n• Semana 1 (dias 1 a 7): Reconhecer o que pesa\n• Semana 2 (dias 8 a 14): Perdoar\n• Semana 3 (dias 15 a 21): Perdoar-me a mim"
+   },
+   {
+    "tipo": "passos",
+    "titulo": "Como fazer, passo a passo",
+    "itens": [
+     "Escolhe uma hora fixa e um sítio calmo. Põe o telemóvel em silêncio.",
+     "Se quiseres, acende uma vela branca num sítio seguro e põe um copo de água ao lado.",
+     "Respira fundo três vezes e lê a oração devagar, em voz baixa.",
+     "Fica 2 a 3 minutos em silêncio e pensa na intenção do dia.",
+     "Faz a pequena ação do dia e marca-o como feito."
+    ]
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "O teu papel nisto",
+    "texto": "Esta prática ajuda, mas não faz milagres sozinha: o que a torna forte é a tua constância e o que fazes no dia a dia. Há dias em que apetece desistir, e é nesses que vale a pena fazer ao menos o essencial. Sem culpas: recomeçar também é caminhar."
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "Cuidados importantes",
+    "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico ou psicológico, nem a medicação. Se sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, fala com o teu médico ou liga ao 112."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Abertura",
+    "texto": "Respiro fundo, três vezes.\nEstou em segurança. Este momento é meu e é sagrado.\nPeço que este tempo seja abençoado e protegido.\nQue só a Luz entre e só a Luz permaneça."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Invocação do Arcanjo Zadquiel",
+    "texto": "Amado Arcanjo Zadquiel, envolve-me na tua luz violeta.\nEstou aqui com fé e com humildade.\nPeço a tua ajuda para perdão, misericórdia, soltar o passado e transformar o que pesa."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "O meu pedido",
+    "texto": "Peço-te que transformes em luz a mágoa e a culpa que ainda carrego. Ajuda-me a perdoar, a pedir perdão e a perdoar-me a mim. Que eu aprenda o que tenho a aprender e deixe o resto ir."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Proteção e limpeza",
+    "texto": "Peço que a luz do Arcanjo Zadquiel transforma a mágoa, a culpa e as memórias pesadas em aprendizagem e paz.\nTudo o que não for Luz, que se transforme e vá embora em paz.\nFico protegida(o) em corpo, mente e coração, e a minha casa também."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Encerramento",
+    "texto": "Obrigada(o), Arcanjo Zadquiel.\nObrigada(o) pela tua luz e pela tua ajuda.\nFecho agora este momento com paz e com confiança.\nA luz fica comigo, em mim e à minha volta.\nÁmen."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "No 21.º dia: selar",
+    "texto": "No último dia, depois da oração, fica um pouco em silêncio e agradece o caminho. Relê o que escreveste no caderno e repara no que mudou, mesmo que seja pouco. Podes pôr a mão no peito e dizer: «Obrigada(o). Fiz o meu caminho e continuo com constância.»"
+   }
+  ],
+  "temasDias": [
+   {
+    "titulo": "Chegada",
+    "intencao": "Hoje começo. Peço ao Arcanjo Zadquiel que me acompanhe nestes 21 dias.",
+    "acao": "Escreve no caderno porque decidiste fazer este caminho e o que queres mudar."
+   },
+   {
+    "titulo": "Semana 1 · Reconhecer o que pesa",
+    "intencao": "Peço ao Arcanjo Zadquiel que me mostre, com ternura, o que ainda carrego.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Reconhecer o que pesa",
+    "intencao": "Peço ao Arcanjo Zadquiel que me mostre, com ternura, o que ainda carrego.",
+    "acao": "Queima ou rasga com segurança o que escreveste, e agradece."
+   },
+   {
+    "titulo": "Semana 1 · Reconhecer o que pesa",
+    "intencao": "Peço ao Arcanjo Zadquiel que me mostre, com ternura, o que ainda carrego.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Reconhecer o que pesa",
+    "intencao": "Peço ao Arcanjo Zadquiel que me mostre, com ternura, o que ainda carrego.",
+    "acao": "Respira fundo e diz: «Já não preciso de carregar isto sozinha(o)»."
+   },
+   {
+    "titulo": "Semana 1 · Reconhecer o que pesa",
+    "intencao": "Peço ao Arcanjo Zadquiel que me mostre, com ternura, o que ainda carrego.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Reconhecer o que pesa",
+    "intencao": "Peço ao Arcanjo Zadquiel que me mostre, com ternura, o que ainda carrego.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 2 · Perdoar",
+    "intencao": "Peço a Zadquiel a coragem de perdoar, ao meu ritmo.",
+    "acao": "Escolhe uma pessoa a perdoar (pode ser só em pensamento) e diz: «Liberto-te e liberto-me»."
+   },
+   {
+    "titulo": "Semana 2 · Perdoar",
+    "intencao": "Peço a Zadquiel a coragem de perdoar, ao meu ritmo.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Perdoar",
+    "intencao": "Peço a Zadquiel a coragem de perdoar, ao meu ritmo.",
+    "acao": "Faz algo bom por ti hoje, sem pedir licença."
+   },
+   {
+    "titulo": "Semana 2 · Perdoar",
+    "intencao": "Peço a Zadquiel a coragem de perdoar, ao meu ritmo.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Perdoar",
+    "intencao": "Peço a Zadquiel a coragem de perdoar, ao meu ritmo.",
+    "acao": "Escreve o que aprendeste com essa situação."
+   },
+   {
+    "titulo": "Semana 2 · Perdoar",
+    "intencao": "Peço a Zadquiel a coragem de perdoar, ao meu ritmo.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Perdoar",
+    "intencao": "Peço a Zadquiel a coragem de perdoar, ao meu ritmo.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 3 · Perdoar-me a mim",
+    "intencao": "Peço a Zadquiel que me ajude a perdoar-me e a recomeçar leve.",
+    "acao": "Escreve uma carta a ti própria(o), com o carinho que darias a uma amiga."
+   },
+   {
+    "titulo": "Semana 3 · Perdoar-me a mim",
+    "intencao": "Peço a Zadquiel que me ajude a perdoar-me e a recomeçar leve.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Perdoar-me a mim",
+    "intencao": "Peço a Zadquiel que me ajude a perdoar-me e a recomeçar leve.",
+    "acao": "Veste algo que te faça sentir bem e sai de casa um pouco."
+   },
+   {
+    "titulo": "Semana 3 · Perdoar-me a mim",
+    "intencao": "Peço a Zadquiel que me ajude a perdoar-me e a recomeçar leve.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Perdoar-me a mim",
+    "intencao": "Peço a Zadquiel que me ajude a perdoar-me e a recomeçar leve.",
+    "acao": "Diz em voz alta: «Fiz o melhor que sabia na altura»."
+   },
+   {
+    "titulo": "Semana 3 · Perdoar-me a mim",
+    "intencao": "Peço a Zadquiel que me ajude a perdoar-me e a recomeçar leve.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Selar e agradecer",
+    "intencao": "Agradeço ao Arcanjo Zadquiel o caminho feito.",
+    "acao": "Relê o caderno, agradece e escolhe como queres continuar (podes recomeçar o plano)."
+   }
+  ]
+ },
+ {
+  "padraoId": "arcanjo-chamuel-21",
+  "versaoPadrao": 1,
+  "regra": "livre",
+  "tipo": "ciclo",
+  "icone": "luz",
+  "emoji": "🌸",
+  "titulo": "Oração do Arcanjo Chamuel",
+  "subtitulo": "21 dias para amor, relações, paz no lar e amor-próprio",
+  "dias": 21,
+  "ordem": 40,
+  "seccoes": [
+   {
+    "tipo": "aviso",
+    "titulo": "Como usar",
+    "texto": "São 21 dias, de preferência à mesma hora, num sítio calmo. Se falhares um dia, não faz mal: continuas de onde ficaste, sem culpas. Esta página guarda o teu caminho."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Para que serve",
+    "texto": "Na tradição cristã e espiritual, Chamuel é o arcanjo do amor e da paz nas relações. É invocado por quem quer sarar o coração, trazer harmonia à família e ao casal, reconciliar-se e aprender a gostar mais de si.\n\nNesta prática, o Arcanjo Chamuel (rosa) é invocado para amor, relações, paz no lar e amor-próprio: limpa a mágoa, o ressentimento e os laços que já não fazem bem."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "Porque são 21 dias",
+    "texto": "Vinte e um dias são três semanas, um tempo simbólico para criar um hábito:\n\n• Semana 1 (dias 1 a 7): Cuidar do coração\n• Semana 2 (dias 8 a 14): Relações em paz\n• Semana 3 (dias 15 a 21): Amor-próprio"
+   },
+   {
+    "tipo": "passos",
+    "titulo": "Como fazer, passo a passo",
+    "itens": [
+     "Escolhe uma hora fixa e um sítio calmo. Põe o telemóvel em silêncio.",
+     "Se quiseres, acende uma vela branca num sítio seguro e põe um copo de água ao lado.",
+     "Respira fundo três vezes e lê a oração devagar, em voz baixa.",
+     "Fica 2 a 3 minutos em silêncio e pensa na intenção do dia.",
+     "Faz a pequena ação do dia e marca-o como feito."
+    ]
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "O teu papel nisto",
+    "texto": "Esta prática ajuda, mas não faz milagres sozinha: o que a torna forte é a tua constância e o que fazes no dia a dia. Há dias em que apetece desistir, e é nesses que vale a pena fazer ao menos o essencial. Sem culpas: recomeçar também é caminhar."
+   },
+   {
+    "tipo": "aviso",
+    "titulo": "Cuidados importantes",
+    "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico ou psicológico, nem a medicação. Se sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, fala com o teu médico ou liga ao 112."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Abertura",
+    "texto": "Respiro fundo, três vezes.\nEstou em segurança. Este momento é meu e é sagrado.\nPeço que este tempo seja abençoado e protegido.\nQue só a Luz entre e só a Luz permaneça."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Invocação do Arcanjo Chamuel",
+    "texto": "Amado Arcanjo Chamuel, envolve-me na tua luz rosa.\nEstou aqui com fé e com humildade.\nPeço a tua ajuda para amor, relações, paz no lar e amor-próprio."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "O meu pedido",
+    "texto": "Peço-te que envolvas o meu coração numa luz rosa de paz. Ajuda-me a dar e a receber amor com verdade, a pôr limites com carinho e a trazer harmonia à minha casa e às minhas relações. Ensina-me a gostar de mim."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Proteção e limpeza",
+    "texto": "Peço que a luz do Arcanjo Chamuel limpa a mágoa, o ressentimento e os laços que já não fazem bem.\nTudo o que não for Luz, que se transforme e vá embora em paz.\nFico protegida(o) em corpo, mente e coração, e a minha casa também."
+   },
+   {
+    "tipo": "oracao",
+    "titulo": "Encerramento",
+    "texto": "Obrigada(o), Arcanjo Chamuel.\nObrigada(o) pela tua luz e pela tua ajuda.\nFecho agora este momento com paz e com confiança.\nA luz fica comigo, em mim e à minha volta.\nÁmen."
+   },
+   {
+    "tipo": "texto",
+    "titulo": "No 21.º dia: selar",
+    "texto": "No último dia, depois da oração, fica um pouco em silêncio e agradece o caminho. Relê o que escreveste no caderno e repara no que mudou, mesmo que seja pouco. Podes pôr a mão no peito e dizer: «Obrigada(o). Fiz o meu caminho e continuo com constância.»"
+   }
+  ],
+  "temasDias": [
+   {
+    "titulo": "Chegada",
+    "intencao": "Hoje começo. Peço ao Arcanjo Chamuel que me acompanhe nestes 21 dias.",
+    "acao": "Escreve no caderno porque decidiste fazer este caminho e o que queres mudar."
+   },
+   {
+    "titulo": "Semana 1 · Cuidar do coração",
+    "intencao": "Peço ao Arcanjo Chamuel que limpe a mágoa do meu coração.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Cuidar do coração",
+    "intencao": "Peço ao Arcanjo Chamuel que limpe a mágoa do meu coração.",
+    "acao": "Faz algo carinhoso por ti hoje."
+   },
+   {
+    "titulo": "Semana 1 · Cuidar do coração",
+    "intencao": "Peço ao Arcanjo Chamuel que limpe a mágoa do meu coração.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Cuidar do coração",
+    "intencao": "Peço ao Arcanjo Chamuel que limpe a mágoa do meu coração.",
+    "acao": "Escreve o que sentes e de que precisas, sem culpas."
+   },
+   {
+    "titulo": "Semana 1 · Cuidar do coração",
+    "intencao": "Peço ao Arcanjo Chamuel que limpe a mágoa do meu coração.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 1 · Cuidar do coração",
+    "intencao": "Peço ao Arcanjo Chamuel que limpe a mágoa do meu coração.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 2 · Relações em paz",
+    "intencao": "Peço a Chamuel paz e harmonia nas minhas relações.",
+    "acao": "Envia uma mensagem carinhosa a alguém de quem gostas."
+   },
+   {
+    "titulo": "Semana 2 · Relações em paz",
+    "intencao": "Peço a Chamuel paz e harmonia nas minhas relações.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Relações em paz",
+    "intencao": "Peço a Chamuel paz e harmonia nas minhas relações.",
+    "acao": "Diz a alguém «obrigada(o)» pelo que faz por ti."
+   },
+   {
+    "titulo": "Semana 2 · Relações em paz",
+    "intencao": "Peço a Chamuel paz e harmonia nas minhas relações.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Relações em paz",
+    "intencao": "Peço a Chamuel paz e harmonia nas minhas relações.",
+    "acao": "Numa conversa difícil, ouve até ao fim antes de responderes."
+   },
+   {
+    "titulo": "Semana 2 · Relações em paz",
+    "intencao": "Peço a Chamuel paz e harmonia nas minhas relações.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 2 · Relações em paz",
+    "intencao": "Peço a Chamuel paz e harmonia nas minhas relações.",
+    "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+   },
+   {
+    "titulo": "Semana 3 · Amor-próprio",
+    "intencao": "Peço a Chamuel que me ensine a gostar de mim e a pôr limites com carinho.",
+    "acao": "Diz «não» com carinho a uma coisa que não consegues fazer."
+   },
+   {
+    "titulo": "Semana 3 · Amor-próprio",
+    "intencao": "Peço a Chamuel que me ensine a gostar de mim e a pôr limites com carinho.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Amor-próprio",
+    "intencao": "Peço a Chamuel que me ensine a gostar de mim e a pôr limites com carinho.",
+    "acao": "Dedica um tempo só teu a algo que te dá prazer."
+   },
+   {
+    "titulo": "Semana 3 · Amor-próprio",
+    "intencao": "Peço a Chamuel que me ensine a gostar de mim e a pôr limites com carinho.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Semana 3 · Amor-próprio",
+    "intencao": "Peço a Chamuel que me ensine a gostar de mim e a pôr limites com carinho.",
+    "acao": "Escreve 5 qualidades tuas."
+   },
+   {
+    "titulo": "Semana 3 · Amor-próprio",
+    "intencao": "Peço a Chamuel que me ensine a gostar de mim e a pôr limites com carinho.",
+    "acao": "Hoje basta a oração e o silêncio. Descansa."
+   },
+   {
+    "titulo": "Selar e agradecer",
+    "intencao": "Agradeço ao Arcanjo Chamuel o caminho feito.",
+    "acao": "Relê o caderno, agradece e escolhe como queres continuar (podes recomeçar o plano)."
+   }
+  ]
+ }
+];
+PROTECAO_PADRAO.push(...ARCANJOS_PADRAO);
