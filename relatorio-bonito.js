@@ -87,6 +87,7 @@ const CSS = `
 .rbx .num:hover .bola{transform:scale(1.12) rotate(8deg)}
 .rbx .num .nr{font-size:12.5px;font-weight:600;color:var(--a)}
 .rbx .num p{font-size:12.5px;margin:6px 0 0;text-align:left}
+.rbx .figuras{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin:6px 0}.rbx .figuras figure{margin:0;text-align:center}.rbx .figuras img{max-width:100%;height:auto;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.18)}.rbx .figuras figcaption{font-size:12px;opacity:.8;margin-top:4px}
 .rbx .galeria{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
 .rbx .galeria img{max-width:100%;width:220px;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 .rbx .msg{background:linear-gradient(135deg,#fff,var(--fundo));border:2px dashed var(--b);border-radius:18px;padding:16px;margin:14px 0}
@@ -249,6 +250,8 @@ function bloco(b, T) {
     }
     case 'mapa':
       return b.html ? `<section class="bloco">${tit}<div style="text-align:center">${b.html}</div><p class="mut" style="font-size:12px;text-align:center">Os pontos encontrados estão em destaque.</p></section>` : '';
+    case 'figuras':
+      return (b.itens && b.itens.length) ? `<section class="bloco">${tit}<div class="figuras">${b.itens.map(i => `<figure><img src="${esc(i.src)}" alt="${esc(i.legenda || '')}" style="width:${Number(i.tam) || 110}px">${i.legenda ? `<figcaption>${esc(i.legenda)}</figcaption>` : ''}</figure>`).join('')}</div></section>` : '';
     case 'imagens':
       return (b.urls && b.urls.length) ? `<section class="bloco">${tit}<div class="galeria">${b.urls.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join('')}</div></section>` : '';
     default: return '';

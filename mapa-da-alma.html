@@ -1893,11 +1893,18 @@ function renderManualPayment(leadId, info){
 async function renderFullResult(leadId){
   main.innerHTML = '<div class="loading">A abrir o seu Mapa…</div>';
   try{
-    const res = await fetch(FUNCTION_URL, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'getResult', tenantId: TENANT_ID, leadId })
-    });
-    const data = await res.json();
+    let res, data;
+    if (/^est-[a-z0-9-]+$/i.test(leadId)){
+      // mapa guardado como ficheiro (link privado enviado pelo terapeuta)
+      res = await fetch('mapas/' + leadId + '.json', { cache: 'no-store' });
+      data = await res.json();
+    } else {
+      res = await fetch(FUNCTION_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getResult', tenantId: TENANT_ID, leadId })
+      });
+      data = await res.json();
+    }
     if (!res.ok || !data.ok) throw new Error(data.error || 'Não encontrado');
     if (data.paymentStatus !== 'paid'){
       renderFreeResult(leadId, data.freeResult, getSigno(data.freeResult.dataNascimento), data.extra);
@@ -1938,6 +1945,7 @@ function mapaModeloBonito(r, full, dom){
     if (full.carmicasTexto) blocos.push({ tipo:'texto', icone:'🔑', titulo:'Lições cármicas', paras:[full.carmicasTexto, full.excessoTexto].filter(Boolean) });
   }
   if (r.anjo && r.anjo.tipo === 'anjo') blocos.push({ tipo:'lista', icone:'🕊️', titulo:'O seu Anjo do Nascimento: ' + r.anjo.nome, marca:'', itens:[`${r.anjo.numero}º da hierarquia dos ${r.anjo.coro}, sob a regência do ${r.anjo.arcanjoRegente}.`, '💎 Virtude: ' + r.anjo.virtude, '🌑 Sombra a vigiar: ' + r.anjo.sombra] });
+  if (r.anjo && r.anjo.tipo === 'anjo' && r.anjo.arcanjoRegente && miSrc('arcanjos', r.anjo.arcanjoRegente)) blocos.push({ tipo:'figuras', icone:'🪽', titulo:'O seu Arcanjo regente', itens:[{ src:miSrc('arcanjos', r.anjo.arcanjoRegente), legenda:miNorm('arcanjos', r.anjo.arcanjoRegente), tam:200 }] });
   else if (r.anjo && r.anjo.tipo === 'universal') blocos.push({ tipo:'texto', icone:'🕊️', titulo:'A sua essência angelical universal', paras:[r.anjo.nota || ''] });
   if (!r.mestreDia && r.dataNascimento) r.mestreDia = calcularMestreDia(r.dataNascimento);
   if (!r.chakraDom && r.dataNascimento) r.chakraDom = chakraDominanteNum(r.dataNascimento);
@@ -1959,8 +1967,11 @@ function mapaModeloBonito(r, full, dom){
     if (_ci) blocos.push({ tipo:'texto', icone:'🔢', titulo:'O seu Número de Vida: ' + _cv + ' — ' + (_ci.nome || ''), paras:[_ci.texto || ''] });
     const _pd = r.mestreDia && r.mestreDia.planeta, _ps = r.signo && PLANETA_SIGNO[r.signo], _pa = r.anjo && r.anjo.tipo === 'anjo' && r.anjo.planeta;
     const _pl = [_pd && `${_pd} (dia em que nasceu)`, _ps && `${_ps} (signo ${r.signo})`, _pa && `${_pa} (Anjo do nascimento)`].filter(Boolean);
-    if (_pl.length) blocos.push({ tipo:'texto', icone:'🪐', titulo:'Os seus Planetas Regentes', paras:[_pl.join(' · ') + '.'] }); }
+    if (_pl.length) blocos.push({ tipo:'texto', icone:'🪐', titulo:'Os seus Planetas Regentes', paras:[_pl.join(' · ') + '.'] });
+    { const _vis = [], _it = []; [_pd, _ps, _pa].forEach(n => { if (n && !_vis.includes(n) && miSrc('planetas', n)) { _vis.push(n); _it.push({ src:miSrc('planetas', n), legenda:n, tam:84 }); } });
+      if (_it.length) blocos.push({ tipo:'figuras', icone:'🪐', titulo:'Os seus planetas', itens:_it }); } }
   if (r.mestreDia && r.mestreDia.mestre) blocos.push({ tipo:'lista', icone:'🌟', titulo:'O seu Mestre Ascensionado: ' + r.mestreDia.mestre, marca:'', itens:['Nasceu ' + r.mestreDia.nasceuNum + '. ' + r.mestreDia.texto, '💎 Para além da cura, este raio traz: ' + r.mestreDia.dons + '.', '🌑 O que merece atenção: ' + r.mestreDia.atencao + '.'] });
+  if (r.mestreDia && r.mestreDia.mestre && miSrc('mestres', r.mestreDia.mestre)) blocos.push({ tipo:'figuras', icone:'🌟', titulo:'O seu Mestre Ascensionado', itens:[{ src:miSrc('mestres', r.mestreDia.mestre), legenda:miNorm('mestres', r.mestreDia.mestre), tam:150 }] });
   if (r.chakraDom && TRI_CHAKRA_LIVRO[r.chakraDom]){ const cd = TRI_CHAKRA_LIVRO[r.chakraDom]; blocos.push({ tipo:'lista', icone:'🌈', titulo:'O seu Chakra Dominante: ' + cd.nome + ' — ' + cd.titulo, marca:'', itens:['Cor ' + cd.cor + ', ' + cd.local + '.', '💎 Na sua melhor versão: ' + cd.luz + '.', '🌑 O desafio que mais se repete: ' + cd.sombra + '.', '🌿 O caminho de equilíbrio: ' + cd.caminho + '.'] }); }
   if (r.ciclos && r.ciclos.anoPessoal){
     const ap = Number(r.ciclos.anoPessoal) || 0;
@@ -2215,11 +2226,13 @@ function renderFullReport(data){
       <button class="btn" id="btnDownloadPdf" style="margin-top:8px;">📥 Descarregar o meu Mapa em PDF</button>
       <p class="muted" style="margin-top:8px;">Guarde para reler sempre que precisar, ou imprima.</p>
     </div>
-    ${renderShareAndPromoBlock(null, r.nome, r)}
+    ${data.linkCaminho ? `<div class="card" style="text-align:center;"><h3 style="color:var(--gold-light);">💙 O seu caminho de 21 dias</h3><p class="muted" style="margin-top:6px;">Orações da manhã e da noite, e o que fazer nos dias mais difíceis.</p><a class="btn" style="display:block;text-decoration:none;margin-top:10px;" href="${escapeHtml(data.linkCaminho)}">Abrir o meu caminho</a></div>` : ''}
+    ${/^est-/i.test(existingToken || '') ? '' : renderShareAndPromoBlock(null, r.nome, r)}
   `;
   document.getElementById('btnDownloadPdf').addEventListener('click', () => downloadFullReportPDF(r, full, dom));
   document.getElementById('btnBonito').addEventListener('click', () => { try { rbPreVisualizar(mapaModeloBonito(r, full, dom)); } catch(e){ console.error(e); alert('Não consegui abrir a versão ilustrada.'); } });
-  wireShareAndPromoButtons(null, r.nome);
+  if (!/^est-/i.test(existingToken || '')) wireShareAndPromoButtons(null, r.nome);
+  if (/^est-/i.test(existingToken || '')) { try { rbPreVisualizar(mapaModeloBonito(r, full, dom)); } catch(e){ console.error(e); } }
 }
 
 // ────────────────────────────────────────────────────────────────────────
