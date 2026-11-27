@@ -236,6 +236,21 @@ async function checkForNewMessages(){
     updateMessagesTileBadge(count);
   }catch(e){ /* falha silenciosa — não deve incomodar quem está a usar o Portal */ }
 }
+let __presenceTimer = null;
+function sendPresence(estado){
+  // Falha silenciosa: a presença nunca deve incomodar quem usa o portal.
+  try{
+    fetch(FUNCTION_URL, { method:'POST', headers:{'Content-Type':'application/json'}, keepalive:true,
+      body: JSON.stringify({ tenantId, patientId, token, action:'presence', text: estado }) }).catch(()=>{});
+  }catch(e){}
+}
+function startPresence(){
+  if (__presenceTimer) return;
+  sendPresence('in');
+  __presenceTimer = setInterval(() => { if (!document.hidden) sendPresence('in'); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) sendPresence('out'); else sendPresence('in'); });
+  window.addEventListener('pagehide', () => sendPresence('out'));
+}
 let __portalGlobalPollTimer = null;
 function startGlobalMessagePolling(){
   if (__portalGlobalPollTimer) return;
@@ -737,6 +752,7 @@ async function load(){
     }
     __portalLastKnownUnread = data.unreadMessagesCount || 0;
     startGlobalMessagePolling();
+    startPresence();
   }catch(e){
     console.error(e);
     main.innerHTML = '<div class="errorbox">' + T('naoAbre') + '</div>';

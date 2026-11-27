@@ -93,6 +93,24 @@ exports.handler = async function (event) {
       return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: true, unreadMessagesCount: unreadSnap.size }) };
     }
 
+    // Presença: o portal envia "in" ao abrir e de 60 em 60 segundos, e "out" ao fechar.
+    // Guarda o último sinal (presenceLastSeenAt) e regista entrada/saída só quando muda.
+    if (action === 'presence') {
+      const estado = text === 'out' ? 'out' : 'in';
+      const agora = Date.now();
+      const ultimo = patient.presenceLastSeenAt && typeof patient.presenceLastSeenAt.toMillis === 'function' ? patient.presenceLastSeenAt.toMillis() : 0;
+      const estavaOnline = patient.presenceOnline === true && agora - ultimo < 3 * 60 * 1000;
+      const mudou = (estado === 'in') !== estavaOnline;
+      const update = { presenceLastSeenAt: admin.firestore.FieldValue.serverTimestamp(), presenceOnline: estado === 'in' };
+      if (estado === 'in' && !estavaOnline) update.presenceLastInAt = admin.firestore.FieldValue.serverTimestamp();
+      if (estado === 'out') update.presenceLastOutAt = admin.firestore.FieldValue.serverTimestamp();
+      await patientRef.update(update);
+      if (mudou) {
+        await patientRef.collection('presenceLog').add({ estado: estado === 'in' ? 'entrada' : 'saída', at: admin.firestore.FieldValue.serverTimestamp() });
+      }
+      return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: true }) };
+    }
+
     // Ação por omissão: devolver os dados do portal.
     if (!patient.portalFirstAccessedAt) {
       await patientRef.update({ portalFirstAccessedAt: admin.firestore.FieldValue.serverTimestamp() });
