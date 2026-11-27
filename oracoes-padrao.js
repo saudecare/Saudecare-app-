@@ -3230,3 +3230,240 @@ export const ARCANJOS_PADRAO = [
  }
 ];
 PROTECAO_PADRAO.push(...ARCANJOS_PADRAO);
+
+// Oração universal a todos os Arcanjos e oração de 21 dias do Arcanjo Metatron.
+export const ARCANJOS_UNIVERSAL_PADRAO = {
+ "padraoId": "arcanjos-universal",
+ "versaoPadrao": 1,
+ "tipo": "oracao",
+ "emoji": "🪽",
+ "titulo": "Oração a todos os Arcanjos",
+ "subtitulo": "Proteção, saúde, clareza, perdão e amor, numa só oração",
+ "dias": 0,
+ "ordem": 41,
+ "seccoes": [
+  {
+   "tipo": "texto",
+   "titulo": "Para que serve",
+   "texto": "Uma oração única para invocar todos os Arcanjos de uma vez: Metatron, Miguel, Gabriel, Rafael, Uriel, Jofiel, Zadquiel e Chamuel. Podes dizê-la de manhã, à noite, ou sempre que sentires necessidade de proteção, de paz e de orientação. Demora uns 5 minutos."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Abertura",
+   "texto": "Respiro fundo, três vezes.\nEstou em segurança. Este momento é meu e é sagrado.\nPeço que este tempo seja abençoado e protegido.\nQue só a Luz entre e só a Luz permaneça."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Chamar os Arcanjos",
+   "texto": "Arcanjo Metatron, a ligação ao Divino, o propósito e a ordem na vida: ilumina o meu caminho e acompanha-me.\n\nArcanjo Miguel, a proteção, a coragem e a limpeza: ilumina o meu caminho e acompanha-me.\n\nArcanjo Gabriel, a comunicação, as mensagens e os recomeços: ilumina o meu caminho e acompanha-me.\n\nArcanjo Rafael, a saúde, o descanso e a cura: ilumina o meu caminho e acompanha-me.\n\nArcanjo Uriel, a sabedoria, a clareza e a paz: ilumina o meu caminho e acompanha-me.\n\nArcanjo Jofiel, a mente clara, a beleza e a alegria: ilumina o meu caminho e acompanha-me.\n\nArcanjo Zadquiel, o perdão e a transformação do que pesa: ilumina o meu caminho e acompanha-me.\n\nArcanjo Chamuel, o amor, as relações e a paz no lar: ilumina o meu caminho e acompanha-me."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Proteção e limpeza",
+   "texto": "Peço que a luz de todos os Arcanjos me envolva, a mim, à minha casa e aos que amo.\nTudo o que não for Luz, que se transforme e vá embora em paz.\nQue o medo, o cansaço, a mágoa e a confusão se dissolvam, e fique só o que me faz bem."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Os meus pedidos",
+   "texto": "Saúde: que o meu corpo e a minha mente descansem e se renovem.\nClareza: que eu veja o essencial e decida com calma.\nPerdão: que eu solte o que pesa, nos outros e em mim.\nAmor: que eu dê e receba amor com verdade e com limites carinhosos.\nProteção: que eu e a minha família estejamos em paz, onde estivermos."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Encerramento",
+   "texto": "Obrigada(o), Arcanjos, pela vossa luz e pela vossa ajuda.\nFecho agora este momento com paz e com confiança.\nA luz fica comigo, em mim e à minha volta.\nÁmen."
+  },
+  {
+   "tipo": "aviso",
+   "titulo": "Cuidados importantes",
+   "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico ou psicológico, nem a medicação. Se sentires angústia muito forte ou pensamentos de te fazeres mal, fala com o teu médico ou liga ao 112."
+  }
+ ]
+};
+export const METATRON_PADRAO = {
+ "padraoId": "arcanjo-metatron-21",
+ "versaoPadrao": 1,
+ "regra": "livre",
+ "tipo": "ciclo",
+ "icone": "luz",
+ "emoji": "✨",
+ "titulo": "Oração do Arcanjo Metatron",
+ "subtitulo": "21 dias para ligação ao Divino, propósito e ordem na vida",
+ "dias": 21,
+ "ordem": 40,
+ "seccoes": [
+  {
+   "tipo": "aviso",
+   "titulo": "Como usar",
+   "texto": "São 21 dias, de preferência à mesma hora, num sítio calmo. Se falhares um dia, não faz mal: continuas de onde ficaste, sem culpas. Esta página guarda o teu caminho."
+  },
+  {
+   "tipo": "texto",
+   "titulo": "Para que serve",
+   "texto": "Na tradição mística judaica, Metatron é visto como um dos maiores arcanjos, o «Príncipe da Presença» que está mais perto do Divino e que regista e organiza. Nas tradições espirituais modernas é também invocado para a ligação ao Divino, o propósito de vida, a ordem e a proteção das crianças. Nem todas as tradições o colocam acima dos outros arcanjos: para muitos cristãos esse lugar é do Arcanjo Miguel. Aqui, é a tua fé que dá o sentido.\n\nNesta prática, o Arcanjo Metatron (branco, azul-cobalto e ouro) é invocado para ligação ao Divino, propósito e ordem na vida."
+  },
+  {
+   "tipo": "texto",
+   "titulo": "Porque são 21 dias",
+   "texto": "Vinte e um dias são três semanas, um tempo simbólico para criar um hábito:\n\n• Semana 1 (dias 1 a 7): Ligar-me ao Divino\n• Semana 2 (dias 8 a 14): Pôr ordem\n• Semana 3 (dias 15 a 21): O meu propósito"
+  },
+  {
+   "tipo": "passos",
+   "titulo": "Como fazer, passo a passo",
+   "itens": [
+    "Escolhe uma hora fixa e um sítio calmo. Põe o telemóvel em silêncio.",
+    "Se quiseres, acende uma vela branca num sítio seguro e põe um copo de água ao lado.",
+    "Respira fundo três vezes e lê a oração devagar, em voz baixa.",
+    "Fica 2 a 3 minutos em silêncio e pensa na intenção do dia.",
+    "Faz a pequena ação do dia e marca-o como feito."
+   ]
+  },
+  {
+   "tipo": "aviso",
+   "titulo": "O teu papel nisto",
+   "texto": "Esta prática ajuda, mas não faz milagres sozinha: o que a torna forte é a tua constância e o que fazes no dia a dia. Há dias em que apetece desistir, e é nesses que vale a pena fazer ao menos o essencial. Sem culpas: recomeçar também é caminhar."
+  },
+  {
+   "tipo": "aviso",
+   "titulo": "Cuidados importantes",
+   "texto": "Esta prática é espiritual e de fé. Não substitui o acompanhamento médico ou psicológico, nem a medicação. Se sentires angústia muito forte, tristeza que não passa ou pensamentos de te fazeres mal, fala com o teu médico ou liga ao 112."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Abertura",
+   "texto": "Respiro fundo, três vezes.\nEstou em segurança. Este momento é meu e é sagrado.\nPeço que este tempo seja abençoado e protegido.\nQue só a Luz entre e só a Luz permaneça."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Invocação do Arcanjo Metatron",
+   "texto": "Amado Arcanjo Metatron, envolve-me na tua luz branco, azul-cobalto e ouro.\nEstou aqui com fé e com humildade.\nPeço a tua ajuda para a ligação ao Divino, propósito e ordem na vida."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "O meu pedido",
+   "texto": "Peço-te que me aproximes da Luz maior e me tragas paz. Ajuda-me a pôr ordem no que está confuso, a ver o meu propósito e a dar os passos certos, no meu tempo. Abençoa e protege as crianças da minha família e todas as crianças."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Proteção e limpeza",
+   "texto": "Peço que a luz do Arcanjo Metatron limpe a desordem, a dúvida e a falta de sentido.\nTudo o que não for Luz, que se transforme e vá embora em paz.\nFico protegida(o) em corpo, mente e coração, e a minha casa também."
+  },
+  {
+   "tipo": "oracao",
+   "titulo": "Encerramento",
+   "texto": "Obrigada(o), Arcanjo Metatron.\nObrigada(o) pela tua luz e pela tua ajuda.\nFecho agora este momento com paz e com confiança.\nA luz fica comigo, em mim e à minha volta.\nÁmen."
+  },
+  {
+   "tipo": "texto",
+   "titulo": "No 21.º dia: selar",
+   "texto": "No último dia, depois da oração, fica um pouco em silêncio e agradece o caminho. Relê o que escreveste no caderno e repara no que mudou, mesmo que seja pouco. Podes pôr a mão no peito e dizer: «Obrigada(o). Fiz o meu caminho e continuo com constância.»"
+  }
+ ],
+ "temasDias": [
+  {
+   "titulo": "Chegada",
+   "intencao": "Hoje começo. Peço ao Arcanjo Metatron que me acompanhe nestes 21 dias.",
+   "acao": "Escreve no caderno porque decidiste fazer este caminho e o que queres mudar."
+  },
+  {
+   "titulo": "Semana 1 · Ligar-me ao Divino",
+   "intencao": "Peço ao Arcanjo Metatron que me ligue à Luz maior e me traga paz e confiança.",
+   "acao": "Hoje basta a oração e o silêncio. Descansa."
+  },
+  {
+   "titulo": "Semana 1 · Ligar-me ao Divino",
+   "intencao": "Peço ao Arcanjo Metatron que me ligue à Luz maior e me traga paz e confiança.",
+   "acao": "Agradece em voz alta pelo dia que tiveste."
+  },
+  {
+   "titulo": "Semana 1 · Ligar-me ao Divino",
+   "intencao": "Peço ao Arcanjo Metatron que me ligue à Luz maior e me traga paz e confiança.",
+   "acao": "Hoje basta a oração e o silêncio. Descansa."
+  },
+  {
+   "titulo": "Semana 1 · Ligar-me ao Divino",
+   "intencao": "Peço ao Arcanjo Metatron que me ligue à Luz maior e me traga paz e confiança.",
+   "acao": "Escreve três momentos em que sentiste que algo maior cuidava de ti."
+  },
+  {
+   "titulo": "Semana 1 · Ligar-me ao Divino",
+   "intencao": "Peço ao Arcanjo Metatron que me ligue à Luz maior e me traga paz e confiança.",
+   "acao": "Hoje basta a oração e o silêncio. Descansa."
+  },
+  {
+   "titulo": "Semana 1 · Ligar-me ao Divino",
+   "intencao": "Peço ao Arcanjo Metatron que me ligue à Luz maior e me traga paz e confiança.",
+   "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+  },
+  {
+   "titulo": "Semana 2 · Pôr ordem",
+   "intencao": "Peço a Metatron que me ajude a pôr ordem na minha vida, uma coisa de cada vez.",
+   "acao": "Escolhe uma área desarrumada (casa, papéis, agenda) e arruma só 15 minutos."
+  },
+  {
+   "titulo": "Semana 2 · Pôr ordem",
+   "intencao": "Peço a Metatron que me ajude a pôr ordem na minha vida, uma coisa de cada vez.",
+   "acao": "Hoje basta a oração e o silêncio. Descansa."
+  },
+  {
+   "titulo": "Semana 2 · Pôr ordem",
+   "intencao": "Peço a Metatron que me ajude a pôr ordem na minha vida, uma coisa de cada vez.",
+   "acao": "Risca da lista o que não é essencial."
+  },
+  {
+   "titulo": "Semana 2 · Pôr ordem",
+   "intencao": "Peço a Metatron que me ajude a pôr ordem na minha vida, uma coisa de cada vez.",
+   "acao": "Hoje basta a oração e o silêncio. Descansa."
+  },
+  {
+   "titulo": "Semana 2 · Pôr ordem",
+   "intencao": "Peço a Metatron que me ajude a pôr ordem na minha vida, uma coisa de cada vez.",
+   "acao": "Escreve as 3 coisas mais importantes para a tua semana."
+  },
+  {
+   "titulo": "Semana 2 · Pôr ordem",
+   "intencao": "Peço a Metatron que me ajude a pôr ordem na minha vida, uma coisa de cada vez.",
+   "acao": "Hoje basta a oração e o silêncio. Descansa."
+  },
+  {
+   "titulo": "Semana 2 · Pôr ordem",
+   "intencao": "Peço a Metatron que me ajude a pôr ordem na minha vida, uma coisa de cada vez.",
+   "acao": "Relê o que escreveste esta semana e repara no que se repetiu."
+  },
+  {
+   "titulo": "Semana 3 · O meu propósito",
+   "intencao": "Peço a Metatron que me mostre, com calma, o meu propósito e os próximos passos.",
+   "acao": "Escreve o que te dá sentido e o que gostavas de deixar no mundo."
+  },
+  {
+   "titulo": "Semana 3 · O meu propósito",
+   "intencao": "Peço a Metatron que me mostre, com calma, o meu propósito e os próximos passos.",
+   "acao": "Hoje basta a oração e o silêncio. Descansa."
+  },
+  {
+   "titulo": "Semana 3 · O meu propósito",
+   "intencao": "Peço a Metatron que me mostre, com calma, o meu propósito e os próximos passos.",
+   "acao": "Partilha o teu sonho com alguém de confiança."
+  },
+  {
+   "titulo": "Semana 3 · O meu propósito",
+   "intencao": "Peço a Metatron que me mostre, com calma, o meu propósito e os próximos passos.",
+   "acao": "Hoje basta a oração e o silêncio. Descansa."
+  },
+  {
+   "titulo": "Semana 3 · O meu propósito",
+   "intencao": "Peço a Metatron que me mostre, com calma, o meu propósito e os próximos passos.",
+   "acao": "Escolhe um pequeno passo nessa direção e faz hoje."
+  },
+  {
+   "titulo": "Semana 3 · O meu propósito",
+   "intencao": "Peço a Metatron que me mostre, com calma, o meu propósito e os próximos passos.",
+   "acao": "Hoje basta a oração e o silêncio. Descansa."
+  },
+  {
+   "titulo": "Selar e agradecer",
+   "intencao": "Agradeço ao Arcanjo Metatron o caminho feito.",
+   "acao": "Relê o caderno, agradece e escolhe como queres continuar (podes recomeçar o plano)."
+  }
+ ]
+};
+PROTECAO_PADRAO.push(ARCANJOS_UNIVERSAL_PADRAO, METATRON_PADRAO);

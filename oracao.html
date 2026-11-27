@@ -132,11 +132,11 @@
 <nav class="tabs" id="tabs" hidden aria-label="Navegação"></nav>
 <footer id="rodape" hidden>Prática espiritual e de bem-estar. Não substitui o acompanhamento médico ou psicológico.<br>Hikari Fafe · Corpo · Mente · Alma · Espírito</footer>
 
-<script src="mapa-imagens.js?v=2026-11-27-3"></script>
+<script src="mapa-imagens.js?v=2026-11-27-4"></script>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, doc, getDoc, updateDoc, addDoc, collection } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { PROTECAO_PADRAO } from './oracoes-padrao.js?v=2026-11-27-3';
+import { PROTECAO_PADRAO } from './oracoes-padrao.js?v=2026-11-27-4';
 
 const app = initializeApp({
   apiKey:'AIzaSyDKWdXYEG6PO9KEMQMklyPGngtXuZlP7Cg', authDomain:'saudecare-app.firebaseapp.com', projectId:'saudecare-app',
@@ -180,9 +180,9 @@ const ARTE_LUZ = `<svg class="arte" viewBox="0 0 200 200" role="img" aria-label=
 <path d="M76 152h48M84 160h32" stroke="var(--marca)" stroke-width="3" stroke-linecap="round"/>
 ${ESTRELAS}</svg>`;
 const ORNA = `<svg class="orna" viewBox="0 0 120 18" aria-hidden="true"><g fill="none" stroke="var(--dest)" stroke-width="1.6" stroke-linecap="round"><path d="M6 9h38M76 9h38"/><path d="M60 3l3 6-3 6-3-6z" fill="var(--dest)"/><circle cx="48" cy="9" r="1.6" fill="var(--dest)"/><circle cx="72" cy="9" r="1.6" fill="var(--dest)"/></g></svg>`;
-const ARCANJOS = ['Miguel','Gabriel','Rafael','Uriel','Jofiel','Zadquiel','Chamuel'];
+const ARCANJOS = ['Metatron','Miguel','Gabriel','Rafael','Uriel','Jofiel','Zadquiel','Chamuel'];
 function arcanjoDe() {
-  const IMG = (window.MAPA_IMG || {}).arcanjos || {};
+  const IMG = Object.assign({}, (window.MAPA_IMG || {}).mestres || {}, (window.MAPA_IMG || {}).arcanjos || {});
   const cab = ' ' + (O.titulo || '') + ' ' + (O.subtitulo || '');
   let nome = ARCANJOS.find((n) => new RegExp('\\b' + n + '\\b', 'i').test(cab));
   if (!nome) {
